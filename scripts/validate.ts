@@ -27,7 +27,7 @@ const RESERVED_VARS = new Set(["CLAUDE_PLUGIN_ROOT"]);
 
 interface MarketplacePlugin {
   name: string;
-  source?: { type: string; path?: string };
+  source?: string | { type?: string; path?: string; source?: string };
 }
 
 interface Marketplace {
@@ -50,6 +50,23 @@ function extractPlaceholders(value: string): string[] {
   let m: RegExpExecArray | null;
   while ((m = re.exec(value)) !== null) out.push(m[1]);
   return out;
+}
+
+/**
+ * Accepts either the string shorthand ("./plugins/xero") or the object
+ * form ({ type: "path", path: "plugins/xero" } / { source: "./plugins/xero" }).
+ * Returns null if the shape is unrecognised.
+ */
+function resolveSourcePath(
+  source: string | { type?: string; path?: string; source?: string } | undefined,
+): string | null {
+  if (!source) return null;
+  if (typeof source === "string") return source;
+  if (typeof source === "object") {
+    if (typeof source.path === "string") return source.path;
+    if (typeof source.source === "string") return source.source;
+  }
+  return null;
 }
 
 function extractConfigVars(readme: string): Set<string> {
@@ -163,11 +180,14 @@ function main() {
       fail("marketplace.json: a plugin entry is missing name");
       continue;
     }
-    if (!p.source || p.source.type !== "path" || !p.source.path) {
-      fail(`marketplace.json: plugin "${p.name}" must have source.type="path" and source.path`);
+    const sourcePath = resolveSourcePath(p.source);
+    if (!sourcePath) {
+      fail(
+        `marketplace.json: plugin "${p.name}" has an unrecognised source - use "./plugins/<name>" shorthand`,
+      );
       continue;
     }
-    const relPath = p.source.path.replace(/^plugins\//, "");
+    const relPath = sourcePath.replace(/^\.\//, "").replace(/^plugins\//, "");
     validatePlugin(relPath, p.name);
   }
 
