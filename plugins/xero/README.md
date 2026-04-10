@@ -1,6 +1,6 @@
 # Xero plugin
 
-A Claude Code plugin that packages the **official Xero MCP server**
+An agent plugin that packages the **official Xero MCP server**
 ([`@xeroapi/xero-mcp-server`](https://github.com/XeroAPI/xero-mcp-server)) with
 a curated set of SMB-focused slash commands and subagents. Part of the
 [mySMB Marketplace](../../README.md).

@@ -1,6 +1,6 @@
 # mySMB Marketplace
 
-Curated Claude Code plugins for SMB-focused business integrations.
+Curated agent plugins for SMB-focused business integrations.
 
 mySMB Marketplace is the plugin registry consumed by **MyHub**, a conversational AI
 platform for small and medium businesses. Every plugin here wraps a business tool
@@ -10,10 +10,11 @@ MyHub tenants can talk to their business data in natural language.
 ## Who this is for
 
 - **MyHub** - loads this marketplace at tenant provisioning time and installs the
-  plugins each tenant has subscribed to.
+  agent plugins each tenant has subscribed to.
 - **Claude Code users** - can add this marketplace locally with
   `/plugin marketplace add mySMB-AI-Studio/mysmb-marketplace` and install any plugin
-  for direct use.
+  for direct use. The plugin format is the standard Claude Code plugin format, so
+  the same artefacts work for both MyHub tenants and individual developers.
 
 ## Policy: stdio + env vars only
 
@@ -46,7 +47,7 @@ We prefer, in order:
    no upstream server exists or the upstream server is missing critical
    functionality.
 
-## Current plugins
+## Current agent plugins
 
 | Plugin | Category | Description |
 | ------ | -------- | ----------- |
@@ -65,7 +66,7 @@ MyHub pulls this repository at tenant provisioning time, reads
 
 See the MyHub repo for the consumer-side integration code.
 
-## Adding a new plugin
+## Adding a new agent plugin
 
 1. Create `plugins/<name>/` with this structure:
    ```
