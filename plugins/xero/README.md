@@ -1,18 +1,20 @@
 # Xero plugin
 
-A Claude Code plugin that exposes a Xero accounting integration as a stdio MCP
-server. Part of the [mySMB Marketplace](../../README.md).
+A Claude Code plugin that packages the **official Xero MCP server**
+([`@xeroapi/xero-mcp-server`](https://github.com/XeroAPI/xero-mcp-server)) with
+a curated set of SMB-focused slash commands and subagents. Part of the
+[mySMB Marketplace](../../README.md).
 
 ## What it does
 
-Gives the agent a handful of structured tools for talking to Xero:
+The official upstream server exposes ~50 tools covering contacts, invoices,
+credit notes, bank transactions, payroll, and financial reports. This plugin
+layers on top of that:
 
-- `list_invoices(status?, limit?)` - recent invoices for the configured tenant.
-- `get_contact(contact_id)` - single contact by id.
-- `create_invoice(contact_id, line_items)` - creates a draft invoice.
-- `get_profit_and_loss(from_date, to_date)` - the P&L report for a date range.
-
-The server also ships a set of slash commands and two specialised subagents.
+- Cash-flow focused slash commands tuned for SMB owners asking plain-English
+  questions.
+- Two subagents with different postures for different kinds of work
+  (accuracy-first reporting vs. action-first collections).
 
 ### Slash commands
 
@@ -27,20 +29,21 @@ The server also ships a set of slash commands and two specialised subagents.
 ### Subagents
 
 - **`xero-bookkeeper`** - careful, numerate, cite-the-numbers assistant for
-  reporting, P&L interpretation, and invoice creation. Has access to all
-  four Xero tools.
+  reporting, P&L interpretation, and invoice creation.
 - **`xero-collections`** - action-oriented specialist for chasing overdue
-  invoices. Read-only (`list_invoices` + `get_contact`); cannot create
-  invoices or send email. Hands off non-collections questions to
-  `xero-bookkeeper`.
+  invoices. Read-only; cannot create invoices or send email. Hands off
+  non-collections questions to `xero-bookkeeper`.
 
 ## Auth model
 
-This plugin uses Xero's **machine-to-machine** custom connection flow
-(`grant_type=client_credentials`). There is no interactive user OAuth. The
-server exchanges the client id / secret for an app-scoped access token at
-startup, caches it in memory, and refreshes when it expires. All requests are
-scoped to a single configured tenant.
+This plugin uses Xero's **Custom Connections** flow - a machine-to-machine
+integration scoped to a single Xero organisation. There is no interactive
+user OAuth. The upstream server exchanges the client id and secret for an
+app-scoped access token itself and caches it in memory.
+
+Custom Connections are a **paid Xero feature**. The connected organisation
+must be on a paid Xero plan, and each Custom Connection app is bound to
+exactly one organisation at creation time.
 
 ## Configuration
 
@@ -50,14 +53,22 @@ set them in their shell.
 
 | Variable | Required | Description |
 | -------- | -------- | ----------- |
-| `XERO_CLIENT_ID` | yes | Client id of the Xero custom connection app. |
-| `XERO_CLIENT_SECRET` | yes | Client secret of the Xero custom connection app. |
-| `XERO_REDIRECT_URI` | yes | Redirect URI registered on the Xero app. Required by the Xero SDK even for client-credentials flows. |
-| `XERO_TENANT_ID` | yes | The Xero tenant (organisation) id to scope all requests to. |
+| `XERO_CLIENT_ID` | yes | Client id of the Xero Custom Connection app. |
+| `XERO_CLIENT_SECRET` | yes | Client secret of the Xero Custom Connection app. |
 
-If any of the above are missing the server prints an error to stderr and
-exits 1 - it will never start an MCP session without credentials and will
-never prompt interactively.
+That is the entire configuration surface. The upstream server does not need
+a tenant id (Custom Connections are already scoped to one organisation) or
+a redirect URI (the client-credentials flow has no browser round-trip).
+
+### Getting your credentials
+
+1. Go to <https://developer.xero.com/app/manage> and create a new app.
+2. Choose **Custom Connection** as the integration type. You cannot change
+   this later.
+3. Pick the Xero organisation the connection will be bound to. That
+   organisation must be on a paid Xero plan.
+4. Grant the scopes listed in the upstream server's README.
+5. Copy the generated client id and client secret into the connection form.
 
 ## Install (Claude Code)
 
@@ -66,18 +77,24 @@ never prompt interactively.
 /plugin install xero@mysmb-marketplace
 ```
 
-Then export the four variables above and restart your session.
+Then export `XERO_CLIENT_ID` and `XERO_CLIENT_SECRET` and restart your
+session. The first time the plugin runs, `npx` will download
+`@xeroapi/xero-mcp-server` and cache it; subsequent starts are fast.
 
-## Development
+## Why we ship the upstream server instead of a custom one
 
-```bash
-cd plugins/xero/server
-npm install
-npm run build
-```
+Earlier revisions of this plugin shipped a small custom MCP server under
+`server/`. We swapped it for the official `@xeroapi/xero-mcp-server`
+because:
 
-The compiled `dist/` output is committed so the plugin runs with zero
-install-time steps on tenant containers.
+- The upstream server exposes roughly ten times as many tools.
+- It is maintained by Xero themselves, so schema and scope changes land
+  upstream rather than here.
+- The configuration surface is smaller: two env vars instead of four.
+
+The trade-off is that first-run start pays an `npx` install cost. Every
+subsequent start uses the npx cache, and the tenant runtime can pre-warm
+the cache once per container image.
 
 ## License
 

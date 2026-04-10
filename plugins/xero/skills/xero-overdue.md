@@ -10,7 +10,9 @@ ordered from most overdue to least.
 
 ## Instructions
 
-1. Call `list_invoices` with `status="AUTHORISED"` and `limit=100`.
+1. Call `list-invoices` scoped to authorised invoices, pulling at least
+   100 recent ones. Use whichever filter parameters the official Xero
+   MCP server exposes.
 2. Filter the response to invoices where:
    - `amount_due > 0`, AND
    - `due_date < today` (use the session's current date).
@@ -26,7 +28,7 @@ ordered from most overdue to least.
 
 ## Rules
 
-- Every figure must come from the `list_invoices` response in this turn.
+- Every figure must come from the `list-invoices` response in this turn.
 - Use the `currency_code` returned by Xero. Do not assume USD.
 - Short tables only. No prose, no commentary, no emojis.
 - If nothing is overdue, say exactly:

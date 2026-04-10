@@ -10,7 +10,9 @@ broken down by age and by customer.
 
 ## Instructions
 
-1. Call `list_invoices` with `status="AUTHORISED"` and `limit=100`.
+1. Call `list-invoices` scoped to authorised invoices. Pass whatever
+   status / limit parameters the official Xero MCP server exposes -
+   aim for at least 100 recent authorised invoices.
 2. Filter the response to invoices where `amount_due > 0`. Authorised invoices
    with a zero balance are already settled and must be excluded.
 3. For every remaining invoice, compute `days_overdue = today - due_date`
@@ -34,11 +36,11 @@ broken down by age and by customer.
 
 ## Rules
 
-- Every figure must come from the `list_invoices` response in this turn.
+- Every figure must come from the `list-invoices` response in this turn.
   Never carry numbers forward from a previous conversation.
 - Use the `currency_code` returned by Xero. Do not assume USD.
 - Short bullets and small tables only. No prose paragraphs. No emojis.
-- If `list_invoices` returns zero matching invoices, say exactly:
+- If `list-invoices` returns zero matching invoices, say exactly:
   `No open authorised invoices found - nothing is outstanding right now.`
 
 ## When to use

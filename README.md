@@ -32,6 +32,20 @@ Every plugin in this marketplace follows two hard rules:
 Plugins must also be pure Node.js - no native binaries, no platform-specific
 code - so the same build artifact runs on every tenant.
 
+### Server distribution
+
+We prefer, in order:
+
+1. **Official upstream MCP servers published to npm** (for example,
+   `@xeroapi/xero-mcp-server`). Plugins launch them with `npx -y <pkg>@latest`.
+   First-run start pays an install cost which the tenant container image can
+   pre-warm; subsequent starts are fast. Upstream maintainers own schema
+   changes.
+2. **Custom servers maintained in this repo**, with the compiled `dist/`
+   output committed under `plugins/<name>/server/dist/`. Use this only when
+   no upstream server exists or the upstream server is missing critical
+   functionality.
+
 ## Current plugins
 
 | Plugin | Category | Description |
@@ -57,17 +71,19 @@ See the MyHub repo for the consumer-side integration code.
    ```
    plugins/<name>/
    ├── .claude-plugin/plugin.json
-   ├── .mcp.json
-   ├── server/           # TypeScript MCP server, compiled to dist/
+   ├── .mcp.json         # declares the stdio MCP server
+   ├── server/           # ONLY if you maintain a custom server here
    ├── skills/           # optional slash commands
    ├── agents/           # optional subagents
    └── README.md         # must include a "Configuration" section
    ```
 2. The MCP server must use stdio transport and read all credentials from
    `process.env`. Exit with a clear stderr message if any required variable is
-   missing.
-3. Commit the compiled `server/dist/` output so the plugin runs with zero
-   install-time steps.
+   missing. If the upstream server does not do this by default, wrap it.
+3. If you are shipping a custom server, commit the compiled `server/dist/`
+   output so the plugin runs with zero install-time steps. If you are
+   launching an upstream server from npm via `npx`, there is no `server/`
+   directory.
 4. Add an entry to `.claude-plugin/marketplace.json`.
 5. Document every environment variable the plugin reads under a
    `## Configuration` heading in the plugin's README. The validator enforces

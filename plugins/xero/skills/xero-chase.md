@@ -11,16 +11,19 @@ into their own mail client.
 
 ## Instructions
 
-1. Call `list_invoices` with `status="AUTHORISED"` and `limit=100`.
+1. Call `list-invoices` scoped to authorised invoices, pulling at least
+   100 recent ones.
 2. Filter to invoices where `amount_due > 0` AND `due_date < today`.
 3. Group the overdue invoices by `contact.contact_id`.
 4. Sort the contacts by total overdue amount, descending. Take at most the
    top 5 contacts per invocation - chasing more than five people at once
    produces too much output to review.
-5. For each selected contact, call `get_contact(contact_id)` to retrieve
-   the email address and first name.
+5. For each selected contact, call `list-contacts` with a filter for
+   that contact id to retrieve the email address and first name. If
+   the server does not support id filtering, fall back to one
+   `list-contacts` call and match client-side.
 6. Split the selected contacts into two lists:
-   - **With email on file** - contacts where `get_contact` returned a
+   - **With email on file** - contacts where `list-contacts` returned a
      non-empty email. Draft a follow-up message for each (see template below).
    - **No email on file** - contacts with no email. Do NOT draft a message;
      list them under a clearly labelled section so the user knows to
@@ -56,7 +59,7 @@ name when they copy the draft.
 
 - **Never claim the message has been sent.** Always present output as a
   draft. The plugin has no email capability.
-- Every figure in every draft must come from the `list_invoices` response
+- Every figure in every draft must come from the `list-invoices` response
   in this turn. Use the `currency_code` returned by Xero.
 - Tone: polite, firm, professional. No guilt-tripping, no threats, no
   emojis.

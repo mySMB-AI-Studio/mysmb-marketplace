@@ -13,14 +13,14 @@ in receivables with how the business actually performed last month.
 1. Compute the date range for the **previous full calendar month** relative
    to today. Example: if today is 2026-04-10, the range is
    `from_date=2026-03-01`, `to_date=2026-03-31`.
-2. Make three tool calls (in parallel is fine):
-   - `list_invoices(status="AUTHORISED", limit=100)`
-   - `get_profit_and_loss(from_date=<start>, to_date=<end>)`
-3. From `list_invoices`, compute:
+2. Make two tool calls (in parallel is fine):
+   - `list-invoices` scoped to authorised invoices (pull at least 100).
+   - `list-profit-and-loss` for the computed date range.
+3. From `list-invoices`, compute:
    - **Total AR** = sum of `amount_due` for invoices with `amount_due > 0`
    - **Overdue AR** = same, but restricted to `due_date < today`
    - Invoice counts for each
-4. From `get_profit_and_loss`, walk the `rows` structure to extract:
+4. From `list-profit-and-loss`, walk the `rows` structure to extract:
    - **Revenue** for the period (the Income / Total Income row)
    - **Expenses** for the period (the Total Expenses or equivalent row)
    - **Net profit** for the period

@@ -13,11 +13,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - name: Install Xero server deps
-        working-directory: plugins/xero/server
-        run: npm ci || npm install
-      - name: Build Xero server
-        working-directory: plugins/xero/server
-        run: npm run build
       - name: Run marketplace validator
         run: npx --yes tsx scripts/validate.ts

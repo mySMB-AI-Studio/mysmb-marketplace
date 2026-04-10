@@ -13,7 +13,8 @@ month's profit and loss for the connected Xero tenant.
 1. Compute the date range for the **previous full calendar month** relative to
    today. For example, if today is 2026-04-10, the range is
    `from_date=2026-03-01` and `to_date=2026-03-31`.
-2. Call the Xero MCP tool `get_profit_and_loss` with those dates.
+2. Call the Xero MCP tool `list-profit-and-loss` with those dates as
+   `fromDate` / `toDate` (or equivalent field names the server exposes).
 3. From the structured response, produce a summary that includes:
    - Total revenue for the period.
    - Total expenses for the period.
@@ -32,4 +33,4 @@ month's profit and loss for the connected Xero tenant.
 
 Use this command when the user asks anything like "how did we do last month",
 "give me last month's P&L", or "monthly report". For custom date ranges, call
-`get_profit_and_loss` directly instead of using this command.
+`list-profit-and-loss` directly instead of using this command.
