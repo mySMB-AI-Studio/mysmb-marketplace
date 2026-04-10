@@ -12,12 +12,27 @@ Gives the agent a handful of structured tools for talking to Xero:
 - `create_invoice(contact_id, line_items)` - creates a draft invoice.
 - `get_profit_and_loss(from_date, to_date)` - the P&L report for a date range.
 
-The server also ships:
+The server also ships a set of slash commands and two specialised subagents.
 
-- A `/xero:reports` slash command that summarises the last month's P&L in
-  plain English.
-- A `xero-bookkeeper` subagent tuned for careful, cite-the-numbers bookkeeping
-  questions.
+### Slash commands
+
+| Command | What it does |
+| ------- | ------------ |
+| `/xero:reports` | Summarises the last full calendar month's profit and loss in plain English. |
+| `/xero:who-owes-me` | Accounts receivable summary - total outstanding, aged buckets, top debtors. |
+| `/xero:overdue` | Lists just the overdue invoices, sorted most-urgent first. |
+| `/xero:chase` | Drafts polite follow-up emails for the top overdue customers. **Drafts only - the plugin does not send email.** |
+| `/xero:cash-snapshot` | One-screen view combining current AR with last month's P&L. |
+
+### Subagents
+
+- **`xero-bookkeeper`** - careful, numerate, cite-the-numbers assistant for
+  reporting, P&L interpretation, and invoice creation. Has access to all
+  four Xero tools.
+- **`xero-collections`** - action-oriented specialist for chasing overdue
+  invoices. Read-only (`list_invoices` + `get_contact`); cannot create
+  invoices or send email. Hands off non-collections questions to
+  `xero-bookkeeper`.
 
 ## Auth model
 
