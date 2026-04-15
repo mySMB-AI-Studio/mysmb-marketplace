@@ -16,22 +16,26 @@ MyHub tenants can talk to their business data in natural language.
   for direct use. The plugin format is the standard Claude Code plugin format, so
   the same artefacts work for both MyHub tenants and individual developers.
 
-## Policy: stdio + env vars only
+## Policy: any MCP transport, env-var credentials, pure Node
 
-Every plugin in this marketplace follows two hard rules:
+Every plugin in this marketplace follows these rules:
 
-1. **stdio MCP servers only.** No HTTP, no SSE. The MyHub tenant runtime is a
-   Linux container with no inbound networking, and stdio is the only transport
-   that works uniformly across Linux containers, macOS, and Windows developer
-   machines.
+1. **Any MCP transport is allowed.** `stdio`, `sse`, and streamable `http`
+   are all supported. Pick the transport the upstream server ships with:
+   stdio for local subprocess servers, sse/http for remote services. The
+   MyHub tenant runtime is a Linux container with outbound networking, so
+   remote MCP servers work fine.
 2. **All credentials via environment variables.** No hardcoded secrets, no
-   interactive prompts at runtime, no OS keyring access. MyHub's connection UI
-   collects credentials, stores them in its secrets manager, and injects them
-   into the MCP server process at session start. Claude Code users can set the
-   same variables in their shell.
-
-Plugins must also be pure Node.js - no native binaries, no platform-specific
-code - so the same build artifact runs on every tenant.
+   interactive prompts at runtime, no OS keyring access. MyHub's connection
+   UI collects credentials, stores them in its secrets manager, and injects
+   them into the MCP client at session start - either as `env` (stdio) or
+   `headers` (sse/http). Claude Code users can set the same variables in
+   their shell. Every `${VAR}` placeholder must be documented in the
+   plugin's README under a `## Configuration` heading - the validator
+   enforces this.
+3. **Pure Node, no native binaries, no platform-specific code.** The same
+   build artifact has to run on every tenant container and every developer
+   machine.
 
 ### Server distribution
 
@@ -42,7 +46,10 @@ We prefer, in order:
    First-run start pays an install cost which the tenant container image can
    pre-warm; subsequent starts are fast. Upstream maintainers own schema
    changes.
-2. **Custom servers maintained in this repo**, with the compiled `dist/`
+2. **Official upstream remote MCP servers** reached over `sse` or `http`.
+   No install cost, no version drift, but the plugin depends on the
+   upstream service's availability and rate limits.
+3. **Custom servers maintained in this repo**, with the compiled `dist/`
    output committed under `plugins/<name>/server/dist/`. Use this only when
    no upstream server exists or the upstream server is missing critical
    functionality.
@@ -78,12 +85,16 @@ See the MyHub repo for the consumer-side integration code.
    ├── agents/           # optional subagents
    └── README.md         # must include a "Configuration" section
    ```
-2. The MCP server must use stdio transport and read all credentials from
-   `process.env`. Exit with a clear stderr message if any required variable is
-   missing. If the upstream server does not do this by default, wrap it.
-3. If you are shipping a custom server, commit the compiled `server/dist/`
-   output so the plugin runs with zero install-time steps. If you are
-   launching an upstream server from npm via `npx`, there is no `server/`
+2. The MCP server must use one of the allowed transports (`stdio`, `sse`,
+   or `http`) and read all credentials from environment variables - via
+   `process.env` for stdio servers, or via `${VAR}` placeholders in
+   `headers` for remote transports. Stdio servers should exit with a clear
+   stderr message if any required variable is missing; if the upstream
+   server does not do this by default, wrap it.
+3. If you are shipping a custom stdio server, commit the compiled
+   `server/dist/` output so the plugin runs with zero install-time steps.
+   If you are launching an upstream server from npm via `npx`, or
+   connecting to a remote `sse`/`http` server, there is no `server/`
    directory.
 4. Add an entry to `.claude-plugin/marketplace.json`.
 5. Document every environment variable the plugin reads under a

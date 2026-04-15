@@ -6,10 +6,12 @@
  *   1. .claude-plugin/marketplace.json exists and parses.
  *   2. Every plugin listed in marketplace.json has a matching directory.
  *   3. Every plugin dir has .claude-plugin/plugin.json, .mcp.json, README.md.
- *   4. Every MCP server in .mcp.json has type: "stdio".
- *   5. Every ${VAR} placeholder in .mcp.json env values is either
- *      CLAUDE_PLUGIN_ROOT (reserved) or documented in the plugin README
- *      under a "Configuration" heading.
+ *   4. Every MCP server in .mcp.json declares a recognised transport type
+ *      ("stdio", "sse", or "http"). Any transport supported by the Claude
+ *      Code / Agent SDK MCP client is allowed.
+ *   5. Every ${VAR} placeholder in .mcp.json env values (or headers, for
+ *      remote transports) is either CLAUDE_PLUGIN_ROOT (reserved) or
+ *      documented in the plugin README under a "Configuration" heading.
  *
  * Exits 1 on any failure.
  */
@@ -126,9 +128,12 @@ function validatePlugin(pluginDirName: string, expectedName: string) {
     );
   }
 
-  const mcp = readJson<{ mcpServers?: Record<string, { type?: string; env?: Record<string, string> }> }>(
-    mcpPath,
-  );
+  const mcp = readJson<{
+    mcpServers?: Record<
+      string,
+      { type?: string; env?: Record<string, string>; headers?: Record<string, string> }
+    >;
+  }>(mcpPath);
   if (!mcp || !mcp.mcpServers) {
     fail(`plugins/${pluginDirName}: .mcp.json has no mcpServers`);
     return;
@@ -137,20 +142,27 @@ function validatePlugin(pluginDirName: string, expectedName: string) {
   const readme = readFileSync(readmePath, "utf8");
   const documentedVars = extractConfigVars(readme);
 
+  const ALLOWED_TRANSPORTS = new Set(["stdio", "sse", "http"]);
+
   for (const [serverName, server] of Object.entries(mcp.mcpServers)) {
-    if (server.type !== "stdio") {
+    if (!server.type || !ALLOWED_TRANSPORTS.has(server.type)) {
       fail(
-        `plugins/${pluginDirName}: mcp server "${serverName}" has type "${server.type}", must be "stdio"`,
+        `plugins/${pluginDirName}: mcp server "${serverName}" has type "${server.type}", must be one of ${[...ALLOWED_TRANSPORTS].join(", ")}`,
       );
     }
-    const env = server.env ?? {};
-    for (const [key, raw] of Object.entries(env)) {
+    // Check placeholders in both env (stdio) and headers (sse/http) for
+    // credentials that must be documented.
+    const placeholderSources: Record<string, string> = {
+      ...(server.env ?? {}),
+      ...(server.headers ?? {}),
+    };
+    for (const [key, raw] of Object.entries(placeholderSources)) {
       if (typeof raw !== "string") continue;
       for (const placeholder of extractPlaceholders(raw)) {
         if (RESERVED_VARS.has(placeholder)) continue;
         if (!documentedVars.has(placeholder)) {
           fail(
-            `plugins/${pluginDirName}: env ${key} uses \${${placeholder}} but it is not documented under a "Configuration" heading in README.md`,
+            `plugins/${pluginDirName}: ${key} uses \${${placeholder}} but it is not documented under a "Configuration" heading in README.md`,
           );
         }
       }
