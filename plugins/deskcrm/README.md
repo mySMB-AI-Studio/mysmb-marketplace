@@ -115,16 +115,18 @@ the marketplace policy.
 
 ## Configuration
 
-All configuration is optional — the plugin is designed to run out of the
-box against the bundled sample workbook.
+The plugin has **no required configuration**. It runs out of the box
+against the sample workbook bundled at `data/deskcrm.xlsx`, which the
+server locates via `CLAUDE_PLUGIN_ROOT` (set automatically by the MCP
+host to the plugin install directory).
 
 | Variable | Required | Description |
 | -------- | -------- | ----------- |
-| `DESKCRM_WORKBOOK_PATH` | no | Absolute path to the Excel workbook. Defaults to `${CLAUDE_PLUGIN_ROOT}/data/deskcrm.xlsx`. Point this at a different file if you want to test against your own dataset. |
-| `CLAUDE_PLUGIN_ROOT` | no | Set automatically by the MCP host to the plugin install directory. The server uses it to locate the default workbook. |
+| `CLAUDE_PLUGIN_ROOT` | auto | Set by the MCP host. The server uses it to locate the default workbook at `${CLAUDE_PLUGIN_ROOT}/data/deskcrm.xlsx`. |
+| `DESKCRM_WORKBOOK_PATH` | optional | Advanced override. Absolute path to a different Excel workbook. Not exposed through the MyHub connection UI — set it directly on the tenant container's environment if you want to point at a persistent path on the Azure File Share (e.g. `/data/deskcrm/workbook.xlsx`). Takes precedence over `CLAUDE_PLUGIN_ROOT` when set. |
 
-The server exits with a clear stderr message if neither variable is set
-and no workbook can be found.
+The server exits with a clear stderr message if no workbook can be
+resolved from either variable.
 
 ## Install (Claude Code)
 
