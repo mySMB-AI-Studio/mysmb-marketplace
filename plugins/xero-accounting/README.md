@@ -8,7 +8,7 @@ Full-coverage access to the Xero Accounting API via the myHub-hosted OAuth MCP g
 
 No environment variables required. On first use, the browser redirects to `identity.xero.com` — sign in, pick a Xero org, and MyHub remembers the selection for the rest of the session. Reconnect to switch orgs.
 
-Scopes requested: `offline_access openid profile email accounting.transactions accounting.contacts accounting.settings accounting.reports.read accounting.journals.read`.
+Scopes requested: `offline_access openid profile email accounting.transactions accounting.contacts accounting.settings accounting.reports.read`.
 
 ## Tool categories
 
