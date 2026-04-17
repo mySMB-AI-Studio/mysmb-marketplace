@@ -8,7 +8,9 @@ Full-coverage access to the Xero Accounting API via the myHub-hosted OAuth MCP g
 
 No environment variables required. On first use, the browser redirects to `identity.xero.com` — sign in, pick a Xero org, and MyHub remembers the selection for the rest of the session. Reconnect to switch orgs.
 
-Scopes requested: `offline_access openid profile email accounting.transactions accounting.contacts accounting.settings accounting.reports.read`.
+Scopes requested: `offline_access openid profile email accounting.transactions accounting.contacts accounting.settings`.
+
+> Xero deprecated `accounting.reports.read` for apps created on or after 2026-03-02 — reports access will be granted automatically once a [granular reports scope](https://developer.xero.com/documentation/guides/oauth2/scopes/) is available. The 8 report tools (`get_profit_and_loss`, etc.) will return 403 until that scope is re-added.
 
 ## Tool categories
 
