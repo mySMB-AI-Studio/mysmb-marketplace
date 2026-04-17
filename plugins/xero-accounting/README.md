@@ -1,6 +1,6 @@
-# Xero (hosted)
+# Xero Accounting
 
-Full-coverage access to the Xero Accounting API via the myHub-hosted OAuth MCP gateway. Unlike the stdio `xero` plugin (which needs Custom-Connection API keys), this one uses a browser OAuth flow — no env vars, no keys, just click Connect.
+Full-coverage access to the Xero Accounting API via the myHub-hosted OAuth MCP gateway. Browser OAuth flow — no env vars, no keys, just click Connect.
 
 95 tools spanning sales, purchases, banking, payroll-adjacent, and all 8 standard financial reports.
 
