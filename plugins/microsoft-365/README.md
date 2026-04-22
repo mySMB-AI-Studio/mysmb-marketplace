@@ -4,24 +4,57 @@ Access Microsoft 365 emails, calendar, files, Teams, and people through Microsof
 
 ## Servers
 
-| Server | Description | Scopes |
-|--------|-------------|--------|
-| m365-email | Read, send, search, and manage emails | Mail.Read, Mail.Send |
-| m365-calendar | View, create, and manage calendar events | Calendars.ReadWrite |
-| m365-files | Browse, search, upload, and share OneDrive files | Files.ReadWrite |
-| m365-teams | Read and send Teams channel and chat messages | ChannelMessage.Read.All, Chat.ReadWrite |
-| m365-people | Search people, view profiles and org chart | People.Read, User.Read |
+| Server | Description | Scopes | Consent |
+|--------|-------------|--------|---------|
+| m365-mail-read | Read, search, and inspect emails | `Mail.Read` | **User self-consent OK** |
+| m365-mail-send | Compose, reply, forward, delete emails | `Mail.Send`, `Mail.ReadWrite` | **Admin consent required** |
+| m365-calendar | View, create, and manage calendar events | `Calendars.ReadWrite` | User consent (may require admin) |
+| m365-files | Browse, search, upload, and share OneDrive files | `Files.ReadWrite` | User consent (may require admin) |
+| m365-teams | Read and send Teams channel and chat messages | `ChannelMessage.Read.All`, `Chat.ReadWrite` | Admin consent required |
+| m365-people | Search people, view profiles and org chart | `People.Read`, `User.Read` | User self-consent OK |
+
+Mail is split into two servers on purpose: `Mail.Send` and `Mail.ReadWrite` are
+classified as high-risk by Entra and user self-consent is blocked by default,
+so a tenant admin has to pre-approve the send server. The read-only server
+only needs `Mail.Read`, which users can self-consent to — so reading inbox
+works without waiting on an admin.
+
+See the **[Admin consent](#admin-consent-for-high-risk-scopes)** section below
+for how to unblock `m365-mail-send` org-wide.
 
 ## Configuration
 
-No environment variables required. Each server uses OAuth — click Connect in MyHub to sign in with your Microsoft account. Each server requests only its own scopes.
+No environment variables required. Each server uses OAuth — click Connect in
+MyHub to sign in with your Microsoft account. Each server requests only its
+own scopes.
+
+## Admin consent for high-risk scopes
+
+`m365-mail-send` (and some optional scopes on calendar, files, teams) require
+**tenant admin consent** before any user can connect. Do this once:
+
+1. Sign in to https://entra.microsoft.com as a Global Admin.
+2. **Identity → Applications → Enterprise applications**.
+3. Find **MyHub MCP M365** (it appears after the first user attempts consent).
+4. **Security → Permissions → Grant admin consent for `<tenant>`**.
+
+Or use the admin-consent URL:
+
+```
+https://login.microsoftonline.com/{TENANT_ID}/adminconsent?client_id={APP_CLIENT_ID}
+```
+
+After admin consent, every user in the tenant can connect the send server
+without another prompt.
 
 ## Tools
 
-### Email (7 tools)
+### Mail — Read (3 tools, `m365-mail-read`)
 - `list_emails` — List recent emails from inbox
 - `get_email` — Get a single email with full body
 - `search_emails` — Search across all folders
+
+### Mail — Send (4 tools, `m365-mail-send`)
 - `send_email` — Compose and send
 - `reply_to_email` — Reply to a message
 - `forward_email` — Forward to recipients
