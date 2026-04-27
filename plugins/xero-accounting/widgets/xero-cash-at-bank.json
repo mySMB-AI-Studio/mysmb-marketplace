@@ -1,0 +1,271 @@
+{
+  "id": "xero-cash-at-bank",
+  "title": "Cash at Bank",
+  "description": "Bank account tiles — one card per bank account configured in Xero.",
+  "category": "finance",
+  "tags": [
+    "xero",
+    "bank",
+    "accounts",
+    "cash",
+    "finance"
+  ],
+  "keywords": [
+    "bank",
+    "cash",
+    "balance",
+    "accounts",
+    "tiles",
+    "liquidity"
+  ],
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 2
+    },
+    "min": {
+      "colSpan": 6,
+      "rowSpan": 2
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 8
+    }
+  },
+  "dataProvider": {
+    "mcp": "xero-accounting",
+    "tool": "list_accounts",
+    "params": {
+      "where": "Type==\"BANK\""
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/xero-accounting/list_accounts/Accounts": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/cash/bankAccounts",
+              "value": {
+                "$computed": "filter_by",
+                "args": {
+                  "value": {
+                    "$state": "/xero-accounting/list_accounts/Accounts"
+                  },
+                  "field": "Type",
+                  "equals": "BANK"
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleGroup",
+          "count"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Landmark",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Cash at bank",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} accounts",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/ui/cash/bankAccounts"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "tiles"
+        ]
+      },
+      "loading": {
+        "type": "Grid",
+        "props": {
+          "cols": 2,
+          "gap": "md"
+        },
+        "children": [
+          "s1",
+          "s2"
+        ],
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_accounts"
+        }
+      },
+      "s1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "s2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No bank accounts configured in Xero."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_accounts",
+              "not": true
+            },
+            {
+              "$state": "/ui/cash/bankAccounts/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "tiles": {
+        "type": "Grid",
+        "props": {
+          "cols": 2,
+          "gap": "md"
+        },
+        "children": [
+          "tile"
+        ],
+        "repeat": {
+          "statePath": "/ui/cash/bankAccounts",
+          "key": "AccountID"
+        },
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_accounts",
+          "not": true
+        }
+      },
+      "tile": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "tileHeader",
+          "tileCode",
+          "tileStatus"
+        ]
+      },
+      "tileHeader": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "tileIcon",
+          "tileName"
+        ]
+      },
+      "tileIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Banknote",
+          "tone": "success",
+          "size": "sm"
+        }
+      },
+      "tileName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "Name"
+          },
+          "size": "md",
+          "weight": "semibold",
+          "truncate": true
+        }
+      },
+      "tileCode": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Code {code} · {currency}",
+              "code": {
+                "$item": "Code"
+              },
+              "currency": {
+                "$item": "CurrencyCode"
+              }
+            }
+          }
+        }
+      },
+      "tileStatus": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "Status"
+          },
+          "tone": {
+            "$computed": "xero-accounting_status_tone",
+            "args": {
+              "value": {
+                "$item": "Status"
+              }
+            }
+          },
+          "variant": "soft"
+        }
+      }
+    }
+  }
+}

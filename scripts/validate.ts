@@ -15,7 +15,7 @@
  *
  * Exits 1 on any failure.
  */
-import { readFileSync, existsSync, statSync } from "node:fs";
+import { readFileSync, existsSync, statSync, readdirSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -101,6 +101,114 @@ function extractConfigVars(readme: string): Set<string> {
   return vars;
 }
 
+const ALLOWED_WIDGET_ELEMENT_IMPORTS = new Set([
+  "react",
+  "lucide-react",
+  "zod",
+  "@json-render/core",
+  "@json-render/react",
+  "@myhub/widget-tokens",
+]);
+
+function findMatchingBrace(src: string, openIdx: number): number {
+  let depth = 0;
+  for (let i = openIdx; i < src.length; i++) {
+    if (src[i] === "{") depth++;
+    else if (src[i] === "}") {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+function validateImportAllowlist(pluginDirName: string, filePath: string, src: string) {
+  // Match: import ... from "<source>";  OR  import("<source>")
+  const importRe = /(?:import\s+(?:[^"';]+?\s+from\s+)?|import\s*\()\s*["']([^"']+)["']/g;
+  let m: RegExpExecArray | null;
+  while ((m = importRe.exec(src)) !== null) {
+    const source = m[1];
+    if (source.startsWith("./") || source.startsWith("../")) continue;
+    if (ALLOWED_WIDGET_ELEMENT_IMPORTS.has(source)) continue;
+    fail(
+      `plugins/${pluginDirName}: ${filePath} imports "${source}" which is not in the widget-elements allowlist`,
+    );
+  }
+}
+
+function validateActionSchemas(pluginDirName: string, filePath: string, src: string) {
+  // Heuristic: if the file declares an "actions:" or "actions =" block, every
+  // action object inside (identified by containing a "handler:" key) should
+  // also have a "schema:" key. Best-effort regex — this is a build-time gate,
+  // not a parser. Plugins without actions are unaffected.
+  if (!/\bactions\s*[:=]/.test(src)) return;
+
+  const actionStartRe = /^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*\{/gm;
+  let m: RegExpExecArray | null;
+  while ((m = actionStartRe.exec(src)) !== null) {
+    const startIdx = m.index + m[0].length - 1;
+    const blockEnd = findMatchingBrace(src, startIdx);
+    if (blockEnd === -1) continue;
+    const block = src.slice(startIdx, blockEnd + 1);
+    if (!/\bhandler\s*:/.test(block)) continue;
+    if (!/\bschema\s*:/.test(block)) {
+      fail(
+        `plugins/${pluginDirName}: ${filePath} action "${m[1]}" has no schema field`,
+      );
+    }
+  }
+}
+
+function validateWidgetElements(
+  pluginDirName: string,
+  manifest: { widgetElements?: string; widgets?: string },
+) {
+  const pluginDir = join(repoRoot, "plugins", pluginDirName);
+  const declaredWE = manifest.widgetElements;
+  const declaredW = manifest.widgets;
+
+  if (!declaredWE && !declaredW) return;
+
+  // Rule 5: widgetElements requires widgets
+  if (declaredWE && !declaredW) {
+    fail(
+      `plugins/${pluginDirName}: declares widgetElements but not widgets — every plugin shipping elements must ship at least one example widget`,
+    );
+  }
+
+  // Rule 1: widgetElements file must exist
+  if (declaredWE) {
+    const filePath = join(pluginDir, declaredWE);
+    if (!existsSync(filePath) || !statSync(filePath).isFile()) {
+      fail(
+        `plugins/${pluginDirName}: widgetElements declared at "${declaredWE}" but the file is missing`,
+      );
+    } else {
+      const src = readFileSync(filePath, "utf8");
+      validateImportAllowlist(pluginDirName, declaredWE, src);
+      validateActionSchemas(pluginDirName, declaredWE, src);
+    }
+  }
+
+  // Rule 4: widgets dir must exist + contain at least one .json
+  if (declaredW) {
+    const dirPath = join(pluginDir, declaredW);
+    if (!existsSync(dirPath) || !statSync(dirPath).isDirectory()) {
+      fail(
+        `plugins/${pluginDirName}: widgets declared at "${declaredW}" but the directory is missing`,
+      );
+    } else {
+      const files = readdirSync(dirPath);
+      const jsonFiles = files.filter((f) => f.endsWith(".json"));
+      if (jsonFiles.length === 0) {
+        fail(
+          `plugins/${pluginDirName}: widgets directory "${declaredW}" must contain at least one *.json file`,
+        );
+      }
+    }
+  }
+}
+
 function validatePlugin(pluginDirName: string, expectedName: string) {
   const pluginDir = join(repoRoot, "plugins", pluginDirName);
   if (!existsSync(pluginDir) || !statSync(pluginDir).isDirectory()) {
@@ -121,11 +229,18 @@ function validatePlugin(pluginDirName: string, expectedName: string) {
   }
   if (errors.some((e) => e.includes(`plugins/${pluginDirName}: missing`))) return;
 
-  const manifest = readJson<{ name?: string }>(manifestPath);
+  const manifest = readJson<{
+    name?: string;
+    widgetElements?: string;
+    widgets?: string;
+  }>(manifestPath);
   if (manifest && manifest.name && manifest.name !== expectedName) {
     fail(
       `plugins/${pluginDirName}: plugin.json name "${manifest.name}" does not match marketplace entry "${expectedName}"`,
     );
+  }
+  if (manifest) {
+    validateWidgetElements(pluginDirName, manifest);
   }
 
   const mcp = readJson<{
