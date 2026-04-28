@@ -1,0 +1,394 @@
+{
+  "id": "m365-teams-quick-message",
+  "title": "Quick Teams Message",
+  "description": "Pick one of your recent chats and send a message without switching apps.",
+  "category": "productivity",
+  "tags": [
+    "m365",
+    "teams",
+    "message",
+    "send"
+  ],
+  "keywords": [
+    "quick",
+    "message",
+    "send",
+    "teams",
+    "chat"
+  ],
+  "connectorsUsed": [
+    "m365-teams"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 5
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 10
+    }
+  },
+  "dataProvider": {
+    "mcp": "m365-teams",
+    "tool": "list_chats",
+    "params": {
+      "limit": 20
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleRow"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Send",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Quick message",
+          "level": "h2"
+        }
+      },
+      "body": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "chatsHead",
+          "chats",
+          "divider",
+          "msgRow",
+          "actions",
+          "banner"
+        ]
+      },
+      "chatsHead": {
+        "type": "Heading",
+        "props": {
+          "text": "Pick a chat",
+          "level": "h3"
+        }
+      },
+      "chats": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "repeat": {
+          "statePath": "/m365-teams/list_chats",
+          "key": "id"
+        },
+        "children": [
+          "chatRow"
+        ]
+      },
+      "chatRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between",
+          "hover": true,
+          "clickable": true
+        },
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/chatId",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "id"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/chatTopic",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "topic"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "children": [
+          "chatLeft",
+          "chatPick"
+        ]
+      },
+      "chatLeft": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "grow": true
+        },
+        "children": [
+          "chatAvatar",
+          "chatLabels"
+        ]
+      },
+      "chatAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$item": "topic"
+              }
+            }
+          },
+          "size": "sm"
+        }
+      },
+      "chatLabels": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "chatTopic",
+          "chatType"
+        ]
+      },
+      "chatTopic": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "topic"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "chatType": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "chatType"
+          }
+        }
+      },
+      "chatPick": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$cond": {
+              "$state": "/ui/chatId",
+              "eq": {
+                "$item": "id"
+              }
+            },
+            "$then": "accent",
+            "$else": "muted"
+          },
+          "size": "sm"
+        }
+      },
+      "divider": {
+        "type": "Divider"
+      },
+      "msgRow": {
+        "type": "FormRow",
+        "props": {
+          "label": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Message to {t}",
+              "t": {
+                "$state": "/ui/chatTopic"
+              }
+            }
+          }
+        },
+        "children": [
+          "msgInput"
+        ]
+      },
+      "msgInput": {
+        "type": "TextInput",
+        "props": {
+          "value": {
+            "$bindState": "/ui/message"
+          },
+          "placeholder": "Type your message…",
+          "multiline": true,
+          "rows": 3
+        }
+      },
+      "actions": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "justify": "end"
+        },
+        "children": [
+          "sendBtn"
+        ]
+      },
+      "sendBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Send",
+          "variant": "primary",
+          "size": "sm",
+          "leadingIcon": "Send",
+          "disabled": {
+            "$cond": {
+              "$and": [
+                {
+                  "$state": "/ui/chatId"
+                },
+                {
+                  "$state": "/ui/message"
+                }
+              ]
+            },
+            "$then": false,
+            "$else": true
+          }
+        },
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sent",
+                "value": ""
+              }
+            },
+            {
+              "action": "m365-teams.send_message",
+              "params": {
+                "chatId": {
+                  "$state": "/ui/chatId"
+                },
+                "content": {
+                  "$state": "/ui/message"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sent",
+                "value": {
+                  "$cond": {
+                    "$state": "/_errors/m365-teams.send_message"
+                  },
+                  "$then": "",
+                  "$else": true
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/message",
+                "value": {
+                  "$cond": {
+                    "$state": "/_errors/m365-teams.send_message"
+                  },
+                  "$then": {
+                    "$state": "/ui/message"
+                  },
+                  "$else": ""
+                }
+              }
+            }
+          ]
+        }
+      },
+      "banner": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "visible": {
+          "$state": "/ui/sent"
+        },
+        "children": [
+          "bRow"
+        ]
+      },
+      "bRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "bIcon",
+          "bText"
+        ]
+      },
+      "bIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "CheckCircle2",
+          "tone": "success",
+          "size": "sm"
+        }
+      },
+      "bText": {
+        "type": "Text",
+        "props": {
+          "text": "Message sent.",
+          "size": "sm",
+          "tone": "success"
+        }
+      }
+    }
+  },
+  "status": "draft"
+}

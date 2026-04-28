@@ -1,0 +1,282 @@
+{
+  "id": "xero-credit-notes-unapplied",
+  "title": "Credit Notes Unapplied",
+  "description": "Unapplied credit notes — value sitting on customer accounts.",
+  "category": "finance",
+  "tags": [
+    "xero",
+    "credit-notes",
+    "unapplied",
+    "finance"
+  ],
+  "keywords": [
+    "credit",
+    "notes",
+    "credit notes",
+    "unapplied",
+    "refund",
+    "balance"
+  ],
+  "connectorsUsed": [
+    "xero-accounting"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 3
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 10
+    }
+  },
+  "dataProvider": {
+    "mcp": "xero-accounting",
+    "tool": "list_credit_notes",
+    "params": {
+      "statuses": "AUTHORISED",
+      "order": "Date DESC"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleGroup",
+          "count"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ReceiptText",
+          "tone": "info",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Credit notes unapplied",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} open",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/xero-accounting/list_credit_notes/CreditNotes"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "s1",
+          "s2",
+          "s3"
+        ],
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_credit_notes"
+        }
+      },
+      "s1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        }
+      },
+      "s2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        }
+      },
+      "s3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No unapplied credit notes."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_credit_notes",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_credit_notes/CreditNotes/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "row"
+        ],
+        "repeat": {
+          "statePath": "/xero-accounting/list_credit_notes/CreditNotes",
+          "key": "CreditNoteID"
+        },
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_credit_notes",
+          "not": true
+        }
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true
+        },
+        "children": [
+          "avatar",
+          "labels",
+          "ageBadge",
+          "remaining"
+        ]
+      },
+      "avatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$item": "Contact/Name"
+              }
+            }
+          },
+          "size": "sm"
+        }
+      },
+      "labels": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "labelTop",
+          "labelBottom"
+        ]
+      },
+      "labelTop": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "Contact/Name"
+          },
+          "size": "md",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "labelBottom": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "tone": "muted",
+          "text": {
+            "$item": "CreditNoteNumber"
+          }
+        }
+      },
+      "ageBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "Date"
+              }
+            }
+          },
+          "tone": "muted",
+          "variant": "soft"
+        }
+      },
+      "remaining": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$item": "RemainingCredit"
+              },
+              "currency": {
+                "$item": "CurrencyCode"
+              }
+            }
+          },
+          "weight": "semibold",
+          "size": "sm",
+          "tone": "info"
+        }
+      }
+    }
+  },
+  "status": "draft"
+}

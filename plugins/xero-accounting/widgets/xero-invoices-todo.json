@@ -1,0 +1,235 @@
+{
+  "id": "xero-invoices-todo",
+  "title": "Xero — Invoices To Pay",
+  "description": "Outstanding invoices as a checklist — tick them as you chase them.",
+  "category": "finance",
+  "tags": [
+    "xero",
+    "invoices",
+    "todo",
+    "checklist",
+    "finance"
+  ],
+  "keywords": [
+    "invoice",
+    "invoices",
+    "todo",
+    "checklist",
+    "tasks",
+    "outstanding",
+    "chase"
+  ],
+  "connectorsUsed": [
+    "xero-accounting"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "xero-accounting",
+    "tool": "list_invoices",
+    "params": {
+      "statuses": "AUTHORISED",
+      "order": "DueDate ASC"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "title",
+          "count"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Invoices to pay",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} open",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/xero-accounting/list_invoices/Invoices"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "list"
+        ]
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "row"
+        ],
+        "repeat": {
+          "statePath": "/xero-accounting/list_invoices/Invoices",
+          "key": "InvoiceID"
+        }
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true
+        },
+        "children": [
+          "check",
+          "priority",
+          "label",
+          "due",
+          "amount"
+        ]
+      },
+      "check": {
+        "type": "Checkbox",
+        "props": {
+          "checked": {
+            "$bindItem": "_paid"
+          },
+          "ariaLabel": "Mark invoice as paid"
+        },
+        "on": {
+          "toggle": {
+            "action": "setState",
+            "params": {
+              "statePath": {
+                "$item": "_paid"
+              },
+              "value": true
+            }
+          }
+        }
+      },
+      "priority": {
+        "type": "Dot",
+        "props": {
+          "tone": "warning",
+          "size": "xs"
+        }
+      },
+      "label": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "labelTop",
+          "labelBottom"
+        ]
+      },
+      "labelTop": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{num} — {name}",
+              "num": {
+                "$item": "InvoiceNumber"
+              },
+              "name": {
+                "$item": "Contact/Name"
+              }
+            }
+          },
+          "size": "md",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "labelBottom": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{status} · Ref {ref}",
+              "status": {
+                "$item": "Status"
+              },
+              "ref": {
+                "$item": "Reference"
+              }
+            }
+          }
+        }
+      },
+      "due": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "xero-accounting_format_date",
+            "args": {
+              "value": {
+                "$item": "DueDate"
+              },
+              "format": "short"
+            }
+          },
+          "tone": "warning",
+          "variant": "soft"
+        }
+      },
+      "amount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$item": "AmountDue"
+              }
+            }
+          },
+          "weight": "semibold",
+          "size": "sm"
+        }
+      }
+    }
+  },
+  "status": "published"
+}

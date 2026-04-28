@@ -1,0 +1,318 @@
+{
+  "id": "xero-top-creditors",
+  "title": "Top Creditors",
+  "description": "Top creditors by balance owed.",
+  "category": "finance",
+  "tags": [
+    "xero",
+    "creditors",
+    "ap",
+    "suppliers",
+    "finance"
+  ],
+  "keywords": [
+    "creditors",
+    "creditor",
+    "suppliers",
+    "ap",
+    "accounts payable",
+    "owed",
+    "top"
+  ],
+  "connectorsUsed": [
+    "xero-accounting"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 3
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 10
+    }
+  },
+  "dataProvider": {
+    "mcp": "xero-accounting",
+    "tool": "list_invoices",
+    "params": {
+      "statuses": "AUTHORISED",
+      "where": "Type==\"ACCPAY\"",
+      "order": "AmountDue DESC"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/xero-accounting/list_invoices/Invoices": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/topCreditors",
+              "value": {
+                "$computed": "top_n",
+                "args": {
+                  "value": {
+                    "$state": "/xero-accounting/list_invoices/Invoices"
+                  },
+                  "field": "AmountDue",
+                  "direction": "desc",
+                  "limit": 10
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleGroup",
+          "count"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "HandCoins",
+          "tone": "warning",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Top creditors",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Top {n}",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/ui/topCreditors"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "s1",
+          "s2",
+          "s3",
+          "s4"
+        ],
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_invoices"
+        }
+      },
+      "s1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        }
+      },
+      "s2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        }
+      },
+      "s3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        }
+      },
+      "s4": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No outstanding bills."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_invoices",
+              "not": true
+            },
+            {
+              "$state": "/ui/topCreditors/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "row"
+        ],
+        "repeat": {
+          "statePath": "/ui/topCreditors",
+          "key": "InvoiceID"
+        },
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_invoices",
+          "not": true
+        }
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true
+        },
+        "children": [
+          "avatar",
+          "labels",
+          "dueBadge",
+          "amount"
+        ]
+      },
+      "avatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$item": "Contact/Name"
+              }
+            }
+          },
+          "size": "sm"
+        }
+      },
+      "labels": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "labelTop",
+          "labelBottom"
+        ]
+      },
+      "labelTop": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "Contact/Name"
+          },
+          "size": "md",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "labelBottom": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "tone": "muted",
+          "text": {
+            "$item": "InvoiceNumber"
+          }
+        }
+      },
+      "dueBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "xero-accounting_overdue_label",
+            "args": {
+              "value": {
+                "$item": "DueDate"
+              }
+            }
+          },
+          "tone": {
+            "$computed": "xero-accounting_overdue_tone",
+            "args": {
+              "value": {
+                "$item": "DueDate"
+              }
+            }
+          },
+          "variant": "soft"
+        }
+      },
+      "amount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$item": "AmountDue"
+              },
+              "currency": {
+                "$item": "CurrencyCode"
+              }
+            }
+          },
+          "weight": "semibold",
+          "size": "sm"
+        }
+      }
+    }
+  },
+  "status": "draft"
+}

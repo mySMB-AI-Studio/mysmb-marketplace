@@ -1,0 +1,597 @@
+{
+  "id": "m365-daily-briefing",
+  "title": "Daily Briefing",
+  "description": "Morning digest: unread emails, today's meetings, and recent files — all in one glance.",
+  "category": "productivity",
+  "tags": [
+    "m365",
+    "briefing",
+    "daily",
+    "digest",
+    "overview"
+  ],
+  "keywords": [
+    "daily",
+    "briefing",
+    "morning",
+    "digest",
+    "overview",
+    "start"
+  ],
+  "connectorsUsed": [
+    "m365-calendar",
+    "m365-files",
+    "m365-mail-read"
+  ],
+  "popularity": 88,
+  "sizing": {
+    "preferred": {
+      "colSpan": 8,
+      "rowSpan": 8
+    },
+    "min": {
+      "colSpan": 6,
+      "rowSpan": 6
+    },
+    "max": {
+      "colSpan": 16,
+      "rowSpan": 14
+    }
+  },
+  "dataProvider": {
+    "mcp": "m365-mail-read",
+    "tool": "list_emails",
+    "params": {
+      "limit": 10
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/m365-mail-read/list_emails": [
+            {
+              "action": "m365-calendar.list_events",
+              "params": {
+                "startDateTime": "$today",
+                "endDateTime": "$today_end",
+                "limit": 10
+              }
+            },
+            {
+              "action": "m365-files.list_recent_files",
+              "params": {
+                "limit": 5
+              }
+            }
+          ],
+          "/m365-calendar/list_events": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/todayEvents",
+              "value": {
+                "$computed": "filter_date_range",
+                "args": {
+                  "value": {
+                    "$state": "/m365-calendar/list_events"
+                  },
+                  "field": "start.dateTime"
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleRow",
+          "refreshBtn"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Sunrise",
+          "tone": "warning",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Daily briefing",
+          "level": "h2"
+        }
+      },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": {
+          "icon": "RefreshCw",
+          "tone": "muted",
+          "ariaLabel": "Refresh"
+        },
+        "on": {
+          "click": [
+            {
+              "action": "m365-mail-read.list_emails",
+              "params": {
+                "limit": 10
+              }
+            },
+            {
+              "action": "m365-calendar.list_events",
+              "params": {
+                "startDateTime": "$today",
+                "endDateTime": "$today_end",
+                "limit": 10
+              }
+            },
+            {
+              "action": "m365-files.list_recent_files",
+              "params": {
+                "limit": 5
+              }
+            }
+          ]
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "bodyInner"
+        ]
+      },
+      "bodyInner": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "statsRow",
+          "divider1",
+          "mailSection",
+          "divider2",
+          "calSection",
+          "divider3",
+          "filesSection"
+        ]
+      },
+      "statsRow": {
+        "type": "Grid",
+        "props": {
+          "cols": 3,
+          "gap": "md"
+        },
+        "children": [
+          "statMail",
+          "statCal",
+          "statFiles"
+        ]
+      },
+      "statMail": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "statMailEyebrow",
+          "statMailValue"
+        ]
+      },
+      "statMailEyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Unread"
+        }
+      },
+      "statMailValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "count_where",
+            "args": {
+              "value": {
+                "$state": "/m365-mail-read/list_emails"
+              },
+              "whereField": "isRead",
+              "equals": false
+            }
+          },
+          "tone": "accent"
+        }
+      },
+      "statCal": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "statCalEyebrow",
+          "statCalValue"
+        ]
+      },
+      "statCalEyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Meetings"
+        }
+      },
+      "statCalValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "count",
+            "args": {
+              "value": {
+                "$state": "/ui/todayEvents"
+              }
+            }
+          },
+          "tone": "accent"
+        }
+      },
+      "statFiles": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "statFilesEyebrow",
+          "statFilesValue"
+        ]
+      },
+      "statFilesEyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Recent files"
+        }
+      },
+      "statFilesValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "count",
+            "args": {
+              "value": {
+                "$state": "/m365-files/list_recent_files"
+              }
+            }
+          },
+          "tone": "accent"
+        }
+      },
+      "divider1": {
+        "type": "Divider"
+      },
+      "mailSection": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "mailHead",
+          "mailList"
+        ]
+      },
+      "mailHead": {
+        "type": "Heading",
+        "props": {
+          "text": "Inbox",
+          "level": "h3"
+        }
+      },
+      "mailList": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "mailRow"
+        ],
+        "repeat": {
+          "statePath": "/m365-mail-read/list_emails",
+          "key": "id"
+        }
+      },
+      "mailRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "mailDot",
+          "mailLabels",
+          "mailAge"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "https://outlook.office.com/mail/inbox/id/{id}",
+                  "id": {
+                    "$item": "id"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "mailDot": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$cond": {
+              "$item": "isRead"
+            },
+            "$then": "muted",
+            "$else": "accent"
+          },
+          "size": "sm"
+        }
+      },
+      "mailLabels": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "mailSubject",
+          "mailFrom"
+        ]
+      },
+      "mailSubject": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "subject"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "mailFrom": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "from/emailAddress/name"
+          }
+        }
+      },
+      "mailAge": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "receivedDateTime"
+              }
+            }
+          }
+        }
+      },
+      "divider2": {
+        "type": "Divider"
+      },
+      "calSection": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "calHead",
+          "calList"
+        ]
+      },
+      "calHead": {
+        "type": "Heading",
+        "props": {
+          "text": "Today's meetings",
+          "level": "h3"
+        }
+      },
+      "calList": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "calRow"
+        ],
+        "repeat": {
+          "statePath": "/ui/todayEvents",
+          "key": "id"
+        }
+      },
+      "calRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true
+        },
+        "children": [
+          "calWhen",
+          "calLabels"
+        ]
+      },
+      "calWhen": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "start/dateTime"
+              }
+            }
+          },
+          "tone": "accent",
+          "variant": "soft"
+        }
+      },
+      "calLabels": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "calSubject",
+          "calLoc"
+        ]
+      },
+      "calSubject": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "subject"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "calLoc": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "location/displayName"
+          }
+        }
+      },
+      "divider3": {
+        "type": "Divider"
+      },
+      "filesSection": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "filesHead",
+          "filesList"
+        ]
+      },
+      "filesHead": {
+        "type": "Heading",
+        "props": {
+          "text": "Recent files",
+          "level": "h3"
+        }
+      },
+      "filesList": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "filesRow"
+        ],
+        "repeat": {
+          "statePath": "/m365-files/list_recent_files",
+          "key": "id"
+        }
+      },
+      "filesRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "fIcon",
+          "fLabels"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "webUrl"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "fIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "FileText",
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "fLabels": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "fName",
+          "fMod"
+        ]
+      },
+      "fName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "fMod": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "lastModifiedDateTime"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}

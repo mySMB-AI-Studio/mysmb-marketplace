@@ -1,0 +1,519 @@
+{
+  "id": "m365-mail-awaiting-reply",
+  "title": "Awaiting Reply",
+  "description": "Emails where you're the last recipient and haven't responded yet. Click to compose a reply inline.",
+  "category": "productivity",
+  "tags": [
+    "m365",
+    "email",
+    "outlook",
+    "followup",
+    "productivity"
+  ],
+  "keywords": [
+    "awaiting",
+    "reply",
+    "followup",
+    "unread",
+    "pending"
+  ],
+  "connectorsUsed": [
+    "m365-mail-read",
+    "m365-mail-send"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 5
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "m365-mail-read",
+    "tool": "list_emails",
+    "params": {
+      "limit": 30
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body",
+          "overlay"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleRow",
+          "count"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ReplyAll",
+          "tone": "warning",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Awaiting my reply",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} pending",
+              "n": {
+                "$computed": "count_where",
+                "args": {
+                  "value": {
+                    "$state": "/m365-mail-read/list_emails"
+                  },
+                  "whereField": "isRead",
+                  "equals": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "visible": {
+          "$state": "/_loading/m365-mail-read.list_emails"
+        }
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.75rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.75rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.75rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "Nothing waiting for your reply. "
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/m365-mail-read.list_emails",
+              "not": true
+            },
+            {
+              "$state": "/m365-mail-read/list_emails/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "row"
+        ],
+        "repeat": {
+          "statePath": "/m365-mail-read/list_emails",
+          "key": "id"
+        },
+        "visible": {
+          "$state": "/_loading/m365-mail-read.list_emails",
+          "not": true
+        }
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true,
+          "justify": "between"
+        },
+        "children": [
+          "avatar",
+          "labels",
+          "age"
+        ],
+        "visible": {
+          "$item": "isRead",
+          "eq": false
+        },
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedEmailId",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "id"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "m365-mail-read.get_email",
+              "params": {
+                "id": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "id"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "avatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$item": "from/emailAddress/name"
+              }
+            }
+          },
+          "size": "sm"
+        }
+      },
+      "labels": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "labelTop",
+          "labelBottom"
+        ]
+      },
+      "labelTop": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} · {s}",
+              "n": {
+                "$item": "from/emailAddress/name"
+              },
+              "s": {
+                "$item": "subject"
+              }
+            }
+          },
+          "size": "md",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "labelBottom": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "tone": "muted",
+          "text": {
+            "$item": "bodyPreview"
+          }
+        }
+      },
+      "age": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "receivedDateTime"
+              }
+            }
+          },
+          "tone": "warning",
+          "variant": "soft"
+        }
+      },
+      "overlay": {
+        "type": "Overlay",
+        "props": {
+          "maxWidth": "34rem"
+        },
+        "children": [
+          "detailCard"
+        ],
+        "visible": {
+          "$state": "/ui/selectedEmailId"
+        },
+        "on": {
+          "backdropClick": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selectedEmailId",
+              "value": ""
+            }
+          }
+        }
+      },
+      "detailCard": {
+        "type": "Card",
+        "children": [
+          "detailHeader",
+          "detailBody"
+        ]
+      },
+      "detailHeader": {
+        "type": "Header",
+        "children": [
+          "detailTitle",
+          "detailClose"
+        ]
+      },
+      "detailTitle": {
+        "type": "Heading",
+        "props": {
+          "text": {
+            "$state": "/m365-mail-read/get_email/subject"
+          },
+          "level": "h2"
+        }
+      },
+      "detailClose": {
+        "type": "IconButton",
+        "props": {
+          "icon": "X",
+          "tone": "muted",
+          "ariaLabel": "Close"
+        },
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedEmailId",
+                "value": ""
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/replyText",
+                "value": ""
+              }
+            }
+          ]
+        }
+      },
+      "detailBody": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "kvFrom",
+          "bodyPreview",
+          "divider",
+          "replyRow",
+          "replyActions"
+        ],
+        "visible": {
+          "$state": "/m365-mail-read/get_email/id",
+          "eq": {
+            "$state": "/ui/selectedEmailId"
+          }
+        }
+      },
+      "kvFrom": {
+        "type": "KeyValue",
+        "props": {
+          "label": "From",
+          "value": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{name} <{addr}>",
+              "name": {
+                "$state": "/m365-mail-read/get_email/from/emailAddress/name"
+              },
+              "addr": {
+                "$state": "/m365-mail-read/get_email/from/emailAddress/address"
+              }
+            }
+          }
+        }
+      },
+      "bodyPreview": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "bodyText"
+        ]
+      },
+      "bodyText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/m365-mail-read/get_email/bodyPreview"
+          },
+          "size": "sm"
+        }
+      },
+      "divider": {
+        "type": "Divider"
+      },
+      "replyRow": {
+        "type": "FormRow",
+        "props": {
+          "label": "Quick reply"
+        },
+        "children": [
+          "replyInput"
+        ]
+      },
+      "replyInput": {
+        "type": "TextInput",
+        "props": {
+          "value": {
+            "$bindState": "/ui/replyText"
+          },
+          "placeholder": "Type your reply…"
+        }
+      },
+      "replyActions": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "justify": "end"
+        },
+        "children": [
+          "sendBtn"
+        ]
+      },
+      "sendBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Send reply",
+          "variant": "primary",
+          "size": "sm",
+          "leadingIcon": "Send",
+          "disabled": {
+            "$cond": {
+              "$state": "/ui/replyText"
+            },
+            "$then": false,
+            "$else": true
+          }
+        },
+        "on": {
+          "click": [
+            {
+              "action": "m365-mail-send.reply_to_email",
+              "params": {
+                "id": {
+                  "$state": "/ui/selectedEmailId"
+                },
+                "comment": {
+                  "$state": "/ui/replyText"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedEmailId",
+                "value": ""
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/replyText",
+                "value": ""
+              }
+            },
+            {
+              "action": "m365-mail-read.list_emails",
+              "params": {
+                "limit": 30
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "status": "draft"
+}

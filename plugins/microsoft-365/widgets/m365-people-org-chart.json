@@ -1,0 +1,401 @@
+{
+  "id": "m365-people-org-chart",
+  "title": "Org Chart Mini",
+  "description": "You, your manager, and your direct reports in one compact view.",
+  "category": "productivity",
+  "tags": [
+    "m365",
+    "people",
+    "org",
+    "chart"
+  ],
+  "keywords": [
+    "org",
+    "chart",
+    "manager",
+    "reports",
+    "hierarchy"
+  ],
+  "connectorsUsed": [
+    "m365-people"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 7
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 5
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "m365-people",
+    "tool": "get_profile",
+    "params": {
+      "userIdOrUpn": "me"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/m365-people/get_profile/id": [
+            {
+              "action": "m365-people.get_manager",
+              "params": {
+                "userIdOrUpn": "me"
+              }
+            },
+            {
+              "action": "m365-people.get_direct_reports",
+              "params": {
+                "userIdOrUpn": "me"
+              }
+            }
+          ]
+        }
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleRow",
+          "refreshBtn"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Network",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Org chart",
+          "level": "h2"
+        }
+      },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": {
+          "icon": "RefreshCw",
+          "tone": "muted",
+          "ariaLabel": "Refresh"
+        },
+        "on": {
+          "click": [
+            {
+              "action": "m365-people.get_profile",
+              "params": {
+                "userIdOrUpn": "me"
+              }
+            },
+            {
+              "action": "m365-people.get_manager",
+              "params": {
+                "userIdOrUpn": "me"
+              }
+            },
+            {
+              "action": "m365-people.get_direct_reports",
+              "params": {
+                "userIdOrUpn": "me"
+              }
+            }
+          ]
+        }
+      },
+      "body": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "managerSection",
+          "mgrDivider",
+          "meSection",
+          "meDivider",
+          "reportsSection"
+        ]
+      },
+      "managerSection": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "mgrHead",
+          "mgrRow"
+        ]
+      },
+      "mgrHead": {
+        "type": "Heading",
+        "props": {
+          "text": "Manager",
+          "level": "h3"
+        }
+      },
+      "mgrRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true
+        },
+        "visible": {
+          "$state": "/m365-people/get_manager/id"
+        },
+        "children": [
+          "mgrAvatar",
+          "mgrLabels"
+        ]
+      },
+      "mgrAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$state": "/m365-people/get_manager/displayName"
+              }
+            }
+          },
+          "size": "md",
+          "tone": "accent"
+        }
+      },
+      "mgrLabels": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "mgrName",
+          "mgrTitle"
+        ]
+      },
+      "mgrName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/m365-people/get_manager/displayName"
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "mgrTitle": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/m365-people/get_manager/jobTitle"
+          }
+        }
+      },
+      "mgrDivider": {
+        "type": "Divider"
+      },
+      "meSection": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "meHead",
+          "meRow"
+        ]
+      },
+      "meHead": {
+        "type": "Heading",
+        "props": {
+          "text": "You",
+          "level": "h3"
+        }
+      },
+      "meRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "meAvatar",
+          "meLabels"
+        ]
+      },
+      "meAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$state": "/m365-people/get_profile/displayName"
+              }
+            }
+          },
+          "size": "md"
+        }
+      },
+      "meLabels": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "meName",
+          "meTitle"
+        ]
+      },
+      "meName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/m365-people/get_profile/displayName"
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "meTitle": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/m365-people/get_profile/jobTitle"
+          }
+        }
+      },
+      "meDivider": {
+        "type": "Divider"
+      },
+      "reportsSection": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "rHead",
+          "rList"
+        ]
+      },
+      "rHead": {
+        "type": "Heading",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Direct reports ({n})",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/m365-people/get_direct_reports"
+                  }
+                }
+              }
+            }
+          },
+          "level": "h3"
+        }
+      },
+      "rList": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "repeat": {
+          "statePath": "/m365-people/get_direct_reports",
+          "key": "id"
+        },
+        "children": [
+          "rRow"
+        ]
+      },
+      "rRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true
+        },
+        "children": [
+          "rAvatar",
+          "rLabels"
+        ]
+      },
+      "rAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$item": "displayName"
+              }
+            }
+          },
+          "size": "sm"
+        }
+      },
+      "rLabels": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "rName",
+          "rTitle"
+        ]
+      },
+      "rName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "displayName"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "rTitle": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "jobTitle"
+          }
+        }
+      }
+    }
+  },
+  "status": "draft"
+}

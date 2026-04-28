@@ -1,0 +1,231 @@
+{
+  "id": "xero-activity-feed",
+  "title": "Activity Feed",
+  "description": "Unified recent activity across invoices, contacts, and payments.",
+  "category": "finance",
+  "tags": [
+    "xero",
+    "activity",
+    "feed",
+    "finance"
+  ],
+  "keywords": [
+    "activity",
+    "recent",
+    "updates",
+    "feed",
+    "timeline",
+    "events"
+  ],
+  "connectorsUsed": [
+    "xero-accounting"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 3,
+      "rowSpan": 4
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "xero-accounting",
+    "tool": "list_journals",
+    "params": {
+      "offset": 0
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleGroup",
+          "count"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Activity",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Activity feed",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} journals",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/xero-accounting/list_journals/Journals"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "s1",
+          "s2",
+          "s3",
+          "s4"
+        ],
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_journals"
+        }
+      },
+      "s1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "s2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "s3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "s4": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No journal activity yet."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_journals",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_journals/Journals/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "item"
+        ],
+        "repeat": {
+          "statePath": "/xero-accounting/list_journals/Journals",
+          "key": "JournalID"
+        },
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_journals",
+          "not": true
+        }
+      },
+      "item": {
+        "type": "ActivityItem",
+        "props": {
+          "title": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Journal #{num} · {ref}",
+              "num": {
+                "$item": "JournalNumber"
+              },
+              "ref": {
+                "$item": "Reference"
+              }
+            }
+          },
+          "subtitle": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Source: {src}",
+              "src": {
+                "$item": "SourceType"
+              }
+            }
+          },
+          "timestamp": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "JournalDate"
+              }
+            }
+          },
+          "iconName": "BookOpen"
+        }
+      }
+    }
+  },
+  "status": "draft"
+}

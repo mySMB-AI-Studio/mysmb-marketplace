@@ -1,0 +1,483 @@
+{
+  "id": "xero-po-approval-queue",
+  "title": "Purchase Order Approval Queue",
+  "description": "Purchase orders grouped by status — Draft → Submitted → Authorised → Billed.",
+  "category": "finance",
+  "tags": [
+    "xero",
+    "purchase-orders",
+    "procurement",
+    "approvals",
+    "finance"
+  ],
+  "keywords": [
+    "purchase",
+    "order",
+    "po",
+    "approval",
+    "kanban",
+    "procurement",
+    "supplier"
+  ],
+  "connectorsUsed": [
+    "xero-accounting"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 8,
+      "rowSpan": 4
+    },
+    "min": {
+      "colSpan": 8,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 14,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "xero-accounting",
+    "tool": "list_purchase_orders",
+    "params": {
+      "order": "UpdatedDateUTC DESC"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleGroup",
+          "count"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ClipboardCheck",
+          "tone": "warning",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Purchase orders",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} active",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/xero-accounting/list_purchase_orders/PurchaseOrders"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "grid"
+        ]
+      },
+      "loading": {
+        "type": "Grid",
+        "props": {
+          "cols": 4,
+          "gap": "sm"
+        },
+        "children": [
+          "s1",
+          "s2",
+          "s3",
+          "s4"
+        ],
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_purchase_orders"
+        }
+      },
+      "s1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "6rem",
+          "rounded": "md"
+        }
+      },
+      "s2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "6rem",
+          "rounded": "md"
+        }
+      },
+      "s3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "6rem",
+          "rounded": "md"
+        }
+      },
+      "s4": {
+        "type": "Skeleton",
+        "props": {
+          "height": "6rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No purchase orders. Create one from Xero."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_purchase_orders",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_purchase_orders/PurchaseOrders/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "grid": {
+        "type": "Grid",
+        "props": {
+          "cols": 4,
+          "gap": "sm"
+        },
+        "children": [
+          "draftCol",
+          "submittedCol",
+          "authorisedCol",
+          "billedCol"
+        ],
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_purchase_orders",
+          "not": true
+        }
+      },
+      "draftCol": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "draftHeader",
+          "draftRepeat"
+        ]
+      },
+      "draftHeader": {
+        "type": "Heading",
+        "props": {
+          "text": "Draft",
+          "level": "h3"
+        }
+      },
+      "draftRepeat": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "draftCard"
+        ],
+        "repeat": {
+          "statePath": "/xero-accounting/list_purchase_orders/PurchaseOrders",
+          "key": "PurchaseOrderID"
+        }
+      },
+      "draftCard": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "draftTop",
+          "draftBottom"
+        ],
+        "visible": {
+          "$item": "Status",
+          "eq": "DRAFT"
+        }
+      },
+      "draftTop": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "Contact/Name"
+          },
+          "size": "xs",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "draftBottom": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$item": "Total"
+              },
+              "currency": {
+                "$item": "CurrencyCode"
+              }
+            }
+          }
+        }
+      },
+      "submittedCol": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "submittedHeader",
+          "submittedRepeat"
+        ]
+      },
+      "submittedHeader": {
+        "type": "Heading",
+        "props": {
+          "text": "Submitted",
+          "level": "h3"
+        }
+      },
+      "submittedRepeat": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "submittedCard"
+        ],
+        "repeat": {
+          "statePath": "/xero-accounting/list_purchase_orders/PurchaseOrders",
+          "key": "PurchaseOrderID"
+        }
+      },
+      "submittedCard": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "submittedTop",
+          "submittedBottom"
+        ],
+        "visible": {
+          "$item": "Status",
+          "eq": "SUBMITTED"
+        }
+      },
+      "submittedTop": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "Contact/Name"
+          },
+          "size": "xs",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "submittedBottom": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$item": "Total"
+              },
+              "currency": {
+                "$item": "CurrencyCode"
+              }
+            }
+          }
+        }
+      },
+      "authorisedCol": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "authorisedHeader",
+          "authorisedRepeat"
+        ]
+      },
+      "authorisedHeader": {
+        "type": "Heading",
+        "props": {
+          "text": "Authorised",
+          "level": "h3"
+        }
+      },
+      "authorisedRepeat": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "authorisedCard"
+        ],
+        "repeat": {
+          "statePath": "/xero-accounting/list_purchase_orders/PurchaseOrders",
+          "key": "PurchaseOrderID"
+        }
+      },
+      "authorisedCard": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "authorisedTop",
+          "authorisedBottom"
+        ],
+        "visible": {
+          "$item": "Status",
+          "eq": "AUTHORISED"
+        }
+      },
+      "authorisedTop": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "Contact/Name"
+          },
+          "size": "xs",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "authorisedBottom": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$item": "Total"
+              },
+              "currency": {
+                "$item": "CurrencyCode"
+              }
+            }
+          }
+        }
+      },
+      "billedCol": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "billedHeader",
+          "billedRepeat"
+        ]
+      },
+      "billedHeader": {
+        "type": "Heading",
+        "props": {
+          "text": "Billed",
+          "level": "h3"
+        }
+      },
+      "billedRepeat": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "billedCard"
+        ],
+        "repeat": {
+          "statePath": "/xero-accounting/list_purchase_orders/PurchaseOrders",
+          "key": "PurchaseOrderID"
+        }
+      },
+      "billedCard": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "billedTop",
+          "billedBottom"
+        ],
+        "visible": {
+          "$item": "Status",
+          "eq": "BILLED"
+        }
+      },
+      "billedTop": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "Contact/Name"
+          },
+          "size": "xs",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "billedBottom": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$item": "Total"
+              },
+              "currency": {
+                "$item": "CurrencyCode"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "status": "draft"
+}

@@ -1,0 +1,367 @@
+{
+  "id": "m365-mail-compose",
+  "title": "Quick Compose",
+  "description": "Compose and send a new email to one or more recipients.",
+  "category": "productivity",
+  "tags": [
+    "m365",
+    "email",
+    "compose",
+    "send",
+    "outlook"
+  ],
+  "keywords": [
+    "compose",
+    "send",
+    "email",
+    "new",
+    "draft"
+  ],
+  "connectorsUsed": [
+    "m365-mail-send"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 5
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 10
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleRow"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "PenSquare",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "New message",
+          "level": "h2"
+        }
+      },
+      "body": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "toRow",
+          "subjectRow",
+          "bodyRow",
+          "actions",
+          "sentBanner",
+          "errorBanner"
+        ]
+      },
+      "toRow": {
+        "type": "FormRow",
+        "props": {
+          "label": "To",
+          "hint": "Comma-separated email addresses"
+        },
+        "children": [
+          "toInput"
+        ]
+      },
+      "toInput": {
+        "type": "TextInput",
+        "props": {
+          "value": {
+            "$bindState": "/ui/to"
+          },
+          "placeholder": "alice@contoso.com, bob@contoso.com"
+        }
+      },
+      "subjectRow": {
+        "type": "FormRow",
+        "props": {
+          "label": "Subject"
+        },
+        "children": [
+          "subjectInput"
+        ]
+      },
+      "subjectInput": {
+        "type": "TextInput",
+        "props": {
+          "value": {
+            "$bindState": "/ui/subject"
+          },
+          "placeholder": "What's this about?"
+        }
+      },
+      "bodyRow": {
+        "type": "FormRow",
+        "props": {
+          "label": "Message"
+        },
+        "children": [
+          "bodyInput"
+        ]
+      },
+      "bodyInput": {
+        "type": "TextInput",
+        "props": {
+          "value": {
+            "$bindState": "/ui/body"
+          },
+          "placeholder": "Write your message…",
+          "multiline": true,
+          "rows": 8
+        }
+      },
+      "actions": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "justify": "end"
+        },
+        "children": [
+          "clearBtn",
+          "sendBtn"
+        ]
+      },
+      "clearBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Clear",
+          "variant": "ghost",
+          "size": "sm"
+        },
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/to",
+                "value": ""
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/subject",
+                "value": ""
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/body",
+                "value": ""
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sent",
+                "value": ""
+              }
+            }
+          ]
+        }
+      },
+      "sendBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Send",
+          "variant": "primary",
+          "size": "sm",
+          "leadingIcon": "Send",
+          "disabled": {
+            "$cond": {
+              "$and": [
+                {
+                  "$state": "/ui/to"
+                },
+                {
+                  "$state": "/ui/subject"
+                }
+              ]
+            },
+            "$then": false,
+            "$else": true
+          }
+        },
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sent",
+                "value": ""
+              }
+            },
+            {
+              "action": "m365-mail-send.send_email",
+              "params": {
+                "to": {
+                  "$computed": "split_csv",
+                  "args": {
+                    "value": {
+                      "$state": "/ui/to"
+                    }
+                  }
+                },
+                "subject": {
+                  "$state": "/ui/subject"
+                },
+                "body": {
+                  "$state": "/ui/body"
+                },
+                "contentType": "Text"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sent",
+                "value": {
+                  "$cond": {
+                    "$state": "/_errors/m365-mail-send.send_email"
+                  },
+                  "$then": "",
+                  "$else": true
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/body",
+                "value": {
+                  "$cond": {
+                    "$state": "/_errors/m365-mail-send.send_email"
+                  },
+                  "$then": {
+                    "$state": "/ui/body"
+                  },
+                  "$else": ""
+                }
+              }
+            }
+          ]
+        }
+      },
+      "sentBanner": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "sentRow"
+        ],
+        "visible": {
+          "$state": "/ui/sent"
+        }
+      },
+      "sentRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "sentIcon",
+          "sentText"
+        ]
+      },
+      "sentIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "CheckCircle2",
+          "tone": "success",
+          "size": "sm"
+        }
+      },
+      "sentText": {
+        "type": "Text",
+        "props": {
+          "text": "Email sent.",
+          "size": "sm",
+          "tone": "success"
+        }
+      },
+      "errorBanner": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "errRow"
+        ],
+        "visible": {
+          "$state": "/_errors/m365-mail-send.send_email"
+        }
+      },
+      "errRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "errIcon",
+          "errText"
+        ]
+      },
+      "errIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "AlertTriangle",
+          "tone": "destructive",
+          "size": "sm"
+        }
+      },
+      "errText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/_errors/m365-mail-send.send_email"
+          },
+          "size": "sm",
+          "tone": "destructive"
+        }
+      }
+    }
+  },
+  "status": "draft"
+}

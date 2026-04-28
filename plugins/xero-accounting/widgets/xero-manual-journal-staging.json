@@ -1,0 +1,487 @@
+{
+  "id": "xero-manual-journal-staging",
+  "title": "Manual Journal Staging",
+  "description": "Draft manual journals awaiting posting.",
+  "category": "finance",
+  "tags": [
+    "xero",
+    "journal",
+    "manual",
+    "staging",
+    "finance"
+  ],
+  "keywords": [
+    "journal",
+    "journals",
+    "manual",
+    "posting",
+    "draft",
+    "staging"
+  ],
+  "connectorsUsed": [
+    "xero-accounting"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 3
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 10
+    }
+  },
+  "dataProvider": {
+    "mcp": "xero-accounting",
+    "tool": "list_accounts",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/xero-accounting/list_accounts/Accounts": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/journal/accountOptions",
+              "value": {
+                "$computed": "to_options",
+                "args": {
+                  "value": {
+                    "$state": "/xero-accounting/list_accounts/Accounts"
+                  },
+                  "valueField": "Code",
+                  "labelPattern": "{Code} — {Name}"
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleGroup",
+          "balanceBadge"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "BookOpenCheck",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Manual journal",
+          "level": "h2"
+        }
+      },
+      "balanceBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Dr {dr} · Cr {cr}",
+              "dr": {
+                "$computed": "format_currency",
+                "args": {
+                  "value": {
+                    "$computed": "sum",
+                    "args": {
+                      "value": {
+                        "$state": "/ui/journal/lines"
+                      },
+                      "field": "Debit"
+                    }
+                  }
+                }
+              },
+              "cr": {
+                "$computed": "format_currency",
+                "args": {
+                  "value": {
+                    "$computed": "sum",
+                    "args": {
+                      "value": {
+                        "$state": "/ui/journal/lines"
+                      },
+                      "field": "Credit"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "tone": "muted",
+          "variant": "soft"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "narrationRow",
+          "linesHeading",
+          "linesList",
+          "addLineRow",
+          "divider",
+          "actions",
+          "successBanner",
+          "errorBanner"
+        ]
+      },
+      "narrationRow": {
+        "type": "FormRow",
+        "props": {
+          "label": "Narration",
+          "hint": "Shows in Xero history"
+        },
+        "children": [
+          "narrationInput"
+        ]
+      },
+      "narrationInput": {
+        "type": "TextInput",
+        "props": {
+          "value": {
+            "$bindState": "/ui/journal/narration"
+          },
+          "placeholder": "e.g. April accruals"
+        }
+      },
+      "linesHeading": {
+        "type": "Heading",
+        "props": {
+          "text": "Journal lines",
+          "level": "h3"
+        }
+      },
+      "linesList": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "lineRow"
+        ],
+        "repeat": {
+          "statePath": "/ui/journal/lines",
+          "key": "_id"
+        }
+      },
+      "lineRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "lineDesc",
+          "lineAccount",
+          "lineDebit",
+          "lineCredit",
+          "lineRemove"
+        ]
+      },
+      "lineDesc": {
+        "type": "TextInput",
+        "props": {
+          "value": {
+            "$bindItem": "Description"
+          },
+          "placeholder": "Line description",
+          "size": "sm"
+        }
+      },
+      "lineAccount": {
+        "type": "Select",
+        "props": {
+          "value": {
+            "$bindItem": "AccountCode"
+          },
+          "options": {
+            "$state": "/ui/journal/accountOptions"
+          },
+          "placeholder": "Account…",
+          "size": "sm"
+        }
+      },
+      "lineDebit": {
+        "type": "NumberInput",
+        "props": {
+          "value": {
+            "$bindItem": "Debit"
+          },
+          "placeholder": "Dr",
+          "min": 0,
+          "size": "sm"
+        }
+      },
+      "lineCredit": {
+        "type": "NumberInput",
+        "props": {
+          "value": {
+            "$bindItem": "Credit"
+          },
+          "placeholder": "Cr",
+          "min": 0,
+          "size": "sm"
+        }
+      },
+      "lineRemove": {
+        "type": "IconButton",
+        "props": {
+          "icon": "Trash2",
+          "tone": "muted",
+          "ariaLabel": "Remove line"
+        },
+        "on": {
+          "click": {
+            "action": "removeState",
+            "params": {
+              "statePath": "/ui/journal/lines",
+              "index": {
+                "$index": true
+              }
+            }
+          }
+        }
+      },
+      "addLineRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "justify": "start"
+        },
+        "children": [
+          "addLineBtn"
+        ]
+      },
+      "addLineBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Add line",
+          "variant": "ghost",
+          "size": "sm",
+          "leadingIcon": "Plus"
+        },
+        "on": {
+          "click": {
+            "action": "pushState",
+            "params": {
+              "statePath": "/ui/journal/lines",
+              "value": {
+                "_id": "$id",
+                "Description": "",
+                "AccountCode": "",
+                "Debit": 0,
+                "Credit": 0
+              }
+            }
+          }
+        }
+      },
+      "divider": {
+        "type": "Divider"
+      },
+      "actions": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "justify": "end"
+        },
+        "children": [
+          "resetBtn",
+          "saveBtn"
+        ]
+      },
+      "resetBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Clear",
+          "variant": "secondary",
+          "size": "sm"
+        },
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/journal/lines",
+                "value": []
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/journal/narration",
+                "value": ""
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/journal/saved",
+                "value": ""
+              }
+            }
+          ]
+        }
+      },
+      "saveBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Save draft",
+          "variant": "primary",
+          "size": "sm",
+          "leadingIcon": "Save"
+        },
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/journal/saved",
+                "value": ""
+              }
+            },
+            {
+              "action": "xero-accounting.create_manual_journal",
+              "params": {
+                "manualJournal": {
+                  "Narration": {
+                    "$state": "/ui/journal/narration"
+                  },
+                  "Status": "DRAFT",
+                  "JournalLines": {
+                    "$state": "/ui/journal/lines"
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/journal/saved",
+                "value": {
+                  "$cond": {
+                    "$state": "/_errors/xero-accounting.create_manual_journal"
+                  },
+                  "$then": "",
+                  "$else": true
+                }
+              }
+            }
+          ]
+        }
+      },
+      "successBanner": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "successRow"
+        ],
+        "visible": {
+          "$state": "/ui/journal/saved"
+        }
+      },
+      "successRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "successIcon",
+          "successText"
+        ]
+      },
+      "successIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "CheckCircle2",
+          "tone": "success",
+          "size": "sm"
+        }
+      },
+      "successText": {
+        "type": "Text",
+        "props": {
+          "text": "Journal saved as DRAFT in Xero.",
+          "size": "sm",
+          "tone": "success"
+        }
+      },
+      "errorBanner": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "errorRow"
+        ],
+        "visible": {
+          "$state": "/_errors/xero-accounting.create_manual_journal"
+        }
+      },
+      "errorRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "errorIcon",
+          "errorText"
+        ]
+      },
+      "errorIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "AlertTriangle",
+          "tone": "destructive",
+          "size": "sm"
+        }
+      },
+      "errorText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/_errors/xero-accounting.create_manual_journal"
+          },
+          "size": "sm",
+          "tone": "destructive"
+        }
+      }
+    }
+  },
+  "status": "draft"
+}

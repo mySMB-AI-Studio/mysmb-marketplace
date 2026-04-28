@@ -1,0 +1,236 @@
+{
+  "id": "m365-files-needing-review",
+  "title": "Files Needing Review",
+  "description": "Files modified in the last 7 days (what's likely awaiting your attention).",
+  "category": "productivity",
+  "tags": [
+    "m365",
+    "files",
+    "review",
+    "recent"
+  ],
+  "keywords": [
+    "review",
+    "recent",
+    "modified",
+    "attention"
+  ],
+  "connectorsUsed": [
+    "m365-files"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "m365-files",
+    "tool": "list_recent_files",
+    "params": {
+      "limit": 25
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleRow"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "FileSearch",
+          "tone": "warning",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Needs review",
+          "level": "h2"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Skeleton",
+        "props": {
+          "height": "8rem",
+          "rounded": "md"
+        },
+        "visible": {
+          "$state": "/_loading/m365-files.list_recent_files"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "Nothing fresh to review."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/m365-files.list_recent_files",
+              "not": true
+            },
+            {
+              "$state": "/m365-files/list_recent_files/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "repeat": {
+          "statePath": "/m365-files/list_recent_files",
+          "key": "id"
+        },
+        "children": [
+          "row"
+        ]
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between",
+          "hover": true,
+          "clickable": true
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "webUrl"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "children": [
+          "rowLeft",
+          "ageBadge"
+        ]
+      },
+      "rowLeft": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "grow": true
+        },
+        "children": [
+          "icon",
+          "labels"
+        ]
+      },
+      "icon": {
+        "type": "Icon",
+        "props": {
+          "name": "FileText",
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "labels": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "name",
+          "size"
+        ]
+      },
+      "name": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "size": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "bytes_human",
+            "args": {
+              "value": {
+                "$item": "size"
+              }
+            }
+          }
+        }
+      },
+      "ageBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "lastModifiedDateTime"
+              }
+            }
+          },
+          "tone": "warning",
+          "variant": "soft"
+        }
+      }
+    }
+  },
+  "status": "draft"
+}

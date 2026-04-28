@@ -1,22 +1,22 @@
 {
-  "id": "xero-cash-at-bank",
-  "title": "Cash at Bank",
-  "description": "Bank account tiles — one card per bank account configured in Xero.",
+  "id": "xero-expense-claims",
+  "title": "Expense Claims",
+  "description": "Expense claims awaiting approval — submitted by staff, ready for review.",
   "category": "finance",
   "tags": [
     "xero",
-    "bank",
-    "accounts",
-    "cash",
+    "expenses",
+    "claims",
+    "approval",
     "finance"
   ],
   "keywords": [
-    "bank",
-    "cash",
-    "balance",
-    "accounts",
-    "tiles",
-    "liquidity"
+    "expense",
+    "expenses",
+    "claim",
+    "claims",
+    "reimbursement",
+    "approval"
   ],
   "connectorsUsed": [
     "xero-accounting"
@@ -24,24 +24,22 @@
   "popularity": 0,
   "sizing": {
     "preferred": {
-      "colSpan": 6,
-      "rowSpan": 2
+      "colSpan": 3,
+      "rowSpan": 3
     },
     "min": {
-      "colSpan": 6,
-      "rowSpan": 2
+      "colSpan": 3,
+      "rowSpan": 3
     },
     "max": {
       "colSpan": 12,
-      "rowSpan": 8
+      "rowSpan": 10
     }
   },
   "dataProvider": {
     "mcp": "xero-accounting",
-    "tool": "list_accounts",
-    "params": {
-      "where": "Type==\"BANK\""
-    }
+    "tool": "list_expense_claims",
+    "params": {}
   },
   "spec": {
     "root": "card",
@@ -51,25 +49,7 @@
         "children": [
           "header",
           "body"
-        ],
-        "watch": {
-          "/xero-accounting/list_accounts/Accounts": {
-            "action": "setState",
-            "params": {
-              "statePath": "/ui/cash/bankAccounts",
-              "value": {
-                "$computed": "filter_by",
-                "args": {
-                  "value": {
-                    "$state": "/xero-accounting/list_accounts/Accounts"
-                  },
-                  "field": "Type",
-                  "equals": "BANK"
-                }
-              }
-            }
-          }
-        }
+        ]
       },
       "header": {
         "type": "Header",
@@ -92,15 +72,15 @@
       "titleIcon": {
         "type": "Icon",
         "props": {
-          "name": "Landmark",
-          "tone": "accent",
+          "name": "ReceiptText",
+          "tone": "warning",
           "size": "sm"
         }
       },
       "title": {
         "type": "Heading",
         "props": {
-          "text": "Cash at bank",
+          "text": "Expense claims",
           "level": "h2"
         }
       },
@@ -110,12 +90,12 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{n} accounts",
+              "pattern": "{n} open",
               "n": {
                 "$computed": "count",
                 "args": {
                   "value": {
-                    "$state": "/ui/cash/bankAccounts"
+                    "$state": "/xero-accounting/list_expense_claims/ExpenseClaims"
                   }
                 }
               }
@@ -128,132 +108,150 @@
         "children": [
           "loading",
           "empty",
-          "tiles"
+          "list"
         ]
       },
       "loading": {
-        "type": "Grid",
+        "type": "Stack",
         "props": {
-          "cols": 2,
-          "gap": "md"
+          "gap": "sm"
         },
         "children": [
           "s1",
-          "s2"
+          "s2",
+          "s3"
         ],
         "visible": {
-          "$state": "/_loading/xero-accounting.list_accounts"
+          "$state": "/_loading/xero-accounting.list_expense_claims"
         }
       },
       "s1": {
         "type": "Skeleton",
         "props": {
-          "height": "5rem",
+          "height": "2.5rem",
           "rounded": "md"
         }
       },
       "s2": {
         "type": "Skeleton",
         "props": {
-          "height": "5rem",
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "s3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
           "rounded": "md"
         }
       },
       "empty": {
         "type": "Empty",
         "props": {
-          "message": "No bank accounts configured in Xero."
+          "message": "No expense claims awaiting approval."
         },
         "visible": {
           "$and": [
             {
-              "$state": "/_loading/xero-accounting.list_accounts",
+              "$state": "/_loading/xero-accounting.list_expense_claims",
               "not": true
             },
             {
-              "$state": "/ui/cash/bankAccounts/0",
+              "$state": "/xero-accounting/list_expense_claims/ExpenseClaims/0",
               "not": true
             }
           ]
         }
       },
-      "tiles": {
-        "type": "Grid",
+      "list": {
+        "type": "Stack",
         "props": {
-          "cols": 2,
-          "gap": "md"
+          "gap": "xs"
         },
         "children": [
-          "tile"
+          "row"
         ],
         "repeat": {
-          "statePath": "/ui/cash/bankAccounts",
-          "key": "AccountID"
+          "statePath": "/xero-accounting/list_expense_claims/ExpenseClaims",
+          "key": "ExpenseClaimID"
         },
         "visible": {
-          "$state": "/_loading/xero-accounting.list_accounts",
+          "$state": "/_loading/xero-accounting.list_expense_claims",
           "not": true
         }
       },
-      "tile": {
-        "type": "Section",
-        "props": {
-          "variant": "bordered"
-        },
-        "children": [
-          "tileHeader",
-          "tileCode",
-          "tileStatus"
-        ]
-      },
-      "tileHeader": {
+      "row": {
         "type": "Row",
         "props": {
           "gap": "sm",
-          "align": "center"
+          "align": "center",
+          "hover": true
         },
         "children": [
-          "tileIcon",
-          "tileName"
+          "icon",
+          "labels",
+          "statusBadge",
+          "amount"
         ]
       },
-      "tileIcon": {
+      "icon": {
         "type": "Icon",
         "props": {
-          "name": "Banknote",
-          "tone": "success",
+          "name": "Wallet",
+          "tone": "muted",
           "size": "sm"
         }
       },
-      "tileName": {
-        "type": "Text",
+      "labels": {
+        "type": "Stack",
         "props": {
-          "text": {
-            "$item": "Name"
-          },
-          "size": "md",
-          "weight": "semibold",
-          "truncate": true
-        }
+          "gap": "xs"
+        },
+        "children": [
+          "labelTop",
+          "labelBottom"
+        ]
       },
-      "tileCode": {
-        "type": "Caption",
+      "labelTop": {
+        "type": "Text",
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "Code {code} · {currency}",
-              "code": {
-                "$item": "Code"
-              },
-              "currency": {
-                "$item": "CurrencyCode"
+              "pattern": "{user}",
+              "user": {
+                "$item": "User/FullName"
+              }
+            }
+          },
+          "size": "md",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "labelBottom": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Submitted {when}",
+              "when": {
+                "$computed": "relative_time",
+                "args": {
+                  "value": {
+                    "$item": "UpdatedDateUTC"
+                  }
+                }
               }
             }
           }
         }
       },
-      "tileStatus": {
+      "statusBadge": {
         "type": "Badge",
         "props": {
           "text": {
@@ -269,8 +267,23 @@
           },
           "variant": "soft"
         }
+      },
+      "amount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$item": "Total"
+              }
+            }
+          },
+          "weight": "semibold",
+          "size": "sm"
+        }
       }
     }
   },
-  "status": "published"
+  "status": "draft"
 }

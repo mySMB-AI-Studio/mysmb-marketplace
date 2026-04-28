@@ -1,0 +1,238 @@
+{
+  "id": "m365-calendar-next-meeting",
+  "title": "Next Meeting",
+  "description": "Countdown and details for your next upcoming meeting with attendees.",
+  "category": "productivity",
+  "tags": [
+    "m365",
+    "calendar",
+    "next",
+    "meeting",
+    "countdown"
+  ],
+  "keywords": [
+    "next",
+    "meeting",
+    "upcoming",
+    "countdown",
+    "event"
+  ],
+  "connectorsUsed": [
+    "m365-calendar"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 3
+    },
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 8
+    }
+  },
+  "dataProvider": {
+    "mcp": "m365-calendar",
+    "tool": "list_events",
+    "params": {
+      "limit": 1
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleRow"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Clock",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Next meeting",
+          "level": "h3"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "detail"
+        ]
+      },
+      "loading": {
+        "type": "Skeleton",
+        "props": {
+          "height": "6rem",
+          "rounded": "md"
+        },
+        "visible": {
+          "$state": "/_loading/m365-calendar.list_events"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "Nothing upcoming."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/m365-calendar.list_events",
+              "not": true
+            },
+            {
+              "$state": "/m365-calendar/list_events/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "detail": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "countdown",
+          "subject",
+          "when",
+          "location",
+          "attendees"
+        ],
+        "visible": {
+          "$state": "/m365-calendar/list_events/0/id"
+        }
+      },
+      "countdown": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$state": "/m365-calendar/list_events/0/start/dateTime"
+              }
+            }
+          },
+          "tone": "accent"
+        }
+      },
+      "subject": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/m365-calendar/list_events/0/subject"
+          },
+          "size": "md",
+          "weight": "semibold",
+          "truncate": true
+        }
+      },
+      "when": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "format_date",
+            "args": {
+              "value": {
+                "$state": "/m365-calendar/list_events/0/start/dateTime"
+              },
+              "format": "long"
+            }
+          }
+        }
+      },
+      "location": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "locIcon",
+          "locText"
+        ],
+        "visible": {
+          "$state": "/m365-calendar/list_events/0/location/displayName"
+        }
+      },
+      "locIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "MapPin",
+          "tone": "muted",
+          "size": "xs"
+        }
+      },
+      "locText": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/m365-calendar/list_events/0/location/displayName"
+          }
+        }
+      },
+      "attendees": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "peopleIcon",
+          "organizer"
+        ]
+      },
+      "peopleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Users",
+          "tone": "muted",
+          "size": "xs"
+        }
+      },
+      "organizer": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/m365-calendar/list_events/0/organizer/emailAddress/name"
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}

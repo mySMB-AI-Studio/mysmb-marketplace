@@ -1,0 +1,277 @@
+{
+  "id": "m365-mail-vip",
+  "title": "VIP Inbox",
+  "description": "Filter your inbox to a configurable list of VIP senders. Add domains or emails to /ui/vipCsv.",
+  "category": "productivity",
+  "tags": [
+    "m365",
+    "email",
+    "vip",
+    "priority"
+  ],
+  "keywords": [
+    "vip",
+    "important",
+    "boss",
+    "priority"
+  ],
+  "connectorsUsed": [
+    "m365-mail-read"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "m365-mail-read",
+    "tool": "list_emails",
+    "params": {
+      "limit": 50
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "filterRow",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleRow"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Star",
+          "tone": "warning",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "VIP inbox",
+          "level": "h2"
+        }
+      },
+      "filterRow": {
+        "type": "FormRow",
+        "props": {
+          "label": "VIPs",
+          "hint": "Comma-separated emails or domains (e.g. boss@contoso.com, bigclient.com)"
+        },
+        "children": [
+          "vipInput"
+        ]
+      },
+      "vipInput": {
+        "type": "TextInput",
+        "props": {
+          "value": {
+            "$bindState": "/ui/vipCsv"
+          },
+          "placeholder": "@acme.com, ceo@contoso.com"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Skeleton",
+        "props": {
+          "height": "8rem",
+          "rounded": "md"
+        },
+        "visible": {
+          "$state": "/_loading/m365-mail-read.list_emails"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No VIP mail. Add filters above."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/m365-mail-read.list_emails",
+              "not": true
+            },
+            {
+              "$state": "/m365-mail-read/list_emails/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "repeat": {
+          "statePath": "/m365-mail-read/list_emails",
+          "key": "id"
+        },
+        "children": [
+          "row"
+        ]
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between",
+          "hover": true,
+          "clickable": true
+        },
+        "visible": {
+          "$computed": "contains_any",
+          "args": {
+            "value": {
+              "$item": "from/emailAddress/address"
+            },
+            "tokensCsv": {
+              "$state": "/ui/vipCsv"
+            }
+          }
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "https://outlook.office.com/mail/inbox/id/{id}",
+                  "id": {
+                    "$item": "id"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "children": [
+          "rowLeft",
+          "age"
+        ]
+      },
+      "rowLeft": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "grow": true
+        },
+        "children": [
+          "avatar",
+          "labels"
+        ]
+      },
+      "avatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$item": "from/emailAddress/name"
+              }
+            }
+          },
+          "size": "sm",
+          "tone": "warning"
+        }
+      },
+      "labels": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "subject",
+          "preview"
+        ]
+      },
+      "subject": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} — {s}",
+              "n": {
+                "$item": "from/emailAddress/name"
+              },
+              "s": {
+                "$item": "subject"
+              }
+            }
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "preview": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "bodyPreview"
+          }
+        }
+      },
+      "age": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "receivedDateTime"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "status": "draft"
+}

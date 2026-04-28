@@ -1,0 +1,533 @@
+{
+  "id": "m365-people-my-team",
+  "title": "My Direct Reports",
+  "description": "People who report to you. Click for a profile card with email actions.",
+  "category": "productivity",
+  "tags": [
+    "m365",
+    "people",
+    "team",
+    "directory",
+    "reports"
+  ],
+  "keywords": [
+    "team",
+    "reports",
+    "directory",
+    "people",
+    "employees"
+  ],
+  "connectorsUsed": [
+    "m365-people"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 10
+    }
+  },
+  "dataProvider": {
+    "mcp": "m365-people",
+    "tool": "get_direct_reports",
+    "params": {
+      "userIdOrUpn": "me"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body",
+          "overlay"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleRow",
+          "count"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Users",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "My direct reports",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} people",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/m365-people/get_direct_reports"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/_loading/m365-people.get_direct_reports"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ]
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No direct reports."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/m365-people.get_direct_reports",
+              "not": true
+            },
+            {
+              "$state": "/m365-people/get_direct_reports/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "visible": {
+          "$state": "/_loading/m365-people.get_direct_reports",
+          "not": true
+        },
+        "repeat": {
+          "statePath": "/m365-people/get_direct_reports",
+          "key": "id"
+        },
+        "children": [
+          "row"
+        ]
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between",
+          "hover": true,
+          "clickable": true
+        },
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedUpn",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "userPrincipalName"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "m365-people.get_profile",
+              "params": {
+                "userIdOrUpn": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "userPrincipalName"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "children": [
+          "rowLeft",
+          "mailBtn"
+        ]
+      },
+      "rowLeft": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "grow": true
+        },
+        "children": [
+          "avatar",
+          "labels"
+        ]
+      },
+      "avatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$item": "displayName"
+              }
+            }
+          },
+          "size": "md"
+        }
+      },
+      "labels": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "nameRow",
+          "jobRow"
+        ]
+      },
+      "nameRow": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "displayName"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "jobRow": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{title} · {dept}",
+              "title": {
+                "$item": "jobTitle"
+              },
+              "dept": {
+                "$item": "department"
+              }
+            }
+          }
+        }
+      },
+      "mailBtn": {
+        "type": "IconButton",
+        "props": {
+          "icon": "Mail",
+          "tone": "muted",
+          "ariaLabel": "Email"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "mailto:{addr}",
+                  "addr": {
+                    "$item": "userPrincipalName"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "overlay": {
+        "type": "Overlay",
+        "props": {
+          "maxWidth": "30rem"
+        },
+        "visible": {
+          "$state": "/ui/selectedUpn"
+        },
+        "on": {
+          "backdropClick": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selectedUpn",
+              "value": ""
+            }
+          }
+        },
+        "children": [
+          "profileCard"
+        ]
+      },
+      "profileCard": {
+        "type": "Card",
+        "children": [
+          "profileHeader",
+          "profileBody"
+        ]
+      },
+      "profileHeader": {
+        "type": "Header",
+        "children": [
+          "profileTitleRow",
+          "profileClose"
+        ]
+      },
+      "profileTitleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "profileAvatar",
+          "profileNameStack"
+        ]
+      },
+      "profileAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$state": "/m365-people/get_profile/displayName"
+              }
+            }
+          },
+          "size": "lg",
+          "tone": "accent"
+        }
+      },
+      "profileNameStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "profileName",
+          "profileTitle"
+        ]
+      },
+      "profileName": {
+        "type": "Heading",
+        "props": {
+          "text": {
+            "$state": "/m365-people/get_profile/displayName"
+          },
+          "level": "h2"
+        }
+      },
+      "profileTitle": {
+        "type": "Subtitle",
+        "props": {
+          "text": {
+            "$state": "/m365-people/get_profile/jobTitle"
+          }
+        }
+      },
+      "profileClose": {
+        "type": "IconButton",
+        "props": {
+          "icon": "X",
+          "tone": "muted",
+          "ariaLabel": "Close"
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selectedUpn",
+              "value": ""
+            }
+          }
+        }
+      },
+      "profileBody": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/m365-people/get_profile/userPrincipalName",
+          "eq": {
+            "$state": "/ui/selectedUpn"
+          }
+        },
+        "children": [
+          "kvDept",
+          "kvOffice",
+          "kvEmail",
+          "divider",
+          "actionsRow"
+        ]
+      },
+      "kvDept": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Department",
+          "value": {
+            "$state": "/m365-people/get_profile/department"
+          }
+        }
+      },
+      "kvOffice": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Office",
+          "value": {
+            "$state": "/m365-people/get_profile/officeLocation"
+          }
+        }
+      },
+      "kvEmail": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Email",
+          "value": {
+            "$state": "/m365-people/get_profile/userPrincipalName"
+          }
+        }
+      },
+      "divider": {
+        "type": "Divider"
+      },
+      "actionsRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "justify": "end"
+        },
+        "children": [
+          "copyEmailBtn",
+          "mailProfileBtn"
+        ]
+      },
+      "copyEmailBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Copy email",
+          "variant": "ghost",
+          "size": "sm",
+          "leadingIcon": "Copy"
+        },
+        "on": {
+          "click": {
+            "action": "copy_to_clipboard",
+            "params": {
+              "text": {
+                "$state": "/m365-people/get_profile/userPrincipalName"
+              }
+            }
+          }
+        }
+      },
+      "mailProfileBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Email",
+          "variant": "primary",
+          "size": "sm",
+          "leadingIcon": "Mail"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "mailto:{a}",
+                  "a": {
+                    "$state": "/m365-people/get_profile/userPrincipalName"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}

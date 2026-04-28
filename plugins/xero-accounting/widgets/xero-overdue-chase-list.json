@@ -1,0 +1,746 @@
+{
+  "id": "xero-overdue-chase-list",
+  "title": "Overdue Chase List",
+  "description": "Overdue invoices ranked for collections follow-up.",
+  "category": "finance",
+  "tags": [
+    "xero",
+    "invoices",
+    "overdue",
+    "collections",
+    "chase",
+    "finance"
+  ],
+  "keywords": [
+    "overdue",
+    "late",
+    "collections",
+    "chase",
+    "follow-up",
+    "invoice",
+    "invoices",
+    "dunning"
+  ],
+  "connectorsUsed": [
+    "xero-accounting"
+  ],
+  "popularity": 76,
+  "sizing": {
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "xero-accounting",
+    "tool": "list_invoices",
+    "params": {
+      "statuses": "AUTHORISED",
+      "order": "DueDate ASC"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body",
+          "overlay"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleGroup",
+          "count"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "AlarmClock",
+          "tone": "destructive",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Overdue chase list",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} open",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/xero-accounting/list_invoices/Invoices"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3",
+          "sk4"
+        ],
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_invoices"
+        }
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        }
+      },
+      "sk4": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "Nothing overdue — nice work."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_invoices",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_invoices/Invoices/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "row"
+        ],
+        "repeat": {
+          "statePath": "/xero-accounting/list_invoices/Invoices",
+          "key": "InvoiceID"
+        },
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_invoices",
+          "not": true
+        }
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "severity",
+          "identity",
+          "overdueBadge",
+          "amount",
+          "actions"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedInvoiceId",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "InvoiceID"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "xero-accounting.get_invoice",
+              "params": {
+                "invoiceId": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "InvoiceID"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "severity": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$computed": "xero-accounting_overdue_tone",
+            "args": {
+              "value": {
+                "$item": "DueDate"
+              }
+            }
+          },
+          "size": "sm"
+        }
+      },
+      "identity": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "idTop",
+          "idBottom"
+        ]
+      },
+      "idTop": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "Contact/Name"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "idBottom": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "InvoiceNumber"
+          }
+        }
+      },
+      "overdueBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "xero-accounting_overdue_label",
+            "args": {
+              "value": {
+                "$item": "DueDate"
+              }
+            }
+          },
+          "tone": {
+            "$computed": "xero-accounting_overdue_tone",
+            "args": {
+              "value": {
+                "$item": "DueDate"
+              }
+            }
+          },
+          "variant": "soft"
+        }
+      },
+      "amount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$item": "AmountDue"
+              },
+              "currency": {
+                "$item": "CurrencyCode"
+              }
+            }
+          },
+          "weight": "semibold",
+          "size": "sm"
+        }
+      },
+      "actions": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "sentBadge",
+          "sentErrorBadge",
+          "loggedBadge",
+          "loggedErrorBadge",
+          "remindBtn",
+          "noteBtn"
+        ]
+      },
+      "sentBadge": {
+        "type": "Badge",
+        "props": {
+          "text": "Sent",
+          "tone": "success",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "_reminderSent"
+        }
+      },
+      "sentErrorBadge": {
+        "type": "Badge",
+        "props": {
+          "text": "Failed",
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "_reminderError"
+        }
+      },
+      "loggedBadge": {
+        "type": "Badge",
+        "props": {
+          "text": "Logged",
+          "tone": "info",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "_callLogged"
+        }
+      },
+      "loggedErrorBadge": {
+        "type": "Badge",
+        "props": {
+          "text": "Failed",
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "_callLoggedError"
+        }
+      },
+      "remindBtn": {
+        "type": "IconButton",
+        "props": {
+          "icon": "Mail",
+          "tone": "accent",
+          "ariaLabel": "Send reminder"
+        },
+        "visible": {
+          "$item": "_reminderSent",
+          "not": true
+        },
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": {
+                  "$item": "_reminderError"
+                },
+                "value": ""
+              }
+            },
+            {
+              "action": "xero-accounting.email_invoice",
+              "params": {
+                "invoiceId": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "InvoiceID"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": {
+                  "$item": "_reminderError"
+                },
+                "value": {
+                  "$state": "/_errors/xero-accounting.email_invoice"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": {
+                  "$item": "_reminderSent"
+                },
+                "value": {
+                  "$cond": {
+                    "$state": "/_errors/xero-accounting.email_invoice"
+                  },
+                  "$then": false,
+                  "$else": true
+                }
+              }
+            }
+          ]
+        }
+      },
+      "noteBtn": {
+        "type": "IconButton",
+        "props": {
+          "icon": "Phone",
+          "tone": "muted",
+          "ariaLabel": "Log call"
+        },
+        "visible": {
+          "$item": "_callLogged",
+          "not": true
+        },
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": {
+                  "$item": "_callLoggedError"
+                },
+                "value": ""
+              }
+            },
+            {
+              "action": "xero-accounting.add_note",
+              "params": {
+                "entityType": "Invoices",
+                "entityId": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "InvoiceID"
+                    }
+                  }
+                },
+                "details": "Call logged from MyHub chase list."
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": {
+                  "$item": "_callLoggedError"
+                },
+                "value": {
+                  "$state": "/_errors/xero-accounting.add_note"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": {
+                  "$item": "_callLogged"
+                },
+                "value": {
+                  "$cond": {
+                    "$state": "/_errors/xero-accounting.add_note"
+                  },
+                  "$then": false,
+                  "$else": true
+                }
+              }
+            }
+          ]
+        }
+      },
+      "overlay": {
+        "type": "Overlay",
+        "props": {
+          "maxWidth": "28rem"
+        },
+        "children": [
+          "detailCard"
+        ],
+        "visible": {
+          "$state": "/ui/selectedInvoiceId"
+        },
+        "on": {
+          "backdropClick": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selectedInvoiceId",
+              "value": ""
+            }
+          }
+        }
+      },
+      "detailCard": {
+        "type": "Card",
+        "children": [
+          "detailHeader",
+          "detailSpinner",
+          "detailBody"
+        ]
+      },
+      "detailHeader": {
+        "type": "Header",
+        "children": [
+          "detailTitle",
+          "detailClose"
+        ]
+      },
+      "detailTitle": {
+        "type": "Heading",
+        "props": {
+          "text": {
+            "$template": "Invoice ${/xero-accounting/get_invoice/Invoices/0/InvoiceNumber}"
+          },
+          "level": "h2"
+        }
+      },
+      "detailClose": {
+        "type": "IconButton",
+        "props": {
+          "icon": "X",
+          "tone": "muted",
+          "ariaLabel": "Close"
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selectedInvoiceId",
+              "value": ""
+            }
+          }
+        }
+      },
+      "detailSpinner": {
+        "type": "Spinner",
+        "props": {
+          "label": "Loading invoice…"
+        },
+        "visible": {
+          "$state": "/xero-accounting/get_invoice/Invoices/0/InvoiceID",
+          "neq": {
+            "$state": "/ui/selectedInvoiceId"
+          }
+        }
+      },
+      "detailBody": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "kvContact",
+          "kvDue",
+          "kvAmountDue",
+          "kvTotal",
+          "kvRef",
+          "detailActions"
+        ],
+        "visible": {
+          "$state": "/xero-accounting/get_invoice/Invoices/0/InvoiceID",
+          "eq": {
+            "$state": "/ui/selectedInvoiceId"
+          }
+        }
+      },
+      "kvContact": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Contact",
+          "value": {
+            "$state": "/xero-accounting/get_invoice/Invoices/0/Contact/Name"
+          }
+        }
+      },
+      "kvDue": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Due",
+          "value": {
+            "$computed": "xero-accounting_format_date",
+            "args": {
+              "value": {
+                "$state": "/xero-accounting/get_invoice/Invoices/0/DueDate"
+              },
+              "format": "medium"
+            }
+          }
+        }
+      },
+      "kvAmountDue": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Amount due",
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$state": "/xero-accounting/get_invoice/Invoices/0/AmountDue"
+              },
+              "currency": {
+                "$state": "/xero-accounting/get_invoice/Invoices/0/CurrencyCode"
+              }
+            }
+          },
+          "tone": "destructive"
+        }
+      },
+      "kvTotal": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Total",
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$state": "/xero-accounting/get_invoice/Invoices/0/Total"
+              },
+              "currency": {
+                "$state": "/xero-accounting/get_invoice/Invoices/0/CurrencyCode"
+              }
+            }
+          }
+        }
+      },
+      "kvRef": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Reference",
+          "value": {
+            "$state": "/xero-accounting/get_invoice/Invoices/0/Reference"
+          }
+        }
+      },
+      "detailActions": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "justify": "end"
+        },
+        "children": [
+          "detailRemind",
+          "detailPdf"
+        ]
+      },
+      "detailRemind": {
+        "type": "Button",
+        "props": {
+          "label": "Send reminder",
+          "variant": "primary",
+          "size": "sm",
+          "leadingIcon": "Mail"
+        },
+        "on": {
+          "click": {
+            "action": "xero-accounting.email_invoice",
+            "params": {
+              "invoiceId": {
+                "$state": "/ui/selectedInvoiceId"
+              }
+            }
+          }
+        }
+      },
+      "detailPdf": {
+        "type": "Button",
+        "props": {
+          "label": "PDF",
+          "variant": "secondary",
+          "size": "sm",
+          "leadingIcon": "FileText"
+        },
+        "on": {
+          "click": [
+            {
+              "action": "xero-accounting.get_invoice_pdf",
+              "params": {
+                "invoiceId": {
+                  "$state": "/ui/selectedInvoiceId"
+                }
+              }
+            },
+            {
+              "action": "download_base64",
+              "params": {
+                "data": {
+                  "$state": "/xero-accounting/get_invoice_pdf"
+                },
+                "filename": {
+                  "$template": "invoice-${/xero-accounting/get_invoice/Invoices/0/InvoiceNumber}.pdf"
+                },
+                "mimeType": "application/pdf"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "status": "published"
+}

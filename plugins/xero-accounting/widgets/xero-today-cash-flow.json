@@ -1,0 +1,664 @@
+{
+  "id": "xero-today-cash-flow",
+  "title": "Today's Cash In / Out",
+  "description": "Today's cash flow — money in and money out.",
+  "category": "finance",
+  "tags": [
+    "xero",
+    "cash-flow",
+    "today",
+    "finance",
+    "report"
+  ],
+  "keywords": [
+    "cash",
+    "flow",
+    "cash flow",
+    "today",
+    "liquidity",
+    "bank",
+    "balance"
+  ],
+  "connectorsUsed": [
+    "xero-accounting"
+  ],
+  "popularity": 84,
+  "sizing": {
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 8
+    }
+  },
+  "dataProvider": {
+    "mcp": "xero-accounting",
+    "tool": "list_bank_transactions",
+    "params": {
+      "order": "Date DESC"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "loadingStats",
+          "stats",
+          "divider",
+          "body",
+          "overlay"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Wallet",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Today's cash flow",
+          "level": "h2"
+        }
+      },
+      "loadingStats": {
+        "type": "Grid",
+        "props": {
+          "cols": 2,
+          "gap": "md"
+        },
+        "children": [
+          "loadStatA",
+          "loadStatB"
+        ],
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_bank_transactions"
+        }
+      },
+      "loadStatA": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "loadStatB": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "stats": {
+        "type": "Grid",
+        "props": {
+          "cols": 2,
+          "gap": "md"
+        },
+        "children": [
+          "inCell",
+          "outCell"
+        ],
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_bank_transactions",
+          "not": true
+        }
+      },
+      "inCell": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "inLabelRow",
+          "inValue"
+        ]
+      },
+      "inLabelRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "inIcon",
+          "inLabel"
+        ]
+      },
+      "inIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ArrowDownCircle",
+          "tone": "success",
+          "size": "xs"
+        }
+      },
+      "inLabel": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Cash in"
+        }
+      },
+      "inValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "sum",
+                "args": {
+                  "value": {
+                    "$state": "/xero-accounting/list_bank_transactions/BankTransactions"
+                  },
+                  "field": "Total",
+                  "whereField": "Type",
+                  "startsWith": "RECEIVE"
+                }
+              }
+            }
+          },
+          "tone": "success"
+        }
+      },
+      "outCell": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "outLabelRow",
+          "outValue"
+        ]
+      },
+      "outLabelRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "outIcon",
+          "outLabel"
+        ]
+      },
+      "outIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ArrowUpCircle",
+          "tone": "destructive",
+          "size": "xs"
+        }
+      },
+      "outLabel": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Cash out"
+        }
+      },
+      "outValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "sum",
+                "args": {
+                  "value": {
+                    "$state": "/xero-accounting/list_bank_transactions/BankTransactions"
+                  },
+                  "field": "Total",
+                  "whereField": "Type",
+                  "startsWith": "SPEND"
+                }
+              }
+            }
+          },
+          "tone": "destructive"
+        }
+      },
+      "divider": {
+        "type": "Divider"
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "recentHeading",
+          "loadingList",
+          "empty",
+          "list"
+        ]
+      },
+      "recentHeading": {
+        "type": "Heading",
+        "props": {
+          "text": "Recent transactions",
+          "level": "h3"
+        }
+      },
+      "loadingList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "ls1",
+          "ls2",
+          "ls3"
+        ],
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_bank_transactions"
+        }
+      },
+      "ls1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        }
+      },
+      "ls2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        }
+      },
+      "ls3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No bank transactions yet."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_bank_transactions",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_bank_transactions/BankTransactions/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "row"
+        ],
+        "repeat": {
+          "statePath": "/xero-accounting/list_bank_transactions/BankTransactions",
+          "key": "BankTransactionID"
+        },
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_bank_transactions",
+          "not": true
+        }
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "rowDot",
+          "rowLabel",
+          "rowAmount"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedBankTxnId",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "BankTransactionID"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "xero-accounting.get_bank_transaction",
+              "params": {
+                "bankTransactionId": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "BankTransactionID"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "rowDot": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$computed": "xero-accounting_bank_tx_icon",
+            "args": {
+              "value": {
+                "$item": "Type"
+              }
+            }
+          },
+          "tone": {
+            "$computed": "xero-accounting_bank_tx_tone",
+            "args": {
+              "value": {
+                "$item": "Type"
+              }
+            }
+          },
+          "size": "sm"
+        }
+      },
+      "rowLabel": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "rowTop",
+          "rowBottom"
+        ]
+      },
+      "rowTop": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "Contact/Name"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "rowBottom": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{type} · {account}",
+              "type": {
+                "$item": "Type"
+              },
+              "account": {
+                "$item": "BankAccount/Name"
+              }
+            }
+          }
+        }
+      },
+      "rowAmount": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "align": "end"
+        },
+        "children": [
+          "rowAmountText",
+          "rowDate"
+        ]
+      },
+      "rowAmountText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$item": "Total"
+              },
+              "currency": {
+                "$item": "CurrencyCode"
+              }
+            }
+          },
+          "weight": "semibold",
+          "size": "sm"
+        }
+      },
+      "rowDate": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "xero-accounting_format_date",
+            "args": {
+              "value": {
+                "$item": "Date"
+              },
+              "format": "short"
+            }
+          }
+        }
+      },
+      "overlay": {
+        "type": "Overlay",
+        "props": {
+          "maxWidth": "26rem"
+        },
+        "children": [
+          "detailCard"
+        ],
+        "visible": {
+          "$state": "/ui/selectedBankTxnId"
+        },
+        "on": {
+          "backdropClick": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selectedBankTxnId",
+              "value": ""
+            }
+          }
+        }
+      },
+      "detailCard": {
+        "type": "Card",
+        "children": [
+          "detailHeader",
+          "detailSpinner",
+          "detailBody"
+        ]
+      },
+      "detailHeader": {
+        "type": "Header",
+        "children": [
+          "detailTitle",
+          "detailClose"
+        ]
+      },
+      "detailTitle": {
+        "type": "Heading",
+        "props": {
+          "text": "Bank transaction",
+          "level": "h2"
+        }
+      },
+      "detailClose": {
+        "type": "IconButton",
+        "props": {
+          "icon": "X",
+          "tone": "muted",
+          "ariaLabel": "Close"
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selectedBankTxnId",
+              "value": ""
+            }
+          }
+        }
+      },
+      "detailSpinner": {
+        "type": "Spinner",
+        "props": {
+          "label": "Loading transaction…"
+        },
+        "visible": {
+          "$state": "/xero-accounting/get_bank_transaction/BankTransactions/0/BankTransactionID",
+          "neq": {
+            "$state": "/ui/selectedBankTxnId"
+          }
+        }
+      },
+      "detailBody": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "kvContact",
+          "kvType",
+          "kvAccount",
+          "kvDate",
+          "kvTotal",
+          "kvReconciled",
+          "kvRef"
+        ],
+        "visible": {
+          "$state": "/xero-accounting/get_bank_transaction/BankTransactions/0/BankTransactionID",
+          "eq": {
+            "$state": "/ui/selectedBankTxnId"
+          }
+        }
+      },
+      "kvContact": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Contact",
+          "value": {
+            "$state": "/xero-accounting/get_bank_transaction/BankTransactions/0/Contact/Name"
+          }
+        }
+      },
+      "kvType": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Type",
+          "value": {
+            "$state": "/xero-accounting/get_bank_transaction/BankTransactions/0/Type"
+          }
+        }
+      },
+      "kvAccount": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Account",
+          "value": {
+            "$state": "/xero-accounting/get_bank_transaction/BankTransactions/0/BankAccount/Name"
+          }
+        }
+      },
+      "kvDate": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Date",
+          "value": {
+            "$computed": "xero-accounting_format_date",
+            "args": {
+              "value": {
+                "$state": "/xero-accounting/get_bank_transaction/BankTransactions/0/Date"
+              },
+              "format": "medium"
+            }
+          }
+        }
+      },
+      "kvTotal": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Total",
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$state": "/xero-accounting/get_bank_transaction/BankTransactions/0/Total"
+              },
+              "currency": {
+                "$state": "/xero-accounting/get_bank_transaction/BankTransactions/0/CurrencyCode"
+              }
+            }
+          }
+        }
+      },
+      "kvReconciled": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Reconciled",
+          "value": {
+            "$cond": {
+              "$state": "/xero-accounting/get_bank_transaction/BankTransactions/0/IsReconciled"
+            },
+            "$then": "Yes",
+            "$else": "No"
+          }
+        }
+      },
+      "kvRef": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Reference",
+          "value": {
+            "$state": "/xero-accounting/get_bank_transaction/BankTransactions/0/Reference"
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}

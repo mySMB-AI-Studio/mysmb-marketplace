@@ -1,0 +1,502 @@
+{
+  "id": "m365-teams-standup",
+  "title": "Team Standup",
+  "description": "Post your daily standup to a team channel and see today's posts inline.",
+  "category": "productivity",
+  "tags": [
+    "m365",
+    "teams",
+    "standup",
+    "daily"
+  ],
+  "keywords": [
+    "standup",
+    "daily",
+    "sync",
+    "update"
+  ],
+  "connectorsUsed": [
+    "m365-teams"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 7,
+      "rowSpan": 7
+    },
+    "min": {
+      "colSpan": 5,
+      "rowSpan": 5
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "m365-teams",
+    "tool": "list_teams"
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleRow"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Sunrise",
+          "tone": "warning",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Today's standup",
+          "level": "h2"
+        }
+      },
+      "body": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "teamsHead",
+          "teamsList",
+          "channelsBlock",
+          "composeBlock",
+          "messagesBlock"
+        ]
+      },
+      "teamsHead": {
+        "type": "Heading",
+        "props": {
+          "text": "1. Pick your team",
+          "level": "h3"
+        }
+      },
+      "teamsList": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "repeat": {
+          "statePath": "/m365-teams/list_teams",
+          "key": "id"
+        },
+        "children": [
+          "teamRow"
+        ]
+      },
+      "teamRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between",
+          "hover": true,
+          "clickable": true
+        },
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/teamId",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "id"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "m365-teams.list_channels",
+              "params": {
+                "teamId": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "id"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "children": [
+          "tLeft",
+          "tPick"
+        ]
+      },
+      "tLeft": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "grow": true
+        },
+        "children": [
+          "tAvatar",
+          "tName"
+        ]
+      },
+      "tAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$item": "displayName"
+              }
+            }
+          },
+          "size": "sm",
+          "tone": "accent"
+        }
+      },
+      "tName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "displayName"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "tPick": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$cond": {
+              "$state": "/ui/teamId",
+              "eq": {
+                "$item": "id"
+              }
+            },
+            "$then": "accent",
+            "$else": "muted"
+          },
+          "size": "sm"
+        }
+      },
+      "channelsBlock": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/ui/teamId"
+        },
+        "children": [
+          "cHead",
+          "cList"
+        ]
+      },
+      "cHead": {
+        "type": "Heading",
+        "props": {
+          "text": "2. Pick channel",
+          "level": "h3"
+        }
+      },
+      "cList": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "repeat": {
+          "statePath": "/m365-teams/list_channels",
+          "key": "id"
+        },
+        "children": [
+          "cRow"
+        ]
+      },
+      "cRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between",
+          "hover": true,
+          "clickable": true
+        },
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/channelId",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "id"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "m365-teams.list_messages",
+              "params": {
+                "teamId": {
+                  "$state": "/ui/teamId"
+                },
+                "channelId": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "id"
+                    }
+                  }
+                },
+                "limit": 10
+              }
+            }
+          ]
+        },
+        "children": [
+          "cLeft",
+          "cPick"
+        ]
+      },
+      "cLeft": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "grow": true
+        },
+        "children": [
+          "cIcon",
+          "cName"
+        ]
+      },
+      "cIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Hash",
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "cName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "displayName"
+          },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "cPick": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$cond": {
+              "$state": "/ui/channelId",
+              "eq": {
+                "$item": "id"
+              }
+            },
+            "$then": "accent",
+            "$else": "muted"
+          },
+          "size": "sm"
+        }
+      },
+      "composeBlock": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/ui/channelId"
+        },
+        "children": [
+          "standupRow",
+          "actions"
+        ]
+      },
+      "standupRow": {
+        "type": "FormRow",
+        "props": {
+          "label": "Your update",
+          "hint": "Yesterday · Today · Blockers"
+        },
+        "children": [
+          "standupInput"
+        ]
+      },
+      "standupInput": {
+        "type": "TextInput",
+        "props": {
+          "value": {
+            "$bindState": "/ui/update"
+          },
+          "placeholder": "Yesterday I… Today I'll… Blockers…",
+          "multiline": true,
+          "rows": 5
+        }
+      },
+      "actions": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "justify": "end"
+        },
+        "children": [
+          "postBtn"
+        ]
+      },
+      "postBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Post update",
+          "variant": "primary",
+          "size": "sm",
+          "leadingIcon": "Send",
+          "disabled": {
+            "$cond": {
+              "$state": "/ui/update"
+            },
+            "$then": false,
+            "$else": true
+          }
+        },
+        "on": {
+          "click": [
+            {
+              "action": "m365-teams.send_message",
+              "params": {
+                "teamId": {
+                  "$state": "/ui/teamId"
+                },
+                "channelId": {
+                  "$state": "/ui/channelId"
+                },
+                "content": {
+                  "$state": "/ui/update"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/update",
+                "value": ""
+              }
+            },
+            {
+              "action": "m365-teams.list_messages",
+              "params": {
+                "teamId": {
+                  "$state": "/ui/teamId"
+                },
+                "channelId": {
+                  "$state": "/ui/channelId"
+                },
+                "limit": 10
+              }
+            }
+          ]
+        }
+      },
+      "messagesBlock": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/m365-teams/list_messages/0"
+        },
+        "children": [
+          "mHead",
+          "mList"
+        ]
+      },
+      "mHead": {
+        "type": "Heading",
+        "props": {
+          "text": "Today's posts",
+          "level": "h3"
+        }
+      },
+      "mList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "repeat": {
+          "statePath": "/m365-teams/list_messages",
+          "key": "id"
+        },
+        "children": [
+          "mItem"
+        ]
+      },
+      "mItem": {
+        "type": "ActivityItem",
+        "props": {
+          "title": {
+            "$item": "from/user/displayName"
+          },
+          "subtitle": {
+            "$item": "body/content"
+          },
+          "timestamp": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "createdDateTime"
+              }
+            }
+          },
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$item": "from/user/displayName"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "status": "draft"
+}

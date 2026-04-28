@@ -1,22 +1,22 @@
 {
-  "id": "xero-cash-at-bank",
-  "title": "Cash at Bank",
-  "description": "Bank account tiles — one card per bank account configured in Xero.",
+  "id": "xero-recurring-invoices",
+  "title": "Recurring Invoices",
+  "description": "Recurring invoice schedule upcoming runs.",
   "category": "finance",
   "tags": [
     "xero",
-    "bank",
-    "accounts",
-    "cash",
+    "invoices",
+    "recurring",
+    "subscription",
     "finance"
   ],
   "keywords": [
-    "bank",
-    "cash",
-    "balance",
-    "accounts",
-    "tiles",
-    "liquidity"
+    "recurring",
+    "subscription",
+    "repeat",
+    "invoice",
+    "invoices",
+    "schedule"
   ],
   "connectorsUsed": [
     "xero-accounting"
@@ -25,22 +25,22 @@
   "sizing": {
     "preferred": {
       "colSpan": 6,
-      "rowSpan": 2
+      "rowSpan": 5
     },
     "min": {
-      "colSpan": 6,
-      "rowSpan": 2
+      "colSpan": 4,
+      "rowSpan": 4
     },
     "max": {
       "colSpan": 12,
-      "rowSpan": 8
+      "rowSpan": 10
     }
   },
   "dataProvider": {
     "mcp": "xero-accounting",
-    "tool": "list_accounts",
+    "tool": "list_repeating_invoices",
     "params": {
-      "where": "Type==\"BANK\""
+      "order": "NextScheduledDate ASC"
     }
   },
   "spec": {
@@ -51,25 +51,7 @@
         "children": [
           "header",
           "body"
-        ],
-        "watch": {
-          "/xero-accounting/list_accounts/Accounts": {
-            "action": "setState",
-            "params": {
-              "statePath": "/ui/cash/bankAccounts",
-              "value": {
-                "$computed": "filter_by",
-                "args": {
-                  "value": {
-                    "$state": "/xero-accounting/list_accounts/Accounts"
-                  },
-                  "field": "Type",
-                  "equals": "BANK"
-                }
-              }
-            }
-          }
-        }
+        ]
       },
       "header": {
         "type": "Header",
@@ -92,15 +74,15 @@
       "titleIcon": {
         "type": "Icon",
         "props": {
-          "name": "Landmark",
-          "tone": "accent",
+          "name": "Repeat",
+          "tone": "info",
           "size": "sm"
         }
       },
       "title": {
         "type": "Heading",
         "props": {
-          "text": "Cash at bank",
+          "text": "Recurring invoices",
           "level": "h2"
         }
       },
@@ -110,12 +92,12 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{n} accounts",
+              "pattern": "{n} active",
               "n": {
                 "$computed": "count",
                 "args": {
                   "value": {
-                    "$state": "/ui/cash/bankAccounts"
+                    "$state": "/xero-accounting/list_repeating_invoices/RepeatingInvoices"
                   }
                 }
               }
@@ -128,132 +110,145 @@
         "children": [
           "loading",
           "empty",
-          "tiles"
+          "list"
         ]
       },
       "loading": {
-        "type": "Grid",
+        "type": "Stack",
         "props": {
-          "cols": 2,
-          "gap": "md"
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_repeating_invoices"
         },
         "children": [
           "s1",
-          "s2"
-        ],
-        "visible": {
-          "$state": "/_loading/xero-accounting.list_accounts"
-        }
+          "s2",
+          "s3"
+        ]
       },
       "s1": {
         "type": "Skeleton",
         "props": {
-          "height": "5rem",
+          "height": "2.25rem",
           "rounded": "md"
         }
       },
       "s2": {
         "type": "Skeleton",
         "props": {
-          "height": "5rem",
+          "height": "2.25rem",
+          "rounded": "md"
+        }
+      },
+      "s3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.25rem",
           "rounded": "md"
         }
       },
       "empty": {
         "type": "Empty",
         "props": {
-          "message": "No bank accounts configured in Xero."
+          "message": "No recurring invoices configured."
         },
         "visible": {
           "$and": [
             {
-              "$state": "/_loading/xero-accounting.list_accounts",
+              "$state": "/_loading/xero-accounting.list_repeating_invoices",
               "not": true
             },
             {
-              "$state": "/ui/cash/bankAccounts/0",
+              "$state": "/xero-accounting/list_repeating_invoices/RepeatingInvoices/0",
               "not": true
             }
           ]
         }
       },
-      "tiles": {
-        "type": "Grid",
+      "list": {
+        "type": "Stack",
         "props": {
-          "cols": 2,
-          "gap": "md"
-        },
-        "children": [
-          "tile"
-        ],
-        "repeat": {
-          "statePath": "/ui/cash/bankAccounts",
-          "key": "AccountID"
+          "gap": "xs"
         },
         "visible": {
-          "$state": "/_loading/xero-accounting.list_accounts",
+          "$state": "/_loading/xero-accounting.list_repeating_invoices",
           "not": true
-        }
-      },
-      "tile": {
-        "type": "Section",
-        "props": {
-          "variant": "bordered"
+        },
+        "repeat": {
+          "statePath": "/xero-accounting/list_repeating_invoices/RepeatingInvoices",
+          "key": "RepeatingInvoiceID"
         },
         "children": [
-          "tileHeader",
-          "tileCode",
-          "tileStatus"
+          "row"
         ]
       },
-      "tileHeader": {
+      "row": {
         "type": "Row",
         "props": {
           "gap": "sm",
-          "align": "center"
+          "align": "center",
+          "hover": true
         },
         "children": [
-          "tileIcon",
-          "tileName"
+          "icon",
+          "labels",
+          "statusBadge",
+          "amount"
         ]
       },
-      "tileIcon": {
+      "icon": {
         "type": "Icon",
         "props": {
-          "name": "Banknote",
-          "tone": "success",
+          "name": "CalendarRange",
+          "tone": "muted",
           "size": "sm"
         }
       },
-      "tileName": {
+      "labels": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "labelTop",
+          "labelBottom"
+        ]
+      },
+      "labelTop": {
         "type": "Text",
         "props": {
           "text": {
-            "$item": "Name"
+            "$item": "Contact/Name"
           },
           "size": "md",
-          "weight": "semibold",
+          "weight": "medium",
           "truncate": true
         }
       },
-      "tileCode": {
-        "type": "Caption",
+      "labelBottom": {
+        "type": "Text",
         "props": {
+          "size": "sm",
+          "tone": "muted",
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "Code {code} · {currency}",
-              "code": {
-                "$item": "Code"
-              },
-              "currency": {
-                "$item": "CurrencyCode"
+              "pattern": "Next run: {next}",
+              "next": {
+                "$computed": "xero-accounting_format_date",
+                "args": {
+                  "value": {
+                    "$item": "Schedule/NextScheduledDate"
+                  },
+                  "format": "medium"
+                }
               }
             }
           }
         }
       },
-      "tileStatus": {
+      "statusBadge": {
         "type": "Badge",
         "props": {
           "text": {
@@ -269,8 +264,26 @@
           },
           "variant": "soft"
         }
+      },
+      "amount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$item": "Total"
+              },
+              "currency": {
+                "$item": "CurrencyCode"
+              }
+            }
+          },
+          "weight": "semibold",
+          "size": "sm"
+        }
       }
     }
   },
-  "status": "published"
+  "status": "draft"
 }

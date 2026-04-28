@@ -1,0 +1,395 @@
+{
+  "id": "xero-pnl-pulse",
+  "title": "P&L Pulse",
+  "description": "Profit & loss pulse — revenue vs expenses at a glance.",
+  "category": "finance",
+  "tags": [
+    "xero",
+    "pnl",
+    "profit",
+    "loss",
+    "finance",
+    "report"
+  ],
+  "keywords": [
+    "pnl",
+    "p&l",
+    "profit",
+    "loss",
+    "income",
+    "expenses",
+    "revenue",
+    "earnings"
+  ],
+  "connectorsUsed": [
+    "xero-accounting"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 4
+    },
+    "min": {
+      "colSpan": 5,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 8
+    }
+  },
+  "dataProvider": {
+    "mcp": "xero-accounting",
+    "tool": "get_profit_and_loss",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "stats",
+          "divider",
+          "body"
+        ],
+        "watch": {
+          "/xero-accounting/get_profit_and_loss/Reports": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/pnl/rows",
+              "value": {
+                "$computed": "xero-accounting_flatten_report_rows",
+                "args": {
+                  "value": {
+                    "$state": "/xero-accounting/get_profit_and_loss/Reports/0"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleGroup",
+          "asOf"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "TrendingUp",
+          "tone": "success",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "P&L pulse",
+          "level": "h2"
+        }
+      },
+      "asOf": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/get_profit_and_loss/Reports/0/ReportDate"
+          }
+        }
+      },
+      "stats": {
+        "type": "Grid",
+        "props": {
+          "cols": 3,
+          "gap": "md"
+        },
+        "children": [
+          "revCell",
+          "expCell",
+          "netCell"
+        ],
+        "visible": {
+          "$state": "/_loading/xero-accounting.get_profit_and_loss",
+          "not": true
+        }
+      },
+      "revCell": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "revLabelRow",
+          "revValue"
+        ]
+      },
+      "revLabelRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "revIcon",
+          "revLabel"
+        ]
+      },
+      "revIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ArrowUpRight",
+          "tone": "success",
+          "size": "xs"
+        }
+      },
+      "revLabel": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Revenue"
+        }
+      },
+      "revValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "xero-accounting_report_find_row",
+                "args": {
+                  "value": {
+                    "$state": "/ui/pnl/rows"
+                  },
+                  "title": "Total Income",
+                  "cell": 1
+                }
+              }
+            }
+          },
+          "tone": "success"
+        }
+      },
+      "expCell": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "expLabelRow",
+          "expValue"
+        ]
+      },
+      "expLabelRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "expIcon",
+          "expLabel"
+        ]
+      },
+      "expIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ArrowDownRight",
+          "tone": "destructive",
+          "size": "xs"
+        }
+      },
+      "expLabel": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Expenses"
+        }
+      },
+      "expValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "xero-accounting_report_find_row",
+                "args": {
+                  "value": {
+                    "$state": "/ui/pnl/rows"
+                  },
+                  "title": "Total Operating Expenses",
+                  "cell": 1
+                }
+              }
+            }
+          },
+          "tone": "destructive"
+        }
+      },
+      "netCell": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "netLabelRow",
+          "netValue"
+        ]
+      },
+      "netLabelRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "netIcon",
+          "netLabel"
+        ]
+      },
+      "netIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Target",
+          "tone": "accent",
+          "size": "xs"
+        }
+      },
+      "netLabel": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Net profit"
+        }
+      },
+      "netValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "xero-accounting_report_find_row",
+                "args": {
+                  "value": {
+                    "$state": "/ui/pnl/rows"
+                  },
+                  "title": "Net Profit",
+                  "cell": 1
+                }
+              }
+            }
+          }
+        }
+      },
+      "divider": {
+        "type": "Divider"
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "breakdownHeading",
+          "table"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "ls1",
+          "ls2",
+          "ls3",
+          "ls4"
+        ],
+        "visible": {
+          "$state": "/_loading/xero-accounting.get_profit_and_loss"
+        }
+      },
+      "ls1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        }
+      },
+      "ls2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        }
+      },
+      "ls3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        }
+      },
+      "ls4": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        }
+      },
+      "breakdownHeading": {
+        "type": "Heading",
+        "props": {
+          "text": "Line items",
+          "level": "h3"
+        },
+        "visible": {
+          "$state": "/_loading/xero-accounting.get_profit_and_loss",
+          "not": true
+        }
+      },
+      "table": {
+        "type": "Table",
+        "props": {
+          "rows": {
+            "$state": "/ui/pnl/rows"
+          },
+          "columns": [
+            {
+              "id": "line",
+              "header": "Line",
+              "field": "title",
+              "priority": 1
+            },
+            {
+              "id": "amount",
+              "header": "Amount",
+              "field": "c1",
+              "align": "right",
+              "format": "currency",
+              "priority": 1
+            }
+          ]
+        },
+        "visible": {
+          "$state": "/_loading/xero-accounting.get_profit_and_loss",
+          "not": true
+        }
+      }
+    }
+  },
+  "status": "published"
+}

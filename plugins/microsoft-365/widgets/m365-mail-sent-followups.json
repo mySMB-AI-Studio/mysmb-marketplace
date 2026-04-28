@@ -1,0 +1,259 @@
+{
+  "id": "m365-mail-sent-followups",
+  "title": "Sent — Awaiting Reply",
+  "description": "Your sent messages, oldest first. Nudge the ones that haven't been answered.",
+  "category": "productivity",
+  "tags": [
+    "m365",
+    "email",
+    "sent",
+    "followup"
+  ],
+  "keywords": [
+    "sent",
+    "followup",
+    "nudge",
+    "outbox"
+  ],
+  "connectorsUsed": [
+    "m365-mail-read"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "m365-mail-read",
+    "tool": "list_emails",
+    "params": {
+      "folder": "sentitems",
+      "limit": 30
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleRow",
+          "count"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Send",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Sent follow-ups",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} sent",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/m365-mail-read/list_emails"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Skeleton",
+        "props": {
+          "height": "8rem",
+          "rounded": "md"
+        },
+        "visible": {
+          "$state": "/_loading/m365-mail-read.list_emails"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "Nothing in your sent box."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/m365-mail-read.list_emails",
+              "not": true
+            },
+            {
+              "$state": "/m365-mail-read/list_emails/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "repeat": {
+          "statePath": "/m365-mail-read/list_emails",
+          "key": "id"
+        },
+        "children": [
+          "row"
+        ]
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between",
+          "hover": true,
+          "clickable": true
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "https://outlook.office.com/mail/sentitems/id/{id}",
+                  "id": {
+                    "$item": "id"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "children": [
+          "rowLeft",
+          "ageBadge"
+        ]
+      },
+      "rowLeft": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "grow": true
+        },
+        "children": [
+          "icon",
+          "labels"
+        ]
+      },
+      "icon": {
+        "type": "Icon",
+        "props": {
+          "name": "ArrowUpRight",
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "labels": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "subject",
+          "toLine"
+        ]
+      },
+      "subject": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "subject"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "toLine": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "To {n}",
+              "n": {
+                "$item": "toRecipients/0/emailAddress/name"
+              }
+            }
+          }
+        }
+      },
+      "ageBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "receivedDateTime"
+              }
+            }
+          },
+          "tone": "warning",
+          "variant": "soft"
+        }
+      }
+    }
+  },
+  "status": "draft"
+}

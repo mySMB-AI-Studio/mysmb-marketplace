@@ -1,0 +1,383 @@
+{
+  "id": "m365-calendar-scheduler",
+  "title": "Create Meeting",
+  "description": "Quick-create a calendar event with subject, time, location, and attendees.",
+  "category": "productivity",
+  "tags": [
+    "m365",
+    "calendar",
+    "create",
+    "schedule",
+    "meeting"
+  ],
+  "keywords": [
+    "create",
+    "schedule",
+    "meeting",
+    "new",
+    "event",
+    "book"
+  ],
+  "connectorsUsed": [
+    "m365-calendar"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 8
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 6
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleRow"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "CalendarPlus",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "New meeting",
+          "level": "h2"
+        }
+      },
+      "body": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "subjectRow",
+          "startRow",
+          "endRow",
+          "locationRow",
+          "attendeesRow",
+          "bodyRow",
+          "actions",
+          "banner",
+          "errorBanner"
+        ]
+      },
+      "subjectRow": {
+        "type": "FormRow",
+        "props": {
+          "label": "Subject"
+        },
+        "children": [
+          "subjectInput"
+        ]
+      },
+      "subjectInput": {
+        "type": "TextInput",
+        "props": {
+          "value": {
+            "$bindState": "/ui/subject"
+          },
+          "placeholder": "Meeting title"
+        }
+      },
+      "startRow": {
+        "type": "FormRow",
+        "props": {
+          "label": "Start",
+          "hint": "ISO 8601 (e.g. 2026-04-24T14:00:00Z)"
+        },
+        "children": [
+          "startInput"
+        ]
+      },
+      "startInput": {
+        "type": "TextInput",
+        "props": {
+          "value": {
+            "$bindState": "/ui/start"
+          },
+          "placeholder": "2026-04-24T14:00:00Z"
+        }
+      },
+      "endRow": {
+        "type": "FormRow",
+        "props": {
+          "label": "End"
+        },
+        "children": [
+          "endInput"
+        ]
+      },
+      "endInput": {
+        "type": "TextInput",
+        "props": {
+          "value": {
+            "$bindState": "/ui/end"
+          },
+          "placeholder": "2026-04-24T15:00:00Z"
+        }
+      },
+      "locationRow": {
+        "type": "FormRow",
+        "props": {
+          "label": "Location (optional)"
+        },
+        "children": [
+          "locationInput"
+        ]
+      },
+      "locationInput": {
+        "type": "TextInput",
+        "props": {
+          "value": {
+            "$bindState": "/ui/location"
+          },
+          "placeholder": "Room A / Teams link / Address"
+        }
+      },
+      "attendeesRow": {
+        "type": "FormRow",
+        "props": {
+          "label": "Attendees (optional)",
+          "hint": "Comma-separated emails"
+        },
+        "children": [
+          "attendeesInput"
+        ]
+      },
+      "attendeesInput": {
+        "type": "TextInput",
+        "props": {
+          "value": {
+            "$bindState": "/ui/attendees"
+          },
+          "placeholder": "alice@contoso.com, bob@contoso.com"
+        }
+      },
+      "bodyRow": {
+        "type": "FormRow",
+        "props": {
+          "label": "Description (optional)"
+        },
+        "children": [
+          "bodyInput"
+        ]
+      },
+      "bodyInput": {
+        "type": "TextInput",
+        "props": {
+          "value": {
+            "$bindState": "/ui/body"
+          },
+          "placeholder": "Agenda, links, notes…",
+          "multiline": true,
+          "rows": 4
+        }
+      },
+      "actions": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "justify": "end"
+        },
+        "children": [
+          "createBtn"
+        ]
+      },
+      "createBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Create",
+          "variant": "primary",
+          "size": "sm",
+          "leadingIcon": "Calendar",
+          "disabled": {
+            "$cond": {
+              "$and": [
+                {
+                  "$state": "/ui/subject"
+                },
+                {
+                  "$state": "/ui/start"
+                },
+                {
+                  "$state": "/ui/end"
+                }
+              ]
+            },
+            "$then": false,
+            "$else": true
+          }
+        },
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/created",
+                "value": ""
+              }
+            },
+            {
+              "action": "m365-calendar.create_event",
+              "params": {
+                "subject": {
+                  "$state": "/ui/subject"
+                },
+                "startDateTime": {
+                  "$state": "/ui/start"
+                },
+                "startTimeZone": "UTC",
+                "endDateTime": {
+                  "$state": "/ui/end"
+                },
+                "endTimeZone": "UTC",
+                "body": {
+                  "$state": "/ui/body"
+                },
+                "location": {
+                  "$state": "/ui/location"
+                },
+                "attendees": {
+                  "$computed": "split_csv",
+                  "args": {
+                    "value": {
+                      "$state": "/ui/attendees"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/created",
+                "value": {
+                  "$cond": {
+                    "$state": "/_errors/m365-calendar.create_event"
+                  },
+                  "$then": "",
+                  "$else": true
+                }
+              }
+            }
+          ]
+        }
+      },
+      "banner": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "bannerRow"
+        ],
+        "visible": {
+          "$state": "/ui/created"
+        }
+      },
+      "bannerRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "bannerIcon",
+          "bannerText"
+        ]
+      },
+      "bannerIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "CheckCircle2",
+          "tone": "success",
+          "size": "sm"
+        }
+      },
+      "bannerText": {
+        "type": "Text",
+        "props": {
+          "text": "Meeting created.",
+          "size": "sm",
+          "tone": "success"
+        }
+      },
+      "errorBanner": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "errRow"
+        ],
+        "visible": {
+          "$state": "/_errors/m365-calendar.create_event"
+        }
+      },
+      "errRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "errIcon",
+          "errText"
+        ]
+      },
+      "errIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "AlertTriangle",
+          "tone": "destructive",
+          "size": "sm"
+        }
+      },
+      "errText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/_errors/m365-calendar.create_event"
+          },
+          "size": "sm",
+          "tone": "destructive"
+        }
+      }
+    }
+  },
+  "status": "draft"
+}

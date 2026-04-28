@@ -1,0 +1,173 @@
+{
+  "id": "m365-people-birthdays",
+  "title": "Team Milestones",
+  "description": "Directory view of your team. (Birthdays/anniversaries aren't exposed by the Graph API with current permissions.)",
+  "category": "productivity",
+  "tags": [
+    "m365",
+    "people",
+    "birthdays",
+    "anniversaries"
+  ],
+  "keywords": [
+    "birthday",
+    "anniversary",
+    "milestone",
+    "celebrate"
+  ],
+  "connectorsUsed": [
+    "m365-people"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 5
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 8
+    }
+  },
+  "dataProvider": {
+    "mcp": "m365-people",
+    "tool": "get_direct_reports",
+    "params": {
+      "userIdOrUpn": "me"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleRow"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "PartyPopper",
+          "tone": "warning",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Team milestones",
+          "level": "h2"
+        }
+      },
+      "body": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "hint",
+          "list"
+        ]
+      },
+      "hint": {
+        "type": "Caption",
+        "props": {
+          "text": "Birthdays aren't exposed via Graph /me/people — showing directory instead."
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "repeat": {
+          "statePath": "/m365-people/get_direct_reports",
+          "key": "id"
+        },
+        "children": [
+          "row"
+        ]
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true
+        },
+        "children": [
+          "avatar",
+          "labels"
+        ]
+      },
+      "avatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$item": "displayName"
+              }
+            }
+          },
+          "size": "sm"
+        }
+      },
+      "labels": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "name",
+          "dept"
+        ]
+      },
+      "name": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "displayName"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "dept": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "department"
+          }
+        }
+      }
+    }
+  },
+  "status": "draft"
+}
