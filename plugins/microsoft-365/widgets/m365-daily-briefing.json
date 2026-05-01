@@ -52,7 +52,10 @@
         "type": "Card",
         "children": [
           "header",
-          "body"
+          "body",
+          "emailOverlay",
+          "eventOverlay",
+          "fileOverlay"
         ],
         "watch": {
           "/m365-mail-read/list_emails": [
@@ -325,20 +328,35 @@
           "mailAge"
         ],
         "on": {
-          "click": {
-            "action": "open_url",
-            "params": {
-              "url": {
-                "$computed": "fmt",
-                "args": {
-                  "pattern": "https://outlook.office.com/mail/inbox/id/{id}",
-                  "id": {
-                    "$item": "id"
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedEmailId",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "id"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "m365-mail-read.get_email",
+              "params": {
+                "id": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "id"
+                    }
                   }
                 }
               }
             }
-          }
+          ]
         }
       },
       "mailDot": {
@@ -435,12 +453,44 @@
         "props": {
           "gap": "sm",
           "align": "center",
-          "hover": true
+          "hover": true,
+          "clickable": true
         },
         "children": [
           "calWhen",
           "calLabels"
-        ]
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedEventId",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "id"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "m365-calendar.get_event",
+              "params": {
+                "id": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "id"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
       },
       "calWhen": {
         "type": "Badge",
@@ -533,19 +583,78 @@
           "fLabels"
         ],
         "on": {
-          "click": {
-            "action": "open_url",
-            "params": {
-              "url": {
-                "$computed": "identity",
-                "args": {
-                  "value": {
-                    "$item": "webUrl"
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedFileId",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "id"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedFileName",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "name"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedFileWebUrl",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "webUrl"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedFileSize",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "size"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedFileMod",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "lastModifiedDateTime"
+                    }
                   }
                 }
               }
             }
-          }
+          ]
         }
       },
       "fIcon": {
@@ -586,6 +695,732 @@
             "args": {
               "value": {
                 "$item": "lastModifiedDateTime"
+              }
+            }
+          }
+        }
+      },
+      "emailOverlay": {
+        "type": "Overlay",
+        "props": {
+          "maxWidth": "44rem"
+        },
+        "children": [
+          "emailDetailCard"
+        ],
+        "visible": {
+          "$state": "/ui/selectedEmailId"
+        },
+        "on": {
+          "backdropClick": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedEmailId",
+                "value": ""
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/replyText",
+                "value": ""
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/replySent",
+                "value": ""
+              }
+            }
+          ]
+        }
+      },
+      "emailDetailCard": {
+        "type": "Card",
+        "children": [
+          "emailDetailHeader",
+          "emailDetailSpinner",
+          "emailDetailBody"
+        ]
+      },
+      "emailDetailHeader": {
+        "type": "Header",
+        "children": [
+          "emailDetailTitle",
+          "emailDetailClose"
+        ]
+      },
+      "emailDetailTitle": {
+        "type": "Heading",
+        "props": {
+          "text": {
+            "$state": "/m365-mail-read/get_email/subject"
+          },
+          "level": "h2"
+        }
+      },
+      "emailDetailClose": {
+        "type": "IconButton",
+        "props": {
+          "icon": "X",
+          "tone": "muted",
+          "ariaLabel": "Close"
+        },
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedEmailId",
+                "value": ""
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/replyText",
+                "value": ""
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/replySent",
+                "value": ""
+              }
+            }
+          ]
+        }
+      },
+      "emailDetailSpinner": {
+        "type": "Spinner",
+        "props": {
+          "label": "Loading message…"
+        },
+        "visible": {
+          "$state": "/m365-mail-read/get_email/id",
+          "neq": {
+            "$state": "/ui/selectedEmailId"
+          }
+        }
+      },
+      "emailDetailBody": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "emailKvFrom",
+          "emailKvReceived",
+          "emailBodySection",
+          "emailDivider",
+          "emailReplyRow",
+          "emailReplyActions",
+          "emailReplySentBanner",
+          "emailReplyErrorBanner",
+          "emailActions"
+        ],
+        "visible": {
+          "$state": "/m365-mail-read/get_email/id",
+          "eq": {
+            "$state": "/ui/selectedEmailId"
+          }
+        }
+      },
+      "emailKvFrom": {
+        "type": "KeyValue",
+        "props": {
+          "label": "From",
+          "value": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{name} <{addr}>",
+              "name": {
+                "$state": "/m365-mail-read/get_email/from/emailAddress/name"
+              },
+              "addr": {
+                "$state": "/m365-mail-read/get_email/from/emailAddress/address"
+              }
+            }
+          }
+        }
+      },
+      "emailKvReceived": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Received",
+          "value": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$state": "/m365-mail-read/get_email/receivedDateTime"
+              }
+            }
+          }
+        }
+      },
+      "emailBodySection": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "emailBodyHtml"
+        ]
+      },
+      "emailBodyHtml": {
+        "type": "RichHtml",
+        "props": {
+          "html": {
+            "$state": "/m365-mail-read/get_email/body/content"
+          },
+          "minHeight": 120,
+          "maxHeight": 420
+        }
+      },
+      "emailDivider": {
+        "type": "Divider"
+      },
+      "emailReplyRow": {
+        "type": "FormRow",
+        "props": {
+          "label": "Reply",
+          "hint": "Plain text"
+        },
+        "children": [
+          "emailReplyInput"
+        ]
+      },
+      "emailReplyInput": {
+        "type": "TextInput",
+        "props": {
+          "value": {
+            "$bindState": "/ui/replyText"
+          },
+          "placeholder": "Type your reply…"
+        }
+      },
+      "emailReplyActions": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "justify": "end"
+        },
+        "children": [
+          "emailDeleteBtn",
+          "emailReplyBtn"
+        ]
+      },
+      "emailDeleteBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Delete",
+          "variant": "ghost",
+          "size": "sm",
+          "leadingIcon": "Trash2"
+        },
+        "on": {
+          "click": [
+            {
+              "action": "m365-mail-send.delete_email",
+              "params": {
+                "id": {
+                  "$state": "/ui/selectedEmailId"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedEmailId",
+                "value": ""
+              }
+            },
+            {
+              "action": "m365-mail-read.list_emails",
+              "params": {
+                "limit": 10
+              }
+            }
+          ]
+        }
+      },
+      "emailReplyBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Send reply",
+          "variant": "primary",
+          "size": "sm",
+          "leadingIcon": "Send"
+        },
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/replySent",
+                "value": ""
+              }
+            },
+            {
+              "action": "m365-mail-send.reply_to_email",
+              "params": {
+                "id": {
+                  "$state": "/ui/selectedEmailId"
+                },
+                "comment": {
+                  "$state": "/ui/replyText"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/replySent",
+                "value": {
+                  "$cond": {
+                    "$state": "/_errors/m365-mail-send.reply_to_email"
+                  },
+                  "$then": "",
+                  "$else": true
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/replyText",
+                "value": {
+                  "$cond": {
+                    "$state": "/_errors/m365-mail-send.reply_to_email"
+                  },
+                  "$then": {
+                    "$state": "/ui/replyText"
+                  },
+                  "$else": ""
+                }
+              }
+            }
+          ]
+        }
+      },
+      "emailReplySentBanner": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "emailReplySentRow"
+        ],
+        "visible": {
+          "$state": "/ui/replySent"
+        }
+      },
+      "emailReplySentRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "emailReplySentIcon",
+          "emailReplySentText"
+        ]
+      },
+      "emailReplySentIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "CheckCircle2",
+          "tone": "success",
+          "size": "sm"
+        }
+      },
+      "emailReplySentText": {
+        "type": "Text",
+        "props": {
+          "text": "Reply sent.",
+          "size": "sm",
+          "tone": "success"
+        }
+      },
+      "emailReplyErrorBanner": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "emailReplyErrorRow"
+        ],
+        "visible": {
+          "$state": "/_errors/m365-mail-send.reply_to_email"
+        }
+      },
+      "emailReplyErrorRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "emailReplyErrorIcon",
+          "emailReplyErrorText"
+        ]
+      },
+      "emailReplyErrorIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "AlertTriangle",
+          "tone": "destructive",
+          "size": "sm"
+        }
+      },
+      "emailReplyErrorText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/_errors/m365-mail-send.reply_to_email"
+          },
+          "size": "sm",
+          "tone": "destructive"
+        }
+      },
+      "emailActions": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "justify": "end"
+        },
+        "children": [
+          "emailOpenBtn"
+        ]
+      },
+      "emailOpenBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Open in Outlook",
+          "variant": "primary",
+          "size": "sm",
+          "leadingIcon": "ExternalLink"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "https://outlook.office.com/mail/inbox/id/{id}",
+                  "id": {
+                    "$state": "/ui/selectedEmailId"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "eventOverlay": {
+        "type": "Overlay",
+        "props": {
+          "maxWidth": "44rem"
+        },
+        "children": [
+          "eventDetailCard"
+        ],
+        "visible": {
+          "$state": "/ui/selectedEventId"
+        },
+        "on": {
+          "backdropClick": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selectedEventId",
+              "value": ""
+            }
+          }
+        }
+      },
+      "eventDetailCard": {
+        "type": "Card",
+        "children": [
+          "eventDetailHeader",
+          "eventDetailSpinner",
+          "eventDetailBody"
+        ]
+      },
+      "eventDetailHeader": {
+        "type": "Header",
+        "children": [
+          "eventDetailTitle",
+          "eventDetailClose"
+        ]
+      },
+      "eventDetailTitle": {
+        "type": "Heading",
+        "props": {
+          "text": {
+            "$state": "/m365-calendar/get_event/subject"
+          },
+          "level": "h2"
+        }
+      },
+      "eventDetailClose": {
+        "type": "IconButton",
+        "props": {
+          "icon": "X",
+          "tone": "muted",
+          "ariaLabel": "Close"
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selectedEventId",
+              "value": ""
+            }
+          }
+        }
+      },
+      "eventDetailSpinner": {
+        "type": "Spinner",
+        "props": {
+          "label": "Loading event…"
+        },
+        "visible": {
+          "$state": "/m365-calendar/get_event/id",
+          "neq": {
+            "$state": "/ui/selectedEventId"
+          }
+        }
+      },
+      "eventDetailBody": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "eventKvWhen",
+          "eventKvLocation",
+          "eventKvOrganizer",
+          "eventBodySection",
+          "eventActions"
+        ],
+        "visible": {
+          "$state": "/m365-calendar/get_event/id",
+          "eq": {
+            "$state": "/ui/selectedEventId"
+          }
+        }
+      },
+      "eventKvWhen": {
+        "type": "KeyValue",
+        "props": {
+          "label": "When",
+          "value": {
+            "$computed": "format_date",
+            "args": {
+              "value": {
+                "$state": "/m365-calendar/get_event/start/dateTime"
+              },
+              "format": "long"
+            }
+          }
+        }
+      },
+      "eventKvLocation": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Location",
+          "value": {
+            "$state": "/m365-calendar/get_event/location/displayName"
+          }
+        },
+        "visible": {
+          "$state": "/m365-calendar/get_event/location/displayName"
+        }
+      },
+      "eventKvOrganizer": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Organiser",
+          "value": {
+            "$state": "/m365-calendar/get_event/organizer/emailAddress/name"
+          }
+        }
+      },
+      "eventBodySection": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "eventBodyHtml"
+        ],
+        "visible": {
+          "$state": "/m365-calendar/get_event/body/content"
+        }
+      },
+      "eventBodyHtml": {
+        "type": "RichHtml",
+        "props": {
+          "html": {
+            "$state": "/m365-calendar/get_event/body/content"
+          },
+          "minHeight": 80,
+          "maxHeight": 360
+        }
+      },
+      "eventActions": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "justify": "end"
+        },
+        "children": [
+          "eventOpenBtn"
+        ]
+      },
+      "eventOpenBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Open in Outlook",
+          "variant": "primary",
+          "size": "sm",
+          "leadingIcon": "ExternalLink"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://outlook.office.com/calendar/view/day"
+            }
+          }
+        }
+      },
+      "fileOverlay": {
+        "type": "Overlay",
+        "props": {
+          "maxWidth": "36rem"
+        },
+        "children": [
+          "fileDetailCard"
+        ],
+        "visible": {
+          "$state": "/ui/selectedFileId"
+        },
+        "on": {
+          "backdropClick": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selectedFileId",
+              "value": ""
+            }
+          }
+        }
+      },
+      "fileDetailCard": {
+        "type": "Card",
+        "children": [
+          "fileDetailHeader",
+          "fileDetailBody"
+        ]
+      },
+      "fileDetailHeader": {
+        "type": "Header",
+        "children": [
+          "fileDetailTitle",
+          "fileDetailClose"
+        ]
+      },
+      "fileDetailTitle": {
+        "type": "Heading",
+        "props": {
+          "text": {
+            "$state": "/ui/selectedFileName"
+          },
+          "level": "h2"
+        }
+      },
+      "fileDetailClose": {
+        "type": "IconButton",
+        "props": {
+          "icon": "X",
+          "tone": "muted",
+          "ariaLabel": "Close"
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selectedFileId",
+              "value": ""
+            }
+          }
+        }
+      },
+      "fileDetailBody": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "fileKvModified",
+          "fileKvSize",
+          "fileActions"
+        ]
+      },
+      "fileKvModified": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Modified",
+          "value": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$state": "/ui/selectedFileMod"
+              }
+            }
+          }
+        }
+      },
+      "fileKvSize": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Size",
+          "value": {
+            "$state": "/ui/selectedFileSize"
+          }
+        },
+        "visible": {
+          "$state": "/ui/selectedFileSize"
+        }
+      },
+      "fileActions": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "justify": "end"
+        },
+        "children": [
+          "fileOpenBtn"
+        ]
+      },
+      "fileOpenBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Open file",
+          "variant": "primary",
+          "size": "sm",
+          "leadingIcon": "ExternalLink"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$state": "/ui/selectedFileWebUrl"
               }
             }
           }
