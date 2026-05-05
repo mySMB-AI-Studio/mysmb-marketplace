@@ -1,7 +1,7 @@
 {
   "id": "m365-teams-mentions",
   "title": "Teams Activity",
-  "description": "Your recent Teams chats and activity — the closest proxy for a mentions feed.",
+  "description": "Your recent Teams chats grouped by type — Meetings, 1:1, and Groups.",
   "category": "productivity",
   "tags": [
     "m365",
@@ -37,7 +37,7 @@
     "mcp": "m365-teams",
     "tool": "list_chats",
     "params": {
-      "limit": 20
+      "limit": 50
     }
   },
   "spec": {
@@ -79,7 +79,7 @@
       "title": {
         "type": "Heading",
         "props": {
-          "text": "Mentions & replies",
+          "text": "Mentions & Replies",
           "level": "h2"
         }
       },
@@ -107,7 +107,9 @@
         "children": [
           "loading",
           "empty",
-          "list"
+          "sectionMeetings",
+          "sectionOneOnOne",
+          "sectionGroup"
         ]
       },
       "loading": {
@@ -138,7 +140,23 @@
           ]
         }
       },
-      "list": {
+      "sectionMeetings": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "headingMeetings",
+          "listMeetings"
+        ]
+      },
+      "headingMeetings": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Meetings"
+        }
+      },
+      "listMeetings": {
         "type": "Stack",
         "props": {
           "gap": "none"
@@ -148,10 +166,10 @@
           "key": "id"
         },
         "children": [
-          "row"
+          "rowMeeting"
         ]
       },
-      "row": {
+      "rowMeeting": {
         "type": "Row",
         "props": {
           "gap": "sm",
@@ -160,6 +178,10 @@
           "hover": true,
           "clickable": true
         },
+        "visible": {
+          "$item": "chatType",
+          "eq": "meeting"
+        },
         "on": {
           "click": {
             "action": "open_url",
@@ -167,7 +189,133 @@
               "url": {
                 "$computed": "fmt",
                 "args": {
-                  "pattern": "https://teams.microsoft.com/l/chat/0/0?users={id}",
+                  "pattern": "https://teams.microsoft.com/_#/conversations/{id}?ctx=chat",
+                  "id": {
+                    "$item": "id"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "children": [
+          "rowLeft",
+          "typeBadge"
+        ]
+      },
+      "sectionOneOnOne": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "headingOneOnOne",
+          "listOneOnOne"
+        ]
+      },
+      "headingOneOnOne": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "1:1"
+        }
+      },
+      "listOneOnOne": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "repeat": {
+          "statePath": "/m365-teams/list_chats",
+          "key": "id"
+        },
+        "children": [
+          "rowOneOnOne"
+        ]
+      },
+      "rowOneOnOne": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start",
+          "justify": "between",
+          "hover": true,
+          "clickable": true
+        },
+        "visible": {
+          "$item": "chatType",
+          "eq": "oneOnOne"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "https://teams.microsoft.com/_#/conversations/{id}?ctx=chat",
+                  "id": {
+                    "$item": "id"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "children": [
+          "rowLeft",
+          "typeBadge"
+        ]
+      },
+      "sectionGroup": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "headingGroup",
+          "listGroup"
+        ]
+      },
+      "headingGroup": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Groups"
+        }
+      },
+      "listGroup": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "repeat": {
+          "statePath": "/m365-teams/list_chats",
+          "key": "id"
+        },
+        "children": [
+          "rowGroup"
+        ]
+      },
+      "rowGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start",
+          "justify": "between",
+          "hover": true,
+          "clickable": true
+        },
+        "visible": {
+          "$item": "chatType",
+          "eq": "group"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "https://teams.microsoft.com/_#/conversations/{id}?ctx=chat",
                   "id": {
                     "$item": "id"
                   }

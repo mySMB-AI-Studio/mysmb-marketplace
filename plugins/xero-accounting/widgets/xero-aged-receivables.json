@@ -86,7 +86,7 @@
       "title": {
         "type": "Heading",
         "props": {
-          "text": "Aged receivables",
+          "text": "Aged Receivables",
           "level": "h2"
         }
       },
@@ -572,8 +572,35 @@
         },
         "children": [
           "pdfBtn",
-          "emailBtn"
+          "emailBtn",
+          "openInXeroBtn"
         ]
+      },
+      "openInXeroBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Open in Xero",
+          "variant": "primary",
+          "size": "sm",
+          "leadingIcon": "ExternalLink"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "https://invoicing.xero.com/edit/{id}",
+                  "id": {
+                    "$state": "/ui/selectedInvoiceId"
+                  }
+                }
+              },
+              "target": "_blank"
+            }
+          }
+        }
       },
       "pdfBtn": {
         "type": "Button",
@@ -611,17 +638,32 @@
       "emailBtn": {
         "type": "Button",
         "props": {
-          "label": "Email",
-          "variant": "primary",
+          "label": "Send reminder",
+          "variant": "secondary",
           "size": "sm",
           "leadingIcon": "Send"
         },
         "on": {
           "click": {
-            "action": "xero-accounting.email_invoice",
+            "action": "open_url",
             "params": {
-              "invoiceId": {
-                "$state": "/ui/selectedInvoiceId"
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "mailto:{to}?subject=Reminder%3A%20Invoice%20{num}%20outstanding&body=Hi%20{name}%2C%0A%0AThis%20is%20a%20friendly%20reminder%20that%20invoice%20{num}%20for%20{amount}%20is%20outstanding.%0A%0AThanks%2C",
+                  "to": {
+                    "$state": "/xero-accounting/get_invoice/Invoices/0/Contact/EmailAddress"
+                  },
+                  "name": {
+                    "$state": "/xero-accounting/get_invoice/Invoices/0/Contact/Name"
+                  },
+                  "num": {
+                    "$state": "/xero-accounting/get_invoice/Invoices/0/InvoiceNumber"
+                  },
+                  "amount": {
+                    "$state": "/xero-accounting/get_invoice/Invoices/0/AmountDue"
+                  }
+                }
               }
             }
           }
