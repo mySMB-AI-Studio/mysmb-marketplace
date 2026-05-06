@@ -276,6 +276,7 @@
         },
         "children": [
           "subject",
+          "scheduleRow",
           "subtitle"
         ]
       },
@@ -288,6 +289,34 @@
           "size": "md",
           "weight": "medium",
           "truncate": true
+        }
+      },
+      "scheduleRow": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{start} – {end} · {dur}",
+              "start": {
+                "$computed": "format_time",
+                "args": { "value": { "$item": "start/dateTime" } }
+              },
+              "end": {
+                "$computed": "format_time",
+                "args": { "value": { "$item": "end/dateTime" } }
+              },
+              "dur": {
+                "$computed": "duration_between",
+                "args": {
+                  "start": { "$item": "start/dateTime" },
+                  "end": { "$item": "end/dateTime" }
+                }
+              }
+            }
+          }
         }
       },
       "subtitle": {
