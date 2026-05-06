@@ -1,7 +1,7 @@
 {
   "id": "m365-teams-mentions",
   "title": "Teams Activity",
-  "description": "Recent Teams chats — unread first, with sender, snippet, and inline reply. Mark single chats or all chats as read without leaving the dashboard.",
+  "description": "Recent Teams chats — unread first, with sender, snippet, and inline reply. Click any chat for a chat-bubble drawer with composer pinned at the bottom.",
   "category": "productivity",
   "tags": [
     "m365",
@@ -54,13 +54,48 @@
           "header",
           "body",
           "drawer"
-        ]
+        ],
+        "watch": {
+          "/m365-teams/list_chats": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/teamsUnreadCount",
+                "value": {
+                  "$computed": "count_where",
+                  "args": {
+                    "value": {
+                      "$state": "/m365-teams/list_chats"
+                    },
+                    "whereField": "unread",
+                    "equals": true
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/teamsMentionCount",
+                "value": {
+                  "$computed": "count_where",
+                  "args": {
+                    "value": {
+                      "$state": "/m365-teams/list_chats"
+                    },
+                    "whereField": "mentionsMe",
+                    "equals": true
+                  }
+                }
+              }
+            }
+          ]
+        }
       },
       "header": {
         "type": "Header",
         "children": [
           "titleRow",
-          "subhead",
           "filterBar"
         ]
       },
@@ -73,7 +108,7 @@
         },
         "children": [
           "titleLeft",
-          "markAllReadBtn"
+          "subhead"
         ]
       },
       "titleLeft": {
@@ -100,34 +135,6 @@
         "props": {
           "text": "Teams Activity",
           "level": "h2"
-        }
-      },
-      "markAllReadBtn": {
-        "type": "IconButton",
-        "props": {
-          "icon": "CheckCheck",
-          "tone": "muted",
-          "ariaLabel": "Mark all chats as read"
-        },
-        "visible": {
-          "$state": "/_loading/m365-teams.list_chats",
-          "not": true
-        },
-        "on": {
-          "click": [
-            {
-              "action": "m365-teams.mark_all_chats_read",
-              "params": {
-                "limit": 50
-              }
-            },
-            {
-              "action": "m365-teams.list_chats",
-              "params": {
-                "limit": 25
-              }
-            }
-          ]
         }
       },
       "subhead": {
@@ -275,6 +282,8 @@
         "children": [
           "loading",
           "empty",
+          "emptyUnread",
+          "emptyMentions",
           "list"
         ]
       },
@@ -287,10 +296,35 @@
           "$state": "/_loading/m365-teams.list_chats"
         },
         "children": [
+          "loadingHeader",
           "sk1",
           "sk2",
           "sk3"
         ]
+      },
+      "loadingHeader": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "loadingSpinner",
+          "loadingLabel"
+        ]
+      },
+      "loadingSpinner": {
+        "type": "Spinner",
+        "props": {
+          "size": "sm"
+        }
+      },
+      "loadingLabel": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": "Loading chats…"
+        }
       },
       "sk1": {
         "type": "Skeleton",
@@ -316,7 +350,9 @@
       "empty": {
         "type": "Empty",
         "props": {
-          "message": "All caught up — no recent Teams activity."
+          "icon": "Inbox",
+          "title": "All caught up",
+          "message": "No recent Teams activity."
         },
         "visible": {
           "$and": [
@@ -327,6 +363,60 @@
             {
               "$state": "/m365-teams/list_chats/0",
               "not": true
+            }
+          ]
+        }
+      },
+      "emptyUnread": {
+        "type": "Empty",
+        "props": {
+          "icon": "CheckCircle2",
+          "title": "Inbox zero",
+          "message": "No unread chats. Switch to All to see your recent activity."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/m365-teams.list_chats",
+              "not": true
+            },
+            {
+              "$state": "/m365-teams/list_chats/0"
+            },
+            {
+              "$state": "/ui/teamsFilter",
+              "eq": "unread"
+            },
+            {
+              "$state": "/ui/teamsUnreadCount",
+              "eq": 0
+            }
+          ]
+        }
+      },
+      "emptyMentions": {
+        "type": "Empty",
+        "props": {
+          "icon": "AtSign",
+          "title": "No mentions",
+          "message": "Nobody has @-mentioned you in your recent chats."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/m365-teams.list_chats",
+              "not": true
+            },
+            {
+              "$state": "/m365-teams/list_chats/0"
+            },
+            {
+              "$state": "/ui/teamsFilter",
+              "eq": "mentions"
+            },
+            {
+              "$state": "/ui/teamsMentionCount",
+              "eq": 0
             }
           ]
         }
@@ -430,7 +520,7 @@
                     }
                   }
                 },
-                "limit": 20
+                "limit": 15
               }
             },
             {
@@ -653,7 +743,7 @@
       "drawer": {
         "type": "Overlay",
         "props": {
-          "maxWidth": "36rem"
+          "maxWidth": "32rem"
         },
         "children": [
           "drawerCard"
@@ -676,6 +766,12 @@
                 "statePath": "/ui/teamsReplyText",
                 "value": ""
               }
+            },
+            {
+              "action": "m365-teams.list_chats",
+              "params": {
+                "limit": 25
+              }
             }
           ]
         }
@@ -684,11 +780,23 @@
         "type": "Card",
         "children": [
           "drawerHeader",
-          "drawerBody"
+          "drawerBody",
+          "drawerComposerArea"
         ]
       },
       "drawerHeader": {
         "type": "Header",
+        "children": [
+          "drawerTitleRow"
+        ]
+      },
+      "drawerTitleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
         "children": [
           "drawerTitle",
           "drawerCloseBtn"
@@ -736,26 +844,58 @@
         }
       },
       "drawerBody": {
-        "type": "Stack",
-        "props": {
-          "gap": "sm"
-        },
+        "type": "Body",
         "children": [
           "drawerLoading",
-          "drawerMessages",
-          "drawerDivider",
-          "drawerComposer",
-          "drawerSendBtn"
+          "drawerEmpty",
+          "drawerMessages"
         ]
       },
       "drawerLoading": {
-        "type": "Skeleton",
+        "type": "Row",
         "props": {
-          "height": "8rem",
-          "rounded": "md"
+          "gap": "sm",
+          "align": "center"
         },
+        "children": [
+          "drawerLoadingSpinner",
+          "drawerLoadingLabel"
+        ],
         "visible": {
           "$state": "/_loading/m365-teams.list_messages"
+        }
+      },
+      "drawerLoadingSpinner": {
+        "type": "Spinner",
+        "props": {
+          "size": "sm"
+        }
+      },
+      "drawerLoadingLabel": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": "Loading conversation…"
+        }
+      },
+      "drawerEmpty": {
+        "type": "Empty",
+        "props": {
+          "icon": "MessageCircle",
+          "title": "No messages yet",
+          "message": "Be the first to say something."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/m365-teams.list_messages",
+              "not": true
+            },
+            {
+              "$state": "/m365-teams/list_messages/0",
+              "not": true
+            }
+          ]
         }
       },
       "drawerMessages": {
@@ -764,7 +904,8 @@
           "gap": "sm"
         },
         "children": [
-          "drawerMsgItem"
+          "messageRowOther",
+          "messageRowMe"
         ],
         "repeat": {
           "statePath": "/m365-teams/list_messages",
@@ -775,41 +916,159 @@
           "not": true
         }
       },
-      "drawerMsgItem": {
-        "type": "ActivityItem",
+      "messageRowOther": {
+        "type": "Row",
         "props": {
-          "title": {
-            "$item": "from/user/displayName"
-          },
-          "subtitle": {
-            "$computed": "html_to_text",
-            "args": {
-              "value": {
-                "$item": "body/content"
-              },
-              "maxLength": 500
+          "gap": "sm",
+          "align": "start",
+          "justify": "start"
+        },
+        "children": [
+          "msgAvatar",
+          "msgBubbleOther"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$item": "isFromMe",
+              "eq": false
+            },
+            {
+              "$item": "isSystemEvent",
+              "eq": false
             }
-          },
-          "timestamp": {
-            "$computed": "relative_time",
-            "args": {
-              "value": {
-                "$item": "createdDateTime"
-              }
-            }
-          },
+          ]
+        }
+      },
+      "msgAvatar": {
+        "type": "Avatar",
+        "props": {
+          "size": "sm",
           "initials": {
             "$computed": "initials",
             "args": {
               "value": {
-                "$item": "from/user/displayName"
+                "$item": "senderName"
               }
             }
           }
         }
       },
-      "drawerDivider": {
-        "type": "Divider"
+      "msgBubbleOther": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "msgBubbleOtherHeader",
+          "msgBubbleOtherText"
+        ]
+      },
+      "msgBubbleOtherHeader": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "baseline",
+          "justify": "between"
+        },
+        "children": [
+          "msgBubbleOtherSender",
+          "msgBubbleOtherTime"
+        ]
+      },
+      "msgBubbleOtherSender": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "weight": "semibold",
+          "text": {
+            "$item": "senderName"
+          }
+        }
+      },
+      "msgBubbleOtherTime": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$item": "relativeTime"
+          }
+        }
+      },
+      "msgBubbleOtherText": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "preserveLines": true,
+          "text": {
+            "$item": "text"
+          }
+        }
+      },
+      "messageRowMe": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start",
+          "justify": "end"
+        },
+        "children": [
+          "msgBubbleMe"
+        ],
+        "visible": {
+          "$item": "isFromMe",
+          "eq": true
+        }
+      },
+      "msgBubbleMe": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "msgBubbleMeHeader",
+          "msgBubbleMeText"
+        ]
+      },
+      "msgBubbleMeHeader": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "baseline",
+          "justify": "end"
+        },
+        "children": [
+          "msgBubbleMeTime"
+        ]
+      },
+      "msgBubbleMeTime": {
+        "type": "Caption",
+        "props": {
+          "tone": "accent",
+          "text": {
+            "$item": "relativeTime"
+          }
+        }
+      },
+      "msgBubbleMeText": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "preserveLines": true,
+          "text": {
+            "$item": "text"
+          }
+        }
+      },
+      "drawerComposerArea": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "drawerComposer",
+          "drawerSendBtn"
+        ]
       },
       "drawerComposer": {
         "type": "TextInput",
@@ -861,7 +1120,7 @@
                 "chatId": {
                   "$state": "/ui/teamsActiveChatId"
                 },
-                "limit": 20
+                "limit": 15
               }
             }
           ]
