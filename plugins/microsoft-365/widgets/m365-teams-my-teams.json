@@ -51,19 +51,18 @@
       "header": {
         "type": "Header",
         "children": [
-          "titleRow",
-          "count"
+          "titleRow"
         ]
       },
       "titleRow": {
         "type": "Row",
         "props": {
           "gap": "sm",
-          "align": "center"
+          "align": "start"
         },
         "children": [
           "titleIcon",
-          "title"
+          "titleStack"
         ]
       },
       "titleIcon": {
@@ -313,11 +312,16 @@
         ]
       },
       "channelHeader": {
-        "type": "Header",
+        "type": "Row",
         "children": [
           "channelTitle",
           "channelClose"
-        ]
+        ],
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        }
       },
       "channelTitle": {
         "type": "Heading",
@@ -332,8 +336,10 @@
         "type": "IconButton",
         "props": {
           "icon": "X",
-          "tone": "muted",
-          "ariaLabel": "Close"
+          "tone": "default",
+          "ariaLabel": "Close",
+          "size": "md",
+          "variant": "outlined"
         },
         "on": {
           "click": {
@@ -368,6 +374,16 @@
             "$item": "description"
           }
         }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "count"
+        ]
       }
     }
   },

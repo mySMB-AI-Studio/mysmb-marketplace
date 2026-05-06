@@ -53,19 +53,18 @@
       "header": {
         "type": "Header",
         "children": [
-          "titleRow",
-          "count"
+          "titleRow"
         ]
       },
       "titleRow": {
         "type": "Row",
         "props": {
           "gap": "sm",
-          "align": "center"
+          "align": "start"
         },
         "children": [
           "titleIcon",
-          "title"
+          "titleStack"
         ]
       },
       "titleIcon": {
@@ -238,7 +237,7 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{n} — {s}",
+              "pattern": "{n} \u2014 {s}",
               "n": {
                 "$item": "from/emailAddress/name"
               },
@@ -272,6 +271,16 @@
             }
           }
         }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "count"
+        ]
       }
     }
   },

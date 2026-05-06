@@ -57,19 +57,18 @@
       "header": {
         "type": "Header",
         "children": [
-          "titleRow",
-          "count"
+          "titleRow"
         ]
       },
       "titleRow": {
         "type": "Row",
         "props": {
           "gap": "sm",
-          "align": "center"
+          "align": "start"
         },
         "children": [
           "titleIcon",
-          "title"
+          "titleStack"
         ]
       },
       "titleIcon": {
@@ -267,7 +266,7 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{n} · {s}",
+              "pattern": "{n} \u00b7 {s}",
               "n": {
                 "$item": "from/emailAddress/name"
               },
@@ -335,11 +334,16 @@
         ]
       },
       "detailHeader": {
-        "type": "Header",
+        "type": "Row",
         "children": [
           "detailTitle",
           "detailClose"
-        ]
+        ],
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        }
       },
       "detailTitle": {
         "type": "Heading",
@@ -354,8 +358,10 @@
         "type": "IconButton",
         "props": {
           "icon": "X",
-          "tone": "muted",
-          "ariaLabel": "Close"
+          "tone": "default",
+          "ariaLabel": "Close",
+          "size": "md",
+          "variant": "outlined"
         },
         "on": {
           "click": [
@@ -449,7 +455,7 @@
           "value": {
             "$bindState": "/ui/replyText"
           },
-          "placeholder": "Type your reply…"
+          "placeholder": "Type your reply\u2026"
         }
       },
       "replyActions": {
@@ -512,6 +518,16 @@
             }
           ]
         }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "count"
+        ]
       }
     }
   },

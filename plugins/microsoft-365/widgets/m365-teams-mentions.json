@@ -103,18 +103,6 @@
         "type": "Row",
         "props": {
           "gap": "sm",
-          "align": "center",
-          "justify": "between"
-        },
-        "children": [
-          "titleLeft",
-          "subhead"
-        ]
-      },
-      "titleLeft": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
           "align": "center"
         },
         "children": [
@@ -135,50 +123,6 @@
         "props": {
           "text": "Teams Activity",
           "level": "h2"
-        }
-      },
-      "subhead": {
-        "type": "Caption",
-        "props": {
-          "tone": "muted",
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{unread} unread · {mentions} mentions · {total} recent",
-              "unread": {
-                "$computed": "count_where",
-                "args": {
-                  "value": {
-                    "$state": "/m365-teams/list_chats"
-                  },
-                  "whereField": "unread",
-                  "equals": true
-                }
-              },
-              "mentions": {
-                "$computed": "count_where",
-                "args": {
-                  "value": {
-                    "$state": "/m365-teams/list_chats"
-                  },
-                  "whereField": "mentionsMe",
-                  "equals": true
-                }
-              },
-              "total": {
-                "$computed": "count",
-                "args": {
-                  "value": {
-                    "$state": "/m365-teams/list_chats"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "visible": {
-          "$state": "/_loading/m365-teams.list_chats",
-          "not": true
         }
       },
       "filterBar": {

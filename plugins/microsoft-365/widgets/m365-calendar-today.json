@@ -75,19 +75,28 @@
       "header": {
         "type": "Header",
         "children": [
-          "titleRow",
-          "count"
+          "titleRow"
         ]
       },
       "titleRow": {
         "type": "Row",
         "props": {
           "gap": "sm",
-          "align": "center"
+          "align": "start"
         },
         "children": [
           "titleIcon",
-          "title"
+          "titleStack"
+        ]
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "count"
         ]
       },
       "titleIcon": {
@@ -101,7 +110,7 @@
       "title": {
         "type": "Heading",
         "props": {
-          "text": "Today",
+          "text": "Today's Schedule",
           "level": "h2"
         }
       },
@@ -170,7 +179,7 @@
       "empty": {
         "type": "Empty",
         "props": {
-          "message": "No meetings — go do deep work."
+          "message": "No meetings \u2014 go do deep work."
         },
         "visible": {
           "$and": [
@@ -299,20 +308,32 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{start} – {end} · {dur}",
+              "pattern": "{start} \u2013 {end} \u00b7 {dur}",
               "start": {
                 "$computed": "format_time",
-                "args": { "value": { "$item": "start/dateTime" } }
+                "args": {
+                  "value": {
+                    "$item": "start/dateTime"
+                  }
+                }
               },
               "end": {
                 "$computed": "format_time",
-                "args": { "value": { "$item": "end/dateTime" } }
+                "args": {
+                  "value": {
+                    "$item": "end/dateTime"
+                  }
+                }
               },
               "dur": {
                 "$computed": "duration_between",
                 "args": {
-                  "start": { "$item": "start/dateTime" },
-                  "end": { "$item": "end/dateTime" }
+                  "start": {
+                    "$item": "start/dateTime"
+                  },
+                  "end": {
+                    "$item": "end/dateTime"
+                  }
                 }
               }
             }
@@ -327,7 +348,7 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{loc} · {org}",
+              "pattern": "{loc} \u00b7 {org}",
               "loc": {
                 "$item": "location/displayName"
               },
@@ -367,11 +388,16 @@
         ]
       },
       "detailHeader": {
-        "type": "Header",
+        "type": "Row",
         "children": [
           "detailTitle",
           "detailClose"
-        ]
+        ],
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        }
       },
       "detailTitle": {
         "type": "Heading",
@@ -386,8 +412,10 @@
         "type": "IconButton",
         "props": {
           "icon": "X",
-          "tone": "muted",
-          "ariaLabel": "Close"
+          "tone": "default",
+          "ariaLabel": "Close",
+          "size": "md",
+          "variant": "outlined"
         },
         "on": {
           "click": {

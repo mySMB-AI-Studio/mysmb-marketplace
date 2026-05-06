@@ -55,19 +55,18 @@
       "header": {
         "type": "Header",
         "children": [
-          "titleRow",
-          "count"
+          "titleRow"
         ]
       },
       "titleRow": {
         "type": "Row",
         "props": {
           "gap": "sm",
-          "align": "center"
+          "align": "start"
         },
         "children": [
           "titleIcon",
-          "title"
+          "titleStack"
         ]
       },
       "titleIcon": {
@@ -214,7 +213,7 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{d} · {loc}",
+              "pattern": "{d} \u00b7 {loc}",
               "d": {
                 "$computed": "format_date",
                 "args": {
@@ -245,6 +244,16 @@
           "tone": "accent",
           "variant": "soft"
         }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "count"
+        ]
       }
     }
   },

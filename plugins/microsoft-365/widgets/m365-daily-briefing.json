@@ -1,7 +1,7 @@
 {
   "id": "m365-daily-briefing",
   "title": "Daily Briefing",
-  "description": "Morning digest: unread emails, today's meetings, and recent files — all in one glance.",
+  "description": "Morning digest: unread emails, today's meetings, and recent files \u2014 all in one glance.",
   "category": "productivity",
   "tags": [
     "m365",
@@ -94,8 +94,7 @@
       "header": {
         "type": "Header",
         "children": [
-          "titleRow",
-          "refreshBtn"
+          "titleRow"
         ]
       },
       "titleRow": {
@@ -122,38 +121,6 @@
         "props": {
           "text": "Daily Briefing",
           "level": "h2"
-        }
-      },
-      "refreshBtn": {
-        "type": "IconButton",
-        "props": {
-          "icon": "RefreshCw",
-          "tone": "muted",
-          "ariaLabel": "Refresh"
-        },
-        "on": {
-          "click": [
-            {
-              "action": "m365-mail-read.list_emails",
-              "params": {
-                "limit": 10
-              }
-            },
-            {
-              "action": "m365-calendar.list_events",
-              "params": {
-                "startDateTime": "$today",
-                "endDateTime": "$today_end",
-                "limit": 10
-              }
-            },
-            {
-              "action": "m365-files.list_recent_files",
-              "params": {
-                "limit": 5
-              }
-            }
-          ]
         }
       },
       "body": {
@@ -749,11 +716,16 @@
         ]
       },
       "emailDetailHeader": {
-        "type": "Header",
+        "type": "Row",
         "children": [
           "emailDetailTitle",
           "emailDetailClose"
-        ]
+        ],
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        }
       },
       "emailDetailTitle": {
         "type": "Heading",
@@ -768,8 +740,10 @@
         "type": "IconButton",
         "props": {
           "icon": "X",
-          "tone": "muted",
-          "ariaLabel": "Close"
+          "tone": "default",
+          "ariaLabel": "Close",
+          "size": "md",
+          "variant": "outlined"
         },
         "on": {
           "click": [
@@ -800,7 +774,7 @@
       "emailDetailSpinner": {
         "type": "Spinner",
         "props": {
-          "label": "Loading message…"
+          "label": "Loading message\u2026"
         },
         "visible": {
           "$state": "/m365-mail-read/get_email/id",
@@ -902,7 +876,7 @@
           "value": {
             "$bindState": "/ui/replyText"
           },
-          "placeholder": "Type your reply…"
+          "placeholder": "Type your reply\u2026"
         }
       },
       "emailReplyActions": {
@@ -1154,11 +1128,16 @@
         ]
       },
       "eventDetailHeader": {
-        "type": "Header",
+        "type": "Row",
         "children": [
           "eventDetailTitle",
           "eventDetailClose"
-        ]
+        ],
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        }
       },
       "eventDetailTitle": {
         "type": "Heading",
@@ -1173,8 +1152,10 @@
         "type": "IconButton",
         "props": {
           "icon": "X",
-          "tone": "muted",
-          "ariaLabel": "Close"
+          "tone": "default",
+          "ariaLabel": "Close",
+          "size": "md",
+          "variant": "outlined"
         },
         "on": {
           "click": {
@@ -1189,7 +1170,7 @@
       "eventDetailSpinner": {
         "type": "Spinner",
         "props": {
-          "label": "Loading event…"
+          "label": "Loading event\u2026"
         },
         "visible": {
           "$state": "/m365-calendar/get_event/id",
@@ -1331,11 +1312,16 @@
         ]
       },
       "fileDetailHeader": {
-        "type": "Header",
+        "type": "Row",
         "children": [
           "fileDetailTitle",
           "fileDetailClose"
-        ]
+        ],
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        }
       },
       "fileDetailTitle": {
         "type": "Heading",
@@ -1350,8 +1336,10 @@
         "type": "IconButton",
         "props": {
           "icon": "X",
-          "tone": "muted",
-          "ariaLabel": "Close"
+          "tone": "default",
+          "ariaLabel": "Close",
+          "size": "md",
+          "variant": "outlined"
         },
         "on": {
           "click": {

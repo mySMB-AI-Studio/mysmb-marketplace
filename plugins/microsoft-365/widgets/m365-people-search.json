@@ -106,7 +106,7 @@
           "value": {
             "$bindState": "/ui/q"
           },
-          "placeholder": "Name or email…"
+          "placeholder": "Name or email\u2026"
         }
       },
       "searchBtn": {
@@ -266,7 +266,7 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{title} · {dept}",
+              "pattern": "{title} \u00b7 {dept}",
               "title": {
                 "$item": "jobTitle"
               },
@@ -330,11 +330,16 @@
         ]
       },
       "profileHeader": {
-        "type": "Header",
+        "type": "Row",
         "children": [
           "profileTitleRow",
           "profileClose"
-        ]
+        ],
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        }
       },
       "profileTitleRow": {
         "type": "Row",
@@ -394,8 +399,10 @@
         "type": "IconButton",
         "props": {
           "icon": "X",
-          "tone": "muted",
-          "ariaLabel": "Close"
+          "tone": "default",
+          "ariaLabel": "Close",
+          "size": "md",
+          "variant": "outlined"
         },
         "on": {
           "click": {

@@ -59,19 +59,18 @@
       "header": {
         "type": "Header",
         "children": [
-          "titleGroup",
-          "unreadCount"
+          "titleGroup"
         ]
       },
       "titleGroup": {
         "type": "Row",
         "props": {
           "gap": "sm",
-          "align": "center"
+          "align": "start"
         },
         "children": [
           "titleIcon",
-          "title"
+          "titleStack"
         ]
       },
       "titleIcon": {
@@ -164,7 +163,7 @@
       "empty": {
         "type": "Empty",
         "props": {
-          "message": "Inbox zero — enjoy it while it lasts."
+          "message": "Inbox zero \u2014 enjoy it while it lasts."
         },
         "visible": {
           "$and": [
@@ -287,7 +286,7 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{name} — {subject}",
+              "pattern": "{name} \u2014 {subject}",
               "name": {
                 "$item": "from/emailAddress/name"
               },
@@ -354,11 +353,16 @@
         ]
       },
       "detailHeader": {
-        "type": "Header",
+        "type": "Row",
         "children": [
           "detailTitle",
           "detailClose"
-        ]
+        ],
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        }
       },
       "detailTitle": {
         "type": "Heading",
@@ -373,8 +377,10 @@
         "type": "IconButton",
         "props": {
           "icon": "X",
-          "tone": "muted",
-          "ariaLabel": "Close"
+          "tone": "default",
+          "ariaLabel": "Close",
+          "size": "md",
+          "variant": "outlined"
         },
         "on": {
           "click": [
@@ -405,7 +411,7 @@
       "detailSpinner": {
         "type": "Spinner",
         "props": {
-          "label": "Loading message…"
+          "label": "Loading message\u2026"
         },
         "visible": {
           "$state": "/m365-mail-read/get_email/id",
@@ -506,7 +512,7 @@
           "value": {
             "$bindState": "/ui/replyText"
           },
-          "placeholder": "Type your reply…"
+          "placeholder": "Type your reply\u2026"
         }
       },
       "replyActions": {
@@ -692,6 +698,16 @@
           "size": "sm",
           "tone": "destructive"
         }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "unreadCount"
+        ]
       }
     }
   },
