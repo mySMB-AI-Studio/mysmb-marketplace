@@ -82,7 +82,10 @@ without another prompt.
 - `list_messages` — Read channel/chat messages
 - `send_message` — Send to channel/chat
 - `reply_to_message` — Reply in a thread
-- `list_chats` — List 1:1 and group chats
+- `list_chats` — List 1:1, group, and meeting chats with display-ready
+  metadata (`displayName`, `senderName`, `snippet`, `relativeTime`,
+  `unread`, `isFromMe`, `bucket`). Sorted unread-first, then newest-first.
+  Optional `timeZone` (IANA name) for the recency-bucket day boundary.
 
 ### People (4 tools)
 - `search_people` — Search by name or email
