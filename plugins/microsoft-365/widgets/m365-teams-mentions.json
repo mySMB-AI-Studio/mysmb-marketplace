@@ -1,19 +1,20 @@
 {
   "id": "m365-teams-mentions",
   "title": "Teams Activity",
-  "description": "Your recent Teams chats grouped by type — Meetings, 1:1, and Groups.",
+  "description": "Recent Teams chats — who's waiting on you, sorted by recency.",
   "category": "productivity",
   "tags": [
     "m365",
     "teams",
-    "mentions",
-    "replies"
+    "chats",
+    "activity"
   ],
   "keywords": [
-    "mentions",
-    "replies",
+    "teams",
+    "chats",
     "activity",
-    "unread"
+    "recent",
+    "messages"
   ],
   "connectorsUsed": [
     "m365-teams"
@@ -26,7 +27,7 @@
     },
     "min": {
       "colSpan": 4,
-      "rowSpan": 5
+      "rowSpan": 4
     },
     "max": {
       "colSpan": 12,
@@ -37,7 +38,7 @@
     "mcp": "m365-teams",
     "tool": "list_chats",
     "params": {
-      "limit": 50
+      "limit": 25
     }
   },
   "spec": {
@@ -54,7 +55,7 @@
         "type": "Header",
         "children": [
           "titleRow",
-          "count"
+          "subhead"
         ]
       },
       "titleRow": {
@@ -71,7 +72,7 @@
       "titleIcon": {
         "type": "Icon",
         "props": {
-          "name": "AtSign",
+          "name": "MessagesSquare",
           "tone": "accent",
           "size": "sm"
         }
@@ -79,18 +80,33 @@
       "title": {
         "type": "Heading",
         "props": {
-          "text": "Mentions & Replies",
+          "text": "Teams Activity",
           "level": "h2"
         }
       },
-      "count": {
-        "type": "Eyebrow",
+      "subhead": {
+        "type": "Caption",
         "props": {
+          "tone": "muted",
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{n} active",
-              "n": {
+              "pattern": "{today} today · {total} recent",
+              "today": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$computed": "filter_date_range",
+                    "args": {
+                      "value": {
+                        "$state": "/m365-teams/list_chats"
+                      },
+                      "field": "lastUpdatedDateTime"
+                    }
+                  }
+                }
+              },
+              "total": {
                 "$computed": "count",
                 "args": {
                   "value": {
@@ -100,6 +116,10 @@
               }
             }
           }
+        },
+        "visible": {
+          "$state": "/_loading/m365-teams.list_chats",
+          "not": true
         }
       },
       "body": {
@@ -107,25 +127,48 @@
         "children": [
           "loading",
           "empty",
-          "sectionMeetings",
-          "sectionOneOnOne",
-          "sectionGroup"
+          "list"
         ]
       },
       "loading": {
-        "type": "Skeleton",
+        "type": "Stack",
         "props": {
-          "height": "8rem",
-          "rounded": "md"
+          "gap": "sm"
         },
         "visible": {
           "$state": "/_loading/m365-teams.list_chats"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ]
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
         }
       },
       "empty": {
         "type": "Empty",
         "props": {
-          "message": "No recent chat activity."
+          "message": "All caught up — no recent Teams activity."
         },
         "visible": {
           "$and": [
@@ -140,200 +183,71 @@
           ]
         }
       },
-      "sectionMeetings": {
+      "list": {
         "type": "Stack",
         "props": {
           "gap": "xs"
-        },
-        "children": [
-          "headingMeetings",
-          "listMeetings"
-        ]
-      },
-      "headingMeetings": {
-        "type": "Eyebrow",
-        "props": {
-          "text": "Meetings"
-        }
-      },
-      "listMeetings": {
-        "type": "Stack",
-        "props": {
-          "gap": "none"
         },
         "repeat": {
           "statePath": "/m365-teams/list_chats",
           "key": "id"
         },
         "children": [
-          "rowMeeting"
-        ]
-      },
-      "rowMeeting": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "start",
-          "justify": "between",
-          "hover": true,
-          "clickable": true
-        },
+          "row"
+        ],
         "visible": {
-          "$item": "chatType",
-          "eq": "meeting"
-        },
-        "on": {
-          "click": {
-            "action": "open_url",
-            "params": {
-              "url": {
-                "$computed": "fmt",
-                "args": {
-                  "pattern": "https://teams.microsoft.com/_#/conversations/{id}?ctx=chat",
-                  "id": {
-                    "$item": "id"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "children": [
-          "rowLeft",
-          "typeBadge"
-        ]
-      },
-      "sectionOneOnOne": {
-        "type": "Stack",
-        "props": {
-          "gap": "xs"
-        },
-        "children": [
-          "headingOneOnOne",
-          "listOneOnOne"
-        ]
-      },
-      "headingOneOnOne": {
-        "type": "Eyebrow",
-        "props": {
-          "text": "1:1"
+          "$state": "/_loading/m365-teams.list_chats",
+          "not": true
         }
       },
-      "listOneOnOne": {
-        "type": "Stack",
-        "props": {
-          "gap": "none"
-        },
-        "repeat": {
-          "statePath": "/m365-teams/list_chats",
-          "key": "id"
-        },
-        "children": [
-          "rowOneOnOne"
-        ]
-      },
-      "rowOneOnOne": {
+      "row": {
         "type": "Row",
         "props": {
           "gap": "sm",
-          "align": "start",
+          "align": "center",
           "justify": "between",
           "hover": true,
           "clickable": true
         },
-        "visible": {
-          "$item": "chatType",
-          "eq": "oneOnOne"
-        },
+        "children": [
+          "rowLeft",
+          "rowRight"
+        ],
         "on": {
           "click": {
             "action": "open_url",
             "params": {
               "url": {
-                "$computed": "fmt",
-                "args": {
-                  "pattern": "https://teams.microsoft.com/_#/conversations/{id}?ctx=chat",
-                  "id": {
-                    "$item": "id"
+                "$cond": {
+                  "$item": "webUrl"
+                },
+                "$then": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "webUrl"
+                    }
+                  }
+                },
+                "$else": {
+                  "$computed": "fmt",
+                  "args": {
+                    "pattern": "https://teams.microsoft.com/_#/conversations/{id}?ctx=chat",
+                    "id": {
+                      "$item": "id"
+                    }
                   }
                 }
               }
             }
           }
-        },
-        "children": [
-          "rowLeft",
-          "typeBadge"
-        ]
-      },
-      "sectionGroup": {
-        "type": "Stack",
-        "props": {
-          "gap": "xs"
-        },
-        "children": [
-          "headingGroup",
-          "listGroup"
-        ]
-      },
-      "headingGroup": {
-        "type": "Eyebrow",
-        "props": {
-          "text": "Groups"
         }
-      },
-      "listGroup": {
-        "type": "Stack",
-        "props": {
-          "gap": "none"
-        },
-        "repeat": {
-          "statePath": "/m365-teams/list_chats",
-          "key": "id"
-        },
-        "children": [
-          "rowGroup"
-        ]
-      },
-      "rowGroup": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "start",
-          "justify": "between",
-          "hover": true,
-          "clickable": true
-        },
-        "visible": {
-          "$item": "chatType",
-          "eq": "group"
-        },
-        "on": {
-          "click": {
-            "action": "open_url",
-            "params": {
-              "url": {
-                "$computed": "fmt",
-                "args": {
-                  "pattern": "https://teams.microsoft.com/_#/conversations/{id}?ctx=chat",
-                  "id": {
-                    "$item": "id"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "children": [
-          "rowLeft",
-          "typeBadge"
-        ]
       },
       "rowLeft": {
         "type": "Row",
         "props": {
           "gap": "sm",
-          "align": "start",
+          "align": "center",
           "grow": true
         },
         "children": [
@@ -344,15 +258,23 @@
       "avatar": {
         "type": "Avatar",
         "props": {
+          "size": "sm",
           "initials": {
             "$computed": "initials",
             "args": {
               "value": {
-                "$item": "topic"
+                "$cond": {
+                  "$item": "lastMessagePreview/from/user/displayName"
+                },
+                "$then": {
+                  "$item": "lastMessagePreview/from/user/displayName"
+                },
+                "$else": {
+                  "$item": "topic"
+                }
               }
             }
-          },
-          "size": "sm"
+          }
         }
       },
       "labels": {
@@ -362,28 +284,130 @@
           "grow": true
         },
         "children": [
-          "topic"
+          "topLine",
+          "snippet"
         ]
       },
-      "topic": {
+      "topLine": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "baseline"
+        },
+        "children": [
+          "sender",
+          "topicSuffix"
+        ]
+      },
+      "sender": {
         "type": "Text",
         "props": {
-          "text": {
-            "$item": "topic"
-          },
           "size": "sm",
           "weight": "medium",
-          "truncate": true
+          "truncate": true,
+          "text": {
+            "$cond": {
+              "$item": "lastMessagePreview/from/user/displayName"
+            },
+            "$then": {
+              "$item": "lastMessagePreview/from/user/displayName"
+            },
+            "$else": {
+              "$item": "topic"
+            }
+          }
         }
       },
-      "typeBadge": {
-        "type": "Badge",
+      "topicSuffix": {
+        "type": "Text",
         "props": {
+          "size": "xs",
+          "tone": "muted",
+          "truncate": true,
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "in {topic}",
+              "topic": {
+                "$item": "topic"
+              }
+            }
+          }
+        },
+        "visible": {
+          "$and": [
+            {
+              "$item": "lastMessagePreview/from/user/displayName"
+            },
+            {
+              "$item": "topic"
+            },
+            {
+              "$item": "chatType",
+              "neq": "oneOnOne"
+            }
+          ]
+        }
+      },
+      "snippet": {
+        "type": "Text",
+        "props": {
+          "size": "xs",
+          "tone": "muted",
+          "truncate": true,
+          "text": {
+            "$computed": "html_to_text",
+            "args": {
+              "value": {
+                "$item": "lastMessagePreview/body/content"
+              },
+              "maxLength": 140
+            }
+          }
+        },
+        "visible": {
+          "$item": "lastMessagePreview/body/content"
+        }
+      },
+      "rowRight": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "align": "end"
+        },
+        "children": [
+          "time",
+          "typeHint"
+        ]
+      },
+      "time": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "lastUpdatedDateTime"
+              }
+            }
+          }
+        },
+        "visible": {
+          "$item": "lastUpdatedDateTime"
+        }
+      },
+      "typeHint": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
           "text": {
             "$item": "chatType"
-          },
-          "tone": "muted",
-          "variant": "soft"
+          }
+        },
+        "visible": {
+          "$item": "chatType",
+          "neq": "oneOnOne"
         }
       }
     }
