@@ -10,7 +10,7 @@ Access Microsoft 365 emails, calendar, files, Teams, and people through Microsof
 | m365-mail-send | Compose, reply, forward, delete emails | `Mail.Send`, `Mail.ReadWrite` | **Admin consent required** |
 | m365-calendar | View, create, and manage calendar events | `Calendars.ReadWrite` | User consent (may require admin) |
 | m365-files | Browse, search, upload, and share OneDrive files | `Files.ReadWrite` | User consent (may require admin) |
-| m365-teams | Read and send Teams channel and chat messages | `ChannelMessage.Read.All`, `Chat.ReadWrite` | Admin consent required |
+| m365-teams | Read and send Teams channel and chat messages | `Team.ReadBasic.All`, `ChannelMessage.Read.All`, `Chat.ReadWrite` | Admin consent required |
 | m365-people | Search people, view profiles and org chart | `People.Read`, `User.Read` | User self-consent OK |
 
 Mail is split into two servers on purpose: `Mail.Send` and `Mail.ReadWrite` are
