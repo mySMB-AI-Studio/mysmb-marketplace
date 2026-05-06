@@ -76,16 +76,25 @@ without another prompt.
 - `share_file` — Create sharing link
 - `list_recent_files` — Recently accessed files
 
-### Teams (6 tools)
+### Teams (11 tools)
 - `list_teams` — List joined teams
 - `list_channels` — List team channels
 - `list_messages` — Read channel/chat messages
 - `send_message` — Send to channel/chat
 - `reply_to_message` — Reply in a thread
 - `list_chats` — List 1:1, group, and meeting chats with display-ready
-  metadata (`displayName`, `senderName`, `snippet`, `relativeTime`,
-  `unread`, `isFromMe`, `bucket`). Sorted unread-first, then newest-first.
-  Optional `timeZone` (IANA name) for the recency-bucket day boundary.
+  metadata (`displayName`, `senderName`, `snippet`, `snippetFallback`,
+  `relativeTime`, `unread`, `isFromMe`, `bucket`, `hasMention`, `mentionsMe`,
+  `reactions`). Sorted unread-first, then newest-first. Optional `timeZone`
+  (IANA name) for the recency-bucket day boundary.
+- `mark_chat_read` — Mark a chat as read for the current user (mirrors
+  what the Teams client does when a user opens a chat).
+- `mark_chat_unread` — Flip a chat back to unread (snooze flow).
+- `mark_all_chats_read` — Clear unread on every recent chat in one call;
+  returns `{ ok, marked, errors }` so partial success still wins.
+- `set_message_reaction` — Add an emoji reaction (`like` | `heart` |
+  `laugh` | `surprised` | `sad` | `angry`) to a chat message.
+- `unset_message_reaction` — Remove a previously-set reaction.
 
 ### People (4 tools)
 - `search_people` — Search by name or email
