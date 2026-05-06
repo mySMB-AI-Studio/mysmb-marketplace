@@ -1,19 +1,21 @@
 {
   "id": "m365-teams-mentions",
   "title": "Teams Activity",
-  "description": "Recent Teams chats — who's waiting on you, sorted by recency.",
+  "description": "Recent Teams chats — unread first, grouped by recency, with sender, snippet, and one-click open.",
   "category": "productivity",
   "tags": [
     "m365",
     "teams",
     "chats",
-    "activity"
+    "activity",
+    "unread"
   ],
   "keywords": [
     "teams",
     "chats",
     "activity",
     "recent",
+    "unread",
     "messages"
   ],
   "connectorsUsed": [
@@ -91,19 +93,25 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{today} today · {total} recent",
-              "today": {
-                "$computed": "count",
+              "pattern": "{unread} unread · {today} today · {total} recent",
+              "unread": {
+                "$computed": "count_where",
                 "args": {
                   "value": {
-                    "$computed": "filter_date_range",
-                    "args": {
-                      "value": {
-                        "$state": "/m365-teams/list_chats"
-                      },
-                      "field": "lastUpdatedDateTime"
-                    }
-                  }
+                    "$state": "/m365-teams/list_chats"
+                  },
+                  "whereField": "unread",
+                  "equals": true
+                }
+              },
+              "today": {
+                "$computed": "count_where",
+                "args": {
+                  "value": {
+                    "$state": "/m365-teams/list_chats"
+                  },
+                  "whereField": "bucket",
+                  "equals": "today"
                 }
               },
               "total": {
@@ -127,7 +135,9 @@
         "children": [
           "loading",
           "empty",
-          "list"
+          "groupToday",
+          "groupWeek",
+          "groupEarlier"
         ]
       },
       "loading": {
@@ -183,7 +193,34 @@
           ]
         }
       },
-      "list": {
+      "groupToday": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "headingToday",
+          "listToday"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/m365-teams.list_chats",
+              "not": true
+            },
+            {
+              "$state": "/m365-teams/list_chats/0"
+            }
+          ]
+        }
+      },
+      "headingToday": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Today"
+        }
+      },
+      "listToday": {
         "type": "Stack",
         "props": {
           "gap": "xs"
@@ -193,14 +230,10 @@
           "key": "id"
         },
         "children": [
-          "row"
-        ],
-        "visible": {
-          "$state": "/_loading/m365-teams.list_chats",
-          "not": true
-        }
+          "rowToday"
+        ]
       },
-      "row": {
+      "rowToday": {
         "type": "Row",
         "props": {
           "gap": "sm",
@@ -213,29 +246,165 @@
           "rowLeft",
           "rowRight"
         ],
+        "visible": {
+          "$item": "bucket",
+          "eq": "today"
+        },
         "on": {
           "click": {
             "action": "open_url",
             "params": {
               "url": {
-                "$cond": {
-                  "$item": "webUrl"
-                },
-                "$then": {
-                  "$computed": "identity",
-                  "args": {
-                    "value": {
-                      "$item": "webUrl"
-                    }
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "webUrl"
                   }
-                },
-                "$else": {
-                  "$computed": "fmt",
-                  "args": {
-                    "pattern": "https://teams.microsoft.com/_#/conversations/{id}?ctx=chat",
-                    "id": {
-                      "$item": "id"
-                    }
+                }
+              }
+            }
+          }
+        }
+      },
+      "groupWeek": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "headingWeek",
+          "listWeek"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/m365-teams.list_chats",
+              "not": true
+            },
+            {
+              "$state": "/m365-teams/list_chats/0"
+            }
+          ]
+        }
+      },
+      "headingWeek": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "This week"
+        }
+      },
+      "listWeek": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "statePath": "/m365-teams/list_chats",
+          "key": "id"
+        },
+        "children": [
+          "rowWeek"
+        ]
+      },
+      "rowWeek": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "rowLeft",
+          "rowRight"
+        ],
+        "visible": {
+          "$item": "bucket",
+          "eq": "week"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "webUrl"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "groupEarlier": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "headingEarlier",
+          "listEarlier"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/m365-teams.list_chats",
+              "not": true
+            },
+            {
+              "$state": "/m365-teams/list_chats/0"
+            }
+          ]
+        }
+      },
+      "headingEarlier": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Earlier"
+        }
+      },
+      "listEarlier": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "statePath": "/m365-teams/list_chats",
+          "key": "id"
+        },
+        "children": [
+          "rowEarlier"
+        ]
+      },
+      "rowEarlier": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "rowLeft",
+          "rowRight"
+        ],
+        "visible": {
+          "$item": "bucket",
+          "eq": "earlier"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "webUrl"
                   }
                 }
               }
@@ -251,9 +420,21 @@
           "grow": true
         },
         "children": [
+          "unreadDot",
           "avatar",
           "labels"
         ]
+      },
+      "unreadDot": {
+        "type": "Dot",
+        "props": {
+          "tone": "accent",
+          "size": "sm"
+        },
+        "visible": {
+          "$item": "unread",
+          "eq": true
+        }
       },
       "avatar": {
         "type": "Avatar",
@@ -264,13 +445,13 @@
             "args": {
               "value": {
                 "$cond": {
-                  "$item": "lastMessagePreview/from/user/displayName"
+                  "$item": "senderName"
                 },
                 "$then": {
-                  "$item": "lastMessagePreview/from/user/displayName"
+                  "$item": "senderName"
                 },
                 "$else": {
-                  "$item": "topic"
+                  "$item": "displayName"
                 }
               }
             }
@@ -295,25 +476,32 @@
           "align": "baseline"
         },
         "children": [
-          "sender",
+          "primaryLabel",
           "topicSuffix"
         ]
       },
-      "sender": {
+      "primaryLabel": {
         "type": "Text",
         "props": {
           "size": "sm",
-          "weight": "medium",
           "truncate": true,
+          "weight": {
+            "$cond": {
+              "$item": "unread",
+              "eq": true
+            },
+            "$then": "semibold",
+            "$else": "medium"
+          },
           "text": {
             "$cond": {
-              "$item": "lastMessagePreview/from/user/displayName"
+              "$item": "senderName"
             },
             "$then": {
-              "$item": "lastMessagePreview/from/user/displayName"
+              "$item": "senderName"
             },
             "$else": {
-              "$item": "topic"
+              "$item": "displayName"
             }
           }
         }
@@ -329,7 +517,7 @@
             "args": {
               "pattern": "in {topic}",
               "topic": {
-                "$item": "topic"
+                "$item": "displayName"
               }
             }
           }
@@ -337,10 +525,7 @@
         "visible": {
           "$and": [
             {
-              "$item": "lastMessagePreview/from/user/displayName"
-            },
-            {
-              "$item": "topic"
+              "$item": "senderName"
             },
             {
               "$item": "chatType",
@@ -356,17 +541,11 @@
           "tone": "muted",
           "truncate": true,
           "text": {
-            "$computed": "html_to_text",
-            "args": {
-              "value": {
-                "$item": "lastMessagePreview/body/content"
-              },
-              "maxLength": 140
-            }
+            "$item": "snippet"
           }
         },
         "visible": {
-          "$item": "lastMessagePreview/body/content"
+          "$item": "snippet"
         }
       },
       "rowRight": {
@@ -385,16 +564,11 @@
         "props": {
           "tone": "muted",
           "text": {
-            "$computed": "relative_time",
-            "args": {
-              "value": {
-                "$item": "lastUpdatedDateTime"
-              }
-            }
+            "$item": "relativeTime"
           }
         },
         "visible": {
-          "$item": "lastUpdatedDateTime"
+          "$item": "relativeTime"
         }
       },
       "typeHint": {
