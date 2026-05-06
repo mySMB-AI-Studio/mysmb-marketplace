@@ -46,14 +46,6 @@
     }
   },
   "spec": {
-    "state": {
-      "ui": {
-        "teamsFilter": "all",
-        "teamsActiveChatId": "",
-        "teamsActiveChatName": "",
-        "teamsReplyText": ""
-      }
-    },
     "root": "card",
     "elements": {
       "card": {
@@ -205,8 +197,16 @@
           "size": "sm",
           "variant": {
             "$cond": {
-              "$state": "/ui/teamsFilter",
-              "eq": "all"
+              "$and": [
+                {
+                  "$state": "/ui/teamsFilter",
+                  "neq": "unread"
+                },
+                {
+                  "$state": "/ui/teamsFilter",
+                  "neq": "mentions"
+                }
+              ]
             },
             "$then": "primary",
             "$else": "ghost"
@@ -362,16 +362,12 @@
           "rowRight"
         ],
         "visible": {
-          "$or": [
+          "$and": [
             {
-              "$state": "/ui/teamsFilter",
-              "eq": "all"
-            },
-            {
-              "$and": [
+              "$or": [
                 {
                   "$state": "/ui/teamsFilter",
-                  "eq": "unread"
+                  "neq": "unread"
                 },
                 {
                   "$item": "unread",
@@ -380,10 +376,10 @@
               ]
             },
             {
-              "$and": [
+              "$or": [
                 {
                   "$state": "/ui/teamsFilter",
-                  "eq": "mentions"
+                  "neq": "mentions"
                 },
                 {
                   "$item": "mentionsMe",
