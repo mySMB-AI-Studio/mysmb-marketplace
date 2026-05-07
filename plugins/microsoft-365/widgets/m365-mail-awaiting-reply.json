@@ -390,9 +390,7 @@
         "children": [
           "kvFrom",
           "bodyPreview",
-          "divider",
-          "replyRow",
-          "replyActions"
+          "actions"
         ],
         "visible": {
           "$state": "/m365-mail-read/get_email/id",
@@ -437,88 +435,6 @@
           "size": "sm"
         }
       },
-      "divider": {
-        "type": "Divider"
-      },
-      "replyRow": {
-        "type": "FormRow",
-        "props": {
-          "label": "Quick reply"
-        },
-        "children": [
-          "replyInput"
-        ]
-      },
-      "replyInput": {
-        "type": "TextInput",
-        "props": {
-          "value": {
-            "$bindState": "/ui/replyText"
-          },
-          "placeholder": "Type your reply\u2026"
-        }
-      },
-      "replyActions": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "justify": "end"
-        },
-        "children": [
-          "sendBtn"
-        ]
-      },
-      "sendBtn": {
-        "type": "Button",
-        "props": {
-          "label": "Send reply",
-          "variant": "primary",
-          "size": "sm",
-          "leadingIcon": "Send",
-          "disabled": {
-            "$cond": {
-              "$state": "/ui/replyText"
-            },
-            "$then": false,
-            "$else": true
-          }
-        },
-        "on": {
-          "click": [
-            {
-              "action": "m365-mail-send.reply_to_email",
-              "params": {
-                "id": {
-                  "$state": "/ui/selectedEmailId"
-                },
-                "comment": {
-                  "$state": "/ui/replyText"
-                }
-              }
-            },
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/selectedEmailId",
-                "value": ""
-              }
-            },
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/replyText",
-                "value": ""
-              }
-            },
-            {
-              "action": "m365-mail-read.list_emails",
-              "params": {
-                "limit": 30
-              }
-            }
-          ]
-        }
-      },
       "titleStack": {
         "type": "Stack",
         "props": {
@@ -527,6 +443,35 @@
         "children": [
           "title",
           "count"
+        ]
+      },
+      "openBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Open in Outlook",
+          "variant": "primary",
+          "size": "sm",
+          "leadingIcon": "ExternalLink"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$state": "/m365-mail-read/get_email/webLink"
+              }
+            }
+          }
+        }
+      },
+      "actions": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "justify": "end"
+        },
+        "children": [
+          "openBtn"
         ]
       }
     }

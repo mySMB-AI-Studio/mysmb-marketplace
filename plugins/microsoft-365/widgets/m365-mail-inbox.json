@@ -429,11 +429,7 @@
           "kvFrom",
           "kvReceived",
           "bodyPreview",
-          "divider",
-          "replyRow",
-          "replyActions",
-          "replySentBanner",
-          "replyErrorBanner"
+          "actions"
         ],
         "visible": {
           "$state": "/m365-mail-read/get_email/id",
@@ -493,212 +489,6 @@
           "maxHeight": 520
         }
       },
-      "divider": {
-        "type": "Divider"
-      },
-      "replyRow": {
-        "type": "FormRow",
-        "props": {
-          "label": "Reply",
-          "hint": "Plain text"
-        },
-        "children": [
-          "replyInput"
-        ]
-      },
-      "replyInput": {
-        "type": "TextInput",
-        "props": {
-          "value": {
-            "$bindState": "/ui/replyText"
-          },
-          "placeholder": "Type your reply\u2026"
-        }
-      },
-      "replyActions": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "justify": "end"
-        },
-        "children": [
-          "deleteBtn",
-          "replyBtn"
-        ]
-      },
-      "deleteBtn": {
-        "type": "Button",
-        "props": {
-          "label": "Delete",
-          "variant": "ghost",
-          "size": "sm",
-          "leadingIcon": "Trash2"
-        },
-        "on": {
-          "click": [
-            {
-              "action": "m365-mail-send.delete_email",
-              "params": {
-                "id": {
-                  "$state": "/ui/selectedEmailId"
-                }
-              }
-            },
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/selectedEmailId",
-                "value": ""
-              }
-            },
-            {
-              "action": "m365-mail-read.list_emails",
-              "params": {
-                "limit": 20
-              }
-            }
-          ]
-        }
-      },
-      "replyBtn": {
-        "type": "Button",
-        "props": {
-          "label": "Send reply",
-          "variant": "primary",
-          "size": "sm",
-          "leadingIcon": "Send"
-        },
-        "on": {
-          "click": [
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/replySent",
-                "value": ""
-              }
-            },
-            {
-              "action": "m365-mail-send.reply_to_email",
-              "params": {
-                "id": {
-                  "$state": "/ui/selectedEmailId"
-                },
-                "comment": {
-                  "$state": "/ui/replyText"
-                }
-              }
-            },
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/replySent",
-                "value": {
-                  "$cond": {
-                    "$state": "/_errors/m365-mail-send.reply_to_email"
-                  },
-                  "$then": "",
-                  "$else": true
-                }
-              }
-            },
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/replyText",
-                "value": {
-                  "$cond": {
-                    "$state": "/_errors/m365-mail-send.reply_to_email"
-                  },
-                  "$then": {
-                    "$state": "/ui/replyText"
-                  },
-                  "$else": ""
-                }
-              }
-            }
-          ]
-        }
-      },
-      "replySentBanner": {
-        "type": "Section",
-        "props": {
-          "variant": "muted"
-        },
-        "children": [
-          "replySentRow"
-        ],
-        "visible": {
-          "$state": "/ui/replySent"
-        }
-      },
-      "replySentRow": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "center"
-        },
-        "children": [
-          "replySentIcon",
-          "replySentText"
-        ]
-      },
-      "replySentIcon": {
-        "type": "Icon",
-        "props": {
-          "name": "CheckCircle2",
-          "tone": "success",
-          "size": "sm"
-        }
-      },
-      "replySentText": {
-        "type": "Text",
-        "props": {
-          "text": "Reply sent.",
-          "size": "sm",
-          "tone": "success"
-        }
-      },
-      "replyErrorBanner": {
-        "type": "Section",
-        "props": {
-          "variant": "bordered"
-        },
-        "children": [
-          "replyErrorRow"
-        ],
-        "visible": {
-          "$state": "/_errors/m365-mail-send.reply_to_email"
-        }
-      },
-      "replyErrorRow": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "center"
-        },
-        "children": [
-          "replyErrorIcon",
-          "replyErrorText"
-        ]
-      },
-      "replyErrorIcon": {
-        "type": "Icon",
-        "props": {
-          "name": "AlertTriangle",
-          "tone": "destructive",
-          "size": "sm"
-        }
-      },
-      "replyErrorText": {
-        "type": "Text",
-        "props": {
-          "text": {
-            "$state": "/_errors/m365-mail-send.reply_to_email"
-          },
-          "size": "sm",
-          "tone": "destructive"
-        }
-      },
       "titleStack": {
         "type": "Stack",
         "props": {
@@ -707,6 +497,35 @@
         "children": [
           "title",
           "unreadCount"
+        ]
+      },
+      "openBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Open in Outlook",
+          "variant": "primary",
+          "size": "sm",
+          "leadingIcon": "ExternalLink"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$state": "/m365-mail-read/get_email/webLink"
+              }
+            }
+          }
+        }
+      },
+      "actions": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "justify": "end"
+        },
+        "children": [
+          "openBtn"
         ]
       }
     }
