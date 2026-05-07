@@ -58,22 +58,14 @@
           "fileOverlay"
         ],
         "watch": {
-          "/m365-mail-read/list_emails": [
-            {
-              "action": "m365-calendar.list_events",
-              "params": {
-                "startDateTime": "$today",
-                "endDateTime": "$today_end",
-                "limit": 10
-              }
-            },
-            {
-              "action": "m365-files.list_recent_files",
-              "params": {
-                "limit": 5
-              }
+          "/m365-mail-read/list_emails": {
+            "action": "m365-calendar.list_events",
+            "params": {
+              "startDateTime": "$today",
+              "endDateTime": "$today_end",
+              "limit": 10
             }
-          ],
+          },
           "/m365-calendar/list_events": {
             "action": "setState",
             "params": {
@@ -427,8 +419,8 @@
           "clickable": true
         },
         "children": [
-          "calWhen",
-          "calLabels"
+          "calLabels",
+          "calWhen"
         ],
         "on": {
           "click": [
@@ -518,7 +510,15 @@
         "children": [
           "filesHead",
           "filesList"
-        ]
+        ],
+        "watch": {
+          "/m365-mail-read/list_emails": {
+            "action": "m365-files.list_recent_files",
+            "params": {
+              "limit": 5
+            }
+          }
+        }
       },
       "filesHead": {
         "type": "Heading",
