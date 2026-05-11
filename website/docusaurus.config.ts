@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'mySMB Marketplace',
   tagline: 'Curated agent plugins for SMB-focused business integrations',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/favicon.svg',
 
   url: 'https://mySMB-AI-Studio.github.io',
   baseUrl: '/mysmb-marketplace/',

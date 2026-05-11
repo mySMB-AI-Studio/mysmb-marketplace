@@ -39,7 +39,10 @@ export default function PluginCatalog(): JSX.Element {
 
   return (
     <>
-      <div className="catalog-filters">
+      <div className="catalog-toolbar">
+        <span className="catalog-toolbar__count">
+          {String(visible.length).padStart(2, '0')} / {String(plugins.length).padStart(2, '0')}
+        </span>
         {categories.map((cat) => (
           <button
             key={cat}
@@ -59,36 +62,37 @@ export default function PluginCatalog(): JSX.Element {
           const path = pluginPath(p);
           const ghUrl = `https://github.com/mySMB-AI-Studio/mysmb-marketplace/tree/main/${path}`;
           return (
-            <div key={p.name} className="catalog-card">
-              {p.category && (
-                <div className="catalog-category">{p.category}</div>
-              )}
-              <h3>{p.displayName || p.name}</h3>
-              <p>{p.description}</p>
+            <Link key={p.name} to={ghUrl} className="catalog-card">
+              <div className="catalog-card__head">
+                {p.category && (
+                  <span className="catalog-card__category">{p.category}</span>
+                )}
+                {p.version && (
+                  <span className="catalog-card__version">v{p.version}</span>
+                )}
+              </div>
+              <h3 className="catalog-card__title">{p.displayName || p.name}</h3>
+              <p className="catalog-card__desc">{p.description}</p>
               {p.tags && p.tags.length > 0 && (
-                <div className="catalog-tags">
-                  {p.tags.slice(0, 5).map((t) => (
-                    <span key={t} className="catalog-tag">
+                <div className="catalog-card__tags">
+                  {p.tags.slice(0, 4).map((t) => (
+                    <span key={t} className="catalog-card__tag">
                       {t}
                     </span>
                   ))}
                 </div>
               )}
-              <Link className="catalog-link" to={ghUrl}>
-                View on GitHub →
-              </Link>
-            </div>
+              <span className="catalog-card__cta">View on GitHub</span>
+            </Link>
           );
         })}
       </div>
 
-      <p>
-        <small>
-          Source of truth:{' '}
-          <Link to="https://github.com/mySMB-AI-Studio/mysmb-marketplace/blob/main/.claude-plugin/marketplace.json">
-            <code>.claude-plugin/marketplace.json</code>
-          </Link>
-        </small>
+      <p className="catalog-source">
+        Source of truth:{' '}
+        <Link to="https://github.com/mySMB-AI-Studio/mysmb-marketplace/blob/main/.claude-plugin/marketplace.json">
+          <code>.claude-plugin/marketplace.json</code>
+        </Link>
       </p>
     </>
   );
