@@ -6,7 +6,9 @@
 
 Accounting, CRM, HR, payroll, community, productivity — wrapped as Model Context Protocol (MCP) servers and ready to install into [MyHub](https://github.com/mySMB-AI-Studio/myHubV2) tenants or directly into Claude Code.
 
-[Quick start](#quick-start) · [Catalog](#plugin-catalog) · [Build a plugin](CREATING_PLUGINS.md) · [Policy](#policy)
+### 📚 [Read the docs →](https://mysmb-ai-studio.github.io/mysmb-marketplace/)
+
+[Quick start](#quick-start) · [Catalog](#plugin-catalog) · [Authoring guide](https://mysmb-ai-studio.github.io/mysmb-marketplace/authoring/overview) · [Widget tutorials](https://mysmb-ai-studio.github.io/mysmb-marketplace/widgets/tutorial-1-first-widget) · [Policy](#policy)
 
 </div>
 
@@ -45,7 +47,7 @@ Tenants pick up new plugins automatically — MyHub pulls this repo at provision
 
 ### For plugin authors
 
-Read **[CREATING_PLUGINS.md](CREATING_PLUGINS.md)** — the full end-to-end guide covering MCP server, skills, agents, widget elements, and widgets. Then run the validator before opening a PR:
+Read the **[full developer documentation](https://mysmb-ai-studio.github.io/mysmb-marketplace/)** — multi-chapter authoring guide, four hands-on widget tutorials, and complete file-format reference. The single-page summary lives in [`CREATING_PLUGINS.md`](CREATING_PLUGINS.md). Then run the validator before opening a PR:
 
 ```bash
 npx tsx scripts/validate.ts
@@ -77,16 +79,21 @@ npx tsx scripts/validate.ts
 
 ## Documentation
 
-| Topic | Where to look |
+The full developer documentation is published at **[mysmb-ai-studio.github.io/mysmb-marketplace](https://mysmb-ai-studio.github.io/mysmb-marketplace/)** and rebuilt automatically on every push to `main`.
+
+| Topic | Where |
 | --- | --- |
-| **Build a plugin from scratch** | **[CREATING_PLUGINS.md](CREATING_PLUGINS.md)** — covers MCP server, skills, agents, widgets, widget elements, validation, and shipping. The single source of truth for authoring. |
-| **Plugin format reference** | [`CREATING_PLUGINS.md` §11](CREATING_PLUGINS.md#11-reference-file-formats) — every required field for `plugin.json`, `.mcp.json`, skill / agent frontmatter, widget JSON, widget-elements module. |
-| **Validator rules** | [`CREATING_PLUGINS.md` §12](CREATING_PLUGINS.md#12-reference-rules-the-validator-enforces) and [`scripts/validate.ts`](scripts/validate.ts). |
-| **MCP server transport choice** | [`CREATING_PLUGINS.md` §4](CREATING_PLUGINS.md#4-step-2--wire-the-mcp-server). |
-| **Skills vs agents** | [`CREATING_PLUGINS.md` §5–6](CREATING_PLUGINS.md#5-step-3--add-skills). |
-| **Widget JSON spec primitives** | [`CREATING_PLUGINS.md` §8](CREATING_PLUGINS.md#8-step-6--add-widgets). |
-| **OAuth gateway for hosted MCP servers** | [`myhub-mcp-servers` repo](https://github.com/mySMB-AI-Studio/myhub-mcp-servers) — used by every Xero/Zoho/M365 plugin in the catalog. |
-| **MyHub consumer integration** | [MyHub repo](https://github.com/mySMB-AI-Studio/myHubV2), `packages/shared/src/plugins/`. |
+| **Getting started** | [docs site → Getting started](https://mysmb-ai-studio.github.io/mysmb-marketplace/intro) |
+| **Plugin catalog (live, filterable)** | [docs site → Catalog](https://mysmb-ai-studio.github.io/mysmb-marketplace/catalog) |
+| **Authoring guide (6 chapters)** | [docs site → Authoring](https://mysmb-ai-studio.github.io/mysmb-marketplace/authoring/overview) — MCP server, skills, agents, widget elements, validate & ship |
+| **Widget tutorials (4 hands-on)** | [docs site → Widgets](https://mysmb-ai-studio.github.io/mysmb-marketplace/widgets/overview) — first widget → live data → computed transforms → composite multi-section |
+| **Spec primitives** | [docs site → Spec primitives](https://mysmb-ai-studio.github.io/mysmb-marketplace/widgets/spec-primitives) — `$state`, `$computed`, `$item`, `$prop`, `$template`, `watch` |
+| **Components reference** | [docs site → Components](https://mysmb-ai-studio.github.io/mysmb-marketplace/widgets/components-reference) |
+| **About json-render** | [docs site → json-render](https://mysmb-ai-studio.github.io/mysmb-marketplace/widgets/json-render) → [Vercel json-render](https://json-render.vercel.app/) |
+| **File-format reference** | [docs site → Reference](https://mysmb-ai-studio.github.io/mysmb-marketplace/reference/plugin-json) — `plugin.json`, `.mcp.json`, widget JSON, validator rules |
+| **Single-page authoring summary** | [`CREATING_PLUGINS.md`](CREATING_PLUGINS.md) — the same content condensed into one file for offline reading |
+| **OAuth gateway for hosted MCP servers** | [`myhub-mcp-servers` repo](https://github.com/mySMB-AI-Studio/myhub-mcp-servers) |
+| **MyHub consumer integration** | [MyHub repo](https://github.com/mySMB-AI-Studio/myHubV2), `packages/shared/src/plugins/` |
 
 ---
 
