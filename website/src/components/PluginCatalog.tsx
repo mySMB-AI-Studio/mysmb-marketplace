@@ -8,7 +8,6 @@ type Plugin = {
   description: string;
   category?: string;
   version?: string;
-  tags?: string[];
   source?: string | { path?: string; source?: string };
 };
 
@@ -41,7 +40,7 @@ export default function PluginCatalog(): JSX.Element {
     <>
       <div className="catalog-toolbar">
         <span className="catalog-toolbar__count">
-          {String(visible.length).padStart(2, '0')} / {String(plugins.length).padStart(2, '0')}
+          {visible.length} of {plugins.length}
         </span>
         {categories.map((cat) => (
           <button
@@ -57,38 +56,28 @@ export default function PluginCatalog(): JSX.Element {
         ))}
       </div>
 
-      <div className="catalog-grid">
+      <div className="catalog-table">
+        <div className="catalog-row catalog-row--head">
+          <span>Plugin</span>
+          <span>Category</span>
+          <span>Description</span>
+          <span></span>
+        </div>
         {visible.map((p) => {
           const path = pluginPath(p);
           const ghUrl = `https://github.com/mySMB-AI-Studio/mysmb-marketplace/tree/main/${path}`;
           return (
-            <Link key={p.name} to={ghUrl} className="catalog-card">
-              <div className="catalog-card__head">
-                {p.category && (
-                  <span className="catalog-card__category">{p.category}</span>
-                )}
-                {p.version && (
-                  <span className="catalog-card__version">v{p.version}</span>
-                )}
-              </div>
-              <h3 className="catalog-card__title">{p.displayName || p.name}</h3>
-              <p className="catalog-card__desc">{p.description}</p>
-              {p.tags && p.tags.length > 0 && (
-                <div className="catalog-card__tags">
-                  {p.tags.slice(0, 4).map((t) => (
-                    <span key={t} className="catalog-card__tag">
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              )}
-              <span className="catalog-card__cta">View on GitHub</span>
+            <Link key={p.name} to={ghUrl} className="catalog-row">
+              <span className="catalog-row__name">{p.displayName || p.name}</span>
+              <span className="catalog-row__category">{p.category || '—'}</span>
+              <span className="catalog-row__desc">{p.description}</span>
+              <span className="catalog-row__cta">View →</span>
             </Link>
           );
         })}
       </div>
 
-      <p className="catalog-source">
+      <p style={{ fontSize: '0.85rem', color: 'var(--ink-500)' }}>
         Source of truth:{' '}
         <Link to="https://github.com/mySMB-AI-Studio/mysmb-marketplace/blob/main/.claude-plugin/marketplace.json">
           <code>.claude-plugin/marketplace.json</code>

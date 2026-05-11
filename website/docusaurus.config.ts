@@ -43,7 +43,7 @@ const config: Config = {
   themeConfig: {
     image: 'img/social-card.png',
     colorMode: {
-      defaultMode: 'dark',
+      defaultMode: 'light',
       respectPrefersColorScheme: true,
     },
     navbar: {
@@ -53,14 +53,11 @@ const config: Config = {
         src: 'img/logo.svg',
       },
       items: [
-        {
-          type: 'docSidebar',
-          sidebarId: 'docsSidebar',
-          position: 'left',
-          label: 'Docs',
-        },
-        { to: '/catalog', label: 'Plugin catalog', position: 'left' },
+        { to: '/intro', label: 'Get started', position: 'left' },
+        { to: '/authoring/overview', label: 'Authoring', position: 'left' },
         { to: '/widgets/overview', label: 'Widgets', position: 'left' },
+        { to: '/reference/plugin-json', label: 'Reference', position: 'left' },
+        { to: '/catalog', label: 'Catalog', position: 'left' },
         {
           href: 'https://github.com/mySMB-AI-Studio/mysmb-marketplace',
           label: 'GitHub',

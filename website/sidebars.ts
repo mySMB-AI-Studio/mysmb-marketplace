@@ -2,11 +2,15 @@ import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
 
 const sidebars: SidebarsConfig = {
   docsSidebar: [
-    'intro',
-    'catalog',
     {
       type: 'category',
-      label: 'Authoring guide',
+      label: 'Get started',
+      collapsed: false,
+      items: ['intro', 'catalog'],
+    },
+    {
+      type: 'category',
+      label: 'Authoring a plugin',
       collapsed: false,
       items: [
         'authoring/overview',
@@ -19,7 +23,7 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: 'Widgets',
+      label: 'Building widgets',
       collapsed: false,
       items: [
         'widgets/overview',
@@ -42,7 +46,7 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Reference',
-      collapsed: true,
+      collapsed: false,
       items: [
         'reference/plugin-json',
         'reference/mcp-json',
