@@ -6,52 +6,161 @@
 
 Accounting, CRM, HR, payroll, community, productivity — wrapped as Model Context Protocol (MCP) servers and ready to install into [MyHub](https://github.com/mySMB-AI-Studio/myHubV2) tenants or directly into Claude Code.
 
-### 📚 [Read the docs →](https://mysmb-ai-studio.github.io/mysmb-marketplace/)
+### [Read the docs](https://mysmb-ai-studio.github.io/mysmb-marketplace/)
 
-[Quick start](#quick-start) · [Catalog](#plugin-catalog) · [Authoring guide](https://mysmb-ai-studio.github.io/mysmb-marketplace/authoring/overview) · [Widget tutorials](https://mysmb-ai-studio.github.io/mysmb-marketplace/widgets/tutorial-1-first-widget) · [Policy](#policy)
+[Quick start](#quick-start) · [What you can build](#what-you-can-build) · [Catalog](#plugin-catalog) · [Install an existing plugin](#install-an-existing-plugin) · [Policy](#policy)
 
 </div>
 
 ---
 
-## What this is
+## Quick start
 
-mySMB Marketplace is a registry of agent plugins. Every plugin wraps a business tool as an **MCP server** so an AI assistant can read and write to it in natural language. Plugins use the **standard Claude Code plugin format**, so the same artefact installs into:
+Scaffold a new plugin project and start building widgets in your browser:
+
+```
+npx --package github:mySMB-AI-Studio/mysmb-marketplace -- create-mysmb-plugin my-plugin
+cd my-plugin
+npm install
+npm run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173) — that's the **widget harness**. Edit a widget JSON and the preview updates live. The bottom panel lists every MCP server you've wired in `plugin/.mcp.json` and all the tools each one exposes.
+
+In a second terminal, from the same folder:
+
+```
+claude
+```
+
+Claude Code reads the `CLAUDE.md` and `.claude/skills/` we shipped in the scaffold and knows how to author plugins. Try:
+
+> "Add a widget that shows my five most recent invoices."
+>
+> "Add a `$computed` helper that formats dates as `dd MMM`."
+>
+> "Add a slash command for creating a new contact."
+
+Claude writes the file, you reload the harness, the change is live.
+
+> Don't have Node.js or Claude Code yet? Jump to [prerequisites](#prerequisites).
+
+---
+
+## What you can build
+
+A plugin is a packaging unit. It can ship any combination of:
+
+| Asset | What it is |
+|---|---|
+| **MCP server** | The tool API the LLM calls — `stdio`, `sse`, or `http`. Wire upstream npm packages or build your own. |
+| **Skills** | Slash-command instructions for narrow tasks (`/<plugin>-<task>`). |
+| **Agents** | A persona / sub-agent that owns a domain. |
+| **Widgets** | Declarative JSON UI tiles for the MyHub dashboard. |
+| **Widget elements** | JS helpers (`$computed` functions, composite components, actions) the widgets reference. |
+
+You don't need all five. The minimum legal plugin is `plugin.json` + `.mcp.json` + `README.md`. Add the rest as your use case demands.
+
+The same plugin installs in two places:
 
 - **MyHub tenants** — auto-installed at provisioning time from the tenant's connector subscriptions.
 - **Claude Code (CLI / Desktop / IDE)** — installed individually by any developer with one slash command.
 
-A plugin can ship any combination of an MCP server, slash-command **skills**, persona **agents**, declarative **widgets** for the MyHub dashboard, and JS **widget elements** that power those widgets.
+---
+
+## Prerequisites
+
+Two things on your machine. Open your terminal and check whether each is already installed.
+
+**Node.js 18 or newer.** Check with `node --version`. If you don't have it:
+
+- **macOS** — [install Homebrew](https://brew.sh) once, then `brew install node`.
+- **Windows** — `winget install OpenJS.NodeJS.LTS` from PowerShell, or grab the installer at [nodejs.org](https://nodejs.org).
+- **Linux** — use your distro's package manager, or [the official binaries](https://nodejs.org/en/download).
+
+**Claude Code or Claude Desktop.**
+
+- **Claude Code (CLI, recommended for plugin building)** — `npm install -g @anthropic-ai/claude-code`. Then run `claude` from any folder. Setup guide: [docs.claude.com/claude-code](https://docs.claude.com/en/docs/claude-code/overview).
+- **Claude Desktop** — download from [claude.ai/download](https://claude.ai/download). The MCP servers your plugin defines can be wired into Claude Desktop too once you publish.
 
 ---
 
-## Quick start
+## What's in the scaffold
 
-### For Claude Code users
+```
+my-plugin/
+├── plugin/                       ← the publishable plugin (what ends up in the marketplace)
+│   ├── .claude-plugin/plugin.json
+│   ├── .mcp.json                 ← MCP server transport, ${VAR} credential placeholders
+│   ├── README.md                 ← must contain a ## Configuration heading
+│   ├── skills/                   ← slash-command instructions
+│   ├── agents/                   ← personas
+│   ├── widgets/                  ← declarative dashboard tiles (JSON)
+│   └── widget-elements/          ← $computed helpers / composite components / actions
+│
+├── harness/                      ← local dev sandbox: Vite + React widget renderer
+│   └── server/                   ←   Node backend that spawns the plugin's MCP servers
+│
+├── .claude/
+│   ├── skills/                   ← composing-widgets, widget-elements-system,
+│   │                                authoring-plugin-widget-elements, plugin-author
+│   └── agents/plugin-builder.md
+│
+├── CLAUDE.md                     ← project orientation Claude reads on first turn
+└── README.md                     ← per-project quickstart
+```
 
-```bash
-# Add the marketplace once
+The harness reads `plugin/widgets/*.json` for templates and `plugin/.mcp.json` for the live MCP client, so anything you (or Claude) write to `plugin/` shows up after a reload.
+
+---
+
+## Setting credentials
+
+The harness reads `plugin/.mcp.json` and forwards `${VAR}` placeholders from your shell. Set them before `npm run dev`:
+
+**macOS / Linux**
+```
+export MY_PLUGIN_API_TOKEN=xxx
+npm run dev
+```
+
+**Windows PowerShell**
+```
+$env:MY_PLUGIN_API_TOKEN = "xxx"
+npm run dev
+```
+
+Every `${VAR}` you reference in `.mcp.json` must also appear in `plugin/README.md` under a `## Configuration` heading — the marketplace validator enforces this.
+
+---
+
+## Publishing
+
+When the plugin works the way you want:
+
+1. Copy `plugin/` into the marketplace repo at `Plugins/plugins/<your-slug>/`.
+2. Add an entry to `.claude-plugin/marketplace.json`.
+3. From the marketplace root: `npx tsx scripts/validate.ts` — it must report `validate: OK`.
+4. Open a PR.
+
+Full reference: [`CREATING_PLUGINS.md`](CREATING_PLUGINS.md).
+
+---
+
+## Install an existing plugin
+
+### In Claude Code
+
+```
 /plugin marketplace add mySMB-AI-Studio/mysmb-marketplace
-
-# Install any plugin
 /plugin install xero-accounting
-/plugin install zoho-crm
-/plugin install circle
 ```
 
-Each plugin's README has a `## Configuration` section listing the env vars you need to set.
+Each plugin's README lists the env vars it needs under `## Configuration`.
 
-### For MyHub operators
+### In a MyHub tenant
 
-Tenants pick up new plugins automatically — MyHub pulls this repo at provisioning time, reads `.claude-plugin/marketplace.json`, and installs every plugin a tenant has subscribed to. See [MyHub repo](https://github.com/mySMB-AI-Studio/myHubV2) for the consumer-side wiring.
-
-### For plugin authors
-
-Read the **[full developer documentation](https://mysmb-ai-studio.github.io/mysmb-marketplace/)** — multi-chapter authoring guide, four hands-on widget tutorials, and complete file-format reference. The single-page summary lives in [`CREATING_PLUGINS.md`](CREATING_PLUGINS.md). Then run the validator before opening a PR:
-
-```bash
-npx tsx scripts/validate.ts
-```
+Tenants pick up new plugins automatically — MyHub clones this repo at provisioning time and installs every plugin a tenant has subscribed to. See the [MyHub repo](https://github.com/mySMB-AI-Studio/myHubV2) for the consumer-side wiring.
 
 ---
 
@@ -146,23 +255,11 @@ When you have a choice, pick the highest option on this list:
 ├── plugins/
 │   └── <plugin-name>/          ← one folder per plugin (see CREATING_PLUGINS.md)
 ├── scripts/
+│   ├── create-plugin/          ← create-mysmb-plugin scaffolder + template
 │   └── validate.ts             ← CI + local validator
 ├── CREATING_PLUGINS.md         ← author's guide
 └── README.md                   ← this file
 ```
-
----
-
-## Contributing
-
-1. Read [CREATING_PLUGINS.md](CREATING_PLUGINS.md).
-2. Scaffold your plugin under `plugins/<your-plugin>/`.
-3. Add an entry to `.claude-plugin/marketplace.json`.
-4. Run the validator locally — it must pass:
-   ```bash
-   npx tsx scripts/validate.ts
-   ```
-5. Open a PR. CI runs the same validator.
 
 ---
 

@@ -1,0 +1,94 @@
+---
+name: plugin-author
+description: Orientation for working in this plugin project. Use first, before composing widgets or adding skills/agents/elements. Tells you where everything lives and which sister skills to load for which task.
+---
+
+# Plugin author orientation
+
+You are working inside a scaffolded mySMB plugin project for `__SLUG__`. The user is building a marketplace plugin and wants you to help them author it.
+
+## The deliverable lives in `plugin/`
+
+That folder, and only that folder, is what eventually gets copied into the marketplace repo at `plugins/__SLUG__/`. Everything else (`harness/`, `node_modules/`, this skill folder) is local development scaffolding.
+
+A complete plugin folder has:
+
+```
+plugin/
+├── .claude-plugin/plugin.json     # manifest
+├── .mcp.json                      # MCP server transport
+├── README.md                      # MUST contain a ## Configuration section listing every ${VAR}
+├── skills/<slug>-*.md             # slash-command instructions
+├── agents/<slug>-*.md             # personas
+├── widgets/<slug>-*.json          # dashboard tiles
+└── widget-elements/
+    ├── src/index.ts               # default-exports a PluginElementsModule
+    └── dist/index.js              # COMMIT THIS — built artifact
+```
+
+The minimum legal plugin is `plugin.json` + `.mcp.json` + `README.md`. Everything else is optional. Add what the user actually needs.
+
+## Which sister skill to load
+
+| User says | Load this skill | Then |
+|---|---|---|
+| "add a widget" / "show this data on the dashboard" | `.claude/skills/composing-widgets/SKILL.md` | Write `plugin/widgets/__SLUG__-<name>.json`. |
+| "add a helper" / "I need a `$computed` for X" | `.claude/skills/composing-widgets/SKILL.md` (decide: system vs plugin) → `.claude/skills/authoring-plugin-widget-elements/SKILL.md` (if plugin) | Add to `plugin/widget-elements/src/index.ts`, rebuild. |
+| "what components / functions can I use?" | `.claude/skills/widget-elements-system/SKILL.md` | Pick from the catalog. |
+| "add a slash command for X" | This skill — see "Skills" below. | Write `plugin/skills/__SLUG__-<task>.md`. |
+| "add an assistant persona" | This skill — see "Agents" below. | Write `plugin/agents/__SLUG__-<name>.md`. |
+| "wire up the MCP server" | This skill — see ".mcp.json" below. | Edit `plugin/.mcp.json`. |
+
+## Skills
+
+Each skill is a single `.md` file with frontmatter:
+
+```markdown
+---
+name: __SLUG__-<task>
+description: <one sentence — the model uses this to decide when to load the skill>
+---
+
+# Title
+
+Imperative instructions in second person. Tell the model what to do, in what
+order, and what NOT to do. Reference the MCP tools by name.
+```
+
+Filename = skill name. Always slug-prefix to prevent collisions across plugins.
+
+## Agents
+
+Same frontmatter shape, different content. An agent is a complete persona with goals, scope, and anti-scope. The "what you do NOT do" section is the load-bearing one — it stops the model from confidently hallucinating capabilities.
+
+## .mcp.json
+
+Three transports allowed: `stdio`, `sse`, `http`. Pick the highest preference:
+
+1. Official upstream MCP servers on npm — launch with `npx -y <pkg>@latest`.
+2. Official upstream remote MCP servers (sse / http).
+3. Custom servers in this repo, with compiled `dist/` committed.
+
+Every credential goes through `${VAR}` placeholders. Every `${VAR}` you reference must appear in `plugin/README.md` under a `## Configuration` heading — the marketplace validator enforces this.
+
+`${CLAUDE_PLUGIN_ROOT}` is reserved and expands to the plugin's absolute path at runtime. Use it instead of hardcoded paths.
+
+## Testing locally
+
+The harness in `harness/` is running on `http://localhost:5173`. It:
+
+- Reads `plugin/widgets/*.json` and shows them in the sidebar.
+- Reads `plugin/.mcp.json` and spawns each stdio server.
+- Surfaces every server's tools in the bottom panel.
+- Renders the selected widget on the right, with `__SLUG___<name>` `$computed` helpers wired up via the alias `@plugin-elements` → `../plugin/widget-elements/dist/index.js`.
+
+So after you write or edit a widget, the user reloads the page and sees the change. After you edit `widget-elements/src/index.ts`, run `npm --prefix plugin/widget-elements run build` to refresh `dist/index.js` — the harness will pick it up on the next reload.
+
+## When you're ready to ship
+
+Tell the user to:
+
+1. Copy `plugin/` to `mySMB-Plugin-Marketplace/Plugins/plugins/__SLUG__/`.
+2. Add an entry to `.claude-plugin/marketplace.json`.
+3. From the marketplace root: `npx tsx scripts/validate.ts`.
+4. Open a PR.

@@ -1,0 +1,32 @@
+# __NAME__ plugin
+
+Wraps __NAME__ as an MCP server for Claude Code and MyHub tenants.
+
+## Configuration
+
+| Variable | Required | Description |
+|---|---|---|
+| `__ENV_PREFIX___API_TOKEN` | yes | Bearer token for the __NAME__ API. Replace this with the real var name your upstream MCP server expects. |
+
+## What's in the box
+
+- `.mcp.json` — MCP server transport. The starter wires up the reference server `@modelcontextprotocol/server-everything` so the harness has tools to list right away. Replace it with your real upstream once you have it.
+- `skills/` — slash-command instructions for narrow tasks.
+- `agents/` — persona that owns this plugin's domain.
+- `widgets/` — declarative dashboard tiles.
+- `widget-elements/` — JS helpers (`$computed` functions, composite components, actions) referenced from widget specs.
+
+## Local development
+
+From the project root (one level up):
+
+```
+npm install
+npm run dev        # widget harness on http://localhost:5173
+```
+
+The harness reads `plugin/.mcp.json` on start, spawns each server, and exposes its tools to the renderer.
+
+## Publishing
+
+When ready, copy this folder into the marketplace repo at `plugins/__SLUG__/` and add an entry to `.claude-plugin/marketplace.json`. Run `npx tsx scripts/validate.ts` from the marketplace root before opening a PR.

@@ -1,0 +1,32 @@
+# __NAME__ plugin project
+
+This is a Claude-Code-friendly plugin project. The user wants to build a mySMB marketplace plugin called `__SLUG__`.
+
+## Layout
+
+- `plugin/` — the publishable plugin folder. This is what gets copied into the marketplace repo when shipped.
+  - `.claude-plugin/plugin.json` — manifest.
+  - `.mcp.json` — MCP server transport.
+  - `skills/` — slash-command instructions.
+  - `agents/` — personas.
+  - `widgets/` — declarative dashboard tiles (JSON specs).
+  - `widget-elements/` — JS helpers (`$computed` functions, composite components, actions). Compile to `dist/index.js` and commit it.
+- `harness/` — Vite + React widget harness. Runs on `http://localhost:5173`. Renders widgets from `plugin/widgets/` and connects to the MCP servers in `plugin/.mcp.json` so widgets can call real tools.
+- `.claude/skills/` — authoring skills you (Claude) should use:
+  - `composing-widgets/SKILL.md` — how to compose widgets, the binding vocabulary, and where helpers belong.
+  - `widget-elements-system/SKILL.md` — catalog of system primitives (components, $computed, actions, cell formatters).
+  - `authoring-plugin-widget-elements/SKILL.md` — rules for shipping plugin widget-elements (the contract, naming, stack constraints).
+  - `plugin-author/SKILL.md` — orientation for this project.
+
+## How to help
+
+1. When the user asks to add a widget, read `composing-widgets/SKILL.md` first, then write to `plugin/widgets/<slug>-<name>.json`.
+2. When the user asks to add a $computed helper, apply the agnosticism heuristic from `composing-widgets/SKILL.md`. Plugin-only goes in `plugin/widget-elements/src/index.ts` (rebuild with `npm --prefix plugin/widget-elements run build`).
+3. When the user asks to add a skill or agent, write a `.md` file under `plugin/skills/` or `plugin/agents/` with the frontmatter format.
+4. Don't touch the harness unless the user explicitly asks — it's a sandbox, not a deliverable.
+
+## What this plugin should NOT do
+
+- Hardcode credentials. Read everything from `process.env` / `${VAR}` substitution.
+- Ship platform-specific code. Pure Node only — the same artifact has to run in tenant containers and on every developer machine.
+- Reach into the host app from `widget-elements/`. The marketplace validator enforces an import allowlist (`react`, `lucide-react`, `zod`, `@json-render/core`, `@json-render/react`, `@myhub/widget-tokens`, plus relative imports).

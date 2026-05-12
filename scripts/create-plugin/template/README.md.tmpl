@@ -1,0 +1,64 @@
+# __NAME__
+
+A mySMB marketplace plugin scaffolded by [`create-mysmb-plugin`](https://github.com/mySMB-AI-Studio/mysmb-marketplace).
+
+## Quick start
+
+```
+npm install
+npm run dev
+```
+
+Then open [http://localhost:5173](http://localhost:5173) — that's the **widget harness**. Paste a widget JSON or pick one from the sidebar; it renders live and can call any MCP server you've wired in `plugin/.mcp.json`.
+
+## Build it with Claude
+
+In another terminal, from this folder:
+
+```
+claude
+```
+
+That starts Claude Code in this project. The `.claude/` folder ships with the skills Claude needs to author widgets, skills, agents, and `$computed` helpers for you. Try:
+
+> "Add a widget that shows my open invoices."
+> "Add a skill that creates an invoice."
+> "I need a `$computed` that formats Australian phone numbers."
+
+Claude will read the relevant skill, write the file, and tell you to reload the harness.
+
+## What's in here
+
+- **`plugin/`** — the plugin you're building. This is the only folder that ends up in the marketplace.
+- **`harness/`** — local-only dev sandbox: a Vite + React widget renderer with an MCP client. Reads `plugin/widgets/*.json` and `plugin/.mcp.json`.
+- **`.claude/`** — skills and agents that teach Claude Code how to build mySMB plugins.
+- **`CLAUDE.md`** — project orientation that Claude reads on first turn.
+
+## Setting credentials
+
+The harness reads `plugin/.mcp.json` and forwards `${VAR}` placeholders from your shell environment. To set a token before starting:
+
+**macOS / Linux**
+```
+export __ENV_PREFIX___API_TOKEN=xxx
+npm run dev
+```
+
+**Windows PowerShell**
+```
+$env:__ENV_PREFIX___API_TOKEN = "xxx"
+npm run dev
+```
+
+Every `${VAR}` you reference in `.mcp.json` must also appear in `plugin/README.md` under a `## Configuration` heading, so users (and the validator) know what to set.
+
+## Publishing
+
+When the plugin works the way you want:
+
+1. Copy `plugin/` into the marketplace repo at `mySMB-Plugin-Marketplace/Plugins/plugins/__SLUG__/`.
+2. Add an entry to `.claude-plugin/marketplace.json`.
+3. From the marketplace root: `npx tsx scripts/validate.ts`.
+4. Open a PR.
+
+See [CREATING_PLUGINS.md](https://github.com/mySMB-AI-Studio/mysmb-marketplace/blob/main/CREATING_PLUGINS.md) in the marketplace repo for the full reference.

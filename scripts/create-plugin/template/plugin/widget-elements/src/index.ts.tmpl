@@ -1,0 +1,23 @@
+import type { ComputedFunction, PluginElementsModule } from './types';
+
+/**
+ * Example: title-case a string.
+ *
+ * Args: { value: string }
+ *
+ * Spec example:
+ *   { "$computed": "__SLUG___title_case", "args": { "value": { "$item": "name" } } }
+ */
+const title_case: ComputedFunction = (args) => {
+  const s = String(args.value ?? '');
+  return s.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+};
+
+const elements: PluginElementsModule = {
+  slug: '__SLUG__',
+  functions: {
+    title_case,
+  },
+};
+
+export default elements;
