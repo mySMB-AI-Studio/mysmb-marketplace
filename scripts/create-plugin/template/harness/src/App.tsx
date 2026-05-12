@@ -29,8 +29,11 @@ interface McpTool {
   inputSchema?: unknown;
 }
 
+type Source = { kind: 'self' } | { kind: 'plugin'; slug: string };
+
 interface McpServerSummary {
   name: string;
+  source?: Source;
   tools: McpTool[];
   failure?: string;
 }
@@ -52,6 +55,7 @@ interface Widget {
 interface TemplateRef {
   path: string;
   title: string;
+  source?: Source;
   json: string;
 }
 
@@ -189,16 +193,21 @@ function Sidebar({ templates, selected, onPick }: { templates: TemplateRef[]; se
       >
         Starter
       </button>
-      {templates.map((t) => (
-        <button
-          key={t.path}
-          onClick={() => onPick(t.path)}
-          style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: selected === t.path ? '#eef2ff' : 'transparent', border: 0, borderLeft: selected === t.path ? '3px solid #6366f1' : '3px solid transparent', cursor: 'pointer', fontSize: 12 }}
-        >
-          <div style={{ fontWeight: 500 }}>{t.title}</div>
-          <div style={{ color: '#6b7280', fontSize: 10, fontFamily: 'ui-monospace, monospace' }}>{t.path}</div>
-        </button>
-      ))}
+      {templates.map((t) => {
+        const sourceLabel = t.source?.kind === 'plugin' ? t.source.slug : 'this plugin';
+        const isSelf = !t.source || t.source.kind === 'self';
+        return (
+          <button
+            key={t.path}
+            onClick={() => onPick(t.path)}
+            style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: selected === t.path ? '#eef2ff' : 'transparent', border: 0, borderLeft: selected === t.path ? '3px solid #6366f1' : '3px solid transparent', cursor: 'pointer', fontSize: 12 }}
+          >
+            <div style={{ fontWeight: 500 }}>{t.title}</div>
+            <div style={{ color: '#6b7280', fontSize: 10, fontFamily: 'ui-monospace, monospace' }}>{t.path}</div>
+            <span style={{ display: 'inline-block', marginTop: 4, fontSize: 9, padding: '1px 6px', borderRadius: 999, background: isSelf ? '#dcfce7' : '#dbeafe', color: isSelf ? '#166534' : '#1e40af' }}>{sourceLabel}</span>
+          </button>
+        );
+      })}
     </aside>
   );
 }
@@ -300,7 +309,12 @@ function McpPanel({ servers, error, onReload }: { servers: McpServerSummary[]; e
         {servers.map((s) => (
           <details key={s.name} style={{ border: '1px solid #e5e7eb', background: 'white', borderRadius: 8, fontSize: 11, minWidth: 220 }}>
             <summary style={{ cursor: 'pointer', padding: '6px 10px', fontWeight: 500 }}>
-              {s.name} {s.failure ? <span style={{ color: '#991b1b' }}>— failed</span> : <span style={{ color: '#6b7280' }}>({s.tools.length} tools)</span>}
+              {s.name}
+              {s.source?.kind === 'plugin' && (
+                <span style={{ marginLeft: 6, fontSize: 9, padding: '1px 6px', borderRadius: 999, background: '#dbeafe', color: '#1e40af' }}>{s.source.slug}</span>
+              )}
+              {' '}
+              {s.failure ? <span style={{ color: '#991b1b' }}>— failed</span> : <span style={{ color: '#6b7280' }}>({s.tools.length} tools)</span>}
             </summary>
             <div style={{ padding: '6px 10px', borderTop: '1px solid #e5e7eb', maxHeight: 200, overflow: 'auto' }}>
               {s.failure ? (
