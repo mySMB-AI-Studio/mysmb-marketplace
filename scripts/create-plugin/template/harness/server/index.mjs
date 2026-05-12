@@ -24,6 +24,8 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, '..', '..');
@@ -90,21 +92,37 @@ function substitute(value, vars) {
   });
 }
 
-async function connectServer({ key, def, source, pluginRoot }) {
-  if (def.type && def.type !== 'stdio') {
-    failures.push({ name: key, source, reason: `transport "${def.type}" not yet supported by harness (stdio only)` });
-    return;
-  }
-  const subVars = pluginRoot ? { CLAUDE_PLUGIN_ROOT: pluginRoot } : {};
-  try {
+function buildTransport(def, subVars) {
+  const type = def.type ?? 'stdio';
+  if (type === 'stdio') {
     const env = { ...process.env };
     for (const [k, v] of Object.entries(def.env ?? {})) env[k] = substitute(v, subVars);
-    const transport = new StdioClientTransport({
+    return new StdioClientTransport({
       command: substitute(def.command, subVars),
       args: (def.args ?? []).map((a) => substitute(a, subVars)),
       env,
       stderr: 'pipe',
     });
+  }
+  if (type === 'http') {
+    const url = new URL(substitute(def.url, subVars));
+    const headers = {};
+    for (const [k, v] of Object.entries(def.headers ?? {})) headers[k] = substitute(v, subVars);
+    return new StreamableHTTPClientTransport(url, Object.keys(headers).length ? { requestInit: { headers } } : undefined);
+  }
+  if (type === 'sse') {
+    const url = new URL(substitute(def.url, subVars));
+    const headers = {};
+    for (const [k, v] of Object.entries(def.headers ?? {})) headers[k] = substitute(v, subVars);
+    return new SSEClientTransport(url, Object.keys(headers).length ? { requestInit: { headers } } : undefined);
+  }
+  throw new Error(`unknown transport type "${type}"`);
+}
+
+async function connectServer({ key, def, source, pluginRoot }) {
+  const subVars = pluginRoot ? { CLAUDE_PLUGIN_ROOT: pluginRoot } : {};
+  try {
+    const transport = buildTransport(def, subVars);
     const client = new Client({ name: 'mysmb-plugin-harness', version: '0.1.0' }, { capabilities: {} });
     await Promise.race([
       client.connect(transport),

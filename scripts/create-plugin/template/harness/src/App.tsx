@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 import { JSONUIProvider, Renderer, defineRegistry } from '@json-render/react';
 import { defineCatalog } from '@json-render/core';
@@ -44,12 +44,59 @@ interface DataProvider {
   params?: Record<string, unknown>;
 }
 
+interface Sizing {
+  preferred?: { colSpan: number; rowSpan: number };
+  min?: { colSpan: number; rowSpan: number };
+  max?: { colSpan: number; rowSpan: number };
+}
+
 interface Widget {
   id?: string;
   title?: string;
   description?: string;
+  sizing?: Sizing;
   dataProvider?: DataProvider;
   spec: { root: string; elements: Record<string, any> };
+}
+
+// Dashboard grid presets — match MyHub's CELL_SIZE=80px / GAP=20px.
+const GRID_CELL = 80;
+const GRID_GAP = 20;
+const sizePx = (cols: number, rows: number) => ({
+  width: cols * GRID_CELL + (cols - 1) * GRID_GAP,
+  height: rows * GRID_CELL + (rows - 1) * GRID_GAP,
+});
+
+// React error boundary so a Renderer crash on a single widget doesn't
+// blank the whole page. Resets when its `resetKey` changes (we key it on
+// the raw widget JSON so picking a different template clears the error).
+class WidgetErrorBoundary extends React.Component<
+  { resetKey: string; children: React.ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('[harness] widget render error:', error, info.componentStack);
+  }
+  componentDidUpdate(prev: { resetKey: string }) {
+    if (prev.resetKey !== this.props.resetKey && this.state.error) this.setState({ error: null });
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 16, color: '#991b1b', fontSize: 12, fontFamily: 'ui-monospace, monospace', whiteSpace: 'pre-wrap', background: '#fef2f2', borderRadius: 8, height: '100%', overflow: 'auto' }}>
+          <div style={{ fontWeight: 600, marginBottom: 6 }}>Widget render error</div>
+          {this.state.error.message}
+          {'\n\n'}
+          <span style={{ color: '#6b7280' }}>Likely missing component or $computed function — see browser console for the component stack. The harness ships only the system primitives bundled in src/system.tsx.</span>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 interface TemplateRef {
@@ -177,7 +224,7 @@ export function App() {
         onPick={onPickTemplate}
       />
       <Editor rawJson={rawJson} setRawJson={setRawJson} parseError={parsed.ok ? null : parsed.error} />
-      <Preview key={rawJson} widget={parsed.ok ? parsed.widget : null} servers={servers} />
+      <Preview widget={parsed.ok ? parsed.widget : null} rawJson={rawJson} servers={servers} />
       <McpPanel servers={servers} error={mcpError} onReload={reloadMcp} />
     </div>
   );
@@ -229,7 +276,7 @@ function Editor({ rawJson, setRawJson, parseError }: { rawJson: string; setRawJs
   );
 }
 
-function Preview({ widget, servers }: { widget: Widget | null; servers: McpServerSummary[] }) {
+function Preview({ widget, rawJson, servers }: { widget: Widget | null; rawJson: string; servers: McpServerSummary[] }) {
   const [pluginFunctions, setPluginFunctions] = useState<Record<string, (a: Record<string, unknown>) => unknown>>({});
   useEffect(() => {
     pluginElementsPromise.then((mod) => {
@@ -278,17 +325,110 @@ function Preview({ widget, servers }: { widget: Widget | null; servers: McpServe
     void handler(params ?? {});
   }, [widget, handlers]);
 
+  // Preview cell count — seeds from widget.sizing.preferred when available,
+  // editable via SE drag handle. `null` means "fill container".
+  const preferred = widget?.sizing?.preferred;
+  const [cells, setCells] = useState<{ cols: number; rows: number } | null>(
+    preferred ? { cols: preferred.colSpan, rows: preferred.rowSpan } : { cols: 4, rows: 4 },
+  );
+  const sizeKey = preferred ? `${preferred.colSpan}x${preferred.rowSpan}` : '';
+  useEffect(() => {
+    if (preferred) setCells({ cols: preferred.colSpan, rows: preferred.rowSpan });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sizeKey]);
+
+  // SE-corner pointer resize: top-left fixed, dx/dy → cell deltas.
+  const resizeStartRef = useRef<{ x: number; y: number; cols: number; rows: number } | null>(null);
+  const onResizePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!cells) return;
+      resizeStartRef.current = { x: e.clientX, y: e.clientY, cols: cells.cols, rows: cells.rows };
+      const el = e.currentTarget;
+      el.setPointerCapture(e.pointerId);
+      const step = GRID_CELL + GRID_GAP;
+      const onMove = (ev: PointerEvent) => {
+        const s = resizeStartRef.current;
+        if (!s) return;
+        const dCol = Math.round((ev.clientX - s.x) / step);
+        const dRow = Math.round((ev.clientY - s.y) / step);
+        setCells({
+          cols: Math.max(1, Math.min(16, s.cols + dCol)),
+          rows: Math.max(1, Math.min(12, s.rows + dRow)),
+        });
+      };
+      const onUp = () => {
+        resizeStartRef.current = null;
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        try { el.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+      };
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+    },
+    [cells],
+  );
+
   if (!widget) {
     return <div style={{ padding: 12, color: '#6b7280', fontSize: 12 }}>Fix the JSON to see a preview.</div>;
   }
 
+  const dims = cells ? sizePx(cells.cols, cells.rows) : null;
+
   return (
     <div style={{ padding: 12, overflow: 'auto', background: '#f6f7f9' }}>
-      <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 500, marginBottom: 8 }}>Preview {widget.title ? `— ${widget.title}` : ''}</div>
-      <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e7eb', minHeight: 200, padding: 0 }}>
-        <JSONUIProvider registry={registry} store={store} handlers={handlers} functions={allFunctions}>
-          <Renderer spec={widget.spec as any} registry={registry} />
-        </JSONUIProvider>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+        <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 500 }}>Preview {widget.title ? `— ${widget.title}` : ''}</div>
+        {cells && (
+          <span style={{ fontSize: 10, color: '#6b7280', fontFamily: 'ui-monospace, monospace' }}>{cells.cols}×{cells.rows} ({dims!.width}×{dims!.height}px)</span>
+        )}
+        <select
+          value={cells ? `${cells.cols}x${cells.rows}` : 'fill'}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === 'fill') return setCells(null);
+            const [c, r] = v.split('x').map(Number);
+            setCells({ cols: c, rows: r });
+          }}
+          style={{ marginLeft: 'auto', fontSize: 11, padding: '2px 6px', border: '1px solid #d1d5db', borderRadius: 6 }}
+        >
+          {['2x2','3x3','4x4','6x3','6x4','8x5'].map((s) => <option key={s} value={s}>{s}</option>)}
+          <option value="fill">fill</option>
+        </select>
+      </div>
+      <div
+        style={{
+          position: 'relative',
+          background: 'white',
+          borderRadius: 12,
+          border: '1px solid #e5e7eb',
+          overflow: 'hidden',
+          ...(dims ? { width: `${dims.width}px`, height: `${dims.height}px` } : { minHeight: 200 }),
+        }}
+      >
+        <WidgetErrorBoundary resetKey={rawJson}>
+          <JSONUIProvider registry={registry} store={store} handlers={handlers} functions={allFunctions}>
+            <Renderer spec={widget.spec as any} registry={registry} />
+          </JSONUIProvider>
+        </WidgetErrorBoundary>
+        {cells && (
+          <div
+            role="slider"
+            aria-label="Resize preview"
+            onPointerDown={onResizePointerDown}
+            style={{
+              position: 'absolute',
+              right: 0,
+              bottom: 0,
+              width: 16,
+              height: 16,
+              cursor: 'se-resize',
+              background: 'linear-gradient(135deg, transparent 0%, transparent 50%, #9ca3af 50%, #9ca3af 100%)',
+              opacity: 0.5,
+            }}
+          />
+        )}
       </div>
     </div>
   );
