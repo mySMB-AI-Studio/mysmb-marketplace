@@ -16,6 +16,10 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // Fail fast if 5173 is taken instead of silently rolling to 5174+ — the
+    // /api proxy below is hardcoded to 5174, so a port shift would break MCP
+    // calls in confusing ways.
+    strictPort: true,
     fs: { allow: [resolve(__dirname, '..')] },
     proxy: {
       '/api': 'http://localhost:5174',
