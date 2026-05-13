@@ -1,0 +1,663 @@
+{
+  "id": "xero-projects-tasks",
+  "title": "Project Tasks",
+  "description": "Track tasks on a Xero project — estimated vs logged time, charge type, billing status, and amounts still to invoice. Switch projects from the picker.",
+  "category": "productivity",
+  "tags": [
+    "xero",
+    "projects",
+    "tasks",
+    "time-tracking",
+    "billing"
+  ],
+  "keywords": [
+    "project",
+    "projects",
+    "tasks",
+    "time",
+    "billable",
+    "estimate",
+    "logged",
+    "xero projects",
+    "invoice",
+    "work"
+  ],
+  "connectorsUsed": [
+    "xero-projects"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 5
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 6,
+      "rowSpan": 8
+    }
+  },
+  "status": "published",
+  "dataProvider": {
+    "mcp": "xero-projects",
+    "tool": "list_projects",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/xero-projects/list_projects/items/0/projectId": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/projectId",
+                "value": {
+                  "$state": "/xero-projects/list_projects/items/0/projectId"
+                }
+              }
+            },
+            {
+              "action": "bust_tool_cache",
+              "params": {
+                "mcp": "xero-projects",
+                "tool": "list_tasks"
+              }
+            },
+            {
+              "action": "xero-projects.list_tasks",
+              "params": {
+                "projectId": {
+                  "$state": "/xero-projects/list_projects/items/0/projectId"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "FolderKanban",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "taskCount"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Project Tasks",
+          "level": "h2"
+        }
+      },
+      "taskCount": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} tasks",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/xero-projects/list_tasks/items"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "visible": {
+          "$state": "/xero-projects/list_tasks/items/0"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loadingProjects",
+          "noProjects",
+          "projectPicker",
+          "summary",
+          "taskTable",
+          "noTasks",
+          "footer",
+          "taskOverlay"
+        ]
+      },
+      "loadingProjects": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "lp1",
+          "lp2",
+          "lp3"
+        ],
+        "visible": {
+          "$state": "/_loading/xero-projects.list_projects"
+        }
+      },
+      "lp1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        }
+      },
+      "lp2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "lp3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "noProjects": {
+        "type": "Empty",
+        "props": {
+          "message": "No Xero projects found. Create one in Xero Projects to see its tasks here."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-projects.list_projects",
+              "not": true
+            },
+            {
+              "$state": "/xero-projects/list_projects/items/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "projectPicker": {
+        "type": "Select",
+        "props": {
+          "value": {
+            "$bindState": "/ui/projectId"
+          },
+          "options": {
+            "$computed": "to_options",
+            "args": {
+              "value": {
+                "$state": "/xero-projects/list_projects/items"
+              },
+              "valueField": "projectId",
+              "labelField": "name"
+            }
+          },
+          "placeholder": "Select a project…",
+          "ariaLabel": "Project",
+          "size": "sm"
+        },
+        "visible": {
+          "$state": "/xero-projects/list_projects/items/0"
+        },
+        "on": {
+          "change": [
+            {
+              "action": "bust_tool_cache",
+              "params": {
+                "mcp": "xero-projects",
+                "tool": "list_tasks"
+              }
+            },
+            {
+              "action": "xero-projects.list_tasks",
+              "params": {
+                "projectId": {
+                  "$state": "/ui/projectId"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "summary": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "summaryRow"
+        ],
+        "visible": {
+          "$state": "/xero-projects/list_tasks/items/0"
+        }
+      },
+      "summaryRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "summaryLabel",
+          "summaryBar",
+          "summaryPct"
+        ]
+      },
+      "summaryLabel": {
+        "type": "Caption",
+        "props": {
+          "text": "Logged vs estimate"
+        }
+      },
+      "summaryBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": {
+            "$computed": "pct",
+            "args": {
+              "part": {
+                "$computed": "sum",
+                "args": {
+                  "value": {
+                    "$state": "/xero-projects/list_tasks/items"
+                  },
+                  "field": "totalMinutes"
+                }
+              },
+              "whole": {
+                "$computed": "sum",
+                "args": {
+                  "value": {
+                    "$state": "/xero-projects/list_tasks/items"
+                  },
+                  "field": "estimateMinutes"
+                }
+              }
+            }
+          },
+          "tone": "accent"
+        }
+      },
+      "summaryPct": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n}%",
+              "n": {
+                "$computed": "pct",
+                "args": {
+                  "part": {
+                    "$computed": "sum",
+                    "args": {
+                      "value": {
+                        "$state": "/xero-projects/list_tasks/items"
+                      },
+                      "field": "totalMinutes"
+                    }
+                  },
+                  "whole": {
+                    "$computed": "sum",
+                    "args": {
+                      "value": {
+                        "$state": "/xero-projects/list_tasks/items"
+                      },
+                      "field": "estimateMinutes"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "taskTable": {
+        "type": "Table",
+        "props": {
+          "loading": {
+            "$state": "/_loading/xero-projects.list_tasks"
+          },
+          "skeletonRows": 6,
+          "rows": {
+            "$state": "/xero-projects/list_tasks/items"
+          },
+          "rowAction": [
+            { "action": "setState", "params": { "statePath": "/ui/task/name" }, "fromRow": { "value": "name" } },
+            { "action": "setState", "params": { "statePath": "/ui/task/status" }, "fromRow": { "value": "status" } },
+            { "action": "setState", "params": { "statePath": "/ui/task/chargeType" }, "fromRow": { "value": "chargeType" } },
+            { "action": "setState", "params": { "statePath": "/ui/task/estimateMinutes" }, "fromRow": { "value": "estimateMinutes" } },
+            { "action": "setState", "params": { "statePath": "/ui/task/totalMinutes" }, "fromRow": { "value": "totalMinutes" } },
+            { "action": "setState", "params": { "statePath": "/ui/task/rateValue" }, "fromRow": { "value": "rate.value" } },
+            { "action": "setState", "params": { "statePath": "/ui/task/currency" }, "fromRow": { "value": "totalAmount.currency" } },
+            { "action": "setState", "params": { "statePath": "/ui/task/totalAmountValue" }, "fromRow": { "value": "totalAmount.value" } },
+            { "action": "setState", "params": { "statePath": "/ui/task/amountInvoicedValue" }, "fromRow": { "value": "amountInvoiced.value" } },
+            { "action": "setState", "params": { "statePath": "/ui/task/amountToBeInvoicedValue" }, "fromRow": { "value": "amountToBeInvoiced.value" } }
+          ],
+          "columns": [
+            {
+              "id": "name",
+              "header": "Task",
+              "field": "name",
+              "width": 150,
+              "priority": 1
+            },
+            {
+              "id": "type",
+              "header": "Type",
+              "field": "chargeType",
+              "variant": "badge",
+              "toneFormat": "xero_chargetype",
+              "width": 110,
+              "priority": 3
+            },
+            {
+              "id": "status",
+              "header": "Status",
+              "field": "status",
+              "variant": "badge",
+              "toneFormat": "xero_projects_status",
+              "width": 100,
+              "priority": 2
+            },
+            {
+              "id": "est",
+              "header": "Est",
+              "field": "estimateMinutes",
+              "format": "xero_minutes",
+              "align": "right",
+              "width": 70,
+              "priority": 3
+            },
+            {
+              "id": "logged",
+              "header": "Logged",
+              "field": "totalMinutes",
+              "format": "xero_minutes",
+              "align": "right",
+              "width": 80,
+              "priority": 2
+            },
+            {
+              "id": "amount",
+              "header": "Amount",
+              "field": "totalAmount.value",
+              "format": "currency",
+              "align": "right",
+              "width": 90,
+              "priority": 1
+            },
+            {
+              "id": "toinvoice",
+              "header": "To invoice",
+              "field": "amountToBeInvoiced.value",
+              "format": "currency",
+              "align": "right",
+              "width": 100,
+              "priority": 2
+            }
+          ]
+        },
+        "visible": {
+          "$state": "/ui/projectId"
+        }
+      },
+      "noTasks": {
+        "type": "Empty",
+        "props": {
+          "message": "This project has no tasks yet."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/projectId"
+            },
+            {
+              "$state": "/_loading/xero-projects.list_tasks",
+              "not": true
+            },
+            {
+              "$state": "/xero-projects/list_tasks/items/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "footer": {
+        "type": "Row",
+        "props": {
+          "justify": "end",
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "footerBtn"
+        ],
+        "visible": {
+          "$state": "/xero-projects/list_projects/items/0"
+        }
+      },
+      "footerBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Open in Xero",
+          "variant": "ghost",
+          "size": "sm",
+          "leadingIcon": "ExternalLink"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://go.xero.com/app/projects",
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "taskOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "26rem" },
+        "visible": { "$state": "/ui/task/name" },
+        "on": {
+          "backdropClick": {
+            "action": "setState",
+            "params": { "statePath": "/ui/task/name", "value": "" }
+          }
+        },
+        "children": [
+          "taskOverlayHeader",
+          "taskOverlayMeta",
+          "taskOverlayDiv1",
+          "taskOverlayTimeCaption",
+          "taskEstKV",
+          "taskLoggedKV",
+          "taskTimeBar",
+          "taskOverlayDiv2",
+          "taskOverlayBillingCaption",
+          "taskRateKV",
+          "taskTotalKV",
+          "taskInvoicedKV",
+          "taskToInvoiceKV"
+        ]
+      },
+      "taskOverlayHeader": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["taskOverlayName", "taskOverlayClose"]
+      },
+      "taskOverlayName": {
+        "type": "Heading",
+        "props": {
+          "text": { "$state": "/ui/task/name" },
+          "level": "h3"
+        }
+      },
+      "taskOverlayClose": {
+        "type": "OverlayClose",
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": { "statePath": "/ui/task/name", "value": "" }
+          }
+        }
+      },
+      "taskOverlayMeta": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["taskOverlayStatusBadge", "taskOverlayTypeBadge"]
+      },
+      "taskOverlayStatusBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$state": "/ui/task/status" }
+        }
+      },
+      "taskOverlayTypeBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$state": "/ui/task/chargeType" }
+        }
+      },
+      "taskOverlayDiv1": { "type": "Divider" },
+      "taskOverlayTimeCaption": {
+        "type": "Caption",
+        "props": { "text": "Time" }
+      },
+      "taskEstKV": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Estimated",
+          "value": {
+            "$computed": "xero_minutes",
+            "args": { "value": { "$state": "/ui/task/estimateMinutes" } }
+          }
+        }
+      },
+      "taskLoggedKV": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Logged",
+          "value": {
+            "$computed": "xero_minutes",
+            "args": { "value": { "$state": "/ui/task/totalMinutes" } }
+          }
+        }
+      },
+      "taskTimeBar": {
+        "type": "ProgressBar",
+        "props": {
+          "tone": "accent",
+          "value": {
+            "$computed": "pct",
+            "args": {
+              "part": { "$state": "/ui/task/totalMinutes" },
+              "whole": { "$state": "/ui/task/estimateMinutes" }
+            }
+          }
+        }
+      },
+      "taskOverlayDiv2": { "type": "Divider" },
+      "taskOverlayBillingCaption": {
+        "type": "Caption",
+        "props": { "text": "Billing" }
+      },
+      "taskRateKV": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Rate / hr",
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": { "$state": "/ui/task/rateValue" },
+              "currency": { "$state": "/ui/task/currency" }
+            }
+          }
+        },
+        "visible": { "$state": "/ui/task/rateValue" }
+      },
+      "taskTotalKV": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Total",
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": { "$state": "/ui/task/totalAmountValue" },
+              "currency": { "$state": "/ui/task/currency" }
+            }
+          }
+        }
+      },
+      "taskInvoicedKV": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Invoiced",
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": { "$state": "/ui/task/amountInvoicedValue" },
+              "currency": { "$state": "/ui/task/currency" }
+            }
+          }
+        }
+      },
+      "taskToInvoiceKV": {
+        "type": "KeyValue",
+        "props": {
+          "label": "To invoice",
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": { "$state": "/ui/task/amountToBeInvoicedValue" },
+              "currency": { "$state": "/ui/task/currency" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
