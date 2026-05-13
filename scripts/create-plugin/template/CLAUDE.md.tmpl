@@ -11,11 +11,13 @@ This is a Claude-Code-friendly plugin project. The user wants to build a mySMB m
   - `agents/` — personas.
   - `widgets/` — declarative dashboard tiles (JSON specs).
   - `widget-elements/` — JS helpers (`$computed` functions, composite components, actions). Compile to `dist/index.js` and commit it.
-- `harness/` — Vite + React widget harness. Runs on `http://localhost:5173`. Auto-loads:
+- `harness/` — Vite + React widget harness. Runs on `http://localhost:5173`. Has two tabs (Editor / Connections). Auto-loads:
   - Widgets from `plugin/widgets/` AND every marketplace plugin's `widgets/`.
   - MCP servers from `plugin/.mcp.json` AND every marketplace plugin's `.mcp.json`.
   - The marketplace is discovered via `$HARNESS_MARKETPLACE_PATH`, by walking up to find `.claude-plugin/marketplace.json`, or by shallow-cloning into `.harness-cache/marketplace/` on first boot.
-  - Marketplace plugins missing credentials surface as "failed" in the MCP panel — that's expected. Only your own plugin needs to start cleanly.
+  - MyHub's `widgets-system/system` is loaded LIVE via Vite aliases (so widgets render with production primitives). Discovered via `$HARNESS_MYHUB_PATH` or by walking up to find `apps/web/src/features/widgets-system`. Falls back to `harness/src/system-fallback/` when MyHub isn't on disk — widgets render with a plain Tailwind look so layout is still verifiable.
+  - **OAuth for MCP servers**: the Connections tab implements the full MCP 2.1 OAuth flow (PKCE + dynamic client registration). Click "Login with OAuth" on any HTTP/SSE server that advertises RFC 8414 discovery. Tokens persist to `.harness-cache/oauth/<server>.json`. A "Paste token" fallback exists for servers that don't.
+  - Marketplace plugins missing credentials surface as "auth required" in the Connections tab — that's expected. Only your own plugin needs to start cleanly.
 - `.claude/skills/` — authoring skills you (Claude) should use:
   - `composing-widgets/SKILL.md` — how to compose widgets, the binding vocabulary, and where helpers belong.
   - `widget-elements-system/SKILL.md` — catalog of system primitives (components, $computed, actions, cell formatters).

@@ -1,127 +1,60 @@
-// Minimal subset of MyHub's widget-system component baseline. Enough for the
-// harness to render the starter widget and most simple specs. Full fidelity
-// happens in MyHub itself — once you publish, your widget renders against the
-// full system.
+// MyHub `widgets-system/system` is the canonical source of truth for the
+// system primitives (Card, Row, Heading, etc.) plus the $computed helpers.
+// We import them live via vite aliases so widgets render here exactly as they
+// do in production — instead of drifting against a hand-maintained subset.
+//
+// We deliberately DON'T import MyHub's `widgetActions`. Those bind to
+// MyHub-specific infrastructure (toast, todo-modal, MCP cache invalidation).
+// The harness wires actions through its own MCP handler map in App.tsx.
+//
+// Discovery is done at build time in vite.config.ts; if MyHub isn't on disk,
+// the alias falls back and Vite logs a clear error.
 
-import React from 'react';
+import * as React from 'react';
+// Import directly from `./components` and `./functions` — NOT from the
+// system barrel (`./index`). The barrel re-exports `widgetActions` which
+// transitively imports MyHub-only modules (call-tool, todo-modal store)
+// that don't exist in the harness.
+// @ts-expect-error — alias is set up in vite.config.ts; TS doesn't know about it.
+import * as systemComponents from '@myhub-widgets-system/system/components';
+// @ts-expect-error — alias is set up in vite.config.ts.
+import { widgetFunctions, cellFormatters, cellToneFormatters } from '@myhub-widgets-system/system/functions';
 
-type AnyProps = Record<string, any>;
+// Filter out the type-only / non-component exports from `import * as` —
+// SectionProps and friends would show up as `undefined` here. MyHub does the
+// same destructure in its system/index.ts; we mirror that without going
+// through the barrel.
+const componentNames = [
+  'Card', 'Header', 'Body', 'Section', 'Stack', 'Row', 'Grid',
+  'Heading', 'Subtitle', 'Eyebrow', 'Text', 'Caption',
+  'Stat', 'Dot', 'Badge', 'ProgressBar', 'Delta', 'Avatar', 'Icon',
+  'Button', 'IconButton', 'Checkbox', 'TextInput', 'NumberInput', 'DateInput',
+  'Select', 'FormRow', 'KeyValue', 'ListItem', 'ActivityItem', 'Table',
+  'Divider', 'Spinner', 'Skeleton', 'Empty', 'Overlay', 'OverlayClose', 'RichHtml',
+] as const;
 
-export const Card = ({ children }: AnyProps) => (
-  <div style={{ padding: 16, background: 'white', borderRadius: 12, border: '1px solid #e5e7eb', height: '100%', overflow: 'auto' }}>{children}</div>
-);
+export const components: Record<string, React.ComponentType<any>> = {};
+for (const name of componentNames) {
+  const fn = (systemComponents as Record<string, unknown>)[name];
+  if (typeof fn === 'function') components[name] = fn as React.ComponentType<any>;
+  else console.warn(`[harness] MyHub system component "${name}" missing — check widgets-system/system/components.tsx`);
+}
 
-export const Body = ({ children }: AnyProps) => <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{children}</div>;
-export const Section = ({ children }: AnyProps) => <section style={{ marginTop: 8 }}>{children}</section>;
-export const Stack = ({ children, gap = 8 }: AnyProps) => <div style={{ display: 'flex', flexDirection: 'column', gap }}>{children}</div>;
-export const Row = ({ children, gap = 8 }: AnyProps) => <div style={{ display: 'flex', flexDirection: 'row', gap, alignItems: 'center' }}>{children}</div>;
-export const Grid = ({ children, columns = 2 }: AnyProps) => (
-  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: 8 }}>{children}</div>
-);
+// Merge functions + cell helpers into the namespace json-render's $computed
+// reads from. MyHub does the same wiring in its renderer at runtime.
+export const functions: Record<string, (a: any) => unknown> = {
+  ...(widgetFunctions ?? {}),
+  ...(cellFormatters ?? {}),
+  ...(cellToneFormatters ?? {}),
+};
 
-export const Header = ({ title, subtitle }: AnyProps) => (
-  <div style={{ marginBottom: 8 }}>
-    {title ? <div style={{ fontWeight: 600 }}>{title}</div> : null}
-    {subtitle ? <div style={{ color: '#6b7280', fontSize: 12 }}>{subtitle}</div> : null}
+// Fallback component for unknown types — shown when a widget references a
+// component the system doesn't ship (or hasn't shipped yet). Keeps the
+// render alive instead of returning null and yielding a cryptic
+// "cannot convert undefined or null to object" from json-render.
+export const Unknown = ({ __type, children }: { __type?: string; children?: React.ReactNode }) => (
+  <div className="inline-block rounded border border-dashed border-warning bg-warning/10 px-1.5 py-0.5 text-[10px] font-mono text-warning">
+    ?{__type ?? 'unknown'}
+    {children ? <div className="mt-1">{children}</div> : null}
   </div>
 );
-
-export const Heading = ({ text, level = 'h2' }: AnyProps) => {
-  const sizes: Record<string, number> = { h1: 22, h2: 18, h3: 16, h4: 14 };
-  return <div style={{ fontSize: sizes[level] ?? 18, fontWeight: 600 }}>{String(text ?? '')}</div>;
-};
-
-export const Subtitle = ({ text }: AnyProps) => <div style={{ color: '#6b7280', fontSize: 13 }}>{String(text ?? '')}</div>;
-export const Eyebrow = ({ text }: AnyProps) => <div style={{ textTransform: 'uppercase', letterSpacing: 0.5, fontSize: 11, color: '#6b7280' }}>{String(text ?? '')}</div>;
-
-export const Text = ({ text, variant }: AnyProps) => (
-  <div style={{ color: variant === 'muted' ? '#6b7280' : '#111', fontSize: 14 }}>{String(text ?? '')}</div>
-);
-export const Caption = ({ text }: AnyProps) => <div style={{ color: '#6b7280', fontSize: 12 }}>{String(text ?? '')}</div>;
-
-export const Stat = ({ label, value, hint }: AnyProps) => (
-  <div>
-    {label ? <div style={{ color: '#6b7280', fontSize: 12 }}>{String(label)}</div> : null}
-    <div style={{ fontSize: 24, fontWeight: 600 }}>{String(value ?? '')}</div>
-    {hint ? <div style={{ color: '#6b7280', fontSize: 11 }}>{String(hint)}</div> : null}
-  </div>
-);
-
-export const Badge = ({ text, tone = 'default' }: AnyProps) => {
-  const palette: Record<string, [string, string]> = {
-    default: ['#f3f4f6', '#374151'],
-    success: ['#dcfce7', '#166534'],
-    info: ['#dbeafe', '#1e40af'],
-    muted: ['#f3f4f6', '#6b7280'],
-    destructive: ['#fee2e2', '#991b1b'],
-  };
-  const [bg, fg] = palette[tone] ?? palette.default;
-  return <span style={{ background: bg, color: fg, padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 500 }}>{String(text ?? '')}</span>;
-};
-
-export const Dot = ({ tone = 'default' }: AnyProps) => {
-  const colors: Record<string, string> = { default: '#9ca3af', success: '#16a34a', info: '#2563eb', destructive: '#dc2626', muted: '#9ca3af' };
-  return <span style={{ width: 8, height: 8, borderRadius: 999, display: 'inline-block', background: colors[tone] ?? colors.default }} />;
-};
-
-export const Divider = () => <hr style={{ border: 0, borderTop: '1px solid #e5e7eb' }} />;
-export const Spinner = () => <span>…</span>;
-export const Empty = ({ text = 'No data' }: AnyProps) => <div style={{ color: '#9ca3af', fontSize: 13 }}>{text}</div>;
-
-export const Table = ({ rows, columns }: AnyProps) => {
-  const r: any[] = Array.isArray(rows) ? rows : [];
-  const c: any[] = Array.isArray(columns) ? columns : [];
-  return (
-    <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
-      <thead>
-        <tr>{c.map((col) => <th key={col.key} style={{ textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid #e5e7eb', color: '#6b7280', fontWeight: 500 }}>{col.label ?? col.key}</th>)}</tr>
-      </thead>
-      <tbody>
-        {r.map((row, i) => (
-          <tr key={i}>{c.map((col) => <td key={col.key} style={{ padding: '6px 8px', borderBottom: '1px solid #f3f4f6' }}>{String(row?.[col.key] ?? '')}</td>)}</tr>
-        ))}
-      </tbody>
-    </table>
-  );
-};
-
-export const ListItem = ({ title, subtitle }: AnyProps) => (
-  <div style={{ padding: '8px 0', borderBottom: '1px solid #f3f4f6' }}>
-    <div style={{ fontSize: 13, fontWeight: 500 }}>{String(title ?? '')}</div>
-    {subtitle ? <div style={{ color: '#6b7280', fontSize: 12 }}>{String(subtitle)}</div> : null}
-  </div>
-);
-
-export const KeyValue = ({ label, value }: AnyProps) => (
-  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '4px 0' }}>
-    <span style={{ color: '#6b7280' }}>{String(label ?? '')}</span>
-    <span>{String(value ?? '')}</span>
-  </div>
-);
-
-export const Button = ({ text, onClick }: AnyProps) => (
-  <button onClick={onClick} style={{ background: '#111', color: 'white', border: 0, borderRadius: 8, padding: '6px 12px', fontSize: 13, cursor: 'pointer' }}>{String(text ?? '')}</button>
-);
-
-export const components = {
-  Card, Body, Section, Stack, Row, Grid, Header, Heading, Subtitle, Eyebrow,
-  Text, Caption, Stat, Badge, Dot, Divider, Spinner, Empty, Table, ListItem,
-  KeyValue, Button,
-};
-
-// Generic $computed helpers. Expand as needed; full system catalog lives in MyHub.
-export const functions: Record<string, (args: Record<string, any>) => unknown> = {
-  identity: (a) => a.value,
-  count: (a) => (Array.isArray(a.value) ? a.value.length : 0),
-  sum: (a) => (Array.isArray(a.value) ? a.value.reduce((acc: number, v: any) => acc + (Number(v) || 0), 0) : 0),
-  format_currency: (a) => {
-    const n = Number(a.value);
-    if (!Number.isFinite(n)) return '';
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency: a.currency || 'USD' }).format(n);
-  },
-  format_date: (a) => {
-    const d = new Date(String(a.value));
-    return Number.isFinite(d.getTime()) ? d.toLocaleDateString() : String(a.value ?? '');
-  },
-  fmt: (a) => String(a.value ?? ''),
-};

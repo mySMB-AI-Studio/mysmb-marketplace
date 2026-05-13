@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+/* Tailwind v4 JIT only emits classes it can statically see. The harness
+   reuses MyHub's widgets-system components live (see vite.config.ts), so
+   Tailwind needs to scan that source too — otherwise every class on MyHub's
+   primitives is stripped and widgets collapse to unstyled text.
+   Paths are relative to THIS file. The defaults below assume the conventional
+   layout (your plugin under `Plugins/<plugin>/`, with a sibling myHubV2):
+     ../        → harness/
+     ../../     → <plugin>/
+     ../../../  → Plugins/
+     ../../../../    → mySMB-Plugin-Marketplace/
+     ../../../../../myHubV2 → sibling myHubV2 checkout
+   If your myHubV2 lives elsewhere, edit the @source paths OR set the
+   HARNESS_MYHUB_PATH env var (vite.config.ts auto-discovers from there).
+   The directives are harmless when the paths don't exist — Tailwind just
+   has nothing extra to scan and widgets render via the system-fallback. */
+@source "../../../../../myHubV2/apps/web/src/features/widgets-system/**/*.{ts,tsx}";
+@source "../../../../../myHubV2/packages/widget-tokens/src/**/*.ts";
+@source "./**/*.{ts,tsx}";
+
+/* mySMB brand tokens — copied from myHubV2/apps/web/src/app/globals.css so
+   semantic classes like `text-foreground`, `bg-success` resolve. */
+:root {
+  --background: #F5F5F5;
+  --foreground: #212529;
+  --card: #FFFFFF;
+  --card-foreground: #212529;
+  --popover: #FFFFFF;
+  --popover-foreground: #212529;
+  --primary: #212529;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F0F0F0;
+  --secondary-foreground: #212529;
+  --muted: #F0F0F0;
+  --muted-foreground: #4B5563;
+  --accent: #34DFBA;
+  --accent-foreground: #212529;
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+  --border: #E5E5E5;
+  --input: #E5E5E5;
+  --ring: #34DFBA;
+  --brand: #34DFBA;
+  --brand-foreground: #0F1B17;
+  --success: #10B981;
+  --success-foreground: #FFFFFF;
+  --warning: #F59E0B;
+  --warning-foreground: #1A1300;
+  --info: #34DFBA;
+  --info-foreground: #0F1B17;
+  --radius: 0.5rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --radius-sm: calc(var(--radius) * 0.75);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) * 1.33);
+  --radius-xl: calc(var(--radius) * 1.75);
+  --radius-2xl: calc(var(--radius) * 2.25);
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+body {
+  font-family: Roboto, 'Segoe UI', 'Segoe UI Web (West European)', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  background: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom scrollbars — minimal, matches MyHub. */
+.harness-scroll { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.harness-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+.harness-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; border: 3px solid var(--background); }
+.harness-scroll::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
+
+/* Focus rings — accent over the brand mint. */
+.harness-focus:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}

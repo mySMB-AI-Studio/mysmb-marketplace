@@ -9,7 +9,13 @@ npm install
 npm run dev
 ```
 
-Then open [http://localhost:5173](http://localhost:5173) — that's the **widget harness**. Paste a widget JSON or pick one from the sidebar; it renders live and can call any MCP server you've wired in `plugin/.mcp.json`.
+Then open [http://localhost:5173](http://localhost:5173) — that's the **widget harness**. Pick a template from the sidebar, edit the JSON, watch it render live. Switch to the **Connections** tab to manage MCP servers — OAuth login, paste-token fallback, and a full tool inspector are all in there.
+
+## The harness, in 30 seconds
+
+- **Editor tab** — three panes: templates list (your widgets + every marketplace plugin's widgets), JSON source, live preview at any dashboard size. The strip at the bottom mirrors connection state without leaving the tab.
+- **Connections tab** — every MCP server from your `plugin/.mcp.json` plus every marketplace plugin's `.mcp.json` shows up here. Click **Login with OAuth** to run the spec-compliant MCP 2.1 flow (PKCE + dynamic client registration); credentials persist to `.harness-cache/oauth/<server>.json` so you only authorize once. There's a "Paste token" fallback for servers that don't advertise discovery.
+- **System primitives** — the harness imports MyHub's `widgets-system/system` live, so widgets render with the exact components production uses (Card, Stack, Icon, Skeleton, etc.). Point `HARNESS_MYHUB_PATH` at your `myHubV2` checkout for full fidelity, or let the harness fall back to a local stub (a plain Tailwind look that's enough to verify layout).
 
 ## Build it with Claude
 
@@ -36,7 +42,11 @@ Claude will read the relevant skill, write the file, and tell you to reload the 
 
 ## Setting credentials
 
-The harness reads `plugin/.mcp.json` and forwards `${VAR}` placeholders from your shell environment. To set a token before starting:
+Two paths, depending on your MCP server.
+
+**OAuth (preferred)** — for any HTTP/SSE server that advertises [RFC 8414](https://www.rfc-editor.org/rfc/rfc8414) discovery (`/.well-known/oauth-authorization-server/<path>`) and supports [RFC 7591](https://www.rfc-editor.org/rfc/rfc7591) dynamic client registration. Click **Login with OAuth** on the server card in the Connections tab; the harness handles PKCE, registration, callback, and token persistence. Tokens land in `.harness-cache/oauth/<server>.json` (gitignored).
+
+**Environment vars** — for stdio servers or HTTP servers that take a static API key. `${VAR}` placeholders in `plugin/.mcp.json` are substituted from your shell:
 
 **macOS / Linux**
 ```
@@ -51,6 +61,19 @@ npm run dev
 ```
 
 Every `${VAR}` you reference in `.mcp.json` must also appear in `plugin/README.md` under a `## Configuration` heading, so users (and the validator) know what to set.
+
+**Paste token** — last resort. The Connections tab has a "Paste token" button on every HTTP/SSE server card; the token is saved to `.harness-cache/tokens.json` (gitignored) and sent as `Authorization: Bearer <token>` on every request.
+
+## Pointing at MyHub for full fidelity
+
+The harness reuses MyHub's `widgets-system/system` directly. Discovery order:
+
+1. `HARNESS_MYHUB_PATH` env var (absolute path to your `myHubV2` checkout)
+2. Walk up the directory tree looking for `apps/web/src/features/widgets-system`
+3. Sibling layout: `../../../../../myHubV2` from the harness `src/`
+4. Fall back to the local `system-fallback/` (plain Tailwind look, every component name supported)
+
+The fallback is enough for layout verification. If a widget references a `$computed` helper or component that isn't in the fallback, it renders as a yellow `?TypeName` chip so you can spot it.
 
 ## Publishing
 
