@@ -1,0 +1,396 @@
+{
+  "id": "qbo-pnl-vs-prior",
+  "title": "P&L Pulse — Month over Month",
+  "description": "Year-to-date P&L by month with month-over-month variance on revenue, gross profit, expenses, and net income.",
+  "category": "finance",
+  "tags": ["quickbooks", "qbo", "pnl", "profit", "loss", "variance", "month-over-month", "finance", "report"],
+  "keywords": ["pnl", "p&l", "profit", "loss", "income", "expenses", "revenue", "earnings", "variance", "mom", "trend"],
+  "connectorsUsed": ["quickbooks-accounting"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 5 },
+    "min": { "colSpan": 5, "rowSpan": 4 },
+    "max": { "colSpan": 12, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "quickbooks-accounting",
+    "tool": "get_report_profit_and_loss",
+    "params": {
+      "date_macro": "This Fiscal Year-to-date",
+      "summarize_column_by": "Month",
+      "accounting_method": "Accrual"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["header", "stats", "divider", "body"],
+        "watch": {
+          "/quickbooks-accounting/get_report_profit_and_loss/Header": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/qbo-pnl/rows",
+                "value": {
+                  "$computed": "quickbooks-accounting_flatten_report_rows",
+                  "args": { "value": { "$state": "/quickbooks-accounting/get_report_profit_and_loss" } }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/qbo-pnl/columns",
+                "value": {
+                  "$computed": "quickbooks-accounting_pnl_column_headers",
+                  "args": { "value": { "$state": "/quickbooks-accounting/get_report_profit_and_loss" } }
+                }
+              }
+            }
+          ],
+          "/ui/qbo-pnl/rows": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/qbo-pnl/revVar",
+                "value": {
+                  "$computed": "quickbooks-accounting_pnl_mom_variance",
+                  "args": { "rows": { "$state": "/ui/qbo-pnl/rows" }, "line": "Total Income" }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/qbo-pnl/gpVar",
+                "value": {
+                  "$computed": "quickbooks-accounting_pnl_mom_variance",
+                  "args": { "rows": { "$state": "/ui/qbo-pnl/rows" }, "line": "Gross Profit" }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/qbo-pnl/opexVar",
+                "value": {
+                  "$computed": "quickbooks-accounting_pnl_mom_variance",
+                  "args": { "rows": { "$state": "/ui/qbo-pnl/rows" }, "line": "Total Expenses", "invert": true }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/qbo-pnl/niVar",
+                "value": {
+                  "$computed": "quickbooks-accounting_pnl_mom_variance",
+                  "args": { "rows": { "$state": "/ui/qbo-pnl/rows" }, "line": "Net Income" }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "header": {
+        "type": "Header",
+        "children": ["titleGroup", "asOfChip"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "TrendingUp", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": { "type": "Heading", "props": { "text": "P&L Pulse", "level": "h2" } },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": { "text": "Year-to-date · variance is month-over-month" }
+      },
+      "asOfChip": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["asOfLabel", "asOfValue"]
+      },
+      "asOfLabel": { "type": "Eyebrow", "props": { "text": "Through" } },
+      "asOfValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/quickbooks-accounting/get_report_profit_and_loss/Header/EndPeriod"
+          }
+        }
+      },
+
+      "stats": {
+        "type": "Grid",
+        "props": { "cols": 4, "gap": "md" },
+        "children": ["revCell", "gpCell", "opexCell", "niCell"],
+        "visible": { "$state": "/_loading/quickbooks-accounting.get_report_profit_and_loss", "not": true }
+      },
+
+      "revCell": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["revLabelRow", "revValue", "revVariance"]
+      },
+      "revLabelRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["revIcon", "revLabel"]
+      },
+      "revIcon": { "type": "Icon", "props": { "name": "ArrowUpRight", "tone": "success", "size": "xs" } },
+      "revLabel": { "type": "Eyebrow", "props": { "text": "Revenue (latest mo.)" } },
+      "revValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "quickbooks-accounting_report_find_row",
+                "args": {
+                  "value": { "$state": "/ui/qbo-pnl/rows" },
+                  "title": "Total Income",
+                  "cell": {
+                    "$computed": "quickbooks-accounting_pnl_latest_month_index",
+                    "args": { "value": { "$state": "/ui/qbo-pnl/rows" } }
+                  }
+                }
+              },
+              "currency": "USD"
+            }
+          },
+          "tone": "success"
+        }
+      },
+      "revVariance": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$template": "MoM ${/ui/qbo-pnl/revVar/pctLabel}"
+          },
+          "tone": {
+            "$state": "/ui/qbo-pnl/revVar/tone"
+          }
+        }
+      },
+
+      "gpCell": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["gpLabelRow", "gpValue", "gpVariance"]
+      },
+      "gpLabelRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["gpIcon", "gpLabel"]
+      },
+      "gpIcon": { "type": "Icon", "props": { "name": "Percent", "tone": "info", "size": "xs" } },
+      "gpLabel": { "type": "Eyebrow", "props": { "text": "Gross Profit" } },
+      "gpValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "quickbooks-accounting_report_find_row",
+                "args": {
+                  "value": { "$state": "/ui/qbo-pnl/rows" },
+                  "title": "Gross Profit",
+                  "cell": {
+                    "$computed": "quickbooks-accounting_pnl_latest_month_index",
+                    "args": { "value": { "$state": "/ui/qbo-pnl/rows" } }
+                  }
+                }
+              },
+              "currency": "USD"
+            }
+          },
+          "tone": "info"
+        }
+      },
+      "gpVariance": {
+        "type": "Caption",
+        "props": {
+          "text": { "$template": "MoM ${/ui/qbo-pnl/gpVar/pctLabel}" },
+          "tone": { "$state": "/ui/qbo-pnl/gpVar/tone" }
+        }
+      },
+
+      "opexCell": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["opexLabelRow", "opexValue", "opexVariance"]
+      },
+      "opexLabelRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["opexIcon", "opexLabel"]
+      },
+      "opexIcon": { "type": "Icon", "props": { "name": "ArrowDownRight", "tone": "destructive", "size": "xs" } },
+      "opexLabel": { "type": "Eyebrow", "props": { "text": "Total Expenses" } },
+      "opexValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "quickbooks-accounting_report_find_row",
+                "args": {
+                  "value": { "$state": "/ui/qbo-pnl/rows" },
+                  "title": "Total Expenses",
+                  "cell": {
+                    "$computed": "quickbooks-accounting_pnl_latest_month_index",
+                    "args": { "value": { "$state": "/ui/qbo-pnl/rows" } }
+                  }
+                }
+              },
+              "currency": "USD"
+            }
+          },
+          "tone": "destructive"
+        }
+      },
+      "opexVariance": {
+        "type": "Caption",
+        "props": {
+          "text": { "$template": "MoM ${/ui/qbo-pnl/opexVar/pctLabel}" },
+          "tone": { "$state": "/ui/qbo-pnl/opexVar/tone" }
+        }
+      },
+
+      "niCell": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["niLabelRow", "niValue", "niVariance"]
+      },
+      "niLabelRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["niIcon", "niLabel"]
+      },
+      "niIcon": { "type": "Icon", "props": { "name": "Target", "tone": "accent", "size": "xs" } },
+      "niLabel": { "type": "Eyebrow", "props": { "text": "Net Income" } },
+      "niValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "quickbooks-accounting_report_find_row",
+                "args": {
+                  "value": { "$state": "/ui/qbo-pnl/rows" },
+                  "title": "Net Income",
+                  "cell": {
+                    "$computed": "quickbooks-accounting_pnl_latest_month_index",
+                    "args": { "value": { "$state": "/ui/qbo-pnl/rows" } }
+                  }
+                }
+              },
+              "currency": "USD"
+            }
+          }
+        }
+      },
+      "niVariance": {
+        "type": "Caption",
+        "props": {
+          "text": { "$template": "MoM ${/ui/qbo-pnl/niVar/pctLabel}" },
+          "tone": { "$state": "/ui/qbo-pnl/niVar/tone" }
+        }
+      },
+
+      "divider": { "type": "Divider" },
+
+      "body": {
+        "type": "Body",
+        "children": ["loading", "breakdownHeading", "table", "yearToDateRow"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["ls1", "ls2", "ls3", "ls4"],
+        "visible": { "$state": "/_loading/quickbooks-accounting.get_report_profit_and_loss" }
+      },
+      "ls1": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "ls2": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "ls3": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "ls4": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "breakdownHeading": {
+        "type": "Heading",
+        "props": { "text": "Line items by month", "level": "h3" },
+        "visible": { "$state": "/_loading/quickbooks-accounting.get_report_profit_and_loss", "not": true }
+      },
+      "table": {
+        "type": "Table",
+        "props": {
+          "rows": { "$state": "/ui/qbo-pnl/rows" },
+          "columns": [
+            { "id": "depth", "header": "", "field": "depth", "width": "1rem", "priority": 3 },
+            { "id": "title", "header": "Line", "field": "title", "priority": 1 },
+            { "id": "c1", "header": "M1", "field": "c1", "align": "right", "format": "currency", "priority": 2 },
+            { "id": "c2", "header": "M2", "field": "c2", "align": "right", "format": "currency", "priority": 2 },
+            { "id": "c3", "header": "M3", "field": "c3", "align": "right", "format": "currency", "priority": 2 },
+            { "id": "c4", "header": "M4", "field": "c4", "align": "right", "format": "currency", "priority": 2 },
+            { "id": "c5", "header": "M5", "field": "c5", "align": "right", "format": "currency", "priority": 2 },
+            { "id": "c6", "header": "M6", "field": "c6", "align": "right", "format": "currency", "priority": 2 },
+            { "id": "c7", "header": "M7", "field": "c7", "align": "right", "format": "currency", "priority": 2 },
+            { "id": "c8", "header": "M8", "field": "c8", "align": "right", "format": "currency", "priority": 2 },
+            { "id": "c9", "header": "M9", "field": "c9", "align": "right", "format": "currency", "priority": 2 },
+            { "id": "c10", "header": "M10", "field": "c10", "align": "right", "format": "currency", "priority": 2 },
+            { "id": "c11", "header": "M11", "field": "c11", "align": "right", "format": "currency", "priority": 2 },
+            { "id": "c12", "header": "M12", "field": "c12", "align": "right", "format": "currency", "priority": 2 },
+            { "id": "c13", "header": "YTD", "field": "c13", "align": "right", "format": "currency", "priority": 1, "weight": "semibold" }
+          ]
+        },
+        "visible": { "$state": "/_loading/quickbooks-accounting.get_report_profit_and_loss", "not": true }
+      },
+      "yearToDateRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "justify": "end" },
+        "children": ["ytdLabel", "ytdValue"],
+        "visible": { "$state": "/_loading/quickbooks-accounting.get_report_profit_and_loss", "not": true }
+      },
+      "ytdLabel": { "type": "Caption", "props": { "text": "YTD net income →" } },
+      "ytdValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "quickbooks-accounting_pnl_extract",
+                "args": {
+                  "value": { "$state": "/quickbooks-accounting/get_report_profit_and_loss" },
+                  "line": "Net Income",
+                  "cell": {
+                    "$computed": "quickbooks-accounting_pnl_latest_month_index",
+                    "args": { "value": { "$state": "/ui/qbo-pnl/rows" } }
+                  }
+                }
+              },
+              "currency": "USD"
+            }
+          },
+          "tone": "accent"
+        }
+      }
+    }
+  },
+  "status": "published"
+}

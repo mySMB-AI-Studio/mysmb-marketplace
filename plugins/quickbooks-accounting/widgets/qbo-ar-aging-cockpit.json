@@ -1,0 +1,534 @@
+{
+  "id": "qbo-ar-aging-cockpit",
+  "title": "AR Aging Cockpit",
+  "description": "Open receivables ranked by due date, aged into buckets, with one-click send-reminder and drill-down.",
+  "category": "finance",
+  "tags": ["quickbooks", "qbo", "invoices", "ar", "aging", "receivables", "collections", "finance"],
+  "keywords": ["ar", "aging", "receivables", "overdue", "collections", "chase", "dso", "invoice", "invoices"],
+  "connectorsUsed": ["quickbooks-accounting"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 4 },
+    "min": { "colSpan": 4, "rowSpan": 3 },
+    "max": { "colSpan": 12, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "quickbooks-accounting",
+    "tool": "list_invoice",
+    "params": { "where": "Balance > '0'", "orderBy": "DueDate ASC", "maxResults": 50 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["header", "buckets", "divider", "body", "overlay"],
+        "watch": {
+          "/quickbooks-accounting/list_invoice": [
+            {
+              "action": "quickbooks-accounting.get_report_aged_receivables",
+              "params": { "aging_period": 30, "num_periods": 4 }
+            },
+            {
+              "action": "quickbooks-accounting.get_report_profit_and_loss",
+              "params": {
+                "start_date": {
+                  "$computed": "quickbooks-accounting_today_minus_days",
+                  "args": { "days": 90 }
+                },
+                "end_date": {
+                  "$computed": "quickbooks-accounting_today_minus_days",
+                  "args": { "days": 0 }
+                }
+              }
+            }
+          ],
+          "/quickbooks-accounting/get_report_aged_receivables": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/qbo-ar/aging-rows",
+              "value": {
+                "$computed": "quickbooks-accounting_flatten_report_rows",
+                "args": { "value": { "$state": "/quickbooks-accounting/get_report_aged_receivables" } }
+              }
+            }
+          },
+          "/quickbooks-accounting/get_report_profit_and_loss": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/qbo-ar/pnl-rows",
+              "value": {
+                "$computed": "quickbooks-accounting_flatten_report_rows",
+                "args": { "value": { "$state": "/quickbooks-accounting/get_report_profit_and_loss" } }
+              }
+            }
+          }
+        }
+      },
+
+      "header": {
+        "type": "Header",
+        "children": ["titleGroup", "dsoChip"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Receipt", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": { "type": "Heading", "props": { "text": "AR Aging Cockpit", "level": "h2" } },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} open invoices",
+              "n": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/quickbooks-accounting/list_invoice/QueryResponse/Invoice" } }
+              }
+            }
+          }
+        }
+      },
+      "dsoChip": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["dsoLabel", "dsoValue"]
+      },
+      "dsoLabel": { "type": "Eyebrow", "props": { "text": "DSO (90d)" } },
+      "dsoValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "quickbooks-accounting_dso",
+            "args": {
+              "arBalance": {
+                "$computed": "quickbooks-accounting_aging_bucket_total",
+                "args": { "rows": { "$state": "/ui/qbo-ar/aging-rows" }, "cell": 5 }
+              },
+              "sales": {
+                "$computed": "quickbooks-accounting_report_find_row",
+                "args": { "value": { "$state": "/ui/qbo-ar/pnl-rows" }, "title": "Total Income", "cell": 1 }
+              },
+              "periodDays": 90
+            }
+          }
+        }
+      },
+
+      "buckets": {
+        "type": "Grid",
+        "props": { "cols": 5, "gap": "md" },
+        "children": ["bucketCurrent", "bucket0_30", "bucket31_60", "bucket61_90", "bucket90"],
+        "visible": { "$state": "/_loading/quickbooks-accounting.get_report_aged_receivables", "not": true }
+      },
+      "bucketCurrent": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["bcLabel", "bcValue"]
+      },
+      "bcLabel": { "type": "Eyebrow", "props": { "text": "Current" } },
+      "bcValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "quickbooks-accounting_report_find_row",
+                "args": { "value": { "$state": "/ui/qbo-ar/aging-rows" }, "title": "TOTAL", "cell": 1 }
+              },
+              "currency": "USD"
+            }
+          },
+          "tone": "success"
+        }
+      },
+      "bucket0_30": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["b1Label", "b1Value"]
+      },
+      "b1Label": { "type": "Eyebrow", "props": { "text": "1-30" } },
+      "b1Value": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "quickbooks-accounting_report_find_row",
+                "args": { "value": { "$state": "/ui/qbo-ar/aging-rows" }, "title": "TOTAL", "cell": 2 }
+              },
+              "currency": "USD"
+            }
+          },
+          "tone": "info"
+        }
+      },
+      "bucket31_60": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["b2Label", "b2Value"]
+      },
+      "b2Label": { "type": "Eyebrow", "props": { "text": "31-60" } },
+      "b2Value": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "quickbooks-accounting_report_find_row",
+                "args": { "value": { "$state": "/ui/qbo-ar/aging-rows" }, "title": "TOTAL", "cell": 3 }
+              },
+              "currency": "USD"
+            }
+          },
+          "tone": "warning"
+        }
+      },
+      "bucket61_90": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["b3Label", "b3Value"]
+      },
+      "b3Label": { "type": "Eyebrow", "props": { "text": "61-90" } },
+      "b3Value": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "quickbooks-accounting_report_find_row",
+                "args": { "value": { "$state": "/ui/qbo-ar/aging-rows" }, "title": "TOTAL", "cell": 4 }
+              },
+              "currency": "USD"
+            }
+          },
+          "tone": "destructive"
+        }
+      },
+      "bucket90": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["b4Label", "b4Value"]
+      },
+      "b4Label": { "type": "Eyebrow", "props": { "text": "90+" } },
+      "b4Value": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "quickbooks-accounting_report_find_row",
+                "args": { "value": { "$state": "/ui/qbo-ar/aging-rows" }, "title": "TOTAL", "cell": 5 }
+              },
+              "currency": "USD"
+            }
+          },
+          "tone": "destructive"
+        }
+      },
+
+      "divider": { "type": "Divider" },
+
+      "body": {
+        "type": "Body",
+        "children": ["loading", "empty", "list"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/quickbooks-accounting.list_invoice" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "Nothing outstanding — you're caught up.", "icon": "Trophy" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/quickbooks-accounting.list_invoice", "not": true },
+            { "$state": "/quickbooks-accounting/list_invoice/QueryResponse/Invoice/0", "not": true }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": {
+          "statePath": "/quickbooks-accounting/list_invoice/QueryResponse/Invoice",
+          "key": "Id"
+        },
+        "visible": { "$state": "/_loading/quickbooks-accounting.list_invoice", "not": true }
+      },
+      "row": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "hover": true, "clickable": true },
+        "children": ["severity", "identity", "overdueBadge", "amount", "actions"],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/qbo-ar/selectedInvoiceId",
+                "value": { "$computed": "identity", "args": { "value": { "$item": "Id" } } }
+              }
+            },
+            {
+              "action": "quickbooks-accounting.get_invoice",
+              "params": { "id": { "$computed": "identity", "args": { "value": { "$item": "Id" } } } }
+            }
+          ]
+        }
+      },
+      "severity": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$computed": "quickbooks-accounting_overdue_tone",
+            "args": { "value": { "$item": "DueDate" } }
+          },
+          "size": "sm"
+        }
+      },
+      "identity": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["idTop", "idBottom"]
+      },
+      "idTop": {
+        "type": "Text",
+        "props": { "text": { "$item": "CustomerRef/name" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "idBottom": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "#{n}", "n": { "$item": "DocNumber" } }
+          }
+        }
+      },
+      "overdueBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "quickbooks-accounting_overdue_label",
+            "args": { "value": { "$item": "DueDate" } }
+          },
+          "tone": {
+            "$computed": "quickbooks-accounting_overdue_tone",
+            "args": { "value": { "$item": "DueDate" } }
+          },
+          "variant": "soft"
+        }
+      },
+      "amount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": { "$item": "Balance" },
+              "currency": { "$item": "CurrencyRef/value" }
+            }
+          },
+          "weight": "semibold",
+          "size": "sm"
+        }
+      },
+      "actions": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["sentBadge", "remindBtn"]
+      },
+      "sentBadge": {
+        "type": "Badge",
+        "props": { "text": "Sent", "tone": "success", "variant": "soft" },
+        "visible": { "$item": "_reminderSent" }
+      },
+      "remindBtn": {
+        "type": "IconButton",
+        "props": { "icon": "Mail", "tone": "accent", "ariaLabel": "Send reminder" },
+        "visible": { "$item": "_reminderSent", "not": true },
+        "on": {
+          "click": [
+            {
+              "action": "quickbooks-accounting.send_invoice",
+              "params": { "id": { "$computed": "identity", "args": { "value": { "$item": "Id" } } } }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": { "$item": "_reminderSent" },
+                "value": {
+                  "$cond": { "$state": "/_errors/quickbooks-accounting.send_invoice" },
+                  "$then": false,
+                  "$else": true
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "overlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "30rem" },
+        "children": ["detailCard"],
+        "visible": { "$state": "/ui/qbo-ar/selectedInvoiceId" },
+        "on": {
+          "backdropClick": {
+            "action": "setState",
+            "params": { "statePath": "/ui/qbo-ar/selectedInvoiceId", "value": "" }
+          }
+        }
+      },
+      "detailCard": {
+        "type": "Card",
+        "children": ["detailHeader", "detailSpinner", "detailBody"]
+      },
+      "detailHeader": {
+        "type": "Header",
+        "children": ["detailTitle", "detailClose"]
+      },
+      "detailTitle": {
+        "type": "Heading",
+        "props": {
+          "text": { "$template": "Invoice #${/quickbooks-accounting/get_invoice/Invoice/DocNumber}" },
+          "level": "h2"
+        }
+      },
+      "detailClose": {
+        "type": "IconButton",
+        "props": { "icon": "X", "tone": "muted", "ariaLabel": "Close" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": { "statePath": "/ui/qbo-ar/selectedInvoiceId", "value": "" }
+          }
+        }
+      },
+      "detailSpinner": {
+        "type": "Spinner",
+        "props": { "label": "Loading invoice…" },
+        "visible": {
+          "$state": "/quickbooks-accounting/get_invoice/Invoice/Id",
+          "neq": { "$state": "/ui/qbo-ar/selectedInvoiceId" }
+        }
+      },
+      "detailBody": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["kvCustomer", "kvDue", "kvBalance", "kvTotal", "kvEmailStatus", "kvMemo", "detailActions"],
+        "visible": {
+          "$state": "/quickbooks-accounting/get_invoice/Invoice/Id",
+          "eq": { "$state": "/ui/qbo-ar/selectedInvoiceId" }
+        }
+      },
+      "kvCustomer": {
+        "type": "KeyValue",
+        "props": { "label": "Customer", "value": { "$state": "/quickbooks-accounting/get_invoice/Invoice/CustomerRef/name" } }
+      },
+      "kvDue": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Due",
+          "value": {
+            "$computed": "quickbooks-accounting_format_date",
+            "args": { "value": { "$state": "/quickbooks-accounting/get_invoice/Invoice/DueDate" }, "format": "medium" }
+          }
+        }
+      },
+      "kvBalance": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Balance due",
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": { "$state": "/quickbooks-accounting/get_invoice/Invoice/Balance" },
+              "currency": { "$state": "/quickbooks-accounting/get_invoice/Invoice/CurrencyRef/value" }
+            }
+          },
+          "tone": "destructive"
+        }
+      },
+      "kvTotal": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Total",
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": { "$state": "/quickbooks-accounting/get_invoice/Invoice/TotalAmt" },
+              "currency": { "$state": "/quickbooks-accounting/get_invoice/Invoice/CurrencyRef/value" }
+            }
+          }
+        }
+      },
+      "kvEmailStatus": {
+        "type": "KeyValue",
+        "props": { "label": "Email status", "value": { "$state": "/quickbooks-accounting/get_invoice/Invoice/EmailStatus" } }
+      },
+      "kvMemo": {
+        "type": "KeyValue",
+        "props": { "label": "Memo", "value": { "$state": "/quickbooks-accounting/get_invoice/Invoice/CustomerMemo/value" } }
+      },
+      "detailActions": {
+        "type": "Row",
+        "props": { "gap": "sm", "justify": "end" },
+        "children": ["detailRemind", "detailPdf"]
+      },
+      "detailRemind": {
+        "type": "Button",
+        "props": { "label": "Send reminder", "variant": "primary", "size": "sm", "leadingIcon": "Mail" },
+        "on": {
+          "click": {
+            "action": "quickbooks-accounting.send_invoice",
+            "params": { "id": { "$state": "/ui/qbo-ar/selectedInvoiceId" } }
+          }
+        }
+      },
+      "detailPdf": {
+        "type": "Button",
+        "props": { "label": "PDF", "variant": "secondary", "size": "sm", "leadingIcon": "FileText" },
+        "on": {
+          "click": [
+            {
+              "action": "quickbooks-accounting.pdf_invoice",
+              "params": { "id": { "$state": "/ui/qbo-ar/selectedInvoiceId" } }
+            },
+            {
+              "action": "download_base64",
+              "params": {
+                "data": { "$state": "/quickbooks-accounting/pdf_invoice" },
+                "filename": { "$template": "invoice-${/quickbooks-accounting/get_invoice/Invoice/DocNumber}.pdf" },
+                "mimeType": "application/pdf"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "status": "published"
+}
