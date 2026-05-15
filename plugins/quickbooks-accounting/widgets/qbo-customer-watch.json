@@ -1,0 +1,365 @@
+{
+  "id": "qbo-customer-watch",
+  "title": "Top Customers & At-Risk",
+  "description": "YTD revenue concentration plus flagged customers — payment slowdown, going quiet, balance ballooning.",
+  "category": "finance",
+  "tags": ["quickbooks", "qbo", "customers", "concentration", "risk", "ar", "sales", "finance"],
+  "keywords": ["customer", "concentration", "top", "risk", "at-risk", "client", "advisory", "cas"],
+  "connectorsUsed": ["quickbooks-accounting"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
+    "max": { "colSpan": 10, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "quickbooks-accounting",
+    "tool": "get_report_customer_sales",
+    "params": {
+      "date_macro": "This Fiscal Year-to-date"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["header", "tabBar", "divider", "topBody", "riskBody"],
+        "watch": {
+          "/quickbooks-accounting/get_report_customer_sales/Header": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/qbo-customers/sales-rows",
+                "value": {
+                  "$computed": "quickbooks-accounting_flatten_report_rows",
+                  "args": { "value": { "$state": "/quickbooks-accounting/get_report_customer_sales" } }
+                }
+              }
+            },
+            {
+              "action": "quickbooks-accounting.list_customer",
+              "params": { "where": "Active = true AND Balance > '0'", "maxResults": 1000 }
+            }
+          ],
+          "/quickbooks-accounting/list_customer": {
+            "action": "quickbooks-accounting.list_invoice",
+            "params": {
+              "where": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "TxnDate > '{d}'",
+                  "d": {
+                    "$computed": "quickbooks-accounting_today_minus_days",
+                    "args": { "days": 180 }
+                  }
+                }
+              },
+              "maxResults": 1000
+            }
+          },
+          "/quickbooks-accounting/list_invoice": {
+            "action": "quickbooks-accounting.list_payment",
+            "params": {
+              "where": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "TxnDate > '{d}'",
+                  "d": {
+                    "$computed": "quickbooks-accounting_today_minus_days",
+                    "args": { "days": 180 }
+                  }
+                }
+              },
+              "maxResults": 1000
+            }
+          },
+          "/quickbooks-accounting/list_payment": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/qbo-customers/top",
+                "value": {
+                  "$computed": "quickbooks-accounting_top_customers_with_pct",
+                  "args": { "value": { "$state": "/ui/qbo-customers/sales-rows" }, "n": 5 }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/qbo-customers/risks",
+                "value": {
+                  "$computed": "quickbooks-accounting_customer_risk_flags",
+                  "args": {
+                    "customers": { "$state": "/quickbooks-accounting/list_customer/QueryResponse/Customer" },
+                    "invoices": { "$state": "/quickbooks-accounting/list_invoice/QueryResponse/Invoice" },
+                    "payments": { "$state": "/quickbooks-accounting/list_payment/QueryResponse/Payment" },
+                    "salesTopN": { "$state": "/ui/qbo-customers/sales-rows" }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "header": {
+        "type": "Header",
+        "children": ["titleGroup", "concentrationChip"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Users", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": { "type": "Heading", "props": { "text": "Top Customers & At-Risk", "level": "h2" } },
+      "subtitle": { "type": "Eyebrow", "props": { "text": "Year-to-date · concentration & risk" } },
+      "concentrationChip": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["concentrationLabel", "concentrationValue"]
+      },
+      "concentrationLabel": { "type": "Eyebrow", "props": { "text": "Top 5 share" } },
+      "concentrationValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{p}%",
+              "p": {
+                "$computed": "quickbooks-accounting_concentration_top_n",
+                "args": { "value": { "$state": "/ui/qbo-customers/sales-rows" }, "n": 5 }
+              }
+            }
+          }
+        }
+      },
+
+      "tabBar": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["topTabBtn", "riskTabBtn"]
+      },
+      "topTabBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Top by revenue",
+          "size": "sm",
+          "variant": {
+            "$computed": "quickbooks-accounting_tab_variant",
+            "args": { "active": { "$state": "/ui/qbo-customers/tab" }, "want": "top" }
+          },
+          "leadingIcon": "Trophy"
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": { "statePath": "/ui/qbo-customers/tab", "value": "top" }
+          }
+        }
+      },
+      "riskTabBtn": {
+        "type": "Button",
+        "props": {
+          "label": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "At risk ({n})",
+              "n": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/ui/qbo-customers/risks" } }
+              }
+            }
+          },
+          "size": "sm",
+          "variant": {
+            "$computed": "quickbooks-accounting_tab_variant",
+            "args": { "active": { "$state": "/ui/qbo-customers/tab" }, "want": "risk" }
+          },
+          "leadingIcon": "AlertTriangle"
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": { "statePath": "/ui/qbo-customers/tab", "value": "risk" }
+          }
+        }
+      },
+
+      "divider": { "type": "Divider" },
+
+      "topBody": {
+        "type": "Body",
+        "children": ["topLoading", "topEmpty", "topList"],
+        "visible": {
+          "$state": "/ui/qbo-customers/tab",
+          "neq": "risk"
+        }
+      },
+      "topLoading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["tsk1", "tsk2", "tsk3"],
+        "visible": { "$state": "/_loading/quickbooks-accounting.get_report_customer_sales" }
+      },
+      "tsk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "tsk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "tsk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "topEmpty": {
+        "type": "Empty",
+        "props": { "message": "No revenue recorded year-to-date.", "icon": "Users" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/quickbooks-accounting.get_report_customer_sales", "not": true },
+            { "$state": "/ui/qbo-customers/top/0", "not": true }
+          ]
+        }
+      },
+      "topList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["topRow"],
+        "repeat": {
+          "statePath": "/ui/qbo-customers/top",
+          "key": "id"
+        },
+        "visible": { "$state": "/_loading/quickbooks-accounting.get_report_customer_sales", "not": true }
+      },
+      "topRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "hover": true },
+        "children": ["topRank", "topName", "topRev", "topPct"]
+      },
+      "topRank": {
+        "type": "Text",
+        "props": { "text": { "$item": "rank" }, "size": "sm", "weight": "semibold", "tone": "muted" }
+      },
+      "topName": {
+        "type": "Text",
+        "props": { "text": { "$item": "title" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "topRev": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": { "value": { "$item": "revenue" }, "currency": "USD" }
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "topPct": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{p}%", "p": { "$item": "pct" } }
+          },
+          "tone": "accent",
+          "variant": "soft"
+        }
+      },
+
+      "riskBody": {
+        "type": "Body",
+        "children": ["riskLoading", "riskEmpty", "riskList"],
+        "visible": {
+          "$state": "/ui/qbo-customers/tab",
+          "eq": "risk"
+        }
+      },
+      "riskLoading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["rsk1", "rsk2", "rsk3"],
+        "visible": { "$state": "/_loading/quickbooks-accounting.list_payment" }
+      },
+      "rsk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "rsk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "rsk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "riskEmpty": {
+        "type": "Empty",
+        "props": { "message": "No customers flagged — portfolio looks healthy.", "icon": "ShieldCheck" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/quickbooks-accounting.list_payment", "not": true },
+            { "$state": "/ui/qbo-customers/risks/0", "not": true }
+          ]
+        }
+      },
+      "riskList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["riskRow"],
+        "repeat": {
+          "statePath": "/ui/qbo-customers/risks",
+          "key": "id"
+        },
+        "visible": { "$state": "/_loading/quickbooks-accounting.list_payment", "not": true }
+      },
+      "riskRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["riskIcon", "riskIdentity", "riskBalance"]
+      },
+      "riskIcon": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$computed": "quickbooks-accounting_risk_severity_icon",
+            "args": { "value": { "$item": "severity" } }
+          },
+          "tone": {
+            "$computed": "quickbooks-accounting_risk_severity_tone",
+            "args": { "value": { "$item": "severity" } }
+          },
+          "size": "sm"
+        }
+      },
+      "riskIdentity": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["riskName", "riskFlag"]
+      },
+      "riskName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "riskFlag": {
+        "type": "Caption",
+        "props": {
+          "text": { "$item": "flagLabel" },
+          "tone": {
+            "$computed": "quickbooks-accounting_risk_severity_tone",
+            "args": { "value": { "$item": "severity" } }
+          }
+        }
+      },
+      "riskBalance": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": { "value": { "$item": "openBalance" }, "currency": "USD" }
+          },
+          "size": "sm",
+          "weight": "semibold",
+          "align": "right"
+        }
+      }
+    }
+  },
+  "status": "published"
+}

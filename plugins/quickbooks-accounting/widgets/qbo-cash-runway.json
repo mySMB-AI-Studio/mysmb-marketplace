@@ -1,0 +1,264 @@
+{
+  "id": "qbo-cash-runway",
+  "title": "Cash & 13-Week Runway",
+  "description": "Current cash by bank account plus a 13-week forecast derived from open AR and AP due dates — the CFO-advisory staple.",
+  "category": "finance",
+  "tags": ["quickbooks", "qbo", "cash-flow", "runway", "forecast", "13-week", "finance"],
+  "keywords": ["cash", "runway", "13-week", "13 week", "forecast", "projection", "cash flow", "burn", "liquidity"],
+  "connectorsUsed": ["quickbooks-accounting"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 4 },
+    "min": { "colSpan": 5, "rowSpan": 3 },
+    "max": { "colSpan": 12, "rowSpan": 8 }
+  },
+  "dataProvider": {
+    "mcp": "quickbooks-accounting",
+    "tool": "list_account",
+    "params": {
+      "where": "Active = true AND (AccountType = 'Bank' OR AccountType = 'Credit Card')",
+      "maxResults": 100
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["header", "stats", "divider", "body"],
+        "watch": {
+          "/quickbooks-accounting/list_account": {
+            "action": "quickbooks-accounting.list_invoice",
+            "params": { "where": "Balance > '0'", "orderBy": "DueDate ASC", "maxResults": 1000 }
+          },
+          "/quickbooks-accounting/list_invoice": {
+            "action": "quickbooks-accounting.list_bill",
+            "params": { "where": "Balance > '0'", "orderBy": "DueDate ASC", "maxResults": 1000 }
+          },
+          "/quickbooks-accounting/list_bill": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/qbo-cash/projection",
+              "value": {
+                "$computed": "quickbooks-accounting_weekly_cash_projection",
+                "args": {
+                  "openingCash": {
+                    "$computed": "quickbooks-accounting_sum_bank_balances",
+                    "args": { "value": { "$state": "/quickbooks-accounting/list_account/QueryResponse/Account" } }
+                  },
+                  "invoices": { "$state": "/quickbooks-accounting/list_invoice/QueryResponse/Invoice" },
+                  "bills": { "$state": "/quickbooks-accounting/list_bill/QueryResponse/Bill" },
+                  "weeks": 13
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "header": {
+        "type": "Header",
+        "children": ["titleGroup", "runwayChip"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Wallet", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": { "type": "Heading", "props": { "text": "Cash & 13-Week Runway", "level": "h2" } },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": { "text": "Committed inflows from open AR · outflows from open AP" }
+      },
+      "runwayChip": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["runwayLabel", "runwayValue"]
+      },
+      "runwayLabel": { "type": "Eyebrow", "props": { "text": "Weeks of runway" } },
+      "runwayValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "quickbooks-accounting_runway_weeks",
+            "args": {
+              "buckets": { "$state": "/ui/qbo-cash/projection" },
+              "currentCash": {
+                "$computed": "quickbooks-accounting_sum_bank_balances",
+                "args": { "value": { "$state": "/quickbooks-accounting/list_account/QueryResponse/Account" } }
+              }
+            }
+          }
+        }
+      },
+
+      "stats": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "md" },
+        "children": ["cashCell", "inflowCell", "outflowCell"],
+        "visible": { "$state": "/_loading/quickbooks-accounting.list_account", "not": true }
+      },
+      "cashCell": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["cashLabelRow", "cashValue", "cashSub"]
+      },
+      "cashLabelRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["cashIcon", "cashLabel"]
+      },
+      "cashIcon": { "type": "Icon", "props": { "name": "Landmark", "tone": "success", "size": "xs" } },
+      "cashLabel": { "type": "Eyebrow", "props": { "text": "Current cash" } },
+      "cashValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "quickbooks-accounting_sum_bank_balances",
+                "args": { "value": { "$state": "/quickbooks-accounting/list_account/QueryResponse/Account" } }
+              },
+              "currency": "USD"
+            }
+          },
+          "tone": "success"
+        }
+      },
+      "cashSub": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "CC balance {cc}",
+              "cc": {
+                "$computed": "format_currency",
+                "args": {
+                  "value": {
+                    "$computed": "quickbooks-accounting_sum_creditcard_balances",
+                    "args": { "value": { "$state": "/quickbooks-accounting/list_account/QueryResponse/Account" } }
+                  },
+                  "currency": "USD"
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "inflowCell": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["inflowLabelRow", "inflowValue"]
+      },
+      "inflowLabelRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["inflowIcon", "inflowLabel"]
+      },
+      "inflowIcon": { "type": "Icon", "props": { "name": "ArrowDownCircle", "tone": "success", "size": "xs" } },
+      "inflowLabel": { "type": "Eyebrow", "props": { "text": "Committed inflows (13w)" } },
+      "inflowValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "quickbooks-accounting_sum_field",
+                "args": { "value": { "$state": "/quickbooks-accounting/list_invoice/QueryResponse/Invoice" }, "field": "Balance" }
+              },
+              "currency": "USD"
+            }
+          },
+          "tone": "success"
+        }
+      },
+
+      "outflowCell": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["outflowLabelRow", "outflowValue"]
+      },
+      "outflowLabelRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["outflowIcon", "outflowLabel"]
+      },
+      "outflowIcon": { "type": "Icon", "props": { "name": "ArrowUpCircle", "tone": "destructive", "size": "xs" } },
+      "outflowLabel": { "type": "Eyebrow", "props": { "text": "Committed outflows (13w)" } },
+      "outflowValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "quickbooks-accounting_sum_field",
+                "args": { "value": { "$state": "/quickbooks-accounting/list_bill/QueryResponse/Bill" }, "field": "Balance" }
+              },
+              "currency": "USD"
+            }
+          },
+          "tone": "destructive"
+        }
+      },
+
+      "divider": { "type": "Divider" },
+
+      "body": {
+        "type": "Body",
+        "children": ["bodyHeading", "loading", "empty", "forecastTable"]
+      },
+      "bodyHeading": {
+        "type": "Heading",
+        "props": { "text": "Projected weekly cash", "level": "h3" }
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["fs1", "fs2"],
+        "visible": { "$state": "/_loading/quickbooks-accounting.list_bill" }
+      },
+      "fs1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "fs2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No open invoices or bills — nothing to project.", "icon": "Banknote" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/quickbooks-accounting.list_bill", "not": true },
+            { "$state": "/ui/qbo-cash/projection/0", "not": true }
+          ]
+        }
+      },
+      "forecastTable": {
+        "type": "Table",
+        "props": {
+          "rows": { "$state": "/ui/qbo-cash/projection" },
+          "columns": [
+            { "id": "wk", "header": "Week", "field": "label", "priority": 1 },
+            { "id": "start", "header": "Starts", "field": "weekStart", "priority": 2 },
+            { "id": "in", "header": "In", "field": "inflow", "align": "right", "format": "currency", "priority": 1 },
+            { "id": "out", "header": "Out", "field": "outflow", "align": "right", "format": "currency", "priority": 1 },
+            { "id": "net", "header": "Net", "field": "net", "align": "right", "format": "currency", "priority": 2 },
+            { "id": "end", "header": "Ending cash", "field": "endingCash", "align": "right", "format": "currency", "priority": 1 }
+          ]
+        },
+        "visible": { "$state": "/_loading/quickbooks-accounting.list_bill", "not": true }
+      }
+    }
+  },
+  "status": "published"
+}
