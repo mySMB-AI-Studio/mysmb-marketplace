@@ -258,6 +258,78 @@ const overdue_tone: ComputedFunction = (args) => {
   return 'destructive';
 };
 
+// ── overdue_only ─────────────────────────────────────────────────────
+// Return only the invoices whose DueDate is in the past (daysOverdue > 0).
+// Used by chase/collections widgets that want to exclude not-yet-due
+// invoices from the AUTHORISED list.
+// Args: { value: Invoice[] }
+const overdue_only: ComputedFunction = (args) => {
+  const arr = args.value;
+  if (!Array.isArray(arr)) return [];
+  return arr.filter((inv) => {
+    const due = (inv as { DueDate?: unknown })?.DueDate;
+    const n = Number(days_overdue({ value: due }));
+    return Number.isFinite(n) && n > 0;
+  });
+};
+
+// ── age_buckets ──────────────────────────────────────────────────────
+// Aggregate a list of invoices into the 5 standard aging buckets.
+// Returns a fixed-order array — always 5 entries, even buckets with no
+// invoices — so the widget can render a stable shape:
+//   [{ key: 'Current', total, count, tone },
+//    { key: '1-30',    total, count, tone },
+//    { key: '31-60',   total, count, tone },
+//    { key: '61-90',   total, count, tone },
+//    { key: '90+',     total, count, tone }]
+// `tone` matches our semantic palette so the widget can colour each row.
+// Args: { value: Invoice[] }
+const age_buckets: ComputedFunction = (args) => {
+  const arr = args.value;
+  const tones = {
+    Current: 'success',
+    '1-30': 'info',
+    '31-60': 'warning',
+    '61-90': 'destructive',
+    '90+': 'destructive',
+  } as const;
+  const order: Array<keyof typeof tones> = ['Current', '1-30', '31-60', '61-90', '90+'];
+  const totals = new Map<string, { total: number; count: number }>();
+  for (const key of order) totals.set(key, { total: 0, count: 0 });
+  if (Array.isArray(arr)) {
+    for (const inv of arr) {
+      const due = (inv as { DueDate?: unknown })?.DueDate;
+      const amt = Number((inv as { AmountDue?: unknown })?.AmountDue);
+      const bucket = String(age_bucket({ value: due })) as keyof typeof tones;
+      const entry = totals.get(bucket);
+      if (!entry) continue;
+      entry.total += Number.isFinite(amt) ? amt : 0;
+      entry.count += 1;
+    }
+  }
+  return order.map((key) => ({
+    key,
+    total: totals.get(key)!.total,
+    count: totals.get(key)!.count,
+    tone: tones[key],
+  }));
+};
+
+// ── invoices_in_bucket ───────────────────────────────────────────────
+// Return only the invoices whose DueDate places them in a specific
+// aging bucket. Used by the Aged Receivables widget to render the
+// per-bucket drill-down list.
+// Args: { value: Invoice[], bucket: 'Current'|'1-30'|'31-60'|'61-90'|'90+' }
+const invoices_in_bucket: ComputedFunction = (args) => {
+  const arr = args.value;
+  const bucket = String(args.bucket ?? '');
+  if (!Array.isArray(arr) || !bucket) return [];
+  return arr.filter((inv) => {
+    const due = (inv as { DueDate?: unknown })?.DueDate;
+    return String(age_bucket({ value: due })) === bucket;
+  });
+};
+
 // ── age_bucket ───────────────────────────────────────────────────────
 // Aged bucket label. "Current" | "1-30" | "31-60" | "61-90" | "90+".
 const age_bucket: ComputedFunction = (args) => {
@@ -286,10 +358,13 @@ const elements: PluginElementsModule = {
     status_tone,
     age_bucket,
     age_bucket_tone,
+    age_buckets,
+    invoices_in_bucket,
     bank_tx_icon,
     bank_tx_tone,
     days_overdue,
     overdue_label,
+    overdue_only,
     overdue_tone,
     po_status_tone,
     quote_status_tone,
