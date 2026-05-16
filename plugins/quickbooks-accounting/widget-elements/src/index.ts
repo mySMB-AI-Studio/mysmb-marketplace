@@ -154,6 +154,22 @@ const age_bucket: ComputedFunction = (args) => {
   return '90+';
 };
 
+// ── overdue_only ─────────────────────────────────────────────────────
+// Return only the invoices whose DueDate is in the past (daysOverdue > 0).
+// Mirrors the xero-accounting `overdue_only` helper so chase/collections
+// widgets can pre-filter the AUTHORISED / open list to just the rows
+// that need attention.
+// Args: { value: Invoice[] }
+const overdue_only: ComputedFunction = (args) => {
+  const arr = args.value;
+  if (!Array.isArray(arr)) return [];
+  return arr.filter((inv) => {
+    const due = (inv as { DueDate?: unknown })?.DueDate;
+    const n = Number(days_overdue({ value: due }));
+    return Number.isFinite(n) && n > 0;
+  });
+};
+
 // ── QBO Report flattener ───────────────────────────────────────────────────
 // QBO report tree shape:
 //   {
@@ -941,6 +957,7 @@ const elements: PluginElementsModule = {
     period_to_date_macro,
     days_overdue,
     overdue_label,
+    overdue_only,
     overdue_tone,
     age_bucket,
     flatten_report_rows,

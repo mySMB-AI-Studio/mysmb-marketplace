@@ -1,0 +1,342 @@
+{
+  "id": "qbo-overdue-chase-list",
+  "title": "Overdue Chase List",
+  "description": "Overdue invoices ranked for collections follow-up.",
+  "category": "finance",
+  "tags": [
+    "quickbooks",
+    "qbo",
+    "invoices",
+    "overdue",
+    "collections",
+    "chase",
+    "finance"
+  ],
+  "keywords": [
+    "overdue",
+    "late",
+    "collections",
+    "chase",
+    "follow-up",
+    "invoice",
+    "invoices",
+    "dunning"
+  ],
+  "connectorsUsed": [
+    "quickbooks-accounting"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "quickbooks-accounting",
+    "tool": "list_invoice",
+    "params": {
+      "where": "Balance > '0'",
+      "orderBy": "DueDate ASC",
+      "maxResults": 100
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/quickbooks-accounting/list_invoice/QueryResponse/Invoice": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/overdue/rows",
+              "value": {
+                "$computed": "quickbooks-accounting_overdue_only",
+                "args": {
+                  "value": {
+                    "$state": "/quickbooks-accounting/list_invoice/QueryResponse/Invoice"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "AlarmClock",
+          "tone": "destructive",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Overdue Chase List",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} Overdue",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/ui/overdue/rows"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3",
+          "sk4"
+        ],
+        "visible": {
+          "$state": "/_loading/quickbooks-accounting.list_invoice"
+        }
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        }
+      },
+      "sk4": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "Nothing overdue — nice work."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/quickbooks-accounting.list_invoice",
+              "not": true
+            },
+            {
+              "$state": "/ui/overdue/rows/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "row"
+        ],
+        "repeat": {
+          "statePath": "/ui/overdue/rows",
+          "key": "Id"
+        },
+        "visible": {
+          "$state": "/_loading/quickbooks-accounting.list_invoice",
+          "not": true
+        }
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "severity",
+          "identity",
+          "overdueBadge",
+          "amount"
+        ],
+        "on": {
+          "click": {
+            "action": "open_invoice_modal",
+            "params": {
+              "invoiceId": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "Id"
+                  }
+                }
+              },
+              "connector": "quickbooks-accounting"
+            }
+          }
+        }
+      },
+      "severity": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$computed": "quickbooks-accounting_overdue_tone",
+            "args": {
+              "value": {
+                "$item": "DueDate"
+              }
+            }
+          },
+          "size": "sm"
+        }
+      },
+      "identity": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "idTop",
+          "idBottom"
+        ]
+      },
+      "idTop": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "CustomerRef/name"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "idBottom": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "DocNumber"
+          }
+        }
+      },
+      "overdueBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "quickbooks-accounting_overdue_label",
+            "args": {
+              "value": {
+                "$item": "DueDate"
+              }
+            }
+          },
+          "tone": {
+            "$computed": "quickbooks-accounting_overdue_tone",
+            "args": {
+              "value": {
+                "$item": "DueDate"
+              }
+            }
+          },
+          "variant": "soft"
+        }
+      },
+      "amount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$item": "Balance"
+              },
+              "currency": {
+                "$item": "CurrencyRef/value"
+              }
+            }
+          },
+          "weight": "semibold",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "count"
+        ]
+      }
+    }
+  },
+  "status": "published"
+}
