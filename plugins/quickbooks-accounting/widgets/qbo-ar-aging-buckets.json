@@ -1,0 +1,205 @@
+{
+  "id": "qbo-ar-aging-buckets",
+  "title": "AR Aging Buckets",
+  "description": "Open receivables aged into Current / 1-30 / 31-60 / 61-90 / 90+ buckets with a grand total. Compact dashboard tile pairs naturally with the Overdue Chase List.",
+  "category": "finance",
+  "tags": ["quickbooks", "qbo", "ar", "aging", "receivables", "buckets", "collections", "finance"],
+  "keywords": ["ar", "aging", "buckets", "receivables", "overdue", "collections", "dso"],
+  "connectorsUsed": ["quickbooks-accounting"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 2 },
+    "min": { "colSpan": 3, "rowSpan": 2 },
+    "max": { "colSpan": 6, "rowSpan": 3 }
+  },
+  "dataProvider": {
+    "mcp": "quickbooks-accounting",
+    "tool": "get_report_aged_receivables",
+    "params": { "aging_period": 30, "num_periods": 4 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"],
+        "watch": {
+          "/quickbooks-accounting/get_report_aged_receivables": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/qbo-ar-buckets/rows",
+              "value": {
+                "$computed": "quickbooks-accounting_flatten_report_rows",
+                "args": { "value": { "$state": "/quickbooks-accounting/get_report_aged_receivables" } }
+              }
+            }
+          }
+        }
+      },
+
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "ChartPie", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": { "type": "Heading", "props": { "text": "AR Aging Buckets", "level": "h2" } },
+      "subtitle": { "type": "Eyebrow", "props": { "text": "Open receivables by age" } },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "buckets"]
+      },
+
+      "loading": {
+        "type": "Grid",
+        "props": { "cols": 5, "gap": "md" },
+        "children": ["sk1", "sk2", "sk3", "sk4", "sk5"],
+        "visible": { "$state": "/_loading/quickbooks-accounting.get_report_aged_receivables" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "sk5": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+
+      "buckets": {
+        "type": "Grid",
+        "props": { "cols": 5, "gap": "md" },
+        "children": ["bucketCurrent", "bucket0_30", "bucket31_60", "bucket61_90", "bucket90"],
+        "visible": { "$state": "/_loading/quickbooks-accounting.get_report_aged_receivables", "not": true }
+      },
+
+      "bucketCurrent": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["bcLabel", "bcValue"]
+      },
+      "bcLabel": { "type": "Eyebrow", "props": { "text": "Current" } },
+      "bcValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "quickbooks-accounting_report_find_row",
+                "args": { "value": { "$state": "/ui/qbo-ar-buckets/rows" }, "title": "TOTAL", "cell": 1 }
+              },
+              "currency": "USD"
+            }
+          },
+          "tone": "success"
+        }
+      },
+
+      "bucket0_30": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["b1Label", "b1Value"]
+      },
+      "b1Label": { "type": "Eyebrow", "props": { "text": "1-30" } },
+      "b1Value": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "quickbooks-accounting_report_find_row",
+                "args": { "value": { "$state": "/ui/qbo-ar-buckets/rows" }, "title": "TOTAL", "cell": 2 }
+              },
+              "currency": "USD"
+            }
+          },
+          "tone": "info"
+        }
+      },
+
+      "bucket31_60": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["b2Label", "b2Value"]
+      },
+      "b2Label": { "type": "Eyebrow", "props": { "text": "31-60" } },
+      "b2Value": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "quickbooks-accounting_report_find_row",
+                "args": { "value": { "$state": "/ui/qbo-ar-buckets/rows" }, "title": "TOTAL", "cell": 3 }
+              },
+              "currency": "USD"
+            }
+          },
+          "tone": "warning"
+        }
+      },
+
+      "bucket61_90": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["b3Label", "b3Value"]
+      },
+      "b3Label": { "type": "Eyebrow", "props": { "text": "61-90" } },
+      "b3Value": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "quickbooks-accounting_report_find_row",
+                "args": { "value": { "$state": "/ui/qbo-ar-buckets/rows" }, "title": "TOTAL", "cell": 4 }
+              },
+              "currency": "USD"
+            }
+          },
+          "tone": "destructive"
+        }
+      },
+
+      "bucket90": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["b4Label", "b4Value"]
+      },
+      "b4Label": { "type": "Eyebrow", "props": { "text": "90+" } },
+      "b4Value": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "quickbooks-accounting_report_find_row",
+                "args": { "value": { "$state": "/ui/qbo-ar-buckets/rows" }, "title": "TOTAL", "cell": 5 }
+              },
+              "currency": "USD"
+            }
+          },
+          "tone": "destructive"
+        }
+      }
+    }
+  },
+  "status": "published"
+}
