@@ -172,6 +172,92 @@ const age_bucket = (args) => {
         return '61-90';
     return '90+';
 };
+// ── age_buckets ──────────────────────────────────────────────────────
+// Reduce an Invoice[] into a fixed-order array of aged buckets:
+//   [{ key, count, total, tone }, ...]
+// Mirrors xero-accounting's `age_buckets` so the QBO Aged Receivables
+// widget can render the same clickable-row-with-breakdown shape. QBO
+// invoices carry the outstanding balance in `Balance` (Xero uses
+// `AmountDue`).
+// Args: { value: Invoice[] }
+const age_buckets = (args) => {
+    const arr = args.value;
+    const tones = {
+        Current: 'success',
+        '1-30': 'info',
+        '31-60': 'warning',
+        '61-90': 'destructive',
+        '90+': 'destructive',
+    };
+    const order = ['Current', '1-30', '31-60', '61-90', '90+'];
+    const totals = new Map();
+    for (const key of order)
+        totals.set(key, { total: 0, count: 0 });
+    if (Array.isArray(arr)) {
+        for (const inv of arr) {
+            const due = inv?.DueDate;
+            const amt = Number(inv?.Balance);
+            const bucket = String(age_bucket({ value: due }));
+            const entry = totals.get(bucket);
+            if (!entry)
+                continue;
+            entry.total += Number.isFinite(amt) ? amt : 0;
+            entry.count += 1;
+        }
+    }
+    return order.map((key) => ({
+        key,
+        total: totals.get(key).total,
+        count: totals.get(key).count,
+        tone: tones[key],
+    }));
+};
+// ── invoices_in_bucket ───────────────────────────────────────────────
+// Filter Invoice[] down to just those whose age_bucket matches the
+// supplied bucket key. Used by the breakdown panel on click.
+// Args: { value: Invoice[], bucket: 'Current'|'1-30'|'31-60'|'61-90'|'90+' }
+const invoices_in_bucket = (args) => {
+    const arr = args.value;
+    const bucket = String(args.bucket ?? '');
+    if (!Array.isArray(arr) || !bucket)
+        return [];
+    return arr.filter((inv) => {
+        const due = inv?.DueDate;
+        return String(age_bucket({ value: due })) === bucket;
+    });
+};
+// ── filter_payments_unapplied ────────────────────────────────────────
+// Return only payments with an UnappliedAmt > 0. The QBO query language
+// rejects WHERE filters on `UnappliedAmt` (it isn't queryable), so the
+// close-checklist fetches all recent payments and narrows here.
+// Args: { value: Payment[] }
+const filter_payments_unapplied = (args) => {
+    const arr = args.value;
+    if (!Array.isArray(arr))
+        return [];
+    return arr.filter((p) => {
+        const n = Number(p?.UnappliedAmt);
+        return Number.isFinite(n) && n > 0;
+    });
+};
+// ── filter_overdue_min_days ──────────────────────────────────────────
+// Filter rows (Bill | Invoice) where DueDate is overdue by at least N
+// days. Used by widgets that fetch with a simple `Balance > '0'` where
+// clause (no date arithmetic in the QBO query) and then narrow down
+// client-side. Action params don't currently resolve `$computed`, so
+// any time math has to happen here.
+// Args: { value: Array<{DueDate?: string}>, minDays: number }
+const filter_overdue_min_days = (args) => {
+    const arr = args.value;
+    const min = Number(args.minDays ?? 0);
+    if (!Array.isArray(arr))
+        return [];
+    return arr.filter((row) => {
+        const due = row?.DueDate;
+        const n = Number(days_overdue({ value: due }));
+        return Number.isFinite(n) && n >= min;
+    });
+};
 // ── overdue_only ─────────────────────────────────────────────────────
 // Return only the invoices whose DueDate is in the past (daysOverdue > 0).
 // Mirrors the xero-accounting `overdue_only` helper so chase/collections
@@ -912,6 +998,10 @@ const elements = {
         overdue_only,
         overdue_tone,
         age_bucket,
+        age_buckets,
+        invoices_in_bucket,
+        filter_payments_unapplied,
+        filter_overdue_min_days,
         flatten_report_rows,
         report_find_row,
         report_currency,
