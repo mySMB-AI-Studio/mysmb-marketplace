@@ -42,7 +42,10 @@
   "dataProvider": {
     "mcp": "xero-accounting",
     "tool": "get_profit_and_loss",
-    "params": {}
+    "params": {
+      "fromDate": "$fiscal_year_start",
+      "toDate": "$today"
+    }
   },
   "spec": {
     "root": "card",
@@ -75,8 +78,95 @@
       "header": {
         "type": "Header",
         "children": [
-          "titleGroup"
+          "titleGroup",
+          "periodChips"
         ]
+      },
+      "periodChips": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["chipThisFY", "chipLastFY", "chipFY2"]
+      },
+      "chipThisFY": {
+        "type": "Row",
+        "props": {
+          "gap": "none",
+          "align": "center",
+          "hover": true,
+          "clickable": true,
+          "selected": {
+            "$computed": "equals",
+            "args": { "a": "thisFY", "b": { "$state": "/ui/pnl/period" } }
+          }
+        },
+        "children": ["chipThisFYLabel"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/pnl/period", "value": "thisFY" } },
+            {
+              "action": "xero-accounting.get_profit_and_loss",
+              "params": { "fromDate": "$fiscal_year_start", "toDate": "$today" }
+            }
+          ]
+        }
+      },
+      "chipThisFYLabel": {
+        "type": "Text",
+        "props": { "text": "This FY", "size": "xs", "weight": "medium" }
+      },
+      "chipLastFY": {
+        "type": "Row",
+        "props": {
+          "gap": "none",
+          "align": "center",
+          "hover": true,
+          "clickable": true,
+          "selected": {
+            "$computed": "equals",
+            "args": { "a": "lastFY", "b": { "$state": "/ui/pnl/period" } }
+          }
+        },
+        "children": ["chipLastFYLabel"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/pnl/period", "value": "lastFY" } },
+            {
+              "action": "xero-accounting.get_profit_and_loss",
+              "params": { "fromDate": "$last_fiscal_year_start", "toDate": "$last_fiscal_year_end" }
+            }
+          ]
+        }
+      },
+      "chipLastFYLabel": {
+        "type": "Text",
+        "props": { "text": "Last FY", "size": "xs", "weight": "medium" }
+      },
+      "chipFY2": {
+        "type": "Row",
+        "props": {
+          "gap": "none",
+          "align": "center",
+          "hover": true,
+          "clickable": true,
+          "selected": {
+            "$computed": "equals",
+            "args": { "a": "fy-2", "b": { "$state": "/ui/pnl/period" } }
+          }
+        },
+        "children": ["chipFY2Label"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/pnl/period", "value": "fy-2" } },
+            {
+              "action": "xero-accounting.get_profit_and_loss",
+              "params": { "fromDate": "$fiscal_year_minus_2_start", "toDate": "$fiscal_year_minus_2_end" }
+            }
+          ]
+        }
+      },
+      "chipFY2Label": {
+        "type": "Text",
+        "props": { "text": "FY-2", "size": "xs", "weight": "medium" }
       },
       "titleGroup": {
         "type": "Row",
@@ -181,7 +271,8 @@
               }
             }
           },
-          "tone": "success"
+          "tone": "success",
+          "size": "sm"
         }
       },
       "expCell": {
@@ -237,7 +328,8 @@
               }
             }
           },
-          "tone": "destructive"
+          "tone": "destructive",
+          "size": "sm"
         }
       },
       "netCell": {
@@ -292,7 +384,8 @@
                 }
               }
             }
-          }
+          },
+          "size": "sm"
         }
       },
       "divider": {
