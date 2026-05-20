@@ -54,8 +54,7 @@
           "loadingStats",
           "stats",
           "divider",
-          "body",
-          "overlay"
+          "body"
         ]
       },
       "header": {
@@ -340,45 +339,31 @@
         "type": "Row",
         "props": {
           "gap": "sm",
-          "align": "start",
+          "align": "center",
           "hover": true,
-          "clickable": true
+          "clickable": true,
+          "template": "auto minmax(0, 1fr) 6rem 7rem"
         },
         "children": [
           "rowDot",
           "rowLabel",
-          "rowAmount"
+          "rowAmountText",
+          "rowDate"
         ],
         "on": {
-          "click": [
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/selectedBankTxnId",
-                "value": {
-                  "$computed": "identity",
-                  "args": {
-                    "value": {
-                      "$item": "BankTransactionID"
-                    }
-                  }
-                }
-              }
-            },
-            {
-              "action": "xero-accounting.get_bank_transaction",
-              "params": {
-                "bankTransactionId": {
-                  "$computed": "identity",
-                  "args": {
-                    "value": {
-                      "$item": "BankTransactionID"
-                    }
+          "click": {
+            "action": "open_bank_tx_modal",
+            "params": {
+              "bankTransactionId": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "BankTransactionID"
                   }
                 }
               }
             }
-          ]
+          }
         }
       },
       "rowDot": {
@@ -479,182 +464,8 @@
               "value": {
                 "$item": "Date"
               },
-              "format": "short"
-            }
-          }
-        }
-      },
-      "overlay": {
-        "type": "Overlay",
-        "props": {
-          "maxWidth": "26rem"
-        },
-        "children": [
-          "detailCard"
-        ],
-        "visible": {
-          "$state": "/ui/selectedBankTxnId"
-        },
-        "on": {
-          "backdropClick": {
-            "action": "setState",
-            "params": {
-              "statePath": "/ui/selectedBankTxnId",
-              "value": ""
-            }
-          }
-        }
-      },
-      "detailCard": {
-        "type": "Card",
-        "children": [
-          "detailHeader",
-          "detailSpinner",
-          "detailBody"
-        ]
-      },
-      "detailHeader": {
-        "type": "Header",
-        "children": [
-          "detailTitle",
-          "detailClose"
-        ]
-      },
-      "detailTitle": {
-        "type": "Heading",
-        "props": {
-          "text": "Bank transaction",
-          "level": "h2"
-        }
-      },
-      "detailClose": {
-        "type": "IconButton",
-        "props": {
-          "icon": "X",
-          "tone": "muted",
-          "ariaLabel": "Close"
-        },
-        "on": {
-          "click": {
-            "action": "setState",
-            "params": {
-              "statePath": "/ui/selectedBankTxnId",
-              "value": ""
-            }
-          }
-        }
-      },
-      "detailSpinner": {
-        "type": "Spinner",
-        "props": {
-          "label": "Loading transaction\u2026"
-        },
-        "visible": {
-          "$state": "/xero-accounting/get_bank_transaction/BankTransactions/0/BankTransactionID",
-          "neq": {
-            "$state": "/ui/selectedBankTxnId"
-          }
-        }
-      },
-      "detailBody": {
-        "type": "Stack",
-        "props": {
-          "gap": "xs"
-        },
-        "children": [
-          "kvContact",
-          "kvType",
-          "kvAccount",
-          "kvDate",
-          "kvTotal",
-          "kvReconciled",
-          "kvRef"
-        ],
-        "visible": {
-          "$state": "/xero-accounting/get_bank_transaction/BankTransactions/0/BankTransactionID",
-          "eq": {
-            "$state": "/ui/selectedBankTxnId"
-          }
-        }
-      },
-      "kvContact": {
-        "type": "KeyValue",
-        "props": {
-          "label": "Contact",
-          "value": {
-            "$state": "/xero-accounting/get_bank_transaction/BankTransactions/0/Contact/Name"
-          }
-        }
-      },
-      "kvType": {
-        "type": "KeyValue",
-        "props": {
-          "label": "Type",
-          "value": {
-            "$state": "/xero-accounting/get_bank_transaction/BankTransactions/0/Type"
-          }
-        }
-      },
-      "kvAccount": {
-        "type": "KeyValue",
-        "props": {
-          "label": "Account",
-          "value": {
-            "$state": "/xero-accounting/get_bank_transaction/BankTransactions/0/BankAccount/Name"
-          }
-        }
-      },
-      "kvDate": {
-        "type": "KeyValue",
-        "props": {
-          "label": "Date",
-          "value": {
-            "$computed": "xero-accounting_format_date",
-            "args": {
-              "value": {
-                "$state": "/xero-accounting/get_bank_transaction/BankTransactions/0/Date"
-              },
               "format": "medium"
             }
-          }
-        }
-      },
-      "kvTotal": {
-        "type": "KeyValue",
-        "props": {
-          "label": "Total",
-          "value": {
-            "$computed": "format_currency",
-            "args": {
-              "value": {
-                "$state": "/xero-accounting/get_bank_transaction/BankTransactions/0/Total"
-              },
-              "currency": {
-                "$state": "/xero-accounting/get_bank_transaction/BankTransactions/0/CurrencyCode"
-              }
-            }
-          }
-        }
-      },
-      "kvReconciled": {
-        "type": "KeyValue",
-        "props": {
-          "label": "Reconciled",
-          "value": {
-            "$cond": {
-              "$state": "/xero-accounting/get_bank_transaction/BankTransactions/0/IsReconciled"
-            },
-            "$then": "Yes",
-            "$else": "No"
-          }
-        }
-      },
-      "kvRef": {
-        "type": "KeyValue",
-        "props": {
-          "label": "Reference",
-          "value": {
-            "$state": "/xero-accounting/get_bank_transaction/BankTransactions/0/Reference"
           }
         }
       }
