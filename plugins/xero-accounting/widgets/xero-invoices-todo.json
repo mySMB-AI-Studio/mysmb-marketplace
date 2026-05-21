@@ -1,7 +1,7 @@
 {
   "id": "xero-invoices-todo",
-  "title": "Xero \u2014 Invoices to Pay",
-  "description": "Outstanding invoices as a checklist \u2014 tick them as you chase them.",
+  "title": "Xero — Invoices to Pay",
+  "description": "Outstanding invoices as a checklist — tick them as you chase them.",
   "category": "finance",
   "tags": [
     "xero",
@@ -41,6 +41,7 @@
     "mcp": "xero-accounting",
     "tool": "list_invoices",
     "params": {
+      "where": "Type==\"ACCPAY\"",
       "statuses": "AUTHORISED",
       "order": "DueDate ASC"
     }
@@ -57,6 +58,34 @@
       },
       "header": {
         "type": "Header",
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Receipt",
+          "tone": "warning",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
         "children": [
           "title",
           "count"
@@ -91,8 +120,71 @@
       "body": {
         "type": "Body",
         "children": [
+          "loading",
+          "empty",
           "list"
         ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3",
+          "sk4"
+        ],
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_invoices"
+        }
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        }
+      },
+      "sk4": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "Nothing to pay — you're all clear."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_invoices",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_invoices/Invoices/0",
+              "not": true
+            }
+          ]
+        }
       },
       "list": {
         "type": "Stack",
@@ -105,39 +197,39 @@
         "repeat": {
           "statePath": "/xero-accounting/list_invoices/Invoices",
           "key": "InvoiceID"
+        },
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_invoices",
+          "not": true
         }
       },
       "row": {
         "type": "Row",
         "props": {
           "gap": "sm",
-          "align": "start",
-          "hover": true
+          "align": "center",
+          "hover": true,
+          "clickable": true,
+          "template": "auto minmax(0, 1fr) 6rem 7rem"
         },
         "children": [
-          "check",
           "priority",
-          "label",
-          "due",
-          "amount"
-        ]
-      },
-      "check": {
-        "type": "Checkbox",
-        "props": {
-          "checked": {
-            "$bindItem": "_paid"
-          },
-          "ariaLabel": "Mark invoice as paid"
-        },
+          "identity",
+          "amount",
+          "due"
+        ],
         "on": {
-          "toggle": {
-            "action": "setState",
+          "click": {
+            "action": "open_invoice_modal",
             "params": {
-              "statePath": {
-                "$item": "_paid"
-              },
-              "value": true
+              "invoiceId": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "InvoiceID"
+                  }
+                }
+              }
             }
           }
         }
@@ -146,55 +238,35 @@
         "type": "Dot",
         "props": {
           "tone": "warning",
-          "size": "xs"
+          "size": "sm"
         }
       },
-      "label": {
+      "identity": {
         "type": "Stack",
         "props": {
           "gap": "xs"
         },
         "children": [
-          "labelTop",
-          "labelBottom"
+          "idTop",
+          "idBottom"
         ]
       },
-      "labelTop": {
+      "idTop": {
         "type": "Text",
         "props": {
           "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{num} \u2014 {name}",
-              "num": {
-                "$item": "InvoiceNumber"
-              },
-              "name": {
-                "$item": "Contact/Name"
-              }
-            }
+            "$item": "Contact/Name"
           },
-          "size": "md",
+          "size": "sm",
           "weight": "medium",
           "truncate": true
         }
       },
-      "labelBottom": {
-        "type": "Text",
+      "idBottom": {
+        "type": "Caption",
         "props": {
-          "size": "sm",
-          "tone": "muted",
           "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{status} \u00b7 Ref {ref}",
-              "status": {
-                "$item": "Status"
-              },
-              "ref": {
-                "$item": "Reference"
-              }
-            }
+            "$item": "InvoiceNumber"
           }
         }
       },
@@ -207,7 +279,7 @@
               "value": {
                 "$item": "DueDate"
               },
-              "format": "short"
+              "format": "medium"
             }
           },
           "tone": "warning",
@@ -222,6 +294,9 @@
             "args": {
               "value": {
                 "$item": "AmountDue"
+              },
+              "currency": {
+                "$item": "CurrencyCode"
               }
             }
           },

@@ -1,7 +1,7 @@
 {
   "id": "qbo-close-checklist",
   "title": "Month-End Close Checklist",
-  "description": "Live hygiene scan for month-end close — undeposited funds, unapplied payments and credits, negative balances, overdue bills, and period closing date.",
+  "description": "Live hygiene scan for month-end close — undeposited funds, unapplied payments and credits, negative balances, overdue bills, overdue receivables, and period closing date. Click any failing check to drill into the underlying items.",
   "category": "productivity",
   "tags": ["quickbooks", "qbo", "close", "month-end", "checklist", "hygiene", "reconciliation"],
   "keywords": ["close", "month-end", "checklist", "undeposited", "unapplied", "reconciliation", "review"],
@@ -22,55 +22,54 @@
     "elements": {
       "card": {
         "type": "Card",
-        "children": ["header", "divider", "body"],
+        "props": {},
+        "children": ["header", "errorBanner", "divider", "body"],
         "watch": {
           "/quickbooks-accounting/list_account": [
-            {
-              "action": "quickbooks-accounting.list_payment",
-              "params": { "where": "UnappliedAmt > '0'", "maxResults": 200 }
-            },
-            {
-              "action": "quickbooks-accounting.list_vendor_credit",
-              "params": { "where": "Balance > '0'", "maxResults": 200 }
-            },
-            {
-              "action": "quickbooks-accounting.list_customer",
-              "params": { "where": "Balance < '0' AND Active = true", "maxResults": 200 }
-            },
-            {
-              "action": "quickbooks-accounting.list_vendor",
-              "params": { "where": "Balance < '0' AND Active = true", "maxResults": 200 }
-            },
-            {
-              "action": "quickbooks-accounting.list_bill",
-              "params": {
-                "where": {
-                  "$computed": "quickbooks-accounting_where_due_before_today_minus",
-                  "args": { "days": 60, "balanceField": "Balance", "balanceOp": "> '0'" }
-                },
-                "maxResults": 200
+            { "action": "quickbooks-accounting.list_payment",       "params": { "maxResults": 500 } },
+            { "action": "quickbooks-accounting.list_vendor_credit", "params": { "where": "Balance > '0'", "maxResults": 200 } },
+            { "action": "quickbooks-accounting.list_customer",      "params": { "where": "Balance < '0' AND Active = true", "maxResults": 200 } },
+            { "action": "quickbooks-accounting.list_vendor",        "params": { "where": "Balance < '0' AND Active = true", "maxResults": 200 } },
+            { "action": "quickbooks-accounting.list_bill",          "params": { "where": "Balance > '0'", "maxResults": 500 } },
+            { "action": "quickbooks-accounting.list_invoice",       "params": { "where": "Balance > '0'", "maxResults": 500 } },
+            { "action": "quickbooks-accounting.qbo_query",          "params": { "query": "SELECT * FROM Preferences" } }
+          ],
+          "/quickbooks-accounting/list_payment/QueryResponse/Payment": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/qbo-close/unappliedPaymentsList",
+              "value": {
+                "$computed": "quickbooks-accounting_filter_payments_unapplied",
+                "args": { "value": { "$state": "/quickbooks-accounting/list_payment/QueryResponse/Payment" } }
               }
-            },
-            {
-              "action": "quickbooks-accounting.list_invoice",
-              "params": {
-                "where": {
-                  "$computed": "quickbooks-accounting_where_due_before_today_minus",
-                  "args": { "days": 90, "balanceField": "Balance", "balanceOp": "> '0'" }
-                },
-                "maxResults": 200
-              }
-            },
-            {
-              "action": "quickbooks-accounting.get_preferences",
-              "params": {}
             }
-          ]
+          },
+          "/quickbooks-accounting/list_bill/QueryResponse/Bill": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/qbo-close/lateBillsList",
+              "value": {
+                "$computed": "quickbooks-accounting_filter_overdue_min_days",
+                "args": { "value": { "$state": "/quickbooks-accounting/list_bill/QueryResponse/Bill" }, "minDays": 60 }
+              }
+            }
+          },
+          "/quickbooks-accounting/list_invoice/QueryResponse/Invoice": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/qbo-close/oldARList",
+              "value": {
+                "$computed": "quickbooks-accounting_filter_overdue_min_days",
+                "args": { "value": { "$state": "/quickbooks-accounting/list_invoice/QueryResponse/Invoice" }, "minDays": 90 }
+              }
+            }
+          }
         }
       },
 
       "header": {
         "type": "Header",
+        "props": {},
         "children": ["titleGroup"]
       },
       "titleGroup": {
@@ -90,15 +89,78 @@
       "title": { "type": "Heading", "props": { "text": "Month-End Close Checklist", "level": "h2" } },
       "subtitle": {
         "type": "Eyebrow",
-        "props": { "text": "Hygiene checks for closing the books" }
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{unapplied} unapplied · {credits} vendor credits · {negC} neg customers · {negV} neg vendors · {lateB} bills 60+d · {oldAR} AR 90+d",
+              "unapplied": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/ui/qbo-close/unappliedPaymentsList" } }
+              },
+              "credits": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/quickbooks-accounting/list_vendor_credit/QueryResponse/VendorCredit" } }
+              },
+              "negC": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/quickbooks-accounting/list_customer/QueryResponse/Customer" } }
+              },
+              "negV": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/quickbooks-accounting/list_vendor/QueryResponse/Vendor" } }
+              },
+              "lateB": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$computed": "quickbooks-accounting_filter_overdue_min_days",
+                    "args": { "value": { "$state": "/quickbooks-accounting/list_bill/QueryResponse/Bill" }, "minDays": 60 }
+                  }
+                }
+              },
+              "oldAR": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$computed": "quickbooks-accounting_filter_overdue_min_days",
+                    "args": { "value": { "$state": "/quickbooks-accounting/list_invoice/QueryResponse/Invoice" }, "minDays": 90 }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "errorBanner": {
+        "type": "Text",
+        "props": {
+          "text": "One or more checks couldn't load — see browser console for tool errors.",
+          "tone": "destructive",
+          "size": "xs"
+        },
+        "visible": {
+          "$or": [
+            { "$state": "/_errors/quickbooks-accounting.list_payment" },
+            { "$state": "/_errors/quickbooks-accounting.list_vendor_credit" },
+            { "$state": "/_errors/quickbooks-accounting.list_customer" },
+            { "$state": "/_errors/quickbooks-accounting.list_vendor" },
+            { "$state": "/_errors/quickbooks-accounting.list_bill" },
+            { "$state": "/_errors/quickbooks-accounting.list_invoice" },
+            { "$state": "/_errors/quickbooks-accounting.qbo_query" }
+          ]
+        }
       },
 
       "divider": { "type": "Divider" },
 
       "body": {
         "type": "Body",
-        "children": ["loading", "list"]
+        "props": {},
+        "children": ["loading", "list", "breakdown"]
       },
+
       "loading": {
         "type": "Stack",
         "props": { "gap": "sm" },
@@ -149,15 +211,15 @@
           "label": "Unapplied customer payments",
           "count": {
             "$computed": "count",
-            "args": { "value": { "$state": "/quickbooks-accounting/list_payment/QueryResponse/Payment" } }
+            "args": { "value": { "$state": "/ui/qbo-close/unappliedPaymentsList" } }
           },
           "value": {
             "$computed": "quickbooks-accounting_sum_field",
-            "args": { "value": { "$state": "/quickbooks-accounting/list_payment/QueryResponse/Payment" }, "field": "UnappliedAmt" }
+            "args": { "value": { "$state": "/ui/qbo-close/unappliedPaymentsList" }, "field": "UnappliedAmt" }
           },
           "pass": {
             "$computed": "quickbooks-accounting_count_is_zero",
-            "args": { "value": { "$state": "/quickbooks-accounting/list_payment/QueryResponse/Payment" } }
+            "args": { "value": { "$state": "/ui/qbo-close/unappliedPaymentsList" } }
           },
           "severity": "destructive",
           "onClickPath": "/ui/qbo-close/drilldown",
@@ -237,15 +299,31 @@
           "label": "Bills past due 60+ days",
           "count": {
             "$computed": "count",
-            "args": { "value": { "$state": "/quickbooks-accounting/list_bill/QueryResponse/Bill" } }
+            "args": {
+              "value": {
+                "$computed": "quickbooks-accounting_filter_overdue_min_days",
+                "args": { "value": { "$state": "/quickbooks-accounting/list_bill/QueryResponse/Bill" }, "minDays": 60 }
+              }
+            }
           },
           "value": {
             "$computed": "quickbooks-accounting_sum_field",
-            "args": { "value": { "$state": "/quickbooks-accounting/list_bill/QueryResponse/Bill" }, "field": "Balance" }
+            "args": {
+              "value": {
+                "$computed": "quickbooks-accounting_filter_overdue_min_days",
+                "args": { "value": { "$state": "/quickbooks-accounting/list_bill/QueryResponse/Bill" }, "minDays": 60 }
+              },
+              "field": "Balance"
+            }
           },
           "pass": {
             "$computed": "quickbooks-accounting_count_is_zero",
-            "args": { "value": { "$state": "/quickbooks-accounting/list_bill/QueryResponse/Bill" } }
+            "args": {
+              "value": {
+                "$computed": "quickbooks-accounting_filter_overdue_min_days",
+                "args": { "value": { "$state": "/quickbooks-accounting/list_bill/QueryResponse/Bill" }, "minDays": 60 }
+              }
+            }
           },
           "severity": "destructive",
           "onClickPath": "/ui/qbo-close/drilldown",
@@ -259,15 +337,31 @@
           "label": "Receivables past due 90+ days",
           "count": {
             "$computed": "count",
-            "args": { "value": { "$state": "/quickbooks-accounting/list_invoice/QueryResponse/Invoice" } }
+            "args": {
+              "value": {
+                "$computed": "quickbooks-accounting_filter_overdue_min_days",
+                "args": { "value": { "$state": "/quickbooks-accounting/list_invoice/QueryResponse/Invoice" }, "minDays": 90 }
+              }
+            }
           },
           "value": {
             "$computed": "quickbooks-accounting_sum_field",
-            "args": { "value": { "$state": "/quickbooks-accounting/list_invoice/QueryResponse/Invoice" }, "field": "Balance" }
+            "args": {
+              "value": {
+                "$computed": "quickbooks-accounting_filter_overdue_min_days",
+                "args": { "value": { "$state": "/quickbooks-accounting/list_invoice/QueryResponse/Invoice" }, "minDays": 90 }
+              },
+              "field": "Balance"
+            }
           },
           "pass": {
             "$computed": "quickbooks-accounting_count_is_zero",
-            "args": { "value": { "$state": "/quickbooks-accounting/list_invoice/QueryResponse/Invoice" } }
+            "args": {
+              "value": {
+                "$computed": "quickbooks-accounting_filter_overdue_min_days",
+                "args": { "value": { "$state": "/quickbooks-accounting/list_invoice/QueryResponse/Invoice" }, "minDays": 90 }
+              }
+            }
           },
           "severity": "destructive",
           "onClickPath": "/ui/qbo-close/drilldown",
@@ -283,11 +377,264 @@
           "value": 0,
           "pass": {
             "$computed": "quickbooks-accounting_is_truthy_string",
-            "args": { "value": { "$state": "/quickbooks-accounting/get_preferences/Preferences/AccountingInfoPrefs/BookCloseDate" } }
+            "args": { "value": { "$state": "/quickbooks-accounting/qbo_query/QueryResponse/Preferences/0/AccountingInfoPrefs/BookCloseDate" } }
           },
           "severity": "warning",
           "onClickPath": "/ui/qbo-close/drilldown",
           "selectionValue": "bookClose"
+        }
+      },
+
+      "breakdown": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["breakdownHeader", "breakdownDivider", "bdUnapplied", "bdVendorCredits", "bdLateBills", "bdOldAR", "bdNote"],
+        "visible": { "$state": "/ui/qbo-close/drilldown" }
+      },
+      "breakdownDivider": { "type": "Divider" },
+      "breakdownHeader": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["breakdownTitle", "breakdownClose"]
+      },
+      "breakdownTitle": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{which} drill-down",
+              "which": { "$state": "/ui/qbo-close/drilldown" }
+            }
+          }
+        }
+      },
+      "breakdownClose": {
+        "type": "IconButton",
+        "props": { "icon": "X", "tone": "muted", "ariaLabel": "Close drill-down", "size": "sm" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": { "statePath": "/ui/qbo-close/drilldown", "value": "" }
+          }
+        }
+      },
+
+      "bdUnapplied": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["bdUnappliedRow"],
+        "repeat": { "statePath": "/ui/qbo-close/unappliedPaymentsList", "key": "Id" },
+        "visible": { "$state": "/ui/qbo-close/drilldown", "eq": "unappliedPayments" }
+      },
+      "bdUnappliedRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true },
+        "children": ["bdUnappliedLeft", "bdUnappliedAmt"]
+      },
+      "bdUnappliedLeft": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["bdUnappliedName", "bdUnappliedMeta"]
+      },
+      "bdUnappliedName": {
+        "type": "Text",
+        "props": { "text": { "$item": "CustomerRef/name" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "bdUnappliedMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Payment received {date}", "date": { "$item": "TxnDate" } }
+          }
+        }
+      },
+      "bdUnappliedAmt": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": { "value": { "$item": "UnappliedAmt" }, "currency": "USD" }
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+
+      "bdVendorCredits": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["bdVcRow"],
+        "repeat": { "statePath": "/quickbooks-accounting/list_vendor_credit/QueryResponse/VendorCredit", "key": "Id" },
+        "visible": { "$state": "/ui/qbo-close/drilldown", "eq": "vendorCredits" }
+      },
+      "bdVcRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true },
+        "children": ["bdVcLeft", "bdVcAmt"]
+      },
+      "bdVcLeft": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["bdVcName", "bdVcMeta"]
+      },
+      "bdVcName": {
+        "type": "Text",
+        "props": { "text": { "$item": "VendorRef/name" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "bdVcMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Doc #{n} · {date}", "n": { "$item": "DocNumber" }, "date": { "$item": "TxnDate" } }
+          }
+        }
+      },
+      "bdVcAmt": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": { "value": { "$item": "Balance" }, "currency": "USD" }
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+
+      "bdLateBills": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["bdBillRow"],
+        "repeat": {
+          "statePath": "/ui/qbo-close/lateBillsList",
+          "key": "Id"
+        },
+        "visible": { "$state": "/ui/qbo-close/drilldown", "eq": "lateBills" }
+      },
+      "bdBillRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true },
+        "children": ["bdBillLeft", "bdBillAmt"]
+      },
+      "bdBillLeft": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["bdBillName", "bdBillMeta"]
+      },
+      "bdBillName": {
+        "type": "Text",
+        "props": { "text": { "$item": "VendorRef/name" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "bdBillMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Doc #{n} · {label}",
+              "n": { "$item": "DocNumber" },
+              "label": {
+                "$computed": "quickbooks-accounting_overdue_label",
+                "args": { "value": { "$item": "DueDate" } }
+              }
+            }
+          }
+        }
+      },
+      "bdBillAmt": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": { "value": { "$item": "Balance" }, "currency": "USD" }
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+
+      "bdOldAR": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["bdArRow"],
+        "repeat": {
+          "statePath": "/ui/qbo-close/oldARList",
+          "key": "Id"
+        },
+        "visible": { "$state": "/ui/qbo-close/drilldown", "eq": "oldAR" }
+      },
+      "bdArRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true, "clickable": true },
+        "children": ["bdArLeft", "bdArAmt"],
+        "on": {
+          "click": {
+            "action": "open_invoice_modal",
+            "params": {
+              "invoiceId": {
+                "$computed": "identity",
+                "args": { "value": { "$item": "Id" } }
+              },
+              "connector": "quickbooks-accounting"
+            }
+          }
+        }
+      },
+      "bdArLeft": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["bdArName", "bdArMeta"]
+      },
+      "bdArName": {
+        "type": "Text",
+        "props": { "text": { "$item": "CustomerRef/name" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "bdArMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Invoice #{n} · {label}",
+              "n": { "$item": "DocNumber" },
+              "label": {
+                "$computed": "quickbooks-accounting_overdue_label",
+                "args": { "value": { "$item": "DueDate" } }
+              }
+            }
+          }
+        }
+      },
+      "bdArAmt": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": { "$item": "Balance" },
+              "currency": { "$item": "CurrencyRef/value" }
+            }
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+
+      "bdNote": {
+        "type": "Caption",
+        "props": {
+          "text": "Drill-down isn't wired for this check yet — open QuickBooks to review."
+        },
+        "visible": {
+          "$or": [
+            { "$state": "/ui/qbo-close/drilldown", "eq": "undeposited" },
+            { "$state": "/ui/qbo-close/drilldown", "eq": "negCustomers" },
+            { "$state": "/ui/qbo-close/drilldown", "eq": "negVendors" },
+            { "$state": "/ui/qbo-close/drilldown", "eq": "bookClose" }
+          ]
         }
       }
     }

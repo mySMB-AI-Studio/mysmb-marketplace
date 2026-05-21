@@ -1,50 +1,55 @@
 {
-  "id": "xero-aged-receivables",
-  "title": "Aged Receivables",
-  "description": "Outstanding AR distributed across aging buckets — click any bucket to see the invoices in it.",
-  "category": "finance",
+  "id": "dataverse-opportunity-pipeline",
+  "title": "Opportunity Pipeline",
+  "description": "Open opportunities grouped by sales stage — click a stage to see the deals inside it.",
+  "category": "sales",
   "tags": [
-    "xero",
-    "receivables",
-    "aging",
-    "ar",
-    "finance",
-    "report"
+    "dataverse",
+    "dynamics-365",
+    "sales",
+    "pipeline",
+    "opportunities",
+    "forecast",
+    "crm"
   ],
   "keywords": [
-    "aged",
-    "aging",
-    "receivables",
-    "ar",
-    "outstanding",
-    "buckets",
-    "overdue"
+    "pipeline",
+    "opportunities",
+    "opportunity",
+    "stages",
+    "forecast",
+    "weighted",
+    "sales",
+    "crm"
   ],
   "connectorsUsed": [
-    "xero-accounting"
+    "dataverse"
   ],
-  "popularity": 66,
+  "popularity": 0,
   "sizing": {
     "preferred": {
-      "colSpan": 4,
+      "colSpan": 5,
       "rowSpan": 5
     },
     "min": {
-      "colSpan": 3,
+      "colSpan": 4,
       "rowSpan": 4
     },
     "max": {
-      "colSpan": 10,
-      "rowSpan": 10
+      "colSpan": 12,
+      "rowSpan": 12
     }
   },
   "dataProvider": {
-    "mcp": "xero-accounting",
-    "tool": "list_invoices",
+    "mcp": "dataverse",
+    "tool": "list_opportunities",
     "params": {
-      "where": "Type==\"ACCREC\"",
-      "statuses": "AUTHORISED",
-      "order": "DueDate ASC"
+      "org_url": "mySMB.com Prod",
+      "select": "opportunityid,name,estimatedvalue,closeprobability,estimatedclosedate,salesstagecode,statecode",
+      "filter": "statecode eq 0",
+      "expand": "customerid_account($select=name)",
+      "orderby": "estimatedvalue desc",
+      "top": 200
     }
   },
   "spec": {
@@ -52,37 +57,38 @@
     "elements": {
       "card": {
         "type": "Card",
+        "props": {},
         "children": [
           "header",
           "body"
         ],
         "watch": {
-          "/xero-accounting/list_invoices/Invoices": {
+          "/dataverse/list_opportunities/items": {
             "action": "setState",
             "params": {
-              "statePath": "/ui/aged/buckets",
+              "statePath": "/ui/pipeline/stages",
               "value": {
-                "$computed": "xero-accounting_age_buckets",
+                "$computed": "dataverse_pipeline_stages",
                 "args": {
                   "value": {
-                    "$state": "/xero-accounting/list_invoices/Invoices"
+                    "$state": "/dataverse/list_opportunities/items"
                   }
                 }
               }
             }
           },
-          "/ui/aged/selectedBucket": {
+          "/ui/pipeline/selectedStage": {
             "action": "setState",
             "params": {
-              "statePath": "/ui/aged/breakdown",
+              "statePath": "/ui/pipeline/breakdown",
               "value": {
-                "$computed": "xero-accounting_invoices_in_bucket",
+                "$computed": "dataverse_ops_in_stage",
                 "args": {
                   "value": {
-                    "$state": "/xero-accounting/list_invoices/Invoices"
+                    "$state": "/dataverse/list_opportunities/items"
                   },
-                  "bucket": {
-                    "$state": "/ui/aged/selectedBucket"
+                  "stage": {
+                    "$state": "/ui/pipeline/selectedStage"
                   }
                 }
               }
@@ -92,6 +98,7 @@
       },
       "header": {
         "type": "Header",
+        "props": {},
         "children": [
           "titleGroup"
         ]
@@ -110,49 +117,9 @@
       "titleIcon": {
         "type": "Icon",
         "props": {
-          "name": "CalendarClock",
-          "tone": "warning",
+          "name": "TrendingUp",
+          "tone": "accent",
           "size": "sm"
-        }
-      },
-      "title": {
-        "type": "Heading",
-        "props": {
-          "text": "Aged Receivables",
-          "level": "h2"
-        }
-      },
-      "totalEyebrow": {
-        "type": "Eyebrow",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{n} Open · {amount}",
-              "n": {
-                "$computed": "count",
-                "args": {
-                  "value": {
-                    "$state": "/xero-accounting/list_invoices/Invoices"
-                  }
-                }
-              },
-              "amount": {
-                "$computed": "format_currency",
-                "args": {
-                  "value": {
-                    "$computed": "sum",
-                    "args": {
-                      "value": {
-                        "$state": "/xero-accounting/list_invoices/Invoices"
-                      },
-                      "field": "AmountDue"
-                    }
-                  }
-                }
-              }
-            }
-          }
         }
       },
       "titleStack": {
@@ -165,12 +132,53 @@
           "totalEyebrow"
         ]
       },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Opportunity Pipeline",
+          "level": "h2"
+        }
+      },
+      "totalEyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} open · {amount}",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/dataverse/list_opportunities/items"
+                  }
+                }
+              },
+              "amount": {
+                "$computed": "format_currency",
+                "args": {
+                  "value": {
+                    "$computed": "sum",
+                    "args": {
+                      "value": {
+                        "$state": "/dataverse/list_opportunities/items"
+                      },
+                      "field": "estimatedvalue"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "body": {
         "type": "Body",
+        "props": {},
         "children": [
           "loading",
           "empty",
-          "buckets",
+          "stages",
           "breakdown"
         ]
       },
@@ -183,61 +191,48 @@
           "sk1",
           "sk2",
           "sk3",
-          "sk4",
-          "sk5"
+          "sk4"
         ],
         "visible": {
-          "$state": "/_loading/xero-accounting.list_invoices"
+          "$state": "/_loading/dataverse.list_opportunities"
         }
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
-      "sk4": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
-      "sk5": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
       "empty": {
         "type": "Empty",
         "props": {
-          "message": "No outstanding invoices — you're all caught up."
+          "message": "No open opportunities — time to prospect."
         },
         "visible": {
           "$and": [
-            {
-              "$state": "/_loading/xero-accounting.list_invoices",
-              "not": true
-            },
-            {
-              "$state": "/xero-accounting/list_invoices/Invoices/0",
-              "not": true
-            }
+            { "$state": "/_loading/dataverse.list_opportunities", "not": true },
+            { "$state": "/dataverse/list_opportunities/items/0", "not": true }
           ]
         }
       },
-      "buckets": {
+      "stages": {
         "type": "Stack",
         "props": {
           "gap": "xs"
         },
         "children": [
-          "bucketRow"
+          "stageRow"
         ],
         "repeat": {
-          "statePath": "/ui/aged/buckets",
+          "statePath": "/ui/pipeline/stages",
           "key": "key"
         },
         "visible": {
           "$and": [
-            {
-              "$state": "/_loading/xero-accounting.list_invoices",
-              "not": true
-            },
-            {
-              "$state": "/xero-accounting/list_invoices/Invoices/0"
-            }
+            { "$state": "/_loading/dataverse.list_opportunities", "not": true },
+            { "$state": "/dataverse/list_opportunities/items/0" }
           ]
         }
       },
-      "bucketRow": {
+      "stageRow": {
         "type": "Row",
         "props": {
           "gap": "sm",
@@ -248,37 +243,31 @@
           "selected": {
             "$computed": "equals",
             "args": {
-              "a": {
-                "$item": "key"
-              },
-              "b": {
-                "$state": "/ui/aged/selectedBucket"
-              }
+              "a": { "$item": "key" },
+              "b": { "$state": "/ui/pipeline/selectedStage" }
             }
           }
         },
         "children": [
-          "bucketLeft",
-          "bucketRight"
+          "stageLeft",
+          "stageRight"
         ],
         "on": {
           "click": {
             "action": "setState",
             "params": {
-              "statePath": "/ui/aged/selectedBucket",
+              "statePath": "/ui/pipeline/selectedStage",
               "value": {
                 "$computed": "identity",
                 "args": {
-                  "value": {
-                    "$item": "key"
-                  }
+                  "value": { "$item": "key" }
                 }
               }
             }
           }
         }
       },
-      "bucketLeft": {
+      "stageLeft": {
         "type": "Row",
         "props": {
           "gap": "sm",
@@ -286,72 +275,70 @@
           "grow": true
         },
         "children": [
-          "bucketDot",
-          "bucketTextStack"
+          "stageDot",
+          "stageTextStack"
         ]
       },
-      "bucketDot": {
+      "stageDot": {
         "type": "Dot",
         "props": {
-          "tone": {
-            "$item": "tone"
-          },
+          "tone": { "$item": "tone" },
           "size": "sm"
         }
       },
-      "bucketTextStack": {
+      "stageTextStack": {
         "type": "Stack",
         "props": {
           "gap": "none"
         },
         "children": [
-          "bucketLabel",
-          "bucketSublabel"
+          "stageLabel",
+          "stageSublabel"
         ]
       },
-      "bucketLabel": {
+      "stageLabel": {
         "type": "Text",
         "props": {
-          "text": {
-            "$item": "key"
-          },
+          "text": { "$item": "key" },
           "size": "sm",
           "weight": "medium"
         }
       },
-      "bucketSublabel": {
+      "stageSublabel": {
         "type": "Caption",
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{n} invoices",
-              "n": {
-                "$item": "count"
+              "pattern": "{n} open · {weighted} weighted",
+              "n": { "$item": "count" },
+              "weighted": {
+                "$computed": "format_currency",
+                "args": {
+                  "value": { "$item": "weighted" }
+                }
               }
             }
           }
         }
       },
-      "bucketRight": {
+      "stageRight": {
         "type": "Stack",
         "props": {
           "gap": "none",
           "align": "end"
         },
         "children": [
-          "bucketTotal"
+          "stageTotal"
         ]
       },
-      "bucketTotal": {
+      "stageTotal": {
         "type": "Text",
         "props": {
           "text": {
             "$computed": "format_currency",
             "args": {
-              "value": {
-                "$item": "total"
-              }
+              "value": { "$item": "total" }
             }
           },
           "size": "sm",
@@ -370,11 +357,12 @@
           "breakdownEmpty"
         ],
         "visible": {
-          "$state": "/ui/aged/selectedBucket"
+          "$state": "/ui/pipeline/selectedStage"
         }
       },
       "breakdownDivider": {
-        "type": "Divider"
+        "type": "Divider",
+        "props": {}
       },
       "breakdownHeader": {
         "type": "Row",
@@ -394,9 +382,9 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{bucket} breakdown",
-              "bucket": {
-                "$state": "/ui/aged/selectedBucket"
+              "pattern": "{stage} stage",
+              "stage": {
+                "$state": "/ui/pipeline/selectedStage"
               }
             }
           }
@@ -414,7 +402,7 @@
           "click": {
             "action": "setState",
             "params": {
-              "statePath": "/ui/aged/selectedBucket",
+              "statePath": "/ui/pipeline/selectedStage",
               "value": ""
             }
           }
@@ -429,17 +417,17 @@
           "bdRow"
         ],
         "repeat": {
-          "statePath": "/ui/aged/breakdown",
-          "key": "InvoiceID"
+          "statePath": "/ui/pipeline/breakdown",
+          "key": "opportunityid"
         }
       },
       "breakdownEmpty": {
         "type": "Caption",
         "props": {
-          "text": "No invoices in this bucket."
+          "text": "No opportunities in this stage."
         },
         "visible": {
-          "$state": "/ui/aged/breakdown/0",
+          "$state": "/ui/pipeline/breakdown/0",
           "not": true
         }
       },
@@ -447,47 +435,29 @@
         "type": "Row",
         "props": {
           "gap": "sm",
-          "align": "center",
-          "justify": "between",
-          "hover": true,
-          "clickable": true
+          "align": "start",
+          "hover": true
         },
         "children": [
           "bdLeft",
-          "bdAmount"
-        ],
-        "on": {
-          "click": {
-            "action": "open_invoice_modal",
-            "params": {
-              "invoiceId": {
-                "$computed": "identity",
-                "args": {
-                  "value": {
-                    "$item": "InvoiceID"
-                  }
-                }
-              }
-            }
-          }
-        }
+          "bdRight"
+        ]
       },
       "bdLeft": {
         "type": "Stack",
         "props": {
-          "gap": "none"
+          "gap": "none",
+          "grow": true
         },
         "children": [
-          "bdContact",
+          "bdCustomer",
           "bdMeta"
         ]
       },
-      "bdContact": {
+      "bdCustomer": {
         "type": "Text",
         "props": {
-          "text": {
-            "$item": "Contact/Name"
-          },
+          "text": { "$item": "customerid_account/name" },
           "size": "sm",
           "weight": "medium",
           "truncate": true
@@ -499,21 +469,28 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{num} · {label}",
-              "num": {
-                "$item": "InvoiceNumber"
-              },
+              "pattern": "{name} · {label}",
+              "name": { "$item": "name" },
               "label": {
-                "$computed": "xero-accounting_overdue_label",
+                "$computed": "dataverse_close_label",
                 "args": {
-                  "value": {
-                    "$item": "DueDate"
-                  }
+                  "value": { "$item": "estimatedclosedate" }
                 }
               }
             }
           }
         }
+      },
+      "bdRight": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "end"
+        },
+        "children": [
+          "bdAmount",
+          "bdWeighted"
+        ]
       },
       "bdAmount": {
         "type": "Text",
@@ -521,16 +498,35 @@
           "text": {
             "$computed": "format_currency",
             "args": {
-              "value": {
-                "$item": "AmountDue"
-              },
-              "currency": {
-                "$item": "CurrencyCode"
-              }
+              "value": { "$item": "estimatedvalue" }
             }
           },
           "size": "sm",
           "weight": "semibold"
+        }
+      },
+      "bdWeighted": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{pct}% · {weighted}",
+              "pct": { "$item": "closeprobability" },
+              "weighted": {
+                "$computed": "format_currency",
+                "args": {
+                  "value": {
+                    "$computed": "dataverse_weighted",
+                    "args": {
+                      "value": { "$item": "estimatedvalue" },
+                      "probability": { "$item": "closeprobability" }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }

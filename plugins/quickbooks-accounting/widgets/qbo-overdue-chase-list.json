@@ -1,25 +1,29 @@
 {
-  "id": "xero-draft-invoice-inbox",
-  "title": "Draft Invoice Inbox",
-  "description": "Draft invoices inbox — invoices not yet sent.",
+  "id": "qbo-overdue-chase-list",
+  "title": "Overdue Chase List",
+  "description": "Overdue invoices ranked for collections follow-up.",
   "category": "finance",
   "tags": [
-    "xero",
+    "quickbooks",
+    "qbo",
     "invoices",
-    "draft",
-    "inbox",
+    "overdue",
+    "collections",
+    "chase",
     "finance"
   ],
   "keywords": [
-    "draft",
+    "overdue",
+    "late",
+    "collections",
+    "chase",
+    "follow-up",
     "invoice",
     "invoices",
-    "unsent",
-    "inbox",
-    "pending"
+    "dunning"
   ],
   "connectorsUsed": [
-    "xero-accounting"
+    "quickbooks-accounting"
   ],
   "popularity": 0,
   "sizing": {
@@ -32,16 +36,17 @@
       "rowSpan": 4
     },
     "max": {
-      "colSpan": 10,
+      "colSpan": 12,
       "rowSpan": 12
     }
   },
   "dataProvider": {
-    "mcp": "xero-accounting",
-    "tool": "list_invoices",
+    "mcp": "quickbooks-accounting",
+    "tool": "list_invoice",
     "params": {
-      "statuses": "DRAFT",
-      "order": "UpdatedDateUTC DESC"
+      "where": "Balance > '0'",
+      "orderBy": "DueDate ASC",
+      "maxResults": 100
     }
   },
   "spec": {
@@ -52,7 +57,23 @@
         "children": [
           "header",
           "body"
-        ]
+        ],
+        "watch": {
+          "/quickbooks-accounting/list_invoice/QueryResponse/Invoice": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/overdue/rows",
+              "value": {
+                "$computed": "quickbooks-accounting_overdue_only",
+                "args": {
+                  "value": {
+                    "$state": "/quickbooks-accounting/list_invoice/QueryResponse/Invoice"
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       "header": {
         "type": "Header",
@@ -74,25 +95,15 @@
       "titleIcon": {
         "type": "Icon",
         "props": {
-          "name": "Inbox",
-          "tone": "accent",
+          "name": "AlarmClock",
+          "tone": "destructive",
           "size": "sm"
         }
-      },
-      "titleStack": {
-        "type": "Stack",
-        "props": {
-          "gap": "none"
-        },
-        "children": [
-          "title",
-          "count"
-        ]
       },
       "title": {
         "type": "Heading",
         "props": {
-          "text": "Draft Invoices",
+          "text": "Overdue Chase List",
           "level": "h2"
         }
       },
@@ -102,12 +113,12 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{n} Drafts",
+              "pattern": "{n} Overdue",
               "n": {
                 "$computed": "count",
                 "args": {
                   "value": {
-                    "$state": "/xero-accounting/list_invoices/Invoices"
+                    "$state": "/ui/overdue/rows"
                   }
                 }
               }
@@ -129,37 +140,37 @@
           "gap": "sm"
         },
         "children": [
-          "skel1",
-          "skel2",
-          "skel3",
-          "skel4"
+          "sk1",
+          "sk2",
+          "sk3",
+          "sk4"
         ],
         "visible": {
-          "$state": "/_loading/xero-accounting.list_invoices"
+          "$state": "/_loading/quickbooks-accounting.list_invoice"
         }
       },
-      "skel1": {
+      "sk1": {
         "type": "Skeleton",
         "props": {
           "height": "2.25rem",
           "rounded": "md"
         }
       },
-      "skel2": {
+      "sk2": {
         "type": "Skeleton",
         "props": {
           "height": "2.25rem",
           "rounded": "md"
         }
       },
-      "skel3": {
+      "sk3": {
         "type": "Skeleton",
         "props": {
           "height": "2.25rem",
           "rounded": "md"
         }
       },
-      "skel4": {
+      "sk4": {
         "type": "Skeleton",
         "props": {
           "height": "2.25rem",
@@ -169,16 +180,16 @@
       "empty": {
         "type": "Empty",
         "props": {
-          "message": "Inbox zero. No drafts waiting."
+          "message": "Nothing overdue — nice work."
         },
         "visible": {
           "$and": [
             {
-              "$state": "/_loading/xero-accounting.list_invoices",
+              "$state": "/_loading/quickbooks-accounting.list_invoice",
               "not": true
             },
             {
-              "$state": "/xero-accounting/list_invoices/Invoices/0",
+              "$state": "/ui/overdue/rows/0",
               "not": true
             }
           ]
@@ -193,11 +204,11 @@
           "row"
         ],
         "repeat": {
-          "statePath": "/xero-accounting/list_invoices/Invoices",
-          "key": "InvoiceID"
+          "statePath": "/ui/overdue/rows",
+          "key": "Id"
         },
         "visible": {
-          "$state": "/_loading/xero-accounting.list_invoices",
+          "$state": "/_loading/quickbooks-accounting.list_invoice",
           "not": true
         }
       },
@@ -205,16 +216,15 @@
         "type": "Row",
         "props": {
           "gap": "sm",
-          "align": "center",
+          "align": "start",
           "hover": true,
-          "clickable": true,
-          "template": "auto minmax(0, 1fr) 6rem 7rem"
+          "clickable": true
         },
         "children": [
-          "priority",
+          "severity",
           "identity",
-          "amount",
-          "age"
+          "overdueBadge",
+          "amount"
         ],
         "on": {
           "click": {
@@ -224,19 +234,26 @@
                 "$computed": "identity",
                 "args": {
                   "value": {
-                    "$item": "InvoiceID"
+                    "$item": "Id"
                   }
                 }
               },
-              "connector": "xero-accounting"
+              "connector": "quickbooks-accounting"
             }
           }
         }
       },
-      "priority": {
+      "severity": {
         "type": "Dot",
         "props": {
-          "tone": "accent",
+          "tone": {
+            "$computed": "quickbooks-accounting_overdue_tone",
+            "args": {
+              "value": {
+                "$item": "DueDate"
+              }
+            }
+          },
           "size": "sm"
         }
       },
@@ -254,7 +271,7 @@
         "type": "Text",
         "props": {
           "text": {
-            "$item": "Contact/Name"
+            "$item": "CustomerRef/name"
           },
           "size": "sm",
           "weight": "medium",
@@ -265,8 +282,30 @@
         "type": "Caption",
         "props": {
           "text": {
-            "$item": "InvoiceNumber"
+            "$item": "DocNumber"
           }
+        }
+      },
+      "overdueBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "quickbooks-accounting_overdue_label",
+            "args": {
+              "value": {
+                "$item": "DueDate"
+              }
+            }
+          },
+          "tone": {
+            "$computed": "quickbooks-accounting_overdue_tone",
+            "args": {
+              "value": {
+                "$item": "DueDate"
+              }
+            }
+          },
+          "variant": "soft"
         }
       },
       "amount": {
@@ -276,10 +315,10 @@
             "$computed": "format_currency",
             "args": {
               "value": {
-                "$item": "Total"
+                "$item": "Balance"
               },
               "currency": {
-                "$item": "CurrencyCode"
+                "$item": "CurrencyRef/value"
               }
             }
           },
@@ -287,20 +326,15 @@
           "size": "sm"
         }
       },
-      "age": {
-        "type": "Badge",
+      "titleStack": {
+        "type": "Stack",
         "props": {
-          "text": {
-            "$computed": "relative_time",
-            "args": {
-              "value": {
-                "$item": "UpdatedDateUTC"
-              }
-            }
-          },
-          "tone": "muted",
-          "variant": "soft"
-        }
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "count"
+        ]
       }
     }
   },

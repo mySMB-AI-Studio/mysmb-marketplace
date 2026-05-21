@@ -1,0 +1,326 @@
+{
+  "id": "qbo-ar-aging-buckets",
+  "title": "AR Aging Buckets",
+  "description": "Outstanding AR distributed across aging buckets — click any bucket to see the invoices in it, click an invoice to open its detail modal.",
+  "category": "finance",
+  "tags": ["quickbooks", "qbo", "ar", "aging", "receivables", "buckets", "collections", "finance"],
+  "keywords": ["ar", "aging", "buckets", "receivables", "overdue", "collections", "outstanding"],
+  "connectorsUsed": ["quickbooks-accounting"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 5 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 10, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "quickbooks-accounting",
+    "tool": "list_invoice",
+    "params": { "where": "Balance > '0'", "orderBy": "DueDate ASC", "maxResults": 200 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"],
+        "watch": {
+          "/quickbooks-accounting/list_invoice/QueryResponse/Invoice": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/aged/buckets",
+              "value": {
+                "$computed": "quickbooks-accounting_age_buckets",
+                "args": { "value": { "$state": "/quickbooks-accounting/list_invoice/QueryResponse/Invoice" } }
+              }
+            }
+          },
+          "/ui/aged/selectedBucket": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/aged/breakdown",
+              "value": {
+                "$computed": "quickbooks-accounting_invoices_in_bucket",
+                "args": {
+                  "value": { "$state": "/quickbooks-accounting/list_invoice/QueryResponse/Invoice" },
+                  "bucket": { "$state": "/ui/aged/selectedBucket" }
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "CalendarClock", "tone": "warning", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "totalEyebrow"]
+      },
+      "title": { "type": "Heading", "props": { "text": "AR Aging Buckets", "level": "h2" } },
+      "totalEyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} Open · {amount}",
+              "n": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/quickbooks-accounting/list_invoice/QueryResponse/Invoice" } }
+              },
+              "amount": {
+                "$computed": "format_currency",
+                "args": {
+                  "value": {
+                    "$computed": "sum",
+                    "args": {
+                      "value": { "$state": "/quickbooks-accounting/list_invoice/QueryResponse/Invoice" },
+                      "field": "Balance"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "buckets", "breakdown"]
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4", "sk5"],
+        "visible": { "$state": "/_loading/quickbooks-accounting.list_invoice" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk5": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No outstanding invoices — you're all caught up." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/quickbooks-accounting.list_invoice", "not": true },
+            { "$state": "/quickbooks-accounting/list_invoice/QueryResponse/Invoice/0", "not": true }
+          ]
+        }
+      },
+
+      "buckets": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["bucketRow"],
+        "repeat": { "statePath": "/ui/aged/buckets", "key": "key" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/quickbooks-accounting.list_invoice", "not": true },
+            { "$state": "/quickbooks-accounting/list_invoice/QueryResponse/Invoice/0" }
+          ]
+        }
+      },
+      "bucketRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between",
+          "hover": true,
+          "clickable": true,
+          "selected": {
+            "$computed": "equals",
+            "args": {
+              "a": { "$item": "key" },
+              "b": { "$state": "/ui/aged/selectedBucket" }
+            }
+          }
+        },
+        "children": ["bucketLeft", "bucketRight"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/aged/selectedBucket",
+              "value": {
+                "$computed": "identity",
+                "args": { "value": { "$item": "key" } }
+              }
+            }
+          }
+        }
+      },
+      "bucketLeft": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "grow": true },
+        "children": ["bucketDot", "bucketTextStack"]
+      },
+      "bucketDot": {
+        "type": "Dot",
+        "props": { "tone": { "$item": "tone" }, "size": "sm" }
+      },
+      "bucketTextStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["bucketLabel", "bucketSublabel"]
+      },
+      "bucketLabel": {
+        "type": "Text",
+        "props": { "text": { "$item": "key" }, "size": "sm", "weight": "medium" }
+      },
+      "bucketSublabel": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{n} invoices", "n": { "$item": "count" } }
+          }
+        }
+      },
+      "bucketRight": {
+        "type": "Stack",
+        "props": { "gap": "none", "align": "end" },
+        "children": ["bucketTotal"]
+      },
+      "bucketTotal": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": { "value": { "$item": "total" } }
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+
+      "breakdown": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["breakdownHeader", "breakdownDivider", "breakdownList", "breakdownEmpty"],
+        "visible": { "$state": "/ui/aged/selectedBucket" }
+      },
+      "breakdownDivider": { "type": "Divider" },
+      "breakdownHeader": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["breakdownTitle", "breakdownClose"]
+      },
+      "breakdownTitle": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{bucket} breakdown",
+              "bucket": { "$state": "/ui/aged/selectedBucket" }
+            }
+          }
+        }
+      },
+      "breakdownClose": {
+        "type": "IconButton",
+        "props": { "icon": "X", "tone": "muted", "ariaLabel": "Close breakdown", "size": "sm" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": { "statePath": "/ui/aged/selectedBucket", "value": "" }
+          }
+        }
+      },
+      "breakdownList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["bdRow"],
+        "repeat": { "statePath": "/ui/aged/breakdown", "key": "Id" }
+      },
+      "breakdownEmpty": {
+        "type": "Caption",
+        "props": { "text": "No invoices in this bucket." },
+        "visible": { "$state": "/ui/aged/breakdown/0", "not": true }
+      },
+      "bdRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true, "clickable": true },
+        "children": ["bdLeft", "bdAmount"],
+        "on": {
+          "click": {
+            "action": "open_invoice_modal",
+            "params": {
+              "invoiceId": {
+                "$computed": "identity",
+                "args": { "value": { "$item": "Id" } }
+              },
+              "connector": "quickbooks-accounting"
+            }
+          }
+        }
+      },
+      "bdLeft": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["bdContact", "bdMeta"]
+      },
+      "bdContact": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "CustomerRef/name" },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "bdMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "#{num} · {label}",
+              "num": { "$item": "DocNumber" },
+              "label": {
+                "$computed": "quickbooks-accounting_overdue_label",
+                "args": { "value": { "$item": "DueDate" } }
+              }
+            }
+          }
+        }
+      },
+      "bdAmount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": { "$item": "Balance" },
+              "currency": { "$item": "CurrencyRef/value" }
+            }
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      }
+    }
+  },
+  "status": "published"
+}
