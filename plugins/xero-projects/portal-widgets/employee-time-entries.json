@@ -1,0 +1,824 @@
+{
+  "id": "xero-projects-employee-time-entries",
+  "title": "Employee time entries",
+  "description": "Daily time entries Sun–Sat for the employees staffed to you in Xero Projects. Click prev/next to change weeks.",
+  "category": "client-portal",
+  "tags": ["xero", "projects", "time-tracking", "portal"],
+  "keywords": ["time", "timesheet", "employee", "staff", "billable", "week"],
+  "connectorsUsed": ["xero-projects"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "min":       { "colSpan": 4, "rowSpan": 4 },
+    "max":       { "colSpan": 8, "rowSpan": 9 }
+  },
+  "status": "published",
+  "dataProvider": {
+    "kind": "portal-proxy",
+    "recipe": {
+      "mapId": "xero-projects/staffed-employee-time-entries",
+      "params": {
+        "weekStartUtc": { "$state": "/ui/weekStartUtc" },
+        "weekEndUtc":   { "$state": "/ui/weekEndUtc" }
+      },
+      "writeTo": "/timeEntries"
+    }
+  },
+  "defaultState": {
+    "/ui/weekStartUtc": { "$computed": "current_week_start", "args": { "anchor": "sun" } },
+    "/ui/weekEndUtc": {
+      "$computed": "shift_date",
+      "args": {
+        "value": { "$computed": "current_week_start", "args": { "anchor": "sun" } },
+        "days": 7
+      }
+    },
+    "/ui/selectedUserId": "",
+    "/ui/employees": [],
+    "/ui/day0Entries": [],
+    "/ui/day1Entries": [],
+    "/ui/day2Entries": [],
+    "/ui/day3Entries": [],
+    "/ui/day4Entries": [],
+    "/ui/day5Entries": [],
+    "/ui/day6Entries": [],
+    "/ui/openEntry/id": "",
+    "/ui/openEntry/description": "",
+    "/ui/openEntry/projectName": "",
+    "/ui/openEntry/taskName": "",
+    "/ui/openEntry/durationMinutes": 0,
+    "/ui/openEntry/dateUtc": "",
+    "/ui/openEntry/userName": ""
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body", "footer", "descOverlay"],
+        "watch": {
+          "/timeEntries/0/userId": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedUserId",
+                "value": { "$state": "/timeEntries/0/userId" }
+              }
+            }
+          ],
+          "/timeEntries": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/employees",
+                "value": { "$computed": "distinct_by", "args": { "value": { "$state": "/timeEntries" }, "field": "userId" } }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/day0Entries",
+                "value": {
+                  "$computed": "filter_date_range",
+                  "args": {
+                    "value": { "$computed": "filter_by", "args": { "value": { "$state": "/timeEntries" }, "field": "userId", "equals": { "$state": "/ui/selectedUserId" } } },
+                    "field": "dateUtc",
+                    "start": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 0 } },
+                    "end":   { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 1 } }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/day1Entries",
+                "value": {
+                  "$computed": "filter_date_range",
+                  "args": {
+                    "value": { "$computed": "filter_by", "args": { "value": { "$state": "/timeEntries" }, "field": "userId", "equals": { "$state": "/ui/selectedUserId" } } },
+                    "field": "dateUtc",
+                    "start": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 1 } },
+                    "end":   { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 2 } }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/day2Entries",
+                "value": {
+                  "$computed": "filter_date_range",
+                  "args": {
+                    "value": { "$computed": "filter_by", "args": { "value": { "$state": "/timeEntries" }, "field": "userId", "equals": { "$state": "/ui/selectedUserId" } } },
+                    "field": "dateUtc",
+                    "start": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 2 } },
+                    "end":   { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 3 } }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/day3Entries",
+                "value": {
+                  "$computed": "filter_date_range",
+                  "args": {
+                    "value": { "$computed": "filter_by", "args": { "value": { "$state": "/timeEntries" }, "field": "userId", "equals": { "$state": "/ui/selectedUserId" } } },
+                    "field": "dateUtc",
+                    "start": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 3 } },
+                    "end":   { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 4 } }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/day4Entries",
+                "value": {
+                  "$computed": "filter_date_range",
+                  "args": {
+                    "value": { "$computed": "filter_by", "args": { "value": { "$state": "/timeEntries" }, "field": "userId", "equals": { "$state": "/ui/selectedUserId" } } },
+                    "field": "dateUtc",
+                    "start": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 4 } },
+                    "end":   { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 5 } }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/day5Entries",
+                "value": {
+                  "$computed": "filter_date_range",
+                  "args": {
+                    "value": { "$computed": "filter_by", "args": { "value": { "$state": "/timeEntries" }, "field": "userId", "equals": { "$state": "/ui/selectedUserId" } } },
+                    "field": "dateUtc",
+                    "start": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 5 } },
+                    "end":   { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 6 } }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/day6Entries",
+                "value": {
+                  "$computed": "filter_date_range",
+                  "args": {
+                    "value": { "$computed": "filter_by", "args": { "value": { "$state": "/timeEntries" }, "field": "userId", "equals": { "$state": "/ui/selectedUserId" } } },
+                    "field": "dateUtc",
+                    "start": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 6 } },
+                    "end":   { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 7 } }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/selectedUserId": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/day0Entries",
+                "value": {
+                  "$computed": "filter_date_range",
+                  "args": {
+                    "value": { "$computed": "filter_by", "args": { "value": { "$state": "/timeEntries" }, "field": "userId", "equals": { "$state": "/ui/selectedUserId" } } },
+                    "field": "dateUtc",
+                    "start": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 0 } },
+                    "end":   { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 1 } }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/day1Entries",
+                "value": {
+                  "$computed": "filter_date_range",
+                  "args": {
+                    "value": { "$computed": "filter_by", "args": { "value": { "$state": "/timeEntries" }, "field": "userId", "equals": { "$state": "/ui/selectedUserId" } } },
+                    "field": "dateUtc",
+                    "start": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 1 } },
+                    "end":   { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 2 } }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/day2Entries",
+                "value": {
+                  "$computed": "filter_date_range",
+                  "args": {
+                    "value": { "$computed": "filter_by", "args": { "value": { "$state": "/timeEntries" }, "field": "userId", "equals": { "$state": "/ui/selectedUserId" } } },
+                    "field": "dateUtc",
+                    "start": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 2 } },
+                    "end":   { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 3 } }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/day3Entries",
+                "value": {
+                  "$computed": "filter_date_range",
+                  "args": {
+                    "value": { "$computed": "filter_by", "args": { "value": { "$state": "/timeEntries" }, "field": "userId", "equals": { "$state": "/ui/selectedUserId" } } },
+                    "field": "dateUtc",
+                    "start": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 3 } },
+                    "end":   { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 4 } }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/day4Entries",
+                "value": {
+                  "$computed": "filter_date_range",
+                  "args": {
+                    "value": { "$computed": "filter_by", "args": { "value": { "$state": "/timeEntries" }, "field": "userId", "equals": { "$state": "/ui/selectedUserId" } } },
+                    "field": "dateUtc",
+                    "start": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 4 } },
+                    "end":   { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 5 } }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/day5Entries",
+                "value": {
+                  "$computed": "filter_date_range",
+                  "args": {
+                    "value": { "$computed": "filter_by", "args": { "value": { "$state": "/timeEntries" }, "field": "userId", "equals": { "$state": "/ui/selectedUserId" } } },
+                    "field": "dateUtc",
+                    "start": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 5 } },
+                    "end":   { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 6 } }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/day6Entries",
+                "value": {
+                  "$computed": "filter_date_range",
+                  "args": {
+                    "value": { "$computed": "filter_by", "args": { "value": { "$state": "/timeEntries" }, "field": "userId", "equals": { "$state": "/ui/selectedUserId" } } },
+                    "field": "dateUtc",
+                    "start": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 6 } },
+                    "end":   { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 7 } }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "header": { "type": "Header", "props": {}, "children": ["headerRow", "weekRangeEyebrow"] },
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center", "gap": "sm" },
+        "children": ["titleGroup", "weekNav"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "title"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Clock", "tone": "accent", "size": "sm" } },
+      "title": { "type": "Heading", "props": { "text": "Time entries", "level": "h2" } },
+      "weekNav": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["prevBtn", "thisWeekBtn", "nextBtn"]
+      },
+      "prevBtn": {
+        "type": "Button",
+        "props": { "variant": "ghost", "size": "sm", "leadingIcon": "ChevronLeft", "ariaLabel": "Previous week" },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/weekStartUtc", "value": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": -7 } } } },
+            { "action": "setState", "params": { "statePath": "/ui/weekEndUtc",   "value": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekEndUtc" },   "days": -7 } } } }
+          ]
+        }
+      },
+      "thisWeekBtn": {
+        "type": "Button",
+        "props": { "variant": "ghost", "size": "sm", "label": "This week" },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/weekStartUtc", "value": { "$computed": "current_week_start", "args": { "anchor": "sun" } } } },
+            { "action": "setState", "params": { "statePath": "/ui/weekEndUtc",   "value": { "$computed": "shift_date", "args": { "value": { "$computed": "current_week_start", "args": { "anchor": "sun" } }, "days": 7 } } } }
+          ]
+        }
+      },
+      "nextBtn": {
+        "type": "Button",
+        "props": { "variant": "ghost", "size": "sm", "trailingIcon": "ChevronRight", "ariaLabel": "Next week" },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/weekStartUtc", "value": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 7 } } } },
+            { "action": "setState", "params": { "statePath": "/ui/weekEndUtc",   "value": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekEndUtc" },   "days": 7 } } } }
+          ]
+        }
+      },
+      "weekRangeEyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{a} – {b}",
+              "a": { "$computed": "format_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "format": "medium" } },
+              "b": { "$computed": "format_date", "args": { "value": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekEndUtc" }, "days": -1 } }, "format": "medium" } }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "errorBanner", "empty", "employeeTabs", "weekTotalKV", "dayGrid"]
+      },
+      "loading": {
+        "type": "Skeleton",
+        "props": { "height": "12rem", "rounded": "md" },
+        "visible": { "$state": "/_loading/portal/xero-projects/staffed-employee-time-entries" }
+      },
+      "errorBanner": {
+        "type": "Empty",
+        "props": { "message": "Time entries are temporarily unavailable. Please try again later." },
+        "visible": { "$state": "/_errors/portal/xero-projects/staffed-employee-time-entries", "neq": "" }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No time entries this week." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/portal/xero-projects/staffed-employee-time-entries", "not": true },
+            { "$state": "/_errors/portal/xero-projects/staffed-employee-time-entries", "eq": "" },
+            { "$computed": "count", "args": { "value": { "$state": "/timeEntries" } }, "eq": 0 }
+          ]
+        }
+      },
+      "employeeTabs": {
+        "type": "Row",
+        "props": { "gap": "xs", "wrap": true },
+        "repeat": {
+          "statePath": "/ui/employees",
+          "key": "userId"
+        },
+        "children": ["employeeTabBtn"],
+        "visible": { "$computed": "count", "args": { "value": { "$state": "/ui/employees" } }, "gt": 1 }
+      },
+      "employeeTabBtn": {
+        "type": "Button",
+        "props": { "label": { "$item": "userName" }, "variant": "pill", "size": "sm" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/selectedUserId", "value": { "$item": "userId" } } } }
+      },
+      "weekTotalKV": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Week total",
+          "value": {
+            "$computed": "xero_minutes",
+            "args": {
+              "value": {
+                "$computed": "sum",
+                "args": {
+                  "value": { "$computed": "filter_by", "args": { "value": { "$state": "/timeEntries" }, "field": "userId", "equals": { "$state": "/ui/selectedUserId" } } },
+                  "field": "durationMinutes"
+                }
+              }
+            }
+          }
+        },
+        "visible": { "$state": "/ui/selectedUserId", "neq": "" }
+      },
+      "dayGrid": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["daySection0", "daySection1", "daySection2", "daySection3", "daySection4", "daySection5", "daySection6"],
+        "visible": { "$computed": "count", "args": { "value": { "$state": "/timeEntries" } }, "gt": 0 }
+      },
+      "daySection0": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["dayHeader0", "dayEntries0", "dayEmpty0"]
+      },
+      "dayHeader0": {
+        "type": "Row",
+        "props": { "justify": "between" },
+        "children": ["dayLabel0", "dayTotal0"]
+      },
+      "dayLabel0": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Sun  {date}",
+              "date": { "$computed": "format_date", "args": { "value": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 0 } }, "format": "medium" } }
+            }
+          }
+        }
+      },
+      "dayTotal0": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "xero_minutes",
+            "args": {
+              "value": { "$computed": "sum", "args": { "value": { "$state": "/ui/day0Entries" }, "field": "durationMinutes" } }
+            }
+          }
+        }
+      },
+      "dayEntries0": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "repeat": { "statePath": "/ui/day0Entries", "key": "id" },
+        "children": ["entryRow"]
+      },
+      "dayEmpty0": {
+        "type": "Caption",
+        "props": { "text": "No entries", "tone": "muted" },
+        "visible": { "$computed": "count", "args": { "value": { "$state": "/ui/day0Entries" } }, "eq": 0 }
+      },
+      "daySection1": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["dayHeader1", "dayEntries1", "dayEmpty1"]
+      },
+      "dayHeader1": {
+        "type": "Row",
+        "props": { "justify": "between" },
+        "children": ["dayLabel1", "dayTotal1"]
+      },
+      "dayLabel1": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Mon  {date}",
+              "date": { "$computed": "format_date", "args": { "value": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 1 } }, "format": "medium" } }
+            }
+          }
+        }
+      },
+      "dayTotal1": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "xero_minutes",
+            "args": {
+              "value": { "$computed": "sum", "args": { "value": { "$state": "/ui/day1Entries" }, "field": "durationMinutes" } }
+            }
+          }
+        }
+      },
+      "dayEntries1": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "repeat": { "statePath": "/ui/day1Entries", "key": "id" },
+        "children": ["entryRow"]
+      },
+      "dayEmpty1": {
+        "type": "Caption",
+        "props": { "text": "No entries", "tone": "muted" },
+        "visible": { "$computed": "count", "args": { "value": { "$state": "/ui/day1Entries" } }, "eq": 0 }
+      },
+      "daySection2": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["dayHeader2", "dayEntries2", "dayEmpty2"]
+      },
+      "dayHeader2": {
+        "type": "Row",
+        "props": { "justify": "between" },
+        "children": ["dayLabel2", "dayTotal2"]
+      },
+      "dayLabel2": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Tue  {date}",
+              "date": { "$computed": "format_date", "args": { "value": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 2 } }, "format": "medium" } }
+            }
+          }
+        }
+      },
+      "dayTotal2": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "xero_minutes",
+            "args": {
+              "value": { "$computed": "sum", "args": { "value": { "$state": "/ui/day2Entries" }, "field": "durationMinutes" } }
+            }
+          }
+        }
+      },
+      "dayEntries2": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "repeat": { "statePath": "/ui/day2Entries", "key": "id" },
+        "children": ["entryRow"]
+      },
+      "dayEmpty2": {
+        "type": "Caption",
+        "props": { "text": "No entries", "tone": "muted" },
+        "visible": { "$computed": "count", "args": { "value": { "$state": "/ui/day2Entries" } }, "eq": 0 }
+      },
+      "daySection3": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["dayHeader3", "dayEntries3", "dayEmpty3"]
+      },
+      "dayHeader3": {
+        "type": "Row",
+        "props": { "justify": "between" },
+        "children": ["dayLabel3", "dayTotal3"]
+      },
+      "dayLabel3": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Wed  {date}",
+              "date": { "$computed": "format_date", "args": { "value": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 3 } }, "format": "medium" } }
+            }
+          }
+        }
+      },
+      "dayTotal3": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "xero_minutes",
+            "args": {
+              "value": { "$computed": "sum", "args": { "value": { "$state": "/ui/day3Entries" }, "field": "durationMinutes" } }
+            }
+          }
+        }
+      },
+      "dayEntries3": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "repeat": { "statePath": "/ui/day3Entries", "key": "id" },
+        "children": ["entryRow"]
+      },
+      "dayEmpty3": {
+        "type": "Caption",
+        "props": { "text": "No entries", "tone": "muted" },
+        "visible": { "$computed": "count", "args": { "value": { "$state": "/ui/day3Entries" } }, "eq": 0 }
+      },
+      "daySection4": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["dayHeader4", "dayEntries4", "dayEmpty4"]
+      },
+      "dayHeader4": {
+        "type": "Row",
+        "props": { "justify": "between" },
+        "children": ["dayLabel4", "dayTotal4"]
+      },
+      "dayLabel4": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Thu  {date}",
+              "date": { "$computed": "format_date", "args": { "value": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 4 } }, "format": "medium" } }
+            }
+          }
+        }
+      },
+      "dayTotal4": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "xero_minutes",
+            "args": {
+              "value": { "$computed": "sum", "args": { "value": { "$state": "/ui/day4Entries" }, "field": "durationMinutes" } }
+            }
+          }
+        }
+      },
+      "dayEntries4": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "repeat": { "statePath": "/ui/day4Entries", "key": "id" },
+        "children": ["entryRow"]
+      },
+      "dayEmpty4": {
+        "type": "Caption",
+        "props": { "text": "No entries", "tone": "muted" },
+        "visible": { "$computed": "count", "args": { "value": { "$state": "/ui/day4Entries" } }, "eq": 0 }
+      },
+      "daySection5": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["dayHeader5", "dayEntries5", "dayEmpty5"]
+      },
+      "dayHeader5": {
+        "type": "Row",
+        "props": { "justify": "between" },
+        "children": ["dayLabel5", "dayTotal5"]
+      },
+      "dayLabel5": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Fri  {date}",
+              "date": { "$computed": "format_date", "args": { "value": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 5 } }, "format": "medium" } }
+            }
+          }
+        }
+      },
+      "dayTotal5": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "xero_minutes",
+            "args": {
+              "value": { "$computed": "sum", "args": { "value": { "$state": "/ui/day5Entries" }, "field": "durationMinutes" } }
+            }
+          }
+        }
+      },
+      "dayEntries5": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "repeat": { "statePath": "/ui/day5Entries", "key": "id" },
+        "children": ["entryRow"]
+      },
+      "dayEmpty5": {
+        "type": "Caption",
+        "props": { "text": "No entries", "tone": "muted" },
+        "visible": { "$computed": "count", "args": { "value": { "$state": "/ui/day5Entries" } }, "eq": 0 }
+      },
+      "daySection6": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["dayHeader6", "dayEntries6", "dayEmpty6"]
+      },
+      "dayHeader6": {
+        "type": "Row",
+        "props": { "justify": "between" },
+        "children": ["dayLabel6", "dayTotal6"]
+      },
+      "dayLabel6": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Sat  {date}",
+              "date": { "$computed": "format_date", "args": { "value": { "$computed": "shift_date", "args": { "value": { "$state": "/ui/weekStartUtc" }, "days": 6 } }, "format": "medium" } }
+            }
+          }
+        }
+      },
+      "dayTotal6": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "xero_minutes",
+            "args": {
+              "value": { "$computed": "sum", "args": { "value": { "$state": "/ui/day6Entries" }, "field": "durationMinutes" } }
+            }
+          }
+        }
+      },
+      "dayEntries6": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "repeat": { "statePath": "/ui/day6Entries", "key": "id" },
+        "children": ["entryRow"]
+      },
+      "dayEmpty6": {
+        "type": "Caption",
+        "props": { "text": "No entries", "tone": "muted" },
+        "visible": { "$computed": "count", "args": { "value": { "$state": "/ui/day6Entries" } }, "eq": 0 }
+      },
+      "entryRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "justify": "between", "align": "center" },
+        "children": ["projTaskStack", "durationText", "descText"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/openEntry/id",              "value": { "$item": "id" } } },
+            { "action": "setState", "params": { "statePath": "/ui/openEntry/description",     "value": { "$item": "description" } } },
+            { "action": "setState", "params": { "statePath": "/ui/openEntry/projectName",     "value": { "$item": "projectName" } } },
+            { "action": "setState", "params": { "statePath": "/ui/openEntry/taskName",        "value": { "$item": "taskName" } } },
+            { "action": "setState", "params": { "statePath": "/ui/openEntry/durationMinutes", "value": { "$item": "durationMinutes" } } },
+            { "action": "setState", "params": { "statePath": "/ui/openEntry/dateUtc",         "value": { "$item": "dateUtc" } } },
+            { "action": "setState", "params": { "statePath": "/ui/openEntry/userName",        "value": { "$item": "userName" } } }
+          ]
+        }
+      },
+      "projTaskStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["entryProject", "entryTask"]
+      },
+      "entryProject": { "type": "Text", "props": { "text": { "$item": "projectName" }, "weight": "medium", "size": "sm" } },
+      "entryTask":    { "type": "Text", "props": { "text": { "$item": "taskName" },    "tone": "muted",   "size": "xs" } },
+      "durationText": {
+        "type": "Text",
+        "props": { "text": { "$computed": "xero_minutes", "args": { "value": { "$item": "durationMinutes" } } }, "size": "sm", "weight": "medium" }
+      },
+      "descText": {
+        "type": "Text",
+        "props": { "text": { "$computed": "truncate", "args": { "value": { "$item": "description" }, "max": 60 } }, "size": "xs", "tone": "muted" },
+        "visible": { "$item": "description" }
+      },
+      "footer": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["footerBtn"]
+      },
+      "footerBtn": {
+        "type": "Button",
+        "props": { "label": "Open in Xero", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": { "click": { "action": "open_url", "params": { "url": "https://go.xero.com/app/projects", "target": "_blank" } } }
+      },
+      "descOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "26rem" },
+        "visible": { "$state": "/ui/openEntry/id", "neq": "" },
+        "on": {
+          "backdropClick": { "action": "setState", "params": { "statePath": "/ui/openEntry/id", "value": "" } }
+        },
+        "children": ["overlayHeader", "overlayBody"]
+      },
+      "overlayHeader": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["overlayTitle", "overlayClose"]
+      },
+      "overlayTitle": { "type": "Heading", "props": { "text": { "$state": "/ui/openEntry/projectName" }, "level": "h3" } },
+      "overlayClose": {
+        "type": "OverlayClose",
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/openEntry/id", "value": "" } } }
+      },
+      "overlayBody": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["overlayTaskKV", "overlayDateKV", "overlayDurationKV", "overlayEmployeeKV", "overlayDivider", "overlayDescCaption", "overlayDescText"]
+      },
+      "overlayTaskKV": {
+        "type": "KeyValue",
+        "props": { "label": "Task", "value": { "$state": "/ui/openEntry/taskName" } }
+      },
+      "overlayDateKV": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Date",
+          "value": { "$computed": "format_date", "args": { "value": { "$state": "/ui/openEntry/dateUtc" }, "format": "medium" } }
+        }
+      },
+      "overlayDurationKV": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Duration",
+          "value": { "$computed": "xero_minutes", "args": { "value": { "$state": "/ui/openEntry/durationMinutes" } } }
+        }
+      },
+      "overlayEmployeeKV": {
+        "type": "KeyValue",
+        "props": { "label": "Employee", "value": { "$state": "/ui/openEntry/userName" } }
+      },
+      "overlayDivider": { "type": "Divider", "props": {} },
+      "overlayDescCaption": { "type": "Caption", "props": { "text": "Description", "tone": "muted" } },
+      "overlayDescText": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/openEntry/description" }, "size": "sm" }
+      }
+    }
+  }
+}

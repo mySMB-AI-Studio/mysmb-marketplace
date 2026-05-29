@@ -1,0 +1,43 @@
+{
+  "id": "xero-projects/staffed-employee-time-entries",
+  "plugin": "xero-projects",
+  "canonical": "xero-projects/TimeEntry",
+  "source": {
+    "mcpServer": "xero-projects",
+    "tool": "list_time_entries_for_users"
+  },
+  "filters": [
+    {
+      "kind": "context",
+      "param": "userIds",
+      "contextKey": "portal.employees.externalIds.xero-projects",
+      "operator": "in"
+    },
+    {
+      "kind": "param",
+      "param": "dateAfterUtc",
+      "widgetParam": "weekStartUtc"
+    },
+    {
+      "kind": "param",
+      "param": "dateBeforeUtc",
+      "widgetParam": "weekEndUtc"
+    }
+  ],
+  "fieldProjection": [
+    { "out": "id",              "in": "timeEntryId" },
+    { "out": "userId",          "in": "userId" },
+    { "out": "userName",        "in": "userName" },
+    { "out": "projectId",       "in": "projectId" },
+    { "out": "projectName",     "in": "projectName" },
+    { "out": "taskId",          "in": "taskId" },
+    { "out": "taskName",        "in": "taskName" },
+    { "out": "dateUtc",         "in": "dateUtc" },
+    { "out": "durationMinutes", "in": "duration" },
+    { "out": "description",     "in": "description" }
+  ],
+  "cache": {
+    "ttl": 300,
+    "keyTemplate": "portal:{portalId}:map:xero-projects/time-entries:{weekStartUtc}:{weekEndUtc}"
+  }
+}
