@@ -1,9 +1,11 @@
 name: validate
 
+# Runs on every PR (any target) and on pushes to each long-lived branch tier so
+# main, staging, and dev all stay valid — including the env-agnostic-URL rule.
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, staging, dev]
 
 jobs:
   validate:

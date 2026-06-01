@@ -27,6 +27,16 @@ const fail = (msg: string) => errors.push(msg);
 
 const RESERVED_VARS = new Set(["CLAUDE_PLUGIN_ROOT"]);
 
+/**
+ * The canonical production myhub-mcp-servers host. Every myhub-hosted plugin
+ * `.mcp.json` URL must use this host on ALL branches — staging/dev routing is
+ * applied at runtime by myHub (MCP_SERVERS_BASE_URL), never baked into the repo.
+ * Overridable via env for a future FQDN change without editing the validator.
+ */
+const PROD_MCP_HOST =
+  process.env.MYHUB_PROD_MCP_HOST ??
+  "myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io";
+
 interface MarketplacePlugin {
   name: string;
   source?: string | { type?: string; path?: string; source?: string };
@@ -246,7 +256,12 @@ function validatePlugin(pluginDirName: string, expectedName: string) {
   const mcp = readJson<{
     mcpServers?: Record<
       string,
-      { type?: string; env?: Record<string, string>; headers?: Record<string, string> }
+      {
+        type?: string;
+        url?: string;
+        env?: Record<string, string>;
+        headers?: Record<string, string>;
+      }
     >;
   }>(mcpPath);
   if (!mcp || !mcp.mcpServers) {
@@ -264,6 +279,24 @@ function validatePlugin(pluginDirName: string, expectedName: string) {
       fail(
         `plugins/${pluginDirName}: mcp server "${serverName}" has type "${server.type}", must be one of ${[...ALLOWED_TRANSPORTS].join(", ")}`,
       );
+    }
+    // Env-agnostic-URL invariant: any myhub-hosted MCP URL must use the
+    // PRODUCTION FQDN on every branch. Per-environment routing is handled at
+    // runtime by myHub's MCP_SERVERS_BASE_URL host-rewrite — branches must NOT
+    // bake in staging/dev hosts. (Third-party hosts like mcp.monday.com are
+    // unaffected; stdio servers have no URL.)
+    if (typeof server.url === "string" && server.url.length > 0) {
+      let host = "";
+      try {
+        host = new URL(server.url).host;
+      } catch {
+        fail(`plugins/${pluginDirName}: mcp server "${serverName}" has an invalid url "${server.url}"`);
+      }
+      if (host && /(^|\.)myhub-mcp-servers/.test(host) && host !== PROD_MCP_HOST) {
+        fail(
+          `plugins/${pluginDirName}: mcp server "${serverName}" points at "${host}" — myhub MCP URLs must use the production host "${PROD_MCP_HOST}" on every branch (per-env routing is handled by MCP_SERVERS_BASE_URL at runtime)`,
+        );
+      }
     }
     // Check placeholders in both env (stdio) and headers (sse/http) for
     // credentials that must be documented.

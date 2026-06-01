@@ -10,6 +10,10 @@ Accounting, CRM, HR, payroll, community, productivity — wrapped as Model Conte
 
 [Quick start](#quick-start) · [What you can build](#what-you-can-build) · [Catalog](#plugin-catalog) · [Install an existing plugin](#install-an-existing-plugin) · [Policy](#policy)
 
+**New here?** → [ONBOARDING.md](./ONBOARDING.md) · [CONTRIBUTING.md](./CONTRIBUTING.md) · [CREATING_PLUGINS.md](./CREATING_PLUGINS.md)
+
+**One repo, branch tiers:** `feature/* → dev → staging → main`. Plugin `.mcp.json` URLs use the **production** MCP host on every branch — myHub routes per-environment at runtime. See [CONTRIBUTING.md](./CONTRIBUTING.md#the-one-hard-rule-about-urls).
+
 </div>
 
 ---
