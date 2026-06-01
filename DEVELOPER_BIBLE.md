@@ -29,15 +29,16 @@ mcp-servers [`DEVELOPMENT.md`](https://github.com/mySMB-AI-Studio/myhub-mcp-serv
 5. [Anatomy of a plugin](#5-anatomy-of-a-plugin)
 6. [Anatomy of an MCP server](#6-anatomy-of-an-mcp-server)
 7. [Credentials: OAuth vs API key](#7-credentials-oauth-vs-api-key)
-8. [The golden URL rule (env-agnostic)](#8-the-golden-url-rule-env-agnostic)
-9. [Widgets & skills (optional power-ups)](#9-widgets--skills-optional-power-ups)
-10. [The workflow: build → validate → PR → promote](#10-the-workflow-build--validate--pr--promote)
-11. [Local development](#11-local-development)
-12. [Validation rules (what CI enforces)](#12-validation-rules-what-ci-enforces)
-13. [Deployment & how environments are wired](#13-deployment--how-environments-are-wired)
-14. [Recipes](#14-recipes)
-15. [Troubleshooting](#15-troubleshooting)
-16. [Glossary](#16-glossary)
+8. [Workspace compatibility & limitations (MUST READ)](#8-workspace-compatibility--limitations-must-read)
+9. [The golden URL rule (env-agnostic)](#9-the-golden-url-rule-env-agnostic)
+10. [Widgets & skills (optional power-ups)](#10-widgets--skills-optional-power-ups)
+11. [The workflow: build → validate → PR → promote](#11-the-workflow-build--validate--pr--promote)
+12. [Local development](#12-local-development)
+13. [Validation rules (what CI enforces)](#13-validation-rules-what-ci-enforces)
+14. [Deployment & how environments are wired](#14-deployment--how-environments-are-wired)
+15. [Recipes](#15-recipes)
+16. [Troubleshooting](#16-troubleshooting)
+17. [Glossary](#17-glossary)
 
 ---
 
@@ -71,7 +72,7 @@ user types a request
 ## 2. The Ten Commandments (non-negotiables)
 
 1. **Thou shalt ship the production MCP URL on every branch.** Never a staging/dev
-   host. Per-env routing is automatic (see §8). The validator will reject you.
+   host. Per-env routing is automatic (see §9). The validator will reject you.
 2. **Thou shalt put no secrets in the repo.** Credentials are `${VAR}` placeholders,
    resolved at runtime. No tokens, no keys, no `.env` committed.
 3. **Thou shalt document every `${VAR}`** under a `## Configuration` heading in the
@@ -119,7 +120,7 @@ feature/*  ──►  dev  ──►  staging  ──►  main (production)
 1. User asks something in MyHub chat.
 2. The agent (Claude Agent SDK, the MCP **host**) decides to call a tool.
 3. MyHub has already loaded the tenant's installed plugins: for each, it read the
-   plugin's `.mcp.json`, **rewrote the host for this environment** (§8), and
+   plugin's `.mcp.json`, **rewrote the host for this environment** (§9), and
    **injected the user's credential** (from the per-user vault) as an `Authorization`
    header (http/sse) or `env` var (stdio).
 4. The tool call hits your MCP server route (e.g. `/xero-accounting/mcp`), which calls
@@ -268,7 +269,112 @@ Whatever you use, **document every `${VAR}` in the README `## Configuration` sec
 
 ---
 
-## 8. The golden URL rule (env-agnostic)
+## 8. Workspace compatibility & limitations (MUST READ)
+
+MyHub doesn't run your server in a vacuum — it loads your `.mcp.json`, **rewrites the
+host** (§9), **injects the user's credential**, and hands the config to the Claude Agent
+SDK. That imposes hard constraints. If you ignore these, the plugin will validate but
+**fail at runtime in the workspace**.
+
+### 8.1 Transport: only three shapes, and they must match the SDK
+
+MyHub passes your server config straight into the Agent SDK's `mcpServers` map. Only
+these shapes are accepted:
+
+| `type` | Required keys | Use for |
+|--------|---------------|---------|
+| `stdio` | `command`, `args?`, `env?` | local subprocess (npm/`npx` servers, committed `server/dist/`) |
+| `http` | `url`, `headers?` | remote streamable-HTTP server (preferred for hosted) |
+| `sse` | `url`, `headers?` | remote Server-Sent-Events server |
+
+- No other transports. No WebSocket, no custom fields.
+- `http`/`sse` **must** be reachable over HTTPS from inside a tenant container.
+
+### 8.2 Auth: how the workspace injects credentials (OAuth vs token vs key)
+
+Credentials are **per-user**, stored in an encrypted vault, and injected **at session
+start**. You don't read secrets from disk or env you set — you declare *where* the
+credential goes and MyHub fills it. There are exactly four supported modes:
+
+| Mode (`connection.authType`) | Transport | What MyHub injects | What your server MUST do |
+|------|-----------|--------------------|--------------------------|
+| **`oauth`** (default for http/sse) | http/sse | `Authorization: Bearer <access_token>`, **auto-refreshed** before expiry | Be (or sit behind) a spec-compliant OAuth 2.1 resource+authorization server — see 8.3 |
+| **Static access token / PAT** (`oauth_client` or a token field) | http/sse | `Authorization: Bearer <token>` (no refresh) | Accept a long-lived bearer token the user pastes (e.g. GitHub PAT, Talkdesk token) |
+| **`api_key`** | http/sse | your **named header(s)** filled from `${VAR}` (e.g. `X-Cliniko-Api-Key: ${CLINIKO_API_KEY}`) | Authenticate from that header |
+| **env secrets** (stdio) | stdio | `${VAR}` substituted into the `env` map; OAuth/token also exposed as `env.MYHUB_PLUGIN_TOKEN` | Read credentials from `process.env` |
+
+Key implications:
+- **OAuth servers must use Bearer access tokens in the `Authorization` header.** MyHub
+  injects there and nowhere else. A server that expects the token in a query param or a
+  custom header won't work as `oauth`.
+- **The workspace owns the OAuth dance and token lifecycle**, not your plugin. You never
+  implement a login redirect in a plugin; you declare `authType: "oauth"` and (for
+  myhub-hosted servers) the OAuth provider lives in `myhub-mcp-servers/src/.../auth/`.
+- **No interactive prompts, no browser pop from the server, no keyring/OS credential
+  store.** Everything is headless and comes from the vault.
+- **Static API keys go in headers via `${VAR}`** — declare a `connection` block so the
+  Connect modal shows friendly fields + a "where to get it" link.
+
+### 8.3 What an OAuth-capable MCP server must implement
+
+For `authType: "oauth"`, MyHub acts as an OAuth **client** and expects the server's
+authorization server to support:
+
+- **Discovery** — RFC 8414 (authorization-server metadata) and RFC 9728
+  (protected-resource metadata) at the well-known endpoints.
+- **Dynamic Client Registration** — RFC 7591. MyHub registers a client per (server,
+  user) automatically; you don't pre-issue client IDs.
+- **`refresh_token` grant** — MyHub refreshes access tokens transparently and rotates the
+  stored refresh token.
+- **Opaque or JWT bearer access tokens** accepted in `Authorization: Bearer`.
+
+If you're adding an OAuth integration **inside `myhub-mcp-servers`, you don't hand-roll
+this** — reuse the existing OAuth provider factory in `src/core/auth/` (used by Xero,
+M365, Zoho, Dataverse, etc.). Only third-party remote servers you point at must already
+be spec-compliant.
+
+> Re-DCR note: MyHub caches the registered client keyed by a hash of the **server URL**.
+> If a server is rehosted (FQDN change), the cached client is invalidated and the next
+> connect re-registers. This is also why per-server routing must be **path-based**
+> (`/<server>/mcp`), so the §9 host-rewrite swaps only the host and the route still
+> resolves.
+
+### 8.4 Statelessness & runtime constraints
+
+- **Be effectively stateless.** Tenant containers and the hosted servers **scale to
+  zero** and may run multiple replicas. Don't keep auth/session state in process memory —
+  use the shared store (the hosted app uses Redis for token/client stores). In-memory
+  caches must tolerate cold starts and not be a source of truth.
+- **Pure Node, no native binaries, no platform-specific code** — the same artifact runs
+  on every tenant.
+- **Optional-by-default for hosted servers** — your `config.ts` must report
+  "not configured" when its secrets are blank so the route **skips mounting** instead of
+  crashing the whole app.
+- **stdio specifics:** use `${CLAUDE_PLUGIN_ROOT}` to locate committed files
+  (`"${CLAUDE_PLUGIN_ROOT}/server/dist/index.js"`); `${CLAUDE_PLUGIN_DATA}` for scratch
+  space. A bare `node` command is auto-rewritten to the runtime's node — don't hardcode a
+  node path. For npm servers prefer `npx -y <pkg>@latest`.
+
+### 8.5 Reserved names — do not use for your own credentials
+
+`CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA` (resolved to the plugin cache dir) and
+`MYHUB_PLUGIN_TOKEN` (set by MyHub for stdio token/oauth) are reserved. Your `${VAR}`
+placeholders must be uppercase `[A-Z0-9_]` and must not collide with these.
+
+### 8.6 Quick compatibility checklist
+
+- [ ] Transport is `stdio` | `http` | `sse` only
+- [ ] Auth uses one of the four modes above (Bearer for OAuth/token; named header for API key; env for stdio)
+- [ ] No interactive prompts, no keyring, no server-driven browser login
+- [ ] OAuth servers: RFC 8414/9728 discovery + RFC 7591 DCR + `refresh_token`, Bearer tokens
+- [ ] Per-server routing is path-based (`/<server>/mcp`)
+- [ ] Server is stateless / uses the shared store; scales to zero cleanly
+- [ ] Hosted server skips mounting when unconfigured (blank secrets)
+- [ ] No reserved `${VAR}` names; every `${VAR}` documented in the README
+
+---
+
+## 9. The golden URL rule (env-agnostic)
 
 **Every myhub-hosted `.mcp.json` URL uses the PRODUCTION host on every branch:**
 ```
@@ -289,7 +395,7 @@ Third-party hosts (e.g. `mcp.monday.com`) and `stdio` servers are unaffected.
 
 ---
 
-## 9. Widgets & skills (optional power-ups)
+## 10. Widgets & skills (optional power-ups)
 
 - **Skills** (`skills/*.md`) — teach the agent *how* to use your tools well (one file per
   slash-command/workflow). Pure instructions; no code.
@@ -304,7 +410,7 @@ If you only ship tools, skip all of these — the minimum plugin is still valid.
 
 ---
 
-## 10. The workflow: build → validate → PR → promote
+## 11. The workflow: build → validate → PR → promote
 
 ```
 1. git checkout -b feature/<thing> dev
@@ -321,7 +427,7 @@ linked PRs in **both** repos.
 
 ---
 
-## 11. Local development
+## 12. Local development
 
 **MCP servers** (`myhub-mcp-servers`):
 ```bash
@@ -343,7 +449,7 @@ harness — see the [README Quick start](./README.md#quick-start).
 
 ---
 
-## 12. Validation rules (what CI enforces)
+## 13. Validation rules (what CI enforces)
 
 `scripts/validate.ts` (run on every PR and on `main`/`staging`/`dev`) checks:
 
@@ -353,7 +459,7 @@ harness — see the [README Quick start](./README.md#quick-start).
 4. Each MCP server declares a known transport (`stdio` | `sse` | `http`).
 5. Every `${VAR}` in `env`/`headers` is `CLAUDE_PLUGIN_ROOT` (reserved) **or** documented
    under `## Configuration` in the README.
-6. **Every myhub-hosted URL uses the production host** (the §8 rule).
+6. **Every myhub-hosted URL uses the production host** (the §9 rule).
 7. If a plugin ships `widgetElements` it must also ship `widgets`; the elements file must
    exist; its imports are on the allowlist; declared `widgets` dir must hold ≥1 `.json`.
 
@@ -361,7 +467,7 @@ Run it locally before pushing — same script CI runs.
 
 ---
 
-## 13. Deployment & how environments are wired
+## 14. Deployment & how environments are wired
 
 **MCP servers** (`myhub-mcp-servers`):
 - Push to `staging` → GitHub Actions builds the image in ACR and deploys the
@@ -377,12 +483,12 @@ Run it locally before pushing — same script CI runs.
   staging→`staging`, dev→`dev`) and it's overridable.
 - Plugins are fetched/cloned from that branch; relative-path plugin dirs are cloned with
   `git clone --branch <ref>`.
-- Combined with §8, this is the whole "right code in the right environment" story:
+- Combined with §9, this is the whole "right code in the right environment" story:
   **the branch decides which plugins; the host-rewrite decides which servers.**
 
 ---
 
-## 14. Recipes
+## 15. Recipes
 
 **"Add a brand-new connector (e.g. FreshBooks)"**
 1. `myhub-mcp-servers`: add `src/integrations/freshbooks/` (config/auth/servers/api),
@@ -408,7 +514,7 @@ git commit -am "feat: promote <plugin> staging -> main"
 
 ---
 
-## 15. Troubleshooting
+## 16. Troubleshooting
 
 | Symptom | Likely cause / fix |
 |---------|--------------------|
@@ -422,7 +528,7 @@ git commit -am "feat: promote <plugin> staging -> main"
 
 ---
 
-## 16. Glossary
+## 17. Glossary
 
 - **MCP (Model Context Protocol)** — the protocol the agent uses to call tools. MyHub's
   agent is the *host*; your server is the *server*.
