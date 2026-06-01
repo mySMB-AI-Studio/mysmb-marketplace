@@ -1,0 +1,279 @@
+{
+  "id": "cliniko-clinical-overview",
+  "title": "Cliniko — Clinical overview",
+  "description": "Treatment-note completion at a glance: a draft vs finalised donut with supporting counts.",
+  "category": "health",
+  "tags": [
+    "cliniko",
+    "clinical",
+    "overview",
+    "chart",
+    "documentation"
+  ],
+  "keywords": [
+    "clinical",
+    "overview",
+    "treatment notes",
+    "draft",
+    "finalised",
+    "chart",
+    "donut",
+    "completion"
+  ],
+  "connectorsUsed": [
+    "cliniko-clinical"
+  ],
+  "popularity": 75,
+  "sizing": {
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 5
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 8
+    }
+  },
+  "dataProvider": {
+    "mcp": "cliniko-clinical",
+    "tool": "list_treatment_notes",
+    "params": {
+      "per_page": 100,
+      "sort": "created_at:desc"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "donutLoading",
+          "donut",
+          "divider",
+          "kpis"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "hRow"
+        ]
+      },
+      "hRow": {
+        "type": "Row",
+        "props": {
+          "justify": "between",
+          "align": "center"
+        },
+        "children": [
+          "hg",
+          "refresh"
+        ]
+      },
+      "hg": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "hIcon",
+          "hTitle"
+        ]
+      },
+      "hIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Activity",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "hTitle": {
+        "type": "Heading",
+        "props": {
+          "text": "Clinical overview",
+          "level": "h2"
+        }
+      },
+      "refresh": {
+        "type": "IconButton",
+        "props": {
+          "name": "RefreshCw",
+          "size": "sm",
+          "ariaLabel": "Refresh"
+        },
+        "on": {
+          "click": {
+            "action": "cliniko-clinical.list_treatment_notes",
+            "params": {
+              "per_page": 100,
+              "sort": "created_at:desc"
+            }
+          }
+        }
+      },
+      "donutLoading": {
+        "type": "Skeleton",
+        "props": {
+          "height": "9rem",
+          "rounded": "md"
+        },
+        "visible": {
+          "$state": "/_loading/cliniko-clinical.list_treatment_notes"
+        }
+      },
+      "donut": {
+        "type": "Donut",
+        "props": {
+          "data": {
+            "$state": "/cliniko-clinical/list_treatment_notes/treatment_notes"
+          },
+          "groupField": "draft",
+          "legend": {
+            "true": {
+              "label": "Drafts",
+              "tone": "warning"
+            },
+            "false": {
+              "label": "Finalised",
+              "tone": "success"
+            }
+          },
+          "centerLabel": "notes",
+          "size": 140
+        },
+        "visible": {
+          "$state": "/_loading/cliniko-clinical.list_treatment_notes",
+          "not": true
+        }
+      },
+      "divider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "kpis": {
+        "type": "Grid",
+        "props": {
+          "cols": 2,
+          "gap": "md"
+        },
+        "children": [
+          "kDrafts",
+          "kFinal"
+        ]
+      },
+      "kDrafts": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "kDraftsL",
+          "kDraftsV"
+        ]
+      },
+      "kDraftsL": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "kDraftsI",
+          "kDraftsT"
+        ]
+      },
+      "kDraftsI": {
+        "type": "Icon",
+        "props": {
+          "name": "FilePen",
+          "tone": "warning",
+          "size": "xs"
+        }
+      },
+      "kDraftsT": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Awaiting finalisation"
+        }
+      },
+      "kDraftsV": {
+        "type": "Stat",
+        "props": {
+          "size": "md",
+          "value": {
+            "$computed": "count_where",
+            "args": {
+              "value": {
+                "$state": "/cliniko-clinical/list_treatment_notes/treatment_notes"
+              },
+              "whereField": "draft",
+              "equals": true
+            }
+          }
+        }
+      },
+      "kFinal": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "kFinalL",
+          "kFinalV"
+        ]
+      },
+      "kFinalL": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "kFinalI",
+          "kFinalT"
+        ]
+      },
+      "kFinalI": {
+        "type": "Icon",
+        "props": {
+          "name": "CheckCircle2",
+          "tone": "success",
+          "size": "xs"
+        }
+      },
+      "kFinalT": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Finalised"
+        }
+      },
+      "kFinalV": {
+        "type": "Stat",
+        "props": {
+          "size": "md",
+          "value": {
+            "$computed": "count_where",
+            "args": {
+              "value": {
+                "$state": "/cliniko-clinical/list_treatment_notes/treatment_notes"
+              },
+              "whereField": "draft",
+              "equals": false
+            }
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}

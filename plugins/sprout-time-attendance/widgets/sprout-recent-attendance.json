@@ -1,0 +1,109 @@
+{
+  "id": "sprout-recent-attendance",
+  "title": "Sprout — Recent attendance",
+  "description": "Latest employee clock-in / clock-out (DTR) logs.",
+  "category": "hr",
+  "tags": ["sprout", "time", "attendance", "dtr", "timekeeping"],
+  "keywords": ["clock in", "clock out", "biometrics", "time logs", "punches"],
+  "connectorsUsed": ["sprout-time-attendance"],
+  "popularity": 65,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 6 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
+    "max": { "colSpan": 12, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "sprout-time-attendance",
+    "tool": "list_attendance_logs",
+    "params": { "RowsPerPage": 30, "SortColumn": "logTime", "SortOrder": "desc" }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["header", "body"] },
+      "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "refreshBtn"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "title"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Clock", "tone": "accent", "size": "sm" } },
+      "title": { "type": "Heading", "props": { "text": "Recent attendance", "level": "h2" } },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": { "name": "RefreshCw", "size": "sm", "ariaLabel": "Refresh" },
+        "on": {
+          "click": {
+            "action": "sprout-time-attendance.list_attendance_logs",
+            "params": { "RowsPerPage": 30, "SortColumn": "logTime", "SortOrder": "desc" }
+          }
+        }
+      },
+      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "list"] },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["lk1", "lk2", "lk3", "lk4"],
+        "visible": { "$state": "/_loading/sprout-time-attendance.list_attendance_logs" }
+      },
+      "lk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "lk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "lk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "lk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No attendance logs in range." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/sprout-time-attendance.list_attendance_logs", "not": true },
+            { "$state": "/sprout-time-attendance/list_attendance_logs/data/0", "not": true }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": { "statePath": "/sprout-time-attendance/list_attendance_logs/data", "key": "logID" },
+        "visible": { "$state": "/_loading/sprout-time-attendance.list_attendance_logs", "not": true }
+      },
+      "row": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "template": "minmax(0, 1fr) auto" },
+        "children": ["rowIdentity", "rowTime"]
+      },
+      "rowIdentity": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["rowName", "rowNote"]
+      },
+      "rowName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{f} {l}",
+              "f": { "$item": "firstName" },
+              "l": { "$item": "lastName" }
+            }
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "rowNote": { "type": "Caption", "props": { "text": { "$item": "notes" } } },
+      "rowTime": {
+        "type": "Caption",
+        "props": { "text": { "$computed": "relative_time", "args": { "value": { "$item": "logTime" } } } }
+      }
+    }
+  },
+  "status": "published"
+}

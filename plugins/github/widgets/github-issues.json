@@ -1,0 +1,366 @@
+{
+  "id": "github-issues",
+  "title": "GitHub Issues",
+  "description": "Open issues for a GitHub repository — title, labels, author, and comment count. Click an issue to open it on GitHub.",
+  "category": "engineering",
+  "tags": [
+    "github",
+    "issues",
+    "bugs",
+    "engineering",
+    "backlog"
+  ],
+  "keywords": [
+    "issues",
+    "bugs",
+    "tickets",
+    "backlog",
+    "github",
+    "open"
+  ],
+  "connectorsUsed": [
+    "github"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "github",
+    "tool": "list_issues",
+    "params": {
+      "owner": "mySMB-AI-Studio",
+      "repo": "mysmb-marketplace",
+      "state": "open",
+      "orderBy": "UPDATED_AT",
+      "direction": "DESC",
+      "perPage": 30
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "headerRow"
+        ]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": {
+          "justify": "between",
+          "align": "center"
+        },
+        "children": [
+          "titleGroup",
+          "refreshBtn"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "CircleDot",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "count"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "GitHub Issues",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} open",
+              "n": {
+                "$state": "/github/list_issues/totalCount"
+              }
+            }
+          }
+        }
+      },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": {
+          "icon": "RefreshCw",
+          "tone": "muted",
+          "size": "sm",
+          "ariaLabel": "Refresh"
+        },
+        "on": {
+          "click": {
+            "action": "github.list_issues",
+            "params": {
+              "owner": "mySMB-AI-Studio",
+              "repo": "mysmb-marketplace",
+              "state": "open",
+              "orderBy": "UPDATED_AT",
+              "direction": "DESC",
+              "perPage": 30
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/_loading/github.list_issues"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No open issues — the backlog is clear."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/github.list_issues",
+              "not": true
+            },
+            {
+              "$state": "/github/list_issues/issues/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "visible": {
+          "$state": "/_loading/github.list_issues",
+          "not": true
+        },
+        "repeat": {
+          "statePath": "/github/list_issues/issues",
+          "key": "number"
+        },
+        "children": [
+          "row"
+        ]
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start",
+          "justify": "between",
+          "hover": true
+        },
+        "children": [
+          "rowLeft",
+          "rowRight"
+        ]
+      },
+      "rowLeft": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "issueTitle",
+          "metaRow",
+          "labelsRow"
+        ]
+      },
+      "issueTitle": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "title"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "metaRow": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "#{number} · {author} · updated {ago}",
+              "number": {
+                "$item": "number"
+              },
+              "author": {
+                "$item": "user/login"
+              },
+              "ago": {
+                "$computed": "relative_time",
+                "args": {
+                  "value": {
+                    "$item": "updated_at"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "labelsRow": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "github_issue_labels_text",
+            "args": {
+              "value": {
+                "$item": "labels"
+              }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "rowRight": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "commentsGroup",
+          "stateBadge",
+          "openBtn"
+        ]
+      },
+      "commentsGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "commentsIcon",
+          "commentsCount"
+        ]
+      },
+      "commentsIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "MessageSquare",
+          "tone": "muted",
+          "size": "xs"
+        }
+      },
+      "commentsCount": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "comments"
+          },
+          "tone": "muted"
+        }
+      },
+      "stateBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "state"
+          },
+          "tone": {
+            "$computed": "github_issue_state_tone",
+            "args": {
+              "value": {
+                "$item": "state"
+              }
+            }
+          }
+        }
+      },
+      "openBtn": {
+        "type": "IconButton",
+        "props": {
+          "icon": "ExternalLink",
+          "tone": "muted",
+          "size": "sm",
+          "ariaLabel": "Open on GitHub"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$item": "html_url"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}

@@ -1,0 +1,293 @@
+{
+  "id": "cliniko-billable-items",
+  "title": "Cliniko — Billable items",
+  "description": "Billable services and fees with their prices.",
+  "category": "health",
+  "tags": [
+    "cliniko",
+    "billing",
+    "services",
+    "fees"
+  ],
+  "keywords": [
+    "billable",
+    "service",
+    "fee",
+    "charge",
+    "price"
+  ],
+  "connectorsUsed": [
+    "cliniko-billing"
+  ],
+  "popularity": 20,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "cliniko-billing",
+    "tool": "list_billable_items",
+    "params": {
+      "per_page": 50,
+      "sort": "name:asc"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "headerRow"
+        ]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": {
+          "justify": "between",
+          "align": "center"
+        },
+        "children": [
+          "titleGroup",
+          "refreshBtn"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Tags",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "count"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Billable items",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} total",
+              "n": {
+                "$state": "/cliniko-billing/list_billable_items/total_entries"
+              }
+            }
+          }
+        }
+      },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": {
+          "name": "RefreshCw",
+          "size": "sm",
+          "ariaLabel": "Refresh"
+        },
+        "on": {
+          "click": {
+            "action": "cliniko-billing.list_billable_items",
+            "params": {
+              "per_page": 50,
+              "sort": "name:asc"
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "lk1",
+          "lk2",
+          "lk3",
+          "lk4"
+        ],
+        "visible": {
+          "$state": "/_loading/cliniko-billing.list_billable_items"
+        }
+      },
+      "lk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "lk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "lk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "lk4": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No billable items configured."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/cliniko-billing.list_billable_items",
+              "not": true
+            },
+            {
+              "$state": "/cliniko-billing/list_billable_items/billable_items/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "row"
+        ],
+        "repeat": {
+          "statePath": "/cliniko-billing/list_billable_items/billable_items",
+          "key": "id"
+        },
+        "visible": {
+          "$state": "/_loading/cliniko-billing.list_billable_items",
+          "not": true
+        }
+      },
+      "row": {
+        "type": "ListItem",
+        "props": {
+          "title": {
+            "$item": "name"
+          },
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$item": "price"
+              }
+            }
+          }
+        }
+      },
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "chartLabel",
+          "chartLoading",
+          "chart",
+          "chartDivider",
+          "body"
+        ]
+      },
+      "chartLabel": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Top items by price"
+        },
+        "visible": {
+          "$state": "/_loading/cliniko-billing.list_billable_items",
+          "not": true
+        }
+      },
+      "chartLoading": {
+        "type": "Skeleton",
+        "props": {
+          "height": "6rem",
+          "rounded": "md"
+        },
+        "visible": {
+          "$state": "/_loading/cliniko-billing.list_billable_items"
+        }
+      },
+      "chart": {
+        "type": "BarChart",
+        "props": {
+          "data": {
+            "$state": "/cliniko-billing/list_billable_items/billable_items"
+          },
+          "labelField": "name",
+          "valueField": "price",
+          "valueFormat": "currency",
+          "limit": 8,
+          "tone": "accent",
+          "sort": "desc"
+        },
+        "visible": {
+          "$state": "/_loading/cliniko-billing.list_billable_items",
+          "not": true
+        }
+      },
+      "chartDivider": {
+        "type": "Divider",
+        "props": {}
+      }
+    }
+  },
+  "status": "published"
+}

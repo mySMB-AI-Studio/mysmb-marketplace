@@ -1,0 +1,297 @@
+{
+  "id": "talkdesk-knowledge-lookup",
+  "title": "Knowledge Lookup Activity",
+  "description": "Today's AI Agent knowledge lookups — how many queries were resolved by the knowledge base versus escalated to a human agent.",
+  "category": "support",
+  "tags": ["talkdesk", "knowledge", "ai", "support", "workspace", "agent", "activity"],
+  "keywords": ["talkdesk", "knowledge base", "ai agent", "lookup", "resolved", "escalated", "support", "workspace", "activity", "history"],
+  "connectorsUsed": ["talkdesk"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 7 },
+    "min":       { "colSpan": 4, "rowSpan": 6 },
+    "max":       { "colSpan": 10, "rowSpan": 10 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["headerRow", "statsGrid", "div1", "lookupList", "div2", "footer"]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "brandBadge"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "BookOpen", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Knowledge Lookup Activity", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Talkdesk AI Agent · Today" }
+      },
+      "brandBadge": {
+        "type": "Badge",
+        "props": { "label": "talkdesk", "tone": "success" }
+      },
+
+      "statsGrid": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["tileLookups", "tileResolved", "tileEscalated"]
+      },
+
+      "tileLookups": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["stackLookups"]
+      },
+      "stackLookups": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["icoLookups", "valLookups", "lblLookups"]
+      },
+      "icoLookups": {
+        "type": "Icon",
+        "props": { "name": "Search", "tone": "accent", "size": "sm" }
+      },
+      "valLookups": {
+        "type": "Heading",
+        "props": { "text": "18", "level": "h2" }
+      },
+      "lblLookups": {
+        "type": "Caption",
+        "props": { "text": "Lookups" }
+      },
+
+      "tileResolved": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["stackResolved"]
+      },
+      "stackResolved": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["icoResolved", "valResolved", "lblResolved"]
+      },
+      "icoResolved": {
+        "type": "Icon",
+        "props": { "name": "CheckCircle", "tone": "success", "size": "sm" }
+      },
+      "valResolved": {
+        "type": "Heading",
+        "props": { "text": "14", "level": "h2" }
+      },
+      "lblResolved": {
+        "type": "Caption",
+        "props": { "text": "Resolved" }
+      },
+
+      "tileEscalated": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["stackEscalated"]
+      },
+      "stackEscalated": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["icoEscalated", "valEscalated", "lblEscalated"]
+      },
+      "icoEscalated": {
+        "type": "Icon",
+        "props": { "name": "AlertTriangle", "tone": "destructive", "size": "sm" }
+      },
+      "valEscalated": {
+        "type": "Heading",
+        "props": { "text": "4", "level": "h2" }
+      },
+      "lblEscalated": {
+        "type": "Caption",
+        "props": { "text": "Escalated" }
+      },
+
+      "div1": { "type": "Divider" },
+
+      "lookupList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["r1", "r2", "r3", "r4", "r5"]
+      },
+
+      "r1": {
+        "type": "Row",
+        "props": { "align": "start", "gap": "md" },
+        "children": ["r1left", "r1badge"]
+      },
+      "r1left": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["r1text", "r1sub", "r1time"]
+      },
+      "r1text": {
+        "type": "Text",
+        "props": { "text": "Password reset steps", "size": "sm", "weight": "medium" }
+      },
+      "r1sub": {
+        "type": "Caption",
+        "props": { "text": "Account & Security" }
+      },
+      "r1time": {
+        "type": "Caption",
+        "props": { "text": "2:30 PM" }
+      },
+      "r1badge": {
+        "type": "Badge",
+        "props": { "text": "Resolved", "tone": "success" }
+      },
+
+      "r2": {
+        "type": "Row",
+        "props": { "align": "start", "gap": "md" },
+        "children": ["r2left", "r2badge"]
+      },
+      "r2left": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["r2text", "r2sub", "r2time"]
+      },
+      "r2text": {
+        "type": "Text",
+        "props": { "text": "Cancel subscription process", "size": "sm", "weight": "medium" }
+      },
+      "r2sub": {
+        "type": "Caption",
+        "props": { "text": "Billing & Subscriptions" }
+      },
+      "r2time": {
+        "type": "Caption",
+        "props": { "text": "1:45 PM" }
+      },
+      "r2badge": {
+        "type": "Badge",
+        "props": { "text": "Escalated", "tone": "destructive" }
+      },
+
+      "r3": {
+        "type": "Row",
+        "props": { "align": "start", "gap": "md" },
+        "children": ["r3left", "r3badge"]
+      },
+      "r3left": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["r3text", "r3sub", "r3time"]
+      },
+      "r3text": {
+        "type": "Text",
+        "props": { "text": "Invoice download & PDF export", "size": "sm", "weight": "medium" }
+      },
+      "r3sub": {
+        "type": "Caption",
+        "props": { "text": "Billing & Payments" }
+      },
+      "r3time": {
+        "type": "Caption",
+        "props": { "text": "12:20 PM" }
+      },
+      "r3badge": {
+        "type": "Badge",
+        "props": { "text": "Resolved", "tone": "success" }
+      },
+
+      "r4": {
+        "type": "Row",
+        "props": { "align": "start", "gap": "md" },
+        "children": ["r4left", "r4badge"]
+      },
+      "r4left": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["r4text", "r4sub", "r4time"]
+      },
+      "r4text": {
+        "type": "Text",
+        "props": { "text": "Two-factor authentication setup", "size": "sm", "weight": "medium" }
+      },
+      "r4sub": {
+        "type": "Caption",
+        "props": { "text": "Account & Security" }
+      },
+      "r4time": {
+        "type": "Caption",
+        "props": { "text": "11:05 AM" }
+      },
+      "r4badge": {
+        "type": "Badge",
+        "props": { "text": "Resolved", "tone": "success" }
+      },
+
+      "r5": {
+        "type": "Row",
+        "props": { "align": "start", "gap": "md" },
+        "children": ["r5left", "r5badge"]
+      },
+      "r5left": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["r5text", "r5sub", "r5time"]
+      },
+      "r5text": {
+        "type": "Text",
+        "props": { "text": "Refund policy for annual plans", "size": "sm", "weight": "medium" }
+      },
+      "r5sub": {
+        "type": "Caption",
+        "props": { "text": "Billing & Subscriptions" }
+      },
+      "r5time": {
+        "type": "Caption",
+        "props": { "text": "10:30 AM" }
+      },
+      "r5badge": {
+        "type": "Badge",
+        "props": { "text": "Escalated", "tone": "destructive" }
+      },
+
+      "div2": { "type": "Divider" },
+
+      "footer": {
+        "type": "Row",
+        "props": { "justify": "end", "gap": "xs", "align": "center" },
+        "children": ["footerBtn"]
+      },
+      "footerBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Open in Talkdesk",
+          "variant": "ghost",
+          "size": "sm",
+          "leadingIcon": "ExternalLink"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": "https://my.talkdesk.com", "target": "_blank" }
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}

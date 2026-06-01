@@ -1,0 +1,127 @@
+{
+  "id": "sprout-external-adjustments",
+  "title": "Sprout — Payroll adjustments",
+  "description": "One-time external payroll adjustments (earnings and deductions).",
+  "category": "finance",
+  "tags": ["sprout", "payroll", "adjustments", "earnings", "deductions"],
+  "keywords": ["one-time adjustment", "bonus", "deduction", "payroll input"],
+  "connectorsUsed": ["sprout-payroll"],
+  "popularity": 60,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 6 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
+    "max": { "colSpan": 12, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "sprout-payroll",
+    "tool": "list_external_adjustments",
+    "params": { "rowsPerPage": 25 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["header", "body"] },
+      "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "refreshBtn"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Coins", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "count"] },
+      "title": { "type": "Heading", "props": { "text": "Payroll adjustments", "level": "h2" } },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} total",
+              "n": { "$state": "/sprout-payroll/list_external_adjustments/pagination/totalItems" }
+            }
+          }
+        }
+      },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": { "name": "RefreshCw", "size": "sm", "ariaLabel": "Refresh" },
+        "on": { "click": { "action": "sprout-payroll.list_external_adjustments", "params": { "rowsPerPage": 25 } } }
+      },
+      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "list"] },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["lk1", "lk2", "lk3"],
+        "visible": { "$state": "/_loading/sprout-payroll.list_external_adjustments" }
+      },
+      "lk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "lk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "lk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No external adjustments yet." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/sprout-payroll.list_external_adjustments", "not": true },
+            { "$state": "/sprout-payroll/list_external_adjustments/data/0", "not": true }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": { "statePath": "/sprout-payroll/list_external_adjustments/data", "key": "id" },
+        "visible": { "$state": "/_loading/sprout-payroll.list_external_adjustments", "not": true }
+      },
+      "row": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "template": "minmax(0, 1fr) auto auto" },
+        "children": ["rowIdentity", "rowAmount", "rowStatus"]
+      },
+      "rowIdentity": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["rowName", "rowSub"]
+      },
+      "rowName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "rowSub": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Emp {e} · period {p}",
+              "e": { "$item": "employeeId" },
+              "p": { "$item": "period" }
+            }
+          }
+        }
+      },
+      "rowAmount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "₱{a}", "a": { "$item": "amount" } }
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "rowStatus": {
+        "type": "Badge",
+        "props": { "text": { "$item": "status" }, "tone": "info", "variant": "soft" }
+      }
+    }
+  },
+  "status": "published"
+}

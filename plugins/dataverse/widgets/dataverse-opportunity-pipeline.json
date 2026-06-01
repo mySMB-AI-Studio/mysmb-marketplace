@@ -1,5 +1,5 @@
 {
-  "id": "dataverse-opportunity-pipeline",
+  "id": "dataverse-opportunity-pipeline-v2",
   "title": "Opportunity Pipeline",
   "description": "Open opportunities grouped by sales stage — click a stage to see the deals inside it.",
   "category": "sales",
@@ -100,14 +100,23 @@
         "type": "Header",
         "props": {},
         "children": [
-          "titleGroup"
+          "titleRow"
         ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "brandBadge"]
+      },
+      "brandBadge": {
+        "type": "Badge",
+        "props": { "text": "Dynamics 365", "tone": "info" }
       },
       "titleGroup": {
         "type": "Row",
         "props": {
           "gap": "sm",
-          "align": "start"
+          "align": "center"
         },
         "children": [
           "titleIcon",
@@ -179,7 +188,9 @@
           "loading",
           "empty",
           "stages",
-          "breakdown"
+          "breakdown",
+          "footerDivider",
+          "footer"
         ]
       },
       "loading": {
@@ -526,6 +537,27 @@
                 }
               }
             }
+          }
+        }
+      },
+      "footerDivider": { "type": "Divider", "props": {} },
+      "footer": {
+        "type": "Row",
+        "props": { "justify": "end", "gap": "xs", "align": "center" },
+        "children": ["footerBtn"]
+      },
+      "footerBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Open in D365",
+          "variant": "ghost",
+          "size": "sm",
+          "leadingIcon": "ExternalLink"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": "https://mysmb-dev.crm6.dynamics.com", "target": "_blank" }
           }
         }
       }

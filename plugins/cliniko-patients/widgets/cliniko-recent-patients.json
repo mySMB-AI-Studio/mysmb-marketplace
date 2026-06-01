@@ -1,0 +1,569 @@
+{
+  "id": "cliniko-recent-patients",
+  "title": "Cliniko — New patients",
+  "description": "Recently added patients — click any to see details and copy their email.",
+  "category": "health",
+  "tags": [
+    "cliniko",
+    "patients",
+    "onboarding"
+  ],
+  "keywords": [
+    "new patient",
+    "recent patients",
+    "clients",
+    "sign ups"
+  ],
+  "connectorsUsed": [
+    "cliniko-patients"
+  ],
+  "popularity": 80,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "cliniko-patients",
+    "tool": "list_patients",
+    "params": {
+      "per_page": 30,
+      "sort": "created_at:desc"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "headerRow"
+        ]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": {
+          "justify": "between",
+          "align": "center"
+        },
+        "children": [
+          "titleGroup",
+          "refreshBtn"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "UserPlus",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "count"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "New patients",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} total",
+              "n": {
+                "$state": "/cliniko-patients/list_patients/total_entries"
+              }
+            }
+          }
+        }
+      },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": {
+          "name": "RefreshCw",
+          "size": "sm",
+          "ariaLabel": "Refresh"
+        },
+        "on": {
+          "click": {
+            "action": "cliniko-patients.list_patients",
+            "params": {
+              "per_page": 30,
+              "sort": "created_at:desc"
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "lk1",
+          "lk2",
+          "lk3",
+          "lk4"
+        ],
+        "visible": {
+          "$state": "/_loading/cliniko-patients.list_patients"
+        }
+      },
+      "lk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "lk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "lk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "lk4": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No patients yet."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/cliniko-patients.list_patients",
+              "not": true
+            },
+            {
+              "$state": "/cliniko-patients/list_patients/patients/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "row"
+        ],
+        "repeat": {
+          "statePath": "/cliniko-patients/list_patients/patients",
+          "key": "id"
+        },
+        "visible": {
+          "$state": "/_loading/cliniko-patients.list_patients",
+          "not": true
+        }
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true,
+          "template": "auto minmax(0, 1fr) auto"
+        },
+        "children": [
+          "rowAvatar",
+          "rowIdentity",
+          "rowChevron"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/id",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "id"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/name",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$computed": "fmt",
+                      "args": {
+                        "pattern": "{f} {l}",
+                        "f": {
+                          "$item": "first_name"
+                        },
+                        "l": {
+                          "$item": "last_name"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/email",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "email"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/dob",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "date_of_birth"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/created",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "created_at"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "rowAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "{f} {l}",
+                  "f": {
+                    "$item": "first_name"
+                  },
+                  "l": {
+                    "$item": "last_name"
+                  }
+                }
+              }
+            }
+          },
+          "tone": "info",
+          "size": "md"
+        }
+      },
+      "rowIdentity": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "rowName",
+          "rowEmail"
+        ]
+      },
+      "rowName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{f} {l}",
+              "f": {
+                "$item": "first_name"
+              },
+              "l": {
+                "$item": "last_name"
+              }
+            }
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "rowEmail": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "email"
+          }
+        }
+      },
+      "rowChevron": {
+        "type": "Icon",
+        "props": {
+          "name": "ChevronRight",
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "overlay": {
+        "type": "Overlay",
+        "props": {
+          "maxWidth": "30rem"
+        },
+        "visible": {
+          "$state": "/ui/sel/id"
+        },
+        "on": {
+          "backdropClick": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sel/id",
+              "value": ""
+            }
+          }
+        },
+        "children": [
+          "ovStack"
+        ]
+      },
+      "ovStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "ovHeader",
+          "ovDivider",
+          "ovEmail",
+          "ovDob",
+          "ovAdded",
+          "ovDivider2",
+          "ovActions"
+        ]
+      },
+      "ovHeader": {
+        "type": "Row",
+        "props": {
+          "justify": "between",
+          "align": "start",
+          "gap": "sm"
+        },
+        "children": [
+          "ovTitle",
+          "ovClose"
+        ]
+      },
+      "ovTitle": {
+        "type": "Heading",
+        "props": {
+          "text": {
+            "$state": "/ui/sel/name"
+          },
+          "level": "h2"
+        }
+      },
+      "ovClose": {
+        "type": "OverlayClose",
+        "props": {
+          "ariaLabel": "Close"
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sel/id",
+              "value": ""
+            }
+          }
+        }
+      },
+      "ovEmail": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Email",
+          "value": {
+            "$state": "/ui/sel/email"
+          }
+        }
+      },
+      "ovDob": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Date of birth",
+          "value": {
+            "$state": "/ui/sel/dob"
+          }
+        },
+        "visible": {
+          "$state": "/ui/sel/dob"
+        }
+      },
+      "ovAdded": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Added",
+          "value": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$state": "/ui/sel/created"
+              }
+            }
+          }
+        }
+      },
+      "ovDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "ovDivider2": {
+        "type": "Divider",
+        "props": {}
+      },
+      "ovActions": {
+        "type": "Row",
+        "props": {
+          "justify": "between",
+          "align": "center",
+          "gap": "sm"
+        },
+        "children": [
+          "ovCopy",
+          "ovCloseBtn"
+        ]
+      },
+      "ovCopy": {
+        "type": "Button",
+        "props": {
+          "label": "Copy email",
+          "variant": "ghost",
+          "size": "md",
+          "leadingIcon": "Copy"
+        },
+        "on": {
+          "click": [
+            {
+              "action": "copy_to_clipboard",
+              "params": {
+                "text": {
+                  "$state": "/ui/sel/email"
+                }
+              }
+            },
+            {
+              "action": "toast",
+              "params": {
+                "message": "Email copied to clipboard"
+              }
+            }
+          ]
+        }
+      },
+      "ovCloseBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Close",
+          "variant": "primary",
+          "size": "md"
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sel/id",
+              "value": ""
+            }
+          }
+        }
+      },
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body",
+          "overlay"
+        ]
+      }
+    }
+  },
+  "status": "published"
+}

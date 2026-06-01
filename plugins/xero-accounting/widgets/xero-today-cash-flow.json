@@ -1,23 +1,24 @@
 {
   "id": "xero-today-cash-flow",
-  "title": "Today's Cash In / Out",
-  "description": "Today's cash flow \u2014 money in and money out.",
+  "title": "Cash Flow",
+  "description": "Cash in vs cash out for a chosen period — sourced from Xero's Bank Summary report so the totals reconcile exactly with Xero.",
   "category": "finance",
   "tags": [
     "xero",
     "cash-flow",
-    "today",
     "finance",
-    "report"
+    "report",
+    "bank"
   ],
   "keywords": [
     "cash",
     "flow",
     "cash flow",
-    "today",
     "liquidity",
     "bank",
-    "balance"
+    "balance",
+    "in",
+    "out"
   ],
   "connectorsUsed": [
     "xero-accounting"
@@ -39,9 +40,10 @@
   },
   "dataProvider": {
     "mcp": "xero-accounting",
-    "tool": "list_bank_transactions",
+    "tool": "get_bank_summary",
     "params": {
-      "order": "Date DESC"
+      "fromDate": "$month_start_date",
+      "toDate": "$today_date"
     }
   },
   "spec": {
@@ -55,23 +57,40 @@
           "stats",
           "divider",
           "body"
-        ]
+        ],
+        "watch": {
+          "/xero-accounting/get_bank_summary/Reports": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/cf/rows",
+              "value": {
+                "$computed": "xero-accounting_flatten_report_rows",
+                "args": {
+                  "value": {
+                    "$state": "/xero-accounting/get_bank_summary/Reports/0"
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       "header": {
         "type": "Header",
         "children": [
-          "titleGroup"
+          "titleGroup",
+          "periodChips"
         ]
       },
       "titleGroup": {
         "type": "Row",
         "props": {
           "gap": "sm",
-          "align": "center"
+          "align": "start"
         },
         "children": [
           "titleIcon",
-          "title"
+          "titleStack"
         ]
       },
       "titleIcon": {
@@ -82,11 +101,230 @@
           "size": "sm"
         }
       },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "periodLabel"
+        ]
+      },
       "title": {
         "type": "Heading",
         "props": {
-          "text": "Today's Cash Flow",
+          "text": "Cash Flow",
           "level": "h2"
+        }
+      },
+      "periodLabel": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/get_bank_summary/Reports/0/ReportTitles/2"
+          }
+        }
+      },
+      "periodChips": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "chipMonth",
+          "chipLastMonth",
+          "chip30",
+          "chipQuarter"
+        ]
+      },
+      "chipMonth": {
+        "type": "Row",
+        "props": {
+          "gap": "none",
+          "align": "center",
+          "hover": true,
+          "clickable": true,
+          "selected": {
+            "$computed": "equals",
+            "args": {
+              "a": "month",
+              "b": {
+                "$state": "/ui/cf/period"
+              }
+            }
+          }
+        },
+        "children": [
+          "chipMonthLabel"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/cf/period",
+                "value": "month"
+              }
+            },
+            {
+              "action": "xero-accounting.get_bank_summary",
+              "params": {
+                "fromDate": "$month_start_date",
+                "toDate": "$today_date"
+              }
+            }
+          ]
+        }
+      },
+      "chipMonthLabel": {
+        "type": "Text",
+        "props": {
+          "text": "This Month",
+          "size": "xs",
+          "weight": "medium"
+        }
+      },
+      "chipLastMonth": {
+        "type": "Row",
+        "props": {
+          "gap": "none",
+          "align": "center",
+          "hover": true,
+          "clickable": true,
+          "selected": {
+            "$computed": "equals",
+            "args": {
+              "a": "lastMonth",
+              "b": {
+                "$state": "/ui/cf/period"
+              }
+            }
+          }
+        },
+        "children": [
+          "chipLastMonthLabel"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/cf/period",
+                "value": "lastMonth"
+              }
+            },
+            {
+              "action": "xero-accounting.get_bank_summary",
+              "params": {
+                "fromDate": "$last_month_start_date",
+                "toDate": "$last_month_end_date"
+              }
+            }
+          ]
+        }
+      },
+      "chipLastMonthLabel": {
+        "type": "Text",
+        "props": {
+          "text": "Last Month",
+          "size": "xs",
+          "weight": "medium"
+        }
+      },
+      "chip30": {
+        "type": "Row",
+        "props": {
+          "gap": "none",
+          "align": "center",
+          "hover": true,
+          "clickable": true,
+          "selected": {
+            "$computed": "equals",
+            "args": {
+              "a": "30d",
+              "b": {
+                "$state": "/ui/cf/period"
+              }
+            }
+          }
+        },
+        "children": [
+          "chip30Label"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/cf/period",
+                "value": "30d"
+              }
+            },
+            {
+              "action": "xero-accounting.get_bank_summary",
+              "params": {
+                "fromDate": "$days_ago_30_date",
+                "toDate": "$today_date"
+              }
+            }
+          ]
+        }
+      },
+      "chip30Label": {
+        "type": "Text",
+        "props": {
+          "text": "30 Days",
+          "size": "xs",
+          "weight": "medium"
+        }
+      },
+      "chipQuarter": {
+        "type": "Row",
+        "props": {
+          "gap": "none",
+          "align": "center",
+          "hover": true,
+          "clickable": true,
+          "selected": {
+            "$computed": "equals",
+            "args": {
+              "a": "quarter",
+              "b": {
+                "$state": "/ui/cf/period"
+              }
+            }
+          }
+        },
+        "children": [
+          "chipQuarterLabel"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/cf/period",
+                "value": "quarter"
+              }
+            },
+            {
+              "action": "xero-accounting.get_bank_summary",
+              "params": {
+                "fromDate": "$quarter_start_date",
+                "toDate": "$today_date"
+              }
+            }
+          ]
+        }
+      },
+      "chipQuarterLabel": {
+        "type": "Text",
+        "props": {
+          "text": "This Quarter",
+          "size": "xs",
+          "weight": "medium"
         }
       },
       "loadingStats": {
@@ -100,7 +338,7 @@
           "loadStatB"
         ],
         "visible": {
-          "$state": "/_loading/xero-accounting.list_bank_transactions"
+          "$state": "/_loading/xero-accounting.get_bank_summary"
         }
       },
       "loadStatA": {
@@ -128,7 +366,7 @@
           "outCell"
         ],
         "visible": {
-          "$state": "/_loading/xero-accounting.list_bank_transactions",
+          "$state": "/_loading/xero-accounting.get_bank_summary",
           "not": true
         }
       },
@@ -177,11 +415,11 @@
                 "$computed": "sum",
                 "args": {
                   "value": {
-                    "$state": "/xero-accounting/list_bank_transactions/BankTransactions"
+                    "$state": "/ui/cf/rows"
                   },
-                  "field": "Total",
-                  "whereField": "Type",
-                  "startsWith": "RECEIVE"
+                  "field": "c2",
+                  "whereField": "rowType",
+                  "equals": "Row"
                 }
               }
             }
@@ -234,11 +472,11 @@
                 "$computed": "sum",
                 "args": {
                   "value": {
-                    "$state": "/xero-accounting/list_bank_transactions/BankTransactions"
+                    "$state": "/ui/cf/rows"
                   },
-                  "field": "Total",
-                  "whereField": "Type",
-                  "startsWith": "SPEND"
+                  "field": "c3",
+                  "whereField": "rowType",
+                  "equals": "Row"
                 }
               }
             }
@@ -252,18 +490,9 @@
       "body": {
         "type": "Body",
         "children": [
-          "recentHeading",
           "loadingList",
-          "empty",
-          "list"
+          "table"
         ]
-      },
-      "recentHeading": {
-        "type": "Heading",
-        "props": {
-          "text": "Recent Transactions",
-          "level": "h3"
-        }
       },
       "loadingList": {
         "type": "Stack",
@@ -276,7 +505,7 @@
           "ls3"
         ],
         "visible": {
-          "$state": "/_loading/xero-accounting.list_bank_transactions"
+          "$state": "/_loading/xero-accounting.get_bank_summary"
         }
       },
       "ls1": {
@@ -300,173 +529,48 @@
           "rounded": "md"
         }
       },
-      "empty": {
-        "type": "Empty",
+      "table": {
+        "type": "Table",
         "props": {
-          "message": "No bank transactions yet."
-        },
-        "visible": {
-          "$and": [
+          "rows": {
+            "$state": "/ui/cf/rows"
+          },
+          "columns": [
             {
-              "$state": "/_loading/xero-accounting.list_bank_transactions",
-              "not": true
+              "id": "account",
+              "header": "Account",
+              "field": "c0",
+              "priority": 1
             },
             {
-              "$state": "/xero-accounting/list_bank_transactions/BankTransactions/0",
-              "not": true
+              "id": "in",
+              "header": "Cash In",
+              "field": "c2",
+              "align": "right",
+              "format": "currency",
+              "priority": 1
+            },
+            {
+              "id": "out",
+              "header": "Cash Out",
+              "field": "c3",
+              "align": "right",
+              "format": "currency",
+              "priority": 1
+            },
+            {
+              "id": "balance",
+              "header": "Balance",
+              "field": "c4",
+              "align": "right",
+              "format": "currency",
+              "priority": 2
             }
           ]
-        }
-      },
-      "list": {
-        "type": "Stack",
-        "props": {
-          "gap": "xs"
-        },
-        "children": [
-          "row"
-        ],
-        "repeat": {
-          "statePath": "/xero-accounting/list_bank_transactions/BankTransactions",
-          "key": "BankTransactionID"
         },
         "visible": {
-          "$state": "/_loading/xero-accounting.list_bank_transactions",
+          "$state": "/_loading/xero-accounting.get_bank_summary",
           "not": true
-        }
-      },
-      "row": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "center",
-          "hover": true,
-          "clickable": true,
-          "template": "auto minmax(0, 1fr) 6rem 7rem"
-        },
-        "children": [
-          "rowDot",
-          "rowLabel",
-          "rowAmountText",
-          "rowDate"
-        ],
-        "on": {
-          "click": {
-            "action": "open_bank_tx_modal",
-            "params": {
-              "bankTransactionId": {
-                "$computed": "identity",
-                "args": {
-                  "value": {
-                    "$item": "BankTransactionID"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "rowDot": {
-        "type": "Icon",
-        "props": {
-          "name": {
-            "$computed": "xero-accounting_bank_tx_icon",
-            "args": {
-              "value": {
-                "$item": "Type"
-              }
-            }
-          },
-          "tone": {
-            "$computed": "xero-accounting_bank_tx_tone",
-            "args": {
-              "value": {
-                "$item": "Type"
-              }
-            }
-          },
-          "size": "sm"
-        }
-      },
-      "rowLabel": {
-        "type": "Stack",
-        "props": {
-          "gap": "xs"
-        },
-        "children": [
-          "rowTop",
-          "rowBottom"
-        ]
-      },
-      "rowTop": {
-        "type": "Text",
-        "props": {
-          "text": {
-            "$item": "Contact/Name"
-          },
-          "size": "sm",
-          "weight": "medium",
-          "truncate": true
-        }
-      },
-      "rowBottom": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{type} \u00b7 {account}",
-              "type": {
-                "$item": "Type"
-              },
-              "account": {
-                "$item": "BankAccount/Name"
-              }
-            }
-          }
-        }
-      },
-      "rowAmount": {
-        "type": "Stack",
-        "props": {
-          "gap": "xs",
-          "align": "end"
-        },
-        "children": [
-          "rowAmountText",
-          "rowDate"
-        ]
-      },
-      "rowAmountText": {
-        "type": "Text",
-        "props": {
-          "text": {
-            "$computed": "format_currency",
-            "args": {
-              "value": {
-                "$item": "Total"
-              },
-              "currency": {
-                "$item": "CurrencyCode"
-              }
-            }
-          },
-          "weight": "semibold",
-          "size": "sm"
-        }
-      },
-      "rowDate": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "xero-accounting_format_date",
-            "args": {
-              "value": {
-                "$item": "Date"
-              },
-              "format": "medium"
-            }
-          }
         }
       }
     }

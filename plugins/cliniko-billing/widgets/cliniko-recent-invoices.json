@@ -1,0 +1,256 @@
+{
+  "id": "cliniko-recent-invoices",
+  "title": "Cliniko — Recent invoices",
+  "description": "Most recent invoices with status and amount.",
+  "category": "health",
+  "tags": [
+    "cliniko",
+    "billing",
+    "invoices",
+    "finance"
+  ],
+  "keywords": [
+    "invoice",
+    "invoices",
+    "billing",
+    "revenue",
+    "payment"
+  ],
+  "connectorsUsed": [
+    "cliniko-billing"
+  ],
+  "popularity": 85,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "cliniko-billing",
+    "tool": "list_invoices",
+    "params": {
+      "per_page": 30,
+      "sort": "issue_date:desc"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "headerRow"
+        ]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": {
+          "justify": "between",
+          "align": "center"
+        },
+        "children": [
+          "titleGroup",
+          "refreshBtn"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Receipt",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "count"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Recent invoices",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} total",
+              "n": {
+                "$state": "/cliniko-billing/list_invoices/total_entries"
+              }
+            }
+          }
+        }
+      },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": {
+          "name": "RefreshCw",
+          "size": "sm",
+          "ariaLabel": "Refresh"
+        },
+        "on": {
+          "click": {
+            "action": "cliniko-billing.list_invoices",
+            "params": {
+              "per_page": 30,
+              "sort": "issue_date:desc"
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "lk1",
+          "lk2",
+          "lk3",
+          "lk4"
+        ],
+        "visible": {
+          "$state": "/_loading/cliniko-billing.list_invoices"
+        }
+      },
+      "lk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "lk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "lk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "lk4": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No invoices yet — invoices are raised from appointments in Cliniko."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/cliniko-billing.list_invoices",
+              "not": true
+            },
+            {
+              "$state": "/cliniko-billing/list_invoices/invoices/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "row"
+        ],
+        "repeat": {
+          "statePath": "/cliniko-billing/list_invoices/invoices",
+          "key": "id"
+        },
+        "visible": {
+          "$state": "/_loading/cliniko-billing.list_invoices",
+          "not": true
+        }
+      },
+      "row": {
+        "type": "ListItem",
+        "props": {
+          "title": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Invoice {n}",
+              "n": {
+                "$item": "number"
+              }
+            }
+          },
+          "subtitle": {
+            "$item": "status"
+          },
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$item": "total_amount"
+              }
+            }
+          }
+        }
+      },
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ]
+      }
+    }
+  },
+  "status": "published"
+}

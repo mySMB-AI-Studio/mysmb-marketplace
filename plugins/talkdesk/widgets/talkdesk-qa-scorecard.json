@@ -1,0 +1,305 @@
+{
+  "id": "talkdesk-qa-scorecard",
+  "title": "Call QA Scorecard",
+  "description": "Recent Talkdesk call QA scores — pass/fail breakdown per agent.",
+  "category": "support",
+  "tags": ["talkdesk", "qa", "calls", "scoring", "support"],
+  "keywords": ["call quality", "qa score", "talkdesk", "agent performance", "pass", "fail"],
+  "connectorsUsed": ["talkdesk"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 8 },
+    "min":       { "colSpan": 4, "rowSpan": 7 },
+    "max":       { "colSpan": 10, "rowSpan": 12 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["headerRow", "avgTile", "passedRow", "div1", "callList", "div2", "footer"]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "brandBadge"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "ClipboardCheck", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "brandBadge": {
+        "type": "Badge",
+        "props": { "label": "talkdesk", "tone": "success" }
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Call QA Scorecard", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Talkdesk AI Agent · Recent calls" }
+      },
+
+      "avgTile": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["avgStack"]
+      },
+      "avgStack": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["avgIco", "avgVal", "avgLbl"]
+      },
+      "avgIco": {
+        "type": "Icon",
+        "props": { "name": "BarChart2", "tone": "accent", "size": "sm" }
+      },
+      "avgVal": {
+        "type": "Heading",
+        "props": { "text": "82", "level": "h2" }
+      },
+      "avgLbl": {
+        "type": "Caption",
+        "props": { "text": "Avg Score · 5 calls" }
+      },
+
+      "passedRow": {
+        "type": "Row",
+        "props": { "justify": "center" },
+        "children": ["passedBadge"]
+      },
+      "passedBadge": {
+        "type": "Badge",
+        "props": { "text": "3 / 5 Passed", "tone": "success" }
+      },
+
+      "div1": { "type": "Divider" },
+
+      "callList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["c1", "c2", "c3", "c4", "c5"]
+      },
+
+      "c1": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["c1nameStack", "c1mid", "c1pass"]
+      },
+      "c1nameStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["c1name", "c1sub"]
+      },
+      "c1name": {
+        "type": "Text",
+        "props": { "text": "Alice M.", "size": "sm", "weight": "medium" }
+      },
+      "c1sub": {
+        "type": "Caption",
+        "props": { "text": "Support Agent" }
+      },
+      "c1mid": {
+        "type": "Stack",
+        "props": { "align": "center" },
+        "children": ["c1score"]
+      },
+      "c1score": {
+        "type": "Text",
+        "props": { "text": "92/100", "size": "sm", "weight": "medium" }
+      },
+      "c1pass": {
+        "type": "Stack",
+        "props": { "align": "end" },
+        "children": ["c1badge"]
+      },
+      "c1badge": {
+        "type": "Badge",
+        "props": { "text": "Pass", "tone": "success" }
+      },
+
+      "c2": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["c2nameStack", "c2mid", "c2pass"]
+      },
+      "c2nameStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["c2name", "c2sub"]
+      },
+      "c2name": {
+        "type": "Text",
+        "props": { "text": "Bob K.", "size": "sm", "weight": "medium" }
+      },
+      "c2sub": {
+        "type": "Caption",
+        "props": { "text": "Support Agent" }
+      },
+      "c2mid": {
+        "type": "Stack",
+        "props": { "align": "center" },
+        "children": ["c2score"]
+      },
+      "c2score": {
+        "type": "Text",
+        "props": { "text": "74/100", "size": "sm", "weight": "medium" }
+      },
+      "c2pass": {
+        "type": "Stack",
+        "props": { "align": "end" },
+        "children": ["c2badge"]
+      },
+      "c2badge": {
+        "type": "Badge",
+        "props": { "text": "Fail", "tone": "destructive" }
+      },
+
+      "c3": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["c3nameStack", "c3mid", "c3pass"]
+      },
+      "c3nameStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["c3name", "c3sub"]
+      },
+      "c3name": {
+        "type": "Text",
+        "props": { "text": "Alice M.", "size": "sm", "weight": "medium" }
+      },
+      "c3sub": {
+        "type": "Caption",
+        "props": { "text": "Support Agent" }
+      },
+      "c3mid": {
+        "type": "Stack",
+        "props": { "align": "center" },
+        "children": ["c3score"]
+      },
+      "c3score": {
+        "type": "Text",
+        "props": { "text": "88/100", "size": "sm", "weight": "medium" }
+      },
+      "c3pass": {
+        "type": "Stack",
+        "props": { "align": "end" },
+        "children": ["c3badge"]
+      },
+      "c3badge": {
+        "type": "Badge",
+        "props": { "text": "Pass", "tone": "success" }
+      },
+
+      "c4": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["c4nameStack", "c4mid", "c4pass"]
+      },
+      "c4nameStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["c4name", "c4sub"]
+      },
+      "c4name": {
+        "type": "Text",
+        "props": { "text": "Carol T.", "size": "sm", "weight": "medium" }
+      },
+      "c4sub": {
+        "type": "Caption",
+        "props": { "text": "Support Agent" }
+      },
+      "c4mid": {
+        "type": "Stack",
+        "props": { "align": "center" },
+        "children": ["c4score"]
+      },
+      "c4score": {
+        "type": "Text",
+        "props": { "text": "95/100", "size": "sm", "weight": "medium" }
+      },
+      "c4pass": {
+        "type": "Stack",
+        "props": { "align": "end" },
+        "children": ["c4badge"]
+      },
+      "c4badge": {
+        "type": "Badge",
+        "props": { "text": "Pass", "tone": "success" }
+      },
+
+      "c5": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["c5nameStack", "c5mid", "c5pass"]
+      },
+      "c5nameStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["c5name", "c5sub"]
+      },
+      "c5name": {
+        "type": "Text",
+        "props": { "text": "Bob K.", "size": "sm", "weight": "medium" }
+      },
+      "c5sub": {
+        "type": "Caption",
+        "props": { "text": "Support Agent" }
+      },
+      "c5mid": {
+        "type": "Stack",
+        "props": { "align": "center" },
+        "children": ["c5score"]
+      },
+      "c5score": {
+        "type": "Text",
+        "props": { "text": "61/100", "size": "sm", "weight": "medium" }
+      },
+      "c5pass": {
+        "type": "Stack",
+        "props": { "align": "end" },
+        "children": ["c5badge"]
+      },
+      "c5badge": {
+        "type": "Badge",
+        "props": { "text": "Fail", "tone": "destructive" }
+      },
+
+      "div2": { "type": "Divider" },
+
+      "footer": {
+        "type": "Row",
+        "props": { "justify": "end", "gap": "xs", "align": "center" },
+        "children": ["footerBtn"]
+      },
+      "footerBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Open in Talkdesk",
+          "variant": "ghost",
+          "size": "sm",
+          "leadingIcon": "ExternalLink"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": "https://my.talkdesk.com", "target": "_blank" }
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}

@@ -1,0 +1,151 @@
+{
+  "id": "dataverse-demo-sla-performance",
+  "title": "SLA Performance (Demo)",
+  "description": "Demo — live SLA KPI status across active Dynamics 365 cases with static sample data.",
+  "category": "support",
+  "tags": ["dataverse", "dynamics-365", "sla", "performance", "customer-service", "support", "demo"],
+  "keywords": ["sla", "service level", "breach", "at risk", "kpi", "performance", "d365", "demo"],
+  "connectorsUsed": ["dataverse"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 9 },
+    "min":       { "colSpan": 4, "rowSpan": 7 },
+    "max":       { "colSpan": 10, "rowSpan": 12 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["headerRow", "statsGrid", "div1", "slaList", "div2", "footer"]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "brandBadge"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Clock", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "SLA Performance", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Dynamics 365 Customer Service · Demo" }
+      },
+      "brandBadge": {
+        "type": "Badge",
+        "props": { "label": "Dynamics 365", "tone": "info" }
+      },
+
+      "statsGrid": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["tileActive", "tileAtRisk", "tileBreached"]
+      },
+
+      "tileActive": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["stackActive"]
+      },
+      "stackActive": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["valActive", "lblActive"]
+      },
+      "valActive": { "type": "Heading", "props": { "text": "5", "level": "h2" } },
+      "lblActive": { "type": "Caption", "props": { "text": "Active" } },
+
+      "tileAtRisk": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["stackAtRisk"]
+      },
+      "stackAtRisk": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["valAtRisk", "lblAtRisk"]
+      },
+      "valAtRisk": { "type": "Heading", "props": { "text": "1", "level": "h2" } },
+      "lblAtRisk": { "type": "Caption", "props": { "text": "At Risk" } },
+
+      "tileBreached": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["stackBreached"]
+      },
+      "stackBreached": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["valBreached", "lblBreached"]
+      },
+      "valBreached": { "type": "Heading", "props": { "text": "1", "level": "h2" } },
+      "lblBreached": { "type": "Caption", "props": { "text": "Breached" } },
+
+      "div1": { "type": "Divider" },
+
+      "slaList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["s1", "s2", "s3", "s4", "s5"]
+      },
+
+      "s1": { "type": "Row", "props": { "align": "start", "gap": "md" }, "children": ["s1left", "s1badge"] },
+      "s1left": { "type": "Stack", "props": { "gap": "xxs" }, "children": ["s1name", "s1time"] },
+      "s1name": { "type": "Text", "props": { "text": "Resolution SLA — CAS-00835", "size": "sm", "weight": "medium" } },
+      "s1time": { "type": "Caption", "props": { "text": "Breach in 1 hour" } },
+      "s1badge": { "type": "Badge", "props": { "text": "At Risk", "tone": "warning", "variant": "soft" } },
+
+      "s2": { "type": "Row", "props": { "align": "start", "gap": "md" }, "children": ["s2left", "s2badge"] },
+      "s2left": { "type": "Stack", "props": { "gap": "xxs" }, "children": ["s2name", "s2time"] },
+      "s2name": { "type": "Text", "props": { "text": "First Response — CAS-00814", "size": "sm", "weight": "medium" } },
+      "s2time": { "type": "Caption", "props": { "text": "Breach in 2 hours" } },
+      "s2badge": { "type": "Badge", "props": { "text": "In Progress", "variant": "soft" } },
+
+      "s3": { "type": "Row", "props": { "align": "start", "gap": "md" }, "children": ["s3left", "s3badge"] },
+      "s3left": { "type": "Stack", "props": { "gap": "xxs" }, "children": ["s3name", "s3time"] },
+      "s3name": { "type": "Text", "props": { "text": "Resolution SLA — CAS-00821", "size": "sm", "weight": "medium" } },
+      "s3time": { "type": "Caption", "props": { "text": "Breach in 4 hours" } },
+      "s3badge": { "type": "Badge", "props": { "text": "In Progress", "variant": "soft" } },
+
+      "s4": { "type": "Row", "props": { "align": "start", "gap": "md" }, "children": ["s4left", "s4badge"] },
+      "s4left": { "type": "Stack", "props": { "gap": "xxs" }, "children": ["s4name", "s4time"] },
+      "s4name": { "type": "Text", "props": { "text": "First Response — CAS-00829", "size": "sm", "weight": "medium" } },
+      "s4time": { "type": "Caption", "props": { "text": "Breach in 6 hours" } },
+      "s4badge": { "type": "Badge", "props": { "text": "In Progress", "variant": "soft" } },
+
+      "s5": { "type": "Row", "props": { "align": "start", "gap": "md" }, "children": ["s5left", "s5badge"] },
+      "s5left": { "type": "Stack", "props": { "gap": "xxs" }, "children": ["s5name", "s5time"] },
+      "s5name": { "type": "Text", "props": { "text": "Resolution SLA — CAS-00814", "size": "sm", "weight": "medium" } },
+      "s5time": { "type": "Caption", "props": { "text": "Breached 30 minutes ago" } },
+      "s5badge": { "type": "Badge", "props": { "text": "Breached", "tone": "destructive", "variant": "soft" } },
+
+      "div2": { "type": "Divider" },
+
+      "footer": {
+        "type": "Row",
+        "props": { "justify": "end", "gap": "xs", "align": "center" },
+        "children": ["footerBtn"]
+      },
+      "footerBtn": {
+        "type": "Button",
+        "props": { "label": "Open in D365", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" }
+      }
+    }
+  },
+  "status": "published"
+}

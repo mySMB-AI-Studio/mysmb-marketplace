@@ -1,0 +1,371 @@
+{
+  "id": "deskcrm-contacts",
+  "title": "Contacts",
+  "description": "Your deskcrm contacts at a glance — name, role, company, and status. Click the mail icon to email anyone.",
+  "category": "crm",
+  "tags": [
+    "deskcrm",
+    "crm",
+    "contacts",
+    "people",
+    "directory"
+  ],
+  "keywords": [
+    "contacts",
+    "people",
+    "leads",
+    "customers",
+    "directory"
+  ],
+  "connectorsUsed": [
+    "deskcrm"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "deskcrm",
+    "tool": "list_contacts",
+    "params": {
+      "limit": 50
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "headerRow"
+        ]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": {
+          "justify": "between",
+          "align": "center"
+        },
+        "children": [
+          "titleGroup",
+          "refreshBtn"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Users",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "count"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Contacts",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} total",
+              "n": {
+                "$state": "/deskcrm/list_contacts/count"
+              }
+            }
+          }
+        }
+      },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": {
+          "icon": "RefreshCw",
+          "tone": "muted",
+          "size": "sm",
+          "ariaLabel": "Refresh"
+        },
+        "on": {
+          "click": {
+            "action": "deskcrm.list_contacts",
+            "params": {
+              "limit": 50
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/_loading/deskcrm.list_contacts"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ]
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No contacts yet — add one to get started."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/deskcrm.list_contacts",
+              "not": true
+            },
+            {
+              "$state": "/deskcrm/list_contacts/contacts/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "visible": {
+          "$state": "/_loading/deskcrm.list_contacts",
+          "not": true
+        },
+        "repeat": {
+          "statePath": "/deskcrm/list_contacts/contacts",
+          "key": "id"
+        },
+        "children": [
+          "row"
+        ]
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between",
+          "hover": true
+        },
+        "children": [
+          "rowLeft",
+          "rowRight"
+        ]
+      },
+      "rowLeft": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "grow": true
+        },
+        "children": [
+          "avatar",
+          "labels"
+        ]
+      },
+      "avatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "{first} {last}",
+                  "first": {
+                    "$item": "firstName"
+                  },
+                  "last": {
+                    "$item": "lastName"
+                  }
+                }
+              }
+            }
+          },
+          "size": "md"
+        }
+      },
+      "labels": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "nameRow",
+          "metaRow"
+        ]
+      },
+      "nameRow": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{first} {last}",
+              "first": {
+                "$item": "firstName"
+              },
+              "last": {
+                "$item": "lastName"
+              }
+            }
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "metaRow": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{title} · {company}",
+              "title": {
+                "$item": "title"
+              },
+              "company": {
+                "$item": "company"
+              }
+            }
+          }
+        }
+      },
+      "rowRight": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "statusBadge",
+          "mailBtn"
+        ]
+      },
+      "statusBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "status"
+          },
+          "tone": {
+            "$cond": {
+              "$item": "status",
+              "eq": "active"
+            },
+            "$then": "success",
+            "$else": "muted"
+          }
+        }
+      },
+      "mailBtn": {
+        "type": "IconButton",
+        "props": {
+          "icon": "Mail",
+          "tone": "muted",
+          "size": "sm",
+          "ariaLabel": "Email"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "mailto:{addr}",
+                  "addr": {
+                    "$item": "email"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}

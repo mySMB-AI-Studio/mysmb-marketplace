@@ -1,0 +1,169 @@
+{
+  "id": "myob-aged-receivables",
+  "title": "MYOB — Aged Receivables",
+  "description": "Open sales invoices ordered by due date — oldest overdue at the top.",
+  "category": "finance",
+  "tags": ["myob", "receivables", "aging", "ar", "finance", "overdue"],
+  "keywords": ["aged", "aging", "receivables", "ar", "outstanding", "overdue", "myob"],
+  "connectorsUsed": ["myob-accounting"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 4 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
+    "max": { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "myob-accounting",
+    "tool": "list_invoices",
+    "params": { "status": "Open", "page_size": 50 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["header", "body"]
+      },
+      "header": {
+        "type": "Header",
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "CalendarClock", "tone": "warning", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Aged Receivables", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} open invoices",
+              "n": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/myob-accounting/list_invoices/Items" } }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": ["loading", "empty", "list"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["skel1", "skel2", "skel3", "skel4"],
+        "visible": { "$state": "/_loading/myob-accounting.list_invoices" }
+      },
+      "skel1": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+      "skel2": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+      "skel3": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+      "skel4": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No outstanding receivables." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myob-accounting.list_invoices", "not": true },
+            { "$state": "/myob-accounting/list_invoices/Items/0", "not": true }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": {
+          "statePath": "/myob-accounting/list_invoices/Items",
+          "key": "UID"
+        },
+        "visible": { "$state": "/_loading/myob-accounting.list_invoices", "not": true }
+      },
+      "row": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "hover": true },
+        "children": ["avatar", "label", "dueBadge", "amount"]
+      },
+      "avatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": { "value": { "$item": "Customer/Name" } }
+          },
+          "size": "sm"
+        }
+      },
+      "label": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["labelTop", "labelBottom"]
+      },
+      "labelTop": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "Customer/Name" },
+          "size": "md",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "labelBottom": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Inv {num}",
+              "num": { "$item": "Number" }
+            }
+          },
+          "size": "sm",
+          "tone": "muted"
+        }
+      },
+      "dueBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Due {d}",
+              "d": { "$item": "DueDate" }
+            }
+          },
+          "tone": "destructive",
+          "variant": "soft"
+        }
+      },
+      "amount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": { "value": { "$item": "BalanceDueAmount" } }
+          },
+          "weight": "semibold",
+          "size": "sm"
+        }
+      }
+    }
+  },
+  "status": "published"
+}

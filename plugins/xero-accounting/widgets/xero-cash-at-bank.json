@@ -1,7 +1,7 @@
 {
   "id": "xero-cash-at-bank",
   "title": "Cash at Bank",
-  "description": "Bank account tiles \u2014 one card per bank account configured in Xero.",
+  "description": "Bank account tiles — one card per bank account in Xero showing the current closing balance.",
   "category": "finance",
   "tags": [
     "xero",
@@ -38,9 +38,10 @@
   },
   "dataProvider": {
     "mcp": "xero-accounting",
-    "tool": "list_accounts",
+    "tool": "get_bank_summary",
     "params": {
-      "where": "Type==\"BANK\""
+      "fromDate": "$month_start_date",
+      "toDate": "$today_date"
     }
   },
   "spec": {
@@ -53,7 +54,7 @@
           "body"
         ],
         "watch": {
-          "/xero-accounting/list_accounts/Accounts": {
+          "/xero-accounting/get_bank_summary/Reports": {
             "action": "setState",
             "params": {
               "statePath": "/ui/cash/bankAccounts",
@@ -61,10 +62,15 @@
                 "$computed": "filter_by",
                 "args": {
                   "value": {
-                    "$state": "/xero-accounting/list_accounts/Accounts"
+                    "$computed": "xero-accounting_flatten_report_rows",
+                    "args": {
+                      "value": {
+                        "$state": "/xero-accounting/get_bank_summary/Reports/0"
+                      }
+                    }
                   },
-                  "field": "Type",
-                  "equals": "BANK"
+                  "field": "rowType",
+                  "equals": "Row"
                 }
               }
             }
@@ -141,7 +147,7 @@
           "s2"
         ],
         "visible": {
-          "$state": "/_loading/xero-accounting.list_accounts"
+          "$state": "/_loading/xero-accounting.get_bank_summary"
         }
       },
       "s1": {
@@ -166,7 +172,7 @@
         "visible": {
           "$and": [
             {
-              "$state": "/_loading/xero-accounting.list_accounts",
+              "$state": "/_loading/xero-accounting.get_bank_summary",
               "not": true
             },
             {
@@ -187,10 +193,10 @@
         ],
         "repeat": {
           "statePath": "/ui/cash/bankAccounts",
-          "key": "AccountID"
+          "key": "title"
         },
         "visible": {
-          "$state": "/_loading/xero-accounting.list_accounts",
+          "$state": "/_loading/xero-accounting.get_bank_summary",
           "not": true
         }
       },
@@ -201,8 +207,7 @@
         },
         "children": [
           "tileHeader",
-          "tileCode",
-          "tileStatus"
+          "tileBalanceWrap"
         ]
       },
       "tileHeader": {
@@ -214,6 +219,16 @@
         "children": [
           "tileIcon",
           "tileName"
+        ]
+      },
+      "tileBalanceWrap": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "tileBalance"
         ]
       },
       "tileIcon": {
@@ -228,45 +243,25 @@
         "type": "Text",
         "props": {
           "text": {
-            "$item": "Name"
+            "$item": "title"
           },
           "size": "md",
           "weight": "semibold",
           "truncate": true
         }
       },
-      "tileCode": {
-        "type": "Caption",
+      "tileBalance": {
+        "type": "Stat",
         "props": {
-          "text": {
-            "$computed": "fmt",
+          "size": "sm",
+          "value": {
+            "$computed": "format_currency",
             "args": {
-              "pattern": "Code {code} \u00b7 {currency}",
-              "code": {
-                "$item": "Code"
-              },
-              "currency": {
-                "$item": "CurrencyCode"
+              "value": {
+                "$item": "c4"
               }
             }
           }
-        }
-      },
-      "tileStatus": {
-        "type": "Badge",
-        "props": {
-          "text": {
-            "$item": "Status"
-          },
-          "tone": {
-            "$computed": "xero-accounting_status_tone",
-            "args": {
-              "value": {
-                "$item": "Status"
-              }
-            }
-          },
-          "variant": "soft"
         }
       },
       "titleStack": {

@@ -1,0 +1,775 @@
+{
+  "id": "cliniko-recent-treatment-notes",
+  "title": "Cliniko — Treatment notes",
+  "description": "Clinical documentation at a glance — totals, draft vs finalised breakdown, a filterable feed, and a detail view. Content stays in Cliniko.",
+  "category": "health",
+  "tags": [
+    "cliniko",
+    "clinical",
+    "treatment notes",
+    "records",
+    "documentation"
+  ],
+  "keywords": [
+    "treatment note",
+    "clinical note",
+    "records",
+    "documentation",
+    "draft",
+    "finalised",
+    "notes"
+  ],
+  "connectorsUsed": [
+    "cliniko-clinical"
+  ],
+  "popularity": 15,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 5
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "cliniko-clinical",
+    "tool": "list_treatment_notes",
+    "params": {
+      "per_page": 50,
+      "sort": "created_at:desc"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "donutLoading",
+          "donut",
+          "donutDivider",
+          "filters",
+          "body",
+          "overlay"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "headerRow"
+        ]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": {
+          "justify": "between",
+          "align": "center"
+        },
+        "children": [
+          "titleGroup",
+          "refreshBtn"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ClipboardPlus",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Treatment notes",
+          "level": "h2"
+        }
+      },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": {
+          "name": "RefreshCw",
+          "size": "sm",
+          "ariaLabel": "Refresh notes"
+        },
+        "on": {
+          "click": {
+            "action": "cliniko-clinical.list_treatment_notes",
+            "params": {
+              "per_page": 50,
+              "sort": "created_at:desc"
+            }
+          }
+        }
+      },
+      "filters": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "fAll",
+          "fDrafts",
+          "fFinal"
+        ]
+      },
+      "fAll": {
+        "type": "Button",
+        "props": {
+          "label": "All",
+          "size": "sm",
+          "variant": {
+            "$cond": {
+              "$state": "/ui/tnFilter",
+              "eq": "all"
+            },
+            "$then": "primary",
+            "$else": "ghost"
+          }
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/tnFilter",
+              "value": "all"
+            }
+          }
+        }
+      },
+      "fDrafts": {
+        "type": "Button",
+        "props": {
+          "label": "Drafts",
+          "size": "sm",
+          "variant": {
+            "$cond": {
+              "$state": "/ui/tnFilter",
+              "eq": "draft"
+            },
+            "$then": "primary",
+            "$else": "ghost"
+          }
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/tnFilter",
+              "value": "draft"
+            }
+          }
+        }
+      },
+      "fFinal": {
+        "type": "Button",
+        "props": {
+          "label": "Finalised",
+          "size": "sm",
+          "variant": {
+            "$cond": {
+              "$state": "/ui/tnFilter",
+              "eq": "final"
+            },
+            "$then": "primary",
+            "$else": "ghost"
+          }
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/tnFilter",
+              "value": "final"
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3",
+          "sk4"
+        ],
+        "visible": {
+          "$state": "/_loading/cliniko-clinical.list_treatment_notes"
+        }
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.25rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.25rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.25rem",
+          "rounded": "md"
+        }
+      },
+      "sk4": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.25rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No treatment notes yet."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/cliniko-clinical.list_treatment_notes",
+              "not": true
+            },
+            {
+              "$state": "/cliniko-clinical/list_treatment_notes/treatment_notes/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "row"
+        ],
+        "repeat": {
+          "statePath": "/cliniko-clinical/list_treatment_notes/treatment_notes",
+          "key": "id"
+        },
+        "visible": {
+          "$state": "/_loading/cliniko-clinical.list_treatment_notes",
+          "not": true
+        }
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true,
+          "template": "5rem minmax(0, 1fr) auto"
+        },
+        "children": [
+          "rowStatus",
+          "rowIdentity",
+          "rowChevron"
+        ],
+        "visible": {
+          "$or": [
+            {
+              "$state": "/ui/tnFilter",
+              "not": true
+            },
+            {
+              "$state": "/ui/tnFilter",
+              "eq": "all"
+            },
+            {
+              "$and": [
+                {
+                  "$state": "/ui/tnFilter",
+                  "eq": "draft"
+                },
+                {
+                  "$item": "draft",
+                  "eq": true
+                }
+              ]
+            },
+            {
+              "$and": [
+                {
+                  "$state": "/ui/tnFilter",
+                  "eq": "final"
+                },
+                {
+                  "$item": "draft",
+                  "eq": false
+                }
+              ]
+            }
+          ]
+        },
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/id",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "id"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/title",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "title"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/author",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "author_name"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/created",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "created_at"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/finalized",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "finalized_at"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/draft",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "draft"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "rowStatus": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$cond": {
+              "$item": "draft",
+              "eq": true
+            },
+            "$then": "Draft",
+            "$else": "Finalised"
+          },
+          "tone": {
+            "$cond": {
+              "$item": "draft",
+              "eq": true
+            },
+            "$then": "warning",
+            "$else": "success"
+          },
+          "variant": "soft"
+        }
+      },
+      "rowIdentity": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "rowTitle",
+          "rowMeta"
+        ]
+      },
+      "rowTitle": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "title"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "rowMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "by {a} · {d}",
+              "a": {
+                "$item": "author_name"
+              },
+              "d": {
+                "$computed": "relative_time",
+                "args": {
+                  "value": {
+                    "$item": "created_at"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "rowChevron": {
+        "type": "Icon",
+        "props": {
+          "name": "ChevronRight",
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "overlay": {
+        "type": "Overlay",
+        "props": {
+          "maxWidth": "32rem"
+        },
+        "visible": {
+          "$state": "/ui/sel/id"
+        },
+        "on": {
+          "backdropClick": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sel/id",
+              "value": ""
+            }
+          }
+        },
+        "children": [
+          "ovStack"
+        ]
+      },
+      "ovStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "ovHeader",
+          "ovDivider",
+          "ovAuthor",
+          "ovCreated",
+          "ovFinalized",
+          "ovId",
+          "ovNote",
+          "ovDivider2",
+          "ovActions"
+        ]
+      },
+      "ovHeader": {
+        "type": "Row",
+        "props": {
+          "justify": "between",
+          "align": "start",
+          "gap": "sm"
+        },
+        "children": [
+          "ovTitleStack",
+          "ovClose"
+        ]
+      },
+      "ovTitleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "ovTitle",
+          "ovStatus"
+        ]
+      },
+      "ovTitle": {
+        "type": "Heading",
+        "props": {
+          "text": {
+            "$state": "/ui/sel/title"
+          },
+          "level": "h2"
+        }
+      },
+      "ovStatus": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$cond": {
+              "$state": "/ui/sel/draft",
+              "eq": true
+            },
+            "$then": "Draft",
+            "$else": "Finalised"
+          },
+          "tone": {
+            "$cond": {
+              "$state": "/ui/sel/draft",
+              "eq": true
+            },
+            "$then": "warning",
+            "$else": "success"
+          },
+          "variant": "soft"
+        }
+      },
+      "ovClose": {
+        "type": "OverlayClose",
+        "props": {
+          "ariaLabel": "Close note"
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sel/id",
+              "value": ""
+            }
+          }
+        }
+      },
+      "ovAuthor": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Author",
+          "value": {
+            "$state": "/ui/sel/author"
+          }
+        }
+      },
+      "ovCreated": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Created",
+          "value": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$state": "/ui/sel/created"
+              }
+            }
+          }
+        }
+      },
+      "ovFinalized": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Finalised",
+          "value": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$state": "/ui/sel/finalized"
+              }
+            }
+          }
+        },
+        "visible": {
+          "$state": "/ui/sel/finalized"
+        }
+      },
+      "ovId": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Note ID",
+          "value": {
+            "$state": "/ui/sel/id"
+          }
+        }
+      },
+      "ovNote": {
+        "type": "Caption",
+        "props": {
+          "text": "Full clinical content is kept securely in Cliniko."
+        }
+      },
+      "ovDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "ovDivider2": {
+        "type": "Divider",
+        "props": {}
+      },
+      "ovActions": {
+        "type": "Row",
+        "props": {
+          "justify": "between",
+          "align": "center",
+          "gap": "sm"
+        },
+        "children": [
+          "ovCopyBtn",
+          "ovCloseBtn"
+        ]
+      },
+      "ovCopyBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Copy note ID",
+          "variant": "ghost",
+          "size": "md",
+          "leadingIcon": "Copy"
+        },
+        "on": {
+          "click": [
+            {
+              "action": "copy_to_clipboard",
+              "params": {
+                "text": {
+                  "$state": "/ui/sel/id"
+                }
+              }
+            },
+            {
+              "action": "toast",
+              "params": {
+                "message": "Note ID copied to clipboard"
+              }
+            }
+          ]
+        }
+      },
+      "ovCloseBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Close",
+          "variant": "primary",
+          "size": "md"
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sel/id",
+              "value": ""
+            }
+          }
+        }
+      },
+      "donutLoading": {
+        "type": "Skeleton",
+        "props": {
+          "height": "9rem",
+          "rounded": "md"
+        },
+        "visible": {
+          "$state": "/_loading/cliniko-clinical.list_treatment_notes"
+        }
+      },
+      "donut": {
+        "type": "Donut",
+        "props": {
+          "data": {
+            "$state": "/cliniko-clinical/list_treatment_notes/treatment_notes"
+          },
+          "groupField": "draft",
+          "legend": {
+            "true": {
+              "label": "Drafts",
+              "tone": "warning"
+            },
+            "false": {
+              "label": "Finalised",
+              "tone": "success"
+            }
+          },
+          "centerLabel": "notes",
+          "size": 124
+        },
+        "visible": {
+          "$state": "/_loading/cliniko-clinical.list_treatment_notes",
+          "not": true
+        }
+      },
+      "donutDivider": {
+        "type": "Divider",
+        "props": {}
+      }
+    }
+  },
+  "status": "published"
+}

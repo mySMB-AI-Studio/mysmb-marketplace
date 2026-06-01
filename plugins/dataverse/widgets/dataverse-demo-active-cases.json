@@ -1,0 +1,145 @@
+{
+  "id": "dataverse-demo-active-cases",
+  "title": "Active Cases (Demo)",
+  "description": "Demo — open Dynamics 365 Customer Service cases with static sample data.",
+  "category": "support",
+  "tags": ["dataverse", "dynamics-365", "cases", "customer-service", "support", "demo"],
+  "keywords": ["cases", "open cases", "support queue", "customer service", "d365", "demo"],
+  "connectorsUsed": ["dataverse"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 8 },
+    "min":       { "colSpan": 4, "rowSpan": 6 },
+    "max":       { "colSpan": 10, "rowSpan": 12 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["headerRow", "statsGrid", "div1", "caseList", "div2", "footer"]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "brandBadge"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Inbox", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Active Cases", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Dynamics 365 Customer Service · Demo" }
+      },
+      "brandBadge": {
+        "type": "Badge",
+        "props": { "label": "Dynamics 365", "tone": "info" }
+      },
+
+      "statsGrid": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["tileOpen", "tileHigh", "tileNormal"]
+      },
+
+      "tileOpen": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["stackOpen"]
+      },
+      "stackOpen": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["valOpen", "lblOpen"]
+      },
+      "valOpen": { "type": "Heading", "props": { "text": "4", "level": "h2" } },
+      "lblOpen": { "type": "Caption", "props": { "text": "Open" } },
+
+      "tileHigh": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["stackHigh"]
+      },
+      "stackHigh": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["valHigh", "lblHigh"]
+      },
+      "valHigh": { "type": "Heading", "props": { "text": "2", "level": "h2" } },
+      "lblHigh": { "type": "Caption", "props": { "text": "High Priority" } },
+
+      "tileNormal": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["stackNormal"]
+      },
+      "stackNormal": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["valNormal", "lblNormal"]
+      },
+      "valNormal": { "type": "Heading", "props": { "text": "2", "level": "h2" } },
+      "lblNormal": { "type": "Caption", "props": { "text": "Normal" } },
+
+      "div1": { "type": "Divider" },
+
+      "caseList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["c1", "c2", "c3", "c4"]
+      },
+
+      "c1": { "type": "Row", "props": { "align": "start", "gap": "md" }, "children": ["c1left", "c1badge"] },
+      "c1left": { "type": "Stack", "props": { "gap": "xxs" }, "children": ["c1title", "c1meta"] },
+      "c1title": { "type": "Text", "props": { "text": "Invoice discrepancy — credit memo not applied", "size": "sm", "weight": "medium" } },
+      "c1meta": { "type": "Caption", "props": { "text": "CAS-00814 · 2 hours ago" } },
+      "c1badge": { "type": "Badge", "props": { "text": "High", "tone": "destructive", "variant": "soft" } },
+
+      "c2": { "type": "Row", "props": { "align": "start", "gap": "md" }, "children": ["c2left", "c2badge"] },
+      "c2left": { "type": "Stack", "props": { "gap": "xxs" }, "children": ["c2title", "c2meta"] },
+      "c2title": { "type": "Text", "props": { "text": "Cannot access account portal after password reset", "size": "sm", "weight": "medium" } },
+      "c2meta": { "type": "Caption", "props": { "text": "CAS-00821 · 4 hours ago" } },
+      "c2badge": { "type": "Badge", "props": { "text": "Normal", "variant": "soft" } },
+
+      "c3": { "type": "Row", "props": { "align": "start", "gap": "md" }, "children": ["c3left", "c3badge"] },
+      "c3left": { "type": "Stack", "props": { "gap": "xxs" }, "children": ["c3title", "c3meta"] },
+      "c3title": { "type": "Text", "props": { "text": "Product delivery delayed — order #ORD-2025-0219", "size": "sm", "weight": "medium" } },
+      "c3meta": { "type": "Caption", "props": { "text": "CAS-00829 · 6 hours ago" } },
+      "c3badge": { "type": "Badge", "props": { "text": "Normal", "variant": "soft" } },
+
+      "c4": { "type": "Row", "props": { "align": "start", "gap": "md" }, "children": ["c4left", "c4badge"] },
+      "c4left": { "type": "Stack", "props": { "gap": "xxs" }, "children": ["c4title", "c4meta"] },
+      "c4title": { "type": "Text", "props": { "text": "Billing cycle incorrect — charged twice in May", "size": "sm", "weight": "medium" } },
+      "c4meta": { "type": "Caption", "props": { "text": "CAS-00835 · 1 hour ago" } },
+      "c4badge": { "type": "Badge", "props": { "text": "High", "tone": "destructive", "variant": "soft" } },
+
+      "div2": { "type": "Divider" },
+
+      "footer": {
+        "type": "Row",
+        "props": { "justify": "end", "gap": "xs", "align": "center" },
+        "children": ["footerBtn"]
+      },
+      "footerBtn": {
+        "type": "Button",
+        "props": { "label": "Open in D365", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" }
+      }
+    }
+  },
+  "status": "published"
+}

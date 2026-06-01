@@ -1,0 +1,318 @@
+{
+  "id": "cliniko-billing-snapshot",
+  "title": "Cliniko — Billing snapshot",
+  "description": "Catalogue value and product count, with a bar chart of your priciest products.",
+  "category": "health",
+  "tags": [
+    "cliniko",
+    "billing",
+    "overview",
+    "chart",
+    "products"
+  ],
+  "keywords": [
+    "billing",
+    "snapshot",
+    "catalogue",
+    "value",
+    "products",
+    "price",
+    "chart",
+    "revenue"
+  ],
+  "connectorsUsed": [
+    "cliniko-billing"
+  ],
+  "popularity": 75,
+  "sizing": {
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 5
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 8
+    }
+  },
+  "dataProvider": {
+    "mcp": "cliniko-billing",
+    "tool": "list_products",
+    "params": {
+      "per_page": 100,
+      "sort": "name:asc"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "kpiLoading",
+          "kpis",
+          "divider",
+          "chartLabel",
+          "chartLoading",
+          "chart"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "hRow"
+        ]
+      },
+      "hRow": {
+        "type": "Row",
+        "props": {
+          "justify": "between",
+          "align": "center"
+        },
+        "children": [
+          "hg",
+          "refresh"
+        ]
+      },
+      "hg": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "hIcon",
+          "hTitle"
+        ]
+      },
+      "hIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "PackageOpen",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "hTitle": {
+        "type": "Heading",
+        "props": {
+          "text": "Billing snapshot",
+          "level": "h2"
+        }
+      },
+      "refresh": {
+        "type": "IconButton",
+        "props": {
+          "name": "RefreshCw",
+          "size": "sm",
+          "ariaLabel": "Refresh"
+        },
+        "on": {
+          "click": {
+            "action": "cliniko-billing.list_products",
+            "params": {
+              "per_page": 100,
+              "sort": "name:asc"
+            }
+          }
+        }
+      },
+      "kpiLoading": {
+        "type": "Grid",
+        "props": {
+          "cols": 2,
+          "gap": "md"
+        },
+        "children": [
+          "skA",
+          "skB"
+        ],
+        "visible": {
+          "$state": "/_loading/cliniko-billing.list_products"
+        }
+      },
+      "skA": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "skB": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "kpis": {
+        "type": "Grid",
+        "props": {
+          "cols": 2,
+          "gap": "md"
+        },
+        "children": [
+          "kVal",
+          "kCount"
+        ],
+        "visible": {
+          "$state": "/_loading/cliniko-billing.list_products",
+          "not": true
+        }
+      },
+      "kVal": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "kValL",
+          "kValV"
+        ]
+      },
+      "kValL": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "kValI",
+          "kValT"
+        ]
+      },
+      "kValI": {
+        "type": "Icon",
+        "props": {
+          "name": "DollarSign",
+          "tone": "success",
+          "size": "xs"
+        }
+      },
+      "kValT": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Catalogue value"
+        }
+      },
+      "kValV": {
+        "type": "Stat",
+        "props": {
+          "size": "md",
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "sum",
+                "args": {
+                  "value": {
+                    "$state": "/cliniko-billing/list_products/products"
+                  },
+                  "field": "price"
+                }
+              }
+            }
+          }
+        }
+      },
+      "kCount": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "kCountL",
+          "kCountV"
+        ]
+      },
+      "kCountL": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "kCountI",
+          "kCountT"
+        ]
+      },
+      "kCountI": {
+        "type": "Icon",
+        "props": {
+          "name": "Package",
+          "tone": "accent",
+          "size": "xs"
+        }
+      },
+      "kCountT": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Products"
+        }
+      },
+      "kCountV": {
+        "type": "Stat",
+        "props": {
+          "size": "md",
+          "value": {
+            "$computed": "count",
+            "args": {
+              "value": {
+                "$state": "/cliniko-billing/list_products/products"
+              }
+            }
+          }
+        }
+      },
+      "divider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "chartLabel": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Top products by price"
+        },
+        "visible": {
+          "$state": "/_loading/cliniko-billing.list_products",
+          "not": true
+        }
+      },
+      "chartLoading": {
+        "type": "Skeleton",
+        "props": {
+          "height": "7rem",
+          "rounded": "md"
+        },
+        "visible": {
+          "$state": "/_loading/cliniko-billing.list_products"
+        }
+      },
+      "chart": {
+        "type": "BarChart",
+        "props": {
+          "data": {
+            "$state": "/cliniko-billing/list_products/products"
+          },
+          "labelField": "name",
+          "valueField": "price",
+          "valueFormat": "currency",
+          "limit": 6,
+          "tone": "accent",
+          "sort": "desc"
+        },
+        "visible": {
+          "$state": "/_loading/cliniko-billing.list_products",
+          "not": true
+        }
+      }
+    }
+  },
+  "status": "published"
+}

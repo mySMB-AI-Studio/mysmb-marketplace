@@ -1,0 +1,94 @@
+{
+  "id": "dataverse-demo-knowledge-search",
+  "title": "D365 Knowledge Search (Demo)",
+  "description": "Demo — published Dynamics 365 knowledge articles with static sample data.",
+  "category": "support",
+  "tags": ["dataverse", "dynamics-365", "knowledge", "articles", "support", "demo"],
+  "keywords": ["knowledge base", "articles", "faq", "dynamics", "d365", "demo"],
+  "connectorsUsed": ["dataverse"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 8 },
+    "min":       { "colSpan": 4, "rowSpan": 6 },
+    "max":       { "colSpan": 10, "rowSpan": 12 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["headerRow", "articleList", "div1", "footer"]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "brandBadge"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "BookOpen", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "D365 Knowledge Search", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Dynamics 365 Customer Service · Demo" }
+      },
+      "brandBadge": {
+        "type": "Badge",
+        "props": { "label": "Dynamics 365", "tone": "info" }
+      },
+
+      "articleList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["a1", "a2", "a3", "a4", "a5"]
+      },
+
+      "a1": { "type": "Stack", "props": { "gap": "xxs" }, "children": ["a1title", "a1desc"] },
+      "a1title": { "type": "Text", "props": { "text": "How to apply a credit memo to an outstanding invoice", "size": "sm", "weight": "medium" } },
+      "a1desc": { "type": "Caption", "props": { "text": "Locate a credit memo in the system and manually apply it to reduce the invoice balance." } },
+
+      "a2": { "type": "Stack", "props": { "gap": "xxs" }, "children": ["a2title", "a2desc"] },
+      "a2title": { "type": "Text", "props": { "text": "Password reset and account portal access troubleshooting", "size": "sm", "weight": "medium" } },
+      "a2desc": { "type": "Caption", "props": { "text": "Self-service reset, admin-forced reset, MFA issues, and browser cache clearing for portal login failures." } },
+
+      "a3": { "type": "Stack", "props": { "gap": "xxs" }, "children": ["a3title", "a3desc"] },
+      "a3title": { "type": "Text", "props": { "text": "Delivery delay escalation — process and customer communication", "size": "sm", "weight": "medium" } },
+      "a3desc": { "type": "Caption", "props": { "text": "When to escalate a delayed shipment, which team to contact, and approved customer notification language." } },
+
+      "a4": { "type": "Stack", "props": { "gap": "xxs" }, "children": ["a4title", "a4desc"] },
+      "a4title": { "type": "Text", "props": { "text": "Billing dispute resolution — identifying duplicate charges", "size": "sm", "weight": "medium" } },
+      "a4desc": { "type": "Caption", "props": { "text": "Pull billing history, identify duplicate cycles, and initiate a refund through the finance portal." } },
+
+      "a5": { "type": "Stack", "props": { "gap": "xxs" }, "children": ["a5title", "a5desc"] },
+      "a5title": { "type": "Text", "props": { "text": "SLA compliance — Tier 1 first-response and resolution timeframes", "size": "sm", "weight": "medium" } },
+      "a5desc": { "type": "Caption", "props": { "text": "SLA targets by priority (High: 1hr / Normal: 4hr), breach consequences, and how to request an SLA pause." } },
+
+      "div1": { "type": "Divider" },
+
+      "footer": {
+        "type": "Row",
+        "props": { "justify": "end", "gap": "xs", "align": "center" },
+        "children": ["footerBtn"]
+      },
+      "footerBtn": {
+        "type": "Button",
+        "props": { "label": "Open in D365", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" }
+      }
+    }
+  },
+  "status": "published"
+}

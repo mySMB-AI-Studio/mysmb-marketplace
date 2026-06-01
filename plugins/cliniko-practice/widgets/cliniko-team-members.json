@@ -1,0 +1,277 @@
+{
+  "id": "cliniko-team-members",
+  "title": "Cliniko — Team",
+  "description": "User accounts (staff) in the Cliniko account.",
+  "category": "health",
+  "tags": [
+    "cliniko",
+    "practice",
+    "staff",
+    "users"
+  ],
+  "keywords": [
+    "user",
+    "team",
+    "staff",
+    "member",
+    "account"
+  ],
+  "connectorsUsed": [
+    "cliniko-practice"
+  ],
+  "popularity": 20,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "cliniko-practice",
+    "tool": "list_users",
+    "params": {
+      "per_page": 50,
+      "sort": "last_name:asc"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "headerRow"
+        ]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": {
+          "justify": "between",
+          "align": "center"
+        },
+        "children": [
+          "titleGroup",
+          "refreshBtn"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Users",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "count"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Team",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} total",
+              "n": {
+                "$state": "/cliniko-practice/list_users/total_entries"
+              }
+            }
+          }
+        }
+      },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": {
+          "name": "RefreshCw",
+          "size": "sm",
+          "ariaLabel": "Refresh"
+        },
+        "on": {
+          "click": {
+            "action": "cliniko-practice.list_users",
+            "params": {
+              "per_page": 50,
+              "sort": "last_name:asc"
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "lk1",
+          "lk2",
+          "lk3",
+          "lk4"
+        ],
+        "visible": {
+          "$state": "/_loading/cliniko-practice.list_users"
+        }
+      },
+      "lk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "lk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "lk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "lk4": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No team members found."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/cliniko-practice.list_users",
+              "not": true
+            },
+            {
+              "$state": "/cliniko-practice/list_users/users/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "row"
+        ],
+        "repeat": {
+          "statePath": "/cliniko-practice/list_users/users",
+          "key": "id"
+        },
+        "visible": {
+          "$state": "/_loading/cliniko-practice.list_users",
+          "not": true
+        }
+      },
+      "row": {
+        "type": "ActivityItem",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "{f} {l}",
+                  "f": {
+                    "$item": "first_name"
+                  },
+                  "l": {
+                    "$item": "last_name"
+                  }
+                }
+              }
+            }
+          },
+          "tone": "info",
+          "title": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{f} {l}",
+              "f": {
+                "$item": "first_name"
+              },
+              "l": {
+                "$item": "last_name"
+              }
+            }
+          },
+          "subtitle": {
+            "$item": "email"
+          },
+          "timestamp": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "created_at"
+              }
+            }
+          }
+        }
+      },
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ]
+      }
+    }
+  },
+  "status": "published"
+}

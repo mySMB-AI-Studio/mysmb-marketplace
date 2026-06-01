@@ -1,7 +1,7 @@
 {
   "id": "m365-calendar-today",
   "title": "Today",
-  "description": "Timeline of today's meetings with location, attendees, and quick cancel.",
+  "description": "Timeline of today's meetings with attendees, description, and quick links to join or open in Outlook.",
   "category": "productivity",
   "tags": [
     "m365",
@@ -179,7 +179,7 @@
       "empty": {
         "type": "Empty",
         "props": {
-          "message": "No meetings \u2014 go do deep work."
+          "message": "No meetings — go do deep work."
         },
         "visible": {
           "$and": [
@@ -218,7 +218,7 @@
           "align": "start",
           "hover": true,
           "clickable": true,
-          "justify": "between"
+          "template": "4.5rem 1fr"
         },
         "children": [
           "timePill",
@@ -308,7 +308,7 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{start} \u2013 {end} \u00b7 {dur}",
+              "pattern": "{start} – {end} · {dur}",
               "start": {
                 "$computed": "format_time",
                 "args": {
@@ -348,7 +348,7 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{loc} \u00b7 {org}",
+              "pattern": "{loc} · {org}",
               "loc": {
                 "$item": "location/displayName"
               },
@@ -362,7 +362,7 @@
       "overlay": {
         "type": "Overlay",
         "props": {
-          "maxWidth": "34rem"
+          "maxWidth": "36rem"
         },
         "children": [
           "detailCard"
@@ -371,19 +371,22 @@
           "$state": "/ui/selectedEventId"
         },
         "on": {
-          "backdropClick": {
-            "action": "setState",
-            "params": {
-              "statePath": "/ui/selectedEventId",
-              "value": ""
+          "backdropClick": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedEventId",
+                "value": ""
+              }
             }
-          }
+          ]
         }
       },
       "detailCard": {
         "type": "Card",
         "children": [
           "detailHeader",
+          "detailSpinner",
           "detailBody"
         ]
       },
@@ -418,26 +421,41 @@
           "variant": "outlined"
         },
         "on": {
-          "click": {
-            "action": "setState",
-            "params": {
-              "statePath": "/ui/selectedEventId",
-              "value": ""
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedEventId",
+                "value": ""
+              }
             }
+          ]
+        }
+      },
+      "detailSpinner": {
+        "type": "Spinner",
+        "props": {
+          "label": "Loading meeting…"
+        },
+        "visible": {
+          "$state": "/m365-calendar/get_event/id",
+          "neq": {
+            "$state": "/ui/selectedEventId"
           }
         }
       },
       "detailBody": {
         "type": "Stack",
         "props": {
-          "gap": "sm"
+          "gap": "md"
         },
         "children": [
-          "kvStart",
-          "kvEnd",
-          "kvLocation",
-          "divider",
-          "cancelBtn"
+          "detailMeta",
+          "attDivider",
+          "attHeader",
+          "attList",
+          "descSection",
+          "linksRow"
         ],
         "visible": {
           "$state": "/m365-calendar/get_event/id",
@@ -446,80 +464,214 @@
           }
         }
       },
-      "kvStart": {
+      "detailMeta": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "kvWhen",
+          "kvOrganizer",
+          "kvLocation"
+        ]
+      },
+      "kvWhen": {
         "type": "KeyValue",
         "props": {
-          "label": "Starts",
+          "label": "When",
           "value": {
-            "$computed": "format_date",
+            "$computed": "fmt",
             "args": {
-              "value": {
-                "$state": "/m365-calendar/get_event/start/dateTime"
+              "pattern": "{date} · {start} – {end}",
+              "date": {
+                "$computed": "format_date",
+                "args": {
+                  "value": {
+                    "$state": "/m365-calendar/get_event/start/dateTime"
+                  },
+                  "format": "long"
+                }
               },
-              "format": "long"
+              "start": {
+                "$computed": "format_time",
+                "args": {
+                  "value": {
+                    "$state": "/m365-calendar/get_event/start/dateTime"
+                  }
+                }
+              },
+              "end": {
+                "$computed": "format_time",
+                "args": {
+                  "value": {
+                    "$state": "/m365-calendar/get_event/end/dateTime"
+                  }
+                }
+              }
             }
           }
         }
       },
-      "kvEnd": {
+      "kvOrganizer": {
         "type": "KeyValue",
         "props": {
-          "label": "Ends",
+          "label": "Organizer",
           "value": {
-            "$computed": "format_date",
-            "args": {
-              "value": {
-                "$state": "/m365-calendar/get_event/end/dateTime"
-              },
-              "format": "long"
-            }
+            "$state": "/m365-calendar/get_event/organizer/emailAddress/name"
           }
         }
       },
       "kvLocation": {
         "type": "KeyValue",
         "props": {
-          "label": "Location",
+          "label": "Where",
           "value": {
             "$state": "/m365-calendar/get_event/location/displayName"
           }
         }
       },
-      "divider": {
+      "attDivider": {
         "type": "Divider"
       },
-      "cancelBtn": {
-        "type": "Button",
+      "attHeader": {
+        "type": "Eyebrow",
         "props": {
-          "label": "Cancel meeting",
-          "variant": "ghost",
-          "size": "sm",
-          "leadingIcon": "X"
-        },
-        "on": {
-          "click": [
-            {
-              "action": "m365-calendar.cancel_event",
-              "params": {
-                "id": {
-                  "$state": "/ui/selectedEventId"
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} Attendees",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/m365-calendar/get_event/attendees"
+                  }
                 }
               }
-            },
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/selectedEventId",
-                "value": ""
-              }
-            },
-            {
-              "action": "m365-calendar.list_events",
-              "params": {
-                "limit": 20
+            }
+          }
+        }
+      },
+      "attList": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "attRow"
+        ],
+        "repeat": {
+          "statePath": "/m365-calendar/get_event/attendees",
+          "key": "emailAddress/address"
+        }
+      },
+      "attRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "attAvatar",
+          "attName"
+        ]
+      },
+      "attAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$item": "emailAddress/name"
               }
             }
-          ]
+          },
+          "size": "sm"
+        }
+      },
+      "attName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "emailAddress/name"
+          },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "descSection": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "descHtml"
+        ],
+        "visible": {
+          "$state": "/m365-calendar/get_event/body/content"
+        }
+      },
+      "descHtml": {
+        "type": "RichHtml",
+        "props": {
+          "html": {
+            "$state": "/m365-calendar/get_event/body/content"
+          },
+          "minHeight": 80,
+          "maxHeight": 320
+        }
+      },
+      "linksRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "justify": "end"
+        },
+        "children": [
+          "joinBtn",
+          "outlookBtn"
+        ]
+      },
+      "joinBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Join meeting",
+          "variant": "primary",
+          "size": "sm",
+          "leadingIcon": "Video"
+        },
+        "visible": {
+          "$state": "/m365-calendar/get_event/onlineMeeting/joinUrl"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$state": "/m365-calendar/get_event/onlineMeeting/joinUrl"
+              }
+            }
+          }
+        }
+      },
+      "outlookBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Open in Outlook",
+          "variant": "ghost",
+          "size": "sm",
+          "leadingIcon": "ExternalLink"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$state": "/m365-calendar/get_event/webLink"
+              }
+            }
+          }
         }
       }
     }

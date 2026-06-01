@@ -1,0 +1,351 @@
+{
+  "id": "github-roadmap",
+  "title": "Feature Roadmap",
+  "description": "GitHub Projects for an org or user, surfaced as feature roadmaps — title, summary, status, and visibility. Open projects first. Click to open the board on GitHub.",
+  "category": "engineering",
+  "tags": [
+    "github",
+    "projects",
+    "roadmap",
+    "planning",
+    "engineering"
+  ],
+  "keywords": [
+    "roadmap",
+    "projects",
+    "planning",
+    "milestones",
+    "features",
+    "github",
+    "backlog"
+  ],
+  "connectorsUsed": [
+    "github"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "github",
+    "tool": "projects_list",
+    "params": {
+      "method": "list_projects",
+      "owner": "mySMB-AI-Studio",
+      "owner_type": "org",
+      "per_page": 20
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/github/projects_list/projects": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/roadmap/rows",
+              "value": {
+                "$computed": "github_project_rows",
+                "args": {
+                  "value": {
+                    "$state": "/github/projects_list/projects"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "headerRow"
+        ]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": {
+          "justify": "between",
+          "align": "center"
+        },
+        "children": [
+          "titleGroup",
+          "refreshBtn"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Map",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "count"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Feature Roadmap",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{active} active · {total} total",
+              "active": {
+                "$computed": "github_count_open",
+                "args": {
+                  "value": {
+                    "$state": "/ui/roadmap/rows"
+                  }
+                }
+              },
+              "total": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/github/projects_list/projects"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": {
+          "icon": "RefreshCw",
+          "tone": "muted",
+          "size": "sm",
+          "ariaLabel": "Refresh"
+        },
+        "on": {
+          "click": {
+            "action": "github.projects_list",
+            "params": {
+              "method": "list_projects",
+              "owner": "mySMB-AI-Studio",
+              "owner_type": "org",
+              "per_page": 20
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/_loading/github.projects_list"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3.25rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3.25rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3.25rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No Projects found for this owner."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/github.projects_list",
+              "not": true
+            },
+            {
+              "$state": "/github/projects_list/projects/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "visible": {
+          "$state": "/_loading/github.projects_list",
+          "not": true
+        },
+        "repeat": {
+          "statePath": "/ui/roadmap/rows",
+          "key": "id"
+        },
+        "children": [
+          "row"
+        ]
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start",
+          "justify": "between",
+          "hover": true
+        },
+        "children": [
+          "rowLeft",
+          "rowRight"
+        ]
+      },
+      "rowLeft": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "projTitle",
+          "projDesc",
+          "projMeta"
+        ]
+      },
+      "projTitle": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "title"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "projDesc": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "description"
+          },
+          "truncate": true
+        }
+      },
+      "projMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{visibility} · updated {ago}",
+              "visibility": {
+                "$item": "visibility"
+              },
+              "ago": {
+                "$computed": "relative_time",
+                "args": {
+                  "value": {
+                    "$item": "updated_at"
+                  }
+                }
+              }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "rowRight": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "stateBadge",
+          "openBtn"
+        ]
+      },
+      "stateBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "state"
+          },
+          "tone": {
+            "$item": "tone"
+          }
+        }
+      },
+      "openBtn": {
+        "type": "IconButton",
+        "props": {
+          "icon": "ExternalLink",
+          "tone": "muted",
+          "size": "sm",
+          "ariaLabel": "Open on GitHub"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$item": "url"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}

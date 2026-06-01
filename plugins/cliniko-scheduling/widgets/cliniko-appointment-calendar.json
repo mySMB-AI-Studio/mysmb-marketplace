@@ -1,0 +1,181 @@
+{
+  "id": "cliniko-appointment-calendar",
+  "title": "Cliniko — Appointment calendar",
+  "description": "A month calendar of appointments with a per-day agenda — click any day to see its bookings.",
+  "category": "health",
+  "tags": [
+    "cliniko",
+    "scheduling",
+    "calendar",
+    "appointments"
+  ],
+  "keywords": [
+    "calendar",
+    "appointment",
+    "appointments",
+    "schedule",
+    "agenda",
+    "month",
+    "bookings",
+    "diary"
+  ],
+  "connectorsUsed": [
+    "cliniko-scheduling"
+  ],
+  "popularity": 90,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 8
+    },
+    "min": {
+      "colSpan": 5,
+      "rowSpan": 6
+    },
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "cliniko-scheduling",
+    "tool": "list_individual_appointments",
+    "params": {
+      "per_page": 100,
+      "sort": "starts_at:asc"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "hRow"
+        ]
+      },
+      "hRow": {
+        "type": "Row",
+        "props": {
+          "justify": "between",
+          "align": "center"
+        },
+        "children": [
+          "hg",
+          "refresh"
+        ]
+      },
+      "hg": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "hIcon",
+          "hTitle"
+        ]
+      },
+      "hIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "CalendarDays",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "hTitle": {
+        "type": "Heading",
+        "props": {
+          "text": "Appointment calendar",
+          "level": "h2"
+        }
+      },
+      "refresh": {
+        "type": "IconButton",
+        "props": {
+          "name": "RefreshCw",
+          "size": "sm",
+          "ariaLabel": "Refresh"
+        },
+        "on": {
+          "click": {
+            "action": "cliniko-scheduling.list_individual_appointments",
+            "params": {
+              "per_page": 100,
+              "sort": "starts_at:asc"
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "calendar"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "skTop",
+          "skGrid",
+          "skAgenda"
+        ],
+        "visible": {
+          "$state": "/_loading/cliniko-scheduling.list_individual_appointments"
+        }
+      },
+      "skTop": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        }
+      },
+      "skGrid": {
+        "type": "Skeleton",
+        "props": {
+          "height": "12rem",
+          "rounded": "md"
+        }
+      },
+      "skAgenda": {
+        "type": "Skeleton",
+        "props": {
+          "height": "4rem",
+          "rounded": "md"
+        }
+      },
+      "calendar": {
+        "type": "Calendar",
+        "props": {
+          "events": {
+            "$state": "/cliniko-scheduling/list_individual_appointments/individual_appointments"
+          },
+          "dateField": "starts_at",
+          "titleField": "notes",
+          "emptyMessage": "No appointments this day"
+        },
+        "visible": {
+          "$state": "/_loading/cliniko-scheduling.list_individual_appointments",
+          "not": true
+        }
+      }
+    }
+  },
+  "status": "published"
+}
