@@ -1,44 +1,16 @@
 {
-  "id": "dataverse-opportunity-pipeline-v2",
+  "id": "dataverse-opportunity-pipeline-v3",
   "title": "Opportunity Pipeline",
   "description": "Open opportunities grouped by sales stage — click a stage to see the deals inside it.",
   "category": "sales",
-  "tags": [
-    "dataverse",
-    "dynamics-365",
-    "sales",
-    "pipeline",
-    "opportunities",
-    "forecast",
-    "crm"
-  ],
-  "keywords": [
-    "pipeline",
-    "opportunities",
-    "opportunity",
-    "stages",
-    "forecast",
-    "weighted",
-    "sales",
-    "crm"
-  ],
-  "connectorsUsed": [
-    "dataverse"
-  ],
+  "tags": ["dataverse", "dynamics-365", "sales", "pipeline", "opportunities", "forecast", "crm"],
+  "keywords": ["pipeline", "opportunities", "opportunity", "stages", "forecast", "weighted", "sales", "crm"],
+  "connectorsUsed": ["dataverse"],
   "popularity": 0,
   "sizing": {
-    "preferred": {
-      "colSpan": 5,
-      "rowSpan": 5
-    },
-    "min": {
-      "colSpan": 4,
-      "rowSpan": 4
-    },
-    "max": {
-      "colSpan": 12,
-      "rowSpan": 12
-    }
+    "preferred": { "colSpan": 5, "rowSpan": 8 },
+    "min":       { "colSpan": 4, "rowSpan": 6 },
+    "max":       { "colSpan": 12, "rowSpan": 12 }
   },
   "dataProvider": {
     "mcp": "dataverse",
@@ -58,10 +30,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": [
-          "header",
-          "body"
-        ],
+        "children": ["headerRow", "statsGrid", "div1", "stageBody", "div2", "footer"],
         "watch": {
           "/dataverse/list_opportunities/items": {
             "action": "setState",
@@ -69,11 +38,7 @@
               "statePath": "/ui/pipeline/stages",
               "value": {
                 "$computed": "dataverse_pipeline_stages",
-                "args": {
-                  "value": {
-                    "$state": "/dataverse/list_opportunities/items"
-                  }
-                }
+                "args": { "value": { "$state": "/dataverse/list_opportunities/items" } }
               }
             }
           },
@@ -84,139 +49,93 @@
               "value": {
                 "$computed": "dataverse_ops_in_stage",
                 "args": {
-                  "value": {
-                    "$state": "/dataverse/list_opportunities/items"
-                  },
-                  "stage": {
-                    "$state": "/ui/pipeline/selectedStage"
-                  }
+                  "value": { "$state": "/dataverse/list_opportunities/items" },
+                  "stage": { "$state": "/ui/pipeline/selectedStage" }
                 }
               }
             }
           }
         }
       },
-      "header": {
-        "type": "Header",
-        "props": {},
-        "children": [
-          "titleRow"
-        ]
-      },
-      "titleRow": {
+
+      "headerRow": {
         "type": "Row",
         "props": { "justify": "between", "align": "center" },
         "children": ["titleGroup", "brandBadge"]
       },
-      "brandBadge": {
-        "type": "Badge",
-        "props": { "text": "Dynamics 365", "tone": "info" }
-      },
       "titleGroup": {
         "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "center"
-        },
-        "children": [
-          "titleIcon",
-          "titleStack"
-        ]
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
       },
-      "titleIcon": {
-        "type": "Icon",
-        "props": {
-          "name": "TrendingUp",
-          "tone": "accent",
-          "size": "sm"
-        }
+      "titleIcon": { "type": "Icon", "props": { "name": "TrendingUp", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Opportunity Pipeline", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Dynamics 365 Sales" } },
+      "brandBadge": { "type": "Badge", "props": { "text": "Dynamics 365", "tone": "info" } },
+
+      "statsGrid": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["tileOpen", "tileValue"]
       },
-      "titleStack": {
-        "type": "Stack",
-        "props": {
-          "gap": "none"
-        },
-        "children": [
-          "title",
-          "totalEyebrow"
-        ]
-      },
-      "title": {
+      "tileOpen": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackOpen"] },
+      "stackOpen": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconOpen", "valOpen", "lblOpen"] },
+      "iconOpen": { "type": "Icon", "props": { "name": "TrendingUp", "size": "sm", "tone": "accent" } },
+      "valOpen": {
         "type": "Heading",
         "props": {
-          "text": "Opportunity Pipeline",
+          "text": { "$computed": "count", "args": { "value": { "$state": "/dataverse/list_opportunities/items" } } },
           "level": "h2"
         }
       },
-      "totalEyebrow": {
-        "type": "Eyebrow",
+      "lblOpen": { "type": "Caption", "props": { "text": "Open" } },
+
+      "tileValue": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackValue"] },
+      "stackValue": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconValue", "valValue", "lblValue"] },
+      "iconValue": { "type": "Icon", "props": { "name": "Banknote", "size": "sm", "tone": "positive" } },
+      "valValue": {
+        "type": "Heading",
         "props": {
           "text": {
-            "$computed": "fmt",
+            "$computed": "format_currency",
             "args": {
-              "pattern": "{n} open · {amount}",
-              "n": {
-                "$computed": "count",
+              "value": {
+                "$computed": "sum",
                 "args": {
-                  "value": {
-                    "$state": "/dataverse/list_opportunities/items"
-                  }
-                }
-              },
-              "amount": {
-                "$computed": "format_currency",
-                "args": {
-                  "value": {
-                    "$computed": "sum",
-                    "args": {
-                      "value": {
-                        "$state": "/dataverse/list_opportunities/items"
-                      },
-                      "field": "estimatedvalue"
-                    }
-                  }
+                  "value": { "$state": "/dataverse/list_opportunities/items" },
+                  "field": "estimatedvalue"
                 }
               }
             }
-          }
+          },
+          "level": "h2"
         }
       },
-      "body": {
+      "lblValue": { "type": "Caption", "props": { "text": "Pipeline Value" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "stageBody": {
         "type": "Body",
         "props": {},
-        "children": [
-          "loading",
-          "empty",
-          "stages",
-          "breakdown",
-          "footerDivider",
-          "footer"
-        ]
+        "children": ["loading", "empty", "stages", "breakdown"]
       },
+
       "loading": {
         "type": "Stack",
-        "props": {
-          "gap": "sm"
-        },
-        "children": [
-          "sk1",
-          "sk2",
-          "sk3",
-          "sk4"
-        ],
-        "visible": {
-          "$state": "/_loading/dataverse.list_opportunities"
-        }
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/dataverse.list_opportunities" }
       },
       "sk1": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
       "sk2": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
       "sk3": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
       "sk4": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+
       "empty": {
         "type": "Empty",
-        "props": {
-          "message": "No open opportunities — time to prospect."
-        },
+        "props": { "message": "No open opportunities — time to prospect." },
         "visible": {
           "$and": [
             { "$state": "/_loading/dataverse.list_opportunities", "not": true },
@@ -224,18 +143,12 @@
           ]
         }
       },
+
       "stages": {
         "type": "Stack",
-        "props": {
-          "gap": "xs"
-        },
-        "children": [
-          "stageRow"
-        ],
-        "repeat": {
-          "statePath": "/ui/pipeline/stages",
-          "key": "key"
-        },
+        "props": { "gap": "xs" },
+        "children": ["stageRow"],
+        "repeat": { "statePath": "/ui/pipeline/stages", "key": "key" },
         "visible": {
           "$and": [
             { "$state": "/_loading/dataverse.list_opportunities", "not": true },
@@ -246,75 +159,33 @@
       "stageRow": {
         "type": "Row",
         "props": {
-          "gap": "sm",
-          "align": "center",
-          "justify": "between",
-          "hover": true,
-          "clickable": true,
-          "selected": {
-            "$computed": "equals",
-            "args": {
-              "a": { "$item": "key" },
-              "b": { "$state": "/ui/pipeline/selectedStage" }
-            }
-          }
+          "gap": "sm", "align": "center", "justify": "between",
+          "hover": true, "clickable": true,
+          "selected": { "$computed": "equals", "args": { "a": { "$item": "key" }, "b": { "$state": "/ui/pipeline/selectedStage" } } }
         },
-        "children": [
-          "stageLeft",
-          "stageRight"
-        ],
+        "children": ["stageLeft", "stageRight"],
         "on": {
           "click": {
             "action": "setState",
             "params": {
               "statePath": "/ui/pipeline/selectedStage",
-              "value": {
-                "$computed": "identity",
-                "args": {
-                  "value": { "$item": "key" }
-                }
-              }
+              "value": { "$computed": "identity", "args": { "value": { "$item": "key" } } }
             }
           }
         }
       },
       "stageLeft": {
         "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "center",
-          "grow": true
-        },
-        "children": [
-          "stageDot",
-          "stageTextStack"
-        ]
+        "props": { "gap": "sm", "align": "center", "grow": true },
+        "children": ["stageDot", "stageTextStack"]
       },
-      "stageDot": {
-        "type": "Dot",
-        "props": {
-          "tone": { "$item": "tone" },
-          "size": "sm"
-        }
-      },
+      "stageDot": { "type": "Dot", "props": { "tone": { "$item": "tone" }, "size": "sm" } },
       "stageTextStack": {
         "type": "Stack",
-        "props": {
-          "gap": "none"
-        },
-        "children": [
-          "stageLabel",
-          "stageSublabel"
-        ]
+        "props": { "gap": "none" },
+        "children": ["stageLabel", "stageSublabel"]
       },
-      "stageLabel": {
-        "type": "Text",
-        "props": {
-          "text": { "$item": "key" },
-          "size": "sm",
-          "weight": "medium"
-        }
-      },
+      "stageLabel": { "type": "Text", "props": { "text": { "$item": "key" }, "size": "sm", "weight": "medium" } },
       "stageSublabel": {
         "type": "Caption",
         "props": {
@@ -323,157 +194,72 @@
             "args": {
               "pattern": "{n} open · {weighted} weighted",
               "n": { "$item": "count" },
-              "weighted": {
-                "$computed": "format_currency",
-                "args": {
-                  "value": { "$item": "weighted" }
-                }
-              }
+              "weighted": { "$computed": "format_currency", "args": { "value": { "$item": "weighted" } } }
             }
           }
         }
       },
       "stageRight": {
         "type": "Stack",
-        "props": {
-          "gap": "none",
-          "align": "end"
-        },
-        "children": [
-          "stageTotal"
-        ]
+        "props": { "gap": "none", "align": "end" },
+        "children": ["stageTotal"]
       },
       "stageTotal": {
         "type": "Text",
         "props": {
-          "text": {
-            "$computed": "format_currency",
-            "args": {
-              "value": { "$item": "total" }
-            }
-          },
-          "size": "sm",
-          "weight": "semibold"
+          "text": { "$computed": "format_currency", "args": { "value": { "$item": "total" } } },
+          "size": "sm", "weight": "semibold"
         }
       },
+
       "breakdown": {
         "type": "Stack",
-        "props": {
-          "gap": "xs"
-        },
-        "children": [
-          "breakdownHeader",
-          "breakdownDivider",
-          "breakdownList",
-          "breakdownEmpty"
-        ],
-        "visible": {
-          "$state": "/ui/pipeline/selectedStage"
-        }
+        "props": { "gap": "xs" },
+        "children": ["breakdownHeader", "breakdownDivider", "breakdownList", "breakdownEmpty"],
+        "visible": { "$state": "/ui/pipeline/selectedStage" }
       },
-      "breakdownDivider": {
-        "type": "Divider",
-        "props": {}
-      },
+      "breakdownDivider": { "type": "Divider", "props": {} },
       "breakdownHeader": {
         "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "center",
-          "justify": "between"
-        },
-        "children": [
-          "breakdownTitle",
-          "breakdownClose"
-        ]
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["breakdownTitle", "breakdownClose"]
       },
       "breakdownTitle": {
         "type": "Caption",
         "props": {
           "text": {
             "$computed": "fmt",
-            "args": {
-              "pattern": "{stage} stage",
-              "stage": {
-                "$state": "/ui/pipeline/selectedStage"
-              }
-            }
+            "args": { "pattern": "{stage} stage", "stage": { "$state": "/ui/pipeline/selectedStage" } }
           }
         }
       },
       "breakdownClose": {
         "type": "IconButton",
-        "props": {
-          "icon": "X",
-          "tone": "muted",
-          "ariaLabel": "Close breakdown",
-          "size": "sm"
-        },
-        "on": {
-          "click": {
-            "action": "setState",
-            "params": {
-              "statePath": "/ui/pipeline/selectedStage",
-              "value": ""
-            }
-          }
-        }
+        "props": { "icon": "X", "tone": "muted", "ariaLabel": "Close breakdown", "size": "sm" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/pipeline/selectedStage", "value": "" } } }
       },
       "breakdownList": {
         "type": "Stack",
-        "props": {
-          "gap": "xs"
-        },
-        "children": [
-          "bdRow"
-        ],
-        "repeat": {
-          "statePath": "/ui/pipeline/breakdown",
-          "key": "opportunityid"
-        }
+        "props": { "gap": "xs" },
+        "children": ["bdRow"],
+        "repeat": { "statePath": "/ui/pipeline/breakdown", "key": "opportunityid" }
       },
       "breakdownEmpty": {
         "type": "Caption",
-        "props": {
-          "text": "No opportunities in this stage."
-        },
-        "visible": {
-          "$state": "/ui/pipeline/breakdown/0",
-          "not": true
-        }
+        "props": { "text": "No opportunities in this stage." },
+        "visible": { "$state": "/ui/pipeline/breakdown/0", "not": true }
       },
       "bdRow": {
         "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "start",
-          "hover": true
-        },
-        "children": [
-          "bdLeft",
-          "bdRight"
-        ]
+        "props": { "gap": "sm", "align": "start", "hover": true },
+        "children": ["bdLeft", "bdRight"]
       },
       "bdLeft": {
         "type": "Stack",
-        "props": {
-          "gap": "none",
-          "grow": true
-        },
-        "children": [
-          "bdCustomer",
-          "bdMeta"
-        ]
+        "props": { "gap": "none", "grow": true },
+        "children": ["bdCustomer", "bdMeta"]
       },
-      "bdCustomer": {
-        "type": "Text",
-        "props": {
-          "text": { "$item": "customerid_account/name" },
-          "size": "sm",
-          "weight": "medium",
-          "truncate": true
-        }
-      },
+      "bdCustomer": { "type": "Text", "props": { "text": { "$item": "customerid_account/name" }, "size": "sm", "weight": "medium", "truncate": true } },
       "bdMeta": {
         "type": "Caption",
         "props": {
@@ -482,38 +268,21 @@
             "args": {
               "pattern": "{name} · {label}",
               "name": { "$item": "name" },
-              "label": {
-                "$computed": "dataverse_close_label",
-                "args": {
-                  "value": { "$item": "estimatedclosedate" }
-                }
-              }
+              "label": { "$computed": "dataverse_close_label", "args": { "value": { "$item": "estimatedclosedate" } } }
             }
           }
         }
       },
       "bdRight": {
         "type": "Stack",
-        "props": {
-          "gap": "none",
-          "align": "end"
-        },
-        "children": [
-          "bdAmount",
-          "bdWeighted"
-        ]
+        "props": { "gap": "none", "align": "end" },
+        "children": ["bdAmount", "bdWeighted"]
       },
       "bdAmount": {
         "type": "Text",
         "props": {
-          "text": {
-            "$computed": "format_currency",
-            "args": {
-              "value": { "$item": "estimatedvalue" }
-            }
-          },
-          "size": "sm",
-          "weight": "semibold"
+          "text": { "$computed": "format_currency", "args": { "value": { "$item": "estimatedvalue" } } },
+          "size": "sm", "weight": "semibold"
         }
       },
       "bdWeighted": {
@@ -529,10 +298,7 @@
                 "args": {
                   "value": {
                     "$computed": "dataverse_weighted",
-                    "args": {
-                      "value": { "$item": "estimatedvalue" },
-                      "probability": { "$item": "closeprobability" }
-                    }
+                    "args": { "value": { "$item": "estimatedvalue" }, "probability": { "$item": "closeprobability" } }
                   }
                 }
               }
@@ -540,7 +306,8 @@
           }
         }
       },
-      "footerDivider": { "type": "Divider", "props": {} },
+
+      "div2": { "type": "Divider", "props": {} },
       "footer": {
         "type": "Row",
         "props": { "justify": "end", "gap": "xs", "align": "center" },
@@ -548,12 +315,7 @@
       },
       "footerBtn": {
         "type": "Button",
-        "props": {
-          "label": "Open in D365",
-          "variant": "ghost",
-          "size": "sm",
-          "leadingIcon": "ExternalLink"
-        },
+        "props": { "label": "Open in D365", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
         "on": {
           "click": {
             "action": "open_url",
