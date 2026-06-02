@@ -61,7 +61,7 @@
                 "args": { "value": { "$state": "/myob-accounting/list_bills/Items" } }
               },
               "total": {
-                "$computed": "format_currency",
+                "$computed": "myob-accounting_format_currency",
                 "args": {
                   "value": {
                     "$computed": "sum",
@@ -97,13 +97,23 @@
       "statGrid": {
         "type": "Grid",
         "props": { "cols": 2, "gap": "md" },
-        "children": ["statCount", "statTotal"],
+        "children": ["statCountSection", "statTotalSection"],
         "visible": {
           "$and": [
             { "$state": "/_loading/myob-accounting.list_bills", "not": true },
             { "$state": "/myob-accounting/list_bills/Items/0" }
           ]
         }
+      },
+      "statCountSection": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["statCount"]
+      },
+      "statTotalSection": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["statTotal"]
       },
       "statCount": {
         "type": "Stack",
@@ -137,7 +147,7 @@
         "type": "Stat",
         "props": {
           "value": {
-            "$computed": "format_currency",
+            "$computed": "myob-accounting_format_currency",
             "args": {
               "value": {
                 "$computed": "sum",
@@ -191,11 +201,11 @@
       "row": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center", "hover": true },
-        "children": ["label", "dueBadge", "amount"]
+        "children": ["label", "dueBadgeWrap", "amount"]
       },
       "label": {
         "type": "Stack",
-        "props": { "gap": "none", "grow": true },
+        "props": { "gap": "xs", "grow": true },
         "children": ["labelTop", "labelBottom"]
       },
       "labelTop": {
@@ -215,6 +225,11 @@
             "args": { "pattern": "#{num}", "num": { "$item": "Number" } }
           }
         }
+      },
+      "dueBadgeWrap": {
+        "type": "Row",
+        "props": { "justify": "center" },
+        "children": ["dueBadge"]
       },
       "dueBadge": {
         "type": "Badge",
@@ -237,12 +252,12 @@
         "type": "Text",
         "props": {
           "text": {
-            "$computed": "format_currency",
+            "$computed": "myob-accounting_format_currency",
             "args": { "value": { "$item": "BalanceDueAmount" } }
           },
-          "size": "md",
-          "weight": "bold",
-          "tone": "destructive"
+          "size": "sm",
+          "weight": "semibold",
+          "align": "end"
         }
       },
       "rowDivider": {
