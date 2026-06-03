@@ -154,6 +154,187 @@ const count_open: ComputedFunction = (args) => {
   return rows.filter((r) => str(r.state).toLowerCase() === 'open').length;
 };
 
+// ── gantt_status_tone ───────────────────────────────────────────────
+//
+// Map a GitHub Project v2 Status single-select value to a tone for the
+// Gantt bar. The status names used here match the defaults in the
+// "myHub Requirements" project (#3). Anything we don't recognise falls
+// back to `accent` so an unfilled bar is still visible rather than a
+// silent no-op.
+//
+// Args: { value: string } — the Status field's text value
+
+const gantt_status_tone: ComputedFunction = (args) => {
+  const s = str(args.value).toLowerCase();
+  if (s === 'done' || s === 'closed') return 'success';
+  if (s === 'in progress' || s === 'in review') return 'accent';
+  if (s === 'blocked' || s === 'on hold') return 'destructive';
+  if (s === 'todo' || s === 'backlog' || s === 'planned') return 'info';
+  return 'accent';
+};
+
+// ── gantt_data ──────────────────────────────────────────────────────
+//
+// Normalise a "project items + iterations" payload into the shape the
+// Gantt widget renders. Accepts the response of whatever MCP tool the
+// data provider points at — the wrapping is tolerated so the widget
+// JSON doesn't have to know the precise envelope.
+//
+// Expected (canonical) input:
+//   {
+//     iterations: [{ id, title, startDate, duration }, …],   // active + completed, time-ordered
+//     items:      [{
+//       id, number, title, status, url,
+//       iterationId,                  // matches one of iterations[].id
+//     }, …]
+//   }
+//
+// Tolerated variants:
+//   - The whole `projects_list_items` / GraphQL response with items
+//     nested under `.items` and iterations under `.field.configuration.iterations`.
+//     The function flattens those shapes.
+//   - An item's `iteration` may arrive as either the bare id string or
+//     an object `{ iterationId, title, startDate }` — both are handled.
+//
+// Output:
+//   {
+//     iterations: [{ id, title, startDate }, …],          // sorted by startDate asc
+//     items: [{
+//       id, number, title, status, statusTone, url,
+//       iterationId, iterationIndex,                       // 0-based slot in iterations[]
+//       template: string,                                   // CSS grid-template-columns
+//                                                          // for one Row: "180px 0fr … 1fr … 0fr"
+//     }, …]
+//   }
+//
+// The `template` string drives the visual bar position. The Row that
+// consumes it has exactly (1 + iterations.length + 1) children — a
+// fixed-width title cell, then one cell per iteration, ending with the
+// item's bar cell positioned by the `1fr` slot in `template`.
+
+interface RawIteration {
+  id?: string;
+  title?: string;
+  startDate?: string;
+  duration?: number;
+}
+
+interface RawItem {
+  id?: string | number;
+  number?: number;
+  title?: string;
+  status?: string | { name?: string };
+  state?: string;
+  url?: string;
+  iterationId?: string;
+  iteration?: string | { id?: string; iterationId?: string; title?: string };
+  content?: { number?: number; title?: string; url?: string; state?: string };
+}
+
+function extractIterations(payload: unknown): RawIteration[] {
+  if (Array.isArray(payload)) return payload as RawIteration[];
+  if (payload && typeof payload === 'object') {
+    const p = payload as Record<string, unknown>;
+    if (Array.isArray(p.iterations)) return p.iterations as RawIteration[];
+    // GraphQL-style envelope: field.configuration.{iterations, completedIterations}.
+    const config = (p.field as { configuration?: { iterations?: RawIteration[]; completedIterations?: RawIteration[] } } | undefined)?.configuration;
+    if (config) {
+      const active = Array.isArray(config.iterations) ? config.iterations : [];
+      const done = Array.isArray(config.completedIterations) ? config.completedIterations : [];
+      return [...done, ...active];
+    }
+  }
+  return [];
+}
+
+function extractItems(payload: unknown): RawItem[] {
+  if (Array.isArray(payload)) return payload as RawItem[];
+  if (payload && typeof payload === 'object') {
+    const p = payload as Record<string, unknown>;
+    if (Array.isArray(p.items)) return p.items as RawItem[];
+    if (Array.isArray(p.nodes)) return p.nodes as RawItem[];
+  }
+  return [];
+}
+
+function itemIterationId(item: RawItem): string | null {
+  if (typeof item.iterationId === 'string' && item.iterationId) return item.iterationId;
+  const it = item.iteration;
+  if (typeof it === 'string') return it;
+  if (it && typeof it === 'object') return str(it.iterationId) || str(it.id) || null;
+  return null;
+}
+
+function itemStatus(item: RawItem): string {
+  if (typeof item.status === 'string') return item.status;
+  if (item.status && typeof item.status === 'object') return str(item.status.name);
+  if (item.state) return item.state;
+  return '';
+}
+
+function buildTemplate(iterationIndex: number, total: number): string {
+  // 180px title column + total cells (one per iteration). Active cell
+  // gets 1fr; siblings get 0fr so they collapse to zero width while
+  // still occupying a grid slot for `children[]` alignment.
+  const cells: string[] = ['180px'];
+  for (let i = 0; i < total; i++) {
+    cells.push(i === iterationIndex ? '1fr' : '0fr');
+  }
+  return cells.join(' ');
+}
+
+const gantt_data: ComputedFunction = (args) => {
+  const rawIterations = extractIterations(args.value);
+  const iterations = rawIterations
+    .map((it) => ({
+      id: str(it.id),
+      title: str(it.title) || str(it.id),
+      startDate: str(it.startDate),
+    }))
+    .filter((it) => it.id)
+    .sort((a, b) => a.startDate.localeCompare(b.startDate));
+
+  const idToIndex = new Map<string, number>();
+  iterations.forEach((it, i) => idToIndex.set(it.id, i));
+
+  const rawItems = extractItems(args.value);
+  const items = rawItems
+    .map((raw) => {
+      const iterationId = itemIterationId(raw);
+      if (!iterationId || !idToIndex.has(iterationId)) return null;
+      const iterationIndex = idToIndex.get(iterationId) ?? 0;
+      const number =
+        typeof raw.number === 'number'
+          ? raw.number
+          : typeof raw.content?.number === 'number'
+            ? raw.content.number
+            : null;
+      const title = str(raw.title) || str(raw.content?.title) || (number != null ? `#${number}` : '');
+      const url = str(raw.url) || str(raw.content?.url);
+      const status = itemStatus(raw);
+      return {
+        id: str(raw.id) || (number != null ? `i${number}` : title),
+        number,
+        title,
+        status,
+        statusTone: (gantt_status_tone({ value: status }) as string) || 'accent',
+        url,
+        iterationId,
+        iterationIndex,
+        template: buildTemplate(iterationIndex, iterations.length),
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+
+  // Earliest iteration first, then alphabetical title within an iteration.
+  items.sort((a, b) => {
+    if (a.iterationIndex !== b.iterationIndex) return a.iterationIndex - b.iterationIndex;
+    return a.title.localeCompare(b.title);
+  });
+
+  return { iterations, items };
+};
+
 const elements: PluginElementsModule = {
   slug: 'github',
   functions: {
@@ -161,6 +342,8 @@ const elements: PluginElementsModule = {
     issue_state_tone,
     project_rows,
     count_open,
+    gantt_status_tone,
+    gantt_data,
   },
 };
 
