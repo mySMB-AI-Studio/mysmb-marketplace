@@ -54,11 +54,57 @@ const overdue_buckets = (args) => {
     }).filter((b) => b.count > 0);
     return { buckets, total: grandTotal, count: grandCount };
 };
+// ── ar_by_customer ───────────────────────────────────────────────────
+// Aggregates open invoices by customer to produce a per-customer AR summary.
+// Entries are sorted worst-first: most-overdue customers at top, then by
+// total balance descending. Each entry carries pre-computed badgeText and
+// badgeTone so the widget renders without additional $computed calls.
+// Returns { entries: [{ uid, name, total, invoiceCount, overdueCount,
+//   maxDaysOverdue, badgeText, badgeTone }], grandTotal, customerCount }
+// Args: { value: Invoice[] }
+const ar_by_customer = (args) => {
+    const items = Array.isArray(args.value) ? args.value : [];
+    const now = Date.now();
+    const MS_PER_DAY = 86_400_000;
+    const map = new Map();
+    for (const item of items) {
+        const customer = item['Customer'];
+        const uid = String(customer?.['UID'] ?? 'unknown');
+        const name = String(customer?.['Name'] ?? 'Unknown');
+        const amount = Number(item['BalanceDueAmount']) || 0;
+        const due = new Date(String(item['DueDate'])).getTime();
+        const daysOverdue = Number.isFinite(due) ? Math.max(0, Math.floor((now - due) / MS_PER_DAY)) : 0;
+        const existing = map.get(uid);
+        if (existing) {
+            existing.total += amount;
+            existing.invoiceCount += 1;
+            if (daysOverdue > 0) existing.overdueCount += 1;
+            if (daysOverdue > existing.maxDaysOverdue) existing.maxDaysOverdue = daysOverdue;
+        } else {
+            map.set(uid, { uid, name, total: amount, invoiceCount: 1,
+                overdueCount: daysOverdue > 0 ? 1 : 0, maxDaysOverdue: daysOverdue });
+        }
+    }
+    let grandTotal = 0;
+    const entries = Array.from(map.values())
+        .sort((a, b) => b.maxDaysOverdue - a.maxDaysOverdue || b.total - a.total)
+        .map((e) => {
+            grandTotal += e.total;
+            const badgeTone = e.maxDaysOverdue > 30 ? 'destructive'
+                : e.maxDaysOverdue > 0 ? 'warning' : 'info';
+            const badgeText = e.overdueCount > 0
+                ? `${e.overdueCount} overdue`
+                : `${e.invoiceCount} invoice${e.invoiceCount !== 1 ? 's' : ''}`;
+            return { ...e, badgeText, badgeTone };
+        });
+    return { entries, grandTotal, customerCount: entries.length };
+};
 const elements = {
     slug: 'myob-accounting',
     functions: {
         format_currency,
         overdue_buckets,
+        ar_by_customer,
     },
 };
 export default elements;
