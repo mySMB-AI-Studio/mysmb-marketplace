@@ -23,7 +23,51 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "body"]
+        "children": ["header", "body"],
+        "watch": {
+          "/myob-accounting/list_invoices/Items": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortedItems",
+              "value": {
+                "$computed": "myob-accounting_sort_items",
+                "args": {
+                  "value": { "$state": "/myob-accounting/list_invoices/Items" },
+                  "field": { "$state": "/ui/sort/col" },
+                  "dir": { "$state": "/ui/sort/dir" }
+                }
+              }
+            }
+          },
+          "/ui/sort/col": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortedItems",
+              "value": {
+                "$computed": "myob-accounting_sort_items",
+                "args": {
+                  "value": { "$state": "/myob-accounting/list_invoices/Items" },
+                  "field": { "$state": "/ui/sort/col" },
+                  "dir": { "$state": "/ui/sort/dir" }
+                }
+              }
+            }
+          },
+          "/ui/sort/dir": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortedItems",
+              "value": {
+                "$computed": "myob-accounting_sort_items",
+                "args": {
+                  "value": { "$state": "/myob-accounting/list_invoices/Items" },
+                  "field": { "$state": "/ui/sort/col" },
+                  "dir": { "$state": "/ui/sort/dir" }
+                }
+              }
+            }
+          }
+        }
       },
 
       "header": {
@@ -51,36 +95,13 @@
       },
       "subtitle": {
         "type": "Eyebrow",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{n} open · {total} outstanding",
-              "n": {
-                "$computed": "count",
-                "args": { "value": { "$state": "/myob-accounting/list_invoices/Items" } }
-              },
-              "total": {
-                "$computed": "myob-accounting_format_currency",
-                "args": {
-                  "value": {
-                    "$computed": "sum",
-                    "args": {
-                      "value": { "$state": "/myob-accounting/list_invoices/Items" },
-                      "field": "BalanceDueAmount"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
+        "props": { "text": "MYOB Accounting" }
       },
 
       "body": {
         "type": "Body",
         "props": {},
-        "children": ["loading", "statGrid", "divider0", "empty", "list"]
+        "children": ["loading", "statGrid", "divider0", "empty", "colHeaders", "colHeaderDivider", "list"]
       },
 
       "loading": {
@@ -183,12 +204,99 @@
         }
       },
 
+      "colHeaders": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "template": "minmax(0, 1fr) 6rem 7rem" },
+        "children": ["hdrNameWrap", "hdrNumWrap", "hdrAmtWrap"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myob-accounting.list_invoices", "not": true },
+            { "$state": "/myob-accounting/list_invoices/Items/0" }
+          ]
+        }
+      },
+      "hdrNameWrap": {
+        "type": "Row",
+        "props": { "justify": "start" },
+        "children": ["hdrName"]
+      },
+      "hdrName": {
+        "type": "Button",
+        "props": {
+          "label": {
+            "$computed": "myob-accounting_sort_label",
+            "args": { "label": "Customer", "col": "Customer/Name", "currentCol": { "$state": "/ui/sort/col" }, "currentDir": { "$state": "/ui/sort/dir" } }
+          },
+          "variant": "ghost",
+          "size": "xs"
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/sort/dir", "value": { "$computed": "myob-accounting_sort_toggle_dir", "args": { "col": "Customer/Name", "currentCol": { "$state": "/ui/sort/col" }, "currentDir": { "$state": "/ui/sort/dir" } } } } },
+            { "action": "setState", "params": { "statePath": "/ui/sort/col", "value": "Customer/Name" } }
+          ]
+        }
+      },
+      "hdrNumWrap": {
+        "type": "Row",
+        "props": { "justify": "center" },
+        "children": ["hdrNum"]
+      },
+      "hdrNum": {
+        "type": "Button",
+        "props": {
+          "label": {
+            "$computed": "myob-accounting_sort_label",
+            "args": { "label": "Status", "col": "DueDate", "currentCol": { "$state": "/ui/sort/col" }, "currentDir": { "$state": "/ui/sort/dir" } }
+          },
+          "variant": "ghost",
+          "size": "xs"
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/sort/dir", "value": { "$computed": "myob-accounting_sort_toggle_dir", "args": { "col": "DueDate", "currentCol": { "$state": "/ui/sort/col" }, "currentDir": { "$state": "/ui/sort/dir" } } } } },
+            { "action": "setState", "params": { "statePath": "/ui/sort/col", "value": "DueDate" } }
+          ]
+        }
+      },
+      "hdrAmtWrap": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["hdrAmt"]
+      },
+      "hdrAmt": {
+        "type": "Button",
+        "props": {
+          "label": {
+            "$computed": "myob-accounting_sort_label",
+            "args": { "label": "Amount", "col": "BalanceDueAmount", "currentCol": { "$state": "/ui/sort/col" }, "currentDir": { "$state": "/ui/sort/dir" } }
+          },
+          "variant": "ghost",
+          "size": "xs"
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/sort/dir", "value": { "$computed": "myob-accounting_sort_toggle_dir", "args": { "col": "BalanceDueAmount", "currentCol": { "$state": "/ui/sort/col" }, "currentDir": { "$state": "/ui/sort/dir" } } } } },
+            { "action": "setState", "params": { "statePath": "/ui/sort/col", "value": "BalanceDueAmount" } }
+          ]
+        }
+      },
+      "colHeaderDivider": {
+        "type": "Divider",
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myob-accounting.list_invoices", "not": true },
+            { "$state": "/myob-accounting/list_invoices/Items/0" }
+          ]
+        }
+      },
+
       "list": {
         "type": "Stack",
         "props": { "gap": "none" },
         "children": ["rowWrapper"],
         "repeat": {
-          "statePath": "/myob-accounting/list_invoices/Items",
+          "statePath": "/ui/sortedItems",
           "key": "UID"
         },
         "visible": { "$state": "/_loading/myob-accounting.list_invoices", "not": true }
@@ -200,12 +308,12 @@
       },
       "row": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center", "hover": true },
-        "children": ["label", "dueBadgeWrap", "amount"]
+        "props": { "gap": "sm", "align": "center", "hover": true, "template": "minmax(0, 1fr) 6rem 7rem" },
+        "children": ["label", "dueBadgeWrap", "amountWrap"]
       },
       "label": {
         "type": "Stack",
-        "props": { "gap": "xs", "grow": true },
+        "props": { "gap": "xs" },
         "children": ["labelTop", "labelBottom"]
       },
       "labelTop": {
@@ -248,6 +356,11 @@
           "variant": "soft"
         }
       },
+      "amountWrap": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["amount"]
+      },
       "amount": {
         "type": "Text",
         "props": {
@@ -257,13 +370,13 @@
           },
           "size": "sm",
           "weight": "semibold",
-          "tone": "accent",
-          "align": "end"
+          "tone": "accent"
         }
       },
       "rowDivider": {
         "type": "Divider"
       }
     }
-  }
+  },
+  "status": "published"
 }

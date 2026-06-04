@@ -31,7 +31,39 @@
               "statePath": "/ui/arData",
               "value": {
                 "$computed": "myob-accounting_ar_by_customer",
-                "args": { "value": { "$state": "/myob-accounting/list_invoices/Items" } }
+                "args": {
+                  "value": { "$state": "/myob-accounting/list_invoices/Items" },
+                  "sortCol": { "$state": "/ui/sort/col" },
+                  "sortDir": { "$state": "/ui/sort/dir" }
+                }
+              }
+            }
+          },
+          "/ui/sort/col": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/arData",
+              "value": {
+                "$computed": "myob-accounting_ar_by_customer",
+                "args": {
+                  "value": { "$state": "/myob-accounting/list_invoices/Items" },
+                  "sortCol": { "$state": "/ui/sort/col" },
+                  "sortDir": { "$state": "/ui/sort/dir" }
+                }
+              }
+            }
+          },
+          "/ui/sort/dir": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/arData",
+              "value": {
+                "$computed": "myob-accounting_ar_by_customer",
+                "args": {
+                  "value": { "$state": "/myob-accounting/list_invoices/Items" },
+                  "sortCol": { "$state": "/ui/sort/col" },
+                  "sortDir": { "$state": "/ui/sort/dir" }
+                }
               }
             }
           }
@@ -63,25 +95,13 @@
       },
       "subtitle": {
         "type": "Eyebrow",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{n} customers · {total} outstanding",
-              "n": { "$state": "/ui/arData/customerCount" },
-              "total": {
-                "$computed": "myob-accounting_format_currency",
-                "args": { "value": { "$state": "/ui/arData/grandTotal" } }
-              }
-            }
-          }
-        }
+        "props": { "text": "MYOB Accounting" }
       },
 
       "body": {
         "type": "Body",
         "props": {},
-        "children": ["loading", "statGrid", "divider0", "empty", "list"]
+        "children": ["loading", "statGrid", "divider0", "empty", "colHeaders", "colHeaderDivider", "list"]
       },
 
       "loading": {
@@ -173,6 +193,93 @@
         }
       },
 
+      "colHeaders": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "template": "minmax(0, 1fr) 6rem 7rem" },
+        "children": ["hdrNameWrap", "hdrInvWrap", "hdrAmtWrap"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myob-accounting.list_invoices", "not": true },
+            { "$state": "/ui/arData/customerCount" }
+          ]
+        }
+      },
+      "hdrNameWrap": {
+        "type": "Row",
+        "props": { "justify": "start" },
+        "children": ["hdrName"]
+      },
+      "hdrName": {
+        "type": "Button",
+        "props": {
+          "label": {
+            "$computed": "myob-accounting_sort_label",
+            "args": { "label": "Customer", "col": "name", "currentCol": { "$state": "/ui/sort/col" }, "currentDir": { "$state": "/ui/sort/dir" } }
+          },
+          "variant": "ghost",
+          "size": "xs"
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/sort/dir", "value": { "$computed": "myob-accounting_sort_toggle_dir", "args": { "col": "name", "currentCol": { "$state": "/ui/sort/col" }, "currentDir": { "$state": "/ui/sort/dir" } } } } },
+            { "action": "setState", "params": { "statePath": "/ui/sort/col", "value": "name" } }
+          ]
+        }
+      },
+      "hdrInvWrap": {
+        "type": "Row",
+        "props": { "justify": "center" },
+        "children": ["hdrInv"]
+      },
+      "hdrInv": {
+        "type": "Button",
+        "props": {
+          "label": {
+            "$computed": "myob-accounting_sort_label",
+            "args": { "label": "Invoices", "col": "invoiceCount", "currentCol": { "$state": "/ui/sort/col" }, "currentDir": { "$state": "/ui/sort/dir" } }
+          },
+          "variant": "ghost",
+          "size": "xs"
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/sort/dir", "value": { "$computed": "myob-accounting_sort_toggle_dir", "args": { "col": "invoiceCount", "currentCol": { "$state": "/ui/sort/col" }, "currentDir": { "$state": "/ui/sort/dir" } } } } },
+            { "action": "setState", "params": { "statePath": "/ui/sort/col", "value": "invoiceCount" } }
+          ]
+        }
+      },
+      "hdrAmtWrap": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["hdrAmt"]
+      },
+      "hdrAmt": {
+        "type": "Button",
+        "props": {
+          "label": {
+            "$computed": "myob-accounting_sort_label",
+            "args": { "label": "Amount", "col": "total", "currentCol": { "$state": "/ui/sort/col" }, "currentDir": { "$state": "/ui/sort/dir" } }
+          },
+          "variant": "ghost",
+          "size": "xs"
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/sort/dir", "value": { "$computed": "myob-accounting_sort_toggle_dir", "args": { "col": "total", "currentCol": { "$state": "/ui/sort/col" }, "currentDir": { "$state": "/ui/sort/dir" } } } } },
+            { "action": "setState", "params": { "statePath": "/ui/sort/col", "value": "total" } }
+          ]
+        }
+      },
+      "colHeaderDivider": {
+        "type": "Divider",
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myob-accounting.list_invoices", "not": true },
+            { "$state": "/ui/arData/customerCount" }
+          ]
+        }
+      },
+
       "list": {
         "type": "Stack",
         "props": { "gap": "none" },
@@ -190,17 +297,21 @@
       },
       "row": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center", "hover": true },
-        "children": ["label", "ageBadgeWrap", "amount"]
+        "props": { "gap": "sm", "align": "center", "hover": true, "template": "minmax(0, 1fr) 6rem 7rem" },
+        "children": ["label", "ageBadgeWrap", "amountWrap"]
       },
       "label": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["labelTop"]
+      },
+      "labelTop": {
         "type": "Text",
         "props": {
           "text": { "$item": "name" },
           "size": "sm",
           "weight": "semibold",
-          "truncate": true,
-          "grow": true
+          "truncate": true
         }
       },
       "ageBadgeWrap": {
@@ -211,10 +322,18 @@
       "ageBadge": {
         "type": "Badge",
         "props": {
-          "text": { "$item": "badgeText" },
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{n} inv", "n": { "$item": "invoiceCount" } }
+          },
           "tone": { "$item": "badgeTone" },
           "variant": "soft"
         }
+      },
+      "amountWrap": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["amount"]
       },
       "amount": {
         "type": "Text",
@@ -224,13 +343,13 @@
             "args": { "value": { "$item": "total" } }
           },
           "size": "sm",
-          "weight": "semibold",
-          "align": "end"
+          "weight": "semibold"
         }
       },
       "rowDivider": {
         "type": "Divider"
       }
     }
-  }
+  },
+  "status": "published"
 }
