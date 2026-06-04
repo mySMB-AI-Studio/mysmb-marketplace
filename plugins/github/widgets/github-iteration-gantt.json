@@ -1,0 +1,222 @@
+{
+  "id": "github-iteration-gantt",
+  "title": "Iteration Gantt",
+  "description": "Horizontal swimlane Gantt of GitHub Project v2 items grouped by Iteration. Each row is a feature, the colored bar sits in the iteration the feature is scheduled for. Status tones the bar (Done → success, In Progress → accent, Blocked → destructive, Todo → info).",
+  "category": "engineering",
+  "tags": ["github", "gantt", "roadmap", "iteration", "sprint", "planning", "engineering"],
+  "keywords": ["gantt", "iteration", "sprint", "timeline", "roadmap", "planning", "features", "github"],
+  "connectorsUsed": ["github"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 12, "rowSpan": 8 },
+    "min":       { "colSpan": 6,  "rowSpan": 5 },
+    "max":       { "colSpan": 12, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "github",
+    "tool": "list_project_items",
+    "params": {
+      "owner": "mySMB-AI-Studio",
+      "owner_type": "org",
+      "project_number": 3,
+      "include_fields": ["Iteration", "Status"],
+      "per_page": 100
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["header", "body"],
+        "watch": {
+          "/github/list_project_items": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/gantt",
+              "value": {
+                "$computed": "github_gantt_data",
+                "args": { "value": { "$state": "/github/list_project_items" } }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "children": ["headerRow"]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "refreshBtn"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "GanttChart", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Iteration Gantt", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} features across {i} iterations",
+              "n": { "$computed": "count", "args": { "value": { "$state": "/ui/gantt/items" } } },
+              "i": { "$computed": "count", "args": { "value": { "$state": "/ui/gantt/iterations" } } }
+            }
+          }
+        }
+      },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": {
+          "icon": "RefreshCw",
+          "tone": "muted",
+          "size": "sm",
+          "ariaLabel": "Refresh"
+        },
+        "on": {
+          "click": {
+            "action": "github.list_project_items",
+            "params": {
+              "owner": "mySMB-AI-Studio",
+              "owner_type": "org",
+              "project_number": 3,
+              "include_fields": ["Iteration", "Status"],
+              "per_page": 100
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": ["loading", "empty", "chart"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$state": "/_loading/github.list_project_items" },
+        "children": ["sk1", "sk2", "sk3", "sk4"]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "sm" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "sm" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "sm" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "sm" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No iterations or items found on this project." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/github.list_project_items", "not": true },
+            { "$state": "/ui/gantt/items/0", "not": true }
+          ]
+        }
+      },
+      "chart": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/github.list_project_items", "not": true },
+            { "$state": "/ui/gantt/items/0" }
+          ]
+        },
+        "children": ["axis", "rows"]
+      },
+      "axis": {
+        "type": "Row",
+        "props": { "template": "180px repeat(5, 1fr)", "gap": "xs" },
+        "children": ["axisLabelCell", "axisIter1", "axisIter2", "axisIter3", "axisIter4", "axisIter5"]
+      },
+      "axisLabelCell": {
+        "type": "Eyebrow",
+        "props": { "text": "FEATURE" }
+      },
+      "axisIter1": {
+        "type": "Eyebrow",
+        "props": { "text": { "$state": "/ui/gantt/iterations/0/title" } }
+      },
+      "axisIter2": {
+        "type": "Eyebrow",
+        "props": { "text": { "$state": "/ui/gantt/iterations/1/title" } }
+      },
+      "axisIter3": {
+        "type": "Eyebrow",
+        "props": { "text": { "$state": "/ui/gantt/iterations/2/title" } }
+      },
+      "axisIter4": {
+        "type": "Eyebrow",
+        "props": { "text": { "$state": "/ui/gantt/iterations/3/title" } }
+      },
+      "axisIter5": {
+        "type": "Eyebrow",
+        "props": { "text": { "$state": "/ui/gantt/iterations/4/title" } }
+      },
+      "rows": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "repeat": { "statePath": "/ui/gantt/items", "key": "id" },
+        "children": ["ganttRow"]
+      },
+      "ganttRow": {
+        "type": "Row",
+        "props": {
+          "template": { "$item": "template" },
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": ["rowTitle", "barCell1", "barCell2", "barCell3", "barCell4", "barCell5"]
+      },
+      "rowTitle": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "#{n} {t}",
+              "n": { "$item": "number" },
+              "t": { "$item": "title" }
+            }
+          },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "barCell1": {
+        "type": "Section",
+        "props": { "variant": "muted", "rounded": "sm" }
+      },
+      "barCell2": {
+        "type": "Section",
+        "props": { "variant": "muted", "rounded": "sm" }
+      },
+      "barCell3": {
+        "type": "Section",
+        "props": { "variant": "muted", "rounded": "sm" }
+      },
+      "barCell4": {
+        "type": "Section",
+        "props": { "variant": "muted", "rounded": "sm" }
+      },
+      "barCell5": {
+        "type": "Section",
+        "props": { "variant": "muted", "rounded": "sm" }
+      }
+    }
+  }
+}
