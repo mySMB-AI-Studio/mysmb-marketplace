@@ -1,0 +1,139 @@
+{
+  "id": "dataverse-accounts-at-risk",
+  "title": "Accounts at Risk",
+  "description": "Active accounts sorted by least-recently modified — flags accounts with no activity for 14+ days.",
+  "category": "sales",
+  "tags": ["dataverse", "dynamics-365", "accounts", "at-risk", "sales", "crm", "churn"],
+  "keywords": ["accounts", "at risk", "stale", "inactive", "churn", "warning", "crm", "d365"],
+  "connectorsUsed": ["dataverse"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 8 },
+    "min":       { "colSpan": 4, "rowSpan": 6 },
+    "max":       { "colSpan": 8, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "dataverse",
+    "tool": "list_accounts",
+    "params": {
+      "org_url": "mySMB.com Prod",
+      "filter": "statecode eq 0",
+      "orderby": "modifiedon asc",
+      "top": 5,
+      "select": "name,telephone1,emailaddress1,modifiedon",
+      "expand": "ownerid($select=fullname)"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["headerRow", "div0", "loadingBody", "accountList", "emptyState"] },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "AlertTriangle", "tone": "destructive", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Accounts at Risk", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Dynamics 365 Sales" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "loadingBody": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/dataverse.list_accounts" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+
+      "accountList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "repeat": { "statePath": "/dataverse/list_accounts/items", "key": "accountid" },
+        "children": ["accountRow"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dataverse.list_accounts", "not": true },
+            { "$state": "/dataverse/list_accounts/items/0" }
+          ]
+        }
+      },
+
+      "accountRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start", "gap": "sm", "hover": true },
+        "children": ["accountLeft", "accountRight"]
+      },
+      "accountLeft": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["accountName", "accountOwner", "accountLastActivity"]
+      },
+      "accountName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "accountOwner": {
+        "type": "Caption",
+        "props": { "text": { "$item": "ownerid/fullname" }, "tone": "muted" }
+      },
+      "accountLastActivity": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Last activity {ago}",
+              "ago": { "$computed": "relative_time", "args": { "value": { "$item": "modifiedon" } } }
+            }
+          },
+          "tone": {
+            "$computed": "dataverse_account_risk_tone",
+            "args": { "value": { "$item": "modifiedon" } }
+          }
+        }
+      },
+      "accountRight": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["riskBadge"]
+      },
+      "riskBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "dataverse_account_risk_label",
+            "args": { "value": { "$item": "modifiedon" } }
+          },
+          "tone": {
+            "$computed": "dataverse_account_risk_tone",
+            "args": { "value": { "$item": "modifiedon" } }
+          },
+          "variant": "soft"
+        }
+      },
+
+      "emptyState": {
+        "type": "Empty",
+        "props": { "message": "No at-risk accounts." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dataverse.list_accounts", "not": true },
+            { "$state": "/dataverse/list_accounts/items/0", "not": true }
+          ]
+        }
+      }
+    }
+  },
+  "status": "published"
+}

@@ -1,5 +1,5 @@
 {
-  "id": "dataverse-sla-performance-v3",
+  "id": "dataverse-sla-performance-v5",
   "status": "published",
   "title": "SLA Performance",
   "description": "Live SLA KPI status across active Dynamics 365 cases — highlights at-risk and breached SLAs.",
@@ -29,7 +29,7 @@
       "titleRow": {
         "type": "Row",
         "props": { "justify": "between", "align": "center" },
-        "children": ["titleGroup", "brandBadge"]
+        "children": ["titleGroup"]
       },
       "titleGroup": {
         "type": "Row",
@@ -52,10 +52,6 @@
       "eyebrow": {
         "type": "Eyebrow",
         "props": { "text": "Dynamics 365 Customer Service" }
-      },
-      "brandBadge": {
-        "type": "Badge",
-        "props": { "text": "Dynamics 365", "tone": "info" }
       },
       "tableBody": {
         "type": "Body",
@@ -82,13 +78,12 @@
         "props": { "name": "Clock", "size": "sm", "tone": "accent" }
       },
       "valActive": {
-        "type": "Heading",
+        "type": "Stat",
         "props": {
-          "text": {
+          "value": {
             "$computed": "count",
             "args": { "value": { "$state": "/dataverse/list_sla_kpis/sla_kpis" } }
-          },
-          "level": "h2"
+          }
         }
       },
       "lblActive": {
@@ -110,17 +105,16 @@
         "props": { "name": "AlertTriangle", "size": "sm", "tone": "destructive" }
       },
       "valBreached": {
-        "type": "Heading",
+        "type": "Stat",
         "props": {
-          "text": {
+          "value": {
             "$computed": "count_where",
             "args": {
               "value": { "$state": "/dataverse/list_sla_kpis/sla_kpis" },
               "field": "status",
               "eq": 2
             }
-          },
-          "level": "h2"
+          }
         }
       },
       "lblBreached": {
@@ -135,10 +129,11 @@
           "skeletonRows": 6,
           "rows": { "$state": "/dataverse/list_sla_kpis/sla_kpis" },
           "columns": [
-            { "id": "name",        "header": "SLA",          "field": "name",                "priority": 1 },
-            { "id": "status",      "header": "Status",       "field": "status",              "width": 90,  "priority": 1 },
-            { "id": "failuretime", "header": "Breach Time",  "field": "computedfailuretime", "width": 130, "priority": 1, "format": "relative" },
-            { "id": "warningtime", "header": "Warning Time", "field": "computedwarningtime", "width": 130, "priority": 2, "format": "relative" }
+            { "id": "ticket",      "header": "Case",         "field": "case_ticket",         "width": 110, "priority": 1 },
+            { "id": "casetitle",   "header": "Case Title",   "field": "case_title",          "priority": 1 },
+            { "id": "name",        "header": "SLA Type",     "field": "name",                "width": 130, "priority": 2 },
+            { "id": "status",      "header": "Status",       "field": "status_label",        "width": 110, "priority": 1 },
+            { "id": "failuretime", "header": "Breach Time",  "field": "computedfailuretime", "width": 130, "priority": 1, "format": "relative" }
           ]
         }
       },
