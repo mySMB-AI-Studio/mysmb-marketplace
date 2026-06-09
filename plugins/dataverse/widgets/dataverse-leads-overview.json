@@ -1,0 +1,230 @@
+{
+  "id": "dataverse-leads-overview-v2",
+  "status": "published",
+  "title": "Leads Overview",
+  "description": "Active Dynamics 365 leads with contact details — name, company, email, phone, status, and source.",
+  "category": "sales",
+  "tags": ["dataverse", "dynamics-365", "sales", "leads", "crm", "pipeline", "conversion"],
+  "keywords": ["leads", "lead pipeline", "qualified", "conversion rate", "top of funnel", "crm", "d365"],
+  "connectorsUsed": ["dataverse"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 8 },
+    "min":       { "colSpan": 4, "rowSpan": 6 },
+    "max":       { "colSpan": 10, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "mcp": "dataverse",
+    "tool": "list_leads_overview",
+    "params": { "org_url": "https://mysmb-dev.crm6.dynamics.com", "top": 20 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "statGrid", "divider", "leadsBody", "footerDivider", "footer"]
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Users", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Leads Overview", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Dynamics 365 Sales" } },
+
+      "statGrid": {
+        "type": "Grid",
+        "props": { "cols": 3 },
+        "children": ["tileActive", "tileQualified", "tileRate"]
+      },
+      "tileActive": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackActive"] },
+      "stackActive": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["iconActive", "valActive", "lblActive"]
+      },
+      "iconActive": { "type": "Icon", "props": { "name": "Users", "size": "sm", "tone": "accent" } },
+      "valActive": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/dataverse/list_leads_overview/total_active" } }
+      },
+      "lblActive": { "type": "Caption", "props": { "text": "Active Leads" } },
+
+      "tileQualified": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackQualified"] },
+      "stackQualified": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["iconQualified", "valQualified", "lblQualified"]
+      },
+      "iconQualified": { "type": "Icon", "props": { "name": "UserCheck", "size": "sm", "tone": "positive" } },
+      "valQualified": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/dataverse/list_leads_overview/qualified_this_month" } }
+      },
+      "lblQualified": { "type": "Caption", "props": { "text": "Qualified This Month" } },
+
+      "tileRate": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackRate"] },
+      "stackRate": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["iconRate", "valRate", "lblRate"]
+      },
+      "iconRate": { "type": "Icon", "props": { "name": "TrendingUp", "size": "sm", "tone": "accent" } },
+      "valRate": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/dataverse/list_leads_overview/conversion_rate" } }
+      },
+      "lblRate": { "type": "Caption", "props": { "text": "Conversion Rate" } },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "leadsBody": { "type": "Body", "props": {}, "children": ["leadList"] },
+      "leadList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "repeat": {
+          "statePath": "/dataverse/list_leads_overview/leads",
+          "key": "leadid"
+        },
+        "children": ["leadCard"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dataverse.list_leads_overview", "not": true },
+            { "$state": "/dataverse/list_leads_overview/leads/0" }
+          ]
+        }
+      },
+      "loadingSkeleton": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/dataverse.list_leads_overview" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "emptyState": {
+        "type": "Empty",
+        "props": { "message": "No active leads found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dataverse.list_leads_overview", "not": true },
+            { "$state": "/dataverse/list_leads_overview/leads/0", "not": true }
+          ]
+        }
+      },
+
+      "leadCard": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start", "gap": "sm" },
+        "children": ["leadInfo", "leadRight"]
+      },
+      "leadInfo": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["leadName", "leadCompany", "leadEmail", "leadPhone", "leadSource", "leadMeta", "leadRemarks"]
+      },
+      "leadName": {
+        "type": "Text",
+        "props": { "text": { "$item": "fullname" }, "size": "sm", "weight": "medium" }
+      },
+      "leadCompany": {
+        "type": "Caption",
+        "props": { "text": { "$item": "companyname" } }
+      },
+      "leadEmail": {
+        "type": "Caption",
+        "props": { "text": { "$item": "email" } }
+      },
+      "leadPhone": {
+        "type": "Caption",
+        "props": { "text": { "$item": "phone" } }
+      },
+      "leadSource": {
+        "type": "Caption",
+        "props": { "text": { "$item": "source_label" }, "tone": "muted" }
+      },
+      "leadMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "format_date",
+            "args": { "value": { "$item": "createdon" }, "format": "long" }
+          },
+          "tone": "muted"
+        }
+      },
+      "leadRemarks": {
+        "type": "Caption",
+        "props": {
+          "text": { "$item": "remarks" },
+          "tone": "muted"
+        }
+      },
+      "leadRight": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["leadStatusBadge", "leadOpenBtn"]
+      },
+      "leadStatusBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "status_code_label" },
+          "tone": "accent",
+          "variant": "soft"
+        }
+      },
+      "leadOpenBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Open",
+          "variant": "ghost",
+          "size": "sm",
+          "leadingIcon": "ExternalLink"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "https://mysmb-dev.crm6.dynamics.com/main.aspx?etn=lead&pagetype=entityrecord&id={id}",
+                  "id": { "$item": "leadid" }
+                }
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+
+      "footerDivider": { "type": "Divider", "props": {} },
+      "footer": {
+        "type": "Row",
+        "props": { "justify": "end", "gap": "xs", "align": "center" },
+        "children": ["footerBtn"]
+      },
+      "footerBtn": {
+        "type": "Button",
+        "props": { "label": "Open in D365", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": "https://mysmb-dev.crm6.dynamics.com/main.aspx?etn=lead&pagetype=entitylist", "target": "_blank" }
+          }
+        }
+      }
+    }
+  }
+}
