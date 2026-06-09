@@ -20,49 +20,20 @@
   "spec": {
     "root": "card",
     "elements": {
+
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "body"],
+        "children": ["titleRow", "statGrid", "divider", "tableBody"],
         "watch": {
           "/myob-accounting/list_bills/Items": {
             "action": "setState",
             "params": {
-              "statePath": "/ui/sortedItems",
+              "statePath": "/ui/tableRows",
               "value": {
-                "$computed": "myob-accounting_sort_items",
+                "$computed": "myob-accounting_flatten_bills",
                 "args": {
-                  "value": { "$state": "/myob-accounting/list_bills/Items" },
-                  "field": { "$state": "/ui/sort/col" },
-                  "dir": { "$state": "/ui/sort/dir" }
-                }
-              }
-            }
-          },
-          "/ui/sort/col": {
-            "action": "setState",
-            "params": {
-              "statePath": "/ui/sortedItems",
-              "value": {
-                "$computed": "myob-accounting_sort_items",
-                "args": {
-                  "value": { "$state": "/myob-accounting/list_bills/Items" },
-                  "field": { "$state": "/ui/sort/col" },
-                  "dir": { "$state": "/ui/sort/dir" }
-                }
-              }
-            }
-          },
-          "/ui/sort/dir": {
-            "action": "setState",
-            "params": {
-              "statePath": "/ui/sortedItems",
-              "value": {
-                "$computed": "myob-accounting_sort_items",
-                "args": {
-                  "value": { "$state": "/myob-accounting/list_bills/Items" },
-                  "field": { "$state": "/ui/sort/col" },
-                  "dir": { "$state": "/ui/sort/dir" }
+                  "value": { "$state": "/myob-accounting/list_bills/Items" }
                 }
               }
             }
@@ -70,14 +41,14 @@
         }
       },
 
-      "header": {
-        "type": "Header",
-        "props": {},
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
         "children": ["titleGroup"]
       },
       "titleGroup": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "start" },
+        "props": { "gap": "sm", "align": "center" },
         "children": ["titleIcon", "titleStack"]
       },
       "titleIcon": {
@@ -87,65 +58,37 @@
       "titleStack": {
         "type": "Stack",
         "props": { "gap": "none" },
-        "children": ["title", "subtitle"]
+        "children": ["title", "eyebrow"]
       },
       "title": {
         "type": "Heading",
         "props": { "text": "Open Bills", "level": "h2" }
       },
-      "subtitle": {
+      "eyebrow": {
         "type": "Eyebrow",
         "props": { "text": "MYOB Accounting" }
       },
 
-      "body": {
-        "type": "Body",
-        "props": {},
-        "children": ["loading", "statGrid", "divider0", "empty", "colHeaders", "colHeaderDivider", "list"]
-      },
-
-      "loading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["skel1", "skel2", "skel3", "skel4"],
-        "visible": { "$state": "/_loading/myob-accounting.list_bills" }
-      },
-      "skel1": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
-      "skel2": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
-      "skel3": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
-      "skel4": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
-
       "statGrid": {
         "type": "Grid",
-        "props": { "cols": 2, "gap": "md" },
-        "children": ["statCountSection", "statTotalSection"],
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/myob-accounting.list_bills", "not": true },
-            { "$state": "/myob-accounting/list_bills/Items/0" }
-          ]
-        }
+        "props": { "cols": 2 },
+        "children": ["tileCount", "tileTotal"]
       },
-      "statCountSection": {
+      "tileCount": {
         "type": "Section",
         "props": { "variant": "muted" },
-        "children": ["statCount"]
+        "children": ["stackCount"]
       },
-      "statTotalSection": {
-        "type": "Section",
-        "props": { "variant": "muted" },
-        "children": ["statTotal"]
-      },
-      "statCount": {
+      "stackCount": {
         "type": "Stack",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["statCountLabel", "statCountValue"]
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["iconCount", "valCount", "lblCount"]
       },
-      "statCountLabel": {
-        "type": "Eyebrow",
-        "props": { "text": "Bills to Pay" }
+      "iconCount": {
+        "type": "Icon",
+        "props": { "name": "Receipt", "size": "sm", "tone": "destructive" }
       },
-      "statCountValue": {
+      "valCount": {
         "type": "Stat",
         "props": {
           "value": {
@@ -155,16 +98,25 @@
           "tone": "destructive"
         }
       },
-      "statTotal": {
+      "lblCount": {
+        "type": "Caption",
+        "props": { "text": "Bills to Pay" }
+      },
+      "tileTotal": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["stackTotal"]
+      },
+      "stackTotal": {
         "type": "Stack",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["statTotalLabel", "statTotalValue"]
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["iconTotal", "valTotal", "lblTotal"]
       },
-      "statTotalLabel": {
-        "type": "Eyebrow",
-        "props": { "text": "Total Due" }
+      "iconTotal": {
+        "type": "Icon",
+        "props": { "name": "DollarSign", "size": "sm", "tone": "destructive" }
       },
-      "statTotalValue": {
+      "valTotal": {
         "type": "Stat",
         "props": {
           "value": {
@@ -182,199 +134,43 @@
           "tone": "destructive"
         }
       },
-
-      "divider0": {
-        "type": "Divider",
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/myob-accounting.list_bills", "not": true },
-            { "$state": "/myob-accounting/list_bills/Items/0" }
-          ]
-        }
-      },
-
-      "empty": {
-        "type": "Empty",
-        "props": { "message": "No open bills — nothing to pay right now.", "icon": "CheckCircle" },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/myob-accounting.list_bills", "not": true },
-            { "$state": "/myob-accounting/list_bills/Items/0", "not": true }
-          ]
-        }
-      },
-
-      "colHeaders": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center", "template": "minmax(0, 1fr) 6rem 7rem" },
-        "children": ["hdrNameWrap", "hdrNumWrap", "hdrAmtWrap"],
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/myob-accounting.list_bills", "not": true },
-            { "$state": "/myob-accounting/list_bills/Items/0" }
-          ]
-        }
-      },
-      "hdrNameWrap": {
-        "type": "Row",
-        "props": { "justify": "start" },
-        "children": ["hdrName"]
-      },
-      "hdrName": {
-        "type": "Button",
-        "props": {
-          "label": {
-            "$computed": "myob-accounting_sort_label",
-            "args": { "label": "Supplier", "col": "Supplier/Name", "currentCol": { "$state": "/ui/sort/col" }, "currentDir": { "$state": "/ui/sort/dir" } }
-          },
-          "variant": "ghost",
-          "size": "xs"
-        },
-        "on": {
-          "click": [
-            { "action": "setState", "params": { "statePath": "/ui/sort/dir", "value": { "$computed": "myob-accounting_sort_toggle_dir", "args": { "col": "Supplier/Name", "currentCol": { "$state": "/ui/sort/col" }, "currentDir": { "$state": "/ui/sort/dir" } } } } },
-            { "action": "setState", "params": { "statePath": "/ui/sort/col", "value": "Supplier/Name" } }
-          ]
-        }
-      },
-      "hdrNumWrap": {
-        "type": "Row",
-        "props": { "justify": "center" },
-        "children": ["hdrNum"]
-      },
-      "hdrNum": {
-        "type": "Button",
-        "props": {
-          "label": {
-            "$computed": "myob-accounting_sort_label",
-            "args": { "label": "Status", "col": "DueDate", "currentCol": { "$state": "/ui/sort/col" }, "currentDir": { "$state": "/ui/sort/dir" } }
-          },
-          "variant": "ghost",
-          "size": "xs"
-        },
-        "on": {
-          "click": [
-            { "action": "setState", "params": { "statePath": "/ui/sort/dir", "value": { "$computed": "myob-accounting_sort_toggle_dir", "args": { "col": "DueDate", "currentCol": { "$state": "/ui/sort/col" }, "currentDir": { "$state": "/ui/sort/dir" } } } } },
-            { "action": "setState", "params": { "statePath": "/ui/sort/col", "value": "DueDate" } }
-          ]
-        }
-      },
-      "hdrAmtWrap": {
-        "type": "Row",
-        "props": { "justify": "end" },
-        "children": ["hdrAmt"]
-      },
-      "hdrAmt": {
-        "type": "Button",
-        "props": {
-          "label": {
-            "$computed": "myob-accounting_sort_label",
-            "args": { "label": "Amount", "col": "BalanceDueAmount", "currentCol": { "$state": "/ui/sort/col" }, "currentDir": { "$state": "/ui/sort/dir" } }
-          },
-          "variant": "ghost",
-          "size": "xs"
-        },
-        "on": {
-          "click": [
-            { "action": "setState", "params": { "statePath": "/ui/sort/dir", "value": { "$computed": "myob-accounting_sort_toggle_dir", "args": { "col": "BalanceDueAmount", "currentCol": { "$state": "/ui/sort/col" }, "currentDir": { "$state": "/ui/sort/dir" } } } } },
-            { "action": "setState", "params": { "statePath": "/ui/sort/col", "value": "BalanceDueAmount" } }
-          ]
-        }
-      },
-      "colHeaderDivider": {
-        "type": "Divider",
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/myob-accounting.list_bills", "not": true },
-            { "$state": "/myob-accounting/list_bills/Items/0" }
-          ]
-        }
-      },
-
-      "list": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["rowWrapper"],
-        "repeat": {
-          "statePath": "/ui/sortedItems",
-          "key": "UID"
-        },
-        "visible": { "$state": "/_loading/myob-accounting.list_bills", "not": true }
-      },
-      "rowWrapper": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["row", "rowDivider"]
-      },
-      "row": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center", "hover": true, "template": "minmax(0, 1fr) 6rem 7rem" },
-        "children": ["label", "dueBadgeWrap", "amountWrap"]
-      },
-      "label": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["labelTop", "labelBottom"]
-      },
-      "labelTop": {
-        "type": "Text",
-        "props": {
-          "text": { "$item": "Supplier/Name" },
-          "size": "sm",
-          "weight": "semibold",
-          "truncate": true
-        }
-      },
-      "labelBottom": {
+      "lblTotal": {
         "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": { "pattern": "#{num}", "num": { "$item": "Number" } }
-          }
-        }
+        "props": { "text": "Total Due" }
       },
-      "dueBadgeWrap": {
-        "type": "Row",
-        "props": { "justify": "center" },
-        "children": ["dueBadge"]
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "tableBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["table"]
       },
-      "dueBadge": {
-        "type": "Badge",
+      "table": {
+        "type": "Table",
         "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "Due {d}",
-              "d": {
-                "$computed": "format_date",
-                "args": { "value": { "$item": "DueDate" } }
+          "loading": { "$state": "/_loading/myob-accounting.list_bills" },
+          "skeletonRows": 4,
+          "rows": { "$state": "/ui/tableRows" },
+          "columns": [
+            { "id": "supplier", "header": "Supplier",  "field": "supplierName", "priority": 1 },
+            { "id": "number",   "header": "Bill #",    "field": "number",       "width": 96,  "priority": 2 },
+            {
+              "id": "dueDate",
+              "header": "Due Date",
+              "field": "dueDate",
+              "width": 130,
+              "priority": 1,
+              "tone": {
+                "$computed": "myob-accounting_is_overdue",
+                "args": { "value": { "$item": "rawDue" } }
               }
-            }
-          },
-          "tone": "warning",
-          "variant": "soft"
+            },
+            { "id": "amount",   "header": "Amount",    "field": "amount",       "width": 120, "priority": 1 }
+          ]
         }
-      },
-      "amountWrap": {
-        "type": "Row",
-        "props": { "justify": "end" },
-        "children": ["amount"]
-      },
-      "amount": {
-        "type": "Text",
-        "props": {
-          "text": {
-            "$computed": "myob-accounting_format_currency",
-            "args": { "value": { "$item": "BalanceDueAmount" } }
-          },
-          "size": "sm",
-          "weight": "semibold"
-        }
-      },
-      "rowDivider": {
-        "type": "Divider"
       }
+
     }
   },
   "status": "published"
