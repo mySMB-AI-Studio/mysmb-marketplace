@@ -15,12 +15,9 @@
   },
   "dataProvider": {
     "mcp": "dataverse",
-    "tool": "list_cases",
+    "tool": "list_active_cases",
     "params": {
       "org_url": "https://mysmb-dev.crm6.dynamics.com",
-      "filter": "statecode eq 0",
-      "select": "incidentid,title,ticketnumber,prioritycode,statecode,statuscode,createdon",
-      "orderby": "createdon desc",
       "top": 25
     }
   },
@@ -35,7 +32,7 @@
       "titleRow": {
         "type": "Row",
         "props": { "justify": "between", "align": "center" },
-        "children": ["titleGroup", "brandBadge"]
+        "children": ["titleGroup"]
       },
       "titleGroup": {
         "type": "Row",
@@ -59,10 +56,6 @@
         "type": "Eyebrow",
         "props": { "text": "Dynamics 365 Customer Service" }
       },
-      "brandBadge": {
-        "type": "Badge",
-        "props": { "text": "Dynamics 365", "tone": "info" }
-      },
       "tableBody": {
         "type": "Body",
         "props": {},
@@ -70,8 +63,8 @@
       },
       "statGrid": {
         "type": "Grid",
-        "props": { "cols": 1 },
-        "children": ["tileCount"]
+        "props": { "cols": 2 },
+        "children": ["tileCount", "tileOverdue"]
       },
       "tileCount": {
         "type": "Section",
@@ -88,31 +81,61 @@
         "props": { "name": "Inbox", "size": "sm", "tone": "accent" }
       },
       "valCount": {
-        "type": "Heading",
+        "type": "Stat",
         "props": {
-          "text": {
+          "value": {
             "$computed": "count",
-            "args": { "value": { "$state": "/dataverse/list_cases/items" } }
-          },
-          "level": "h2"
+            "args": { "value": { "$state": "/dataverse/list_active_cases/items" } }
+          }
         }
       },
       "lblCount": {
         "type": "Caption",
         "props": { "text": "Open Cases" }
       },
+      "tileOverdue": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["stackOverdue"]
+      },
+      "stackOverdue": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["iconOverdue", "valOverdue", "lblOverdue"]
+      },
+      "iconOverdue": {
+        "type": "Icon",
+        "props": { "name": "AlertTriangle", "size": "sm", "tone": "destructive" }
+      },
+      "valOverdue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "count_where",
+            "args": {
+              "value": { "$state": "/dataverse/list_active_cases/items" },
+              "field": "isescalated",
+              "eq": true
+            }
+          }
+        }
+      },
+      "lblOverdue": {
+        "type": "Caption",
+        "props": { "text": "Overdue Cases", "tone": "destructive" }
+      },
       "divider": { "type": "Divider", "props": {} },
       "table": {
         "type": "Table",
         "props": {
-          "loading": { "$state": "/_loading/dataverse.list_cases" },
+          "loading": { "$state": "/_loading/dataverse.list_active_cases" },
           "skeletonRows": 6,
-          "rows": { "$state": "/dataverse/list_cases/items" },
+          "rows": { "$state": "/dataverse/list_active_cases/items" },
           "columns": [
             { "id": "title",    "header": "Case",      "field": "title",        "priority": 1 },
             { "id": "ticket",   "header": "Ticket #",  "field": "ticketnumber", "width": 120, "priority": 1 },
-            { "id": "priority", "header": "Priority",  "field": "prioritycode", "width": 90,  "priority": 2 },
-            { "id": "status",   "header": "Status",    "field": "statuscode",   "width": 90,  "priority": 2 },
+            { "id": "priority", "header": "Priority",  "field": "priority_label", "width": 90,  "priority": 2 },
+            { "id": "status",   "header": "Status",    "field": "status_label",   "width": 90,  "priority": 2 },
             { "id": "created",  "header": "Created",   "field": "createdon",    "width": 120, "priority": 2, "format": "relative" }
           ]
         }
