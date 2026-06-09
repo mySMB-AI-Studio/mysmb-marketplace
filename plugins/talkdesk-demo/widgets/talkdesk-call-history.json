@@ -53,21 +53,32 @@
 
       "summaryRow": {
         "type": "Row",
-        "props": { "gap": "lg", "align": "center" },
+        "props": { "gap": "lg", "align": "start" },
         "children": ["statTotal", "statAvg", "statPeak"]
       },
       "statTotal": {
-        "type": "Stat",
-        "props": { "label": "Total Calls", "value": 18420 }
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["statTotalLabel", "statTotalValue"]
       },
+      "statTotalLabel": { "type": "Caption", "props": { "text": "Total Calls" } },
+      "statTotalValue": { "type": "Stat", "props": { "value": 18420, "size": "sm" } },
+
       "statAvg": {
-        "type": "Stat",
-        "props": { "label": "Monthly Avg", "value": 1535 }
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["statAvgLabel", "statAvgValue"]
       },
+      "statAvgLabel": { "type": "Caption", "props": { "text": "Monthly Avg" } },
+      "statAvgValue": { "type": "Stat", "props": { "value": 1535, "size": "sm" } },
+
       "statPeak": {
-        "type": "Stat",
-        "props": { "label": "Peak Month", "value": "Mar 2026" }
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["statPeakLabel", "statPeakValue"]
       },
+      "statPeakLabel": { "type": "Caption", "props": { "text": "Peak Month" } },
+      "statPeakValue": { "type": "Stat", "props": { "value": "Mar 2026", "size": "sm" } },
 
       "chart": {
         "type": "Sparkline",
