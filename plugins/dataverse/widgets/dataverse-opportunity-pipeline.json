@@ -1,5 +1,5 @@
 {
-  "id": "dataverse-opportunity-pipeline-v3",
+  "id": "dataverse-opportunity-pipeline-v5",
   "title": "Opportunity Pipeline",
   "description": "Open opportunities grouped by sales stage — click a stage to see the deals inside it.",
   "category": "sales",
@@ -8,19 +8,15 @@
   "connectorsUsed": ["dataverse"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 8 },
-    "min":       { "colSpan": 4, "rowSpan": 6 },
-    "max":       { "colSpan": 12, "rowSpan": 12 }
+    "preferred": { "colSpan": 5, "rowSpan": 10 },
+    "min":       { "colSpan": 4, "rowSpan": 8 },
+    "max":       { "colSpan": 12, "rowSpan": 14 }
   },
   "dataProvider": {
     "mcp": "dataverse",
-    "tool": "list_opportunities",
+    "tool": "list_opportunity_pipeline",
     "params": {
       "org_url": "mySMB.com Prod",
-      "select": "opportunityid,name,estimatedvalue,closeprobability,estimatedclosedate,salesstagecode,statecode",
-      "filter": "statecode eq 0",
-      "expand": "customerid_account($select=name)",
-      "orderby": "estimatedvalue desc",
       "top": 200
     }
   },
@@ -32,13 +28,13 @@
         "props": {},
         "children": ["headerRow", "statsGrid", "div1", "stageBody", "div2", "footer"],
         "watch": {
-          "/dataverse/list_opportunities/items": {
+          "/dataverse/list_opportunity_pipeline/items": {
             "action": "setState",
             "params": {
               "statePath": "/ui/pipeline/stages",
               "value": {
                 "$computed": "dataverse_pipeline_stages",
-                "args": { "value": { "$state": "/dataverse/list_opportunities/items" } }
+                "args": { "value": { "$state": "/dataverse/list_opportunity_pipeline/items" } }
               }
             }
           },
@@ -49,7 +45,7 @@
               "value": {
                 "$computed": "dataverse_ops_in_stage",
                 "args": {
-                  "value": { "$state": "/dataverse/list_opportunities/items" },
+                  "value": { "$state": "/dataverse/list_opportunity_pipeline/items" },
                   "stage": { "$state": "/ui/pipeline/selectedStage" }
                 }
               }
@@ -61,7 +57,7 @@
       "headerRow": {
         "type": "Row",
         "props": { "justify": "between", "align": "center" },
-        "children": ["titleGroup", "brandBadge"]
+        "children": ["titleGroup"]
       },
       "titleGroup": {
         "type": "Row",
@@ -72,21 +68,20 @@
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
       "title": { "type": "Heading", "props": { "text": "Opportunity Pipeline", "level": "h2" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Dynamics 365 Sales" } },
-      "brandBadge": { "type": "Badge", "props": { "text": "Dynamics 365", "tone": "info" } },
 
       "statsGrid": {
         "type": "Grid",
         "props": { "cols": 2, "gap": "sm" },
-        "children": ["tileOpen", "tileValue"]
+        "children": ["tileOpen", "tileValue", "tileWinRate", "tileOverdue"]
       },
+
       "tileOpen": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackOpen"] },
       "stackOpen": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconOpen", "valOpen", "lblOpen"] },
       "iconOpen": { "type": "Icon", "props": { "name": "TrendingUp", "size": "sm", "tone": "accent" } },
       "valOpen": {
-        "type": "Heading",
+        "type": "Stat",
         "props": {
-          "text": { "$computed": "count", "args": { "value": { "$state": "/dataverse/list_opportunities/items" } } },
-          "level": "h2"
+          "value": { "$computed": "count", "args": { "value": { "$state": "/dataverse/list_opportunity_pipeline/items" } } }
         }
       },
       "lblOpen": { "type": "Caption", "props": { "text": "Open" } },
@@ -95,24 +90,41 @@
       "stackValue": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconValue", "valValue", "lblValue"] },
       "iconValue": { "type": "Icon", "props": { "name": "Banknote", "size": "sm", "tone": "positive" } },
       "valValue": {
-        "type": "Heading",
+        "type": "Stat",
         "props": {
-          "text": {
+          "value": {
             "$computed": "format_currency",
             "args": {
               "value": {
                 "$computed": "sum",
                 "args": {
-                  "value": { "$state": "/dataverse/list_opportunities/items" },
+                  "value": { "$state": "/dataverse/list_opportunity_pipeline/items" },
                   "field": "estimatedvalue"
                 }
               }
             }
-          },
-          "level": "h2"
+          }
         }
       },
       "lblValue": { "type": "Caption", "props": { "text": "Pipeline Value" } },
+
+      "tileWinRate": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackWinRate"] },
+      "stackWinRate": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconWinRate", "valWinRate", "lblWinRate"] },
+      "iconWinRate": { "type": "Icon", "props": { "name": "Trophy", "size": "sm", "tone": "positive" } },
+      "valWinRate": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/dataverse/list_opportunity_pipeline/win_rate" } }
+      },
+      "lblWinRate": { "type": "Caption", "props": { "text": "Win Rate" } },
+
+      "tileOverdue": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackOverdue"] },
+      "stackOverdue": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconOverdue", "valOverdue", "lblOverdue"] },
+      "iconOverdue": { "type": "Icon", "props": { "name": "AlertTriangle", "size": "sm", "tone": "destructive" } },
+      "valOverdue": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/dataverse/list_opportunity_pipeline/overdue_count" } }
+      },
+      "lblOverdue": { "type": "Caption", "props": { "text": "Overdue", "tone": "destructive" } },
 
       "div1": { "type": "Divider", "props": {} },
 
@@ -126,7 +138,7 @@
         "type": "Stack",
         "props": { "gap": "sm" },
         "children": ["sk1", "sk2", "sk3", "sk4"],
-        "visible": { "$state": "/_loading/dataverse.list_opportunities" }
+        "visible": { "$state": "/_loading/dataverse.list_opportunity_pipeline" }
       },
       "sk1": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
       "sk2": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
@@ -138,8 +150,8 @@
         "props": { "message": "No open opportunities — time to prospect." },
         "visible": {
           "$and": [
-            { "$state": "/_loading/dataverse.list_opportunities", "not": true },
-            { "$state": "/dataverse/list_opportunities/items/0", "not": true }
+            { "$state": "/_loading/dataverse.list_opportunity_pipeline", "not": true },
+            { "$state": "/dataverse/list_opportunity_pipeline/items/0", "not": true }
           ]
         }
       },
@@ -151,8 +163,8 @@
         "repeat": { "statePath": "/ui/pipeline/stages", "key": "key" },
         "visible": {
           "$and": [
-            { "$state": "/_loading/dataverse.list_opportunities", "not": true },
-            { "$state": "/dataverse/list_opportunities/items/0" }
+            { "$state": "/_loading/dataverse.list_opportunity_pipeline", "not": true },
+            { "$state": "/dataverse/list_opportunity_pipeline/items/0" }
           ]
         }
       },
@@ -270,7 +282,8 @@
               "name": { "$item": "name" },
               "label": { "$computed": "dataverse_close_label", "args": { "value": { "$item": "estimatedclosedate" } } }
             }
-          }
+          },
+          "tone": { "$item": "close_tone" }
         }
       },
       "bdRight": {
