@@ -42,7 +42,7 @@
       },
       "brandBadge": {
         "type": "Badge",
-        "props": { "label": "talkdesk", "tone": "success" }
+        "props": { "label": "talkdesk" }
       },
       "title": {
         "type": "Heading",
@@ -549,7 +549,7 @@
       "detailStack": {
         "type": "Stack",
         "props": { "gap": "md" },
-        "children": ["detailTitleRow", "detailMeta", "detailScoreRow", "detailSumDiv", "detailSumHdr", "detailSumText", "detailLinkRow"]
+        "children": ["detailTitleRow", "detailMeta", "detailSumDiv", "detailSumHdr", "detailSumText", "detailLinkRow"]
       },
 
       "detailTitleRow": {
@@ -573,33 +573,59 @@
       },
 
       "detailMeta": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "md" },
+        "children": ["metaDtCell", "metaCallerCell", "metaAgentCell", "metaScoreCell"]
+      },
+      "metaDtCell": {
         "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["kvDt", "kvCaller", "kvAgent"]
+        "props": { "gap": "xxs" },
+        "children": ["metaDtLbl", "metaDtVal"]
       },
-      "kvDt": {
-        "type": "KeyValue",
-        "props": { "label": "Date & Time", "value": { "$state": "/ui/sel/dt" } }
+      "metaDtLbl": {
+        "type": "Caption",
+        "props": { "text": "Date & Time" }
       },
-      "kvCaller": {
-        "type": "KeyValue",
-        "props": { "label": "Caller", "value": { "$state": "/ui/sel/caller" } }
+      "metaDtVal": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/sel/dt" }, "size": "sm" }
       },
-      "kvAgent": {
-        "type": "KeyValue",
-        "props": { "label": "Agent", "value": { "$state": "/ui/sel/agent" } }
+      "metaCallerCell": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["metaCallerLbl", "metaCallerVal"]
       },
-
-      "detailScoreRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["detailScoreLbl", "detailScoreRight"]
+      "metaCallerLbl": {
+        "type": "Caption",
+        "props": { "text": "Caller" }
       },
-      "detailScoreLbl": {
+      "metaCallerVal": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/sel/caller" }, "size": "sm" }
+      },
+      "metaAgentCell": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["metaAgentLbl", "metaAgentVal"]
+      },
+      "metaAgentLbl": {
+        "type": "Caption",
+        "props": { "text": "Agent" }
+      },
+      "metaAgentVal": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/sel/agent" }, "size": "sm" }
+      },
+      "metaScoreCell": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["metaScoreLbl", "metaScoreRow"]
+      },
+      "metaScoreLbl": {
         "type": "Caption",
         "props": { "text": "Score" }
       },
-      "detailScoreRight": {
+      "metaScoreRow": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center" },
         "children": ["detailScore", "detailBadge"]
