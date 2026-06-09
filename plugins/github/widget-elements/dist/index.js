@@ -127,6 +127,133 @@ const count_open = (args) => {
     const rows = asArray(args.value);
     return rows.filter((r) => str(r.state).toLowerCase() === 'open').length;
 };
+// ── gantt_status_tone ───────────────────────────────────────────────
+//
+// Map a GitHub Project v2 Status single-select value to a tone for the
+// Gantt bar. The status names used here match the defaults in the
+// "myHub Requirements" project (#3). Anything we don't recognise falls
+// back to `accent` so an unfilled bar is still visible rather than a
+// silent no-op.
+//
+// Args: { value: string } — the Status field's text value
+const gantt_status_tone = (args) => {
+    const s = str(args.value).toLowerCase();
+    if (s === 'done' || s === 'closed')
+        return 'success';
+    if (s === 'in progress' || s === 'in review')
+        return 'accent';
+    if (s === 'blocked' || s === 'on hold')
+        return 'destructive';
+    if (s === 'todo' || s === 'backlog' || s === 'planned')
+        return 'info';
+    return 'accent';
+};
+function extractIterations(payload) {
+    if (Array.isArray(payload))
+        return payload;
+    if (payload && typeof payload === 'object') {
+        const p = payload;
+        if (Array.isArray(p.iterations))
+            return p.iterations;
+        // GraphQL-style envelope: field.configuration.{iterations, completedIterations}.
+        const config = p.field?.configuration;
+        if (config) {
+            const active = Array.isArray(config.iterations) ? config.iterations : [];
+            const done = Array.isArray(config.completedIterations) ? config.completedIterations : [];
+            return [...done, ...active];
+        }
+    }
+    return [];
+}
+function extractItems(payload) {
+    if (Array.isArray(payload))
+        return payload;
+    if (payload && typeof payload === 'object') {
+        const p = payload;
+        if (Array.isArray(p.items))
+            return p.items;
+        if (Array.isArray(p.nodes))
+            return p.nodes;
+    }
+    return [];
+}
+function itemIterationId(item) {
+    if (typeof item.iterationId === 'string' && item.iterationId)
+        return item.iterationId;
+    const it = item.iteration;
+    if (typeof it === 'string')
+        return it;
+    if (it && typeof it === 'object')
+        return str(it.iterationId) || str(it.id) || null;
+    return null;
+}
+function itemStatus(item) {
+    if (typeof item.status === 'string')
+        return item.status;
+    if (item.status && typeof item.status === 'object')
+        return str(item.status.name);
+    if (item.state)
+        return item.state;
+    return '';
+}
+function buildTemplate(iterationIndex, total) {
+    // 180px title column + total cells (one per iteration). Active cell
+    // gets 1fr; siblings get 0fr so they collapse to zero width while
+    // still occupying a grid slot for `children[]` alignment.
+    const cells = ['180px'];
+    for (let i = 0; i < total; i++) {
+        cells.push(i === iterationIndex ? '1fr' : '0fr');
+    }
+    return cells.join(' ');
+}
+const gantt_data = (args) => {
+    const rawIterations = extractIterations(args.value);
+    const iterations = rawIterations
+        .map((it) => ({
+        id: str(it.id),
+        title: str(it.title) || str(it.id),
+        startDate: str(it.startDate),
+    }))
+        .filter((it) => it.id)
+        .sort((a, b) => a.startDate.localeCompare(b.startDate));
+    const idToIndex = new Map();
+    iterations.forEach((it, i) => idToIndex.set(it.id, i));
+    const rawItems = extractItems(args.value);
+    const items = rawItems
+        .map((raw) => {
+        const iterationId = itemIterationId(raw);
+        if (!iterationId || !idToIndex.has(iterationId))
+            return null;
+        const iterationIndex = idToIndex.get(iterationId) ?? 0;
+        const number = typeof raw.number === 'number'
+            ? raw.number
+            : typeof raw.content?.number === 'number'
+                ? raw.content.number
+                : null;
+        const title = str(raw.title) || str(raw.content?.title) || (number != null ? `#${number}` : '');
+        const url = str(raw.url) || str(raw.content?.url);
+        const status = itemStatus(raw);
+        return {
+            id: str(raw.id) || (number != null ? `i${number}` : title),
+            number,
+            title,
+            status,
+            statusTone: gantt_status_tone({ value: status }) || 'accent',
+            url,
+            iterationId,
+            iterationIndex,
+            template: buildTemplate(iterationIndex, iterations.length),
+        };
+    })
+        .filter((x) => x !== null);
+    // Earliest iteration first, then alphabetical title within an iteration.
+    items.sort((a, b) => {
+        if (a.iterationIndex !== b.iterationIndex)
+            return a.iterationIndex - b.iterationIndex;
+        return a.title.localeCompare(b.title);
+    });
+    return { iterations, items };
+};
 const elements = {
     slug: 'github',
     functions: {
@@ -134,6 +261,8 @@ const elements = {
         issue_state_tone,
         project_rows,
         count_open,
+        gantt_status_tone,
+        gantt_data,
     },
 };
 export default elements;
