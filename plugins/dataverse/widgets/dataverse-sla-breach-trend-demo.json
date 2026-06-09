@@ -1,0 +1,101 @@
+{
+  "id": "dataverse-sla-breach-trend-demo",
+  "title": "SLA Breach Trend",
+  "description": "SLA performance over the last 7 days — Met vs Breached trends. Demo version with static data.",
+  "category": "support",
+  "tags": ["dataverse", "dynamics-365", "sla", "customer-service", "support", "demo"],
+  "keywords": ["sla", "breach", "met", "customer service", "d365", "performance", "trend"],
+  "connectorsUsed": ["dataverse"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 8 },
+    "min":       { "colSpan": 4, "rowSpan": 7 },
+    "max":       { "colSpan": 10, "rowSpan": 12 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "statsGrid", "div1", "chartsGrid"]
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "ClockExclamation", "tone": "danger", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "SLA Breach Trend", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Dynamics 365 Customer Service · Last 7 days" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "statsGrid": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["tileTotal", "tileBreached", "tileRate"]
+      },
+
+      "tileTotal": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackTotal"] },
+      "stackTotal": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconTotal", "valTotal", "lblTotal"] },
+      "iconTotal": { "type": "Icon", "props": { "name": "ClipboardList", "size": "sm", "tone": "accent" } },
+      "valTotal": { "type": "Heading", "props": { "text": "142", "level": "h2" } },
+      "lblTotal": { "type": "Caption", "props": { "text": "Total SLAs" } },
+
+      "tileBreached": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackBreached"] },
+      "stackBreached": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconBreached", "valBreached", "lblBreached"] },
+      "iconBreached": { "type": "Icon", "props": { "name": "AlertTriangle", "size": "sm", "tone": "danger" } },
+      "valBreached": { "type": "Heading", "props": { "text": "38", "level": "h2", "tone": "danger" } },
+      "lblBreached": { "type": "Caption", "props": { "text": "Breached" } },
+
+      "tileRate": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackRate"] },
+      "stackRate": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconRate", "valRate", "lblRate"] },
+      "iconRate": { "type": "Icon", "props": { "name": "Percent", "size": "sm", "tone": "danger" } },
+      "valRate": { "type": "Heading", "props": { "text": "27%", "level": "h2", "tone": "danger" } },
+      "lblRate": { "type": "Caption", "props": { "text": "Breach Rate" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "chartsGrid": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "md" },
+        "children": ["metStack", "breachedStack"]
+      },
+
+      "metStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["metLabel", "metChart", "metCaption"]
+      },
+      "metLabel": { "type": "Text", "props": { "text": "Met", "size": "sm", "weight": "medium", "tone": "positive" } },
+      "metChart": {
+        "type": "Sparkline",
+        "props": { "values": [12, 15, 20, 18, 21, 13, 4], "tone": "positive", "height": 80, "fill": true }
+      },
+      "metCaption": { "type": "Caption", "props": { "text": "Mon → Sun", "tone": "muted" } },
+
+      "breachedStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["breachedLabel", "breachedChart", "breachedCaption"]
+      },
+      "breachedLabel": { "type": "Text", "props": { "text": "Breached", "size": "sm", "weight": "medium", "tone": "danger" } },
+      "breachedChart": {
+        "type": "Sparkline",
+        "props": { "values": [2, 3, 7, 4, 5, 5, 10], "tone": "danger", "height": 80, "fill": true }
+      },
+      "breachedCaption": { "type": "Caption", "props": { "text": "Mon → Sun", "tone": "muted" } }
+
+    }
+  },
+  "status": "published"
+}
