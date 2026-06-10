@@ -276,6 +276,18 @@ const pnl_entries = (args) => {
 // Returns a diagnostic string showing P&L section titles, DisplayIDs, and totals.
 // Used to verify the actual MYOB API response structure.
 // Args: { value: PnLReport }
+const format_json = (args) => {
+    const v = args.value;
+    if (v === null || v === undefined) return 'state: null/undefined';
+    if (typeof v !== 'object') return `state: ${String(v)}`;
+    if (Array.isArray(v)) return `state: array[${v.length}]`;
+    try {
+        const s = JSON.stringify(v);
+        return s.length > 500 ? s.slice(0, 500) + '…' : s;
+    } catch {
+        return `state: object(keys: ${Object.keys(v).join(', ')})`;
+    }
+};
 const pnl_debug = (args) => {
     const raw = args.value;
     if (!raw) return 'pnl_debug: null/undefined';
@@ -406,6 +418,7 @@ const elements = {
     functions: {
         format_currency,
         format_date,
+        format_json,
         due_tone,
         overdue_buckets,
         ar_by_customer,
