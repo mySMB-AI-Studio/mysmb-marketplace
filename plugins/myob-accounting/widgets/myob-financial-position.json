@@ -27,7 +27,7 @@
 
       "card": {
         "type": "Card",
-        "children": ["header", "periodTabs", "heroStat", "summaryRow", "chart", "dateAxis", "legend"]
+        "children": ["header", "periodTabs", "heroStat", "summaryRow", "debugCaption", "chart", "dateAxis", "legend"]
       },
 
       "header": {
@@ -213,13 +213,23 @@
         }
       },
 
+      "debugCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "myob-accounting_format_json",
+            "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" } }
+          }
+        }
+      },
+
       "chart": {
         "type": "Sparkline",
         "props": {
           "values": [4200, 6800, 5100, 9300, 11200, 8700, 13400, 15600, 12800, 18200, 21500, 17900],
           "tone": "accent",
           "height": 120,
-          "fill": false
+          "fill": true
         }
       },
 

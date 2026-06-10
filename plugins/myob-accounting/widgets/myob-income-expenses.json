@@ -27,7 +27,7 @@
 
       "card": {
         "type": "Card",
-        "children": ["headerRow", "periodTabs", "statGrid", "incomeChart", "expensesChart", "axis", "legend"]
+        "children": ["headerRow", "periodTabs", "statGrid", "debugCaption", "chart", "axis", "legend"]
       },
 
       "headerRow": {
@@ -107,17 +107,12 @@
       "chipLastFYLabel": { "type": "Text", "props": { "text": "Last FY", "size": "sm", "weight": "medium" } },
 
       "statGrid": {
-        "type": "Grid",
-        "props": { "cols": 2, "gap": "md" },
-        "children": ["incomeCard", "expensesCard"]
+        "type": "Row",
+        "props": { "gap": "lg", "align": "start" },
+        "children": ["incomeBlock", "expensesBlock"]
       },
 
-      "incomeCard": {
-        "type": "Section",
-        "props": { "variant": "muted" },
-        "children": ["incomeInner"]
-      },
-      "incomeInner": {
+      "incomeBlock": {
         "type": "Stack",
         "props": { "gap": "xs" },
         "children": ["incomeArrow", "incomeStat"]
@@ -139,17 +134,11 @@
               }
             }
           },
-          "tone": "success",
-          "size": "lg"
+          "tone": "success"
         }
       },
 
-      "expensesCard": {
-        "type": "Section",
-        "props": { "variant": "muted" },
-        "children": ["expensesInner"]
-      },
-      "expensesInner": {
+      "expensesBlock": {
         "type": "Stack",
         "props": { "gap": "xs" },
         "children": ["expensesArrow", "expensesStat"]
@@ -171,26 +160,26 @@
               }
             }
           },
-          "tone": "destructive",
-          "size": "lg"
+          "tone": "destructive"
         }
       },
 
-      "incomeChart": {
+      "debugCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "myob-accounting_format_json",
+            "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" } }
+          }
+        }
+      },
+
+      "chart": {
         "type": "Sparkline",
         "props": {
           "values": [38200, 42500, 35800, 48100, 51300, 45600, 55200, 61800, 57400, 66900, 72100, 63500],
-          "tone": "success",
-          "height": 64,
-          "fill": true
-        }
-      },
-      "expensesChart": {
-        "type": "Sparkline",
-        "props": {
-          "values": [142000, 168000, 235000, 181000, 290000, 178000, 195000, 212000, 310000, 278000, 65000, 98000],
-          "tone": "destructive",
-          "height": 64,
+          "tone": "accent",
+          "height": 120,
           "fill": true
         }
       },
