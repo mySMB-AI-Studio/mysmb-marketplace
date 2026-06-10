@@ -344,6 +344,24 @@ const pnl_debug: ComputedFunction = (args) => {
   }).join(' | ');
 };
 
+// ── format_json ──────────────────────────────────────────────────────
+// Returns a short JSON preview of any value — used for debugging raw
+// MCP state so we can see exactly what the platform received.
+// Truncates at 500 chars to avoid flooding the UI.
+// Args: { value: unknown }
+const format_json: ComputedFunction = (args) => {
+  const v = args.value;
+  if (v === null || v === undefined) return 'state: null/undefined';
+  if (typeof v !== 'object') return `state: ${String(v)}`;
+  if (Array.isArray(v)) return `state: array[${(v as unknown[]).length}]`;
+  try {
+    const s = JSON.stringify(v);
+    return s.length > 500 ? s.slice(0, 500) + '…' : s;
+  } catch {
+    return `state: object(keys: ${Object.keys(v as object).join(', ')})`;
+  }
+};
+
 // ── pnl_spark_values ─────────────────────────────────────────────────
 // Extracts [income, expenses, netProfit] as a flat number array for
 // use as Sparkline `values`. Always returns exactly 3 numbers.
@@ -470,6 +488,7 @@ const elements: PluginElementsModule = {
   functions: {
     format_currency,
     format_date,
+    format_json,
     due_tone,
     overdue_buckets,
     ar_by_customer,
