@@ -19,7 +19,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "div0", "statsGrid", "div1", "chartsGrid"]
+        "children": ["headerRow", "div0", "statsGrid", "div1", "chartsGrid", "div2", "kvGrid"]
       },
 
       "headerRow": {
@@ -76,24 +76,34 @@
         "props": { "gap": "xs" },
         "children": ["metLabel", "metChart", "metCaption"]
       },
-      "metLabel": { "type": "Text", "props": { "text": "Met", "size": "sm", "weight": "medium", "tone": "positive" } },
+      "metLabel": { "type": "Text", "props": { "text": "Met", "size": "sm", "weight": "medium" } },
       "metChart": {
         "type": "Sparkline",
-        "props": { "values": [12, 15, 20, 18, 21, 13, 4], "tone": "positive", "height": 80, "fill": true }
+        "props": { "values": [12, 15, 20, 18, 21, 13, 4], "tone": "success", "height": 80, "fill": true }
       },
-      "metCaption": { "type": "Caption", "props": { "text": "Mon → Sun", "tone": "muted" } },
+      "metCaption": { "type": "Caption", "props": { "text": "Mon → Sun" } },
 
       "breachedStack": {
         "type": "Stack",
         "props": { "gap": "xs" },
         "children": ["breachedLabel", "breachedChart", "breachedCaption"]
       },
-      "breachedLabel": { "type": "Text", "props": { "text": "Breached", "size": "sm", "weight": "medium", "tone": "danger" } },
+      "breachedLabel": { "type": "Text", "props": { "text": "Breached", "size": "sm", "weight": "medium" } },
       "breachedChart": {
         "type": "Sparkline",
-        "props": { "values": [2, 3, 7, 4, 5, 5, 10], "tone": "danger", "height": 80, "fill": true }
+        "props": { "values": [2, 3, 7, 4, 5, 5, 10], "tone": "destructive", "height": 80, "fill": true }
       },
-      "breachedCaption": { "type": "Caption", "props": { "text": "Mon → Sun", "tone": "muted" } }
+      "breachedCaption": { "type": "Caption", "props": { "text": "Mon → Sun" } },
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "kvGrid": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["kvPeakMet", "kvWorstBreach"]
+      },
+      "kvPeakMet":      { "type": "KeyValue", "props": { "label": "Peak Met",      "value": "Fri · 21" } },
+      "kvWorstBreach":  { "type": "KeyValue", "props": { "label": "Worst Breach",  "value": "Sun · 10" } }
 
     }
   },
