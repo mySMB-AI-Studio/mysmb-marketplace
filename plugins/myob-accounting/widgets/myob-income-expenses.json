@@ -8,9 +8,9 @@
   "connectorsUsed": ["myob-accounting"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 6, "rowSpan": 4 },
-    "min": { "colSpan": 4, "rowSpan": 3 },
-    "max": { "colSpan": 12, "rowSpan": 6 }
+    "preferred": { "colSpan": 6, "rowSpan": 5 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
+    "max": { "colSpan": 12, "rowSpan": 8 }
   },
   "dataProvider": {
     "mcp": "myob-accounting",
@@ -27,13 +27,13 @@
 
       "card": {
         "type": "Card",
-        "children": ["headerRow", "summaryRow", "chart", "axis"]
+        "children": ["headerRow", "periodTabs", "statGrid", "incomeChart", "expensesChart", "axis", "legend"]
       },
 
       "headerRow": {
         "type": "Row",
         "props": { "justify": "between", "align": "center" },
-        "children": ["titleGroup", "periodChips"]
+        "children": ["titleGroup", "brandBadge"]
       },
       "titleGroup": {
         "type": "Row",
@@ -57,10 +57,14 @@
         "type": "Eyebrow",
         "props": { "text": "MYOB Accounting" }
       },
+      "brandBadge": {
+        "type": "Badge",
+        "props": { "label": "MYOB", "tone": "accent" }
+      },
 
-      "periodChips": {
+      "periodTabs": {
         "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
+        "props": { "gap": "md", "align": "center" },
         "children": ["chipThisFY", "chipLastFY"]
       },
       "chipThisFY": {
@@ -81,7 +85,7 @@
           ]
         }
       },
-      "chipThisFYLabel": { "type": "Text", "props": { "text": "This FY", "size": "xs", "weight": "medium" } },
+      "chipThisFYLabel": { "type": "Text", "props": { "text": "This FY", "size": "sm", "weight": "medium" } },
       "chipLastFY": {
         "type": "Row",
         "props": {
@@ -100,14 +104,29 @@
           ]
         }
       },
-      "chipLastFYLabel": { "type": "Text", "props": { "text": "Last FY", "size": "xs", "weight": "medium" } },
+      "chipLastFYLabel": { "type": "Text", "props": { "text": "Last FY", "size": "sm", "weight": "medium" } },
 
-      "summaryRow": {
-        "type": "Row",
-        "props": { "gap": "lg", "align": "center" },
-        "children": ["statIncome", "statExpenses", "statNet"]
+      "statGrid": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "md" },
+        "children": ["incomeCard", "expensesCard"]
       },
-      "statIncome": {
+
+      "incomeCard": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["incomeInner"]
+      },
+      "incomeInner": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["incomeArrow", "incomeStat"]
+      },
+      "incomeArrow": {
+        "type": "Icon",
+        "props": { "name": "ArrowUpRight", "tone": "success", "size": "xs" }
+      },
+      "incomeStat": {
         "type": "Stat",
         "props": {
           "label": "Total Income",
@@ -120,10 +139,26 @@
               }
             }
           },
-          "tone": "success"
+          "tone": "success",
+          "size": "lg"
         }
       },
-      "statExpenses": {
+
+      "expensesCard": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["expensesInner"]
+      },
+      "expensesInner": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["expensesArrow", "expensesStat"]
+      },
+      "expensesArrow": {
+        "type": "Icon",
+        "props": { "name": "ArrowDownRight", "tone": "destructive", "size": "xs" }
+      },
+      "expensesStat": {
         "type": "Stat",
         "props": {
           "label": "Total Expenses",
@@ -136,31 +171,26 @@
               }
             }
           },
-          "tone": "destructive"
-        }
-      },
-      "statNet": {
-        "type": "Stat",
-        "props": {
-          "label": "Net Profit",
-          "value": {
-            "$computed": "myob-accounting_format_currency",
-            "args": {
-              "value": {
-                "$computed": "myob-accounting_pnl_get",
-                "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" }, "key": "netProfit" }
-              }
-            }
-          }
+          "tone": "destructive",
+          "size": "lg"
         }
       },
 
-      "chart": {
+      "incomeChart": {
         "type": "Sparkline",
         "props": {
           "values": [38200, 42500, 35800, 48100, 51300, 45600, 55200, 61800, 57400, 66900, 72100, 63500],
-          "tone": "accent",
-          "height": 120,
+          "tone": "success",
+          "height": 64,
+          "fill": true
+        }
+      },
+      "expensesChart": {
+        "type": "Sparkline",
+        "props": {
+          "values": [142000, 168000, 235000, 181000, 290000, 178000, 195000, 212000, 310000, 278000, 65000, 98000],
+          "tone": "destructive",
+          "height": 64,
           "fill": true
         }
       },
@@ -181,7 +211,27 @@
       "m9":  { "type": "Caption", "props": { "text": "Mar" } },
       "m10": { "type": "Caption", "props": { "text": "Apr" } },
       "m11": { "type": "Caption", "props": { "text": "May" } },
-      "m12": { "type": "Caption", "props": { "text": "Jun" } }
+      "m12": { "type": "Caption", "props": { "text": "Jun" } },
+
+      "legend": {
+        "type": "Row",
+        "props": { "gap": "lg", "align": "center" },
+        "children": ["legendIncome", "legendExpenses"]
+      },
+      "legendIncome": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["legendIncomeDot", "legendIncomeLabel"]
+      },
+      "legendIncomeDot": { "type": "Dot", "props": { "tone": "success" } },
+      "legendIncomeLabel": { "type": "Caption", "props": { "text": "Income" } },
+      "legendExpenses": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["legendExpensesDot", "legendExpensesLabel"]
+      },
+      "legendExpensesDot": { "type": "Dot", "props": { "tone": "destructive" } },
+      "legendExpensesLabel": { "type": "Caption", "props": { "text": "Expenses" } }
 
     }
   },
