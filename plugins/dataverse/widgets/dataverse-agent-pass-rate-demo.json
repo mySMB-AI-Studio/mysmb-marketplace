@@ -8,9 +8,9 @@
   "connectorsUsed": ["dataverse"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 4, "rowSpan": 10 },
-    "min":       { "colSpan": 3, "rowSpan": 8 },
-    "max":       { "colSpan": 8, "rowSpan": 14 }
+    "preferred": { "colSpan": 4, "rowSpan": 8 },
+    "min":       { "colSpan": 3, "rowSpan": 7 },
+    "max":       { "colSpan": 8, "rowSpan": 12 }
   },
   "spec": {
     "root": "card",
@@ -19,7 +19,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "div0", "statsGrid", "div1", "donutSection", "div2", "agentList"]
+        "children": ["headerRow", "div0", "statsGrid", "div1", "donutSection"]
       },
 
       "headerRow": {
@@ -75,76 +75,24 @@
         "type": "Donut",
         "props": {
           "data": [
-            { "status": "passed", "count": 79 },
-            { "status": "failed", "count": 21 }
+            { "agent": "Carol T.",  "score": 95 },
+            { "agent": "Alice M.",  "score": 90 },
+            { "agent": "Jeremy F.", "score": 79 },
+            { "agent": "Rico P.",   "score": 66 },
+            { "agent": "Bob K.",    "score": 58 }
           ],
-          "groupField": "status",
+          "groupField": "agent",
           "legend": {
-            "passed": { "label": "Passed", "tone": "positive" },
-            "failed": { "label": "Not Passed", "tone": "danger" }
+            "Carol T.":  { "label": "Carol T. · 95%",  "tone": "positive" },
+            "Alice M.":  { "label": "Alice M. · 90%",  "tone": "accent" },
+            "Jeremy F.": { "label": "Jeremy F. · 79%", "tone": "info" },
+            "Rico P.":   { "label": "Rico P. · 66%",   "tone": "warning" },
+            "Bob K.":    { "label": "Bob K. · 58%",    "tone": "danger" }
           },
-          "centerLabel": "79%",
+          "centerLabel": "Agents",
           "size": 160
         }
-      },
-
-      "div2": { "type": "Divider", "props": {} },
-
-      "agentList": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["agentHeader", "agentDivider", "agent1", "agent2", "agent3", "agent4", "agent5"]
-      },
-
-      "agentHeader": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["agentHdrName", "agentHdrScore"]
-      },
-      "agentHdrName":  { "type": "Caption", "props": { "text": "AGENT",      "weight": "medium" } },
-      "agentHdrScore": { "type": "Caption", "props": { "text": "PASS RATE",  "weight": "medium" } },
-
-      "agentDivider": { "type": "Divider", "props": {} },
-
-      "agent1": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["a1name", "a1score"]
-      },
-      "a1name":  { "type": "Text", "props": { "text": "Carol T.",  "size": "sm", "weight": "medium" } },
-      "a1score": { "type": "Badge", "props": { "text": "95%", "tone": "success" } },
-
-      "agent2": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["a2name", "a2score"]
-      },
-      "a2name":  { "type": "Text", "props": { "text": "Alice M.",  "size": "sm" } },
-      "a2score": { "type": "Badge", "props": { "text": "90%", "tone": "success" } },
-
-      "agent3": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["a3name", "a3score"]
-      },
-      "a3name":  { "type": "Text", "props": { "text": "Jeremy F.", "size": "sm" } },
-      "a3score": { "type": "Badge", "props": { "text": "79%", "tone": "success" } },
-
-      "agent4": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["a4name", "a4score"]
-      },
-      "a4name":  { "type": "Text", "props": { "text": "Rico P.",   "size": "sm" } },
-      "a4score": { "type": "Badge", "props": { "text": "66%", "tone": "warning" } },
-
-      "agent5": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["a5name", "a5score"]
-      },
-      "a5name":  { "type": "Text", "props": { "text": "Bob K.",    "size": "sm" } },
-      "a5score": { "type": "Badge", "props": { "text": "58%", "tone": "destructive" } }
+      }
 
     }
   },
