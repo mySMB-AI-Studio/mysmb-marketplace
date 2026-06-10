@@ -27,7 +27,7 @@
 
       "card": {
         "type": "Card",
-        "children": ["headerRow", "periodTabs", "statGrid", "debugCaption", "chart", "axis", "legend"]
+        "children": ["headerRow", "periodTabs", "statRow", "debugState", "debugLoading", "chart", "axis", "legend"]
       },
 
       "headerRow": {
@@ -85,7 +85,7 @@
           ]
         }
       },
-      "chipThisFYLabel": { "type": "Text", "props": { "text": "This FY", "size": "sm", "weight": "medium" } },
+      "chipThisFYLabel": { "type": "Text", "props": { "text": "This FY", "size": "xs", "weight": "medium" } },
       "chipLastFY": {
         "type": "Row",
         "props": {
@@ -104,20 +104,19 @@
           ]
         }
       },
-      "chipLastFYLabel": { "type": "Text", "props": { "text": "Last FY", "size": "sm", "weight": "medium" } },
+      "chipLastFYLabel": { "type": "Text", "props": { "text": "Last FY", "size": "xs", "weight": "medium" } },
 
-      "statGrid": {
+      "statRow": {
         "type": "Row",
         "props": { "gap": "lg", "align": "start" },
         "children": ["incomeBlock", "expensesBlock"]
       },
-
       "incomeBlock": {
         "type": "Stack",
         "props": { "gap": "xs" },
-        "children": ["incomeArrow", "incomeStat"]
+        "children": ["incomeIcon", "incomeStat"]
       },
-      "incomeArrow": {
+      "incomeIcon": {
         "type": "Icon",
         "props": { "name": "ArrowUpRight", "tone": "success", "size": "xs" }
       },
@@ -134,17 +133,15 @@
               }
             }
           },
-          "tone": "success",
-          "size": "lg"
+          "tone": "success"
         }
       },
-
       "expensesBlock": {
         "type": "Stack",
         "props": { "gap": "xs" },
-        "children": ["expensesArrow", "expensesStat"]
+        "children": ["expensesIcon", "expensesStat"]
       },
-      "expensesArrow": {
+      "expensesIcon": {
         "type": "Icon",
         "props": { "name": "ArrowDownRight", "tone": "destructive", "size": "xs" }
       },
@@ -161,12 +158,11 @@
               }
             }
           },
-          "tone": "destructive",
-          "size": "lg"
+          "tone": "destructive"
         }
       },
 
-      "debugCaption": {
+      "debugState": {
         "type": "Caption",
         "props": {
           "text": {
@@ -175,12 +171,22 @@
           }
         }
       },
-      "expensesChart": {
+      "debugLoading": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "myob-accounting_format_json",
+            "args": { "value": { "$state": "/_loading/myob-accounting.get_profit_and_loss" } }
+          }
+        }
+      },
+
+      "chart": {
         "type": "Sparkline",
         "props": {
-          "values": [142000, 168000, 235000, 181000, 290000, 178000, 195000, 212000, 310000, 278000, 65000, 98000],
-          "tone": "destructive",
-          "height": 64,
+          "values": [38200, 42500, 35800, 48100, 51300, 45600, 55200, 61800, 57400, 66900, 72100, 63500],
+          "tone": "accent",
+          "height": 120,
           "fill": true
         }
       },
@@ -211,16 +217,16 @@
       "legendIncome": {
         "type": "Row",
         "props": { "gap": "xs", "align": "center" },
-        "children": ["legendIncomeDot", "legendIncomeLabel"]
+        "children": ["legendIncomeIcon", "legendIncomeLabel"]
       },
-      "legendIncomeDot": { "type": "Dot", "props": { "tone": "success" } },
+      "legendIncomeIcon": { "type": "Icon", "props": { "name": "Circle", "tone": "success", "size": "xs" } },
       "legendIncomeLabel": { "type": "Caption", "props": { "text": "Income" } },
       "legendExpenses": {
         "type": "Row",
         "props": { "gap": "xs", "align": "center" },
-        "children": ["legendExpensesDot", "legendExpensesLabel"]
+        "children": ["legendExpensesIcon", "legendExpensesLabel"]
       },
-      "legendExpensesDot": { "type": "Dot", "props": { "tone": "destructive" } },
+      "legendExpensesIcon": { "type": "Icon", "props": { "name": "Circle", "tone": "destructive", "size": "xs" } },
       "legendExpensesLabel": { "type": "Caption", "props": { "text": "Expenses" } }
 
     }
