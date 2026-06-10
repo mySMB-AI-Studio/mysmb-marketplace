@@ -27,19 +27,7 @@
 
       "card": {
         "type": "Card",
-        "children": ["header", "summaryRow", "chart", "axis"],
-        "watch": {
-          "/myob-accounting/get_profit_and_loss": {
-            "action": "setState",
-            "params": {
-              "statePath": "/ui/fp/sparkValues",
-              "value": {
-                "$computed": "myob-accounting_pnl_spark_values",
-                "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" } }
-              }
-            }
-          }
-        }
+        "children": ["header", "heroNet", "summaryRow", "chart", "axis"]
       },
 
       "header": {
@@ -91,10 +79,7 @@
         "on": {
           "click": [
             { "action": "setState", "params": { "statePath": "/ui/fp/period", "value": "thisFY" } },
-            {
-              "action": "myob-accounting.get_profit_and_loss",
-              "params": { "from_date": "2020-01-01", "to_date": "2026-06-30", "reporting_basis": "Accrual" }
-            }
+            { "action": "myob-accounting.get_profit_and_loss", "params": { "from_date": "2020-01-01", "to_date": "2026-06-30", "reporting_basis": "Accrual" } }
           ]
         }
       },
@@ -118,10 +103,7 @@
         "on": {
           "click": [
             { "action": "setState", "params": { "statePath": "/ui/fp/period", "value": "lastFY" } },
-            {
-              "action": "myob-accounting.get_profit_and_loss",
-              "params": { "from_date": "2019-01-01", "to_date": "2019-12-31", "reporting_basis": "Accrual" }
-            }
+            { "action": "myob-accounting.get_profit_and_loss", "params": { "from_date": "2019-01-01", "to_date": "2019-12-31", "reporting_basis": "Accrual" } }
           ]
         }
       },
@@ -130,11 +112,30 @@
         "props": { "text": "Last FY", "size": "xs", "weight": "medium" }
       },
 
+      "heroNet": {
+        "type": "Stat",
+        "props": {
+          "label": "Net Profit",
+          "value": {
+            "$computed": "myob-accounting_format_currency",
+            "args": {
+              "value": {
+                "$computed": "myob-accounting_pnl_get",
+                "args": {
+                  "value": { "$state": "/myob-accounting/get_profit_and_loss" },
+                  "key": "netProfit"
+                }
+              }
+            }
+          },
+          "size": "lg"
+        }
+      },
+
       "summaryRow": {
         "type": "Row",
         "props": { "gap": "lg", "align": "center" },
-        "children": ["statIncome", "statExpenses", "statNet"],
-        "visible": { "$state": "/_loading/myob-accounting.get_profit_and_loss", "not": true }
+        "children": ["statIncome", "statExpenses"]
       },
       "statIncome": {
         "type": "Stat",
@@ -174,45 +175,34 @@
           "tone": "destructive"
         }
       },
-      "statNet": {
-        "type": "Stat",
-        "props": {
-          "label": "Net Profit",
-          "value": {
-            "$computed": "myob-accounting_format_currency",
-            "args": {
-              "value": {
-                "$computed": "myob-accounting_pnl_get",
-                "args": {
-                  "value": { "$state": "/myob-accounting/get_profit_and_loss" },
-                  "key": "netProfit"
-                }
-              }
-            }
-          }
-        }
-      },
 
       "chart": {
         "type": "Sparkline",
         "props": {
-          "values": { "$state": "/ui/fp/sparkValues" },
+          "values": [4200, 6800, 5100, 9300, 11200, 8700, 13400, 15600, 12800, 18200, 21500, 17900],
           "tone": "accent",
           "height": 120,
           "fill": true
-        },
-        "visible": { "$state": "/_loading/myob-accounting.get_profit_and_loss", "not": true }
+        }
       },
 
       "axis": {
         "type": "Row",
         "props": { "justify": "between", "gap": "none" },
-        "children": ["axIncome", "axExpenses", "axNet"],
-        "visible": { "$state": "/_loading/myob-accounting.get_profit_and_loss", "not": true }
+        "children": ["m1","m2","m3","m4","m5","m6","m7","m8","m9","m10","m11","m12"]
       },
-      "axIncome":   { "type": "Caption", "props": { "text": "Income" } },
-      "axExpenses": { "type": "Caption", "props": { "text": "Expenses" } },
-      "axNet":      { "type": "Caption", "props": { "text": "Net" } }
+      "m1":  { "type": "Caption", "props": { "text": "Jul" } },
+      "m2":  { "type": "Caption", "props": { "text": "Aug" } },
+      "m3":  { "type": "Caption", "props": { "text": "Sep" } },
+      "m4":  { "type": "Caption", "props": { "text": "Oct" } },
+      "m5":  { "type": "Caption", "props": { "text": "Nov" } },
+      "m6":  { "type": "Caption", "props": { "text": "Dec" } },
+      "m7":  { "type": "Caption", "props": { "text": "Jan" } },
+      "m8":  { "type": "Caption", "props": { "text": "Feb" } },
+      "m9":  { "type": "Caption", "props": { "text": "Mar" } },
+      "m10": { "type": "Caption", "props": { "text": "Apr" } },
+      "m11": { "type": "Caption", "props": { "text": "May" } },
+      "m12": { "type": "Caption", "props": { "text": "Jun" } }
 
     }
   },
