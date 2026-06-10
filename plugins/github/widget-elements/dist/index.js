@@ -148,9 +148,35 @@ const gantt_status_tone = (args) => {
         return 'info';
     return 'accent';
 };
+// A GitHub Projects field value can wrap its display text as { raw, html }.
+// Unwrap to the bare string; pass plain strings through unchanged.
+function unwrapRaw(value) {
+    if (value && typeof value === 'object' && 'raw' in value) {
+        return str(value.raw);
+    }
+    return str(value);
+}
+// Read a field's `value` from the REST `item.fields[]` array, matched by
+// `data_type` (e.g. "iteration") and/or exact field `name` (e.g. "Status").
+function restFieldValue(item, match) {
+    if (!Array.isArray(item.fields))
+        return null;
+    const f = item.fields.find((x) => x &&
+        (match.dataType ? x.data_type === match.dataType : true) &&
+        (match.name ? x.name === match.name : true));
+    if (!f || f.value == null)
+        return null;
+    return f.value;
+}
 function extractIterations(payload) {
-    if (Array.isArray(payload))
+    if (Array.isArray(payload)) {
+        // A bare list of project ITEMS (each carrying `content`/`fields`) is not
+        // an iterations list — return none so iterations get derived from items.
+        if (payload.some((x) => x && typeof x === 'object' && ('content' in x || 'fields' in x))) {
+            return [];
+        }
         return payload;
+    }
     if (payload && typeof payload === 'object') {
         const p = payload;
         if (Array.isArray(p.iterations))
@@ -185,6 +211,10 @@ function itemIterationId(item) {
         return it;
     if (it && typeof it === 'object')
         return str(it.iterationId) || str(it.id) || null;
+    // REST `list_project_items` shape: iteration nested in fields[].value.id.
+    const rest = restFieldValue(item, { dataType: 'iteration' });
+    if (rest && typeof rest === 'object')
+        return str(rest.id) || null;
     return null;
 }
 function itemStatus(item) {
@@ -194,6 +224,10 @@ function itemStatus(item) {
         return str(item.status.name);
     if (item.state)
         return item.state;
+    // REST shape: the single-select "Status" field's value.name ({ raw }).
+    const rest = restFieldValue(item, { dataType: 'single_select', name: 'Status' });
+    if (rest && typeof rest === 'object')
+        return unwrapRaw(rest.name);
     return '';
 }
 function buildTemplate(iterationIndex, total) {
@@ -206,53 +240,107 @@ function buildTemplate(iterationIndex, total) {
     }
     return cells.join(' ');
 }
-const gantt_data = (args) => {
-    const rawIterations = extractIterations(args.value);
-    const iterations = rawIterations
-        .map((it) => ({
-        id: str(it.id),
-        title: str(it.title) || str(it.id),
-        startDate: str(it.startDate),
-    }))
-        .filter((it) => it.id)
-        .sort((a, b) => a.startDate.localeCompare(b.startDate));
-    const idToIndex = new Map();
-    iterations.forEach((it, i) => idToIndex.set(it.id, i));
+// ── card-label cleanup ──────────────────────────────────────────────
+// Turn a raw issue title into a compact card label: drop a leading
+// "#123"/"123:" and a "Epic:/Bug:/Feature:" type prefix, then trim.
+function cleanLabel(title) {
+    return title
+        .replace(/^\s*#?\d+\s*[:.–-]?\s*/, '')
+        .replace(/^\s*(epic|bug|feature|chore|task|story)\s*[:–-]\s*/i, '')
+        .trim();
+}
+// ── release-week header ─────────────────────────────────────────────
+// An iteration's last day is when its work ships, so the column header is
+// "Ships week of <month> <day>" derived from start_date + duration.
+function iterationEnd(startDate, duration) {
+    if (!startDate)
+        return null;
+    const start = new Date(startDate + 'T00:00:00Z');
+    if (Number.isNaN(start.getTime()))
+        return null;
+    const days = duration && duration > 0 ? duration : 1;
+    return new Date(start.getTime() + (days - 1) * 86400000);
+}
+function shipWeekLabel(startDate, duration) {
+    const end = iterationEnd(startDate, duration);
+    if (!end)
+        return '';
+    const month = end.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
+    return `Ships week of ${month} ${end.getUTCDate()}`;
+}
+// Parse owner/repo from a REST `repository_url` so a card click can address
+// the issue (owner/repo/number) for the detail modal.
+function ownerRepo(item) {
+    // The Copilot MCP item shape varies — owner/repo may live in an API
+    // `repository_url` (…/repos/OWNER/REPO) or only in a web `html_url`
+    // (github.com/OWNER/REPO/…). Try every URL field and both patterns.
+    const c = item.content ?? {};
+    for (const u of [c.repository_url, c.html_url, c.url, item.url]) {
+        const s = str(u);
+        const m = s.match(/repos\/([^/]+)\/([^/]+)/) || s.match(/github\.com\/([^/]+)\/([^/]+?)(?:\/|$)/);
+        if (m)
+            return { owner: m[1], repo: m[2] };
+    }
+    return { owner: '', repo: '' };
+}
+// Normalise project items into release-week columns for the board layout:
+//   { columns: [{ id, label, count, items: BoardItem[] }, …], total }
+// Items with no iteration land in a trailing "No date yet" column.
+const board_data = (args) => {
     const rawItems = extractItems(args.value);
-    const items = rawItems
-        .map((raw) => {
-        const iterationId = itemIterationId(raw);
-        if (!iterationId || !idToIndex.has(iterationId))
-            return null;
-        const iterationIndex = idToIndex.get(iterationId) ?? 0;
+    const UNSCHEDULED = '__unscheduled__';
+    const cols = new Map();
+    for (const raw of rawItems) {
+        const status = itemStatus(raw);
+        // Exclude shipped work — the board shows what's still upcoming/in flight.
+        if (/^(done|closed)$/i.test(status.trim()))
+            continue;
+        const colId = itemIterationId(raw) || UNSCHEDULED;
+        if (!cols.has(colId)) {
+            if (colId === UNSCHEDULED) {
+                cols.set(colId, { id: colId, label: 'No date yet', shipDate: '9999-12-31', items: [] });
+            }
+            else {
+                const v = restFieldValue(raw, { dataType: 'iteration' });
+                const iv = v && typeof v === 'object' ? v : {};
+                const start = str(iv.start_date);
+                const dur = Number(iv.duration) || undefined;
+                const end = iterationEnd(start, dur);
+                cols.set(colId, {
+                    id: colId,
+                    label: shipWeekLabel(start, dur) || unwrapRaw(iv.title) || colId,
+                    shipDate: end ? end.toISOString().slice(0, 10) : '9999-12-30',
+                    items: [],
+                });
+            }
+        }
         const number = typeof raw.number === 'number'
             ? raw.number
             : typeof raw.content?.number === 'number'
                 ? raw.content.number
                 : null;
         const title = str(raw.title) || str(raw.content?.title) || (number != null ? `#${number}` : '');
-        const url = str(raw.url) || str(raw.content?.url);
-        const status = itemStatus(raw);
-        return {
+        const { owner, repo } = ownerRepo(raw);
+        cols.get(colId).items.push({
             id: str(raw.id) || (number != null ? `i${number}` : title),
             number,
-            title,
+            owner,
+            repo,
+            label: cleanLabel(title) || title,
             status,
             statusTone: gantt_status_tone({ value: status }) || 'accent',
-            url,
-            iterationId,
-            iterationIndex,
-            template: buildTemplate(iterationIndex, iterations.length),
-        };
-    })
-        .filter((x) => x !== null);
-    // Earliest iteration first, then alphabetical title within an iteration.
-    items.sort((a, b) => {
-        if (a.iterationIndex !== b.iterationIndex)
-            return a.iterationIndex - b.iterationIndex;
-        return a.title.localeCompare(b.title);
-    });
-    return { iterations, items };
+            url: str(raw.url) || str(raw.content?.html_url) || str(raw.content?.url),
+        });
+    }
+    const columns = [...cols.values()]
+        .sort((a, b) => a.shipDate.localeCompare(b.shipDate))
+        .map((c) => ({
+        id: c.id,
+        label: c.label,
+        count: c.items.length,
+        items: c.items.sort((a, b) => a.label.localeCompare(b.label)),
+    }));
+    return { columns, total: columns.reduce((n, c) => n + c.count, 0) };
 };
 const elements = {
     slug: 'github',
@@ -262,7 +350,7 @@ const elements = {
         project_rows,
         count_open,
         gantt_status_tone,
-        gantt_data,
+        board_data,
     },
 };
 export default elements;
