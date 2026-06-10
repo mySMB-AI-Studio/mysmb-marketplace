@@ -27,7 +27,7 @@
 
       "card": {
         "type": "Card",
-        "children": ["header", "periodTabs", "heroStat", "summaryRow", "debugCaption", "chart", "dateAxis", "legend"]
+        "children": ["header", "periodTabs", "heroStat", "summaryRow", "debugState", "debugLoading", "chart", "dateAxis", "legend"]
       },
 
       "header": {
@@ -85,7 +85,7 @@
           ]
         }
       },
-      "chipThisFYLabel": { "type": "Text", "props": { "text": "This FY", "size": "sm", "weight": "medium" } },
+      "chipThisFYLabel": { "type": "Text", "props": { "text": "This FY", "size": "xs", "weight": "medium" } },
       "chipLastFY": {
         "type": "Row",
         "props": {
@@ -104,7 +104,7 @@
           ]
         }
       },
-      "chipLastFYLabel": { "type": "Text", "props": { "text": "Last FY", "size": "sm", "weight": "medium" } },
+      "chipLastFYLabel": { "type": "Text", "props": { "text": "Last FY", "size": "xs", "weight": "medium" } },
 
       "heroStat": {
         "type": "Stat",
@@ -118,8 +118,7 @@
                 "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" }, "key": "netProfit" }
               }
             }
-          },
-          "size": "lg"
+          }
         }
       },
 
@@ -128,7 +127,6 @@
         "props": { "gap": "lg", "align": "start" },
         "children": ["incomeSummary", "expensesSummary", "netSummary"]
       },
-
       "incomeSummary": {
         "type": "Stack",
         "props": { "gap": "xxs" },
@@ -137,9 +135,9 @@
       "incomeDotRow": {
         "type": "Row",
         "props": { "gap": "xs", "align": "center" },
-        "children": ["incomeDot", "incomeLabel"]
+        "children": ["incomeDotIcon", "incomeLabel"]
       },
-      "incomeDot": { "type": "Dot", "props": { "tone": "accent" } },
+      "incomeDotIcon": { "type": "Icon", "props": { "name": "Circle", "tone": "accent", "size": "xs" } },
       "incomeLabel": { "type": "Caption", "props": { "text": "Income" } },
       "incomeStat": {
         "type": "Stat",
@@ -152,8 +150,7 @@
                 "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" }, "key": "income" }
               }
             }
-          },
-          "size": "sm"
+          }
         }
       },
 
@@ -165,9 +162,9 @@
       "expensesDotRow": {
         "type": "Row",
         "props": { "gap": "xs", "align": "center" },
-        "children": ["expensesDot", "expensesLabel"]
+        "children": ["expensesDotIcon", "expensesLabel"]
       },
-      "expensesDot": { "type": "Dot", "props": { "tone": "muted" } },
+      "expensesDotIcon": { "type": "Icon", "props": { "name": "Circle", "tone": "muted", "size": "xs" } },
       "expensesLabel": { "type": "Caption", "props": { "text": "Expenses" } },
       "expensesStat": {
         "type": "Stat",
@@ -180,8 +177,7 @@
                 "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" }, "key": "expenses" }
               }
             }
-          },
-          "size": "sm"
+          }
         }
       },
 
@@ -193,9 +189,9 @@
       "netDotRow": {
         "type": "Row",
         "props": { "gap": "xs", "align": "center" },
-        "children": ["netDot", "netLabel"]
+        "children": ["netDotIcon", "netLabel"]
       },
-      "netDot": { "type": "Dot", "props": { "tone": "destructive" } },
+      "netDotIcon": { "type": "Icon", "props": { "name": "Circle", "tone": "destructive", "size": "xs" } },
       "netLabel": { "type": "Caption", "props": { "text": "Net Profit" } },
       "netStat": {
         "type": "Stat",
@@ -208,8 +204,26 @@
                 "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" }, "key": "netProfit" }
               }
             }
-          },
-          "size": "sm"
+          }
+        }
+      },
+
+      "debugState": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "myob-accounting_format_json",
+            "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" } }
+          }
+        }
+      },
+      "debugLoading": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "myob-accounting_format_json",
+            "args": { "value": { "$state": "/_loading/myob-accounting.get_profit_and_loss" } }
+          }
         }
       },
 
@@ -249,23 +263,23 @@
       "legendIncome": {
         "type": "Row",
         "props": { "gap": "xs", "align": "center" },
-        "children": ["legendIncomeDot", "legendIncomeLabel"]
+        "children": ["legendIncomeIcon", "legendIncomeLabel"]
       },
-      "legendIncomeDot": { "type": "Dot", "props": { "tone": "accent" } },
+      "legendIncomeIcon": { "type": "Icon", "props": { "name": "Circle", "tone": "accent", "size": "xs" } },
       "legendIncomeLabel": { "type": "Caption", "props": { "text": "Income" } },
       "legendExpenses": {
         "type": "Row",
         "props": { "gap": "xs", "align": "center" },
-        "children": ["legendExpensesDot", "legendExpensesLabel"]
+        "children": ["legendExpensesIcon", "legendExpensesLabel"]
       },
-      "legendExpensesDot": { "type": "Dot", "props": { "tone": "muted" } },
+      "legendExpensesIcon": { "type": "Icon", "props": { "name": "Circle", "tone": "muted", "size": "xs" } },
       "legendExpensesLabel": { "type": "Caption", "props": { "text": "Expenses" } },
       "legendNet": {
         "type": "Row",
         "props": { "gap": "xs", "align": "center" },
-        "children": ["legendNetDot", "legendNetLabel"]
+        "children": ["legendNetIcon", "legendNetLabel"]
       },
-      "legendNetDot": { "type": "Dot", "props": { "tone": "destructive" } },
+      "legendNetIcon": { "type": "Icon", "props": { "name": "Circle", "tone": "destructive", "size": "xs" } },
       "legendNetLabel": { "type": "Caption", "props": { "text": "Net Profit" } }
 
     }
