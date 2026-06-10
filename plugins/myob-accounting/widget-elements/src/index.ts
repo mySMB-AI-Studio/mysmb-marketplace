@@ -214,9 +214,14 @@ const sort_label: ComputedFunction = (args) => {
 // For income/expenses sums all matching sections (handles split sections).
 // Args: { value: PnLReport, key: "income" | "expenses" | "netProfit" | "grossProfit" }
 const pnl_get: ComputedFunction = (args) => {
-  const r = args.value as Record<string, unknown>;
+  let r = args.value as Record<string, unknown>;
   const key = String(args.key ?? '');
   if (!r) return 0;
+  // Auto-unwrap common MCP response wrapper keys ({ data: {...} })
+  if (typeof r === 'object' && !Array.isArray(r) &&
+      r.data != null && typeof r.data === 'object' && !Array.isArray(r.data)) {
+    r = r.data as Record<string, unknown>;
+  }
   // Try known top-level summary fields
   const candidates: Record<string, string[]> = {
     income:      ['IncomeTotal', 'TotalIncome'],
@@ -316,18 +321,24 @@ const pnl_entries: ComputedFunction = (args) => {
 
 // ── pnl_debug ────────────────────────────────────────────────────────
 // Returns a diagnostic string showing the P&L section titles and their totals.
-// Used to verify the actual MYOB API response structure.
+// Also detects MCP wrapper keys so the correct state path can be identified.
 // Args: { value: PnLReport }
 const pnl_debug: ComputedFunction = (args) => {
-  const r = args.value as Record<string, unknown>;
-  if (!r) return 'no data';
+  const raw = args.value as Record<string, unknown>;
+  if (!raw) return 'pnl_debug: null/undefined';
+  const topKeys = Object.keys(raw).join(', ');
+  // Detect wrapper key
+  let r = raw;
+  if (raw.data != null && typeof raw.data === 'object' && !Array.isArray(raw.data)) {
+    r = raw.data as Record<string, unknown>;
+    return `wrapped{data}: inner keys: ${Object.keys(r).join(', ')}`;
+  }
   const sections = Array.isArray(r.Sections) ? (r.Sections as Record<string, unknown>[]) : [];
   if (sections.length === 0) {
-    const keys = Object.keys(r).join(', ');
-    return `no sections — top-level keys: ${keys}`;
+    return `no sections — top-level keys: ${topKeys}`;
   }
   return sections.map((s) => {
-    const did = s.DisplayID ?? '';
+    const did = s.DisplayID ?? '?';
     const total = (s.Total as Record<string, unknown>)?.Amount ?? '?';
     return `[${did}] ${s.Title}: ${total}`;
   }).join(' | ');

@@ -8,8 +8,8 @@
   "connectorsUsed": ["myob-accounting"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 6, "rowSpan": 4 },
-    "min": { "colSpan": 4, "rowSpan": 3 },
+    "preferred": { "colSpan": 6, "rowSpan": 5 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
     "max": { "colSpan": 10, "rowSpan": 8 }
   },
   "dataProvider": {
@@ -27,13 +27,13 @@
 
       "card": {
         "type": "Card",
-        "children": ["header", "heroNet", "summaryRow", "chart", "axis"]
+        "children": ["header", "periodTabs", "heroStat", "summaryRow", "chart", "dateAxis", "legend"]
       },
 
       "header": {
         "type": "Row",
         "props": { "justify": "between", "align": "center" },
-        "children": ["titleGroup", "periodChips"]
+        "children": ["titleGroup", "brandBadge"]
       },
       "titleGroup": {
         "type": "Row",
@@ -57,19 +57,21 @@
         "type": "Eyebrow",
         "props": { "text": "MYOB Accounting" }
       },
+      "brandBadge": {
+        "type": "Badge",
+        "props": { "label": "MYOB", "tone": "accent" }
+      },
 
-      "periodChips": {
+      "periodTabs": {
         "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
+        "props": { "gap": "md", "align": "center" },
         "children": ["chipThisFY", "chipLastFY"]
       },
       "chipThisFY": {
         "type": "Row",
         "props": {
-          "gap": "none",
-          "align": "center",
-          "hover": true,
-          "clickable": true,
+          "gap": "none", "align": "center",
+          "hover": true, "clickable": true,
           "selected": {
             "$computed": "equals",
             "args": { "a": "thisFY", "b": { "$state": "/ui/fp/period" } }
@@ -83,17 +85,12 @@
           ]
         }
       },
-      "chipThisFYLabel": {
-        "type": "Text",
-        "props": { "text": "This FY", "size": "xs", "weight": "medium" }
-      },
+      "chipThisFYLabel": { "type": "Text", "props": { "text": "This FY", "size": "sm", "weight": "medium" } },
       "chipLastFY": {
         "type": "Row",
         "props": {
-          "gap": "none",
-          "align": "center",
-          "hover": true,
-          "clickable": true,
+          "gap": "none", "align": "center",
+          "hover": true, "clickable": true,
           "selected": {
             "$computed": "equals",
             "args": { "a": "lastFY", "b": { "$state": "/ui/fp/period" } }
@@ -107,24 +104,18 @@
           ]
         }
       },
-      "chipLastFYLabel": {
-        "type": "Text",
-        "props": { "text": "Last FY", "size": "xs", "weight": "medium" }
-      },
+      "chipLastFYLabel": { "type": "Text", "props": { "text": "Last FY", "size": "sm", "weight": "medium" } },
 
-      "heroNet": {
+      "heroStat": {
         "type": "Stat",
         "props": {
-          "label": "Net Profit",
+          "label": "net profit · this financial year",
           "value": {
             "$computed": "myob-accounting_format_currency",
             "args": {
               "value": {
                 "$computed": "myob-accounting_pnl_get",
-                "args": {
-                  "value": { "$state": "/myob-accounting/get_profit_and_loss" },
-                  "key": "netProfit"
-                }
+                "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" }, "key": "netProfit" }
               }
             }
           },
@@ -134,45 +125,91 @@
 
       "summaryRow": {
         "type": "Row",
-        "props": { "gap": "lg", "align": "center" },
-        "children": ["statIncome", "statExpenses"]
+        "props": { "gap": "lg", "align": "start" },
+        "children": ["incomeSummary", "expensesSummary", "netSummary"]
       },
-      "statIncome": {
+
+      "incomeSummary": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["incomeDotRow", "incomeStat"]
+      },
+      "incomeDotRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["incomeDot", "incomeLabel"]
+      },
+      "incomeDot": { "type": "Dot", "props": { "tone": "accent" } },
+      "incomeLabel": { "type": "Caption", "props": { "text": "Income" } },
+      "incomeStat": {
         "type": "Stat",
         "props": {
-          "label": "Income",
           "value": {
             "$computed": "myob-accounting_format_currency",
             "args": {
               "value": {
                 "$computed": "myob-accounting_pnl_get",
-                "args": {
-                  "value": { "$state": "/myob-accounting/get_profit_and_loss" },
-                  "key": "income"
-                }
+                "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" }, "key": "income" }
               }
             }
           },
-          "tone": "success"
+          "size": "sm"
         }
       },
-      "statExpenses": {
+
+      "expensesSummary": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["expensesDotRow", "expensesStat"]
+      },
+      "expensesDotRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["expensesDot", "expensesLabel"]
+      },
+      "expensesDot": { "type": "Dot", "props": { "tone": "muted" } },
+      "expensesLabel": { "type": "Caption", "props": { "text": "Expenses" } },
+      "expensesStat": {
         "type": "Stat",
         "props": {
-          "label": "Expenses",
           "value": {
             "$computed": "myob-accounting_format_currency",
             "args": {
               "value": {
                 "$computed": "myob-accounting_pnl_get",
-                "args": {
-                  "value": { "$state": "/myob-accounting/get_profit_and_loss" },
-                  "key": "expenses"
-                }
+                "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" }, "key": "expenses" }
               }
             }
           },
-          "tone": "destructive"
+          "size": "sm"
+        }
+      },
+
+      "netSummary": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["netDotRow", "netStat"]
+      },
+      "netDotRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["netDot", "netLabel"]
+      },
+      "netDot": { "type": "Dot", "props": { "tone": "destructive" } },
+      "netLabel": { "type": "Caption", "props": { "text": "Net Profit" } },
+      "netStat": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "myob-accounting_format_currency",
+            "args": {
+              "value": {
+                "$computed": "myob-accounting_pnl_get",
+                "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" }, "key": "netProfit" }
+              }
+            }
+          },
+          "size": "sm"
         }
       },
 
@@ -182,27 +219,44 @@
           "values": [4200, 6800, 5100, 9300, 11200, 8700, 13400, 15600, 12800, 18200, 21500, 17900],
           "tone": "accent",
           "height": 120,
-          "fill": true
+          "fill": false
         }
       },
 
-      "axis": {
+      "dateAxis": {
         "type": "Row",
-        "props": { "justify": "between", "gap": "none" },
-        "children": ["m1","m2","m3","m4","m5","m6","m7","m8","m9","m10","m11","m12"]
+        "props": { "justify": "between" },
+        "children": ["dateStart", "dateEnd"]
       },
-      "m1":  { "type": "Caption", "props": { "text": "Jul" } },
-      "m2":  { "type": "Caption", "props": { "text": "Aug" } },
-      "m3":  { "type": "Caption", "props": { "text": "Sep" } },
-      "m4":  { "type": "Caption", "props": { "text": "Oct" } },
-      "m5":  { "type": "Caption", "props": { "text": "Nov" } },
-      "m6":  { "type": "Caption", "props": { "text": "Dec" } },
-      "m7":  { "type": "Caption", "props": { "text": "Jan" } },
-      "m8":  { "type": "Caption", "props": { "text": "Feb" } },
-      "m9":  { "type": "Caption", "props": { "text": "Mar" } },
-      "m10": { "type": "Caption", "props": { "text": "Apr" } },
-      "m11": { "type": "Caption", "props": { "text": "May" } },
-      "m12": { "type": "Caption", "props": { "text": "Jun" } }
+      "dateStart": { "type": "Caption", "props": { "text": "Jul 2025" } },
+      "dateEnd":   { "type": "Caption", "props": { "text": "Jun 2026" } },
+
+      "legend": {
+        "type": "Row",
+        "props": { "gap": "lg", "align": "center" },
+        "children": ["legendIncome", "legendExpenses", "legendNet"]
+      },
+      "legendIncome": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["legendIncomeDot", "legendIncomeLabel"]
+      },
+      "legendIncomeDot": { "type": "Dot", "props": { "tone": "accent" } },
+      "legendIncomeLabel": { "type": "Caption", "props": { "text": "Income" } },
+      "legendExpenses": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["legendExpensesDot", "legendExpensesLabel"]
+      },
+      "legendExpensesDot": { "type": "Dot", "props": { "tone": "muted" } },
+      "legendExpensesLabel": { "type": "Caption", "props": { "text": "Expenses" } },
+      "legendNet": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["legendNetDot", "legendNetLabel"]
+      },
+      "legendNetDot": { "type": "Dot", "props": { "tone": "destructive" } },
+      "legendNetLabel": { "type": "Caption", "props": { "text": "Net Profit" } }
 
     }
   },
