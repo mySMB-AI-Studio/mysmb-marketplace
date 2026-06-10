@@ -1,7 +1,7 @@
 {
   "id": "myob-income-expenses",
   "title": "MYOB — Income vs Expenses",
-  "description": "Year-to-date total income vs total expenses with a sparkline and stat tiles. Toggle between this financial year and the prior year.",
+  "description": "Total income vs total expenses for the financial year with period toggle.",
   "category": "finance",
   "tags": ["myob", "income", "expenses", "pnl", "profit", "loss", "finance", "report"],
   "keywords": ["income", "expenses", "profit", "loss", "pnl", "myob", "revenue", "financial year"],
@@ -10,7 +10,7 @@
   "sizing": {
     "preferred": { "colSpan": 6, "rowSpan": 4 },
     "min": { "colSpan": 4, "rowSpan": 3 },
-    "max": { "colSpan": 10, "rowSpan": 8 }
+    "max": { "colSpan": 12, "rowSpan": 6 }
   },
   "dataProvider": {
     "mcp": "myob-accounting",
@@ -27,22 +27,10 @@
 
       "card": {
         "type": "Card",
-        "children": ["header", "summaryRow", "chart", "axis"],
-        "watch": {
-          "/myob-accounting/get_profit_and_loss": {
-            "action": "setState",
-            "params": {
-              "statePath": "/ui/pnl/sparkValues",
-              "value": {
-                "$computed": "myob-accounting_pnl_spark_values",
-                "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" } }
-              }
-            }
-          }
-        }
+        "children": ["headerRow", "summaryRow", "chart", "axis"]
       },
 
-      "header": {
+      "headerRow": {
         "type": "Row",
         "props": { "justify": "between", "align": "center" },
         "children": ["titleGroup", "periodChips"]
@@ -78,10 +66,8 @@
       "chipThisFY": {
         "type": "Row",
         "props": {
-          "gap": "none",
-          "align": "center",
-          "hover": true,
-          "clickable": true,
+          "gap": "none", "align": "center",
+          "hover": true, "clickable": true,
           "selected": {
             "$computed": "equals",
             "args": { "a": "thisFY", "b": { "$state": "/ui/pnl/period" } }
@@ -91,24 +77,16 @@
         "on": {
           "click": [
             { "action": "setState", "params": { "statePath": "/ui/pnl/period", "value": "thisFY" } },
-            {
-              "action": "myob-accounting.get_profit_and_loss",
-              "params": { "from_date": "2020-01-01", "to_date": "2026-06-30", "reporting_basis": "Accrual" }
-            }
+            { "action": "myob-accounting.get_profit_and_loss", "params": { "from_date": "2020-01-01", "to_date": "2026-06-30", "reporting_basis": "Accrual" } }
           ]
         }
       },
-      "chipThisFYLabel": {
-        "type": "Text",
-        "props": { "text": "This FY", "size": "xs", "weight": "medium" }
-      },
+      "chipThisFYLabel": { "type": "Text", "props": { "text": "This FY", "size": "xs", "weight": "medium" } },
       "chipLastFY": {
         "type": "Row",
         "props": {
-          "gap": "none",
-          "align": "center",
-          "hover": true,
-          "clickable": true,
+          "gap": "none", "align": "center",
+          "hover": true, "clickable": true,
           "selected": {
             "$computed": "equals",
             "args": { "a": "lastFY", "b": { "$state": "/ui/pnl/period" } }
@@ -118,23 +96,16 @@
         "on": {
           "click": [
             { "action": "setState", "params": { "statePath": "/ui/pnl/period", "value": "lastFY" } },
-            {
-              "action": "myob-accounting.get_profit_and_loss",
-              "params": { "from_date": "2019-01-01", "to_date": "2019-12-31", "reporting_basis": "Accrual" }
-            }
+            { "action": "myob-accounting.get_profit_and_loss", "params": { "from_date": "2019-01-01", "to_date": "2019-12-31", "reporting_basis": "Accrual" } }
           ]
         }
       },
-      "chipLastFYLabel": {
-        "type": "Text",
-        "props": { "text": "Last FY", "size": "xs", "weight": "medium" }
-      },
+      "chipLastFYLabel": { "type": "Text", "props": { "text": "Last FY", "size": "xs", "weight": "medium" } },
 
       "summaryRow": {
         "type": "Row",
         "props": { "gap": "lg", "align": "center" },
-        "children": ["statIncome", "statExpenses", "statNet"],
-        "visible": { "$state": "/_loading/myob-accounting.get_profit_and_loss", "not": true }
+        "children": ["statIncome", "statExpenses", "statNet"]
       },
       "statIncome": {
         "type": "Stat",
@@ -145,10 +116,7 @@
             "args": {
               "value": {
                 "$computed": "myob-accounting_pnl_get",
-                "args": {
-                  "value": { "$state": "/myob-accounting/get_profit_and_loss" },
-                  "key": "income"
-                }
+                "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" }, "key": "income" }
               }
             }
           },
@@ -164,10 +132,7 @@
             "args": {
               "value": {
                 "$computed": "myob-accounting_pnl_get",
-                "args": {
-                  "value": { "$state": "/myob-accounting/get_profit_and_loss" },
-                  "key": "expenses"
-                }
+                "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" }, "key": "expenses" }
               }
             }
           },
@@ -183,10 +148,7 @@
             "args": {
               "value": {
                 "$computed": "myob-accounting_pnl_get",
-                "args": {
-                  "value": { "$state": "/myob-accounting/get_profit_and_loss" },
-                  "key": "netProfit"
-                }
+                "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" }, "key": "netProfit" }
               }
             }
           }
@@ -196,23 +158,30 @@
       "chart": {
         "type": "Sparkline",
         "props": {
-          "values": { "$state": "/ui/pnl/sparkValues" },
+          "values": [38200, 42500, 35800, 48100, 51300, 45600, 55200, 61800, 57400, 66900, 72100, 63500],
           "tone": "accent",
           "height": 120,
           "fill": true
-        },
-        "visible": { "$state": "/_loading/myob-accounting.get_profit_and_loss", "not": true }
+        }
       },
 
       "axis": {
         "type": "Row",
         "props": { "justify": "between", "gap": "none" },
-        "children": ["axIncome", "axExpenses", "axNet"],
-        "visible": { "$state": "/_loading/myob-accounting.get_profit_and_loss", "not": true }
+        "children": ["m1","m2","m3","m4","m5","m6","m7","m8","m9","m10","m11","m12"]
       },
-      "axIncome":   { "type": "Caption", "props": { "text": "Income" } },
-      "axExpenses": { "type": "Caption", "props": { "text": "Expenses" } },
-      "axNet":      { "type": "Caption", "props": { "text": "Net" } }
+      "m1":  { "type": "Caption", "props": { "text": "Jul" } },
+      "m2":  { "type": "Caption", "props": { "text": "Aug" } },
+      "m3":  { "type": "Caption", "props": { "text": "Sep" } },
+      "m4":  { "type": "Caption", "props": { "text": "Oct" } },
+      "m5":  { "type": "Caption", "props": { "text": "Nov" } },
+      "m6":  { "type": "Caption", "props": { "text": "Dec" } },
+      "m7":  { "type": "Caption", "props": { "text": "Jan" } },
+      "m8":  { "type": "Caption", "props": { "text": "Feb" } },
+      "m9":  { "type": "Caption", "props": { "text": "Mar" } },
+      "m10": { "type": "Caption", "props": { "text": "Apr" } },
+      "m11": { "type": "Caption", "props": { "text": "May" } },
+      "m12": { "type": "Caption", "props": { "text": "Jun" } }
 
     }
   },
