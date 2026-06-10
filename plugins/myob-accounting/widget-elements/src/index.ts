@@ -333,6 +333,17 @@ const pnl_debug: ComputedFunction = (args) => {
   }).join(' | ');
 };
 
+// ── pnl_spark_values ─────────────────────────────────────────────────
+// Extracts [income, expenses, netProfit] as a flat number array for
+// use as Sparkline `values`. Always returns exactly 3 numbers.
+// Args: { value: PnLReport }
+const pnl_spark_values: ComputedFunction = (args) => {
+  const r = args.value as Record<string, unknown>;
+  if (!r) return [0, 0, 0];
+  const get = (key: string) => Number(pnl_get({ value: r, key }) ?? 0);
+  return [get('income'), get('expenses'), Math.abs(get('netProfit'))];
+};
+
 // ── pnl_summary_bars ─────────────────────────────────────────────────
 // Builds [{label, amount}] for Income, Expenses, and Net Profit totals.
 // Suitable for use as BarChart data for a top-level P&L overview.
@@ -457,6 +468,7 @@ const elements: PluginElementsModule = {
     pnl_get,
     pnl_entries,
     pnl_debug,
+    pnl_spark_values,
     pnl_summary_bars,
     flatten_invoices,
     flatten_bills,
