@@ -191,9 +191,14 @@ const sort_label = (args) => {
 // For income/expenses sums all matching sections (handles split sections).
 // Args: { value: PnLReport, key: "income" | "expenses" | "netProfit" | "grossProfit" }
 const pnl_get = (args) => {
-    const r = args.value;
+    let r = args.value;
     const key = String(args.key ?? '');
     if (!r) return 0;
+    // Auto-unwrap common MCP response wrapper keys ({ data: {...} })
+    if (typeof r === 'object' && !Array.isArray(r) &&
+        r.data != null && typeof r.data === 'object' && !Array.isArray(r.data)) {
+        r = r.data;
+    }
     const candidates = {
         income:      ['IncomeTotal', 'TotalIncome'],
         expenses:    ['ExpenseTotal', 'TotalExpenses', 'OperatingExpensesTotal'],
@@ -272,11 +277,17 @@ const pnl_entries = (args) => {
 // Used to verify the actual MYOB API response structure.
 // Args: { value: PnLReport }
 const pnl_debug = (args) => {
-    const r = args.value;
-    if (!r) return 'no data';
+    const raw = args.value;
+    if (!raw) return 'pnl_debug: null/undefined';
+    const topKeys = Object.keys(raw).join(', ');
+    let r = raw;
+    if (raw.data != null && typeof raw.data === 'object' && !Array.isArray(raw.data)) {
+        r = raw.data;
+        return `wrapped{data}: inner keys: ${Object.keys(r).join(', ')}`;
+    }
     const sections = Array.isArray(r.Sections) ? r.Sections : [];
     if (sections.length === 0) {
-        return `no sections — keys: ${Object.keys(r).join(', ')}`;
+        return `no sections — top-level keys: ${topKeys}`;
     }
     return sections.map(s => `[${s.DisplayID ?? '?'}] ${s.Title}: ${s.Total?.Amount ?? '?'}`).join(' | ');
 };
