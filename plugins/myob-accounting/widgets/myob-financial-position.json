@@ -16,7 +16,7 @@
     "mcp": "myob-accounting",
     "tool": "get_profit_and_loss",
     "params": {
-      "from_date": "2020-01-01",
+      "from_date": "2025-07-01",
       "to_date": "2026-06-30",
       "reporting_basis": "Accrual"
     }
@@ -27,7 +27,7 @@
 
       "card": {
         "type": "Card",
-        "children": ["header", "periodTabs", "heroStat", "summaryRow", "debugState", "debugLoading", "chart", "dateAxis", "legend"]
+        "children": ["header", "periodTabs", "heroStat", "summaryRow", "chart", "dateAxis", "legend"]
       },
 
       "header": {
@@ -81,7 +81,7 @@
         "on": {
           "click": [
             { "action": "setState", "params": { "statePath": "/ui/fp/period", "value": "thisFY" } },
-            { "action": "myob-accounting.get_profit_and_loss", "params": { "from_date": "2020-01-01", "to_date": "2026-06-30", "reporting_basis": "Accrual" } }
+            { "action": "myob-accounting.get_profit_and_loss", "params": { "from_date": "2025-07-01", "to_date": "2026-06-30", "reporting_basis": "Accrual" } }
           ]
         }
       },
@@ -100,7 +100,7 @@
         "on": {
           "click": [
             { "action": "setState", "params": { "statePath": "/ui/fp/period", "value": "lastFY" } },
-            { "action": "myob-accounting.get_profit_and_loss", "params": { "from_date": "2019-01-01", "to_date": "2019-12-31", "reporting_basis": "Accrual" } }
+            { "action": "myob-accounting.get_profit_and_loss", "params": { "from_date": "2024-07-01", "to_date": "2025-06-30", "reporting_basis": "Accrual" } }
           ]
         }
       },
@@ -204,45 +204,6 @@
                 "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" }, "key": "netProfit" }
               }
             }
-          }
-        }
-      },
-
-      "debugState": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "myob-accounting_format_json",
-            "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" } }
-          }
-        }
-      },
-      "debugLoading": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "myob-accounting_format_json",
-            "args": { "value": { "$state": "/_loading/myob-accounting.get_profit_and_loss" } }
-          }
-        }
-      },
-
-      "debugCaption": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "myob-accounting_format_json",
-            "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" } }
-          }
-        }
-      },
-
-      "debugCaption": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "myob-accounting_format_json",
-            "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" } }
           }
         }
       },
