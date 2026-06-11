@@ -528,6 +528,107 @@ const is_overdue = (args) => {
         return 'default';
     return due < Date.now() ? 'destructive' : 'default';
 };
+// ── monthly_totals ────────────────────────────────────────────────────
+// Groups invoice/bill Items by issue month (Date field) and sums TotalAmount.
+// Args: { value: Item[] | { Items: Item[] }, months: string[] }  (months: "YYYY-MM")
+// Returns: number[] matching the months array order.
+const monthly_totals = (args) => {
+    const raw = args.value;
+    const items = Array.isArray(raw)
+        ? raw
+        : Array.isArray(raw?.Items)
+            ? raw.Items
+            : [];
+    const months = Array.isArray(args.months) ? args.months : [];
+    const parse = (s) => {
+        const m = s.match(/\/Date\((-?\d+)(?:[+-]\d{4})?\)\//);
+        return m ? Number(m[1]) : new Date(s).getTime();
+    };
+    const totals = {};
+    for (const item of items) {
+        const ts = parse(String(item.Date ?? ''));
+        if (!isFinite(ts))
+            continue;
+        const d = new Date(ts);
+        const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        totals[ym] = (totals[ym] ?? 0) + Number(item.TotalAmount ?? 0);
+    }
+    return months.map(m => Math.round((totals[m] ?? 0) * 100) / 100);
+};
+// ── txn_count ─────────────────────────────────────────────────────────
+// Returns count (as string) of invoice/bill Items with optional status filter.
+// filter: "all" | "open" | "closed" | "overdue"
+const txn_count = (args) => {
+    const raw = args.value;
+    const items = Array.isArray(raw)
+        ? raw
+        : Array.isArray(raw?.Items)
+            ? raw.Items
+            : [];
+    const filter = String(args.filter ?? 'all').toLowerCase();
+    const now = Date.now();
+    const parse = (s) => {
+        const m = s.match(/\/Date\((-?\d+)(?:[+-]\d{4})?\)\//);
+        return m ? Number(m[1]) : new Date(s).getTime();
+    };
+    return String(items.filter(item => {
+        const status = String(item.Status ?? '').toLowerCase();
+        const terms = item.Terms;
+        const dueMs = parse(String(terms?.DueDate ?? ''));
+        const overdue = isFinite(dueMs) && dueMs < now && status === 'open';
+        return filter === 'all'
+            || (filter === 'open' && status === 'open')
+            || (filter === 'closed' && status === 'closed')
+            || (filter === 'overdue' && overdue);
+    }).length);
+};
+// ── txn_amount ────────────────────────────────────────────────────────
+// Returns formatted AUD total for invoice/bill Items with optional filter.
+// Uses BalanceDueAmount for open/overdue; TotalAmount otherwise.
+const txn_amount = (args) => {
+    const raw = args.value;
+    const items = Array.isArray(raw)
+        ? raw
+        : Array.isArray(raw?.Items)
+            ? raw.Items
+            : [];
+    const filter = String(args.filter ?? 'all').toLowerCase();
+    const now = Date.now();
+    const parse = (s) => {
+        const m = s.match(/\/Date\((-?\d+)(?:[+-]\d{4})?\)\//);
+        return m ? Number(m[1]) : new Date(s).getTime();
+    };
+    const useBalance = filter === 'open' || filter === 'overdue';
+    const total = items
+        .filter(item => {
+        const status = String(item.Status ?? '').toLowerCase();
+        const terms = item.Terms;
+        const dueMs = parse(String(terms?.DueDate ?? ''));
+        const overdue = isFinite(dueMs) && dueMs < now && status === 'open';
+        return filter === 'all'
+            || (filter === 'open' && status === 'open')
+            || (filter === 'closed' && status === 'closed')
+            || (filter === 'overdue' && overdue);
+    })
+        .reduce((sum, item) => {
+        return sum + Number(useBalance
+            ? (item.BalanceDueAmount ?? item.TotalAmount ?? 0)
+            : (item.TotalAmount ?? 0));
+    }, 0);
+    return 'A$' + new Intl.NumberFormat('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(total);
+};
+// ── net_monthly ────────────────────────────────────────────────────────
+// Subtracts expense monthly totals from income monthly totals element-wise.
+// Args: { income: number[], expenses: number[] }
+const net_monthly = (args) => {
+    const inc = Array.isArray(args.income) ? args.income : [];
+    const exp = Array.isArray(args.expenses) ? args.expenses : [];
+    const len = Math.max(inc.length, exp.length);
+    return Array.from({ length: len }, (_, i) => (inc[i] ?? 0) - (exp[i] ?? 0));
+};
+// ── bool_not ───────────────────────────────────────────────────────────
+// Negates a boolean — used for collapsible section toggle visibility.
+const bool_not = (args) => !args.value;
 const elements = {
     slug: 'myob-accounting',
     functions: {
@@ -548,6 +649,11 @@ const elements = {
         flatten_invoices,
         flatten_bills,
         is_overdue,
+        monthly_totals,
+        txn_count,
+        txn_amount,
+        net_monthly,
+        bool_not,
     },
 };
 export default elements;
