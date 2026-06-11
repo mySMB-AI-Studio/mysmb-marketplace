@@ -222,6 +222,24 @@ const pnl_get: ComputedFunction = (args) => {
       r.data != null && typeof r.data === 'object' && !Array.isArray(r.data)) {
     r = r.data as Record<string, unknown>;
   }
+  // Handle /Report/ProfitAndLossSummary — flat AccountsBreakdown array.
+  // Standard MYOB account number prefixes: 4-/8- = Income, 5-/6-/9- = Expenses.
+  const accounts = Array.isArray(r.AccountsBreakdown)
+    ? (r.AccountsBreakdown as Record<string, unknown>[])
+    : [];
+  if (accounts.length > 0) {
+    const did = (a: Record<string, unknown>) =>
+      String((a.Account as Record<string, unknown>)?.DisplayID ?? '');
+    const sum = (arr: Record<string, unknown>[]) =>
+      arr.reduce((s, a) => s + Number(a.AccountTotal ?? 0), 0);
+    const income   = accounts.filter(a => /^[48]-/.test(did(a)));
+    const cos      = accounts.filter(a => /^5-/.test(did(a)));
+    const expenses = accounts.filter(a => /^[569]-/.test(did(a)));
+    if (key === 'income')      return sum(income);
+    if (key === 'expenses')    return sum(expenses);
+    if (key === 'grossProfit') return sum(income) - sum(cos);
+    if (key === 'netProfit')   return sum(income) - sum(expenses);
+  }
   // Try known top-level summary fields
   const candidates: Record<string, string[]> = {
     income:      ['IncomeTotal', 'TotalIncome'],
@@ -289,6 +307,23 @@ const pnl_entries: ComputedFunction = (args) => {
   const r = args.value as Record<string, unknown>;
   const section = String(args.section ?? 'income');
   if (!r) return [];
+  // Handle AccountsBreakdown format from /Report/ProfitAndLossSummary
+  const accounts = Array.isArray(r.AccountsBreakdown)
+    ? (r.AccountsBreakdown as Record<string, unknown>[])
+    : [];
+  if (accounts.length > 0) {
+    const getDid = (a: Record<string, unknown>) =>
+      String((a.Account as Record<string, unknown>)?.DisplayID ?? '');
+    const isIncome  = (a: Record<string, unknown>) => /^[48]-/.test(getDid(a));
+    const isExpense = (a: Record<string, unknown>) => /^[569]-/.test(getDid(a));
+    return accounts
+      .filter(section === 'income' ? isIncome : isExpense)
+      .map(a => ({
+        name: String((a.Account as Record<string, unknown>)?.Name ?? 'Other'),
+        amount: Math.abs(Number(a.AccountTotal ?? 0)),
+      }))
+      .filter(e => e.amount > 0);
+  }
   const sections = Array.isArray(r.Sections)
     ? (r.Sections as Record<string, unknown>[])
     : [];
