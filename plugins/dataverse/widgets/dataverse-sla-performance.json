@@ -16,7 +16,7 @@
   "dataProvider": {
     "mcp": "dataverse",
     "tool": "list_sla_kpis",
-    "params": { "org_url": "https://mysmb-dev.crm6.dynamics.com", "status_filter": "monitored", "top": 20 }
+    "params": { "org_url": "https://mysmb-dev.crm6.dynamics.com", "status_filter": "monitored", "days_back": 7, "top": 20 }
   },
   "spec": {
     "root": "card",
@@ -51,7 +51,7 @@
       },
       "eyebrow": {
         "type": "Eyebrow",
-        "props": { "text": "Dynamics 365 Customer Service" }
+        "props": { "text": "Dynamics 365 Customer Service · Last 7 days" }
       },
       "tableBody": {
         "type": "Body",
@@ -111,8 +111,8 @@
             "$computed": "count_where",
             "args": {
               "value": { "$state": "/dataverse/list_sla_kpis/sla_kpis" },
-              "field": "status",
-              "eq": 2
+              "field": "status_label",
+              "equals": "Nearing Noncompliance"
             }
           }
         }
@@ -142,8 +142,8 @@
             "$computed": "count_where",
             "args": {
               "value": { "$state": "/dataverse/list_sla_kpis/sla_kpis" },
-              "field": "status",
-              "eq": 1
+              "field": "status_label",
+              "equals": "Noncompliant"
             }
           }
         }
@@ -180,8 +180,8 @@
                     "$computed": "count_where",
                     "args": {
                       "value": { "$state": "/dataverse/list_sla_kpis/sla_kpis" },
-                      "field": "status",
-                      "eq": 1
+                      "field": "status_label",
+                      "equals": "Noncompliant"
                     }
                   },
                   "whole": {
