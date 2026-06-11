@@ -1,0 +1,285 @@
+{
+  "id": "google-workspace-gmail-inbox",
+  "title": "Gmail Inbox",
+  "description": "Recent unread Gmail messages — sender, subject, and relative timestamp.",
+  "category": "productivity",
+  "tags": [
+    "google",
+    "gmail",
+    "inbox",
+    "email",
+    "productivity"
+  ],
+  "keywords": [
+    "gmail",
+    "email",
+    "inbox",
+    "unread",
+    "messages",
+    "mail",
+    "google"
+  ],
+  "connectorsUsed": [
+    "google-workspace-gmail"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "google-workspace-gmail",
+    "tool": "list_messages",
+    "params": {
+      "labelIds": ["INBOX", "UNREAD"],
+      "maxResults": 20
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "headerRow"
+        ]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": {
+          "justify": "between",
+          "align": "center"
+        },
+        "children": [
+          "titleGroup",
+          "refreshBtn"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Mail",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "count"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Gmail Inbox",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} unread",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/google-workspace-gmail/list_messages/messages"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": {
+          "icon": "RefreshCw",
+          "tone": "muted",
+          "size": "sm",
+          "ariaLabel": "Refresh"
+        },
+        "on": {
+          "click": {
+            "action": "google-workspace-gmail.list_messages",
+            "params": {
+              "labelIds": ["INBOX", "UNREAD"],
+              "maxResults": 20
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/_loading/google-workspace-gmail.list_messages"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "Inbox is empty."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/google-workspace-gmail.list_messages",
+              "not": true
+            },
+            {
+              "$state": "/google-workspace-gmail/list_messages/messages/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "visible": {
+          "$state": "/_loading/google-workspace-gmail.list_messages",
+          "not": true
+        },
+        "repeat": {
+          "statePath": "/google-workspace-gmail/list_messages/messages",
+          "key": "id"
+        },
+        "children": [
+          "row"
+        ]
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start",
+          "hover": true
+        },
+        "children": [
+          "mailIcon",
+          "rowContent",
+          "rowDate"
+        ]
+      },
+      "mailIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Mail",
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "rowContent": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "senderText",
+          "subjectText"
+        ]
+      },
+      "senderText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "google_workspace_sender_name",
+            "args": {
+              "value": {
+                "$item": "from"
+              }
+            }
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "subjectText": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "subject"
+          },
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+      "rowDate": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "internalDate"
+              }
+            }
+          },
+          "tone": "muted"
+        }
+      }
+    }
+  }
+}
