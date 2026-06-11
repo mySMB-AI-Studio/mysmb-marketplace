@@ -55,7 +55,8 @@
         "295149566",
         "295177536"
       ],
-      "per_page": 100
+      "query": "-status:Done",
+      "per_page": 50
     }
   },
   "spec": {
@@ -93,19 +94,17 @@
       "headerRow": {
         "type": "Row",
         "props": {
-          "justify": "between",
           "align": "center"
         },
         "children": [
-          "titleGroup",
-          "refreshBtn"
+          "titleGroup"
         ]
       },
       "titleGroup": {
         "type": "Row",
         "props": {
           "gap": "sm",
-          "align": "center"
+          "align": "start"
         },
         "children": [
           "titleIcon",
@@ -152,30 +151,6 @@
                   }
                 }
               }
-            }
-          }
-        }
-      },
-      "refreshBtn": {
-        "type": "IconButton",
-        "props": {
-          "icon": "RefreshCw",
-          "tone": "muted",
-          "ariaLabel": "Refresh"
-        },
-        "on": {
-          "click": {
-            "action": "github.projects_list",
-            "params": {
-              "method": "list_project_items",
-              "owner": "mySMB-AI-Studio",
-              "owner_type": "org",
-              "project_number": 3,
-              "fields": [
-                "295149566",
-                "295177536"
-              ],
-              "per_page": 100
             }
           }
         }
@@ -273,6 +248,15 @@
         ]
       },
       "colHead0": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "colHeadRow0"
+        ]
+      },
+      "colHeadRow0": {
         "type": "Row",
         "props": {
           "gap": "sm",
@@ -298,7 +282,13 @@
         "type": "Badge",
         "props": {
           "text": {
-            "$state": "/ui/board/columns/0/count"
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} features",
+              "n": {
+                "$state": "/ui/board/columns/0/count"
+              }
+            }
           },
           "tone": "muted",
           "variant": "soft"
@@ -314,7 +304,17 @@
           "key": "id"
         },
         "children": [
-          "cardRow0"
+          "itemBlock0"
+        ]
+      },
+      "itemBlock0": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "cardRow0",
+          "cardDetail0"
         ]
       },
       "cardRow0": {
@@ -327,7 +327,7 @@
         },
         "on": {
           "click": {
-            "action": "open_github_item_modal",
+            "action": "expand_github_item",
             "params": {
               "owner": {
                 "$computed": "identity",
@@ -350,14 +350,6 @@
                 "args": {
                   "value": {
                     "$item": "number"
-                  }
-                }
-              },
-              "title": {
-                "$computed": "identity",
-                "args": {
-                  "value": {
-                    "$item": "label"
                   }
                 }
               }
@@ -388,6 +380,46 @@
           "truncate": true
         }
       },
+      "cardDetail0": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered",
+          "inset": true
+        },
+        "visible": {
+          "$item": "number",
+          "eq": {
+            "$state": "/ui/ghExpanded"
+          }
+        },
+        "children": [
+          "detailLoading0",
+          "detailBody0"
+        ]
+      },
+      "detailLoading0": {
+        "type": "Caption",
+        "props": {
+          "text": "Loading…"
+        },
+        "visible": {
+          "$state": "/ui/ghLoading"
+        }
+      },
+      "detailBody0": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/ghBody"
+          },
+          "size": "sm",
+          "preserveLines": true
+        },
+        "visible": {
+          "$state": "/ui/ghLoading",
+          "not": true
+        }
+      },
       "col1": {
         "type": "Stack",
         "props": {
@@ -402,6 +434,15 @@
         ]
       },
       "colHead1": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "colHeadRow1"
+        ]
+      },
+      "colHeadRow1": {
         "type": "Row",
         "props": {
           "gap": "sm",
@@ -427,7 +468,13 @@
         "type": "Badge",
         "props": {
           "text": {
-            "$state": "/ui/board/columns/1/count"
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} features",
+              "n": {
+                "$state": "/ui/board/columns/1/count"
+              }
+            }
           },
           "tone": "muted",
           "variant": "soft"
@@ -443,7 +490,17 @@
           "key": "id"
         },
         "children": [
-          "cardRow1"
+          "itemBlock1"
+        ]
+      },
+      "itemBlock1": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "cardRow1",
+          "cardDetail1"
         ]
       },
       "cardRow1": {
@@ -456,7 +513,7 @@
         },
         "on": {
           "click": {
-            "action": "open_github_item_modal",
+            "action": "expand_github_item",
             "params": {
               "owner": {
                 "$computed": "identity",
@@ -479,14 +536,6 @@
                 "args": {
                   "value": {
                     "$item": "number"
-                  }
-                }
-              },
-              "title": {
-                "$computed": "identity",
-                "args": {
-                  "value": {
-                    "$item": "label"
                   }
                 }
               }
@@ -517,6 +566,46 @@
           "truncate": true
         }
       },
+      "cardDetail1": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered",
+          "inset": true
+        },
+        "visible": {
+          "$item": "number",
+          "eq": {
+            "$state": "/ui/ghExpanded"
+          }
+        },
+        "children": [
+          "detailLoading1",
+          "detailBody1"
+        ]
+      },
+      "detailLoading1": {
+        "type": "Caption",
+        "props": {
+          "text": "Loading…"
+        },
+        "visible": {
+          "$state": "/ui/ghLoading"
+        }
+      },
+      "detailBody1": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/ghBody"
+          },
+          "size": "sm",
+          "preserveLines": true
+        },
+        "visible": {
+          "$state": "/ui/ghLoading",
+          "not": true
+        }
+      },
       "col2": {
         "type": "Stack",
         "props": {
@@ -531,6 +620,15 @@
         ]
       },
       "colHead2": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "colHeadRow2"
+        ]
+      },
+      "colHeadRow2": {
         "type": "Row",
         "props": {
           "gap": "sm",
@@ -556,7 +654,13 @@
         "type": "Badge",
         "props": {
           "text": {
-            "$state": "/ui/board/columns/2/count"
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} features",
+              "n": {
+                "$state": "/ui/board/columns/2/count"
+              }
+            }
           },
           "tone": "muted",
           "variant": "soft"
@@ -572,7 +676,17 @@
           "key": "id"
         },
         "children": [
-          "cardRow2"
+          "itemBlock2"
+        ]
+      },
+      "itemBlock2": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "cardRow2",
+          "cardDetail2"
         ]
       },
       "cardRow2": {
@@ -585,7 +699,7 @@
         },
         "on": {
           "click": {
-            "action": "open_github_item_modal",
+            "action": "expand_github_item",
             "params": {
               "owner": {
                 "$computed": "identity",
@@ -608,14 +722,6 @@
                 "args": {
                   "value": {
                     "$item": "number"
-                  }
-                }
-              },
-              "title": {
-                "$computed": "identity",
-                "args": {
-                  "value": {
-                    "$item": "label"
                   }
                 }
               }
@@ -646,6 +752,46 @@
           "truncate": true
         }
       },
+      "cardDetail2": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered",
+          "inset": true
+        },
+        "visible": {
+          "$item": "number",
+          "eq": {
+            "$state": "/ui/ghExpanded"
+          }
+        },
+        "children": [
+          "detailLoading2",
+          "detailBody2"
+        ]
+      },
+      "detailLoading2": {
+        "type": "Caption",
+        "props": {
+          "text": "Loading…"
+        },
+        "visible": {
+          "$state": "/ui/ghLoading"
+        }
+      },
+      "detailBody2": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/ghBody"
+          },
+          "size": "sm",
+          "preserveLines": true
+        },
+        "visible": {
+          "$state": "/ui/ghLoading",
+          "not": true
+        }
+      },
       "col3": {
         "type": "Stack",
         "props": {
@@ -660,6 +806,15 @@
         ]
       },
       "colHead3": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "colHeadRow3"
+        ]
+      },
+      "colHeadRow3": {
         "type": "Row",
         "props": {
           "gap": "sm",
@@ -685,7 +840,13 @@
         "type": "Badge",
         "props": {
           "text": {
-            "$state": "/ui/board/columns/3/count"
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} features",
+              "n": {
+                "$state": "/ui/board/columns/3/count"
+              }
+            }
           },
           "tone": "muted",
           "variant": "soft"
@@ -701,7 +862,17 @@
           "key": "id"
         },
         "children": [
-          "cardRow3"
+          "itemBlock3"
+        ]
+      },
+      "itemBlock3": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "cardRow3",
+          "cardDetail3"
         ]
       },
       "cardRow3": {
@@ -714,7 +885,7 @@
         },
         "on": {
           "click": {
-            "action": "open_github_item_modal",
+            "action": "expand_github_item",
             "params": {
               "owner": {
                 "$computed": "identity",
@@ -737,14 +908,6 @@
                 "args": {
                   "value": {
                     "$item": "number"
-                  }
-                }
-              },
-              "title": {
-                "$computed": "identity",
-                "args": {
-                  "value": {
-                    "$item": "label"
                   }
                 }
               }
@@ -775,6 +938,46 @@
           "truncate": true
         }
       },
+      "cardDetail3": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered",
+          "inset": true
+        },
+        "visible": {
+          "$item": "number",
+          "eq": {
+            "$state": "/ui/ghExpanded"
+          }
+        },
+        "children": [
+          "detailLoading3",
+          "detailBody3"
+        ]
+      },
+      "detailLoading3": {
+        "type": "Caption",
+        "props": {
+          "text": "Loading…"
+        },
+        "visible": {
+          "$state": "/ui/ghLoading"
+        }
+      },
+      "detailBody3": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/ghBody"
+          },
+          "size": "sm",
+          "preserveLines": true
+        },
+        "visible": {
+          "$state": "/ui/ghLoading",
+          "not": true
+        }
+      },
       "col4": {
         "type": "Stack",
         "props": {
@@ -789,6 +992,15 @@
         ]
       },
       "colHead4": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "colHeadRow4"
+        ]
+      },
+      "colHeadRow4": {
         "type": "Row",
         "props": {
           "gap": "sm",
@@ -814,7 +1026,13 @@
         "type": "Badge",
         "props": {
           "text": {
-            "$state": "/ui/board/columns/4/count"
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} features",
+              "n": {
+                "$state": "/ui/board/columns/4/count"
+              }
+            }
           },
           "tone": "muted",
           "variant": "soft"
@@ -830,7 +1048,17 @@
           "key": "id"
         },
         "children": [
-          "cardRow4"
+          "itemBlock4"
+        ]
+      },
+      "itemBlock4": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "cardRow4",
+          "cardDetail4"
         ]
       },
       "cardRow4": {
@@ -843,7 +1071,7 @@
         },
         "on": {
           "click": {
-            "action": "open_github_item_modal",
+            "action": "expand_github_item",
             "params": {
               "owner": {
                 "$computed": "identity",
@@ -866,14 +1094,6 @@
                 "args": {
                   "value": {
                     "$item": "number"
-                  }
-                }
-              },
-              "title": {
-                "$computed": "identity",
-                "args": {
-                  "value": {
-                    "$item": "label"
                   }
                 }
               }
@@ -904,6 +1124,46 @@
           "truncate": true
         }
       },
+      "cardDetail4": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered",
+          "inset": true
+        },
+        "visible": {
+          "$item": "number",
+          "eq": {
+            "$state": "/ui/ghExpanded"
+          }
+        },
+        "children": [
+          "detailLoading4",
+          "detailBody4"
+        ]
+      },
+      "detailLoading4": {
+        "type": "Caption",
+        "props": {
+          "text": "Loading…"
+        },
+        "visible": {
+          "$state": "/ui/ghLoading"
+        }
+      },
+      "detailBody4": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/ghBody"
+          },
+          "size": "sm",
+          "preserveLines": true
+        },
+        "visible": {
+          "$state": "/ui/ghLoading",
+          "not": true
+        }
+      },
       "col5": {
         "type": "Stack",
         "props": {
@@ -918,6 +1178,15 @@
         ]
       },
       "colHead5": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "colHeadRow5"
+        ]
+      },
+      "colHeadRow5": {
         "type": "Row",
         "props": {
           "gap": "sm",
@@ -943,7 +1212,13 @@
         "type": "Badge",
         "props": {
           "text": {
-            "$state": "/ui/board/columns/5/count"
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} features",
+              "n": {
+                "$state": "/ui/board/columns/5/count"
+              }
+            }
           },
           "tone": "muted",
           "variant": "soft"
@@ -959,7 +1234,17 @@
           "key": "id"
         },
         "children": [
-          "cardRow5"
+          "itemBlock5"
+        ]
+      },
+      "itemBlock5": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "cardRow5",
+          "cardDetail5"
         ]
       },
       "cardRow5": {
@@ -972,7 +1257,7 @@
         },
         "on": {
           "click": {
-            "action": "open_github_item_modal",
+            "action": "expand_github_item",
             "params": {
               "owner": {
                 "$computed": "identity",
@@ -995,14 +1280,6 @@
                 "args": {
                   "value": {
                     "$item": "number"
-                  }
-                }
-              },
-              "title": {
-                "$computed": "identity",
-                "args": {
-                  "value": {
-                    "$item": "label"
                   }
                 }
               }
@@ -1031,6 +1308,46 @@
           },
           "size": "sm",
           "truncate": true
+        }
+      },
+      "cardDetail5": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered",
+          "inset": true
+        },
+        "visible": {
+          "$item": "number",
+          "eq": {
+            "$state": "/ui/ghExpanded"
+          }
+        },
+        "children": [
+          "detailLoading5",
+          "detailBody5"
+        ]
+      },
+      "detailLoading5": {
+        "type": "Caption",
+        "props": {
+          "text": "Loading…"
+        },
+        "visible": {
+          "$state": "/ui/ghLoading"
+        }
+      },
+      "detailBody5": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/ghBody"
+          },
+          "size": "sm",
+          "preserveLines": true
+        },
+        "visible": {
+          "$state": "/ui/ghLoading",
+          "not": true
         }
       }
     }
