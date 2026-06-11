@@ -1,0 +1,319 @@
+{
+  "id": "myob-expenses",
+  "title": "MYOB — Expenses",
+  "description": "Total expenses for the last 3 months with year-over-year comparison chart and bill breakdown.",
+  "category": "finance",
+  "tags": ["myob", "expenses", "bills", "payables", "finance", "report"],
+  "keywords": ["expenses", "bills", "payables", "myob", "last 3 months", "finance", "cash spent"],
+  "connectorsUsed": ["myob-accounting"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 6 },
+    "min": { "colSpan": 4, "rowSpan": 5 },
+    "max": { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "myob-accounting",
+    "tool": "list_bills",
+    "params": { "status": "All", "from_date": "2025-04-01", "to_date": "2026-06-30", "page_size": 1000 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "children": ["header", "heroStack", "lastYearSpark", "thisYearSpark", "monthAxis", "legend", "divider", "collapseRow", "collapseBody"],
+        "watch": {
+          "/myob-accounting/list_bills": {
+            "action": "myob-accounting.get_profit_and_loss",
+            "params": { "from_date": "2026-04-01", "to_date": "2026-06-30", "reporting_basis": "Accrual" }
+          }
+        }
+      },
+
+      "header": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "brandBadge"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "TrendingDown", "tone": "destructive", "size": "sm" } },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": { "type": "Heading", "props": { "text": "Expenses", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "MYOB Accounting" } },
+      "brandBadge": { "type": "Badge", "props": { "label": "MYOB", "tone": "accent" } },
+
+      "heroStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["heroAmt", "heroSub"]
+      },
+      "heroAmt": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "myob-accounting_format_currency",
+            "args": {
+              "value": {
+                "$computed": "myob-accounting_pnl_get",
+                "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" }, "key": "expenses" }
+              }
+            }
+          }
+        }
+      },
+      "heroSub": { "type": "Caption", "props": { "text": "last 3 months" } },
+
+      "lastYearSpark": {
+        "type": "Sparkline",
+        "props": {
+          "values": {
+            "$computed": "myob-accounting_monthly_totals",
+            "args": {
+              "value": { "$state": "/myob-accounting/list_bills/Items" },
+              "months": ["2025-04", "2025-05", "2025-06"]
+            }
+          },
+          "tone": "destructive",
+          "height": 60,
+          "fill": false
+        }
+      },
+      "thisYearSpark": {
+        "type": "Sparkline",
+        "props": {
+          "values": {
+            "$computed": "myob-accounting_monthly_totals",
+            "args": {
+              "value": { "$state": "/myob-accounting/list_bills/Items" },
+              "months": ["2026-04", "2026-05", "2026-06"]
+            }
+          },
+          "tone": "accent",
+          "height": 60,
+          "fill": false
+        }
+      },
+
+      "monthAxis": {
+        "type": "Row",
+        "props": { "justify": "between" },
+        "children": ["mApr", "mMay", "mJun"]
+      },
+      "mApr": { "type": "Caption", "props": { "text": "Apr" } },
+      "mMay": { "type": "Caption", "props": { "text": "May" } },
+      "mJun": { "type": "Caption", "props": { "text": "Jun" } },
+
+      "legend": {
+        "type": "Row",
+        "props": { "gap": "lg", "align": "center" },
+        "children": ["legendLY", "legendTY"]
+      },
+      "legendLY": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["legendLYDot", "legendLYLabel"]
+      },
+      "legendLYDot": { "type": "Icon", "props": { "name": "Circle", "tone": "destructive", "size": "xs" } },
+      "legendLYLabel": { "type": "Caption", "props": { "text": "Last year" } },
+      "legendTY": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["legendTYDot", "legendTYLabel"]
+      },
+      "legendTYDot": { "type": "Icon", "props": { "name": "Circle", "tone": "accent", "size": "xs" } },
+      "legendTYLabel": { "type": "Caption", "props": { "text": "This year" } },
+
+      "divider": { "type": "Divider" },
+
+      "collapseRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center", "clickable": true },
+        "children": ["collapseLabel", "chevronStack"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/expenses/expanded",
+              "value": {
+                "$computed": "myob-accounting_bool_not",
+                "args": { "value": { "$state": "/ui/expenses/expanded" } }
+              }
+            }
+          }
+        }
+      },
+      "collapseLabel": { "type": "Text", "props": { "text": "Expense totals", "size": "sm", "weight": "medium" } },
+      "chevronStack": {
+        "type": "Row",
+        "props": { "gap": "none" },
+        "children": ["chevronDown", "chevronUp"]
+      },
+      "chevronDown": {
+        "type": "Icon",
+        "props": { "name": "ChevronDown", "size": "sm", "tone": "muted" },
+        "visible": {
+          "$computed": "myob-accounting_bool_not",
+          "args": { "value": { "$state": "/ui/expenses/expanded" } }
+        }
+      },
+      "chevronUp": {
+        "type": "Icon",
+        "props": { "name": "ChevronUp", "size": "sm", "tone": "muted" },
+        "visible": { "$state": "/ui/expenses/expanded" }
+      },
+
+      "collapseBody": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "visible": { "$state": "/ui/expenses/expanded" },
+        "children": ["totalsLabel", "cashRow", "allBillsRow", "progressDiv", "inProgressLabel", "openBillsRow", "overdueBillsRow"]
+      },
+      "totalsLabel": { "type": "Caption", "props": { "text": "Expense totals", "weight": "medium" } },
+
+      "cashRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["cashLbl", "cashRight"]
+      },
+      "cashLbl": { "type": "Caption", "props": { "text": "Cash spent" } },
+      "cashRight": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["cashCnt", "cashAmt"]
+      },
+      "cashCnt": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "myob-accounting_txn_count",
+            "args": { "value": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "closed" }
+          }
+        }
+      },
+      "cashAmt": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "myob-accounting_txn_amount",
+            "args": { "value": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "closed" }
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+
+      "allBillsRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["allBillsLbl", "allBillsRight"]
+      },
+      "allBillsLbl": { "type": "Caption", "props": { "text": "Bills" } },
+      "allBillsRight": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["allBillsCnt", "allBillsAmt"]
+      },
+      "allBillsCnt": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "myob-accounting_txn_count",
+            "args": { "value": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "all" }
+          }
+        }
+      },
+      "allBillsAmt": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "myob-accounting_txn_amount",
+            "args": { "value": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "all" }
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+
+      "progressDiv": { "type": "Divider" },
+      "inProgressLabel": { "type": "Caption", "props": { "text": "In progress", "weight": "medium" } },
+
+      "openBillsRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["openBillsLbl", "openBillsRight"]
+      },
+      "openBillsLbl": { "type": "Caption", "props": { "text": "Open bills" } },
+      "openBillsRight": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["openBillsCnt", "openBillsAmt"]
+      },
+      "openBillsCnt": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "myob-accounting_txn_count",
+            "args": { "value": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "open" }
+          }
+        }
+      },
+      "openBillsAmt": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "myob-accounting_txn_amount",
+            "args": { "value": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "open" }
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+
+      "overdueBillsRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["overdueBillsLbl", "overdueBillsRight"]
+      },
+      "overdueBillsLbl": { "type": "Caption", "props": { "text": "Overdue bills", "tone": "destructive" } },
+      "overdueBillsRight": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["overdueBillsCnt", "overdueBillsAmt"]
+      },
+      "overdueBillsCnt": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "myob-accounting_txn_count",
+            "args": { "value": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "overdue" }
+          },
+          "tone": "destructive"
+        }
+      },
+      "overdueBillsAmt": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "myob-accounting_txn_amount",
+            "args": { "value": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "overdue" }
+          },
+          "size": "sm",
+          "weight": "medium",
+          "tone": "destructive"
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}
