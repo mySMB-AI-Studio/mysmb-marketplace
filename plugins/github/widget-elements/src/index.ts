@@ -228,7 +228,7 @@ interface RawItem {
   url?: string;
   iterationId?: string;
   iteration?: string | { id?: string; iterationId?: string; title?: string };
-  content?: { number?: number; title?: string; url?: string; html_url?: string; repository_url?: string; state?: string };
+  content?: { number?: number; title?: string; body?: string; url?: string; html_url?: string; repository_url?: string; state?: string };
   // GitHub's REST `list_project_items` nests each field's value here, e.g.
   // { id, name: "Iteration", data_type: "iteration", value: { id, start_date, duration, title: { raw } } }.
   fields?: Array<{ id?: number | string; name?: string; data_type?: string; value?: unknown }>;
@@ -332,6 +332,8 @@ function cleanLabel(title: string): string {
   return title
     .replace(/^\s*#?\d+\s*[:.–-]?\s*/, '')
     .replace(/^\s*(epic|bug|feature|chore|task|story)\s*[:–-]\s*/i, '')
+    // Strip a leading short code prefix like "UC-08:" / "UC08 -".
+    .replace(/^\s*[A-Za-z]{1,5}-?\d+\s*[:–-]\s*/, '')
     .trim();
 }
 
@@ -349,7 +351,18 @@ function shipWeekLabel(startDate: string, duration?: number): string {
   const end = iterationEnd(startDate, duration);
   if (!end) return '';
   const month = end.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
-  return `Ships week of ${month} ${end.getUTCDate()}`;
+  return `${month} ${end.getUTCDate()} Release`;
+}
+
+// Decode the handful of HTML entities GitHub sometimes returns in bodies
+// so the inline description reads naturally.
+function decodeEntities(text: string): string {
+  return text
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
 }
 
 // Parse owner/repo from a REST `repository_url` so a card click can address
@@ -373,6 +386,7 @@ interface BoardItem {
   owner: string;
   repo: string;
   label: string;
+  body: string;
   status: string;
   statusTone: string;
   url: string;
@@ -427,6 +441,7 @@ const board_data: ComputedFunction = (args) => {
       owner,
       repo,
       label: cleanLabel(title) || title,
+      body: decodeEntities(str(raw.content?.body)),
       status,
       statusTone: (gantt_status_tone({ value: status }) as string) || 'accent',
       url: str(raw.url) || str(raw.content?.html_url) || str(raw.content?.url),
@@ -445,9 +460,16 @@ const board_data: ComputedFunction = (args) => {
   return { columns, total: columns.reduce((n, c) => n + c.count, 0) };
 };
 
+// Toggle helper for the inline detail: returns the item id when it isn't
+// the currently-expanded one, or '' to collapse when it already is. Lets a
+// single card click both open and close its description.
+const toggle_id: ComputedFunction = (args) =>
+  String(args.current ?? '') === String(args.id ?? '') ? '' : String(args.id ?? '');
+
 const elements: PluginElementsModule = {
   slug: 'github',
   functions: {
+    toggle_id,
     issue_labels_text,
     issue_state_tone,
     project_rows,

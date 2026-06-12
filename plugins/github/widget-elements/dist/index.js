@@ -247,6 +247,8 @@ function cleanLabel(title) {
     return title
         .replace(/^\s*#?\d+\s*[:.–-]?\s*/, '')
         .replace(/^\s*(epic|bug|feature|chore|task|story)\s*[:–-]\s*/i, '')
+        // Strip a leading short code prefix like "UC-08:" / "UC08 -".
+        .replace(/^\s*[A-Za-z]{1,5}-?\d+\s*[:–-]\s*/, '')
         .trim();
 }
 // ── release-week header ─────────────────────────────────────────────
@@ -266,7 +268,17 @@ function shipWeekLabel(startDate, duration) {
     if (!end)
         return '';
     const month = end.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
-    return `Ships week of ${month} ${end.getUTCDate()}`;
+    return `${month} ${end.getUTCDate()} Release`;
+}
+// Decode the handful of HTML entities GitHub sometimes returns in bodies
+// so the inline description reads naturally.
+function decodeEntities(text) {
+    return text
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'");
 }
 // Parse owner/repo from a REST `repository_url` so a card click can address
 // the issue (owner/repo/number) for the detail modal.
@@ -327,6 +339,7 @@ const board_data = (args) => {
             owner,
             repo,
             label: cleanLabel(title) || title,
+            body: decodeEntities(str(raw.content?.body)),
             status,
             statusTone: gantt_status_tone({ value: status }) || 'accent',
             url: str(raw.url) || str(raw.content?.html_url) || str(raw.content?.url),
