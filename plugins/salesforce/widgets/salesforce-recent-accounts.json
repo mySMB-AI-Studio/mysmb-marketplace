@@ -1,0 +1,141 @@
+{
+  "id": "salesforce-recent-accounts-v1",
+  "title": "Recent Accounts",
+  "description": "Salesforce accounts recently viewed or modified by the signed-in user — name and industry.",
+  "category": "sales",
+  "tags": ["salesforce", "crm", "accounts", "recent", "contacts"],
+  "keywords": ["accounts", "recent", "customers", "clients", "salesforce", "crm"],
+  "connectorsUsed": ["salesforce"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 6 },
+    "min":       { "colSpan": 4, "rowSpan": 4 },
+    "max":       { "colSpan": 8, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "salesforce",
+    "tool": "getRecentItems",
+    "params": {
+      "sobject-name": "Account"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "divider", "body", "footerDivider", "footer"]
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "refreshBtn"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Building2", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Recent Accounts", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Salesforce CRM" } },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": { "icon": "RefreshCw", "tone": "muted", "size": "sm", "ariaLabel": "Refresh" },
+        "on": {
+          "click": {
+            "action": "salesforce.getRecentItems",
+            "params": { "sobject-name": "Account" }
+          }
+        }
+      },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "list"] },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$state": "/_loading/salesforce.getRecentItems" },
+        "children": ["sk1", "sk2", "sk3", "sk4"]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No recently viewed accounts." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.getRecentItems", "not": true },
+            { "$state": "/salesforce/getRecentItems/recentItems/0", "not": true }
+          ]
+        }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.getRecentItems", "not": true },
+            { "$state": "/salesforce/getRecentItems/recentItems/0" }
+          ]
+        },
+        "repeat": { "statePath": "/salesforce/getRecentItems/recentItems", "key": "Id" },
+        "children": ["row"]
+      },
+
+      "row": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "hover": true },
+        "children": ["rowLeft"]
+      },
+      "rowLeft": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["accountName", "accountMeta"]
+      },
+      "accountName": {
+        "type": "Text",
+        "props": { "text": { "$item": "Name" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "accountMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{industry}",
+              "industry": { "$item": "Industry" }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+
+      "footerDivider": { "type": "Divider", "props": {} },
+      "footer": {
+        "type": "Row",
+        "props": { "justify": "end", "gap": "xs", "align": "center" },
+        "children": ["footerBtn"]
+      },
+      "footerBtn": {
+        "type": "Button",
+        "props": { "label": "Open in Salesforce", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": "https://salesforce.com", "target": "_blank" }
+          }
+        }
+      }
+    }
+  }
+}

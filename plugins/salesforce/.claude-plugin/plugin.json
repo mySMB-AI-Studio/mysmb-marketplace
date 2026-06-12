@@ -1,0 +1,43 @@
+{
+  "name": "salesforce",
+  "version": "0.1.0",
+  "description": "Salesforce CRM via Salesforce's official hosted MCP servers. Full CRUD on any SObject (contacts, accounts, leads, opportunities, cases) plus SOQL, SOSL, schema introspection, and recent-item lookup. Per-user OAuth 2.0 with PKCE — every action runs within the signed-in user's Salesforce permissions.",
+  "author": { "name": "mySMB AI Studio" },
+  "homepage": "https://github.com/mySMB-AI-Studio/mysmb-marketplace/tree/main/plugins/salesforce",
+  "license": "MIT",
+  "keywords": ["salesforce", "crm", "sobject", "contacts", "accounts", "leads", "opportunities", "cases", "soql", "oauth", "smb"],
+  "connection": {
+    "authType": "oauth_client",
+    "instructions": "Salesforce uses per-user OAuth 2.0 with PKCE via an **External Client App** (not a standard Connected App).\n\n1. In Salesforce Setup, search for **External Client Apps** and create a new app.\n2. Under **OAuth Settings**, enable OAuth and set the **Callback URL** to the value shown above.\n3. Grant the OAuth scopes listed below.\n4. Copy the **Consumer Key** (Client ID) and generate a **Consumer Secret** (Client Secret).\n5. Ask your Salesforce admin to enable the MCP servers for your org under **Setup → Hosted MCP Servers**.\n\nWhen you click Connect you will be redirected to Salesforce to sign in. Every tool call runs with your own Salesforce permissions — field-level security and sharing rules apply.",
+    "docUrl": "https://developer.salesforce.com/docs/platform/hosted-mcp-servers/guide/client-connection-overview.html",
+    "scopes": ["api", "refresh_token", "offline_access"],
+    "fields": [
+      {
+        "name": "SALESFORCE_CLIENT_ID",
+        "label": "Consumer Key (Client ID)",
+        "type": "text",
+        "required": true,
+        "role": "client_id",
+        "placeholder": "3MVG9...",
+        "helpText": "From your Salesforce External Client App — OAuth Settings → Consumer Key."
+      },
+      {
+        "name": "SALESFORCE_CLIENT_SECRET",
+        "label": "Consumer Secret (Client Secret)",
+        "type": "password",
+        "required": true,
+        "role": "client_secret",
+        "helpText": "Generate under your External Client App → OAuth Settings → Consumer Secret. Stored encrypted, per user."
+      },
+      {
+        "name": "SALESFORCE_INSTANCE_URL",
+        "label": "Salesforce Instance URL",
+        "type": "text",
+        "required": true,
+        "placeholder": "https://yourorg.my.salesforce.com",
+        "helpText": "Your org's My Domain URL — found in Setup → My Domain. Must not include a trailing slash."
+      }
+    ]
+  },
+  "widgets": "widgets"
+}
