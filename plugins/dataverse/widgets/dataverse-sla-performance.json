@@ -53,25 +53,23 @@
         "type": "Eyebrow",
         "props": { "text": "Dynamics 365 Customer Service · Last 7 days" }
       },
-      "tableBody": {
-        "type": "Body",
-        "props": {},
-        "children": ["table"]
-      },
+
       "stats": {
         "type": "Grid",
         "props": { "cols": 4, "gap": "sm" },
         "children": ["tileActive", "tileAtRisk", "tileBreached", "tileBreachRate"]
       },
+
       "tileActive": {
         "type": "Section",
         "props": { "variant": "muted" },
-        "children": ["stackActive"]
+        "children": ["stackActive"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/sla/filter", "value": "" } } }
       },
       "stackActive": {
         "type": "Stack",
         "props": { "gap": "xxs", "align": "center" },
-        "children": ["iconActive", "valActive", "lblActive"]
+        "children": ["iconActive", "valActive", "lblActive", "dotActive"]
       },
       "iconActive": {
         "type": "Icon",
@@ -90,15 +88,22 @@
         "type": "Caption",
         "props": { "text": "Total SLAs" }
       },
+      "dotActive": {
+        "type": "Dot",
+        "props": { "tone": "accent", "size": "xs" },
+        "visible": { "$state": "/ui/sla/filter", "not": true }
+      },
+
       "tileAtRisk": {
         "type": "Section",
         "props": { "variant": "muted" },
-        "children": ["stackAtRisk"]
+        "children": ["stackAtRisk"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/sla/filter", "value": "Nearing Noncompliance" } } }
       },
       "stackAtRisk": {
         "type": "Stack",
         "props": { "gap": "xxs", "align": "center" },
-        "children": ["iconAtRisk", "valAtRisk", "lblAtRisk"]
+        "children": ["iconAtRisk", "valAtRisk", "lblAtRisk", "dotAtRisk"]
       },
       "iconAtRisk": {
         "type": "Icon",
@@ -121,15 +126,22 @@
         "type": "Caption",
         "props": { "text": "At Risk" }
       },
+      "dotAtRisk": {
+        "type": "Dot",
+        "props": { "tone": "warning", "size": "xs" },
+        "visible": { "$computed": "equals", "args": { "a": { "$state": "/ui/sla/filter" }, "b": "Nearing Noncompliance" } }
+      },
+
       "tileBreached": {
         "type": "Section",
         "props": { "variant": "muted" },
-        "children": ["stackBreached"]
+        "children": ["stackBreached"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/sla/filter", "value": "Noncompliant" } } }
       },
       "stackBreached": {
         "type": "Stack",
         "props": { "gap": "xxs", "align": "center" },
-        "children": ["iconBreached", "valBreached", "lblBreached"]
+        "children": ["iconBreached", "valBreached", "lblBreached", "dotBreached"]
       },
       "iconBreached": {
         "type": "Icon",
@@ -152,6 +164,12 @@
         "type": "Caption",
         "props": { "text": "Breached", "tone": "destructive" }
       },
+      "dotBreached": {
+        "type": "Dot",
+        "props": { "tone": "destructive", "size": "xs" },
+        "visible": { "$computed": "equals", "args": { "a": { "$state": "/ui/sla/filter" }, "b": "Noncompliant" } }
+      },
+
       "tileBreachRate": {
         "type": "Section",
         "props": { "variant": "muted" },
@@ -198,15 +216,29 @@
         "type": "Caption",
         "props": { "text": "Breach Rate", "tone": "destructive" }
       },
+
       "divider": { "type": "Divider", "props": {} },
+
       "tableLabelRow": {
         "type": "Row",
         "props": { "justify": "between", "align": "center" },
-        "children": ["tableLabel"]
+        "children": ["tableLabel", "clearFilterBtn"]
       },
       "tableLabel": {
         "type": "Eyebrow",
         "props": { "text": "Active SLAs" }
+      },
+      "clearFilterBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "tone": "muted", "size": "sm", "ariaLabel": "Clear filter" },
+        "visible": { "$state": "/ui/sla/filter" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/sla/filter", "value": "" } } }
+      },
+
+      "tableBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["table", "tableFiltered"]
       },
       "table": {
         "type": "Table",
@@ -215,14 +247,39 @@
           "skeletonRows": 6,
           "rows": { "$state": "/dataverse/list_sla_kpis/sla_kpis" },
           "columns": [
-            { "id": "ticket",      "header": "Case",         "field": "case_ticket",         "width": 110, "priority": 1 },
-            { "id": "casetitle",   "header": "Case Title",   "field": "case_title",          "priority": 1 },
-            { "id": "name",        "header": "SLA Type",     "field": "name",                "width": 130, "priority": 2 },
-            { "id": "status",      "header": "Status",       "field": "status_label",             "width": 110, "priority": 1 },
-            { "id": "failuretime", "header": "Breach Time",  "field": "computedfailuretime", "width": 130, "priority": 1, "format": "relative" }
+            { "id": "ticket",      "header": "Case",        "field": "case_ticket",         "width": 110, "priority": 1 },
+            { "id": "casetitle",   "header": "Case Title",  "field": "case_title",          "priority": 1 },
+            { "id": "name",        "header": "SLA Type",    "field": "name",                "width": 130, "priority": 2 },
+            { "id": "status",      "header": "Status",      "field": "status_label",        "width": 110, "priority": 1 },
+            { "id": "failuretime", "header": "Breach Time", "field": "computedfailuretime", "width": 130, "priority": 1, "format": "relative" }
           ]
-        }
+        },
+        "visible": { "$state": "/ui/sla/filter", "not": true }
       },
+      "tableFiltered": {
+        "type": "Table",
+        "props": {
+          "loading": { "$state": "/_loading/dataverse.list_sla_kpis" },
+          "skeletonRows": 6,
+          "rows": {
+            "$computed": "filter_by",
+            "args": {
+              "value": { "$state": "/dataverse/list_sla_kpis/sla_kpis" },
+              "field": "status_label",
+              "equals": { "$state": "/ui/sla/filter" }
+            }
+          },
+          "columns": [
+            { "id": "ticket",      "header": "Case",        "field": "case_ticket",         "width": 110, "priority": 1 },
+            { "id": "casetitle",   "header": "Case Title",  "field": "case_title",          "priority": 1 },
+            { "id": "name",        "header": "SLA Type",    "field": "name",                "width": 130, "priority": 2 },
+            { "id": "status",      "header": "Status",      "field": "status_label",        "width": 110, "priority": 1 },
+            { "id": "failuretime", "header": "Breach Time", "field": "computedfailuretime", "width": 130, "priority": 1, "format": "relative" }
+          ]
+        },
+        "visible": { "$state": "/ui/sla/filter" }
+      },
+
       "footerDivider": { "type": "Divider", "props": {} },
       "footer": {
         "type": "Row",

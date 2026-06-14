@@ -8,9 +8,9 @@
   "connectorsUsed": ["dataverse"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 8 },
-    "min":       { "colSpan": 4, "rowSpan": 7 },
-    "max":       { "colSpan": 10, "rowSpan": 12 }
+    "preferred": { "colSpan": 5, "rowSpan": 10 },
+    "min":       { "colSpan": 4, "rowSpan": 9 },
+    "max":       { "colSpan": 10, "rowSpan": 14 }
   },
   "spec": {
     "root": "card",
@@ -19,7 +19,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "div0", "statsGrid", "div1", "chartsGrid", "div2", "kvGrid"]
+        "children": ["headerRow", "div0", "statsGrid", "div1", "metChartLabel", "metChart", "div2", "breachedChartLabel", "breachedChart", "div3", "kvGrid"]
       },
 
       "headerRow": {
@@ -32,7 +32,7 @@
         "props": { "gap": "sm", "align": "center" },
         "children": ["titleIcon", "titleStack"]
       },
-      "titleIcon": { "type": "Icon", "props": { "name": "ClockExclamation", "tone": "danger", "size": "sm" } },
+      "titleIcon": { "type": "Icon", "props": { "name": "Clock", "tone": "destructive", "size": "sm" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
       "title": { "type": "Heading", "props": { "text": "SLA Breach Trend", "level": "h2" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Dynamics 365 Customer Service · Last 7 days" } },
@@ -53,57 +53,41 @@
 
       "tileBreached": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackBreached"] },
       "stackBreached": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconBreached", "valBreached", "lblBreached"] },
-      "iconBreached": { "type": "Icon", "props": { "name": "AlertTriangle", "size": "sm", "tone": "danger" } },
-      "valBreached": { "type": "Heading", "props": { "text": "38", "level": "h2", "tone": "danger" } },
+      "iconBreached": { "type": "Icon", "props": { "name": "AlertTriangle", "size": "sm", "tone": "destructive" } },
+      "valBreached": { "type": "Heading", "props": { "text": "38", "level": "h2", "tone": "destructive" } },
       "lblBreached": { "type": "Caption", "props": { "text": "Breached" } },
 
       "tileRate": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackRate"] },
       "stackRate": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconRate", "valRate", "lblRate"] },
-      "iconRate": { "type": "Icon", "props": { "name": "Percent", "size": "sm", "tone": "danger" } },
-      "valRate": { "type": "Heading", "props": { "text": "27%", "level": "h2", "tone": "danger" } },
+      "iconRate": { "type": "Icon", "props": { "name": "Percent", "size": "sm", "tone": "destructive" } },
+      "valRate": { "type": "Heading", "props": { "text": "27%", "level": "h2", "tone": "destructive" } },
       "lblRate": { "type": "Caption", "props": { "text": "Breach Rate" } },
 
       "div1": { "type": "Divider", "props": {} },
 
-      "chartsGrid": {
-        "type": "Grid",
-        "props": { "cols": 2, "gap": "md" },
-        "children": ["metStack", "breachedStack"]
-      },
-
-      "metStack": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["metLabel", "metChart", "metCaption"]
-      },
-      "metLabel": { "type": "Text", "props": { "text": "Met", "size": "sm", "weight": "medium" } },
+      "metChartLabel": { "type": "Eyebrow", "props": { "text": "Met · Mon → Sun" } },
       "metChart": {
         "type": "Sparkline",
-        "props": { "values": [12, 15, 20, 18, 21, 13, 4], "tone": "success", "height": 80, "fill": true }
+        "props": { "values": [12, 15, 20, 18, 21, 13, 4], "tone": "success", "height": 100, "fill": true }
       },
-      "metCaption": { "type": "Caption", "props": { "text": "Mon → Sun" } },
-
-      "breachedStack": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["breachedLabel", "breachedChart", "breachedCaption"]
-      },
-      "breachedLabel": { "type": "Text", "props": { "text": "Breached", "size": "sm", "weight": "medium" } },
-      "breachedChart": {
-        "type": "Sparkline",
-        "props": { "values": [2, 3, 7, 4, 5, 5, 10], "tone": "destructive", "height": 80, "fill": true }
-      },
-      "breachedCaption": { "type": "Caption", "props": { "text": "Mon → Sun" } },
 
       "div2": { "type": "Divider", "props": {} },
+
+      "breachedChartLabel": { "type": "Eyebrow", "props": { "text": "Breached · Mon → Sun" } },
+      "breachedChart": {
+        "type": "Sparkline",
+        "props": { "values": [2, 3, 7, 4, 5, 5, 10], "tone": "destructive", "height": 100, "fill": true }
+      },
+
+      "div3": { "type": "Divider", "props": {} },
 
       "kvGrid": {
         "type": "Grid",
         "props": { "cols": 2, "gap": "sm" },
         "children": ["kvPeakMet", "kvWorstBreach"]
       },
-      "kvPeakMet":      { "type": "KeyValue", "props": { "label": "Peak Met",      "value": "Fri · 21" } },
-      "kvWorstBreach":  { "type": "KeyValue", "props": { "label": "Worst Breach",  "value": "Sun · 10" } }
+      "kvPeakMet":     { "type": "KeyValue", "props": { "label": "Peak Met",     "value": "Fri · 21" } },
+      "kvWorstBreach": { "type": "KeyValue", "props": { "label": "Worst Breach", "value": "Sun · 10" } }
 
     }
   },

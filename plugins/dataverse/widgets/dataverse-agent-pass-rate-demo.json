@@ -8,9 +8,9 @@
   "connectorsUsed": ["dataverse"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 4, "rowSpan": 8 },
-    "min":       { "colSpan": 3, "rowSpan": 7 },
-    "max":       { "colSpan": 8, "rowSpan": 12 }
+    "preferred": { "colSpan": 4, "rowSpan": 10 },
+    "min":       { "colSpan": 3, "rowSpan": 8 },
+    "max":       { "colSpan": 8, "rowSpan": 14 }
   },
   "spec": {
     "root": "card",
@@ -19,7 +19,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "div0", "statsGrid", "div1", "donutSection"]
+        "children": ["headerRow", "div0", "statsGrid", "div1", "agentList"]
       },
 
       "headerRow": {
@@ -65,34 +65,51 @@
 
       "div1": { "type": "Divider", "props": {} },
 
-      "donutSection": {
+      "agentList": {
         "type": "Stack",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["donutChart"]
+        "props": { "gap": "sm" },
+        "children": ["agentHeader", "agentDivider", "agent1", "agent2", "agent3", "agent4", "agent5"]
       },
 
-      "donutChart": {
-        "type": "Donut",
-        "props": {
-          "data": [
-            { "agent": "Carol T.",  "score": 95 },
-            { "agent": "Alice M.",  "score": 90 },
-            { "agent": "Jeremy F.", "score": 79 },
-            { "agent": "Rico P.",   "score": 66 },
-            { "agent": "Bob K.",    "score": 58 }
-          ],
-          "groupField": "agent",
-          "legend": {
-            "Carol T.":  { "label": "Carol T. · 95%",  "tone": "positive" },
-            "Alice M.":  { "label": "Alice M. · 90%",  "tone": "accent" },
-            "Jeremy F.": { "label": "Jeremy F. · 79%", "tone": "info" },
-            "Rico P.":   { "label": "Rico P. · 66%",   "tone": "warning" },
-            "Bob K.":    { "label": "Bob K. · 58%",    "tone": "danger" }
-          },
-          "centerLabel": "Agents",
-          "size": 160
-        }
-      }
+      "agentHeader": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["agentHdrName", "agentHdrScore"]
+      },
+      "agentHdrName":  { "type": "Caption", "props": { "text": "AGENT",     "weight": "medium" } },
+      "agentHdrScore": { "type": "Caption", "props": { "text": "PASS RATE", "weight": "medium" } },
+
+      "agentDivider": { "type": "Divider", "props": {} },
+
+      "agent1": { "type": "Stack", "props": { "gap": "xxs" }, "children": ["a1row", "a1bar"] },
+      "a1row":  { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["a1name", "a1score"] },
+      "a1name":  { "type": "Text",    "props": { "text": "Carol T.",  "size": "sm", "weight": "medium" } },
+      "a1score": { "type": "Caption", "props": { "text": "95%" } },
+      "a1bar":   { "type": "ProgressBar", "props": { "value": 95, "tone": "success" } },
+
+      "agent2": { "type": "Stack", "props": { "gap": "xxs" }, "children": ["a2row", "a2bar"] },
+      "a2row":  { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["a2name", "a2score"] },
+      "a2name":  { "type": "Text",    "props": { "text": "Alice M.",  "size": "sm", "weight": "medium" } },
+      "a2score": { "type": "Caption", "props": { "text": "90%" } },
+      "a2bar":   { "type": "ProgressBar", "props": { "value": 90, "tone": "success" } },
+
+      "agent3": { "type": "Stack", "props": { "gap": "xxs" }, "children": ["a3row", "a3bar"] },
+      "a3row":  { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["a3name", "a3score"] },
+      "a3name":  { "type": "Text",    "props": { "text": "Jeremy F.", "size": "sm", "weight": "medium" } },
+      "a3score": { "type": "Caption", "props": { "text": "79%" } },
+      "a3bar":   { "type": "ProgressBar", "props": { "value": 79, "tone": "warning" } },
+
+      "agent4": { "type": "Stack", "props": { "gap": "xxs" }, "children": ["a4row", "a4bar"] },
+      "a4row":  { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["a4name", "a4score"] },
+      "a4name":  { "type": "Text",    "props": { "text": "Rico P.",   "size": "sm", "weight": "medium" } },
+      "a4score": { "type": "Caption", "props": { "text": "66%" } },
+      "a4bar":   { "type": "ProgressBar", "props": { "value": 66, "tone": "warning" } },
+
+      "agent5": { "type": "Stack", "props": { "gap": "xxs" }, "children": ["a5row", "a5bar"] },
+      "a5row":  { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["a5name", "a5score"] },
+      "a5name":  { "type": "Text",    "props": { "text": "Bob K.",    "size": "sm", "weight": "medium" } },
+      "a5score": { "type": "Caption", "props": { "text": "58%" } },
+      "a5bar":   { "type": "ProgressBar", "props": { "value": 58, "tone": "destructive" } }
 
     }
   },
