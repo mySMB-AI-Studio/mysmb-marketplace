@@ -1,0 +1,166 @@
+{
+  "id": "netsuite-open-sales-orders-demo",
+  "title": "Open Sales Orders",
+  "description": "Live view of open sales orders — pending approval, pending fulfillment, and partially fulfilled. Demo version with static data.",
+  "category": "finance",
+  "tags": ["netsuite", "oracle", "erp", "finance", "sales-orders", "orders", "fulfillment", "demo"],
+  "keywords": ["sales orders", "open orders", "fulfillment", "pending", "netsuite", "erp"],
+  "connectorsUsed": ["netsuite"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 7, "rowSpan": 9 },
+    "min":       { "colSpan": 5, "rowSpan": 8 },
+    "max":       { "colSpan": 12, "rowSpan": 14 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "kpiGrid", "div1", "tableHeaderRow", "orderList"]
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "ShoppingCart", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Open Sales Orders", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "NetSuite ERP" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "kpiGrid": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["tileCount", "tileValue"]
+      },
+
+      "tileCount": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackCount"] },
+      "stackCount": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconCount", "valCount", "lblCount"] },
+      "iconCount": { "type": "Icon", "props": { "name": "Package", "size": "sm", "tone": "accent" } },
+      "valCount": { "type": "Heading", "props": { "text": "7", "level": "h2" } },
+      "lblCount": { "type": "Caption", "props": { "text": "Open Orders" } },
+
+      "tileValue": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackValue"] },
+      "stackValue": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconValue", "valValue", "lblValue"] },
+      "iconValue": { "type": "Icon", "props": { "name": "DollarSign", "size": "sm", "tone": "accent" } },
+      "valValue": { "type": "Heading", "props": { "text": "$234.6K", "level": "h2" } },
+      "lblValue": { "type": "Caption", "props": { "text": "Total Value" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "tableHeaderRow": {
+        "type": "Row",
+        "props": { "template": "1fr 1.5fr 1fr 1fr", "gap": "sm", "align": "center" },
+        "children": ["colOrder", "colCustomer", "colAmount", "colStatus"]
+      },
+      "colOrder":    { "type": "Caption", "props": { "text": "ORDER #",  "tone": "muted" } },
+      "colCustomer": { "type": "Caption", "props": { "text": "CUSTOMER", "tone": "muted" } },
+      "colAmount":   { "type": "Caption", "props": { "text": "AMOUNT",   "tone": "muted" } },
+      "colStatus":   { "type": "Caption", "props": { "text": "STATUS",   "tone": "muted" } },
+
+      "orderList": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": [
+          "rowDiv0", "row0",
+          "rowDiv1", "row1",
+          "rowDiv2", "row2",
+          "rowDiv3", "row3",
+          "rowDiv4", "row4",
+          "rowDiv5", "row5",
+          "rowDiv6", "row6"
+        ]
+      },
+
+      "rowDiv0": { "type": "Divider", "props": {} },
+      "row0": {
+        "type": "Row",
+        "props": { "template": "1fr 1.5fr 1fr 1fr", "gap": "sm", "align": "center" },
+        "children": ["r0Order", "r0Customer", "r0Amount", "r0Status"]
+      },
+      "r0Order":    { "type": "Text", "props": { "text": "SO-10045", "size": "sm", "weight": "medium" } },
+      "r0Customer": { "type": "Text", "props": { "text": "Apex Corp", "size": "sm" } },
+      "r0Amount":   { "type": "Text", "props": { "text": "$38,500", "size": "sm" } },
+      "r0Status":   { "type": "Badge", "props": { "label": "Pending Fulfillment", "tone": "accent" } },
+
+      "rowDiv1": { "type": "Divider", "props": {} },
+      "row1": {
+        "type": "Row",
+        "props": { "template": "1fr 1.5fr 1fr 1fr", "gap": "sm", "align": "center" },
+        "children": ["r1Order", "r1Customer", "r1Amount", "r1Status"]
+      },
+      "r1Order":    { "type": "Text", "props": { "text": "SO-10044", "size": "sm", "weight": "medium" } },
+      "r1Customer": { "type": "Text", "props": { "text": "Blue Sky Ltd", "size": "sm" } },
+      "r1Amount":   { "type": "Text", "props": { "text": "$52,000", "size": "sm" } },
+      "r1Status":   { "type": "Badge", "props": { "label": "Pending Approval", "tone": "warning" } },
+
+      "rowDiv2": { "type": "Divider", "props": {} },
+      "row2": {
+        "type": "Row",
+        "props": { "template": "1fr 1.5fr 1fr 1fr", "gap": "sm", "align": "center" },
+        "children": ["r2Order", "r2Customer", "r2Amount", "r2Status"]
+      },
+      "r2Order":    { "type": "Text", "props": { "text": "SO-10043", "size": "sm", "weight": "medium" } },
+      "r2Customer": { "type": "Text", "props": { "text": "Green Energy Co", "size": "sm" } },
+      "r2Amount":   { "type": "Text", "props": { "text": "$27,800", "size": "sm" } },
+      "r2Status":   { "type": "Badge", "props": { "label": "Partially Fulfilled", "tone": "accent" } },
+
+      "rowDiv3": { "type": "Divider", "props": {} },
+      "row3": {
+        "type": "Row",
+        "props": { "template": "1fr 1.5fr 1fr 1fr", "gap": "sm", "align": "center" },
+        "children": ["r3Order", "r3Customer", "r3Amount", "r3Status"]
+      },
+      "r3Order":    { "type": "Text", "props": { "text": "SO-10042", "size": "sm", "weight": "medium" } },
+      "r3Customer": { "type": "Text", "props": { "text": "Horizon Tech", "size": "sm" } },
+      "r3Amount":   { "type": "Text", "props": { "text": "$45,200", "size": "sm" } },
+      "r3Status":   { "type": "Badge", "props": { "label": "Pending Fulfillment", "tone": "accent" } },
+
+      "rowDiv4": { "type": "Divider", "props": {} },
+      "row4": {
+        "type": "Row",
+        "props": { "template": "1fr 1.5fr 1fr 1fr", "gap": "sm", "align": "center" },
+        "children": ["r4Order", "r4Customer", "r4Amount", "r4Status"]
+      },
+      "r4Order":    { "type": "Text", "props": { "text": "SO-10041", "size": "sm", "weight": "medium" } },
+      "r4Customer": { "type": "Text", "props": { "text": "Summit Partners", "size": "sm" } },
+      "r4Amount":   { "type": "Text", "props": { "text": "$71,100", "size": "sm" } },
+      "r4Status":   { "type": "Badge", "props": { "label": "Pending Fulfillment", "tone": "accent" } },
+
+      "rowDiv5": { "type": "Divider", "props": {} },
+      "row5": {
+        "type": "Row",
+        "props": { "template": "1fr 1.5fr 1fr 1fr", "gap": "sm", "align": "center" },
+        "children": ["r5Order", "r5Customer", "r5Amount", "r5Status"]
+      },
+      "r5Order":    { "type": "Text", "props": { "text": "SO-10040", "size": "sm", "weight": "medium" } },
+      "r5Customer": { "type": "Text", "props": { "text": "Pacific Retail", "size": "sm" } },
+      "r5Amount":   { "type": "Text", "props": { "text": "$34,600", "size": "sm" } },
+      "r5Status":   { "type": "Badge", "props": { "label": "Pending Approval", "tone": "warning" } },
+
+      "rowDiv6": { "type": "Divider", "props": {} },
+      "row6": {
+        "type": "Row",
+        "props": { "template": "1fr 1.5fr 1fr 1fr", "gap": "sm", "align": "center" },
+        "children": ["r6Order", "r6Customer", "r6Amount", "r6Status"]
+      },
+      "r6Order":    { "type": "Text", "props": { "text": "SO-10039", "size": "sm", "weight": "medium" } },
+      "r6Customer": { "type": "Text", "props": { "text": "Nova Solutions", "size": "sm" } },
+      "r6Amount":   { "type": "Text", "props": { "text": "$65,400", "size": "sm" } },
+      "r6Status":   { "type": "Badge", "props": { "label": "Partially Fulfilled", "tone": "accent" } }
+
+    }
+  },
+  "status": "published"
+}
