@@ -24,7 +24,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["titleRow", "stats", "divider", "tableLabelRow", "tableBody", "footerDivider", "footer"]
+        "children": ["titleRow", "stats", "divider", "filterRow", "tableLabelRow", "tableBody", "footerDivider", "footer"]
       },
       "titleRow": {
         "type": "Row",
@@ -36,23 +36,10 @@
         "props": { "gap": "sm", "align": "center" },
         "children": ["titleIcon", "titleStack"]
       },
-      "titleIcon": {
-        "type": "Icon",
-        "props": { "name": "Clock", "tone": "accent", "size": "sm" }
-      },
-      "titleStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["title", "eyebrow"]
-      },
-      "title": {
-        "type": "Heading",
-        "props": { "text": "SLA Performance", "level": "h2" }
-      },
-      "eyebrow": {
-        "type": "Eyebrow",
-        "props": { "text": "Dynamics 365 Customer Service · Last 7 days" }
-      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Clock", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "SLA Performance", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Dynamics 365 Customer Service · Last 7 days" } },
 
       "stats": {
         "type": "Grid",
@@ -63,18 +50,14 @@
       "tileActive": {
         "type": "Section",
         "props": { "variant": "muted" },
-        "children": ["stackActive"],
-        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/sla/filter", "value": "" } } }
+        "children": ["stackActive"]
       },
       "stackActive": {
         "type": "Stack",
         "props": { "gap": "xxs", "align": "center" },
-        "children": ["iconActive", "valActive", "lblActive", "dotActive"]
+        "children": ["iconActive", "valActive", "lblActive"]
       },
-      "iconActive": {
-        "type": "Icon",
-        "props": { "name": "Clock", "size": "sm", "tone": "accent" }
-      },
+      "iconActive": { "type": "Icon", "props": { "name": "Clock", "size": "sm", "tone": "accent" } },
       "valActive": {
         "type": "Stat",
         "props": {
@@ -84,31 +67,19 @@
           }
         }
       },
-      "lblActive": {
-        "type": "Caption",
-        "props": { "text": "Total SLAs" }
-      },
-      "dotActive": {
-        "type": "Dot",
-        "props": { "tone": "accent", "size": "xs" },
-        "visible": { "$state": "/ui/sla/filter", "not": true }
-      },
+      "lblActive": { "type": "Caption", "props": { "text": "Total SLAs" } },
 
       "tileAtRisk": {
         "type": "Section",
         "props": { "variant": "muted" },
-        "children": ["stackAtRisk"],
-        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/sla/filter", "value": "Nearing Noncompliance" } } }
+        "children": ["stackAtRisk"]
       },
       "stackAtRisk": {
         "type": "Stack",
         "props": { "gap": "xxs", "align": "center" },
-        "children": ["iconAtRisk", "valAtRisk", "lblAtRisk", "dotAtRisk"]
+        "children": ["iconAtRisk", "valAtRisk", "lblAtRisk"]
       },
-      "iconAtRisk": {
-        "type": "Icon",
-        "props": { "name": "AlertCircle", "size": "sm", "tone": "warning" }
-      },
+      "iconAtRisk": { "type": "Icon", "props": { "name": "AlertCircle", "size": "sm", "tone": "warning" } },
       "valAtRisk": {
         "type": "Stat",
         "props": {
@@ -122,31 +93,19 @@
           }
         }
       },
-      "lblAtRisk": {
-        "type": "Caption",
-        "props": { "text": "At Risk" }
-      },
-      "dotAtRisk": {
-        "type": "Dot",
-        "props": { "tone": "warning", "size": "xs" },
-        "visible": { "$computed": "equals", "args": { "a": { "$state": "/ui/sla/filter" }, "b": "Nearing Noncompliance" } }
-      },
+      "lblAtRisk": { "type": "Caption", "props": { "text": "At Risk" } },
 
       "tileBreached": {
         "type": "Section",
         "props": { "variant": "muted" },
-        "children": ["stackBreached"],
-        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/sla/filter", "value": "Noncompliant" } } }
+        "children": ["stackBreached"]
       },
       "stackBreached": {
         "type": "Stack",
         "props": { "gap": "xxs", "align": "center" },
-        "children": ["iconBreached", "valBreached", "lblBreached", "dotBreached"]
+        "children": ["iconBreached", "valBreached", "lblBreached"]
       },
-      "iconBreached": {
-        "type": "Icon",
-        "props": { "name": "AlertTriangle", "size": "sm", "tone": "destructive" }
-      },
+      "iconBreached": { "type": "Icon", "props": { "name": "AlertTriangle", "size": "sm", "tone": "destructive" } },
       "valBreached": {
         "type": "Stat",
         "props": {
@@ -160,15 +119,7 @@
           }
         }
       },
-      "lblBreached": {
-        "type": "Caption",
-        "props": { "text": "Breached", "tone": "destructive" }
-      },
-      "dotBreached": {
-        "type": "Dot",
-        "props": { "tone": "destructive", "size": "xs" },
-        "visible": { "$computed": "equals", "args": { "a": { "$state": "/ui/sla/filter" }, "b": "Noncompliant" } }
-      },
+      "lblBreached": { "type": "Caption", "props": { "text": "Breached", "tone": "destructive" } },
 
       "tileBreachRate": {
         "type": "Section",
@@ -180,10 +131,7 @@
         "props": { "gap": "xxs", "align": "center" },
         "children": ["iconBreachRate", "valBreachRate", "lblBreachRate"]
       },
-      "iconBreachRate": {
-        "type": "Icon",
-        "props": { "name": "Percent", "size": "sm", "tone": "destructive" }
-      },
+      "iconBreachRate": { "type": "Icon", "props": { "name": "Percent", "size": "sm", "tone": "destructive" } },
       "valBreachRate": {
         "type": "Stat",
         "props": {
@@ -212,22 +160,37 @@
           }
         }
       },
-      "lblBreachRate": {
-        "type": "Caption",
-        "props": { "text": "Breach Rate", "tone": "destructive" }
-      },
+      "lblBreachRate": { "type": "Caption", "props": { "text": "Breach Rate", "tone": "destructive" } },
 
       "divider": { "type": "Divider", "props": {} },
+
+      "filterRow": {
+        "type": "Row",
+        "props": { "gap": "xs" },
+        "children": ["btnAll", "btnAtRisk", "btnBreached"]
+      },
+      "btnAll": {
+        "type": "Button",
+        "props": { "label": "All", "size": "sm", "variant": "ghost" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/sla/filter", "value": "" } } }
+      },
+      "btnAtRisk": {
+        "type": "Button",
+        "props": { "label": "At Risk", "size": "sm", "variant": "ghost", "leadingIcon": "AlertCircle" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/sla/filter", "value": "Nearing Noncompliance" } } }
+      },
+      "btnBreached": {
+        "type": "Button",
+        "props": { "label": "Breached", "size": "sm", "variant": "ghost", "leadingIcon": "AlertTriangle" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/sla/filter", "value": "Noncompliant" } } }
+      },
 
       "tableLabelRow": {
         "type": "Row",
         "props": { "justify": "between", "align": "center" },
         "children": ["tableLabel", "clearFilterBtn"]
       },
-      "tableLabel": {
-        "type": "Eyebrow",
-        "props": { "text": "Active SLAs" }
-      },
+      "tableLabel": { "type": "Eyebrow", "props": { "text": "Active SLAs" } },
       "clearFilterBtn": {
         "type": "IconButton",
         "props": { "icon": "X", "tone": "muted", "size": "sm", "ariaLabel": "Clear filter" },
@@ -288,12 +251,7 @@
       },
       "footerBtn": {
         "type": "Button",
-        "props": {
-          "label": "Open in D365",
-          "variant": "ghost",
-          "size": "sm",
-          "leadingIcon": "ExternalLink"
-        },
+        "props": { "label": "Open in D365", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
         "on": {
           "click": {
             "action": "open_url",

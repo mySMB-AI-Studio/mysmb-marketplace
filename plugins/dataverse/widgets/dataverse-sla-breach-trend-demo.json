@@ -19,7 +19,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "div0", "statsGrid", "div1", "metChartLabel", "metChart", "div2", "breachedChartLabel", "breachedChart", "div3", "kvGrid"]
+        "children": ["headerRow", "div0", "statsGrid", "div1", "metChartLabel", "metChart", "metDateAxis", "div2", "breachedChartLabel", "breachedChart", "breachedDateAxis", "div3", "kvGrid"]
       },
 
       "headerRow": {
@@ -65,19 +65,35 @@
 
       "div1": { "type": "Divider", "props": {} },
 
-      "metChartLabel": { "type": "Eyebrow", "props": { "text": "Met · Mon → Sun" } },
+      "metChartLabel": { "type": "Eyebrow", "props": { "text": "Met" } },
       "metChart": {
         "type": "Sparkline",
         "props": { "values": [12, 15, 20, 18, 21, 13, 4], "tone": "success", "height": 100, "fill": true }
       },
+      "metDateAxis": {
+        "type": "Row",
+        "props": { "justify": "between" },
+        "children": ["metDateLeft", "metDateMid", "metDateRight"]
+      },
+      "metDateLeft":  { "type": "Caption", "props": { "text": "Jun 9" } },
+      "metDateMid":   { "type": "Caption", "props": { "text": "Jun 12" } },
+      "metDateRight": { "type": "Caption", "props": { "text": "Jun 15" } },
 
       "div2": { "type": "Divider", "props": {} },
 
-      "breachedChartLabel": { "type": "Eyebrow", "props": { "text": "Breached · Mon → Sun" } },
+      "breachedChartLabel": { "type": "Eyebrow", "props": { "text": "Breached" } },
       "breachedChart": {
         "type": "Sparkline",
         "props": { "values": [2, 3, 7, 4, 5, 5, 10], "tone": "destructive", "height": 100, "fill": true }
       },
+      "breachedDateAxis": {
+        "type": "Row",
+        "props": { "justify": "between" },
+        "children": ["breachedDateLeft", "breachedDateMid", "breachedDateRight"]
+      },
+      "breachedDateLeft":  { "type": "Caption", "props": { "text": "Jun 9" } },
+      "breachedDateMid":   { "type": "Caption", "props": { "text": "Jun 12" } },
+      "breachedDateRight": { "type": "Caption", "props": { "text": "Jun 15" } },
 
       "div3": { "type": "Divider", "props": {} },
 
