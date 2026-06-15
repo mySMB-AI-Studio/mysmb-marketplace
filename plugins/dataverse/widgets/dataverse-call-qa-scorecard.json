@@ -109,14 +109,20 @@
         "props": { "template": "1.5fr 1.5fr auto", "gap": "sm", "align": "center", "hover": true, "clickable": true },
         "children": ["rowInfo", "rowAgent", "rowDate"],
         "on": {
-          "click": [
-            { "action": "setState", "params": { "statePath": "/ui/tsel/id",             "value": { "$item": "msdyn_transcriptid" } } },
-            { "action": "setState", "params": { "statePath": "/ui/tsel/name",           "value": { "$item": "display_name" } } },
-            { "action": "setState", "params": { "statePath": "/ui/tsel/agent",          "value": { "$item": "agent_name" } } },
-            { "action": "setState", "params": { "statePath": "/ui/tsel/createdon",      "value": { "$item": "createdon" } } },
-            { "action": "setState", "params": { "statePath": "/ui/tsel/customer_name",  "value": { "$item": "customer_name" } } },
-            { "action": "setState", "params": { "statePath": "/ui/tsel/customer_phone", "value": { "$item": "customer_phone" } } }
-          ]
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/tsel",
+              "value": {
+                "id":             { "$item": "msdyn_transcriptid" },
+                "name":           { "$item": "display_name" },
+                "agent":          { "$item": "agent_name" },
+                "createdon":      { "$item": "createdon" },
+                "customer_name":  { "$item": "customer_name" },
+                "customer_phone": { "$item": "customer_phone" }
+              }
+            }
+          }
         }
       },
 
