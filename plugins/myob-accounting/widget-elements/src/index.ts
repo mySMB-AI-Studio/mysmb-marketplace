@@ -545,9 +545,14 @@ const monthly_totals: ComputedFunction = (args) => {
   return months.map(m => Math.round((totals[m] ?? 0) * 100) / 100);
 };
 
+// MYOB Purchase Bill types — anything else (e.g. InventoryAdjustment) is treated as an adjustment.
+const PURCHASE_BILL_TYPES = new Set(['Item', 'Miscellaneous', 'Professional', 'Service']);
+
 // ── txn_count ─────────────────────────────────────────────────────────
-// Returns count (as string) of invoice/bill Items with optional status filter.
-// filter: "all" | "open" | "closed" | "overdue"
+// Returns count (as string) of invoice/bill Items with optional filters.
+// filter: "all" | "open" | "closed" | "overdue"  (MYOB bills use "Paid" for closed)
+// from_date / to_date: YYYY-MM-DD — scopes to item Date field
+// record_type: "bill" | "adjustment" — splits by MYOB Type field
 const txn_count: ComputedFunction = (args) => {
   const raw = args.value as Record<string, unknown> | unknown[];
   const items: Record<string, unknown>[] = Array.isArray(raw)
@@ -556,26 +561,42 @@ const txn_count: ComputedFunction = (args) => {
       ? ((raw as Record<string, unknown>).Items as Record<string, unknown>[])
       : [];
   const filter = String(args.filter ?? 'all').toLowerCase();
+  const recordType = args.record_type ? String(args.record_type) : null;
+  const fromMs = args.from_date ? new Date(String(args.from_date)).getTime() : null;
+  const toMs = args.to_date
+    ? (() => { const d = new Date(String(args.to_date)); d.setDate(d.getDate() + 1); return d.getTime(); })()
+    : null;
   const now = Date.now();
   const parse = (s: string) => {
     const m = s.match(/\/Date\((-?\d+)(?:[+-]\d{4})?\)\//);
     return m ? Number(m[1]) : new Date(s).getTime();
   };
   return String(items.filter(item => {
+    if (recordType === 'bill' && !PURCHASE_BILL_TYPES.has(String(item.Type ?? ''))) return false;
+    if (recordType === 'adjustment' && PURCHASE_BILL_TYPES.has(String(item.Type ?? ''))) return false;
+    if (fromMs !== null || toMs !== null) {
+      const itemMs = parse(String(item.Date ?? ''));
+      if (!isFinite(itemMs)) return false;
+      if (fromMs !== null && itemMs < fromMs) return false;
+      if (toMs !== null && itemMs >= toMs) return false;
+    }
     const status = String(item.Status ?? '').toLowerCase();
     const terms = item.Terms as Record<string, unknown> | undefined;
-    const dueMs = parse(String(terms?.DueDate ?? ''));
+    const dueDateRaw = String(terms?.DueDate ?? item.DueDate ?? '');
+    const dueMs = parse(dueDateRaw);
     const overdue = isFinite(dueMs) && dueMs < now && status === 'open';
     return filter === 'all'
       || (filter === 'open' && status === 'open')
-      || (filter === 'closed' && status === 'closed')
+      || (filter === 'closed' && (status === 'closed' || status === 'paid'))
       || (filter === 'overdue' && overdue);
   }).length);
 };
 
 // ── txn_amount ────────────────────────────────────────────────────────
-// Returns formatted AUD total for invoice/bill Items with optional filter.
+// Returns formatted AUD total for invoice/bill Items with optional filters.
 // Uses BalanceDueAmount for open/overdue; TotalAmount otherwise.
+// from_date / to_date: YYYY-MM-DD — scopes to item Date field
+// record_type: "bill" | "adjustment" — splits by MYOB Type field
 const txn_amount: ComputedFunction = (args) => {
   const raw = args.value as Record<string, unknown> | unknown[];
   const items: Record<string, unknown>[] = Array.isArray(raw)
@@ -584,6 +605,11 @@ const txn_amount: ComputedFunction = (args) => {
       ? ((raw as Record<string, unknown>).Items as Record<string, unknown>[])
       : [];
   const filter = String(args.filter ?? 'all').toLowerCase();
+  const recordType = args.record_type ? String(args.record_type) : null;
+  const fromMs = args.from_date ? new Date(String(args.from_date)).getTime() : null;
+  const toMs = args.to_date
+    ? (() => { const d = new Date(String(args.to_date)); d.setDate(d.getDate() + 1); return d.getTime(); })()
+    : null;
   const now = Date.now();
   const parse = (s: string) => {
     const m = s.match(/\/Date\((-?\d+)(?:[+-]\d{4})?\)\//);
@@ -592,13 +618,22 @@ const txn_amount: ComputedFunction = (args) => {
   const useBalance = filter === 'open' || filter === 'overdue';
   const total = items
     .filter(item => {
+      if (recordType === 'bill' && !PURCHASE_BILL_TYPES.has(String(item.Type ?? ''))) return false;
+      if (recordType === 'adjustment' && PURCHASE_BILL_TYPES.has(String(item.Type ?? ''))) return false;
+      if (fromMs !== null || toMs !== null) {
+        const itemMs = parse(String(item.Date ?? ''));
+        if (!isFinite(itemMs)) return false;
+        if (fromMs !== null && itemMs < fromMs) return false;
+        if (toMs !== null && itemMs >= toMs) return false;
+      }
       const status = String(item.Status ?? '').toLowerCase();
       const terms = item.Terms as Record<string, unknown> | undefined;
-      const dueMs = parse(String(terms?.DueDate ?? ''));
+      const dueDateRaw = String(terms?.DueDate ?? item.DueDate ?? '');
+      const dueMs = parse(dueDateRaw);
       const overdue = isFinite(dueMs) && dueMs < now && status === 'open';
       return filter === 'all'
         || (filter === 'open' && status === 'open')
-        || (filter === 'closed' && status === 'closed')
+        || (filter === 'closed' && (status === 'closed' || status === 'paid'))
         || (filter === 'overdue' && overdue);
     })
     .reduce((sum, item) => {
@@ -607,6 +642,19 @@ const txn_amount: ComputedFunction = (args) => {
         : (item.TotalAmount ?? 0));
     }, 0);
   return 'A$' + new Intl.NumberFormat('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(total);
+};
+
+// ── txn_truncated ──────────────────────────────────────────────────────
+// Returns true when the Items array is at the 1000-record page cap, meaning
+// the API response was truncated and totals/counts may be understated.
+const txn_truncated: ComputedFunction = (args) => {
+  const raw = args.value as Record<string, unknown> | unknown[];
+  const items: Record<string, unknown>[] = Array.isArray(raw)
+    ? (raw as Record<string, unknown>[])
+    : Array.isArray((raw as Record<string, unknown>)?.Items)
+      ? ((raw as Record<string, unknown>).Items as Record<string, unknown>[])
+      : [];
+  return items.length >= 1000;
 };
 
 // ── net_monthly ────────────────────────────────────────────────────────
@@ -646,6 +694,7 @@ const elements: PluginElementsModule = {
     monthly_totals,
     txn_count,
     txn_amount,
+    txn_truncated,
     net_monthly,
     bool_not,
   },
