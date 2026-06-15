@@ -8,9 +8,9 @@
   "connectorsUsed": ["dataverse"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 4, "rowSpan": 8 },
-    "min":       { "colSpan": 3, "rowSpan": 7 },
-    "max":       { "colSpan": 8, "rowSpan": 12 }
+    "preferred": { "colSpan": 4, "rowSpan": 10 },
+    "min":       { "colSpan": 3, "rowSpan": 8 },
+    "max":       { "colSpan": 8, "rowSpan": 14 }
   },
   "spec": {
     "root": "card",
@@ -19,7 +19,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "div0", "statsGrid", "div1", "donutSection"]
+        "children": ["headerRow", "div0", "statsGrid", "div1", "agentList"]
       },
 
       "headerRow": {
@@ -65,32 +65,30 @@
 
       "div1": { "type": "Divider", "props": {} },
 
-      "donutSection": {
+      "agentList": {
         "type": "Stack",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["donutChart"]
+        "props": { "gap": "sm" },
+        "children": ["topAgentsLabel", "agentBarChart"]
       },
 
-      "donutChart": {
-        "type": "Donut",
+      "topAgentsLabel": { "type": "Eyebrow", "props": { "text": "Top 5 Agents" } },
+
+      "agentBarChart": {
+        "type": "BarChart",
         "props": {
           "data": [
-            { "agent": "Carol T.",  "score": 95 },
-            { "agent": "Alice M.",  "score": 90 },
-            { "agent": "Jeremy F.", "score": 79 },
-            { "agent": "Rico P.",   "score": 66 },
-            { "agent": "Bob K.",    "score": 58 }
+            { "agent": "Carol T.",  "rate": 95 },
+            { "agent": "Alice M.",  "rate": 90 },
+            { "agent": "Jeremy F.", "rate": 79 },
+            { "agent": "Rico P.",   "rate": 66 },
+            { "agent": "Bob K.",    "rate": 58 }
           ],
-          "groupField": "agent",
-          "legend": {
-            "Carol T.":  { "label": "Carol T. · 95%",  "tone": "positive" },
-            "Alice M.":  { "label": "Alice M. · 90%",  "tone": "accent" },
-            "Jeremy F.": { "label": "Jeremy F. · 79%", "tone": "info" },
-            "Rico P.":   { "label": "Rico P. · 66%",   "tone": "warning" },
-            "Bob K.":    { "label": "Bob K. · 58%",    "tone": "danger" }
-          },
-          "centerLabel": "Agents",
-          "size": 160
+          "labelField": "agent",
+          "valueField": "rate",
+          "valueFormat": "number",
+          "tone": "accent",
+          "sort": "none",
+          "limit": 5
         }
       }
 

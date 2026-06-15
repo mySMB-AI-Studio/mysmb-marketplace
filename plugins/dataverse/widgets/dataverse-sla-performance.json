@@ -24,7 +24,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["titleRow", "stats", "divider", "tableLabelRow", "tableBody", "footerDivider", "footer"]
+        "children": ["titleRow", "stats", "divider", "filterRow", "tableLabelRow", "tableBody", "footerDivider", "footer"]
       },
       "titleRow": {
         "type": "Row",
@@ -36,33 +36,17 @@
         "props": { "gap": "sm", "align": "center" },
         "children": ["titleIcon", "titleStack"]
       },
-      "titleIcon": {
-        "type": "Icon",
-        "props": { "name": "Clock", "tone": "accent", "size": "sm" }
-      },
-      "titleStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["title", "eyebrow"]
-      },
-      "title": {
-        "type": "Heading",
-        "props": { "text": "SLA Performance", "level": "h2" }
-      },
-      "eyebrow": {
-        "type": "Eyebrow",
-        "props": { "text": "Dynamics 365 Customer Service · Last 7 days" }
-      },
-      "tableBody": {
-        "type": "Body",
-        "props": {},
-        "children": ["table"]
-      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Clock", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "SLA Performance", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Dynamics 365 Customer Service · Last 7 days" } },
+
       "stats": {
         "type": "Grid",
         "props": { "cols": 4, "gap": "sm" },
         "children": ["tileActive", "tileAtRisk", "tileBreached", "tileBreachRate"]
       },
+
       "tileActive": {
         "type": "Section",
         "props": { "variant": "muted" },
@@ -73,10 +57,7 @@
         "props": { "gap": "xxs", "align": "center" },
         "children": ["iconActive", "valActive", "lblActive"]
       },
-      "iconActive": {
-        "type": "Icon",
-        "props": { "name": "Clock", "size": "sm", "tone": "accent" }
-      },
+      "iconActive": { "type": "Icon", "props": { "name": "Clock", "size": "sm", "tone": "accent" } },
       "valActive": {
         "type": "Stat",
         "props": {
@@ -86,10 +67,8 @@
           }
         }
       },
-      "lblActive": {
-        "type": "Caption",
-        "props": { "text": "Total SLAs" }
-      },
+      "lblActive": { "type": "Caption", "props": { "text": "Total SLAs" } },
+
       "tileAtRisk": {
         "type": "Section",
         "props": { "variant": "muted" },
@@ -100,10 +79,7 @@
         "props": { "gap": "xxs", "align": "center" },
         "children": ["iconAtRisk", "valAtRisk", "lblAtRisk"]
       },
-      "iconAtRisk": {
-        "type": "Icon",
-        "props": { "name": "AlertCircle", "size": "sm", "tone": "warning" }
-      },
+      "iconAtRisk": { "type": "Icon", "props": { "name": "AlertCircle", "size": "sm", "tone": "warning" } },
       "valAtRisk": {
         "type": "Stat",
         "props": {
@@ -117,10 +93,8 @@
           }
         }
       },
-      "lblAtRisk": {
-        "type": "Caption",
-        "props": { "text": "At Risk" }
-      },
+      "lblAtRisk": { "type": "Caption", "props": { "text": "At Risk" } },
+
       "tileBreached": {
         "type": "Section",
         "props": { "variant": "muted" },
@@ -131,10 +105,7 @@
         "props": { "gap": "xxs", "align": "center" },
         "children": ["iconBreached", "valBreached", "lblBreached"]
       },
-      "iconBreached": {
-        "type": "Icon",
-        "props": { "name": "AlertTriangle", "size": "sm", "tone": "destructive" }
-      },
+      "iconBreached": { "type": "Icon", "props": { "name": "AlertTriangle", "size": "sm", "tone": "destructive" } },
       "valBreached": {
         "type": "Stat",
         "props": {
@@ -148,10 +119,8 @@
           }
         }
       },
-      "lblBreached": {
-        "type": "Caption",
-        "props": { "text": "Breached", "tone": "destructive" }
-      },
+      "lblBreached": { "type": "Caption", "props": { "text": "Breached", "tone": "destructive" } },
+
       "tileBreachRate": {
         "type": "Section",
         "props": { "variant": "muted" },
@@ -162,10 +131,7 @@
         "props": { "gap": "xxs", "align": "center" },
         "children": ["iconBreachRate", "valBreachRate", "lblBreachRate"]
       },
-      "iconBreachRate": {
-        "type": "Icon",
-        "props": { "name": "Percent", "size": "sm", "tone": "destructive" }
-      },
+      "iconBreachRate": { "type": "Icon", "props": { "name": "Percent", "size": "sm", "tone": "destructive" } },
       "valBreachRate": {
         "type": "Stat",
         "props": {
@@ -194,19 +160,48 @@
           }
         }
       },
-      "lblBreachRate": {
-        "type": "Caption",
-        "props": { "text": "Breach Rate", "tone": "destructive" }
-      },
+      "lblBreachRate": { "type": "Caption", "props": { "text": "Breach Rate", "tone": "destructive" } },
+
       "divider": { "type": "Divider", "props": {} },
+
+      "filterRow": {
+        "type": "Row",
+        "props": { "gap": "xs" },
+        "children": ["btnAll", "btnAtRisk", "btnBreached"]
+      },
+      "btnAll": {
+        "type": "Button",
+        "props": { "label": "All", "size": "sm", "variant": "ghost" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/sla/filter", "value": "" } } }
+      },
+      "btnAtRisk": {
+        "type": "Button",
+        "props": { "label": "At Risk", "size": "sm", "variant": "ghost", "leadingIcon": "AlertCircle" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/sla/filter", "value": "Nearing Noncompliance" } } }
+      },
+      "btnBreached": {
+        "type": "Button",
+        "props": { "label": "Breached", "size": "sm", "variant": "ghost", "leadingIcon": "AlertTriangle" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/sla/filter", "value": "Noncompliant" } } }
+      },
+
       "tableLabelRow": {
         "type": "Row",
         "props": { "justify": "between", "align": "center" },
-        "children": ["tableLabel"]
+        "children": ["tableLabel", "clearFilterBtn"]
       },
-      "tableLabel": {
-        "type": "Eyebrow",
-        "props": { "text": "Active SLAs" }
+      "tableLabel": { "type": "Eyebrow", "props": { "text": "Active SLAs" } },
+      "clearFilterBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "tone": "muted", "size": "sm", "ariaLabel": "Clear filter" },
+        "visible": { "$state": "/ui/sla/filter" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/sla/filter", "value": "" } } }
+      },
+
+      "tableBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["table", "tableFiltered"]
       },
       "table": {
         "type": "Table",
@@ -215,14 +210,39 @@
           "skeletonRows": 6,
           "rows": { "$state": "/dataverse/list_sla_kpis/sla_kpis" },
           "columns": [
-            { "id": "ticket",      "header": "Case",         "field": "case_ticket",         "width": 110, "priority": 1 },
-            { "id": "casetitle",   "header": "Case Title",   "field": "case_title",          "priority": 1 },
-            { "id": "name",        "header": "SLA Type",     "field": "name",                "width": 130, "priority": 2 },
-            { "id": "status",      "header": "Status",       "field": "status_label",             "width": 110, "priority": 1 },
-            { "id": "failuretime", "header": "Breach Time",  "field": "computedfailuretime", "width": 130, "priority": 1, "format": "relative" }
+            { "id": "ticket",      "header": "Case",        "field": "case_ticket",         "width": 110, "priority": 1 },
+            { "id": "casetitle",   "header": "Case Title",  "field": "case_title",          "priority": 1 },
+            { "id": "name",        "header": "SLA Type",    "field": "name",                "width": 130, "priority": 2 },
+            { "id": "status",      "header": "Status",      "field": "status_label",        "width": 110, "priority": 1 },
+            { "id": "failuretime", "header": "Breach Time", "field": "computedfailuretime", "width": 130, "priority": 1, "format": "relative" }
           ]
-        }
+        },
+        "visible": { "$state": "/ui/sla/filter", "not": true }
       },
+      "tableFiltered": {
+        "type": "Table",
+        "props": {
+          "loading": { "$state": "/_loading/dataverse.list_sla_kpis" },
+          "skeletonRows": 6,
+          "rows": {
+            "$computed": "filter_by",
+            "args": {
+              "value": { "$state": "/dataverse/list_sla_kpis/sla_kpis" },
+              "field": "status_label",
+              "equals": { "$state": "/ui/sla/filter" }
+            }
+          },
+          "columns": [
+            { "id": "ticket",      "header": "Case",        "field": "case_ticket",         "width": 110, "priority": 1 },
+            { "id": "casetitle",   "header": "Case Title",  "field": "case_title",          "priority": 1 },
+            { "id": "name",        "header": "SLA Type",    "field": "name",                "width": 130, "priority": 2 },
+            { "id": "status",      "header": "Status",      "field": "status_label",        "width": 110, "priority": 1 },
+            { "id": "failuretime", "header": "Breach Time", "field": "computedfailuretime", "width": 130, "priority": 1, "format": "relative" }
+          ]
+        },
+        "visible": { "$state": "/ui/sla/filter" }
+      },
+
       "footerDivider": { "type": "Divider", "props": {} },
       "footer": {
         "type": "Row",
@@ -231,12 +251,7 @@
       },
       "footerBtn": {
         "type": "Button",
-        "props": {
-          "label": "Open in D365",
-          "variant": "ghost",
-          "size": "sm",
-          "leadingIcon": "ExternalLink"
-        },
+        "props": { "label": "Open in D365", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
         "on": {
           "click": {
             "action": "open_url",
