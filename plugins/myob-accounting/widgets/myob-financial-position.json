@@ -23,7 +23,7 @@
 
       "card": {
         "type": "Card",
-        "children": ["header", "heroStack", "incomeSparkRow", "expensesSparkRow", "netSparkRow", "dateAxis", "legend", "divider", "collapseRow", "collapseBody"],
+        "children": ["header", "loadingSpinner", "heroStack", "incomeSparkRow", "expensesSparkRow", "netSparkRow", "dateAxis", "legend", "divider", "collapseRow", "collapseBody"],
         "watch": {
           "/myob-accounting/get_profit_and_loss": [
             {
@@ -56,6 +56,12 @@
       },
       "title": { "type": "Heading", "props": { "text": "Financial Position", "level": "h2" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "MYOB Accounting" } },
+
+      "loadingSpinner": {
+        "type": "Spinner",
+        "visible": { "$state": "/_loading/myob-accounting.get_profit_and_loss" }
+      },
+
       "heroStack": {
         "type": "Stack",
         "props": { "gap": "none" },
