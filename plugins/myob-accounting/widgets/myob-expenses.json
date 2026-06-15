@@ -180,9 +180,17 @@
         "type": "Stack",
         "props": { "gap": "xs" },
         "visible": { "$state": "/ui/expenses/expanded" },
-        "children": ["totalsLabel", "cashRow", "allBillsRow", "progressDiv", "inProgressLabel", "openBillsRow", "overdueBillsRow"]
+        "children": ["totalsLabel", "truncationWarning", "cashRow", "allBillsRow", "adjRow", "progressDiv", "inProgressLabel", "openBillsRow", "overdueBillsRow"]
       },
       "totalsLabel": { "type": "Caption", "props": { "text": "Expense totals", "weight": "medium" } },
+      "truncationWarning": {
+        "type": "Caption",
+        "props": { "text": "Data may be incomplete — too many records to display", "tone": "destructive" },
+        "visible": {
+          "$computed": "myob-accounting_txn_truncated",
+          "args": { "value": { "$state": "/myob-accounting/list_bills/Items" } }
+        }
+      },
 
       "cashRow": {
         "type": "Row",
@@ -193,23 +201,14 @@
       "cashRight": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center" },
-        "children": ["cashCnt", "cashAmt"]
-      },
-      "cashCnt": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "myob-accounting_txn_count",
-            "args": { "value": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "closed" }
-          }
-        }
+        "children": ["cashAmt"]
       },
       "cashAmt": {
         "type": "Text",
         "props": {
           "text": {
             "$computed": "myob-accounting_txn_amount",
-            "args": { "value": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "closed" }
+            "args": { "value": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "closed", "record_type": "bill", "from_date": "2026-04-01", "to_date": "2026-06-30" }
           },
           "size": "sm",
           "weight": "medium"
@@ -232,7 +231,7 @@
         "props": {
           "text": {
             "$computed": "myob-accounting_txn_count",
-            "args": { "value": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "all" }
+            "args": { "value": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "all", "record_type": "bill", "from_date": "2026-04-01", "to_date": "2026-06-30" }
           }
         }
       },
@@ -241,7 +240,25 @@
         "props": {
           "text": {
             "$computed": "myob-accounting_txn_amount",
-            "args": { "value": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "all" }
+            "args": { "value": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "all", "record_type": "bill", "from_date": "2026-04-01", "to_date": "2026-06-30" }
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+
+      "adjRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["adjLbl", "adjAmt"]
+      },
+      "adjLbl": { "type": "Caption", "props": { "text": "Inventory adjustment" } },
+      "adjAmt": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "myob-accounting_txn_amount",
+            "args": { "value": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "all", "record_type": "adjustment", "from_date": "2026-04-01", "to_date": "2026-06-30" }
           },
           "size": "sm",
           "weight": "medium"
@@ -267,7 +284,7 @@
         "props": {
           "text": {
             "$computed": "myob-accounting_txn_count",
-            "args": { "value": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "open" }
+            "args": { "value": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "open", "from_date": "2026-04-01", "to_date": "2026-06-30" }
           }
         }
       },
@@ -276,7 +293,7 @@
         "props": {
           "text": {
             "$computed": "myob-accounting_txn_amount",
-            "args": { "value": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "open" }
+            "args": { "value": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "open", "from_date": "2026-04-01", "to_date": "2026-06-30" }
           },
           "size": "sm",
           "weight": "medium"
@@ -299,7 +316,7 @@
         "props": {
           "text": {
             "$computed": "myob-accounting_txn_count",
-            "args": { "value": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "overdue" }
+            "args": { "value": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "overdue", "from_date": "2026-04-01", "to_date": "2026-06-30" }
           },
           "tone": "destructive"
         }
@@ -309,7 +326,7 @@
         "props": {
           "text": {
             "$computed": "myob-accounting_txn_amount",
-            "args": { "value": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "overdue" }
+            "args": { "value": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "overdue", "from_date": "2026-04-01", "to_date": "2026-06-30" }
           },
           "size": "sm",
           "weight": "medium",
