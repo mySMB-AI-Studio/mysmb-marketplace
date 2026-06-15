@@ -14,8 +14,8 @@
   },
   "dataProvider": {
     "mcp": "myob-accounting",
-    "tool": "list_invoices",
-    "params": { "status": "All", "from_date": "2025-04-01", "to_date": "2026-06-30", "page_size": 1000 }
+    "tool": "get_profit_and_loss",
+    "params": { "from_date": "2026-04-01", "to_date": "2026-06-30", "reporting_basis": "Accrual" }
   },
   "spec": {
     "root": "card",
@@ -25,9 +25,9 @@
         "type": "Card",
         "children": ["header", "loadingSpinner", "heroStack", "lastYearSpark", "thisYearSpark", "monthAxis", "legend", "divider", "collapseRow", "collapseBody"],
         "watch": {
-          "/myob-accounting/list_invoices": {
-            "action": "myob-accounting.get_profit_and_loss",
-            "params": { "from_date": "2026-04-01", "to_date": "2026-06-30", "reporting_basis": "Accrual" }
+          "/myob-accounting/get_profit_and_loss": {
+            "action": "myob-accounting.list_invoices",
+            "params": { "status": "All", "from_date": "2025-04-01", "to_date": "2026-06-30", "page_size": 1000 }
           }
         }
       },
@@ -53,7 +53,7 @@
 
       "loadingSpinner": {
         "type": "Spinner",
-        "visible": { "$state": "/_loading/myob-accounting.list_invoices" }
+        "visible": { "$state": "/_loading/myob-accounting.get_profit_and_loss" }
       },
 
       "heroStack": {
@@ -180,17 +180,9 @@
         "type": "Stack",
         "props": { "gap": "xs" },
         "visible": { "$state": "/ui/income/expanded" },
-        "children": ["totalsLabel", "truncationWarning", "cashRow", "allInvRow", "progressDiv", "inProgressLabel", "openInvRow", "overdueInvRow"]
+        "children": ["totalsLabel", "cashRow", "allInvRow", "progressDiv", "inProgressLabel", "openInvRow", "overdueInvRow"]
       },
       "totalsLabel": { "type": "Caption", "props": { "text": "Income totals", "weight": "medium" } },
-      "truncationWarning": {
-        "type": "Caption",
-        "props": { "text": "Data may be incomplete — too many records to display", "tone": "destructive" },
-        "visible": {
-          "$computed": "myob-accounting_txn_truncated",
-          "args": { "value": { "$state": "/myob-accounting/list_invoices/Items" } }
-        }
-      },
 
       "cashRow": {
         "type": "Row",
