@@ -183,6 +183,14 @@
         "children": ["totalsLabel", "cashRow", "allBillsRow", "adjRow", "progressDiv", "inProgressLabel", "openBillsRow", "overdueBillsRow"]
       },
       "totalsLabel": { "type": "Caption", "props": { "text": "Expense totals", "weight": "medium" } },
+      "truncationWarning": {
+        "type": "Caption",
+        "props": { "text": "Data may be incomplete — too many records to display", "tone": "destructive" },
+        "visible": {
+          "$computed": "myob-accounting_txn_truncated",
+          "args": { "value": { "$state": "/myob-accounting/list_bills/Items" } }
+        }
+      },
 
       "cashRow": {
         "type": "Row",
