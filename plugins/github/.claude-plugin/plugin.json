@@ -1,0 +1,36 @@
+{
+  "name": "github",
+  "version": "0.1.0",
+  "description": "Read GitHub issues and feature roadmaps (Projects) via GitHub's official hosted MCP server. Read-only HTTP endpoint, browser OAuth.",
+  "author": { "name": "mySMB AI Studio" },
+  "homepage": "https://github.com/mySMB-AI-Studio/mysmb-marketplace/tree/main/plugins/github",
+  "license": "MIT",
+  "keywords": ["github", "issues", "projects", "roadmap", "engineering", "dev", "oauth", "smb"],
+  "connection": {
+    "authType": "oauth_client",
+    "instructions": "GitHub doesn't support automatic OAuth app registration, so connecting is a one-time, two-step setup:\n\n1. **Register a GitHub OAuth App** at *Settings → Developer settings → OAuth Apps → New OAuth App* (or reuse one your admin already created).\n2. Set its **Authorization callback URL** to the value shown above.\n3. Copy the **Client ID**, generate a **Client Secret**, and paste both below.\n\nWhen you click Connect you'll sign in to GitHub and authorise read access. The server only ever sees repositories and Projects you can already access. Your Client ID and Secret are stored securely, per user.",
+    "docUrl": "https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app",
+    "scopes": ["repo", "read:org", "read:project"],
+    "fields": [
+      {
+        "name": "OAUTH_CLIENT_ID",
+        "label": "Client ID",
+        "type": "text",
+        "required": true,
+        "role": "client_id",
+        "placeholder": "Iv1.0123456789abcdef",
+        "helpText": "From your GitHub OAuth App's settings page."
+      },
+      {
+        "name": "OAUTH_CLIENT_SECRET",
+        "label": "Client Secret",
+        "type": "password",
+        "required": true,
+        "role": "client_secret",
+        "helpText": "Generate one under your OAuth App → Client secrets. Stored encrypted, per user."
+      }
+    ]
+  },
+  "widgets": "widgets",
+  "widgetElements": "widget-elements/dist/index.js"
+}
