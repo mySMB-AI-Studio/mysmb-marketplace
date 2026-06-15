@@ -23,7 +23,7 @@
 
       "card": {
         "type": "Card",
-        "children": ["header", "heroStack", "lastYearSpark", "thisYearSpark", "monthAxis", "legend", "divider", "collapseRow", "collapseBody"],
+        "children": ["header", "loadingSpinner", "heroStack", "lastYearSpark", "thisYearSpark", "monthAxis", "legend", "divider", "collapseRow", "collapseBody"],
         "watch": {
           "/myob-accounting/list_invoices": {
             "action": "myob-accounting.get_profit_and_loss",
@@ -50,6 +50,12 @@
       },
       "title": { "type": "Heading", "props": { "text": "Income", "level": "h2" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "MYOB Accounting" } },
+
+      "loadingSpinner": {
+        "type": "Spinner",
+        "visible": { "$state": "/_loading/myob-accounting.list_invoices" }
+      },
+
       "heroStack": {
         "type": "Stack",
         "props": { "gap": "none" },
