@@ -180,9 +180,17 @@
         "type": "Stack",
         "props": { "gap": "xs" },
         "visible": { "$state": "/ui/income/expanded" },
-        "children": ["totalsLabel", "cashRow", "allInvRow", "progressDiv", "inProgressLabel", "openInvRow", "overdueInvRow"]
+        "children": ["totalsLabel", "truncationWarning", "cashRow", "allInvRow", "progressDiv", "inProgressLabel", "openInvRow", "overdueInvRow"]
       },
       "totalsLabel": { "type": "Caption", "props": { "text": "Income totals", "weight": "medium" } },
+      "truncationWarning": {
+        "type": "Caption",
+        "props": { "text": "Data may be incomplete — too many records to display", "tone": "destructive" },
+        "visible": {
+          "$computed": "myob-accounting_txn_truncated",
+          "args": { "value": { "$state": "/myob-accounting/list_invoices/Items" } }
+        }
+      },
 
       "cashRow": {
         "type": "Row",
