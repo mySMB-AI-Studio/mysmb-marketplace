@@ -1,0 +1,319 @@
+{
+  "id": "dataverse-call-qa-scorecard-v2",
+  "title": "Call Transcripts (Native)",
+  "description": "Recent Omnichannel call transcripts from Dynamics 365 — sourced from the native msdyn_transcript table with agent and timestamp details.",
+  "category": "support",
+  "tags": ["dataverse", "dynamics-365", "call-qa", "transcripts", "omnichannel", "agent-performance", "customer-service", "support"],
+  "keywords": ["call transcripts", "omnichannel", "native transcript", "msdyn_transcript", "agent", "d365", "call recording"],
+  "connectorsUsed": ["dataverse"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "min":       { "colSpan": 4, "rowSpan": 8 },
+    "max":       { "colSpan": 10, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "mcp": "dataverse",
+    "tool": "list_transcripts",
+    "params": { "org_url": "https://mysmb-dev.crm6.dynamics.com", "top": 5 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "countTile", "div1", "transcriptBody", "detailDiv", "detailSection"]
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "MessageSquare", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Call Transcripts", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Dynamics 365 Omnichannel" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "countTile": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["stackCount"]
+      },
+      "stackCount": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["iconCount", "valCount", "lblCount"]
+      },
+      "iconCount": { "type": "Icon", "props": { "name": "FileText", "size": "sm", "tone": "accent" } },
+      "valCount": { "type": "Stat", "props": { "value": { "$state": "/dataverse/list_transcripts/count" } } },
+      "lblCount": { "type": "Caption", "props": { "text": "Transcripts" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "transcriptBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["loadingBody", "transcriptList", "emptyState"],
+        "watch": {
+          "/dataverse/get_transcript_content/text_base64": {
+            "action": "download_base64",
+            "params": {
+              "data": { "$state": "/dataverse/get_transcript_content/text_base64" },
+              "filename": { "$template": "transcript-${/dataverse/get_transcript_content/subject}.txt" },
+              "mimeType": "text/plain"
+            }
+          }
+        }
+      },
+
+      "loadingBody": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/dataverse.list_transcripts" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+
+      "transcriptList": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "repeat": {
+          "statePath": "/dataverse/list_transcripts/transcripts",
+          "key": "msdyn_transcriptid"
+        },
+        "children": ["rowDivider", "transcriptRow"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dataverse.list_transcripts", "not": true },
+            { "$state": "/dataverse/list_transcripts/transcripts/0" }
+          ]
+        }
+      },
+
+      "rowDivider": { "type": "Divider", "props": {} },
+
+      "transcriptRow": {
+        "type": "Row",
+        "props": { "template": "1.5fr 1.5fr auto", "gap": "sm", "align": "center", "hover": true, "clickable": true },
+        "children": ["rowInfo", "rowAgent", "rowDate"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/tsel",
+              "value": {
+                "id":             { "$item": "msdyn_transcriptid" },
+                "name":           { "$item": "display_name" },
+                "agent":          { "$item": "agent_name" },
+                "createdon":      { "$item": "createdon" },
+                "customer_name":  { "$item": "customer_name" },
+                "customer_phone": { "$item": "customer_phone" }
+              }
+            }
+          }
+        }
+      },
+
+      "rowInfo": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["rowName", "rowSubDate"]
+      },
+      "rowName": {
+        "type": "Text",
+        "props": { "text": { "$item": "display_name" }, "size": "sm", "weight": "medium" }
+      },
+      "rowSubDate": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "relative_time",
+            "args": { "value": { "$item": "createdon" } }
+          },
+          "tone": "muted"
+        }
+      },
+
+      "rowAgent": {
+        "type": "Text",
+        "props": { "text": { "$item": "agent_name" }, "size": "sm" }
+      },
+
+      "rowDate": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "format_date",
+            "args": { "value": { "$item": "createdon" }, "format": "short" }
+          },
+          "tone": "muted"
+        }
+      },
+
+      "emptyState": {
+        "type": "Empty",
+        "props": { "message": "No transcripts found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dataverse.list_transcripts", "not": true },
+            { "$state": "/dataverse/list_transcripts/transcripts/0", "not": true }
+          ]
+        }
+      },
+
+      "detailDiv": {
+        "type": "Divider",
+        "visible": { "$state": "/ui/tsel/id" }
+      },
+
+      "detailSection": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "visible": { "$state": "/ui/tsel/id" },
+        "children": ["detailStack"]
+      },
+      "detailStack": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["detailTitleRow", "detailMeta", "detailActionDiv", "detailActions"]
+      },
+
+      "detailTitleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["detailCallId", "detailClose"]
+      },
+      "detailCallId": {
+        "type": "Heading",
+        "props": { "text": { "$state": "/ui/tsel/name" }, "level": "h3" }
+      },
+      "detailClose": {
+        "type": "Button",
+        "props": { "label": "Close", "variant": "ghost", "size": "sm", "leadingIcon": "X" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/tsel/id", "value": "" } } }
+      },
+
+      "detailMeta": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "md" },
+        "children": ["metaDtCell", "metaAgentCell", "metaCustomerCell", "metaPhoneCell"]
+      },
+      "metaDtCell": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["metaDtLbl", "metaDtVal"]
+      },
+      "metaDtLbl": { "type": "Caption", "props": { "text": "Date & Time" } },
+      "metaDtVal": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_date",
+            "args": { "value": { "$state": "/ui/tsel/createdon" }, "format": "long" }
+          },
+          "size": "sm"
+        }
+      },
+      "metaAgentCell": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["metaAgentLbl", "metaAgentVal"]
+      },
+      "metaAgentLbl": { "type": "Caption", "props": { "text": "Agent" } },
+      "metaAgentVal": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/tsel/agent" }, "size": "sm" }
+      },
+      "metaCustomerCell": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["metaCustomerLbl", "metaCustomerVal"]
+      },
+      "metaCustomerLbl": { "type": "Caption", "props": { "text": "Customer" } },
+      "metaCustomerVal": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/tsel/customer_name" }, "size": "sm" }
+      },
+      "metaPhoneCell": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["metaPhoneLbl", "metaPhoneVal"]
+      },
+      "metaPhoneLbl": { "type": "Caption", "props": { "text": "Phone" } },
+      "metaPhoneVal": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/tsel/customer_phone" }, "size": "sm" }
+      },
+
+      "detailActionDiv": { "type": "Divider" },
+
+      "detailActions": {
+        "type": "Row",
+        "props": { "gap": "xs" },
+        "children": ["btnView", "btnDownload", "btnScore"]
+      },
+
+      "btnView": {
+        "type": "Button",
+        "props": { "label": "View in D365", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": { "$template": "https://mysmb-dev.crm6.dynamics.com/main.aspx?forceUCI=1&pagetype=entityrecord&etn=msdyn_transcript&id=${/ui/tsel/id}" },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+
+      "btnDownload": {
+        "type": "Button",
+        "props": { "label": "Download", "variant": "ghost", "size": "sm", "leadingIcon": "Download" },
+        "on": {
+          "click": {
+            "action": "dataverse.get_transcript_content",
+            "params": {
+              "org_url": "https://mysmb-dev.crm6.dynamics.com",
+              "transcript_id": { "$state": "/ui/tsel/id" }
+            }
+          }
+        }
+      },
+
+      "btnScore": {
+        "type": "Button",
+        "props": { "label": "Score", "variant": "ghost", "size": "sm", "leadingIcon": "ClipboardCheck" },
+        "on": {
+          "click": [
+            {
+              "action": "dataverse.score_call_qa_native",
+              "params": {
+                "org_url": "https://mysmb-dev.crm6.dynamics.com",
+                "transcript_id": { "$state": "/ui/tsel/id" }
+              }
+            },
+            {
+              "action": "toast",
+              "params": { "message": "QA scoring in progress...", "tone": "info" }
+            }
+          ]
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}

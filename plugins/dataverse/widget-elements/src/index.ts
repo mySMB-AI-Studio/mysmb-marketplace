@@ -170,6 +170,138 @@ const close_tone: ComputedFunction = (args) => {
   return 'muted';
 };
 
+// ── task_overdue_count ───────────────────────────────────────────────
+//
+// Count tasks where scheduledend is in the past (overdue).
+//
+// Args: { value: unknown[] }
+
+const task_overdue_count: ComputedFunction = (args) => {
+  const tasks = Array.isArray(args.value)
+    ? (args.value as Array<Record<string, unknown>>)
+    : [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return tasks.filter((t) => {
+    const due = t.scheduledend;
+    if (!due || typeof due !== 'string') return false;
+    const d = new Date(due);
+    return !isNaN(d.getTime()) && d < today;
+  }).length;
+};
+
+// ── task_priority_label ──────────────────────────────────────────────
+//
+// Human-readable priority label from Dataverse task prioritycode.
+// Widget spec: 1=High, 2=Normal, 3=Low.
+//
+// Args: { value: number }
+
+const task_priority_label: ComputedFunction = (args) => {
+  const code = Number(args.value);
+  if (code === 1) return 'High';
+  if (code === 2) return 'Normal';
+  if (code === 3) return 'Low';
+  return '';
+};
+
+// ── task_priority_tone ───────────────────────────────────────────────
+//
+// Tone badge colour for task priority.
+// 1=High → destructive, 2=Normal → muted, 3=Low → info.
+//
+// Args: { value: number }
+
+const task_priority_tone: ComputedFunction = (args) => {
+  const code = Number(args.value);
+  if (code === 1) return 'destructive';
+  if (code === 3) return 'info';
+  return 'muted';
+};
+
+// ── account_risk_label ───────────────────────────────────────────────
+//
+// Risk label based on days since modifiedon:
+//   ≥30 days → "At Risk", ≥14 days → "Warning", else "".
+//
+// Args: { value: string | undefined } — ISO datetime (modifiedon)
+
+const account_risk_label: ComputedFunction = (args) => {
+  const raw = args.value;
+  if (!raw || typeof raw !== 'string') return '';
+  const ms = Date.parse(raw);
+  if (!Number.isFinite(ms)) return '';
+  const daysSince = Math.floor((Date.now() - ms) / (24 * 60 * 60 * 1000));
+  if (daysSince >= 30) return 'At Risk';
+  if (daysSince >= 14) return 'Warning';
+  return '';
+};
+
+// ── account_risk_tone ────────────────────────────────────────────────
+//
+// Tone for the account risk badge.
+//   ≥30 days → destructive, ≥14 days → warning, else muted.
+//
+// Args: { value: string | undefined } — ISO datetime (modifiedon)
+
+const account_risk_tone: ComputedFunction = (args) => {
+  const raw = args.value;
+  if (!raw || typeof raw !== 'string') return 'muted';
+  const ms = Date.parse(raw);
+  if (!Number.isFinite(ms)) return 'muted';
+  const daysSince = Math.floor((Date.now() - ms) / (24 * 60 * 60 * 1000));
+  if (daysSince >= 30) return 'destructive';
+  if (daysSince >= 14) return 'warning';
+  return 'muted';
+};
+
+// ── activity_type_icon ───────────────────────────────────────────────
+//
+// Lucide icon name for a Dataverse activitytypecode string.
+//
+// Args: { value: string | undefined }
+
+const activity_type_icon: ComputedFunction = (args) => {
+  switch (String(args.value ?? '').toLowerCase()) {
+    case 'email':       return 'Mail';
+    case 'phonecall':   return 'Phone';
+    case 'task':        return 'CheckSquare';
+    case 'appointment': return 'Calendar';
+    case 'letter':      return 'FileText';
+    case 'fax':         return 'Printer';
+    default:            return 'Activity';
+  }
+};
+
+// ── qa_grade_tone ────────────────────────────────────────────────────
+//
+// Tone for a QA grade badge.
+// PASS → success, NEEDS COACHING → warning, FAIL → destructive.
+//
+// Args: { value: string | undefined }
+
+const qa_grade_tone: ComputedFunction = (args) => {
+  const grade = String(args.value ?? '').toUpperCase();
+  if (grade === 'PASS') return 'success';
+  if (grade === 'NEEDS COACHING') return 'warning';
+  if (grade === 'FAIL') return 'destructive';
+  return 'muted';
+};
+
+// ── qa_score_tone ────────────────────────────────────────────────────
+//
+// Tone for a QA numeric score badge.
+// ≥80 → success, ≥60 → warning, <60 → destructive.
+//
+// Args: { value: number | undefined }
+
+const qa_score_tone: ComputedFunction = (args) => {
+  const score = Number(args.value ?? 0);
+  if (score >= 80) return 'success';
+  if (score >= 60) return 'warning';
+  return 'destructive';
+};
+
 const elements: PluginElementsModule = {
   slug: 'dataverse',
   functions: {
@@ -178,6 +310,14 @@ const elements: PluginElementsModule = {
     weighted,
     close_label,
     close_tone,
+    task_overdue_count,
+    task_priority_label,
+    task_priority_tone,
+    account_risk_label,
+    account_risk_tone,
+    activity_type_icon,
+    qa_grade_tone,
+    qa_score_tone,
   },
 };
 

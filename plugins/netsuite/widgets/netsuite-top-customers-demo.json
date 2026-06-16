@@ -1,0 +1,96 @@
+{
+  "id": "netsuite-top-customers-demo",
+  "title": "Top Customers",
+  "description": "Top 5 customers by invoiced revenue over the last 12 months. Demo version with static data.",
+  "category": "finance",
+  "tags": ["netsuite", "oracle", "erp", "finance", "customers", "revenue", "crm", "demo"],
+  "keywords": ["top customers", "revenue", "customers", "sales", "invoiced", "netsuite", "erp"],
+  "connectorsUsed": ["netsuite"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 9 },
+    "min":       { "colSpan": 4, "rowSpan": 8 },
+    "max":       { "colSpan": 10, "rowSpan": 14 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "kpiGrid", "div1", "chartLabel", "customersChart", "div2", "kvGrid"]
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Star", "tone": "warning", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Top Customers", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "NetSuite ERP · Last 12 months" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "kpiGrid": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["tileRevenue", "tileCustomers"]
+      },
+
+      "tileRevenue": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackRevenue"] },
+      "stackRevenue": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconRevenue", "valRevenue", "lblRevenue"] },
+      "iconRevenue": { "type": "Icon", "props": { "name": "TrendingUp", "size": "sm", "tone": "accent" } },
+      "valRevenue": { "type": "Heading", "props": { "text": "$1.01M", "level": "h2" } },
+      "lblRevenue": { "type": "Caption", "props": { "text": "Top 5 Revenue" } },
+
+      "tileCustomers": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackCustomers"] },
+      "stackCustomers": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconCustomers", "valCustomers", "lblCustomers"] },
+      "iconCustomers": { "type": "Icon", "props": { "name": "Users", "size": "sm", "tone": "accent" } },
+      "valCustomers": { "type": "Heading", "props": { "text": "5", "level": "h2" } },
+      "lblCustomers": { "type": "Caption", "props": { "text": "Top Customers" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "chartLabel": { "type": "Eyebrow", "props": { "text": "Revenue by Customer" } },
+
+      "customersChart": {
+        "type": "BarChart",
+        "props": {
+          "data": [
+            { "customer": "Horizon Tech",    "revenue": 284500 },
+            { "customer": "Apex Corp",       "revenue": 231800 },
+            { "customer": "Summit Partners", "revenue": 198600 },
+            { "customer": "Blue Sky Ltd",    "revenue": 156300 },
+            { "customer": "Green Energy Co", "revenue": 142900 }
+          ],
+          "labelField": "customer",
+          "valueField": "revenue",
+          "valueFormat": "currency",
+          "tone": "accent",
+          "sort": "none",
+          "limit": 5
+        }
+      },
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "kvGrid": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["kvTop", "kvPeriod"]
+      },
+      "kvTop":    { "type": "KeyValue", "props": { "label": "Top Customer",  "value": "Horizon Tech" } },
+      "kvPeriod": { "type": "KeyValue", "props": { "label": "Period",        "value": "Jun 2025 – Jun 2026" } }
+
+    }
+  },
+  "status": "published"
+}
