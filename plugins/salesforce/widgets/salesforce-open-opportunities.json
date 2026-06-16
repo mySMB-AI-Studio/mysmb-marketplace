@@ -1,0 +1,168 @@
+{
+  "id": "salesforce-open-opportunities",
+  "title": "Recent Opportunities",
+  "description": "Open Salesforce opportunities ordered by close date, with stage and win probability.",
+  "category": "sales",
+  "tags": ["salesforce", "crm", "opportunities", "pipeline", "sales"],
+  "keywords": ["opportunity", "opportunities", "deal", "deals", "pipeline", "stage", "close date", "probability", "salesforce", "crm"],
+  "connectorsUsed": ["salesforce"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 6 },
+    "min":       { "colSpan": 4, "rowSpan": 4 },
+    "max":       { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "salesforce",
+    "tool": "soql_query",
+    "params": {
+      "query": "SELECT Id, Name, Account.Name, StageName, Amount, CloseDate, Probability FROM Opportunity WHERE IsClosed = false ORDER BY CloseDate ASC LIMIT 50"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "loading", "empty", "list"]
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "TrendingUp", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Recent Opportunities", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Salesforce" }
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["s1", "s2", "s3", "s4"],
+        "visible": { "$state": "/_loading/salesforce.soql_query" }
+      },
+      "s1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "s2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "s3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "s4": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No open opportunities right now." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/salesforce/soql_query/records/0", "not": true }
+          ]
+        }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["row"],
+        "repeat": {
+          "statePath": "/salesforce/soql_query/records",
+          "key": "Id"
+        },
+        "visible": { "$state": "/_loading/salesforce.soql_query", "not": true }
+      },
+
+      "row": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["rowTop", "rowBar"]
+      },
+      "rowTop": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "justify": "between" },
+        "children": ["rowLeft", "rowRight"]
+      },
+      "rowLeft": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["rowName", "rowAccount"]
+      },
+      "rowName": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "Name" },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "rowAccount": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "Account/Name" },
+          "size": "xs",
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+      "rowRight": {
+        "type": "Stack",
+        "props": { "gap": "none", "align": "end" },
+        "children": ["rowAmount", "rowMeta"]
+      },
+      "rowAmount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": { "value": { "$item": "Amount" } }
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "rowMeta": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{stage} · {prob}%",
+              "stage": { "$item": "StageName" },
+              "prob":  { "$item": "Probability" }
+            }
+          },
+          "size": "xs",
+          "tone": "muted"
+        }
+      },
+      "rowBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": { "$item": "Probability" },
+          "tone": "accent"
+        }
+      }
+
+    }
+  },
+  "status": "draft"
+}
