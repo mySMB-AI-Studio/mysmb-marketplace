@@ -1,0 +1,269 @@
+{
+  "id": "salesforce-recent-accounts",
+  "title": "Key Accounts",
+  "description": "Recently viewed Salesforce accounts with industry and type.",
+  "category": "sales",
+  "tags": [
+    "salesforce",
+    "crm",
+    "accounts",
+    "customers",
+    "sales"
+  ],
+  "keywords": [
+    "account",
+    "accounts",
+    "customer",
+    "customers",
+    "key accounts",
+    "industry",
+    "type",
+    "salesforce",
+    "crm"
+  ],
+  "connectorsUsed": [
+    "salesforce"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 3
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 3
+    },
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 10
+    }
+  },
+  "dataProvider": {
+    "mcp": "salesforce",
+    "tool": "getRecentItems",
+    "params": {
+      "sobject-name": "Account"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Building2",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Key Accounts",
+          "level": "h2"
+        }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} recent",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/salesforce/getRecentItems/recentItems"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "subtitle"
+        ]
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "s1",
+          "s2",
+          "s3",
+          "s4"
+        ],
+        "visible": {
+          "$state": "/_loading/salesforce.getRecentItems"
+        }
+      },
+      "s1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "s2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "s3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "s4": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No recently viewed accounts."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/salesforce.getRecentItems",
+              "not": true
+            },
+            {
+              "$state": "/salesforce/getRecentItems/recentItems/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "row"
+        ],
+        "repeat": {
+          "statePath": "/salesforce/getRecentItems/recentItems",
+          "key": "Id"
+        },
+        "visible": {
+          "$state": "/_loading/salesforce.getRecentItems",
+          "not": true
+        }
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "rowLeft",
+          "rowType"
+        ]
+      },
+      "rowLeft": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "rowName",
+          "rowIndustry"
+        ]
+      },
+      "rowName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "Name"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "rowIndustry": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "Industry"
+          },
+          "size": "xs",
+          "tone": "muted",
+          "truncate": true
+        },
+        "visible": {
+          "$item": "Industry"
+        }
+      },
+      "rowType": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "Type"
+          },
+          "tone": "accent",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "Type"
+        }
+      }
+    }
+  },
+  "status": "draft"
+}
