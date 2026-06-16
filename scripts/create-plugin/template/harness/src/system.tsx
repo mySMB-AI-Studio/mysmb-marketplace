@@ -27,7 +27,7 @@ import { widgetFunctions, cellFormatters, cellToneFormatters } from '@myhub-widg
 const componentNames = [
   'Card', 'Header', 'Body', 'Section', 'Stack', 'Row', 'Grid',
   'Heading', 'Subtitle', 'Eyebrow', 'Text', 'Caption',
-  'Stat', 'Dot', 'Badge', 'ProgressBar', 'Delta', 'Avatar', 'Icon',
+  'Stat', 'Dot', 'Badge', 'ProgressBar', 'BarChart', 'Sparkline', 'Delta', 'Avatar', 'Icon',
   'Button', 'IconButton', 'Checkbox', 'TextInput', 'NumberInput', 'DateInput',
   'Select', 'FormRow', 'KeyValue', 'ListItem', 'ActivityItem', 'Table',
   'Divider', 'Spinner', 'Skeleton', 'Empty', 'Overlay', 'OverlayClose', 'RichHtml',
