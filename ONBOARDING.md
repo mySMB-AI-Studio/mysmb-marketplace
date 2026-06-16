@@ -1,8 +1,7 @@
 # Developer Onboarding — Plugins & MCP Servers
 
-Welcome! This is the 30-minute path from zero to a merged plugin. For the complete
-reference (architecture, rules, recipes, troubleshooting), see
-**[DEVELOPER_BIBLE.md](./DEVELOPER_BIBLE.md)**. Two repos work together:
+Welcome! This is the 30-minute path from zero to a merged plugin. Two repos work
+together:
 
 | Repo | What it is | When you touch it |
 |------|------------|-------------------|
