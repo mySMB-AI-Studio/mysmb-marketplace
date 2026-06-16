@@ -8,7 +8,7 @@
   "connectorsUsed": ["netsuite"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 8 },
+    "preferred": { "colSpan": 6, "rowSpan": 4 },
     "min":       { "colSpan": 4, "rowSpan": 7 },
     "max":       { "colSpan": 10, "rowSpan": 12 }
   },
@@ -19,7 +19,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "div0", "kpiGrid", "div1", "sparkSection", "dateAxis"]
+        "children": ["headerRow", "div0", "kpiGrid", "div1", "sparkSection", "dateAxis", "div2", "kvGrid"]
       },
 
       "headerRow": {
@@ -88,7 +88,17 @@
       },
       "axisJan": { "type": "Caption", "props": { "text": "Jan" } },
       "axisApr": { "type": "Caption", "props": { "text": "Apr" } },
-      "axisJun": { "type": "Caption", "props": { "text": "Jun" } }
+      "axisJun": { "type": "Caption", "props": { "text": "Jun" } },
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "kvGrid": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start" },
+        "children": ["kvYTD", "kvAvg"]
+      },
+      "kvYTD": { "type": "KeyValue", "props": { "label": "YTD Revenue (Jan–Jun)", "value": "$708.5K" } },
+      "kvAvg": { "type": "KeyValue", "props": { "label": "Avg Monthly", "value": "$118.1K" } }
 
     }
   },
