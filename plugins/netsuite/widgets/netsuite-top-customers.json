@@ -1,0 +1,149 @@
+{
+  "id": "netsuite-top-customers",
+  "title": "Top Customers",
+  "description": "Top 5 customers by invoiced revenue over the last 12 months.",
+  "category": "finance",
+  "tags": ["netsuite", "oracle", "erp", "finance", "customers", "revenue", "crm"],
+  "keywords": ["top customers", "revenue", "customers", "sales", "invoiced", "netsuite", "erp"],
+  "connectorsUsed": ["netsuite"],
+  "popularity": 0,
+  "status": "published",
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 9 },
+    "min":       { "colSpan": 4, "rowSpan": 8 },
+    "max":       { "colSpan": 10, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "mcp": "netsuite",
+    "tool": "list_top_customers",
+    "params": { "months_back": 12, "limit": 5 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "kpiGrid", "div1", "chartLabel", "customersChart", "div2", "kvFooter"]
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Star", "tone": "warning", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Top Customers", "level": "h2" } },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "NetSuite ERP · Last {n} months",
+              "n": { "$state": "/netsuite/list_top_customers/months_back" }
+            }
+          }
+        }
+      },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "kpiGrid": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["tileRevenue", "tileCustomers"]
+      },
+
+      "tileRevenue": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackRevenue"] },
+      "stackRevenue": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconRevenue", "valRevenue", "lblRevenue"] },
+      "iconRevenue": { "type": "Icon", "props": { "name": "TrendingUp", "size": "sm", "tone": "accent" } },
+      "valRevenue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "sum",
+                "args": {
+                  "value": { "$state": "/netsuite/list_top_customers/customers" },
+                  "field": "total_revenue"
+                }
+              }
+            }
+          }
+        }
+      },
+      "lblRevenue": { "type": "Caption", "props": { "text": "Top 5 Revenue" } },
+
+      "tileCustomers": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackCustomers"] },
+      "stackCustomers": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconCustomers", "valCustomers", "lblCustomers"] },
+      "iconCustomers": { "type": "Icon", "props": { "name": "Users", "size": "sm", "tone": "accent" } },
+      "valCustomers": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/netsuite/list_top_customers/customer_count" } }
+      },
+      "lblCustomers": { "type": "Caption", "props": { "text": "Top Customers" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "chartLabel": { "type": "Eyebrow", "props": { "text": "Revenue by Customer" } },
+
+      "customersChart": {
+        "type": "BarChart",
+        "props": {
+          "data": { "$state": "/netsuite/list_top_customers/customers" },
+          "labelField": "customer_name",
+          "valueField": "total_revenue",
+          "valueFormat": "currency",
+          "tone": "accent",
+          "sort": "none",
+          "limit": 5
+        }
+      },
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "kvFooter": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["kvCustomers", "kvPeriod"]
+      },
+      "kvCustomers": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Customers Shown",
+          "value": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Top {n}",
+              "n": { "$state": "/netsuite/list_top_customers/customer_count" }
+            }
+          }
+        }
+      },
+      "kvPeriod": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Period",
+          "value": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Last {n} months",
+              "n": { "$state": "/netsuite/list_top_customers/months_back" }
+            }
+          }
+        }
+      }
+
+    }
+  }
+}
