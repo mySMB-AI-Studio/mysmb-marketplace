@@ -1,16 +1,23 @@
 {
   "id": "salesforce-recent-accounts",
-  "title": "Key Accounts (Demo)",
-  "description": "STATIC DEMO — hardcoded sample data, no live MCP call. Switch to live getRecentItems version once Salesforce OAuth is configured. Recently viewed Salesforce accounts with industry and account type.",
+  "title": "Key Accounts",
+  "description": "Recently viewed Salesforce accounts with industry and account type.",
   "category": "sales",
-  "tags": ["salesforce", "crm", "accounts", "customers", "sales", "demo"],
+  "tags": ["salesforce", "crm", "accounts", "customers", "sales"],
   "keywords": ["account", "accounts", "customer", "customers", "key accounts", "industry", "type", "salesforce", "crm"],
   "connectorsUsed": ["salesforce"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 4, "rowSpan": 5 },
-    "min":       { "colSpan": 4, "rowSpan": 4 },
+    "preferred": { "colSpan": 4, "rowSpan": 4 },
+    "min":       { "colSpan": 4, "rowSpan": 3 },
     "max":       { "colSpan": 10, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "salesforce",
+    "tool": "getRecentItems",
+    "params": {
+      "sobject-name": "Account"
+    }
   },
   "spec": {
     "root": "card",
@@ -19,7 +26,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["titleRow", "colHeader", "divider", "rows"]
+        "children": ["titleRow", "loading", "empty", "list"]
       },
 
       "titleRow": {
@@ -32,79 +39,95 @@
         "props": { "gap": "sm", "align": "center" },
         "children": ["titleIcon", "titleStack"]
       },
-      "titleIcon": { "type": "Icon", "props": { "name": "Building2", "tone": "accent", "size": "sm" } },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Building2", "tone": "accent", "size": "sm" }
+      },
       "titleStack": {
         "type": "Stack",
         "props": { "gap": "none" },
         "children": ["title", "eyebrow"]
       },
-      "title":   { "type": "Heading", "props": { "text": "Key Accounts", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Salesforce" } },
-      "sfLogo":  { "type": "Icon", "props": { "name": "Cloud", "tone": "accent", "size": "md" } },
-
-      "colHeader": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["colAcct", "colType"]
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Key Accounts", "level": "h2" }
       },
-      "colAcct": { "type": "Caption", "props": { "text": "ACCOUNT" } },
-      "colType": { "type": "Caption", "props": { "text": "TYPE" } },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Salesforce" }
+      },
+      "sfLogo": { "type": "Icon", "props": { "name": "Cloud", "tone": "accent", "size": "md" } },
 
-      "divider": { "type": "Divider", "props": {} },
-
-      "rows": {
+      "loading": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["acct1", "acct2", "acct3", "acct4"]
+        "children": ["s1", "s2", "s3", "s4"],
+        "visible": { "$state": "/_loading/salesforce.getRecentItems" }
+      },
+      "s1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "s2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "s3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "s4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No recently viewed accounts." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.getRecentItems", "not": true },
+            { "$state": "/salesforce/getRecentItems/recentItems/0", "not": true }
+          ]
+        }
       },
 
-      "acct1": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["acct1Left", "acct1Type"]
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": {
+          "statePath": "/salesforce/getRecentItems/recentItems",
+          "key": "Id"
+        },
+        "visible": { "$state": "/_loading/salesforce.getRecentItems", "not": true }
       },
-      "acct1Left": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["acct1Av", "acct1Info"] },
-      "acct1Av":   { "type": "Avatar", "props": { "initials": "A", "tone": "accent", "size": "sm" } },
-      "acct1Info": { "type": "Stack", "props": { "gap": "none" }, "children": ["acct1Name", "acct1Ind"] },
-      "acct1Name": { "type": "Text", "props": { "text": "Acme Corporation", "size": "sm", "weight": "medium", "truncate": true } },
-      "acct1Ind":  { "type": "Text", "props": { "text": "Technology", "size": "xs", "tone": "muted", "truncate": true } },
-      "acct1Type": { "type": "Badge", "props": { "text": "Customer", "tone": "positive", "variant": "soft" } },
 
-      "acct2": {
+      "row": {
         "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["acct2Left", "acct2Type"]
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["rowLeft", "rowType"]
       },
-      "acct2Left": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["acct2Av", "acct2Info"] },
-      "acct2Av":   { "type": "Avatar", "props": { "initials": "G", "tone": "info", "size": "sm" } },
-      "acct2Info": { "type": "Stack", "props": { "gap": "none" }, "children": ["acct2Name", "acct2Ind"] },
-      "acct2Name": { "type": "Text", "props": { "text": "Global Media", "size": "sm", "weight": "medium", "truncate": true } },
-      "acct2Ind":  { "type": "Text", "props": { "text": "Media & Entertainment", "size": "xs", "tone": "muted", "truncate": true } },
-      "acct2Type": { "type": "Badge", "props": { "text": "Customer", "tone": "positive", "variant": "soft" } },
-
-      "acct3": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["acct3Left", "acct3Type"]
+      "rowLeft": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["rowName", "rowIndustry"]
       },
-      "acct3Left": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["acct3Av", "acct3Info"] },
-      "acct3Av":   { "type": "Avatar", "props": { "initials": "G", "tone": "positive", "size": "sm" } },
-      "acct3Info": { "type": "Stack", "props": { "gap": "none" }, "children": ["acct3Name", "acct3Ind"] },
-      "acct3Name": { "type": "Text", "props": { "text": "Greenfield Inc.", "size": "sm", "weight": "medium", "truncate": true } },
-      "acct3Ind":  { "type": "Text", "props": { "text": "Manufacturing", "size": "xs", "tone": "muted", "truncate": true } },
-      "acct3Type": { "type": "Badge", "props": { "text": "Prospect", "tone": "warning", "variant": "soft" } },
-
-      "acct4": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["acct4Left", "acct4Type"]
+      "rowName": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "Name" },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
       },
-      "acct4Left": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["acct4Av", "acct4Info"] },
-      "acct4Av":   { "type": "Avatar", "props": { "initials": "S", "tone": "muted", "size": "sm" } },
-      "acct4Info": { "type": "Stack", "props": { "gap": "none" }, "children": ["acct4Name", "acct4Ind"] },
-      "acct4Name": { "type": "Text", "props": { "text": "StartUp.io", "size": "sm", "weight": "medium", "truncate": true } },
-      "acct4Ind":  { "type": "Text", "props": { "text": "Software", "size": "xs", "tone": "muted", "truncate": true } },
-      "acct4Type": { "type": "Badge", "props": { "text": "Partner", "tone": "accent", "variant": "soft" } }
+      "rowIndustry": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "Industry" },
+          "size": "xs",
+          "tone": "muted",
+          "truncate": true
+        },
+        "visible": { "$item": "Industry" }
+      },
+      "rowType": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "Type" },
+          "tone": "accent"
+        },
+        "visible": { "$item": "Type" }
+      }
 
     }
   },
