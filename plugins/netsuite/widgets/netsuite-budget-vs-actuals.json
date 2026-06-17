@@ -1,0 +1,74 @@
+{
+  "id": "netsuite-budget-vs-actuals",
+  "title": "Budget vs Actuals",
+  "description": "Side-by-side comparison of budgeted vs actual P&L amounts year-to-date. Requires budgets to be configured in NetSuite under Lists → Financial → Budgets.",
+  "category": "finance",
+  "tags": ["netsuite", "oracle", "erp", "finance", "budget", "actuals", "variance", "pnl"],
+  "keywords": ["budget", "actuals", "variance", "profit and loss", "p&l", "forecast", "netsuite", "erp"],
+  "connectorsUsed": ["netsuite"],
+  "popularity": 0,
+  "status": "published",
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 4 },
+    "min":       { "colSpan": 5, "rowSpan": 4 },
+    "max":       { "colSpan": 12, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "netsuite",
+    "tool": "get_budget_vs_actuals",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "tableBody"]
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Target", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Budget vs Actuals", "level": "h2" } },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": { "$state": "/netsuite/get_budget_vs_actuals/period_label" } }
+      },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "tableBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["budgetTable"]
+      },
+      "budgetTable": {
+        "type": "Table",
+        "props": {
+          "loading": { "$state": "/_loading/netsuite.get_budget_vs_actuals" },
+          "skeletonRows": 5,
+          "rows": { "$state": "/netsuite/get_budget_vs_actuals/line_items" },
+          "emptyMessage": "No budget data found in NetSuite. To enable this widget, set up budgets for the current fiscal year under Lists → Financial → Budgets.",
+          "columns": [
+            { "id": "category", "header": "Category",  "field": "category",       "priority": 1 },
+            { "id": "budget",   "header": "Budget",    "field": "budget_amount",  "width": 110, "priority": 1, "format": "currency" },
+            { "id": "actual",   "header": "Actual",    "field": "actual_amount",  "width": 110, "priority": 1, "format": "currency" },
+            { "id": "variance", "header": "Variance",  "field": "variance",       "width": 110, "priority": 1, "format": "currency" }
+          ]
+        }
+      }
+
+    }
+  }
+}

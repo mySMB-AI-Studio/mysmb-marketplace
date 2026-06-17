@@ -1,0 +1,64 @@
+{
+  "id": "netsuite-dso-demo",
+  "title": "Days Sales Outstanding",
+  "description": "Average number of days to collect payment after a sale (DSO). Demo version with static data.",
+  "category": "finance",
+  "tags": ["netsuite", "oracle", "erp", "finance", "dso", "receivables", "collections", "demo"],
+  "keywords": ["days sales outstanding", "dso", "collections", "accounts receivable", "netsuite", "erp"],
+  "connectorsUsed": ["netsuite"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 3 },
+    "min":       { "colSpan": 3, "rowSpan": 3 },
+    "max":       { "colSpan": 8, "rowSpan": 8 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "heroSection", "div1", "kvGrid"]
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Timer", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Days Sales Outstanding", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "NetSuite ERP · Rolling 90 days" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "heroSection": { "type": "Section", "props": { "variant": "muted" }, "children": ["heroStack"] },
+      "heroStack": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["dsoStat", "dsoCaption"]
+      },
+      "dsoStat": { "type": "Stat", "props": { "value": "32.4", "tone": "accent" } },
+      "dsoCaption": { "type": "Caption", "props": { "text": "days outstanding" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "kvGrid": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start" },
+        "children": ["kvAR", "kvRevenue"]
+      },
+      "kvAR":      { "type": "KeyValue", "props": { "label": "AR Balance",     "value": "$127,500" } },
+      "kvRevenue": { "type": "KeyValue", "props": { "label": "90-day Revenue", "value": "$354,000" } }
+
+    }
+  },
+  "status": "published"
+}
