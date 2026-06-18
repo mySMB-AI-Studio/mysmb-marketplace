@@ -26,6 +26,7 @@ This section walks you through building a plugin from an empty folder to a merge
 - **Skills** and **agents** teach the LLM *how* to use those tools well.
 - **Widgets** turn tool responses into a UI tile on the dashboard.
 - **Widget elements** are the small JS helpers (date formatting, status‑to‑colour mapping, tree flattening) that the JSON spec invokes via `$computed`.
+- **Portal widgets** and **portal data maps** are the client-facing variant: a widget rendered in a client portal, fed by a server-side recipe that clamps the data to that one client. See [Client portals](./client-portals).
 
 A plugin is just the bundle that ships these together so a tenant can opt in or out as one unit.
 
@@ -45,7 +46,9 @@ plugins/<your-plugin>/
 ├── skills/                    ← OPTIONAL: one .md per slash command
 ├── agents/                    ← OPTIONAL: one .md per persona
 ├── widget-elements/           ← OPTIONAL: $computed helpers / components / actions
-└── widgets/                   ← OPTIONAL: dashboard tiles
+├── widgets/                   ← OPTIONAL: staff-dashboard tiles
+├── portal-widgets/            ← OPTIONAL: client-portal tiles (portalWidgets)
+└── portal-data-maps/          ← OPTIONAL: server-side portal recipes (portalDataMaps)
 ```
 
 ## The minimum legal plugin
