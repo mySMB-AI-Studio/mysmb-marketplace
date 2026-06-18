@@ -1,0 +1,331 @@
+{
+  "id": "google-workspace-drive-recent",
+  "title": "Recent Files",
+  "description": "Recently accessed Google Drive files — name, type badge, last modified time, and direct link.",
+  "category": "productivity",
+  "tags": [
+    "google",
+    "drive",
+    "files",
+    "documents",
+    "productivity"
+  ],
+  "keywords": [
+    "drive",
+    "files",
+    "recent",
+    "documents",
+    "sheets",
+    "slides",
+    "google"
+  ],
+  "connectorsUsed": [
+    "google-workspace-drive"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 5
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 10
+    }
+  },
+  "dataProvider": {
+    "mcp": "google-workspace-drive",
+    "tool": "list_recent_files",
+    "params": {
+      "pageSize": 15
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "headerRow"
+        ]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": {
+          "justify": "between",
+          "align": "center"
+        },
+        "children": [
+          "titleGroup",
+          "refreshBtn"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "HardDrive",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "count"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Recent Files",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} files",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/google-workspace-drive/list_recent_files/files"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": {
+          "icon": "RefreshCw",
+          "tone": "muted",
+          "size": "sm",
+          "ariaLabel": "Refresh"
+        },
+        "on": {
+          "click": {
+            "action": "google-workspace-drive.list_recent_files",
+            "params": {
+              "pageSize": 15
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/_loading/google-workspace-drive.list_recent_files"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No recent files."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/google-workspace-drive.list_recent_files",
+              "not": true
+            },
+            {
+              "$state": "/google-workspace-drive/list_recent_files/files/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "visible": {
+          "$state": "/_loading/google-workspace-drive.list_recent_files",
+          "not": true
+        },
+        "repeat": {
+          "statePath": "/google-workspace-drive/list_recent_files/files",
+          "key": "id"
+        },
+        "children": [
+          "row"
+        ]
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start",
+          "justify": "between",
+          "hover": true
+        },
+        "children": [
+          "rowLeft",
+          "rowRight"
+        ]
+      },
+      "rowLeft": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start",
+          "grow": true
+        },
+        "children": [
+          "fileIcon",
+          "fileInfo"
+        ]
+      },
+      "fileIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "FileText",
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "fileInfo": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "fileName",
+          "fileMeta"
+        ]
+      },
+      "fileName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "fileMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "modifiedTime"
+              }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "rowRight": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "mimeTypeBadge",
+          "openBtn"
+        ]
+      },
+      "mimeTypeBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "google_workspace_mime_label",
+            "args": {
+              "value": {
+                "$item": "mimeType"
+              }
+            }
+          },
+          "tone": {
+            "$computed": "google_workspace_mime_tone",
+            "args": {
+              "value": {
+                "$item": "mimeType"
+              }
+            }
+          }
+        }
+      },
+      "openBtn": {
+        "type": "IconButton",
+        "props": {
+          "icon": "ExternalLink",
+          "tone": "muted",
+          "size": "sm",
+          "ariaLabel": "Open in Drive"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$item": "webViewLink"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
