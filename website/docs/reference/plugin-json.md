@@ -37,6 +37,8 @@ Lives at `plugins/<name>/.claude-plugin/plugin.json`.
 | `connection` | when the plugin needs credentials | object | Drives MyHub's connection UI. See below. |
 | `widgets` | when present | path | Directory of widget JSON, relative to plugin root. Usually `"widgets"`. If you ship `widgetElements`, you **must** also ship `widgets`. |
 | `widgetElements` | when present | path | Compiled JS module, relative to plugin root. Usually `"widget-elements/dist/index.js"`. |
+| `portalWidgets` | when present | path[] | Paths to client-portal widget JSON files. See [Client portals](/authoring/client-portals). |
+| `portalDataMaps` | when present | path[] | Paths to portal data-map JSON files (server-side recipes). See [Portal files](./portal-files). |
 
 ## The `connection` block
 
