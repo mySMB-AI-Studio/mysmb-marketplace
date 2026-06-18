@@ -1,0 +1,291 @@
+{
+  "id": "google-workspace-calendar-today",
+  "title": "Upcoming Events",
+  "description": "Upcoming Google Calendar events — title, start time, and location. Shows events from the current time forward on the primary calendar.",
+  "category": "productivity",
+  "tags": [
+    "google",
+    "calendar",
+    "events",
+    "schedule",
+    "productivity"
+  ],
+  "keywords": [
+    "calendar",
+    "events",
+    "today",
+    "schedule",
+    "meetings",
+    "google"
+  ],
+  "connectorsUsed": [
+    "google-workspace-calendar"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "google-workspace-calendar",
+    "tool": "list_events",
+    "params": {
+      "calendarId": "primary",
+      "maxResults": 10,
+      "orderBy": "startTime",
+      "singleEvents": true
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "headerRow"
+        ]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": {
+          "justify": "between",
+          "align": "center"
+        },
+        "children": [
+          "titleGroup",
+          "refreshBtn"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "CalendarDays",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "count"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Upcoming Events",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} events",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/google-workspace-calendar/list_events/items"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": {
+          "icon": "RefreshCw",
+          "tone": "muted",
+          "size": "sm",
+          "ariaLabel": "Refresh"
+        },
+        "on": {
+          "click": {
+            "action": "google-workspace-calendar.list_events",
+            "params": {
+              "calendarId": "primary",
+              "maxResults": 10,
+              "orderBy": "startTime",
+              "singleEvents": true
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/_loading/google-workspace-calendar.list_events"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No events today."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/google-workspace-calendar.list_events",
+              "not": true
+            },
+            {
+              "$state": "/google-workspace-calendar/list_events/items/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "visible": {
+          "$state": "/_loading/google-workspace-calendar.list_events",
+          "not": true
+        },
+        "repeat": {
+          "statePath": "/google-workspace-calendar/list_events/items",
+          "key": "id"
+        },
+        "children": [
+          "row"
+        ]
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start",
+          "hover": true
+        },
+        "children": [
+          "calIcon",
+          "rowContent",
+          "statusBadge"
+        ]
+      },
+      "calIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "CalendarDays",
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "rowContent": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "eventTitle",
+          "eventMeta"
+        ]
+      },
+      "eventTitle": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "summary"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "eventMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{start}",
+              "start": {
+                "$computed": "relative_time",
+                "args": {
+                  "value": {
+                    "$item": "start/dateTime"
+                  }
+                }
+              }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "statusBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "status"
+          },
+          "tone": "default"
+        },
+        "visible": {
+          "$item": "status"
+        }
+      }
+    }
+  }
+}
