@@ -24,9 +24,16 @@
 
       "titleRow": {
         "type": "Row",
-        "props": { "gap": "md", "align": "center" },
-        "children": ["titleGroup", "quarterSelect"]
+        "props": { "justify": "between", "align": "center" },
+        "children": ["leftGroup", "sfLogo"]
       },
+      "leftGroup": {
+        "type": "Row",
+        "props": { "gap": "md", "align": "center" },
+        "children": ["titleGroup", "quarterBadge"]
+      },
+      "quarterBadge": { "type": "Badge", "props": { "text": "This Quarter", "tone": "default" } },
+      "sfLogo": { "type": "Icon", "props": { "name": "Cloud", "tone": "accent", "size": "md" } },
       "titleGroup": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center" },
@@ -40,18 +47,6 @@
       },
       "title":   { "type": "Heading", "props": { "text": "Sales Overview", "level": "h2" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Salesforce" } },
-      "quarterSelect": {
-        "type": "Select",
-        "props": {
-          "value": "this_quarter",
-          "options": [
-            { "label": "This Quarter", "value": "this_quarter" },
-            { "label": "Last Quarter", "value": "last_quarter" },
-            { "label": "This Year",    "value": "this_year" }
-          ]
-        }
-      },
-
       "kpiGrid": {
         "type": "Grid",
         "props": { "cols": 4, "gap": "sm" },
