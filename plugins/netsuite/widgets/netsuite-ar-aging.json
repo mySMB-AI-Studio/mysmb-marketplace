@@ -1,0 +1,157 @@
+{
+  "id": "netsuite-ar-aging",
+  "title": "AR Aging",
+  "description": "Accounts receivable aging — outstanding invoice balances bucketed by days overdue.",
+  "category": "finance",
+  "tags": ["netsuite", "oracle", "erp", "finance", "ar", "aging", "invoices", "accounts-receivable"],
+  "keywords": ["ar aging", "accounts receivable", "overdue", "invoices", "outstanding", "netsuite", "erp"],
+  "connectorsUsed": ["netsuite"],
+  "popularity": 0,
+  "status": "published",
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 9 },
+    "min":       { "colSpan": 4, "rowSpan": 8 },
+    "max":       { "colSpan": 10, "rowSpan": 13 }
+  },
+  "dataProvider": {
+    "mcp": "netsuite",
+    "tool": "list_ar_aging",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "kpiGrid", "div1", "bucketsLabel", "kvBuckets", "div2", "kvSummary"]
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "AlertCircle", "tone": "warning", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "AR Aging", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "NetSuite ERP · Outstanding invoices" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "kpiGrid": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["tileOutstanding", "tileCount"]
+      },
+
+      "tileOutstanding": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackOutstanding"] },
+      "stackOutstanding": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconOutstanding", "valOutstanding", "lblOutstanding"] },
+      "iconOutstanding": { "type": "Icon", "props": { "name": "DollarSign", "size": "sm", "tone": "warning" } },
+      "valOutstanding": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/list_ar_aging/total_outstanding" } }
+          }
+        }
+      },
+      "lblOutstanding": { "type": "Caption", "props": { "text": "Total Outstanding" } },
+
+      "tileCount": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackCount"] },
+      "stackCount": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconCount", "valCount", "lblCount"] },
+      "iconCount": { "type": "Icon", "props": { "name": "FileText", "size": "sm", "tone": "accent" } },
+      "valCount": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/netsuite/list_ar_aging/invoice_count" } }
+      },
+      "lblCount": { "type": "Caption", "props": { "text": "Open Invoices" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "bucketsLabel": { "type": "Eyebrow", "props": { "text": "Overdue Buckets" } },
+
+      "kvBuckets": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["kv0_30", "kv31_60", "kv61_90", "kvOver90"]
+      },
+      "kv0_30": {
+        "type": "KeyValue",
+        "props": {
+          "label": "0 – 30 days",
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/list_ar_aging/bucket_0_30" } }
+          }
+        }
+      },
+      "kv31_60": {
+        "type": "KeyValue",
+        "props": {
+          "label": "31 – 60 days",
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/list_ar_aging/bucket_31_60" } }
+          }
+        }
+      },
+      "kv61_90": {
+        "type": "KeyValue",
+        "props": {
+          "label": "61 – 90 days",
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/list_ar_aging/bucket_61_90" } }
+          }
+        }
+      },
+      "kvOver90": {
+        "type": "KeyValue",
+        "props": {
+          "label": "90+ days",
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/list_ar_aging/bucket_over_90" } }
+          }
+        }
+      },
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "kvSummary": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["kvNotDue", "kvCritical"]
+      },
+      "kvNotDue": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Current (not due)",
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/list_ar_aging/not_yet_due" } }
+          }
+        }
+      },
+      "kvCritical": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Critical (90+ days)",
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/list_ar_aging/bucket_over_90" } }
+          }
+        }
+      }
+
+    }
+  }
+}

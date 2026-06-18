@@ -1,0 +1,99 @@
+{
+  "id": "netsuite-pl-snapshot-demo",
+  "title": "P&L Snapshot",
+  "description": "Profit & Loss snapshot — revenue, COGS, gross profit, expenses, and net profit for the current period. Demo version with static data.",
+  "category": "finance",
+  "tags": ["netsuite", "oracle", "erp", "finance", "pnl", "profit", "loss", "revenue", "expenses", "demo"],
+  "keywords": ["profit and loss", "p&l", "revenue", "expenses", "net profit", "gross profit", "netsuite", "erp"],
+  "connectorsUsed": ["netsuite"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "min":       { "colSpan": 4, "rowSpan": 8 },
+    "max":       { "colSpan": 10, "rowSpan": 13 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "revenueRow", "cogsRow", "divGP", "gpRow", "expRow", "divNP", "npRow", "div1", "kvGrid"]
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "BarChart2", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "P&L Snapshot", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "NetSuite ERP · June 2026" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "revenueRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["revenueLabel", "revenueVal"]
+      },
+      "revenueLabel": { "type": "Text", "props": { "text": "Revenue",            "size": "sm", "weight": "medium" } },
+      "revenueVal":   { "type": "Text", "props": { "text": "$142,500",           "size": "sm", "weight": "medium" } },
+
+      "cogsRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["cogsLabel", "cogsVal"]
+      },
+      "cogsLabel": { "type": "Text", "props": { "text": "Cost of Goods Sold",   "size": "sm", "tone": "muted" } },
+      "cogsVal":   { "type": "Text", "props": { "text": "–$65,000",             "size": "sm", "tone": "muted" } },
+
+      "divGP": { "type": "Divider", "props": {} },
+
+      "gpRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["gpLabel", "gpVal"]
+      },
+      "gpLabel": { "type": "Text", "props": { "text": "Gross Profit",           "size": "sm", "weight": "semibold" } },
+      "gpVal":   { "type": "Text", "props": { "text": "$77,500",                "size": "sm", "weight": "semibold", "tone": "success" } },
+
+      "expRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["expLabel", "expVal"]
+      },
+      "expLabel": { "type": "Text", "props": { "text": "Operating Expenses",    "size": "sm", "tone": "muted" } },
+      "expVal":   { "type": "Text", "props": { "text": "–$48,200",             "size": "sm", "tone": "muted" } },
+
+      "divNP": { "type": "Divider", "props": {} },
+
+      "npRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["npLabel", "npVal"]
+      },
+      "npLabel": { "type": "Heading", "props": { "text": "Net Profit",          "level": "h3" } },
+      "npVal":   { "type": "Heading", "props": { "text": "$29,300",             "level": "h3", "tone": "success" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "kvGrid": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start" },
+        "children": ["kvGrossMargin", "kvNetMargin"]
+      },
+      "kvGrossMargin": { "type": "KeyValue", "props": { "label": "Gross Margin", "value": "54.4%" } },
+      "kvNetMargin":   { "type": "KeyValue", "props": { "label": "Net Margin",   "value": "20.6%" } }
+
+    }
+  },
+  "status": "published"
+}
