@@ -7,7 +7,7 @@ sidebar_position: 1
 
 # Getting started
 
-mySMB Marketplace is a registry of agent plugins. Every plugin wraps a business tool — Xero, Zoho, Microsoft 365, Circle, monday.com — as a [Model Context Protocol](https://modelcontextprotocol.io/) server, so an AI assistant can read and write to it in natural language.
+mySMB Marketplace is a registry of agent plugins. Every plugin wraps a business tool — Xero, QuickBooks, Zoho, Microsoft 365, monday.com, GitHub — as a [Model Context Protocol](https://modelcontextprotocol.io/) server, so an AI assistant can read and write to it in natural language. Browse the full [plugin catalog](/catalog) for the current list.
 
 The plugin format is the **standard Claude Code plugin format**. The same artefact installs into two places:
 

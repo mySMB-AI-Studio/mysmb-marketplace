@@ -94,7 +94,7 @@ plugins/acme-billing/server/
 - Pure Node, no native modules, no platform-specific code.
 - Read every credential from `process.env`.
 - Exit with a clear `console.error` + non-zero code if a required var is missing.
-- Implement the MCP wire protocol (`initialize`, `tools/list`, `tools/call`). See [`plugins/circle/server/src/index.js`](https://github.com/mySMB-AI-Studio/mysmb-marketplace/blob/main/plugins/circle/server/src/index.js) for a single-file reference implementation.
+- Implement the MCP wire protocol (`initialize`, `tools/list`, `tools/call`). See [`plugins/deskcrm/server/src/index.js`](https://github.com/mySMB-AI-Studio/mysmb-marketplace/blob/main/plugins/deskcrm/server/src/index.js) for a reference implementation.
 - Build with esbuild, **commit `dist/`**. The runtime must not have to install anything.
 
 ## Document every variable
