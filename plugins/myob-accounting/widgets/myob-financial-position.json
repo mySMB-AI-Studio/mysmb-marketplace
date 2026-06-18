@@ -1,25 +1,21 @@
 {
   "id": "myob-financial-position",
   "title": "MYOB — Financial Position",
-  "description": "Net profit hero with income, expenses and profit sparkline for the financial year. Toggle between this year and the prior year.",
+  "description": "Net profit hero with monthly income, expenses and profit sparklines for the financial year.",
   "category": "finance",
   "tags": ["myob", "pnl", "profit", "net profit", "financial position", "income", "expenses", "finance", "report"],
   "keywords": ["financial position", "net profit", "income", "expenses", "pnl", "myob", "balance", "financial year"],
   "connectorsUsed": ["myob-accounting"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 6, "rowSpan": 5 },
-    "min": { "colSpan": 4, "rowSpan": 4 },
-    "max": { "colSpan": 10, "rowSpan": 8 }
+    "preferred": { "colSpan": 6, "rowSpan": 7 },
+    "min": { "colSpan": 4, "rowSpan": 5 },
+    "max": { "colSpan": 10, "rowSpan": 10 }
   },
   "dataProvider": {
     "mcp": "myob-accounting",
     "tool": "get_profit_and_loss",
-    "params": {
-      "from_date": "2020-01-01",
-      "to_date": "2026-06-30",
-      "reporting_basis": "Accrual"
-    }
+    "params": { "from_date": "2025-07-01", "to_date": "2026-06-30", "reporting_basis": "Accrual" }
   },
   "spec": {
     "root": "card",
@@ -27,173 +23,51 @@
 
       "card": {
         "type": "Card",
-        "children": ["header", "periodTabs", "heroStat", "summaryRow", "debugState", "debugLoading", "chart", "dateAxis", "legend"]
+        "children": ["header", "loadingSpinner", "heroStack", "incomeSparkRow", "expensesSparkRow", "netSparkRow", "dateAxis", "legend", "divider", "collapseRow", "collapseBody"],
+        "watch": {
+          "/myob-accounting/get_profit_and_loss": [
+            {
+              "action": "myob-accounting.list_invoices",
+              "params": { "status": "All", "from_date": "2025-07-01", "to_date": "2026-06-30", "page_size": 1000 }
+            },
+            {
+              "action": "myob-accounting.list_bills",
+              "params": { "status": "All", "from_date": "2025-07-01", "to_date": "2026-06-30", "page_size": 1000 }
+            }
+          ]
+        }
       },
 
       "header": {
         "type": "Row",
         "props": { "justify": "between", "align": "center" },
-        "children": ["titleGroup", "brandBadge"]
+        "children": ["titleGroup"]
       },
       "titleGroup": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center" },
         "children": ["titleIcon", "titleStack"]
       },
-      "titleIcon": {
-        "type": "Icon",
-        "props": { "name": "TrendingUp", "tone": "accent", "size": "sm" }
-      },
+      "titleIcon": { "type": "Icon", "props": { "name": "TrendingUp", "tone": "accent", "size": "sm" } },
       "titleStack": {
         "type": "Stack",
         "props": { "gap": "none" },
         "children": ["title", "eyebrow"]
       },
-      "title": {
-        "type": "Heading",
-        "props": { "text": "Financial Position", "level": "h2" }
-      },
-      "eyebrow": {
-        "type": "Eyebrow",
-        "props": { "text": "MYOB Accounting" }
-      },
-      "brandBadge": {
-        "type": "Badge",
-        "props": { "label": "MYOB", "tone": "accent" }
+      "title": { "type": "Heading", "props": { "text": "Financial Position", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "MYOB Accounting" } },
+
+      "loadingSpinner": {
+        "type": "Spinner",
+        "visible": { "$state": "/_loading/myob-accounting.get_profit_and_loss" }
       },
 
-      "periodTabs": {
-        "type": "Row",
-        "props": { "gap": "md", "align": "center" },
-        "children": ["chipThisFY", "chipLastFY"]
-      },
-      "chipThisFY": {
-        "type": "Row",
-        "props": {
-          "gap": "none", "align": "center",
-          "hover": true, "clickable": true,
-          "selected": {
-            "$computed": "equals",
-            "args": { "a": "thisFY", "b": { "$state": "/ui/fp/period" } }
-          }
-        },
-        "children": ["chipThisFYLabel"],
-        "on": {
-          "click": [
-            { "action": "setState", "params": { "statePath": "/ui/fp/period", "value": "thisFY" } },
-            { "action": "myob-accounting.get_profit_and_loss", "params": { "from_date": "2020-01-01", "to_date": "2026-06-30", "reporting_basis": "Accrual" } }
-          ]
-        }
-      },
-      "chipThisFYLabel": { "type": "Text", "props": { "text": "This FY", "size": "xs", "weight": "medium" } },
-      "chipLastFY": {
-        "type": "Row",
-        "props": {
-          "gap": "none", "align": "center",
-          "hover": true, "clickable": true,
-          "selected": {
-            "$computed": "equals",
-            "args": { "a": "lastFY", "b": { "$state": "/ui/fp/period" } }
-          }
-        },
-        "children": ["chipLastFYLabel"],
-        "on": {
-          "click": [
-            { "action": "setState", "params": { "statePath": "/ui/fp/period", "value": "lastFY" } },
-            { "action": "myob-accounting.get_profit_and_loss", "params": { "from_date": "2019-01-01", "to_date": "2019-12-31", "reporting_basis": "Accrual" } }
-          ]
-        }
-      },
-      "chipLastFYLabel": { "type": "Text", "props": { "text": "Last FY", "size": "xs", "weight": "medium" } },
-
-      "heroStat": {
-        "type": "Stat",
-        "props": {
-          "label": "net profit · this financial year",
-          "value": {
-            "$computed": "myob-accounting_format_currency",
-            "args": {
-              "value": {
-                "$computed": "myob-accounting_pnl_get",
-                "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" }, "key": "netProfit" }
-              }
-            }
-          }
-        }
-      },
-
-      "summaryRow": {
-        "type": "Row",
-        "props": { "gap": "lg", "align": "start" },
-        "children": ["incomeSummary", "expensesSummary", "netSummary"]
-      },
-      "incomeSummary": {
+      "heroStack": {
         "type": "Stack",
-        "props": { "gap": "xxs" },
-        "children": ["incomeDotRow", "incomeStat"]
+        "props": { "gap": "none" },
+        "children": ["heroAmt", "heroSub"]
       },
-      "incomeDotRow": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["incomeDotIcon", "incomeLabel"]
-      },
-      "incomeDotIcon": { "type": "Icon", "props": { "name": "Circle", "tone": "accent", "size": "xs" } },
-      "incomeLabel": { "type": "Caption", "props": { "text": "Income" } },
-      "incomeStat": {
-        "type": "Stat",
-        "props": {
-          "value": {
-            "$computed": "myob-accounting_format_currency",
-            "args": {
-              "value": {
-                "$computed": "myob-accounting_pnl_get",
-                "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" }, "key": "income" }
-              }
-            }
-          }
-        }
-      },
-
-      "expensesSummary": {
-        "type": "Stack",
-        "props": { "gap": "xxs" },
-        "children": ["expensesDotRow", "expensesStat"]
-      },
-      "expensesDotRow": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["expensesDotIcon", "expensesLabel"]
-      },
-      "expensesDotIcon": { "type": "Icon", "props": { "name": "Circle", "tone": "muted", "size": "xs" } },
-      "expensesLabel": { "type": "Caption", "props": { "text": "Expenses" } },
-      "expensesStat": {
-        "type": "Stat",
-        "props": {
-          "value": {
-            "$computed": "myob-accounting_format_currency",
-            "args": {
-              "value": {
-                "$computed": "myob-accounting_pnl_get",
-                "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" }, "key": "expenses" }
-              }
-            }
-          }
-        }
-      },
-
-      "netSummary": {
-        "type": "Stack",
-        "props": { "gap": "xxs" },
-        "children": ["netDotRow", "netStat"]
-      },
-      "netDotRow": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["netDotIcon", "netLabel"]
-      },
-      "netDotIcon": { "type": "Icon", "props": { "name": "Circle", "tone": "destructive", "size": "xs" } },
-      "netLabel": { "type": "Caption", "props": { "text": "Net Profit" } },
-      "netStat": {
+      "heroAmt": {
         "type": "Stat",
         "props": {
           "value": {
@@ -207,52 +81,82 @@
           }
         }
       },
+      "heroSub": { "type": "Caption", "props": { "text": "this financial year" } },
 
-      "debugState": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "myob-accounting_format_json",
-            "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" } }
-          }
-        }
+      "incomeSparkRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["incomeSparkLabel", "incomeSpark"]
       },
-      "debugLoading": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "myob-accounting_format_json",
-            "args": { "value": { "$state": "/_loading/myob-accounting.get_profit_and_loss" } }
-          }
-        }
-      },
-
-      "debugCaption": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "myob-accounting_format_json",
-            "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" } }
-          }
-        }
-      },
-
-      "debugCaption": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "myob-accounting_format_json",
-            "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" } }
-          }
-        }
-      },
-
-      "chart": {
+      "incomeSparkLabel": { "type": "Caption", "props": { "text": "Income", "tone": "success" } },
+      "incomeSpark": {
         "type": "Sparkline",
         "props": {
-          "values": [4200, 6800, 5100, 9300, 11200, 8700, 13400, 15600, 12800, 18200, 21500, 17900],
+          "values": {
+            "$computed": "myob-accounting_monthly_totals",
+            "args": {
+              "value": { "$state": "/myob-accounting/list_invoices/Items" },
+              "months": ["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"]
+            }
+          },
+          "tone": "success",
+          "height": 50,
+          "fill": false
+        }
+      },
+
+      "expensesSparkRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["expensesSparkLabel", "expensesSpark"]
+      },
+      "expensesSparkLabel": { "type": "Caption", "props": { "text": "Expenses", "tone": "destructive" } },
+      "expensesSpark": {
+        "type": "Sparkline",
+        "props": {
+          "values": {
+            "$computed": "myob-accounting_monthly_totals",
+            "args": {
+              "value": { "$state": "/myob-accounting/list_bills/Items" },
+              "months": ["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"]
+            }
+          },
+          "tone": "destructive",
+          "height": 50,
+          "fill": false
+        }
+      },
+
+      "netSparkRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["netSparkLabel", "netSpark"]
+      },
+      "netSparkLabel": { "type": "Caption", "props": { "text": "Net profit", "tone": "accent" } },
+      "netSpark": {
+        "type": "Sparkline",
+        "props": {
+          "values": {
+            "$computed": "myob-accounting_net_monthly",
+            "args": {
+              "income": {
+                "$computed": "myob-accounting_monthly_totals",
+                "args": {
+                  "value": { "$state": "/myob-accounting/list_invoices/Items" },
+                  "months": ["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"]
+                }
+              },
+              "expenses": {
+                "$computed": "myob-accounting_monthly_totals",
+                "args": {
+                  "value": { "$state": "/myob-accounting/list_bills/Items" },
+                  "months": ["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"]
+                }
+              }
+            }
+          },
           "tone": "accent",
-          "height": 120,
+          "height": 50,
           "fill": false
         }
       },
@@ -260,9 +164,10 @@
       "dateAxis": {
         "type": "Row",
         "props": { "justify": "between" },
-        "children": ["dateStart", "dateEnd"]
+        "children": ["dateStart", "dateMid", "dateEnd"]
       },
       "dateStart": { "type": "Caption", "props": { "text": "Jul 2025" } },
+      "dateMid":   { "type": "Caption", "props": { "text": "Jan 2026" } },
       "dateEnd":   { "type": "Caption", "props": { "text": "Jun 2026" } },
 
       "legend": {
@@ -273,24 +178,139 @@
       "legendIncome": {
         "type": "Row",
         "props": { "gap": "xs", "align": "center" },
-        "children": ["legendIncomeIcon", "legendIncomeLabel"]
+        "children": ["legendIncomeDot", "legendIncomeLabel"]
       },
-      "legendIncomeIcon": { "type": "Icon", "props": { "name": "Circle", "tone": "accent", "size": "xs" } },
+      "legendIncomeDot": { "type": "Dot", "props": { "tone": "success", "size": "sm" } },
       "legendIncomeLabel": { "type": "Caption", "props": { "text": "Income" } },
       "legendExpenses": {
         "type": "Row",
         "props": { "gap": "xs", "align": "center" },
-        "children": ["legendExpensesIcon", "legendExpensesLabel"]
+        "children": ["legendExpensesDot", "legendExpensesLabel"]
       },
-      "legendExpensesIcon": { "type": "Icon", "props": { "name": "Circle", "tone": "muted", "size": "xs" } },
+      "legendExpensesDot": { "type": "Dot", "props": { "tone": "destructive", "size": "sm" } },
       "legendExpensesLabel": { "type": "Caption", "props": { "text": "Expenses" } },
       "legendNet": {
         "type": "Row",
         "props": { "gap": "xs", "align": "center" },
-        "children": ["legendNetIcon", "legendNetLabel"]
+        "children": ["legendNetDot", "legendNetLabel"]
       },
-      "legendNetIcon": { "type": "Icon", "props": { "name": "Circle", "tone": "destructive", "size": "xs" } },
-      "legendNetLabel": { "type": "Caption", "props": { "text": "Net Profit" } }
+      "legendNetDot": { "type": "Dot", "props": { "tone": "accent", "size": "sm" } },
+      "legendNetLabel": { "type": "Caption", "props": { "text": "Net profit" } },
+
+      "divider": { "type": "Divider" },
+
+      "collapseRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center", "clickable": true },
+        "children": ["collapseLabel", "chevronStack"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/fp/expanded",
+              "value": {
+                "$computed": "myob-accounting_bool_not",
+                "args": { "value": { "$state": "/ui/fp/expanded" } }
+              }
+            }
+          }
+        }
+      },
+      "collapseLabel": { "type": "Text", "props": { "text": "Totals", "size": "sm", "weight": "medium" } },
+      "chevronStack": {
+        "type": "Row",
+        "props": { "gap": "none" },
+        "children": ["chevronDown", "chevronUp"]
+      },
+      "chevronDown": {
+        "type": "Icon",
+        "props": { "name": "ChevronDown", "size": "sm", "tone": "muted" },
+        "visible": {
+          "$computed": "myob-accounting_bool_not",
+          "args": { "value": { "$state": "/ui/fp/expanded" } }
+        }
+      },
+      "chevronUp": {
+        "type": "Icon",
+        "props": { "name": "ChevronUp", "size": "sm", "tone": "muted" },
+        "visible": { "$state": "/ui/fp/expanded" }
+      },
+
+      "collapseBody": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "visible": { "$state": "/ui/fp/expanded" },
+        "children": ["fpIncomeRow", "fpExpensesRow", "fpNetRow"]
+      },
+
+      "fpIncomeRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["fpIncomeLbl", "fpIncomeAmt"]
+      },
+      "fpIncomeLbl": { "type": "Caption", "props": { "text": "Income" } },
+      "fpIncomeAmt": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "myob-accounting_format_currency",
+            "args": {
+              "value": {
+                "$computed": "myob-accounting_pnl_get",
+                "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" }, "key": "income" }
+              }
+            }
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+
+      "fpExpensesRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["fpExpensesLbl", "fpExpensesAmt"]
+      },
+      "fpExpensesLbl": { "type": "Caption", "props": { "text": "Expenses" } },
+      "fpExpensesAmt": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "myob-accounting_format_currency",
+            "args": {
+              "value": {
+                "$computed": "myob-accounting_pnl_get",
+                "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" }, "key": "expenses" }
+              }
+            }
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+
+      "fpNetRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["fpNetLbl", "fpNetAmt"]
+      },
+      "fpNetLbl": { "type": "Caption", "props": { "text": "Net profit" } },
+      "fpNetAmt": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "myob-accounting_format_currency",
+            "args": {
+              "value": {
+                "$computed": "myob-accounting_pnl_get",
+                "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" }, "key": "netProfit" }
+              }
+            }
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      }
 
     }
   },

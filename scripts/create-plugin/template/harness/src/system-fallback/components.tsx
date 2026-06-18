@@ -38,8 +38,9 @@ export const Row = (a: ComponentArgs) => {
   return <div style={{ display: 'flex', gap: toGap(gap), alignItems: align, justifyContent: justify, flex: grow ? 1 : undefined, minWidth: 0 }}>{a.children}</div>;
 };
 export const Grid = (a: ComponentArgs) => {
-  const { columns = 2, gap } = p(a);
-  return <div style={{ display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: toGap(gap) }}>{a.children}</div>;
+  const { columns, cols, gap } = p(a);
+  const numCols = Number(columns ?? cols ?? 2);
+  return <div style={{ display: 'grid', gridTemplateColumns: `repeat(${numCols}, 1fr)`, gap: toGap(gap) }}>{a.children}</div>;
 };
 export const FormRow = (a: ComponentArgs) => {
   const { label } = p(a);
@@ -168,10 +169,64 @@ export const ActivityItem = (a: ComponentArgs) => {
 export const KeyValue = (a: ComponentArgs) => {
   const { label, value } = p(a);
   return (
-    <div className="flex justify-between py-1 text-sm">
-      <span className="text-gray-500">{String(label ?? '')}</span>
-      <span>{String(value ?? '')}</span>
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[11px] text-gray-500">{String(label ?? '')}</span>
+      <span className="text-sm font-medium">{String(value ?? '')}</span>
     </div>
+  );
+};
+
+export const BarChart = (a: ComponentArgs) => {
+  const { data = [], labelField = 'label', valueField = 'value', valueFormat, tone = 'default' } = p(a);
+  const items: any[] = Array.isArray(data) ? data : [];
+  const max = Math.max(...items.map((d) => Number(d[valueField] ?? 0)), 1);
+  const fmtVal = (n: number) =>
+    valueFormat === 'currency'
+      ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 }).format(n)
+      : String(n);
+  const TONE_COLORS: Record<string, string> = {
+    default: '#6B7280', accent: '#34DFBA', success: '#10B981', warning: '#F59E0B', destructive: '#DC2626', info: '#34DFBA',
+  };
+  const barColor = TONE_COLORS[tone] ?? TONE_COLORS.default;
+  return (
+    <div className="flex flex-col gap-2 py-1">
+      {items.map((d, i) => {
+        const val = Number(d[valueField] ?? 0);
+        const pct = max > 0 ? (val / max) * 100 : 0;
+        return (
+          <div key={i} className="flex items-center gap-2 text-[11px]">
+            <span className="w-24 shrink-0 truncate text-gray-500">{String(d[labelField] ?? '')}</span>
+            <div className="flex flex-1 items-center gap-2">
+              <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
+                <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: barColor }} />
+              </div>
+              <span className="w-16 shrink-0 text-right font-medium text-gray-700">{fmtVal(val)}</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+export const Sparkline = (a: ComponentArgs) => {
+  const { values = [], tone = 'default', height = 48, fill = false } = p(a);
+  const pts: number[] = Array.isArray(values) ? values.map(Number) : [];
+  if (pts.length < 2) return <div style={{ height }} />;
+  const min = Math.min(...pts), max = Math.max(...pts), range = max - min || 1;
+  const w = 300, h = Number(height);
+  const pad = 2;
+  const xs = pts.map((_, i) => pad + (i / (pts.length - 1)) * (w - pad * 2));
+  const ys = pts.map((v) => pad + (1 - (v - min) / range) * (h - pad * 2));
+  const polyline = xs.map((x, i) => `${x},${ys[i]}`).join(' ');
+  const fillPath = `M ${xs[0]},${ys[0]} ${xs.map((x, i) => `L ${x},${ys[i]}`).join(' ')} L ${xs[xs.length - 1]},${h} L ${xs[0]},${h} Z`;
+  const TONE_COLORS: Record<string, string> = { default: '#6B7280', accent: '#34DFBA', success: '#10B981', warning: '#F59E0B', destructive: '#DC2626' };
+  const color = TONE_COLORS[tone] ?? TONE_COLORS.default;
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', height }} preserveAspectRatio="none">
+      {fill && <path d={fillPath} fill={color} fillOpacity={0.15} />}
+      <polyline points={polyline} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 };
 

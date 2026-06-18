@@ -1,26 +1,62 @@
 {
   "id": "github-iteration-gantt",
-  "title": "Iteration Gantt",
-  "description": "Horizontal swimlane Gantt of GitHub Project v2 items grouped by Iteration. Each row is a feature, the colored bar sits in the iteration the feature is scheduled for. Status tones the bar (Done → success, In Progress → accent, Blocked → destructive, Todo → info).",
+  "title": "Release Board",
+  "description": "Kanban of GitHub Project v2 features grouped by the week each iteration ships. Cards are dotted by status; click a card for an AI-summarized detail. Features with no iteration land in a \"No date yet\" column.",
   "category": "engineering",
-  "tags": ["github", "gantt", "roadmap", "iteration", "sprint", "planning", "engineering"],
-  "keywords": ["gantt", "iteration", "sprint", "timeline", "roadmap", "planning", "features", "github"],
-  "connectorsUsed": ["github"],
+  "tags": [
+    "github",
+    "roadmap",
+    "release",
+    "board",
+    "kanban",
+    "iteration",
+    "sprint",
+    "planning",
+    "engineering"
+  ],
+  "keywords": [
+    "release",
+    "board",
+    "kanban",
+    "iteration",
+    "sprint",
+    "roadmap",
+    "planning",
+    "features",
+    "github"
+  ],
+  "connectorsUsed": [
+    "github"
+  ],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 12, "rowSpan": 8 },
-    "min":       { "colSpan": 6,  "rowSpan": 5 },
-    "max":       { "colSpan": 12, "rowSpan": 12 }
+    "preferred": {
+      "colSpan": 12,
+      "rowSpan": 8
+    },
+    "min": {
+      "colSpan": 6,
+      "rowSpan": 5
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
   },
   "dataProvider": {
     "mcp": "github",
-    "tool": "list_project_items",
+    "tool": "projects_list",
     "params": {
+      "method": "list_project_items",
       "owner": "mySMB-AI-Studio",
       "owner_type": "org",
       "project_number": 3,
-      "include_fields": ["Iteration", "Status"],
-      "per_page": 100
+      "fields": [
+        "295149566",
+        "295177536"
+      ],
+      "query": "-status:Done",
+      "per_page": 50
     }
   },
   "spec": {
@@ -28,15 +64,22 @@
     "elements": {
       "card": {
         "type": "Card",
-        "children": ["header", "body"],
+        "children": [
+          "header",
+          "body"
+        ],
         "watch": {
-          "/github/list_project_items": {
+          "/github/projects_list": {
             "action": "setState",
             "params": {
-              "statePath": "/ui/gantt",
+              "statePath": "/ui/board",
               "value": {
-                "$computed": "github_gantt_data",
-                "args": { "value": { "$state": "/github/list_project_items" } }
+                "$computed": "github_board_data",
+                "args": {
+                  "value": {
+                    "$state": "/github/projects_list"
+                  }
+                }
               }
             }
           }
@@ -44,30 +87,54 @@
       },
       "header": {
         "type": "Header",
-        "children": ["headerRow"]
+        "children": [
+          "headerRow"
+        ]
       },
       "headerRow": {
         "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["titleGroup", "refreshBtn"]
+        "props": {
+          "align": "center"
+        },
+        "children": [
+          "titleGroup"
+        ]
       },
       "titleGroup": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
       },
       "titleIcon": {
         "type": "Icon",
-        "props": { "name": "GanttChart", "tone": "accent", "size": "sm" }
+        "props": {
+          "name": "LayoutGrid",
+          "tone": "accent",
+          "size": "sm"
+        }
       },
       "titleStack": {
         "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["title", "subtitle"]
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "subtitle"
+        ]
       },
       "title": {
         "type": "Heading",
-        "props": { "text": "Iteration Gantt", "level": "h2" }
+        "props": {
+          "text": "Release Board",
+          "level": "h2"
+        }
       },
       "subtitle": {
         "type": "Eyebrow",
@@ -75,147 +142,1336 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{n} features across {i} iterations",
-              "n": { "$computed": "count", "args": { "value": { "$state": "/ui/gantt/items" } } },
-              "i": { "$computed": "count", "args": { "value": { "$state": "/ui/gantt/iterations" } } }
-            }
-          }
-        }
-      },
-      "refreshBtn": {
-        "type": "IconButton",
-        "props": {
-          "icon": "RefreshCw",
-          "tone": "muted",
-          "size": "sm",
-          "ariaLabel": "Refresh"
-        },
-        "on": {
-          "click": {
-            "action": "github.list_project_items",
-            "params": {
-              "owner": "mySMB-AI-Studio",
-              "owner_type": "org",
-              "project_number": 3,
-              "include_fields": ["Iteration", "Status"],
-              "per_page": 100
+              "pattern": "{n} features · {i} release weeks",
+              "n": {
+                "$state": "/ui/board/total"
+              },
+              "i": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/ui/board/columns"
+                  }
+                }
+              }
             }
           }
         }
       },
       "body": {
         "type": "Body",
-        "children": ["loading", "empty", "chart"]
+        "children": [
+          "loading",
+          "empty",
+          "boardScroll"
+        ]
       },
       "loading": {
         "type": "Stack",
-        "props": { "gap": "sm" },
-        "visible": { "$state": "/_loading/github.list_project_items" },
-        "children": ["sk1", "sk2", "sk3", "sk4"]
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/_loading/github.projects_list"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ]
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "sm" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "sm" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "sm" } },
-      "sk4": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "sm" } },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.25rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.25rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.25rem",
+          "rounded": "md"
+        }
+      },
       "empty": {
         "type": "Empty",
-        "props": { "message": "No iterations or items found on this project." },
+        "props": {
+          "message": "No features found on this project."
+        },
         "visible": {
           "$and": [
-            { "$state": "/_loading/github.list_project_items", "not": true },
-            { "$state": "/ui/gantt/items/0", "not": true }
+            {
+              "$state": "/_loading/github.projects_list",
+              "not": true
+            },
+            {
+              "$state": "/ui/board/columns/0",
+              "not": true
+            }
           ]
         }
       },
-      "chart": {
+      "boardScroll": {
         "type": "Stack",
-        "props": { "gap": "xs" },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/github.list_project_items", "not": true },
-            { "$state": "/ui/gantt/items/0" }
-          ]
+        "props": {
+          "gap": "md"
         },
-        "children": ["axis", "rows"]
+        "visible": {
+          "$state": "/_loading/github.projects_list",
+          "not": true
+        },
+        "children": [
+          "col0",
+          "col1",
+          "col2",
+          "col3",
+          "col4",
+          "col5"
+        ]
       },
-      "axis": {
-        "type": "Row",
-        "props": { "template": "180px repeat(5, 1fr)", "gap": "xs" },
-        "children": ["axisLabelCell", "axisIter1", "axisIter2", "axisIter3", "axisIter4", "axisIter5"]
-      },
-      "axisLabelCell": {
-        "type": "Eyebrow",
-        "props": { "text": "FEATURE" }
-      },
-      "axisIter1": {
-        "type": "Eyebrow",
-        "props": { "text": { "$state": "/ui/gantt/iterations/0/title" } }
-      },
-      "axisIter2": {
-        "type": "Eyebrow",
-        "props": { "text": { "$state": "/ui/gantt/iterations/1/title" } }
-      },
-      "axisIter3": {
-        "type": "Eyebrow",
-        "props": { "text": { "$state": "/ui/gantt/iterations/2/title" } }
-      },
-      "axisIter4": {
-        "type": "Eyebrow",
-        "props": { "text": { "$state": "/ui/gantt/iterations/3/title" } }
-      },
-      "axisIter5": {
-        "type": "Eyebrow",
-        "props": { "text": { "$state": "/ui/gantt/iterations/4/title" } }
-      },
-      "rows": {
+      "col0": {
         "type": "Stack",
-        "props": { "gap": "xs" },
-        "repeat": { "statePath": "/ui/gantt/items", "key": "id" },
-        "children": ["ganttRow"]
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/ui/board/columns/0"
+        },
+        "children": [
+          "colHead0",
+          "colList0"
+        ]
       },
-      "ganttRow": {
+      "colHead0": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "colHeadRow0"
+        ]
+      },
+      "colHeadRow0": {
         "type": "Row",
         "props": {
-          "template": { "$item": "template" },
-          "gap": "xs",
-          "align": "center"
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
         },
-        "children": ["rowTitle", "barCell1", "barCell2", "barCell3", "barCell4", "barCell5"]
+        "children": [
+          "colTitle0",
+          "colCount0"
+        ]
       },
-      "rowTitle": {
+      "colTitle0": {
         "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/board/columns/0/label"
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "colCount0": {
+        "type": "Badge",
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "#{n} {t}",
-              "n": { "$item": "number" },
-              "t": { "$item": "title" }
+              "pattern": "{n} features",
+              "n": {
+                "$state": "/ui/board/columns/0/count"
+              }
             }
+          },
+          "tone": "muted",
+          "variant": "soft"
+        }
+      },
+      "colList0": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "statePath": "/ui/board/columns/0/items",
+          "key": "id"
+        },
+        "children": [
+          "itemBlock0"
+        ]
+      },
+      "itemBlock0": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "cardRow0",
+          "cardDetail0"
+        ]
+      },
+      "cardRow0": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "on": {
+          "click": {
+            "action": "expand_github_item",
+            "params": {
+              "owner": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "owner"
+                  }
+                }
+              },
+              "repo": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "repo"
+                  }
+                }
+              },
+              "number": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "children": [
+          "cardRowMain0",
+          "cardChevron0"
+        ]
+      },
+      "cardDot0": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$item": "statusTone"
+          },
+          "size": "sm"
+        }
+      },
+      "cardLabel0": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "label"
           },
           "size": "sm",
           "truncate": true
         }
       },
-      "barCell1": {
-        "type": "Section",
-        "props": { "variant": "muted", "rounded": "sm" }
+      "cardRowMain0": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "grow": true
+        },
+        "children": [
+          "cardDot0",
+          "cardLabel0"
+        ]
       },
-      "barCell2": {
-        "type": "Section",
-        "props": { "variant": "muted", "rounded": "sm" }
+      "cardChevron0": {
+        "type": "Icon",
+        "props": {
+          "name": "ChevronRight",
+          "size": "sm",
+          "tone": "muted"
+        }
       },
-      "barCell3": {
+      "cardDetail0": {
         "type": "Section",
-        "props": { "variant": "muted", "rounded": "sm" }
+        "props": {
+          "variant": "bordered",
+          "inset": true
+        },
+        "visible": {
+          "$item": "number",
+          "eq": {
+            "$state": "/ui/ghExpanded"
+          }
+        },
+        "children": [
+          "detailLoading0",
+          "detailBody0"
+        ]
       },
-      "barCell4": {
-        "type": "Section",
-        "props": { "variant": "muted", "rounded": "sm" }
+      "detailLoading0": {
+        "type": "Caption",
+        "props": {
+          "text": "Loading…"
+        },
+        "visible": {
+          "$state": "/ui/ghLoading"
+        }
       },
-      "barCell5": {
+      "detailBody0": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/ghBody"
+          },
+          "size": "sm",
+          "preserveLines": true
+        },
+        "visible": {
+          "$state": "/ui/ghLoading",
+          "not": true
+        }
+      },
+      "col1": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/ui/board/columns/1"
+        },
+        "children": [
+          "colHead1",
+          "colList1"
+        ]
+      },
+      "colHead1": {
         "type": "Section",
-        "props": { "variant": "muted", "rounded": "sm" }
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "colHeadRow1"
+        ]
+      },
+      "colHeadRow1": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "colTitle1",
+          "colCount1"
+        ]
+      },
+      "colTitle1": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/board/columns/1/label"
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "colCount1": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} features",
+              "n": {
+                "$state": "/ui/board/columns/1/count"
+              }
+            }
+          },
+          "tone": "muted",
+          "variant": "soft"
+        }
+      },
+      "colList1": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "statePath": "/ui/board/columns/1/items",
+          "key": "id"
+        },
+        "children": [
+          "itemBlock1"
+        ]
+      },
+      "itemBlock1": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "cardRow1",
+          "cardDetail1"
+        ]
+      },
+      "cardRow1": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "on": {
+          "click": {
+            "action": "expand_github_item",
+            "params": {
+              "owner": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "owner"
+                  }
+                }
+              },
+              "repo": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "repo"
+                  }
+                }
+              },
+              "number": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "children": [
+          "cardRowMain1",
+          "cardChevron1"
+        ]
+      },
+      "cardDot1": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$item": "statusTone"
+          },
+          "size": "sm"
+        }
+      },
+      "cardLabel1": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "label"
+          },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "cardRowMain1": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "grow": true
+        },
+        "children": [
+          "cardDot1",
+          "cardLabel1"
+        ]
+      },
+      "cardChevron1": {
+        "type": "Icon",
+        "props": {
+          "name": "ChevronRight",
+          "size": "sm",
+          "tone": "muted"
+        }
+      },
+      "cardDetail1": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered",
+          "inset": true
+        },
+        "visible": {
+          "$item": "number",
+          "eq": {
+            "$state": "/ui/ghExpanded"
+          }
+        },
+        "children": [
+          "detailLoading1",
+          "detailBody1"
+        ]
+      },
+      "detailLoading1": {
+        "type": "Caption",
+        "props": {
+          "text": "Loading…"
+        },
+        "visible": {
+          "$state": "/ui/ghLoading"
+        }
+      },
+      "detailBody1": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/ghBody"
+          },
+          "size": "sm",
+          "preserveLines": true
+        },
+        "visible": {
+          "$state": "/ui/ghLoading",
+          "not": true
+        }
+      },
+      "col2": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/ui/board/columns/2"
+        },
+        "children": [
+          "colHead2",
+          "colList2"
+        ]
+      },
+      "colHead2": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "colHeadRow2"
+        ]
+      },
+      "colHeadRow2": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "colTitle2",
+          "colCount2"
+        ]
+      },
+      "colTitle2": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/board/columns/2/label"
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "colCount2": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} features",
+              "n": {
+                "$state": "/ui/board/columns/2/count"
+              }
+            }
+          },
+          "tone": "muted",
+          "variant": "soft"
+        }
+      },
+      "colList2": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "statePath": "/ui/board/columns/2/items",
+          "key": "id"
+        },
+        "children": [
+          "itemBlock2"
+        ]
+      },
+      "itemBlock2": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "cardRow2",
+          "cardDetail2"
+        ]
+      },
+      "cardRow2": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "on": {
+          "click": {
+            "action": "expand_github_item",
+            "params": {
+              "owner": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "owner"
+                  }
+                }
+              },
+              "repo": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "repo"
+                  }
+                }
+              },
+              "number": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "children": [
+          "cardRowMain2",
+          "cardChevron2"
+        ]
+      },
+      "cardDot2": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$item": "statusTone"
+          },
+          "size": "sm"
+        }
+      },
+      "cardLabel2": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "label"
+          },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "cardRowMain2": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "grow": true
+        },
+        "children": [
+          "cardDot2",
+          "cardLabel2"
+        ]
+      },
+      "cardChevron2": {
+        "type": "Icon",
+        "props": {
+          "name": "ChevronRight",
+          "size": "sm",
+          "tone": "muted"
+        }
+      },
+      "cardDetail2": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered",
+          "inset": true
+        },
+        "visible": {
+          "$item": "number",
+          "eq": {
+            "$state": "/ui/ghExpanded"
+          }
+        },
+        "children": [
+          "detailLoading2",
+          "detailBody2"
+        ]
+      },
+      "detailLoading2": {
+        "type": "Caption",
+        "props": {
+          "text": "Loading…"
+        },
+        "visible": {
+          "$state": "/ui/ghLoading"
+        }
+      },
+      "detailBody2": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/ghBody"
+          },
+          "size": "sm",
+          "preserveLines": true
+        },
+        "visible": {
+          "$state": "/ui/ghLoading",
+          "not": true
+        }
+      },
+      "col3": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/ui/board/columns/3"
+        },
+        "children": [
+          "colHead3",
+          "colList3"
+        ]
+      },
+      "colHead3": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "colHeadRow3"
+        ]
+      },
+      "colHeadRow3": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "colTitle3",
+          "colCount3"
+        ]
+      },
+      "colTitle3": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/board/columns/3/label"
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "colCount3": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} features",
+              "n": {
+                "$state": "/ui/board/columns/3/count"
+              }
+            }
+          },
+          "tone": "muted",
+          "variant": "soft"
+        }
+      },
+      "colList3": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "statePath": "/ui/board/columns/3/items",
+          "key": "id"
+        },
+        "children": [
+          "itemBlock3"
+        ]
+      },
+      "itemBlock3": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "cardRow3",
+          "cardDetail3"
+        ]
+      },
+      "cardRow3": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "on": {
+          "click": {
+            "action": "expand_github_item",
+            "params": {
+              "owner": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "owner"
+                  }
+                }
+              },
+              "repo": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "repo"
+                  }
+                }
+              },
+              "number": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "children": [
+          "cardRowMain3",
+          "cardChevron3"
+        ]
+      },
+      "cardDot3": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$item": "statusTone"
+          },
+          "size": "sm"
+        }
+      },
+      "cardLabel3": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "label"
+          },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "cardRowMain3": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "grow": true
+        },
+        "children": [
+          "cardDot3",
+          "cardLabel3"
+        ]
+      },
+      "cardChevron3": {
+        "type": "Icon",
+        "props": {
+          "name": "ChevronRight",
+          "size": "sm",
+          "tone": "muted"
+        }
+      },
+      "cardDetail3": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered",
+          "inset": true
+        },
+        "visible": {
+          "$item": "number",
+          "eq": {
+            "$state": "/ui/ghExpanded"
+          }
+        },
+        "children": [
+          "detailLoading3",
+          "detailBody3"
+        ]
+      },
+      "detailLoading3": {
+        "type": "Caption",
+        "props": {
+          "text": "Loading…"
+        },
+        "visible": {
+          "$state": "/ui/ghLoading"
+        }
+      },
+      "detailBody3": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/ghBody"
+          },
+          "size": "sm",
+          "preserveLines": true
+        },
+        "visible": {
+          "$state": "/ui/ghLoading",
+          "not": true
+        }
+      },
+      "col4": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/ui/board/columns/4"
+        },
+        "children": [
+          "colHead4",
+          "colList4"
+        ]
+      },
+      "colHead4": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "colHeadRow4"
+        ]
+      },
+      "colHeadRow4": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "colTitle4",
+          "colCount4"
+        ]
+      },
+      "colTitle4": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/board/columns/4/label"
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "colCount4": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} features",
+              "n": {
+                "$state": "/ui/board/columns/4/count"
+              }
+            }
+          },
+          "tone": "muted",
+          "variant": "soft"
+        }
+      },
+      "colList4": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "statePath": "/ui/board/columns/4/items",
+          "key": "id"
+        },
+        "children": [
+          "itemBlock4"
+        ]
+      },
+      "itemBlock4": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "cardRow4",
+          "cardDetail4"
+        ]
+      },
+      "cardRow4": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "on": {
+          "click": {
+            "action": "expand_github_item",
+            "params": {
+              "owner": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "owner"
+                  }
+                }
+              },
+              "repo": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "repo"
+                  }
+                }
+              },
+              "number": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "children": [
+          "cardRowMain4",
+          "cardChevron4"
+        ]
+      },
+      "cardDot4": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$item": "statusTone"
+          },
+          "size": "sm"
+        }
+      },
+      "cardLabel4": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "label"
+          },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "cardRowMain4": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "grow": true
+        },
+        "children": [
+          "cardDot4",
+          "cardLabel4"
+        ]
+      },
+      "cardChevron4": {
+        "type": "Icon",
+        "props": {
+          "name": "ChevronRight",
+          "size": "sm",
+          "tone": "muted"
+        }
+      },
+      "cardDetail4": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered",
+          "inset": true
+        },
+        "visible": {
+          "$item": "number",
+          "eq": {
+            "$state": "/ui/ghExpanded"
+          }
+        },
+        "children": [
+          "detailLoading4",
+          "detailBody4"
+        ]
+      },
+      "detailLoading4": {
+        "type": "Caption",
+        "props": {
+          "text": "Loading…"
+        },
+        "visible": {
+          "$state": "/ui/ghLoading"
+        }
+      },
+      "detailBody4": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/ghBody"
+          },
+          "size": "sm",
+          "preserveLines": true
+        },
+        "visible": {
+          "$state": "/ui/ghLoading",
+          "not": true
+        }
+      },
+      "col5": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/ui/board/columns/5"
+        },
+        "children": [
+          "colHead5",
+          "colList5"
+        ]
+      },
+      "colHead5": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "colHeadRow5"
+        ]
+      },
+      "colHeadRow5": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "colTitle5",
+          "colCount5"
+        ]
+      },
+      "colTitle5": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/board/columns/5/label"
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "colCount5": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} features",
+              "n": {
+                "$state": "/ui/board/columns/5/count"
+              }
+            }
+          },
+          "tone": "muted",
+          "variant": "soft"
+        }
+      },
+      "colList5": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "statePath": "/ui/board/columns/5/items",
+          "key": "id"
+        },
+        "children": [
+          "itemBlock5"
+        ]
+      },
+      "itemBlock5": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "cardRow5",
+          "cardDetail5"
+        ]
+      },
+      "cardRow5": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "on": {
+          "click": {
+            "action": "expand_github_item",
+            "params": {
+              "owner": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "owner"
+                  }
+                }
+              },
+              "repo": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "repo"
+                  }
+                }
+              },
+              "number": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "children": [
+          "cardRowMain5",
+          "cardChevron5"
+        ]
+      },
+      "cardDot5": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$item": "statusTone"
+          },
+          "size": "sm"
+        }
+      },
+      "cardLabel5": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "label"
+          },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "cardRowMain5": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "grow": true
+        },
+        "children": [
+          "cardDot5",
+          "cardLabel5"
+        ]
+      },
+      "cardChevron5": {
+        "type": "Icon",
+        "props": {
+          "name": "ChevronRight",
+          "size": "sm",
+          "tone": "muted"
+        }
+      },
+      "cardDetail5": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered",
+          "inset": true
+        },
+        "visible": {
+          "$item": "number",
+          "eq": {
+            "$state": "/ui/ghExpanded"
+          }
+        },
+        "children": [
+          "detailLoading5",
+          "detailBody5"
+        ]
+      },
+      "detailLoading5": {
+        "type": "Caption",
+        "props": {
+          "text": "Loading…"
+        },
+        "visible": {
+          "$state": "/ui/ghLoading"
+        }
+      },
+      "detailBody5": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/ghBody"
+          },
+          "size": "sm",
+          "preserveLines": true
+        },
+        "visible": {
+          "$state": "/ui/ghLoading",
+          "not": true
+        }
       }
     }
   }

@@ -222,6 +222,24 @@ const pnl_get: ComputedFunction = (args) => {
       r.data != null && typeof r.data === 'object' && !Array.isArray(r.data)) {
     r = r.data as Record<string, unknown>;
   }
+  // Handle /Report/ProfitAndLossSummary — flat AccountsBreakdown array.
+  // Standard MYOB account number prefixes: 4-/8- = Income, 5-/6-/9- = Expenses.
+  const accounts = Array.isArray(r.AccountsBreakdown)
+    ? (r.AccountsBreakdown as Record<string, unknown>[])
+    : [];
+  if (accounts.length > 0) {
+    const did = (a: Record<string, unknown>) =>
+      String((a.Account as Record<string, unknown>)?.DisplayID ?? '');
+    const sum = (arr: Record<string, unknown>[]) =>
+      arr.reduce((s, a) => s + Number(a.AccountTotal ?? 0), 0);
+    const income   = accounts.filter(a => /^[48]-/.test(did(a)));
+    const cos      = accounts.filter(a => /^5-/.test(did(a)));
+    const expenses = accounts.filter(a => /^[569]-/.test(did(a)));
+    if (key === 'income')      return sum(income);
+    if (key === 'expenses')    return sum(expenses);
+    if (key === 'grossProfit') return sum(income) - sum(cos);
+    if (key === 'netProfit')   return sum(income) - sum(expenses);
+  }
   // Try known top-level summary fields
   const candidates: Record<string, string[]> = {
     income:      ['IncomeTotal', 'TotalIncome'],
@@ -289,6 +307,23 @@ const pnl_entries: ComputedFunction = (args) => {
   const r = args.value as Record<string, unknown>;
   const section = String(args.section ?? 'income');
   if (!r) return [];
+  // Handle AccountsBreakdown format from /Report/ProfitAndLossSummary
+  const accounts = Array.isArray(r.AccountsBreakdown)
+    ? (r.AccountsBreakdown as Record<string, unknown>[])
+    : [];
+  if (accounts.length > 0) {
+    const getDid = (a: Record<string, unknown>) =>
+      String((a.Account as Record<string, unknown>)?.DisplayID ?? '');
+    const isIncome  = (a: Record<string, unknown>) => /^[48]-/.test(getDid(a));
+    const isExpense = (a: Record<string, unknown>) => /^[569]-/.test(getDid(a));
+    return accounts
+      .filter(section === 'income' ? isIncome : isExpense)
+      .map(a => ({
+        name: String((a.Account as Record<string, unknown>)?.Name ?? 'Other'),
+        amount: Math.abs(Number(a.AccountTotal ?? 0)),
+      }))
+      .filter(e => e.amount > 0);
+  }
   const sections = Array.isArray(r.Sections)
     ? (r.Sections as Record<string, unknown>[])
     : [];
@@ -483,6 +518,159 @@ const is_overdue: ComputedFunction = (args) => {
   return due < Date.now() ? 'destructive' : 'default';
 };
 
+// ── monthly_totals ────────────────────────────────────────────────────
+// Groups invoice/bill Items by issue month (Date field) and sums TotalAmount.
+// Args: { value: Item[] | { Items: Item[] }, months: string[] }  (months: "YYYY-MM")
+// Returns: number[] matching the months array order.
+const monthly_totals: ComputedFunction = (args) => {
+  const raw = args.value as Record<string, unknown> | unknown[];
+  const items: Record<string, unknown>[] = Array.isArray(raw)
+    ? (raw as Record<string, unknown>[])
+    : Array.isArray((raw as Record<string, unknown>)?.Items)
+      ? ((raw as Record<string, unknown>).Items as Record<string, unknown>[])
+      : [];
+  const months = Array.isArray(args.months) ? (args.months as string[]) : [];
+  const parse = (s: string) => {
+    const m = s.match(/\/Date\((-?\d+)(?:[+-]\d{4})?\)\//);
+    return m ? Number(m[1]) : new Date(s).getTime();
+  };
+  const totals: Record<string, number> = {};
+  for (const item of items) {
+    const ts = parse(String(item.Date ?? ''));
+    if (!isFinite(ts)) continue;
+    const d = new Date(ts);
+    const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    totals[ym] = (totals[ym] ?? 0) + Number(item.TotalAmount ?? 0);
+  }
+  return months.map(m => Math.round((totals[m] ?? 0) * 100) / 100);
+};
+
+// MYOB Purchase Bill types — anything else (e.g. InventoryAdjustment) is treated as an adjustment.
+const PURCHASE_BILL_TYPES = new Set(['Item', 'Miscellaneous', 'Professional', 'Service']);
+
+// ── txn_count ─────────────────────────────────────────────────────────
+// Returns count (as string) of invoice/bill Items with optional filters.
+// filter: "all" | "open" | "closed" | "overdue"  (MYOB bills use "Paid" for closed)
+// from_date / to_date: YYYY-MM-DD — scopes to item Date field
+// record_type: "bill" | "adjustment" — splits by MYOB Type field
+const txn_count: ComputedFunction = (args) => {
+  const raw = args.value as Record<string, unknown> | unknown[];
+  const items: Record<string, unknown>[] = Array.isArray(raw)
+    ? (raw as Record<string, unknown>[])
+    : Array.isArray((raw as Record<string, unknown>)?.Items)
+      ? ((raw as Record<string, unknown>).Items as Record<string, unknown>[])
+      : [];
+  const filter = String(args.filter ?? 'all').toLowerCase();
+  const recordType = args.record_type ? String(args.record_type) : null;
+  const fromMs = args.from_date ? new Date(String(args.from_date)).getTime() : null;
+  const toMs = args.to_date
+    ? (() => { const d = new Date(String(args.to_date)); d.setDate(d.getDate() + 1); return d.getTime(); })()
+    : null;
+  const now = Date.now();
+  const parse = (s: string) => {
+    const m = s.match(/\/Date\((-?\d+)(?:[+-]\d{4})?\)\//);
+    return m ? Number(m[1]) : new Date(s).getTime();
+  };
+  return String(items.filter(item => {
+    if (recordType === 'bill' && !PURCHASE_BILL_TYPES.has(String(item.Type ?? ''))) return false;
+    if (recordType === 'adjustment' && PURCHASE_BILL_TYPES.has(String(item.Type ?? ''))) return false;
+    if (fromMs !== null || toMs !== null) {
+      const itemMs = parse(String(item.Date ?? ''));
+      if (!isFinite(itemMs)) return false;
+      if (fromMs !== null && itemMs < fromMs) return false;
+      if (toMs !== null && itemMs >= toMs) return false;
+    }
+    const status = String(item.Status ?? '').toLowerCase();
+    const terms = item.Terms as Record<string, unknown> | undefined;
+    const dueDateRaw = String(terms?.DueDate ?? item.DueDate ?? '');
+    const dueMs = parse(dueDateRaw);
+    const overdue = isFinite(dueMs) && dueMs < now && status === 'open';
+    return filter === 'all'
+      || (filter === 'open' && status === 'open')
+      || (filter === 'closed' && (status === 'closed' || status === 'paid'))
+      || (filter === 'overdue' && overdue);
+  }).length);
+};
+
+// ── txn_amount ────────────────────────────────────────────────────────
+// Returns formatted AUD total for invoice/bill Items with optional filters.
+// Uses BalanceDueAmount for open/overdue; TotalAmount otherwise.
+// from_date / to_date: YYYY-MM-DD — scopes to item Date field
+// record_type: "bill" | "adjustment" — splits by MYOB Type field
+const txn_amount: ComputedFunction = (args) => {
+  const raw = args.value as Record<string, unknown> | unknown[];
+  const items: Record<string, unknown>[] = Array.isArray(raw)
+    ? (raw as Record<string, unknown>[])
+    : Array.isArray((raw as Record<string, unknown>)?.Items)
+      ? ((raw as Record<string, unknown>).Items as Record<string, unknown>[])
+      : [];
+  const filter = String(args.filter ?? 'all').toLowerCase();
+  const recordType = args.record_type ? String(args.record_type) : null;
+  const fromMs = args.from_date ? new Date(String(args.from_date)).getTime() : null;
+  const toMs = args.to_date
+    ? (() => { const d = new Date(String(args.to_date)); d.setDate(d.getDate() + 1); return d.getTime(); })()
+    : null;
+  const now = Date.now();
+  const parse = (s: string) => {
+    const m = s.match(/\/Date\((-?\d+)(?:[+-]\d{4})?\)\//);
+    return m ? Number(m[1]) : new Date(s).getTime();
+  };
+  const useBalance = filter === 'open' || filter === 'overdue';
+  const total = items
+    .filter(item => {
+      if (recordType === 'bill' && !PURCHASE_BILL_TYPES.has(String(item.Type ?? ''))) return false;
+      if (recordType === 'adjustment' && PURCHASE_BILL_TYPES.has(String(item.Type ?? ''))) return false;
+      if (fromMs !== null || toMs !== null) {
+        const itemMs = parse(String(item.Date ?? ''));
+        if (!isFinite(itemMs)) return false;
+        if (fromMs !== null && itemMs < fromMs) return false;
+        if (toMs !== null && itemMs >= toMs) return false;
+      }
+      const status = String(item.Status ?? '').toLowerCase();
+      const terms = item.Terms as Record<string, unknown> | undefined;
+      const dueDateRaw = String(terms?.DueDate ?? item.DueDate ?? '');
+      const dueMs = parse(dueDateRaw);
+      const overdue = isFinite(dueMs) && dueMs < now && status === 'open';
+      return filter === 'all'
+        || (filter === 'open' && status === 'open')
+        || (filter === 'closed' && (status === 'closed' || status === 'paid'))
+        || (filter === 'overdue' && overdue);
+    })
+    .reduce((sum, item) => {
+      return sum + Number(useBalance
+        ? (item.BalanceDueAmount ?? item.TotalAmount ?? 0)
+        : (item.TotalAmount ?? 0));
+    }, 0);
+  return 'A$' + new Intl.NumberFormat('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(total);
+};
+
+// ── txn_truncated ──────────────────────────────────────────────────────
+// Returns true when the Items array is at the 1000-record page cap, meaning
+// the API response was truncated and totals/counts may be understated.
+const txn_truncated: ComputedFunction = (args) => {
+  const raw = args.value as Record<string, unknown> | unknown[];
+  const items: Record<string, unknown>[] = Array.isArray(raw)
+    ? (raw as Record<string, unknown>[])
+    : Array.isArray((raw as Record<string, unknown>)?.Items)
+      ? ((raw as Record<string, unknown>).Items as Record<string, unknown>[])
+      : [];
+  return items.length >= 1000;
+};
+
+// ── net_monthly ────────────────────────────────────────────────────────
+// Subtracts expense monthly totals from income monthly totals element-wise.
+// Args: { income: number[], expenses: number[] }
+const net_monthly: ComputedFunction = (args) => {
+  const inc = Array.isArray(args.income) ? (args.income as number[]) : [];
+  const exp = Array.isArray(args.expenses) ? (args.expenses as number[]) : [];
+  const len = Math.max(inc.length, exp.length);
+  return Array.from({ length: len }, (_, i) => (inc[i] ?? 0) - (exp[i] ?? 0));
+};
+
+// ── bool_not ───────────────────────────────────────────────────────────
+// Negates a boolean — used for collapsible section toggle visibility.
+const bool_not: ComputedFunction = (args) => !args.value;
+
 const elements: PluginElementsModule = {
   slug: 'myob-accounting',
   functions: {
@@ -503,6 +691,12 @@ const elements: PluginElementsModule = {
     flatten_invoices,
     flatten_bills,
     is_overdue,
+    monthly_totals,
+    txn_count,
+    txn_amount,
+    txn_truncated,
+    net_monthly,
+    bool_not,
   },
 };
 

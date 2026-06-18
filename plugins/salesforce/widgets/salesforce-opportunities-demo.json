@@ -1,0 +1,199 @@
+{
+  "id": "salesforce-opportunities-demo",
+  "title": "Recent Opportunities (Demo)",
+  "description": "STATIC DEMO — hardcoded sample data, no connector required. Switch to salesforce-open-opportunities once Salesforce OAuth is configured.",
+  "category": "sales",
+  "tags": ["salesforce", "crm", "opportunities", "pipeline", "sales", "demo"],
+  "keywords": ["opportunity", "opportunities", "deal", "deals", "pipeline", "stage", "probability", "salesforce", "crm", "demo"],
+  "connectorsUsed": ["salesforce"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 8 },
+    "min":       { "colSpan": 4, "rowSpan": 5 },
+    "max":       { "colSpan": 10, "rowSpan": 12 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "colHeader", "divider", "scrollBody"]
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "BarChart2", "tone": "accent", "size": "sm" } },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title":   { "type": "Heading", "props": { "text": "Recent Opportunities", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Salesforce" } },
+
+      "colHeader": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["colOpp", "colAmt"]
+      },
+      "colOpp": { "type": "Caption", "props": { "text": "OPPORTUNITY" } },
+      "colAmt": { "type": "Caption", "props": { "text": "AMOUNT / STAGE" } },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "scrollBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["rows"]
+      },
+
+      "rows": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["opp1", "rd1", "opp2", "rd2", "opp3", "rd3", "opp4", "rd4", "opp5", "rd5", "opp6", "rd6", "opp7", "rd7", "opp8", "rd8", "opp9", "rd9", "opp10"]
+      },
+
+      "rd1": { "type": "Divider", "props": {} },
+      "rd2": { "type": "Divider", "props": {} },
+      "rd3": { "type": "Divider", "props": {} },
+      "rd4": { "type": "Divider", "props": {} },
+      "rd5": { "type": "Divider", "props": {} },
+      "rd6": { "type": "Divider", "props": {} },
+      "rd7": { "type": "Divider", "props": {} },
+      "rd8": { "type": "Divider", "props": {} },
+      "rd9": { "type": "Divider", "props": {} },
+
+      "opp1": { "type": "Row", "props": { "justify": "between", "align": "start" }, "children": ["opp1Left", "opp1Right"] },
+      "opp1Left": { "type": "Stack", "props": { "gap": "xs", "grow": true }, "children": ["opp1AvatarRow", "opp1Bar"] },
+      "opp1AvatarRow": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["opp1Av", "opp1Info"] },
+      "opp1Av":   { "type": "Avatar", "props": { "initials": "AC", "size": "md" } },
+      "opp1Info": { "type": "Stack", "props": { "gap": "none" }, "children": ["opp1Name", "opp1Acct"] },
+      "opp1Name": { "type": "Text", "props": { "text": "Acme Corp - New Deal", "size": "sm", "weight": "medium", "truncate": true } },
+      "opp1Acct": { "type": "Text", "props": { "text": "Acme Corporation", "size": "xs", "tone": "muted", "truncate": true } },
+      "opp1Right": { "type": "Stack", "props": { "gap": "none", "align": "end" }, "children": ["opp1Amt", "opp1Meta"] },
+      "opp1Amt":  { "type": "Text", "props": { "text": "$750,000", "size": "sm", "weight": "semibold" } },
+      "opp1Meta": { "type": "Text", "props": { "text": "Negotiation · 75%", "size": "xs", "tone": "muted" } },
+      "opp1Bar":  { "type": "BarChart", "props": { "data": [{ "label": "Negotiation", "pct": 75 }], "labelField": "label", "valueField": "pct", "tone": "success", "sort": "none" } },
+
+      "opp2": { "type": "Row", "props": { "justify": "between", "align": "start" }, "children": ["opp2Left", "opp2Right"] },
+      "opp2Left": { "type": "Stack", "props": { "gap": "xs", "grow": true }, "children": ["opp2AvatarRow", "opp2Bar"] },
+      "opp2AvatarRow": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["opp2Av", "opp2Info"] },
+      "opp2Av":   { "type": "Avatar", "props": { "initials": "GM", "size": "md" } },
+      "opp2Info": { "type": "Stack", "props": { "gap": "none" }, "children": ["opp2Name", "opp2Acct"] },
+      "opp2Name": { "type": "Text", "props": { "text": "Global Media - Upgrade", "size": "sm", "weight": "medium", "truncate": true } },
+      "opp2Acct": { "type": "Text", "props": { "text": "Global Media", "size": "xs", "tone": "muted", "truncate": true } },
+      "opp2Right": { "type": "Stack", "props": { "gap": "none", "align": "end" }, "children": ["opp2Amt", "opp2Meta"] },
+      "opp2Amt":  { "type": "Text", "props": { "text": "$450,000", "size": "sm", "weight": "semibold" } },
+      "opp2Meta": { "type": "Text", "props": { "text": "Proposal · 50%", "size": "xs", "tone": "muted" } },
+      "opp2Bar":  { "type": "BarChart", "props": { "data": [{ "label": "Proposal", "pct": 50 }], "labelField": "label", "valueField": "pct", "tone": "success", "sort": "none" } },
+
+      "opp3": { "type": "Row", "props": { "justify": "between", "align": "start" }, "children": ["opp3Left", "opp3Right"] },
+      "opp3Left": { "type": "Stack", "props": { "gap": "xs", "grow": true }, "children": ["opp3AvatarRow", "opp3Bar"] },
+      "opp3AvatarRow": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["opp3Av", "opp3Info"] },
+      "opp3Av":   { "type": "Avatar", "props": { "initials": "GI", "size": "md" } },
+      "opp3Info": { "type": "Stack", "props": { "gap": "none" }, "children": ["opp3Name", "opp3Acct"] },
+      "opp3Name": { "type": "Text", "props": { "text": "Greenfield Inc. - Renewal", "size": "sm", "weight": "medium", "truncate": true } },
+      "opp3Acct": { "type": "Text", "props": { "text": "Greenfield Inc.", "size": "xs", "tone": "muted", "truncate": true } },
+      "opp3Right": { "type": "Stack", "props": { "gap": "none", "align": "end" }, "children": ["opp3Amt", "opp3Meta"] },
+      "opp3Amt":  { "type": "Text", "props": { "text": "$200,000", "size": "sm", "weight": "semibold" } },
+      "opp3Meta": { "type": "Text", "props": { "text": "Qualification · 25%", "size": "xs", "tone": "muted" } },
+      "opp3Bar":  { "type": "BarChart", "props": { "data": [{ "label": "Qualification", "pct": 25 }], "labelField": "label", "valueField": "pct", "tone": "success", "sort": "none" } },
+
+      "opp4": { "type": "Row", "props": { "justify": "between", "align": "start" }, "children": ["opp4Left", "opp4Right"] },
+      "opp4Left": { "type": "Stack", "props": { "gap": "xs", "grow": true }, "children": ["opp4AvatarRow", "opp4Bar"] },
+      "opp4AvatarRow": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["opp4Av", "opp4Info"] },
+      "opp4Av":   { "type": "Avatar", "props": { "initials": "SI", "size": "md" } },
+      "opp4Info": { "type": "Stack", "props": { "gap": "none" }, "children": ["opp4Name", "opp4Acct"] },
+      "opp4Name": { "type": "Text", "props": { "text": "StartUp.io - New Business", "size": "sm", "weight": "medium", "truncate": true } },
+      "opp4Acct": { "type": "Text", "props": { "text": "StartUp.io", "size": "xs", "tone": "muted", "truncate": true } },
+      "opp4Right": { "type": "Stack", "props": { "gap": "none", "align": "end" }, "children": ["opp4Amt", "opp4Meta"] },
+      "opp4Amt":  { "type": "Text", "props": { "text": "$150,000", "size": "sm", "weight": "semibold" } },
+      "opp4Meta": { "type": "Text", "props": { "text": "Discovery · 10%", "size": "xs", "tone": "muted" } },
+      "opp4Bar":  { "type": "BarChart", "props": { "data": [{ "label": "Discovery", "pct": 10 }], "labelField": "label", "valueField": "pct", "tone": "success", "sort": "none" } },
+
+      "opp5": { "type": "Row", "props": { "justify": "between", "align": "start" }, "children": ["opp5Left", "opp5Right"] },
+      "opp5Left": { "type": "Stack", "props": { "gap": "xs", "grow": true }, "children": ["opp5AvatarRow", "opp5Bar"] },
+      "opp5AvatarRow": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["opp5Av", "opp5Info"] },
+      "opp5Av":   { "type": "Avatar", "props": { "initials": "MH", "size": "md" } },
+      "opp5Info": { "type": "Stack", "props": { "gap": "none" }, "children": ["opp5Name", "opp5Acct"] },
+      "opp5Name": { "type": "Text", "props": { "text": "Meridian Health - Expansion", "size": "sm", "weight": "medium", "truncate": true } },
+      "opp5Acct": { "type": "Text", "props": { "text": "Meridian Health", "size": "xs", "tone": "muted", "truncate": true } },
+      "opp5Right": { "type": "Stack", "props": { "gap": "none", "align": "end" }, "children": ["opp5Amt", "opp5Meta"] },
+      "opp5Amt":  { "type": "Text", "props": { "text": "$500,000", "size": "sm", "weight": "semibold" } },
+      "opp5Meta": { "type": "Text", "props": { "text": "Negotiation · 70%", "size": "xs", "tone": "muted" } },
+      "opp5Bar":  { "type": "BarChart", "props": { "data": [{ "label": "Negotiation", "pct": 70 }], "labelField": "label", "valueField": "pct", "tone": "success", "sort": "none" } },
+
+      "opp6": { "type": "Row", "props": { "justify": "between", "align": "start" }, "children": ["opp6Left", "opp6Right"] },
+      "opp6Left": { "type": "Stack", "props": { "gap": "xs", "grow": true }, "children": ["opp6AvatarRow", "opp6Bar"] },
+      "opp6AvatarRow": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["opp6Av", "opp6Info"] },
+      "opp6Av":   { "type": "Avatar", "props": { "initials": "BR", "size": "md" } },
+      "opp6Info": { "type": "Stack", "props": { "gap": "none" }, "children": ["opp6Name", "opp6Acct"] },
+      "opp6Name": { "type": "Text", "props": { "text": "Blue Ridge - Enterprise", "size": "sm", "weight": "medium", "truncate": true } },
+      "opp6Acct": { "type": "Text", "props": { "text": "Blue Ridge Financial", "size": "xs", "tone": "muted", "truncate": true } },
+      "opp6Right": { "type": "Stack", "props": { "gap": "none", "align": "end" }, "children": ["opp6Amt", "opp6Meta"] },
+      "opp6Amt":  { "type": "Text", "props": { "text": "$320,000", "size": "sm", "weight": "semibold" } },
+      "opp6Meta": { "type": "Text", "props": { "text": "Negotiation · 80%", "size": "xs", "tone": "muted" } },
+      "opp6Bar":  { "type": "BarChart", "props": { "data": [{ "label": "Negotiation", "pct": 80 }], "labelField": "label", "valueField": "pct", "tone": "success", "sort": "none" } },
+
+      "opp7": { "type": "Row", "props": { "justify": "between", "align": "start" }, "children": ["opp7Left", "opp7Right"] },
+      "opp7Left": { "type": "Stack", "props": { "gap": "xs", "grow": true }, "children": ["opp7AvatarRow", "opp7Bar"] },
+      "opp7AvatarRow": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["opp7Av", "opp7Info"] },
+      "opp7Av":   { "type": "Avatar", "props": { "initials": "NS", "size": "md" } },
+      "opp7Info": { "type": "Stack", "props": { "gap": "none" }, "children": ["opp7Name", "opp7Acct"] },
+      "opp7Name": { "type": "Text", "props": { "text": "Nexus Systems - Platform", "size": "sm", "weight": "medium", "truncate": true } },
+      "opp7Acct": { "type": "Text", "props": { "text": "Nexus Systems", "size": "xs", "tone": "muted", "truncate": true } },
+      "opp7Right": { "type": "Stack", "props": { "gap": "none", "align": "end" }, "children": ["opp7Amt", "opp7Meta"] },
+      "opp7Amt":  { "type": "Text", "props": { "text": "$180,000", "size": "sm", "weight": "semibold" } },
+      "opp7Meta": { "type": "Text", "props": { "text": "Proposal · 45%", "size": "xs", "tone": "muted" } },
+      "opp7Bar":  { "type": "BarChart", "props": { "data": [{ "label": "Proposal", "pct": 45 }], "labelField": "label", "valueField": "pct", "tone": "success", "sort": "none" } },
+
+      "opp8": { "type": "Row", "props": { "justify": "between", "align": "start" }, "children": ["opp8Left", "opp8Right"] },
+      "opp8Left": { "type": "Stack", "props": { "gap": "xs", "grow": true }, "children": ["opp8AvatarRow", "opp8Bar"] },
+      "opp8AvatarRow": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["opp8Av", "opp8Info"] },
+      "opp8Av":   { "type": "Avatar", "props": { "initials": "CR", "size": "md" } },
+      "opp8Info": { "type": "Stack", "props": { "gap": "none" }, "children": ["opp8Name", "opp8Acct"] },
+      "opp8Name": { "type": "Text", "props": { "text": "Coastal Retail - Integration", "size": "sm", "weight": "medium", "truncate": true } },
+      "opp8Acct": { "type": "Text", "props": { "text": "Coastal Retail Group", "size": "xs", "tone": "muted", "truncate": true } },
+      "opp8Right": { "type": "Stack", "props": { "gap": "none", "align": "end" }, "children": ["opp8Amt", "opp8Meta"] },
+      "opp8Amt":  { "type": "Text", "props": { "text": "$90,000", "size": "sm", "weight": "semibold" } },
+      "opp8Meta": { "type": "Text", "props": { "text": "Qualification · 30%", "size": "xs", "tone": "muted" } },
+      "opp8Bar":  { "type": "BarChart", "props": { "data": [{ "label": "Qualification", "pct": 30 }], "labelField": "label", "valueField": "pct", "tone": "success", "sort": "none" } },
+
+      "opp9": { "type": "Row", "props": { "justify": "between", "align": "start" }, "children": ["opp9Left", "opp9Right"] },
+      "opp9Left": { "type": "Stack", "props": { "gap": "xs", "grow": true }, "children": ["opp9AvatarRow", "opp9Bar"] },
+      "opp9AvatarRow": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["opp9Av", "opp9Info"] },
+      "opp9Av":   { "type": "Avatar", "props": { "initials": "PL", "size": "md" } },
+      "opp9Info": { "type": "Stack", "props": { "gap": "none" }, "children": ["opp9Name", "opp9Acct"] },
+      "opp9Name": { "type": "Text", "props": { "text": "Pacific Logistics - Renewal", "size": "sm", "weight": "medium", "truncate": true } },
+      "opp9Acct": { "type": "Text", "props": { "text": "Pacific Logistics", "size": "xs", "tone": "muted", "truncate": true } },
+      "opp9Right": { "type": "Stack", "props": { "gap": "none", "align": "end" }, "children": ["opp9Amt", "opp9Meta"] },
+      "opp9Amt":  { "type": "Text", "props": { "text": "$120,000", "size": "sm", "weight": "semibold" } },
+      "opp9Meta": { "type": "Text", "props": { "text": "Discovery · 15%", "size": "xs", "tone": "muted" } },
+      "opp9Bar":  { "type": "BarChart", "props": { "data": [{ "label": "Discovery", "pct": 15 }], "labelField": "label", "valueField": "pct", "tone": "success", "sort": "none" } },
+
+      "opp10": { "type": "Row", "props": { "justify": "between", "align": "start" }, "children": ["opp10Left", "opp10Right"] },
+      "opp10Left": { "type": "Stack", "props": { "gap": "xs", "grow": true }, "children": ["opp10AvatarRow", "opp10Bar"] },
+      "opp10AvatarRow": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["opp10Av", "opp10Info"] },
+      "opp10Av":   { "type": "Avatar", "props": { "initials": "AU", "size": "md" } },
+      "opp10Info": { "type": "Stack", "props": { "gap": "none" }, "children": ["opp10Name", "opp10Acct"] },
+      "opp10Name": { "type": "Text", "props": { "text": "Aurora Creative - New Business", "size": "sm", "weight": "medium", "truncate": true } },
+      "opp10Acct": { "type": "Text", "props": { "text": "Aurora Creative", "size": "xs", "tone": "muted", "truncate": true } },
+      "opp10Right": { "type": "Stack", "props": { "gap": "none", "align": "end" }, "children": ["opp10Amt", "opp10Meta"] },
+      "opp10Amt":  { "type": "Text", "props": { "text": "$60,000", "size": "sm", "weight": "semibold" } },
+      "opp10Meta": { "type": "Text", "props": { "text": "Proposal · 40%", "size": "xs", "tone": "muted" } },
+      "opp10Bar":  { "type": "BarChart", "props": { "data": [{ "label": "Proposal", "pct": 40 }], "labelField": "label", "valueField": "pct", "tone": "success", "sort": "none" } }
+
+    }
+  },
+  "status": "draft"
+}

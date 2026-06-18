@@ -1,0 +1,94 @@
+{
+  "id": "netsuite-ar-aging-demo",
+  "title": "AR Aging",
+  "description": "Accounts receivable aging — outstanding invoice balances bucketed by days overdue. Demo version with static data.",
+  "category": "finance",
+  "tags": ["netsuite", "oracle", "erp", "finance", "ar", "aging", "invoices", "accounts-receivable", "demo"],
+  "keywords": ["ar aging", "accounts receivable", "overdue", "invoices", "outstanding", "netsuite", "erp"],
+  "connectorsUsed": ["netsuite"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 4 },
+    "min":       { "colSpan": 4, "rowSpan": 8 },
+    "max":       { "colSpan": 10, "rowSpan": 13 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "kpiGrid", "div1", "bucketsLabel", "bucketsChart", "div2", "kvGrid"]
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "AlertCircle", "tone": "warning", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "AR Aging", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "NetSuite ERP · Outstanding invoices" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "kpiGrid": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["tileOutstanding", "tileCount"]
+      },
+
+      "tileOutstanding": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackOutstanding"] },
+      "stackOutstanding": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconOutstanding", "valOutstanding", "lblOutstanding"] },
+      "iconOutstanding": { "type": "Icon", "props": { "name": "DollarSign", "size": "sm", "tone": "warning" } },
+      "valOutstanding": { "type": "Heading", "props": { "text": "$89,200", "level": "h2", "tone": "warning" } },
+      "lblOutstanding": { "type": "Caption", "props": { "text": "Total Outstanding" } },
+
+      "tileCount": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackCount"] },
+      "stackCount": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconCount", "valCount", "lblCount"] },
+      "iconCount": { "type": "Icon", "props": { "name": "FileText", "size": "sm", "tone": "accent" } },
+      "valCount": { "type": "Heading", "props": { "text": "23", "level": "h2" } },
+      "lblCount": { "type": "Caption", "props": { "text": "Open Invoices" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "bucketsLabel": { "type": "Eyebrow", "props": { "text": "Overdue Buckets" } },
+
+      "bucketsChart": {
+        "type": "BarChart",
+        "props": {
+          "data": [
+            { "bucket": "0 – 30 days",  "amount": 42000 },
+            { "bucket": "31 – 60 days", "amount": 28500 },
+            { "bucket": "61 – 90 days", "amount": 12800 },
+            { "bucket": "90+ days",     "amount": 5900  }
+          ],
+          "labelField": "bucket",
+          "valueField": "amount",
+          "valueFormat": "currency",
+          "tone": "accent",
+          "sort": "none"
+        }
+      },
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "kvGrid": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start" },
+        "children": ["kvCurrent", "kvCritical"]
+      },
+      "kvCurrent": { "type": "KeyValue", "props": { "label": "Current (not due)", "value": "$18,400" } },
+      "kvCritical": { "type": "KeyValue", "props": { "label": "Critical (90+ days)", "value": "$5,900" } }
+
+    }
+  },
+  "status": "published"
+}

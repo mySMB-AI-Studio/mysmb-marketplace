@@ -1,0 +1,102 @@
+{
+  "id": "netsuite-open-sales-orders",
+  "title": "Open Sales Orders",
+  "description": "Live view of open sales orders — pending approval, pending fulfillment, and partially fulfilled.",
+  "category": "finance",
+  "tags": ["netsuite", "oracle", "erp", "finance", "sales-orders", "orders", "fulfillment"],
+  "keywords": ["sales orders", "open orders", "fulfillment", "pending", "netsuite", "erp"],
+  "connectorsUsed": ["netsuite"],
+  "popularity": 0,
+  "status": "published",
+  "sizing": {
+    "preferred": { "colSpan": 7, "rowSpan": 9 },
+    "min":       { "colSpan": 5, "rowSpan": 8 },
+    "max":       { "colSpan": 12, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "mcp": "netsuite",
+    "tool": "list_open_sales_orders",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "kpiGrid", "div1", "tableBody"]
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "ShoppingCart", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Open Sales Orders", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "NetSuite ERP" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "kpiGrid": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["tileCount", "tileValue"]
+      },
+
+      "tileCount": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackCount"] },
+      "stackCount": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconCount", "valCount", "lblCount"] },
+      "iconCount": { "type": "Icon", "props": { "name": "Package", "size": "sm", "tone": "accent" } },
+      "valCount": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/netsuite/list_open_sales_orders/count" } }
+      },
+      "lblCount": { "type": "Caption", "props": { "text": "Open Orders" } },
+
+      "tileValue": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackValue"] },
+      "stackValue": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconValue", "valValue", "lblValue"] },
+      "iconValue": { "type": "Icon", "props": { "name": "DollarSign", "size": "sm", "tone": "accent" } },
+      "valValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/list_open_sales_orders/total_value" } }
+          }
+        }
+      },
+      "lblValue": { "type": "Caption", "props": { "text": "Total Value" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "tableBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["ordersTable"]
+      },
+      "ordersTable": {
+        "type": "Table",
+        "props": {
+          "loading": { "$state": "/_loading/netsuite.list_open_sales_orders" },
+          "skeletonRows": 6,
+          "rows": { "$state": "/netsuite/list_open_sales_orders/orders" },
+          "columns": [
+            { "id": "order",    "header": "Order #",  "field": "order_number",  "width": 100, "priority": 1 },
+            { "id": "customer", "header": "Customer", "field": "customer_name",               "priority": 1 },
+            { "id": "amount",   "header": "Amount",   "field": "order_total",   "width": 110, "priority": 1, "format": "currency" },
+            { "id": "date",     "header": "Date",     "field": "order_date",    "width": 110, "priority": 2, "format": "relative" },
+            { "id": "status",   "header": "Status",   "field": "status_label",  "width": 160, "priority": 1 }
+          ]
+        }
+      }
+
+    }
+  }
+}
