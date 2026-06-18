@@ -28,6 +28,20 @@ Connect Oracle NetSuite ERP to myHub via the myHub-hosted TBA (Token-Based Authe
 
 NetSuite uses Token-Based Authentication (OAuth 1.0a / HMAC-SHA256). You need a TBA integration record and a token pair in your NetSuite account. All five credentials are required.
 
+### Required role permissions
+
+The NetSuite role assigned to the access token **must** have all of the following permissions enabled. Missing any one of them causes a silent `INVALID_LOGIN_ATTEMPT` 401 — the most common setup failure.
+
+| Permission | Where to enable |
+|---|---|
+| **REST Web Services** | Setup → Users/Roles → Manage Roles → [role] → Permissions → Setup |
+| **Log in using Access Tokens** | Setup → Users/Roles → Manage Roles → [role] → Permissions → Setup |
+| **Access Token Management** | Setup → Users/Roles → Manage Roles → [role] → Permissions → Setup |
+| **User Access Tokens** | Setup → Users/Roles → Manage Roles → [role] → Permissions → Setup |
+| **Allow JS/HTML Uploads** | Setup → Users/Roles → Manage Roles → [role] → Permissions → Setup |
+
+> **Tip:** "REST Web Services" is the most commonly missed permission. If credentials look correct but every request returns `INVALID_LOGIN_ATTEMPT`, check this one first.
+
 ## Configuration
 
 | Variable | Required | Description |
