@@ -1,7 +1,7 @@
 {
   "id": "google-workspace-drive-recent",
   "title": "Recent Files",
-  "description": "Recently accessed Google Drive files — name, type badge, last modified time, and direct link.",
+  "description": "Recently accessed Google Drive files — name, type badge, and last modified time. Click a row to open the file.",
   "category": "productivity",
   "tags": [
     "google",
@@ -49,7 +49,6 @@
     "elements": {
       "card": {
         "type": "Card",
-        "props": {},
         "children": [
           "header",
           "body"
@@ -57,27 +56,15 @@
       },
       "header": {
         "type": "Header",
-        "props": {},
         "children": [
-          "headerRow"
+          "titleRow"
         ]
       },
-      "headerRow": {
-        "type": "Row",
-        "props": {
-          "justify": "between",
-          "align": "center"
-        },
-        "children": [
-          "titleGroup",
-          "refreshBtn"
-        ]
-      },
-      "titleGroup": {
+      "titleRow": {
         "type": "Row",
         "props": {
           "gap": "sm",
-          "align": "center"
+          "align": "start"
         },
         "children": [
           "titleIcon",
@@ -128,26 +115,8 @@
           }
         }
       },
-      "refreshBtn": {
-        "type": "IconButton",
-        "props": {
-          "icon": "RefreshCw",
-          "tone": "muted",
-          "size": "sm",
-          "ariaLabel": "Refresh"
-        },
-        "on": {
-          "click": {
-            "action": "google-workspace-drive.list_recent_files",
-            "params": {
-              "pageSize": 15
-            }
-          }
-        }
-      },
       "body": {
         "type": "Body",
-        "props": {},
         "children": [
           "loading",
           "empty",
@@ -165,12 +134,14 @@
         "children": [
           "sk1",
           "sk2",
-          "sk3"
+          "sk3",
+          "sk4"
         ]
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
       "empty": {
         "type": "Empty",
         "props": {
@@ -212,11 +183,22 @@
           "gap": "sm",
           "align": "start",
           "justify": "between",
-          "hover": true
+          "hover": true,
+          "clickable": true
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$item": "webViewLink"
+              }
+            }
+          }
         },
         "children": [
           "rowLeft",
-          "rowRight"
+          "mimeTypeBadge"
         ]
       },
       "rowLeft": {
@@ -275,17 +257,6 @@
           "tone": "muted"
         }
       },
-      "rowRight": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "center"
-        },
-        "children": [
-          "mimeTypeBadge",
-          "openBtn"
-        ]
-      },
       "mimeTypeBadge": {
         "type": "Badge",
         "props": {
@@ -302,25 +273,6 @@
             "args": {
               "value": {
                 "$item": "mimeType"
-              }
-            }
-          }
-        }
-      },
-      "openBtn": {
-        "type": "IconButton",
-        "props": {
-          "icon": "ExternalLink",
-          "tone": "muted",
-          "size": "sm",
-          "ariaLabel": "Open in Drive"
-        },
-        "on": {
-          "click": {
-            "action": "open_url",
-            "params": {
-              "url": {
-                "$item": "webViewLink"
               }
             }
           }
