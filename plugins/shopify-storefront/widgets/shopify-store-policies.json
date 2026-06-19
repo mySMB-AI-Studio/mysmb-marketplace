@@ -1,0 +1,79 @@
+{
+  "id": "shopify-store-policies",
+  "title": "Store Policies",
+  "description": "Surface key Shopify store policies and FAQ answers — returns, shipping, privacy, and more. Configurable query.",
+  "category": "ecommerce",
+  "tags": [
+    "shopify",
+    "policies",
+    "returns",
+    "shipping",
+    "faq",
+    "ecommerce"
+  ],
+  "keywords": [
+    "policies",
+    "returns",
+    "refund",
+    "shipping",
+    "faq",
+    "shopify",
+    "help"
+  ],
+  "connectorsUsed": [
+    "shopify-storefront"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 4
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 3
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 8
+    }
+  },
+  "dataProvider": {
+    "mcp": "shopify-storefront",
+    "tool": "search_shop_policies_and_faqs",
+    "params": {
+      "query": "return policy"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "CardHeader",
+        "props": {
+          "title": "Store Policies",
+          "subtitle": "Key policies and FAQ answers from your Shopify store"
+        }
+      },
+      "body": {
+        "type": "CardBody",
+        "children": ["policy-content"]
+      },
+      "policy-content": {
+        "type": "Text",
+        "props": {
+          "value": { "$state": "/shopify-storefront/search_shop_policies_and_faqs/answer" },
+          "wrap": true
+        }
+      }
+    }
+  }
+}

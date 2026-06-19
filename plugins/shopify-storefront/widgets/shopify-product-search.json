@@ -1,0 +1,120 @@
+{
+  "id": "shopify-product-search",
+  "title": "Shopify Product Search",
+  "description": "Search your Shopify store catalog and display results — product title and price range. Configurable search query.",
+  "category": "ecommerce",
+  "tags": [
+    "shopify",
+    "products",
+    "catalog",
+    "search",
+    "ecommerce"
+  ],
+  "keywords": [
+    "products",
+    "catalog",
+    "search",
+    "shopify",
+    "inventory",
+    "store"
+  ],
+  "connectorsUsed": [
+    "shopify-ucp"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "shopify-ucp",
+    "tool": "search_catalog",
+    "params": {
+      "query": "featured products",
+      "pagination": {
+        "limit": 10
+      },
+      "meta": {
+        "ucp-agent": {
+          "profile": "https://shopify.dev/ucp/agent-profiles/examples/2026-04-08/valid-with-capabilities.json"
+        }
+      }
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "CardHeader",
+        "props": {
+          "title": "Product Search",
+          "subtitle": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{{count}} products found",
+              "count": { "$state": "/shopify-ucp/search_catalog/products/length" }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "CardBody",
+        "children": ["product-list"]
+      },
+      "product-list": {
+        "type": "Stack",
+        "props": {
+          "direction": "vertical",
+          "gap": "sm"
+        },
+        "children": ["product-row"],
+        "repeat": {
+          "source": { "$state": "/shopify-ucp/search_catalog/products" },
+          "item": "product-row"
+        }
+      },
+      "product-row": {
+        "type": "Stack",
+        "props": {
+          "direction": "horizontal",
+          "gap": "md",
+          "align": "center"
+        },
+        "children": ["product-title", "product-price"]
+      },
+      "product-title": {
+        "type": "Text",
+        "props": {
+          "weight": "medium",
+          "value": { "$item": "title" }
+        }
+      },
+      "product-price": {
+        "type": "Text",
+        "props": {
+          "weight": "bold",
+          "align": "right",
+          "value": { "$item": "priceRange.minVariantPrice.amount" }
+        }
+      }
+    }
+  }
+}
