@@ -9,7 +9,7 @@
   "popularity": 0,
   "status": "published",
   "sizing": {
-    "preferred": { "colSpan": 7, "rowSpan": 9 },
+    "preferred": { "colSpan": 7, "rowSpan": 4 },
     "min":       { "colSpan": 5, "rowSpan": 8 },
     "max":       { "colSpan": 12, "rowSpan": 14 }
   },
@@ -25,7 +25,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "div0", "kpiGrid", "div1", "tableBody"]
+        "children": ["headerRow", "div0", "kpiGrid", "div1", "tableBody", "div2", "kvGrid"]
       },
 
       "headerRow": {
@@ -41,7 +41,7 @@
       "titleIcon": { "type": "Icon", "props": { "name": "ShoppingCart", "tone": "accent", "size": "sm" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
       "title": { "type": "Heading", "props": { "text": "Open Sales Orders", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "NetSuite ERP" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "NetSuite ERP · Open & pending fulfilment" } },
 
       "div0": { "type": "Divider", "props": {} },
 
@@ -94,6 +94,34 @@
             { "id": "date",     "header": "Date",     "field": "order_date",    "width": 110, "priority": 2, "format": "relative" },
             { "id": "status",   "header": "Status",   "field": "status_label",  "width": 160, "priority": 1 }
           ]
+        }
+      }
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "kvGrid": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start" },
+        "children": ["kvApproval", "kvFulfil"]
+      },
+      "kvApproval": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Pending Approval",
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/list_open_sales_orders/pending_approval_value" } }
+          }
+        }
+      },
+      "kvFulfil": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Pending Fulfilment",
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/list_open_sales_orders/pending_fulfillment_value" } }
+          }
         }
       }
 
