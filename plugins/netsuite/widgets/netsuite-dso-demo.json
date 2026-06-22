@@ -19,7 +19,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "div0", "heroSection", "div1", "kvGrid"]
+        "children": ["headerRow", "div0", "heroSection", "div1", "kvGrid", "div2", "benchmarkSection"]
       },
 
       "headerRow": {
@@ -56,7 +56,25 @@
         "children": ["kvAR", "kvRevenue"]
       },
       "kvAR":      { "type": "KeyValue", "props": { "label": "AR Balance",     "value": "$127,500" } },
-      "kvRevenue": { "type": "KeyValue", "props": { "label": "90-day Revenue", "value": "$354,000" } }
+      "kvRevenue": { "type": "KeyValue", "props": { "label": "90-day Revenue", "value": "$354,000" } },
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "benchmarkSection": { "type": "Section", "props": { "variant": "muted" }, "children": ["benchmarkInner"] },
+      "benchmarkInner": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["benchmarkHeader", "benchmarkBar", "benchmarkStatus"]
+      },
+      "benchmarkHeader": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["benchmarkLabel", "benchmarkRange"]
+      },
+      "benchmarkLabel": { "type": "Eyebrow", "props": { "text": "Industry Benchmark" } },
+      "benchmarkRange":  { "type": "Caption", "props": { "text": "30–45 days" } },
+      "benchmarkBar":    { "type": "ProgressBar", "props": { "value": 72, "tone": "success" } },
+      "benchmarkStatus": { "type": "Caption", "props": { "text": "32.4 days — within benchmark range", "tone": "success" } }
 
     }
   },
