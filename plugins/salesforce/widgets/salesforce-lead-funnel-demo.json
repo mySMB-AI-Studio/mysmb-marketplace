@@ -1,0 +1,130 @@
+{
+  "id": "salesforce-lead-funnel-demo",
+  "title": "Lead Funnel (Demo)",
+  "description": "STATIC DEMO — lead conversion funnel by stage with conversion-rate KPI and sparkline trend. Hardcoded sample data, no connector required. Switch to a live version once Salesforce OAuth is configured.",
+  "category": "sales",
+  "tags": ["salesforce", "crm", "leads", "funnel", "conversion", "pipeline", "demo"],
+  "keywords": ["lead", "leads", "funnel", "conversion", "pipeline", "stage", "new", "working", "nurturing", "qualified", "converted", "salesforce", "crm", "demo"],
+  "connectorsUsed": ["salesforce"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 6 },
+    "min":       { "colSpan": 4, "rowSpan": 5 },
+    "max":       { "colSpan": 10, "rowSpan": 10 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "kpiSection", "divider", "funnelRows"]
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Filter", "tone": "accent", "size": "sm" } },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title":   { "type": "Heading", "props": { "text": "Lead Funnel", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Salesforce" } },
+
+      "kpiSection": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["kpiRow"]
+      },
+      "kpiRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["kpiLeft", "kpiSparkline"]
+      },
+      "kpiLeft": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["kpiVal", "kpiLbl", "kpiDelta"]
+      },
+      "kpiVal":       { "type": "Heading",   "props": { "text": "24%",                    "level": "h1" } },
+      "kpiLbl":       { "type": "Caption",   "props": { "text": "Lead Conversion Rate" } },
+      "kpiDelta":     { "type": "Text",      "props": { "text": "↑ 3% vs Last Quarter",  "size": "xs", "tone": "success" } },
+      "kpiSparkline": { "type": "Sparkline", "props": { "values": [14, 16, 17, 18, 19, 20, 21, 22, 24], "tone": "accent", "height": 40 } },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "funnelRows": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["stage1", "fd1", "stage2", "fd2", "stage3", "fd3", "stage4", "fd4", "stage5"]
+      },
+
+      "fd1": { "type": "Divider", "props": {} },
+      "fd2": { "type": "Divider", "props": {} },
+      "fd3": { "type": "Divider", "props": {} },
+      "fd4": { "type": "Divider", "props": {} },
+
+      "stage1":         { "type": "Row",         "props": { "align": "start" },                             "children": ["stage1Left", "stage1Right"] },
+      "stage1Left":     { "type": "Row",         "props": { "gap": "sm", "align": "start", "grow": true }, "children": ["stage1Badge", "stage1Body"] },
+      "stage1Badge":    { "type": "Badge",       "props": { "text": "New",        "tone": "info" } },
+      "stage1Body":     { "type": "Stack",       "props": { "gap": "xs", "grow": true },                   "children": ["stage1BarRow"] },
+      "stage1BarRow":   { "type": "Row",         "props": { "gap": "xs", "align": "center" },              "children": ["stage1Bar", "stage1BarVal"] },
+      "stage1Bar":      { "type": "ProgressBar", "props": { "value": 100, "max": 100, "tone": "info" } },
+      "stage1BarVal":   { "type": "Caption",     "props": { "text": "100%" } },
+      "stage1Right":    { "type": "Stack",       "props": { "gap": "none", "align": "end" },               "children": ["stage1Count"] },
+      "stage1Count":    { "type": "Text",        "props": { "text": "480", "size": "sm", "weight": "semibold" } },
+
+      "stage2":         { "type": "Row",         "props": { "align": "start" },                             "children": ["stage2Left", "stage2Right"] },
+      "stage2Left":     { "type": "Row",         "props": { "gap": "sm", "align": "start", "grow": true }, "children": ["stage2Badge", "stage2Body"] },
+      "stage2Badge":    { "type": "Badge",       "props": { "text": "Working",    "tone": "accent" } },
+      "stage2Body":     { "type": "Stack",       "props": { "gap": "xs", "grow": true },                   "children": ["stage2BarRow"] },
+      "stage2BarRow":   { "type": "Row",         "props": { "gap": "xs", "align": "center" },              "children": ["stage2Bar", "stage2BarVal"] },
+      "stage2Bar":      { "type": "ProgressBar", "props": { "value": 65, "max": 100, "tone": "accent" } },
+      "stage2BarVal":   { "type": "Caption",     "props": { "text": "65%" } },
+      "stage2Right":    { "type": "Stack",       "props": { "gap": "none", "align": "end" },               "children": ["stage2Count"] },
+      "stage2Count":    { "type": "Text",        "props": { "text": "312", "size": "sm", "weight": "semibold" } },
+
+      "stage3":         { "type": "Row",         "props": { "align": "start" },                             "children": ["stage3Left", "stage3Right"] },
+      "stage3Left":     { "type": "Row",         "props": { "gap": "sm", "align": "start", "grow": true }, "children": ["stage3Badge", "stage3Body"] },
+      "stage3Badge":    { "type": "Badge",       "props": { "text": "Nurturing",  "tone": "warning" } },
+      "stage3Body":     { "type": "Stack",       "props": { "gap": "xs", "grow": true },                   "children": ["stage3BarRow"] },
+      "stage3BarRow":   { "type": "Row",         "props": { "gap": "xs", "align": "center" },              "children": ["stage3Bar", "stage3BarVal"] },
+      "stage3Bar":      { "type": "ProgressBar", "props": { "value": 41, "max": 100, "tone": "warning" } },
+      "stage3BarVal":   { "type": "Caption",     "props": { "text": "41%" } },
+      "stage3Right":    { "type": "Stack",       "props": { "gap": "none", "align": "end" },               "children": ["stage3Count"] },
+      "stage3Count":    { "type": "Text",        "props": { "text": "198", "size": "sm", "weight": "semibold" } },
+
+      "stage4":         { "type": "Row",         "props": { "align": "start" },                             "children": ["stage4Left", "stage4Right"] },
+      "stage4Left":     { "type": "Row",         "props": { "gap": "sm", "align": "start", "grow": true }, "children": ["stage4Badge", "stage4Body"] },
+      "stage4Badge":    { "type": "Badge",       "props": { "text": "Qualified",  "tone": "accent" } },
+      "stage4Body":     { "type": "Stack",       "props": { "gap": "xs", "grow": true },                   "children": ["stage4BarRow"] },
+      "stage4BarRow":   { "type": "Row",         "props": { "gap": "xs", "align": "center" },              "children": ["stage4Bar", "stage4BarVal"] },
+      "stage4Bar":      { "type": "ProgressBar", "props": { "value": 30, "max": 100, "tone": "accent" } },
+      "stage4BarVal":   { "type": "Caption",     "props": { "text": "30%" } },
+      "stage4Right":    { "type": "Stack",       "props": { "gap": "none", "align": "end" },               "children": ["stage4Count"] },
+      "stage4Count":    { "type": "Text",        "props": { "text": "142", "size": "sm", "weight": "semibold" } },
+
+      "stage5":         { "type": "Row",         "props": { "align": "start" },                             "children": ["stage5Left", "stage5Right"] },
+      "stage5Left":     { "type": "Row",         "props": { "gap": "sm", "align": "start", "grow": true }, "children": ["stage5Badge", "stage5Body"] },
+      "stage5Badge":    { "type": "Badge",       "props": { "text": "Converted",  "tone": "success" } },
+      "stage5Body":     { "type": "Stack",       "props": { "gap": "xs", "grow": true },                   "children": ["stage5BarRow"] },
+      "stage5BarRow":   { "type": "Row",         "props": { "gap": "xs", "align": "center" },              "children": ["stage5Bar", "stage5BarVal"] },
+      "stage5Bar":      { "type": "ProgressBar", "props": { "value": 24, "max": 100, "tone": "success" } },
+      "stage5BarVal":   { "type": "Caption",     "props": { "text": "24%" } },
+      "stage5Right":    { "type": "Stack",       "props": { "gap": "none", "align": "end" },               "children": ["stage5Count"] },
+      "stage5Count":    { "type": "Text",        "props": { "text": "115", "size": "sm", "weight": "semibold" } }
+
+    }
+  },
+  "status": "draft"
+}
