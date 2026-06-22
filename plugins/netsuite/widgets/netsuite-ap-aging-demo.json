@@ -19,7 +19,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "div0", "kpiGrid", "div1", "bucketsLabel", "bucketsChart", "div2", "kvGrid"]
+        "children": ["headerRow", "div0", "kpiGrid", "div1", "bucketsLabel", "bucketStack", "div2", "kvGrid"]
       },
 
       "headerRow": {
@@ -44,7 +44,6 @@
         "props": { "cols": 2, "gap": "sm" },
         "children": ["tileOutstanding", "tileCount"]
       },
-
       "tileOutstanding": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackOutstanding"] },
       "stackOutstanding": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconOutstanding", "valOutstanding", "lblOutstanding"] },
       "iconOutstanding": { "type": "Icon", "props": { "name": "DollarSign", "size": "sm", "tone": "warning" } },
@@ -61,22 +60,39 @@
 
       "bucketsLabel": { "type": "Eyebrow", "props": { "text": "Overdue Buckets" } },
 
-      "bucketsChart": {
-        "type": "BarChart",
-        "props": {
-          "data": [
-            { "bucket": "0 – 30 days",  "amount": 28600 },
-            { "bucket": "31 – 60 days", "amount": 11900 },
-            { "bucket": "61 – 90 days", "amount": 4200  },
-            { "bucket": "90+ days",     "amount": 600   }
-          ],
-          "labelField": "bucket",
-          "valueField": "amount",
-          "valueFormat": "currency",
-          "tone": "warning",
-          "sort": "none"
-        }
+      "bucketStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["bucket0", "bucket1", "bucket2", "bucket3"]
       },
+
+      "bucket0": { "type": "Stack", "props": { "gap": "xxs" }, "children": ["bucket0Row", "bucket0BarRow"] },
+      "bucket0Row": { "type": "Row", "props": { "justify": "between" }, "children": ["bucket0Label", "bucket0Val"] },
+      "bucket0Label": { "type": "Text", "props": { "text": "0 – 30 days",  "size": "sm" } },
+      "bucket0Val":   { "type": "Text", "props": { "text": "$28,600", "size": "sm", "weight": "medium" } },
+      "bucket0BarRow": { "type": "Row", "props": {}, "children": ["bucket0Bar"] },
+      "bucket0Bar":   { "type": "ProgressBar", "props": { "value": 42, "tone": "accent" } },
+
+      "bucket1": { "type": "Stack", "props": { "gap": "xxs" }, "children": ["bucket1Row", "bucket1BarRow"] },
+      "bucket1Row": { "type": "Row", "props": { "justify": "between" }, "children": ["bucket1Label", "bucket1Val"] },
+      "bucket1Label": { "type": "Text", "props": { "text": "31 – 60 days", "size": "sm" } },
+      "bucket1Val":   { "type": "Text", "props": { "text": "$11,900", "size": "sm", "weight": "medium" } },
+      "bucket1BarRow": { "type": "Row", "props": {}, "children": ["bucket1Bar"] },
+      "bucket1Bar":   { "type": "ProgressBar", "props": { "value": 18, "tone": "warning" } },
+
+      "bucket2": { "type": "Stack", "props": { "gap": "xxs" }, "children": ["bucket2Row", "bucket2BarRow"] },
+      "bucket2Row": { "type": "Row", "props": { "justify": "between" }, "children": ["bucket2Label", "bucket2Val"] },
+      "bucket2Label": { "type": "Text", "props": { "text": "61 – 90 days", "size": "sm" } },
+      "bucket2Val":   { "type": "Text", "props": { "text": "$4,200",  "size": "sm", "weight": "medium" } },
+      "bucket2BarRow": { "type": "Row", "props": {}, "children": ["bucket2Bar"] },
+      "bucket2Bar":   { "type": "ProgressBar", "props": { "value": 6, "tone": "warning" } },
+
+      "bucket3": { "type": "Stack", "props": { "gap": "xxs" }, "children": ["bucket3Row", "bucket3BarRow"] },
+      "bucket3Row": { "type": "Row", "props": { "justify": "between" }, "children": ["bucket3Label", "bucket3Val"] },
+      "bucket3Label": { "type": "Text", "props": { "text": "90+ days", "size": "sm", "weight": "medium", "tone": "destructive" } },
+      "bucket3Val":   { "type": "Text", "props": { "text": "$600",    "size": "sm", "weight": "medium", "tone": "destructive" } },
+      "bucket3BarRow": { "type": "Row", "props": {}, "children": ["bucket3Bar"] },
+      "bucket3Bar":   { "type": "ProgressBar", "props": { "value": 1, "tone": "destructive" } },
 
       "div2": { "type": "Divider", "props": {} },
 
@@ -85,7 +101,7 @@
         "props": { "justify": "between", "align": "start" },
         "children": ["kvCurrent", "kvCritical"]
       },
-      "kvCurrent": { "type": "KeyValue", "props": { "label": "Current (not due)", "value": "$22,100" } },
+      "kvCurrent":  { "type": "KeyValue", "props": { "label": "Current (not due)",   "value": "$22,100" } },
       "kvCritical": { "type": "KeyValue", "props": { "label": "Critical (90+ days)", "value": "$600" } }
 
     }
