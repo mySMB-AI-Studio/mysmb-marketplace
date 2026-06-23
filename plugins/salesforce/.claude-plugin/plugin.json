@@ -6,5 +6,28 @@
   "homepage": "https://github.com/mySMB-AI-Studio/mysmb-marketplace/tree/main/plugins/salesforce",
   "license": "MIT",
   "keywords": ["salesforce", "crm", "opportunities", "accounts", "sales", "oauth"],
+  "connection": {
+    "authType": "oauth_client",
+    "instructions": "Salesforce requires a Connected App. In Salesforce Setup → App Manager → New Connected App:\n\n1. Enable OAuth Settings\n2. Set the Callback URL to the value shown above\n3. Add scopes: api, refresh_token, offline_access\n4. Save and copy the Consumer Key and Consumer Secret below.",
+    "docUrl": "https://developer.salesforce.com/docs/einstein/genai/guide/mcp-intro.html",
+    "fields": [
+      {
+        "name": "OAUTH_CLIENT_ID",
+        "label": "Consumer Key (Client ID)",
+        "type": "text",
+        "required": true,
+        "role": "client_id",
+        "helpText": "From your Salesforce Connected App settings."
+      },
+      {
+        "name": "OAUTH_CLIENT_SECRET",
+        "label": "Consumer Secret (Client Secret)",
+        "type": "password",
+        "required": true,
+        "role": "client_secret",
+        "helpText": "From your Salesforce Connected App settings. Stored encrypted."
+      }
+    ]
+  },
   "widgets": "widgets"
 }
