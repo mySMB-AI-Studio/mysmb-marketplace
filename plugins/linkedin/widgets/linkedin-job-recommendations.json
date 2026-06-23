@@ -3,99 +3,37 @@
   "title": "Job Recommendations",
   "description": "LinkedIn job recommendations tailored to your profile — title, company, location, and easy-apply indicator.",
   "category": "productivity",
-  "tags": [
-    "linkedin",
-    "jobs",
-    "recruitment",
-    "career",
-    "recommendations"
-  ],
-  "keywords": [
-    "jobs",
-    "job search",
-    "career",
-    "recommendations",
-    "opportunities",
-    "positions",
-    "linkedin"
-  ],
-  "connectorsUsed": [
-    "linkedin"
-  ],
+  "tags": ["linkedin", "jobs", "recruitment", "career", "recommendations"],
+  "keywords": ["jobs", "job search", "career", "recommendations", "opportunities", "positions", "linkedin"],
+  "connectorsUsed": ["linkedin"],
   "popularity": 0,
   "sizing": {
-    "preferred": {
-      "colSpan": 5,
-      "rowSpan": 5
-    },
-    "min": {
-      "colSpan": 4,
-      "rowSpan": 4
-    },
-    "max": {
-      "colSpan": 10,
-      "rowSpan": 12
-    }
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
+    "max": { "colSpan": 10, "rowSpan": 12 }
   },
   "dataProvider": {
     "mcp": "linkedin",
-    "tool": "get_job_recommendations",
-    "params": {
-      "limit": 10
-    }
+    "tool": "linkedin_consumer_get_job_recommendations",
+    "params": { "limit": 10 }
   },
   "spec": {
     "root": "card",
     "elements": {
-      "card": {
-        "type": "Card",
-        "children": [
-          "header",
-          "body"
-        ]
-      },
-      "header": {
-        "type": "Header",
-        "children": [
-          "titleGroup"
-        ]
-      },
+      "card": { "type": "Card", "children": ["header", "body"] },
+      "header": { "type": "Header", "children": ["titleGroup"] },
       "titleGroup": {
         "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "start"
-        },
-        "children": [
-          "titleIcon",
-          "titleStack"
-        ]
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
       },
-      "titleIcon": {
-        "type": "Icon",
-        "props": {
-          "name": "Briefcase",
-          "tone": "success",
-          "size": "sm"
-        }
-      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Briefcase", "tone": "success", "size": "sm" } },
       "titleStack": {
         "type": "Stack",
-        "props": {
-          "gap": "none"
-        },
-        "children": [
-          "title",
-          "count"
-        ]
+        "props": { "gap": "none" },
+        "children": ["title", "count"]
       },
-      "title": {
-        "type": "Heading",
-        "props": {
-          "text": "Job Recommendations",
-          "level": "h2"
-        }
-      },
+      "title": { "type": "Heading", "props": { "text": "Job Recommendations", "level": "h2" } },
       "count": {
         "type": "Eyebrow",
         "props": {
@@ -105,140 +43,56 @@
               "pattern": "{n} Matches",
               "n": {
                 "$computed": "count",
-                "args": {
-                  "value": {
-                    "$state": "/linkedin/get_job_recommendations/jobs"
-                  }
-                }
+                "args": { "value": { "$state": "/linkedin/linkedin_consumer_get_job_recommendations/elements" } }
               }
             }
           }
         }
       },
-      "body": {
-        "type": "Body",
-        "children": [
-          "loading",
-          "empty",
-          "list"
-        ]
-      },
+      "body": { "type": "Body", "children": ["loading", "empty", "list"] },
       "loading": {
         "type": "Stack",
-        "props": {
-          "gap": "sm"
-        },
-        "children": [
-          "sk1",
-          "sk2",
-          "sk3"
-        ],
-        "visible": {
-          "$state": "/_loading/linkedin.get_job_recommendations"
-        }
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/linkedin.linkedin_consumer_get_job_recommendations" }
       },
-      "sk1": {
-        "type": "Skeleton",
-        "props": {
-          "height": "4rem",
-          "rounded": "md"
-        }
-      },
-      "sk2": {
-        "type": "Skeleton",
-        "props": {
-          "height": "4rem",
-          "rounded": "md"
-        }
-      },
-      "sk3": {
-        "type": "Skeleton",
-        "props": {
-          "height": "4rem",
-          "rounded": "md"
-        }
-      },
+      "sk1": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
       "empty": {
         "type": "Empty",
-        "props": {
-          "message": "No job recommendations right now."
-        },
+        "props": { "message": "No job recommendations right now." },
         "visible": {
           "$and": [
-            {
-              "$state": "/_loading/linkedin.get_job_recommendations",
-              "not": true
-            },
-            {
-              "$state": "/linkedin/get_job_recommendations/jobs/0",
-              "not": true
-            }
+            { "$state": "/_loading/linkedin.linkedin_consumer_get_job_recommendations", "not": true },
+            { "$state": "/linkedin/linkedin_consumer_get_job_recommendations/elements/0", "not": true }
           ]
         }
       },
       "list": {
         "type": "Stack",
-        "props": {
-          "gap": "sm"
-        },
-        "children": [
-          "jobRow"
-        ],
+        "props": { "gap": "sm" },
+        "children": ["jobRow"],
         "repeat": {
-          "statePath": "/linkedin/get_job_recommendations/jobs",
+          "statePath": "/linkedin/linkedin_consumer_get_job_recommendations/elements",
           "key": "jobId"
         },
-        "visible": {
-          "$state": "/_loading/linkedin.get_job_recommendations",
-          "not": true
-        }
+        "visible": { "$state": "/_loading/linkedin.linkedin_consumer_get_job_recommendations", "not": true }
       },
       "jobRow": {
         "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "center",
-          "hover": true,
-          "clickable": true,
-          "justify": "between"
-        },
-        "children": [
-          "jobInfo",
-          "jobActions"
-        ],
-        "on": {
-          "click": {
-            "action": "open_url",
-            "params": {
-              "url": {
-                "$item": "jobUrl"
-              }
-            }
-          }
-        }
+        "props": { "gap": "sm", "align": "center", "hover": true, "clickable": true, "justify": "between" },
+        "children": ["jobInfo", "jobActions"],
+        "on": { "click": { "action": "open_url", "params": { "url": { "$item": "jobUrl" } } } }
       },
       "jobInfo": {
         "type": "Stack",
-        "props": {
-          "gap": "xs",
-          "grow": true
-        },
-        "children": [
-          "jobTitle",
-          "jobMeta",
-          "jobBadges"
-        ]
+        "props": { "gap": "xs", "grow": true },
+        "children": ["jobTitle", "jobMeta", "jobBadges"]
       },
       "jobTitle": {
         "type": "Text",
-        "props": {
-          "text": {
-            "$item": "title"
-          },
-          "size": "sm",
-          "weight": "semibold",
-          "truncate": true
-        }
+        "props": { "text": { "$item": "title" }, "size": "sm", "weight": "semibold", "truncate": true }
       },
       "jobMeta": {
         "type": "Caption",
@@ -247,64 +101,30 @@
             "$computed": "fmt",
             "args": {
               "pattern": "{company} · {location}",
-              "company": {
-                "$item": "companyName"
-              },
-              "location": {
-                "$item": "location"
-              }
+              "company": { "$item": "company" },
+              "location": { "$item": "location" }
             }
           }
         }
       },
       "jobBadges": {
         "type": "Row",
-        "props": {
-          "gap": "xs"
-        },
-        "children": [
-          "workTypeBadge",
-          "easyApplyBadge"
-        ]
+        "props": { "gap": "xs" },
+        "children": ["workTypeBadge", "easyApplyBadge"]
       },
       "workTypeBadge": {
         "type": "Badge",
-        "props": {
-          "text": {
-            "$item": "workplaceType"
-          },
-          "tone": "default",
-          "variant": "soft"
-        }
+        "props": { "text": { "$item": "workplaceType" }, "tone": "default", "variant": "soft" }
       },
       "easyApplyBadge": {
         "type": "Badge",
-        "props": {
-          "text": "Easy Apply",
-          "tone": "success",
-          "variant": "soft"
-        },
-        "visible": {
-          "$item": "easyApply"
-        }
+        "props": { "text": "Easy Apply", "tone": "success", "variant": "soft" },
+        "visible": { "$item": "easyApply" }
       },
       "jobActions": {
         "type": "IconButton",
-        "props": {
-          "icon": "ExternalLink",
-          "tone": "muted",
-          "ariaLabel": "View job"
-        },
-        "on": {
-          "click": {
-            "action": "open_url",
-            "params": {
-              "url": {
-                "$item": "jobUrl"
-              }
-            }
-          }
-        }
+        "props": { "icon": "ExternalLink", "tone": "muted", "ariaLabel": "View job" },
+        "on": { "click": { "action": "open_url", "params": { "url": { "$item": "jobUrl" } } } }
       }
     }
   },

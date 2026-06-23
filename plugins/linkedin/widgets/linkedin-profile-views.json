@@ -1,268 +1,115 @@
 {
   "id": "linkedin-profile-views",
   "title": "Profile Views",
-  "description": "People who viewed your LinkedIn profile recently — name, headline, and company at a glance.",
+  "description": "People who viewed your LinkedIn profile recently — name, headline, and when they visited.",
   "category": "productivity",
-  "tags": [
-    "linkedin",
-    "profile",
-    "views",
-    "analytics",
-    "network"
-  ],
-  "keywords": [
-    "profile views",
-    "who viewed",
-    "visitors",
-    "analytics",
-    "linkedin"
-  ],
-  "connectorsUsed": [
-    "linkedin"
-  ],
+  "tags": ["linkedin", "profile", "views", "analytics", "network"],
+  "keywords": ["profile views", "who viewed", "visitors", "analytics", "linkedin"],
+  "connectorsUsed": ["linkedin"],
   "popularity": 0,
   "sizing": {
-    "preferred": {
-      "colSpan": 4,
-      "rowSpan": 4
-    },
-    "min": {
-      "colSpan": 4,
-      "rowSpan": 3
-    },
-    "max": {
-      "colSpan": 8,
-      "rowSpan": 10
-    }
+    "preferred": { "colSpan": 4, "rowSpan": 4 },
+    "min": { "colSpan": 4, "rowSpan": 3 },
+    "max": { "colSpan": 8, "rowSpan": 10 }
   },
   "dataProvider": {
     "mcp": "linkedin",
-    "tool": "get_profile_views",
-    "params": {
-      "limit": 15
-    }
+    "tool": "linkedin_consumer_get_profile_views",
+    "params": { "limit": 15 }
   },
   "spec": {
     "root": "card",
     "elements": {
-      "card": {
-        "type": "Card",
-        "children": [
-          "header",
-          "body"
-        ]
-      },
-      "header": {
-        "type": "Header",
-        "children": [
-          "titleGroup"
-        ]
-      },
+      "card": { "type": "Card", "children": ["header", "body"] },
+      "header": { "type": "Header", "children": ["titleGroup"] },
       "titleGroup": {
         "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "start"
-        },
-        "children": [
-          "titleIcon",
-          "titleStack"
-        ]
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
       },
-      "titleIcon": {
-        "type": "Icon",
-        "props": {
-          "name": "Eye",
-          "tone": "accent",
-          "size": "sm"
-        }
-      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Eye", "tone": "accent", "size": "sm" } },
       "titleStack": {
         "type": "Stack",
-        "props": {
-          "gap": "none"
-        },
-        "children": [
-          "title",
-          "count"
-        ]
+        "props": { "gap": "none" },
+        "children": ["title", "count"]
       },
-      "title": {
-        "type": "Heading",
-        "props": {
-          "text": "Profile Views",
-          "level": "h2"
-        }
-      },
+      "title": { "type": "Heading", "props": { "text": "Profile Views", "level": "h2" } },
       "count": {
         "type": "Eyebrow",
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{n} in last 90 days",
-              "n": {
-                "$state": "/linkedin/get_profile_views/totalViews"
-              }
+              "pattern": "{n} total views",
+              "n": { "$state": "/linkedin/linkedin_consumer_get_profile_views/totalViews" }
             }
           }
         }
       },
-      "body": {
-        "type": "Body",
-        "children": [
-          "loading",
-          "empty",
-          "list"
-        ]
-      },
+      "body": { "type": "Body", "children": ["loading", "empty", "list"] },
       "loading": {
         "type": "Stack",
-        "props": {
-          "gap": "sm"
-        },
-        "children": [
-          "sk1",
-          "sk2",
-          "sk3"
-        ],
-        "visible": {
-          "$state": "/_loading/linkedin.get_profile_views"
-        }
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/linkedin.linkedin_consumer_get_profile_views" }
       },
-      "sk1": {
-        "type": "Skeleton",
-        "props": {
-          "height": "3rem",
-          "rounded": "md"
-        }
-      },
-      "sk2": {
-        "type": "Skeleton",
-        "props": {
-          "height": "3rem",
-          "rounded": "md"
-        }
-      },
-      "sk3": {
-        "type": "Skeleton",
-        "props": {
-          "height": "3rem",
-          "rounded": "md"
-        }
-      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
       "empty": {
         "type": "Empty",
-        "props": {
-          "message": "No profile views to show yet."
-        },
+        "props": { "message": "No profile views to show yet." },
         "visible": {
           "$and": [
-            {
-              "$state": "/_loading/linkedin.get_profile_views",
-              "not": true
-            },
-            {
-              "$state": "/linkedin/get_profile_views/viewers/0",
-              "not": true
-            }
+            { "$state": "/_loading/linkedin.linkedin_consumer_get_profile_views", "not": true },
+            { "$state": "/linkedin/linkedin_consumer_get_profile_views/elements/0", "not": true }
           ]
         }
       },
       "list": {
         "type": "Stack",
-        "props": {
-          "gap": "none"
-        },
-        "children": [
-          "row"
-        ],
+        "props": { "gap": "none" },
+        "children": ["row"],
         "repeat": {
-          "statePath": "/linkedin/get_profile_views/viewers",
-          "key": "viewerId"
+          "statePath": "/linkedin/linkedin_consumer_get_profile_views/elements",
+          "key": "viewerProfileUrl"
         },
-        "visible": {
-          "$state": "/_loading/linkedin.get_profile_views",
-          "not": true
-        }
+        "visible": { "$state": "/_loading/linkedin.linkedin_consumer_get_profile_views", "not": true }
       },
       "row": {
         "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "center",
-          "hover": true,
-          "justify": "between"
-        },
-        "children": [
-          "avatar",
-          "labels",
-          "viewedAt"
-        ]
+        "props": { "gap": "sm", "align": "center", "hover": true, "justify": "between" },
+        "children": ["avatar", "labels", "viewedAt"]
       },
       "avatar": {
         "type": "Avatar",
         "props": {
           "initials": {
             "$computed": "initials",
-            "args": {
-              "value": {
-                "$item": "fullName"
-              }
-            }
+            "args": { "value": { "$item": "viewerName" } }
           },
           "size": "sm"
         }
       },
       "labels": {
         "type": "Stack",
-        "props": {
-          "gap": "xs",
-          "grow": true
-        },
-        "children": [
-          "nameText",
-          "titleText"
-        ]
+        "props": { "gap": "xs", "grow": true },
+        "children": ["nameText", "headlineText"]
       },
       "nameText": {
         "type": "Text",
-        "props": {
-          "text": {
-            "$item": "fullName"
-          },
-          "size": "sm",
-          "weight": "medium",
-          "truncate": true
-        }
+        "props": { "text": { "$item": "viewerName" }, "size": "sm", "weight": "medium", "truncate": true }
       },
-      "titleText": {
+      "headlineText": {
         "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{title} at {company}",
-              "title": {
-                "$item": "jobTitle"
-              },
-              "company": {
-                "$item": "companyName"
-              }
-            }
-          }
-        }
+        "props": { "text": { "$item": "viewerHeadline" } }
       },
       "viewedAt": {
         "type": "Caption",
         "props": {
           "text": {
             "$computed": "relative_time",
-            "args": {
-              "value": {
-                "$item": "viewedAt"
-              }
-            }
+            "args": { "value": { "$item": "viewedAt" } }
           }
         }
       }
