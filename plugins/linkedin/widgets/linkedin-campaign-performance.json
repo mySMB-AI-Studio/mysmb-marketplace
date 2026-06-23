@@ -1,7 +1,7 @@
 {
   "id": "linkedin-campaign-performance",
   "title": "Campaign Performance",
-  "description": "Overview of your LinkedIn Marketing campaign spend, impressions, and click-through rate over the last 30 days.",
+  "description": "LinkedIn Marketing campaigns — aggregate spend, impressions, clicks, and CTR with a per-campaign breakdown for the selected date range.",
   "category": "marketing",
   "tags": [
     "linkedin",
@@ -19,7 +19,8 @@
     "clicks",
     "spend",
     "ctr",
-    "performance"
+    "performance",
+    "analytics"
   ],
   "connectorsUsed": [
     "linkedin"
@@ -27,25 +28,32 @@
   "popularity": 0,
   "sizing": {
     "preferred": {
-      "colSpan": 4,
+      "colSpan": 5,
       "rowSpan": 6
     },
     "min": {
-      "colSpan": 3,
+      "colSpan": 4,
       "rowSpan": 5
     },
     "max": {
-      "colSpan": 6,
-      "rowSpan": 9
+      "colSpan": 10,
+      "rowSpan": 12
     }
   },
-  "status": "published",
+  "dataProvider": {
+    "mcp": "linkedin",
+    "tool": "get_campaign_analytics",
+    "params": {
+      "date_range": "LAST_30_DAYS",
+      "status": "ALL",
+      "limit": 10
+    }
+  },
   "spec": {
     "root": "card",
     "elements": {
       "card": {
         "type": "Card",
-        "props": {},
         "children": [
           "header",
           "body"
@@ -53,12 +61,11 @@
       },
       "header": {
         "type": "Header",
-        "props": {},
         "children": [
-          "titleRow"
+          "titleGroup"
         ]
       },
-      "titleRow": {
+      "titleGroup": {
         "type": "Row",
         "props": {
           "gap": "sm",
@@ -102,19 +109,90 @@
       },
       "body": {
         "type": "Body",
-        "props": {},
         "children": [
-          "statsSection",
-          "divider1",
-          "campListLabel",
-          "camp1Row",
-          "camp2Row",
-          "camp3Row",
-          "divider2",
-          "footer"
+          "loading",
+          "empty",
+          "content"
         ]
       },
-      "statsSection": {
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3",
+          "sk4"
+        ],
+        "visible": {
+          "$state": "/_loading/linkedin.get_campaign_analytics"
+        }
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "4rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "sk4": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No campaign data found. Make sure your LinkedIn ad account is connected and has campaigns."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/linkedin.get_campaign_analytics",
+              "not": true
+            },
+            {
+              "$state": "/linkedin/get_campaign_analytics/campaigns/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "visible": {
+          "$state": "/_loading/linkedin.get_campaign_analytics",
+          "not": true
+        },
+        "children": [
+          "summarySection",
+          "divider",
+          "campListLabel",
+          "campList"
+        ]
+      },
+      "summarySection": {
         "type": "Section",
         "props": {
           "variant": "muted"
@@ -151,7 +229,17 @@
       "statSpendVal": {
         "type": "Heading",
         "props": {
-          "text": "$4,820",
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$state": "/linkedin/get_campaign_analytics/summary/totalSpend"
+              },
+              "currency": {
+                "$state": "/linkedin/get_campaign_analytics/summary/currency"
+              }
+            }
+          },
           "level": "h3"
         }
       },
@@ -175,7 +263,9 @@
       "statImpVal": {
         "type": "Heading",
         "props": {
-          "text": "284K",
+          "text": {
+            "$state": "/linkedin/get_campaign_analytics/summary/totalImpressions"
+          },
           "level": "h3"
         }
       },
@@ -199,7 +289,9 @@
       "statClicksVal": {
         "type": "Heading",
         "props": {
-          "text": "3,412",
+          "text": {
+            "$state": "/linkedin/get_campaign_analytics/summary/totalClicks"
+          },
           "level": "h3"
         }
       },
@@ -223,7 +315,15 @@
       "statCtrVal": {
         "type": "Heading",
         "props": {
-          "text": "1.2%",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{ctr}%",
+              "ctr": {
+                "$state": "/linkedin/get_campaign_analytics/summary/ctr"
+              }
+            }
+          },
           "level": "h3"
         }
       },
@@ -233,231 +333,129 @@
           "text": "CTR"
         }
       },
-      "divider1": {
+      "divider": {
         "type": "Divider"
       },
       "campListLabel": {
         "type": "Caption",
         "props": {
-          "text": "Active campaigns"
+          "text": "Campaigns"
         }
       },
-      "camp1Row": {
+      "campList": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "campRow"
+        ],
+        "repeat": {
+          "statePath": "/linkedin/get_campaign_analytics/campaigns",
+          "key": "campaignId"
+        }
+      },
+      "campRow": {
         "type": "Row",
         "props": {
           "gap": "sm",
           "justify": "between",
-          "align": "center"
+          "align": "center",
+          "hover": true,
+          "clickable": true
         },
         "children": [
-          "camp1Left",
-          "camp1Right"
-        ]
-      },
-      "camp1Left": {
-        "type": "Stack",
-        "props": {
-          "gap": "xs",
-          "grow": true
-        },
-        "children": [
-          "camp1Name",
-          "camp1Meta"
-        ]
-      },
-      "camp1Name": {
-        "type": "Text",
-        "props": {
-          "text": "Brand Awareness Q2",
-          "size": "sm",
-          "weight": "medium",
-          "truncate": true
-        }
-      },
-      "camp1Meta": {
-        "type": "Caption",
-        "props": {
-          "text": "112K impressions · 1,340 clicks"
-        }
-      },
-      "camp1Right": {
-        "type": "Stack",
-        "props": {
-          "gap": "xs",
-          "align": "end"
-        },
-        "children": [
-          "camp1Badge",
-          "camp1Spend"
-        ]
-      },
-      "camp1Badge": {
-        "type": "Badge",
-        "props": {
-          "label": "Active",
-          "tone": "positive"
-        }
-      },
-      "camp1Spend": {
-        "type": "Caption",
-        "props": {
-          "text": "$1,840"
-        }
-      },
-      "camp2Row": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "justify": "between",
-          "align": "center"
-        },
-        "children": [
-          "camp2Left",
-          "camp2Right"
-        ]
-      },
-      "camp2Left": {
-        "type": "Stack",
-        "props": {
-          "gap": "xs",
-          "grow": true
-        },
-        "children": [
-          "camp2Name",
-          "camp2Meta"
-        ]
-      },
-      "camp2Name": {
-        "type": "Text",
-        "props": {
-          "text": "Product Launch — ANZ",
-          "size": "sm",
-          "weight": "medium",
-          "truncate": true
-        }
-      },
-      "camp2Meta": {
-        "type": "Caption",
-        "props": {
-          "text": "148K impressions · 1,892 clicks"
-        }
-      },
-      "camp2Right": {
-        "type": "Stack",
-        "props": {
-          "gap": "xs",
-          "align": "end"
-        },
-        "children": [
-          "camp2Badge",
-          "camp2Spend"
-        ]
-      },
-      "camp2Badge": {
-        "type": "Badge",
-        "props": {
-          "label": "Active",
-          "tone": "positive"
-        }
-      },
-      "camp2Spend": {
-        "type": "Caption",
-        "props": {
-          "text": "$2,190"
-        }
-      },
-      "camp3Row": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "justify": "between",
-          "align": "center"
-        },
-        "children": [
-          "camp3Left",
-          "camp3Right"
-        ]
-      },
-      "camp3Left": {
-        "type": "Stack",
-        "props": {
-          "gap": "xs",
-          "grow": true
-        },
-        "children": [
-          "camp3Name",
-          "camp3Meta"
-        ]
-      },
-      "camp3Name": {
-        "type": "Text",
-        "props": {
-          "text": "Retargeting — Website Visitors",
-          "size": "sm",
-          "weight": "medium",
-          "truncate": true
-        }
-      },
-      "camp3Meta": {
-        "type": "Caption",
-        "props": {
-          "text": "24K impressions · 180 clicks"
-        }
-      },
-      "camp3Right": {
-        "type": "Stack",
-        "props": {
-          "gap": "xs",
-          "align": "end"
-        },
-        "children": [
-          "camp3Badge",
-          "camp3Spend"
-        ]
-      },
-      "camp3Badge": {
-        "type": "Badge",
-        "props": {
-          "label": "Paused",
-          "tone": "warning"
-        }
-      },
-      "camp3Spend": {
-        "type": "Caption",
-        "props": {
-          "text": "$790"
-        }
-      },
-      "divider2": {
-        "type": "Divider"
-      },
-      "footer": {
-        "type": "Row",
-        "props": {
-          "justify": "end"
-        },
-        "children": [
-          "footerBtn"
-        ]
-      },
-      "footerBtn": {
-        "type": "Button",
-        "props": {
-          "label": "Open Campaign Manager",
-          "variant": "ghost",
-          "size": "sm",
-          "leadingIcon": "ExternalLink"
-        },
+          "campLeft",
+          "campRight"
+        ],
         "on": {
           "click": {
             "action": "open_url",
             "params": {
-              "url": "https://www.linkedin.com/campaignmanager/",
-              "target": "_blank"
+              "url": {
+                "$item": "campaignUrl"
+              }
+            }
+          }
+        }
+      },
+      "campLeft": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "campName",
+          "campMeta"
+        ]
+      },
+      "campName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "campMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{imp} impressions · {clicks} clicks",
+              "imp": {
+                "$item": "impressions"
+              },
+              "clicks": {
+                "$item": "clicks"
+              }
+            }
+          }
+        }
+      },
+      "campRight": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "align": "end"
+        },
+        "children": [
+          "campStatusBadge",
+          "campSpend"
+        ]
+      },
+      "campStatusBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "status"
+          },
+          "tone": "default",
+          "variant": "soft"
+        }
+      },
+      "campSpend": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$item": "spend"
+              },
+              "currency": {
+                "$item": "currency"
+              }
             }
           }
         }
       }
     }
-  }
+  },
+  "status": "published"
 }
