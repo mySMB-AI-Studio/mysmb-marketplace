@@ -6,9 +6,24 @@ Covers opportunities, accounts, contacts, cases, and arbitrary SOQL queries acro
 
 ## Authentication
 
-Salesforce uses browser OAuth. On first use the browser redirects to `login.salesforce.com` — sign in and authorise the app. The gateway exchanges the code for an access token and handles token refresh transparently.
+Paste a Salesforce OAuth access token into the Connect modal. Tokens expire after ~2 hours — re-paste a fresh one when widgets stop loading.
 
-No environment variables or API keys are required.
+**Quickest way to get a token — Salesforce Workbench:**
+1. Go to [workbench.developerforce.com](https://workbench.developerforce.com) → Login → select your environment (Production or Sandbox)
+2. After login, go to **Utilities → REST Explorer**
+3. Click **Session Information** — copy the `sessionId` value
+
+**Via Salesforce CLI:**
+```
+sf org display --target-org <alias> --verbose
+```
+Copy the `Access Token` value from the output.
+
+## Configuration
+
+| Variable | Description |
+|---|---|
+| `SALESFORCE_ACCESS_TOKEN` | OAuth access token from Workbench or the Salesforce CLI. Stored encrypted per user. |
 
 ## Tools & resources
 
