@@ -7,16 +7,26 @@
   "license": "MIT",
   "keywords": ["salesforce", "crm", "opportunities", "accounts", "sales", "oauth"],
   "connection": {
-    "authType": "api_key",
-    "instructions": "Obtain a Salesforce OAuth access token and paste it below.\n\nQuickest method — Salesforce Workbench:\n1. Go to workbench.developerforce.com → Login → select your environment\n2. After login, go to Utilities → REST Explorer\n3. Click \"Session Information\" — the sessionId value is your access token\n\nAlternatively, use the Salesforce CLI: `sf org display --target-org <alias> --verbose` and copy the Access Token.\n\nTokens expire after 2 hours by default. Re-paste a fresh token when the connection stops working.",
+    "authType": "oauth_client",
+    "instructions": "Salesforce requires a Connected App. In Salesforce Setup → App Manager → New Connected App:\n\n1. Enable OAuth Settings\n2. Set the Callback URL to the value shown above\n3. Add scopes: api, refresh_token, offline_access\n4. Save and copy the Consumer Key and Consumer Secret below.",
     "docUrl": "https://developer.salesforce.com/docs/einstein/genai/guide/mcp-intro.html",
+    "scopes": ["api", "refresh_token", "offline_access"],
     "fields": [
       {
-        "name": "SALESFORCE_ACCESS_TOKEN",
-        "label": "Salesforce Access Token",
+        "name": "OAUTH_CLIENT_ID",
+        "label": "Consumer Key (Client ID)",
+        "type": "text",
+        "required": true,
+        "role": "client_id",
+        "helpText": "From your Salesforce Connected App settings."
+      },
+      {
+        "name": "OAUTH_CLIENT_SECRET",
+        "label": "Consumer Secret (Client Secret)",
         "type": "password",
         "required": true,
-        "helpText": "OAuth access token from Salesforce Workbench or the Salesforce CLI. Stored encrypted."
+        "role": "client_secret",
+        "helpText": "From your Salesforce Connected App settings. Stored encrypted."
       }
     ]
   },
