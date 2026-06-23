@@ -5,5 +5,30 @@
   "author": { "name": "mySMB AI Studio" },
   "homepage": "https://github.com/mySMB-AI-Studio/mysmb-marketplace/tree/main/plugins/monday",
   "license": "MIT",
-  "keywords": ["monday", "work-management", "boards", "items", "crm", "oauth", "smb"]
+  "keywords": ["monday", "work-management", "boards", "items", "crm", "oauth", "smb"],
+  "connection": {
+    "authType": "oauth_client",
+    "instructions": "monday.com requires an OAuth app. Create one at *apps.monday.com → Build → Create app*:\n\n1. Under **OAuth**, set the **Redirect URL** to the value shown above\n2. Add scopes: `me:read`, `boards:read`, `workspaces:read`, `users:read`\n3. Copy the **Client ID** and **Client Secret** below.\n\nWhen you click Connect you'll sign in to monday.com and authorise read access.",
+    "docUrl": "https://developer.monday.com/apps/docs/oauth",
+    "scopes": ["me:read", "boards:read", "workspaces:read", "users:read"],
+    "fields": [
+      {
+        "name": "OAUTH_CLIENT_ID",
+        "label": "Client ID",
+        "type": "text",
+        "required": true,
+        "role": "client_id",
+        "helpText": "From your monday.com app's OAuth section."
+      },
+      {
+        "name": "OAUTH_CLIENT_SECRET",
+        "label": "Client Secret",
+        "type": "password",
+        "required": true,
+        "role": "client_secret",
+        "helpText": "From your monday.com app's OAuth section. Stored encrypted."
+      }
+    ]
+  },
+  "widgets": "widgets"
 }
