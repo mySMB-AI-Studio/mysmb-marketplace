@@ -25,7 +25,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "div0", "tableBody"]
+        "children": ["headerRow", "div0", "tableBody", "div1", "kvFooter"]
       },
 
       "headerRow": {
@@ -66,6 +66,31 @@
             { "id": "actual",   "header": "Actual",    "field": "actual_amount",  "width": 110, "priority": 1, "format": "currency" },
             { "id": "variance", "header": "Variance",  "field": "variance",       "width": 110, "priority": 1, "format": "currency" }
           ]
+        }
+      }
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "kvFooter": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start" },
+        "children": ["kvVariance", "kvPeriod"]
+      },
+      "kvVariance": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Net Favorable Variance",
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/get_budget_vs_actuals/net_favorable_variance" } }
+          }
+        }
+      },
+      "kvPeriod": {
+        "type": "KeyValue",
+        "props": {
+          "label": "YTD Period",
+          "value": { "$state": "/netsuite/get_budget_vs_actuals/period_label" }
         }
       }
 

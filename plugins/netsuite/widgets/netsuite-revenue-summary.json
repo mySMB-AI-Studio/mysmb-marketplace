@@ -9,7 +9,7 @@
   "popularity": 0,
   "status": "published",
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 7 },
+    "preferred": { "colSpan": 6, "rowSpan": 4 },
     "min":       { "colSpan": 4, "rowSpan": 6 },
     "max":       { "colSpan": 10, "rowSpan": 12 }
   },
@@ -25,7 +25,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "div0", "kpiGrid", "div1", "bottomKv"]
+        "children": ["headerRow", "div0", "kpiGrid", "div1", "sparkSection", "dateAxis", "div2", "bottomKv"]
       },
 
       "headerRow": {
@@ -104,23 +104,66 @@
 
       "div1": { "type": "Divider", "props": {} },
 
-      "bottomKv": {
-        "type": "Grid",
-        "props": { "cols": 2, "gap": "sm" },
-        "children": ["kvThisMonth", "kvLastMonth"]
+      "sparkSection": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["sparkLabel", "spark"]
       },
-      "kvThisMonth": {
-        "type": "KeyValue",
+      "sparkLabel": { "type": "Eyebrow", "props": { "text": "Last 6 Months" } },
+      "spark": {
+        "type": "Sparkline",
         "props": {
-          "label": "Current Month",
-          "value": { "$state": "/netsuite/get_revenue_summary/this_month_label" }
+          "values": { "$state": "/netsuite/get_revenue_summary/sparkline" },
+          "tone": "accent",
+          "height": 80,
+          "fill": false
         }
       },
-      "kvLastMonth": {
+
+      "dateAxis": {
+        "type": "Row",
+        "props": { "justify": "between" },
+        "children": ["axisFirst", "axisMid", "axisLast"]
+      },
+      "axisFirst": { "type": "Caption", "props": { "text": { "$state": "/netsuite/get_revenue_summary/sparkline_labels/0" } } },
+      "axisMid":   { "type": "Caption", "props": { "text": { "$state": "/netsuite/get_revenue_summary/sparkline_labels/2" } } },
+      "axisLast":  { "type": "Caption", "props": { "text": { "$state": "/netsuite/get_revenue_summary/sparkline_labels/5" } } },
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "bottomKv": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start" },
+        "children": ["kvYTD", "kvAvg", "kvBest"]
+      },
+      "kvYTD": {
         "type": "KeyValue",
         "props": {
-          "label": "Prior Month",
-          "value": { "$state": "/netsuite/get_revenue_summary/last_month_label" }
+          "label": "YTD Revenue",
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/get_revenue_summary/ytd_revenue" } }
+          }
+        }
+      },
+      "kvAvg": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Avg Monthly",
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/get_revenue_summary/avg_monthly" } }
+          }
+        }
+      },
+      "kvBest": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Best Month",
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/get_revenue_summary/best_month" } }
+          }
         }
       }
 

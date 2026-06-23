@@ -8,7 +8,7 @@
   "connectorsUsed": ["netsuite"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 4, "rowSpan": 3 },
+    "preferred": { "colSpan": 4, "rowSpan": 4 },
     "min":       { "colSpan": 3, "rowSpan": 3 },
     "max":       { "colSpan": 8, "rowSpan": 8 }
   },
@@ -19,7 +19,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "div0", "heroSection", "div1", "kvGrid"]
+        "children": ["headerRow", "div0", "heroSection", "div1", "kvGrid", "div2", "kvBenchmarks", "div3", "benchmarkSection"]
       },
 
       "headerRow": {
@@ -56,7 +56,36 @@
         "children": ["kvAR", "kvRevenue"]
       },
       "kvAR":      { "type": "KeyValue", "props": { "label": "AR Balance",     "value": "$127,500" } },
-      "kvRevenue": { "type": "KeyValue", "props": { "label": "90-day Revenue", "value": "$354,000" } }
+      "kvRevenue": { "type": "KeyValue", "props": { "label": "90-day Revenue", "value": "$354,000" } },
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "kvBenchmarks": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start" },
+        "children": ["kvBenchLow", "kvBenchHigh"]
+      },
+      "kvBenchLow":  { "type": "KeyValue", "props": { "label": "Benchmark Low",  "value": "30 days" } },
+      "kvBenchHigh": { "type": "KeyValue", "props": { "label": "Benchmark High", "value": "45 days" } },
+
+      "div3": { "type": "Divider", "props": {} },
+
+      "benchmarkSection": { "type": "Section", "props": { "variant": "muted" }, "children": ["benchmarkInner"] },
+      "benchmarkInner": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["benchmarkLabel", "benchmarkScale", "benchmarkStatus"]
+      },
+      "benchmarkLabel": { "type": "Eyebrow", "props": { "text": "Industry Benchmark" } },
+      "benchmarkScale": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "xs" },
+        "children": ["scaleLow", "benchmarkBar", "scaleHigh"]
+      },
+      "scaleLow":     { "type": "Caption", "props": { "text": "30d" } },
+      "benchmarkBar": { "type": "ProgressBar", "props": { "value": 72, "tone": "success" } },
+      "scaleHigh":    { "type": "Caption", "props": { "text": "45d" } },
+      "benchmarkStatus": { "type": "Caption", "props": { "text": "32.4 days — within benchmark range", "tone": "success" } }
 
     }
   },

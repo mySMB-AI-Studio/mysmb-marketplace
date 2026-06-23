@@ -9,7 +9,7 @@
   "popularity": 0,
   "status": "published",
   "sizing": {
-    "preferred": { "colSpan": 7, "rowSpan": 9 },
+    "preferred": { "colSpan": 7, "rowSpan": 5 },
     "min":       { "colSpan": 5, "rowSpan": 8 },
     "max":       { "colSpan": 12, "rowSpan": 14 }
   },
@@ -107,20 +107,23 @@
       "kvThisWeek": {
         "type": "KeyValue",
         "props": {
-          "label": "Due This Week",
+          "label": "Largest Bill",
           "value": {
             "$computed": "format_currency",
-            "args": { "value": { "$state": "/netsuite/list_vendor_bills_due/due_this_week" } }
+            "args": { "value": { "$state": "/netsuite/list_vendor_bills_due/largest_bill_amount" } }
           }
         }
       },
       "kvThisMonth": {
         "type": "KeyValue",
         "props": {
-          "label": "Due This Month",
+          "label": "Vendor Count",
           "value": {
-            "$computed": "format_currency",
-            "args": { "value": { "$state": "/netsuite/list_vendor_bills_due/total_due" } }
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} vendors",
+              "n": { "$state": "/netsuite/list_vendor_bills_due/vendor_count" }
+            }
           }
         }
       }
