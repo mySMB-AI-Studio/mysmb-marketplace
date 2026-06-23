@@ -1,0 +1,134 @@
+{
+  "id": "linkedin-messages",
+  "title": "LinkedIn Messages",
+  "description": "Recent LinkedIn conversations — sender, preview, and timestamp, with a link to open in LinkedIn.",
+  "category": "productivity",
+  "tags": ["linkedin", "messages", "inbox", "conversations", "networking"],
+  "keywords": ["messages", "inbox", "conversations", "linkedin", "chat", "unread", "dm"],
+  "connectorsUsed": ["linkedin"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
+    "max": { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "linkedin",
+    "tool": "linkedin_consumer_list_conversations",
+    "params": { "limit": 20 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "children": ["header", "body"] },
+      "header": { "type": "Header", "children": ["titleGroup"] },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "MessageSquare", "tone": "accent", "size": "sm" } },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "unreadCount"]
+      },
+      "title": { "type": "Heading", "props": { "text": "Messages", "level": "h2" } },
+      "unreadCount": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} Unread",
+              "n": {
+                "$computed": "count_where",
+                "args": {
+                  "value": { "$state": "/linkedin/linkedin_consumer_list_conversations/elements" },
+                  "whereField": "unread",
+                  "equals": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "body": { "type": "Body", "children": ["loading", "empty", "list"] },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/linkedin.linkedin_consumer_list_conversations" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No messages yet." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/linkedin.linkedin_consumer_list_conversations", "not": true },
+            { "$state": "/linkedin/linkedin_consumer_list_conversations/elements/0", "not": true }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["row"],
+        "repeat": {
+          "statePath": "/linkedin/linkedin_consumer_list_conversations/elements",
+          "key": "conversationId"
+        },
+        "visible": { "$state": "/_loading/linkedin.linkedin_consumer_list_conversations", "not": true }
+      },
+      "row": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "hover": true, "justify": "between" },
+        "children": ["unreadDot", "avatar", "labels", "time"]
+      },
+      "unreadDot": {
+        "type": "Dot",
+        "props": {
+          "tone": { "$cond": { "$item": "unread" }, "$then": "accent", "$else": "muted" },
+          "size": "sm"
+        }
+      },
+      "avatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": { "value": { "$item": "participantName" } }
+          },
+          "size": "sm"
+        }
+      },
+      "labels": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["senderName", "messagePreview"]
+      },
+      "senderName": {
+        "type": "Text",
+        "props": { "text": { "$item": "participantName" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "messagePreview": {
+        "type": "Text",
+        "props": { "text": { "$item": "lastMessage" }, "size": "sm", "tone": "muted", "truncate": true }
+      },
+      "time": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "relative_time",
+            "args": { "value": { "$item": "lastActivityAt" } }
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}

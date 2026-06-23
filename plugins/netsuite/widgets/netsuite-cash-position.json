@@ -1,0 +1,154 @@
+{
+  "id": "netsuite-cash-position",
+  "title": "Cash Position",
+  "description": "Current cash balance across all NetSuite bank accounts.",
+  "category": "finance",
+  "tags": ["netsuite", "oracle", "erp", "finance", "cash", "bank", "balance"],
+  "keywords": ["cash position", "bank balance", "cash flow", "bank accounts", "netsuite", "erp"],
+  "connectorsUsed": ["netsuite"],
+  "popularity": 0,
+  "status": "published",
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 8 },
+    "min":       { "colSpan": 3, "rowSpan": 7 },
+    "max":       { "colSpan": 8, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "netsuite",
+    "tool": "get_cash_position",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "totalSection", "div1", "accountsLabel", "accountList", "div2", "kvFooter"]
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Banknote", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Cash Position", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "NetSuite ERP · Bank accounts" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "totalSection": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["totalStack"]
+      },
+      "totalStack": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["totalIcon", "totalVal", "totalLbl"]
+      },
+      "totalIcon": { "type": "Icon", "props": { "name": "Banknote", "size": "sm", "tone": "accent" } },
+      "totalVal": {
+        "type": "Heading",
+        "props": {
+          "level": "h1",
+          "text": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/get_cash_position/total_balance" } }
+          }
+        }
+      },
+      "totalLbl": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Total Cash · {n} accounts",
+              "n": { "$state": "/netsuite/get_cash_position/account_count" }
+            }
+          }
+        }
+      },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "accountsLabel": { "type": "Eyebrow", "props": { "text": "Bank Accounts" } },
+
+      "accountList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "repeat": {
+          "statePath": "/netsuite/get_cash_position/accounts",
+          "key": "id"
+        },
+        "children": ["acctRow"]
+      },
+      "acctRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["acctInfo", "acctBal"]
+      },
+      "acctInfo": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["acctName", "acctNum"]
+      },
+      "acctName": {
+        "type": "Text",
+        "props": { "text": { "$item": "account_name" }, "size": "sm", "weight": "medium" }
+      },
+      "acctNum": {
+        "type": "Caption",
+        "props": { "text": { "$item": "account_number" }, "tone": "muted" }
+      },
+      "acctBal": {
+        "type": "Heading",
+        "props": {
+          "level": "h3",
+          "text": {
+            "$computed": "format_currency",
+            "args": { "value": { "$item": "balance" } }
+          }
+        }
+      },
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "kvFooter": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start" },
+        "children": ["kvLargest", "kvLowest"]
+      },
+      "kvLargest": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Largest Account",
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/get_cash_position/largest_account_balance" } }
+          }
+        }
+      },
+      "kvLowest": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Lowest Balance",
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/get_cash_position/lowest_account_balance" } }
+          }
+        }
+      }
+
+    }
+  }
+}

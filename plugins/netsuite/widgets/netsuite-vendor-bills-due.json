@@ -1,0 +1,133 @@
+{
+  "id": "netsuite-vendor-bills-due",
+  "title": "Vendor Bills Due",
+  "description": "Upcoming vendor bills due in the next 30 days, sorted by most urgent first.",
+  "category": "finance",
+  "tags": ["netsuite", "oracle", "erp", "finance", "ap", "bills", "payables", "vendors"],
+  "keywords": ["vendor bills", "accounts payable", "upcoming", "payables", "due", "netsuite", "erp"],
+  "connectorsUsed": ["netsuite"],
+  "popularity": 0,
+  "status": "published",
+  "sizing": {
+    "preferred": { "colSpan": 7, "rowSpan": 5 },
+    "min":       { "colSpan": 5, "rowSpan": 8 },
+    "max":       { "colSpan": 12, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "mcp": "netsuite",
+    "tool": "list_vendor_bills_due",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "kpiGrid", "div1", "tableBody", "div2", "kvGrid"]
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "CalendarClock", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Vendor Bills Due", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "NetSuite ERP · Next 30 days" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "kpiGrid": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["tileTotal", "tileCount"]
+      },
+
+      "tileTotal": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackTotal"] },
+      "stackTotal": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconTotal", "valTotal", "lblTotal"] },
+      "iconTotal": { "type": "Icon", "props": { "name": "DollarSign", "size": "sm", "tone": "accent" } },
+      "valTotal": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/list_vendor_bills_due/total_due" } }
+          }
+        }
+      },
+      "lblTotal": { "type": "Caption", "props": { "text": "Total Due (30 days)" } },
+
+      "tileCount": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackCount"] },
+      "stackCount": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconCount", "valCount", "lblCount"] },
+      "iconCount": { "type": "Icon", "props": { "name": "FileText", "size": "sm", "tone": "accent" } },
+      "valCount": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/netsuite/list_vendor_bills_due/bill_count" } }
+      },
+      "lblCount": { "type": "Caption", "props": { "text": "Upcoming Bills" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "tableBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["billsTable"]
+      },
+      "billsTable": {
+        "type": "Table",
+        "props": {
+          "loading": { "$state": "/_loading/netsuite.list_vendor_bills_due" },
+          "skeletonRows": 6,
+          "rows": { "$state": "/netsuite/list_vendor_bills_due/bills" },
+          "columns": [
+            { "id": "bill",    "header": "Bill #",   "field": "bill_number",   "width": 100, "priority": 1 },
+            { "id": "vendor",  "header": "Vendor",   "field": "vendor_name",                 "priority": 1 },
+            { "id": "amount",  "header": "Amount",   "field": "amount_due",    "width": 110, "priority": 1, "format": "currency" },
+            { "id": "days",    "header": "Due In",   "field": "days_until_due","width": 90,  "priority": 1 },
+            { "id": "due",     "header": "Due Date", "field": "due_date",      "width": 110, "priority": 2, "format": "relative" }
+          ]
+        }
+      },
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "kvGrid": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start" },
+        "children": ["kvThisWeek", "kvThisMonth"]
+      },
+      "kvThisWeek": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Largest Bill",
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/list_vendor_bills_due/largest_bill_amount" } }
+          }
+        }
+      },
+      "kvThisMonth": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Vendor Count",
+          "value": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} vendors",
+              "n": { "$state": "/netsuite/list_vendor_bills_due/vendor_count" }
+            }
+          }
+        }
+      }
+
+    }
+  }
+}

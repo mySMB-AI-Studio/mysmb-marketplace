@@ -1,5 +1,5 @@
 {
-  "id": "dataverse-call-qa-v16",
+  "id": "dataverse-call-qa-v20",
   "title": "Call QA Scorecard",
   "description": "Recent call QA scores from Dynamics 365 — call summary, score out of 100, and pass/fail grade.",
   "category": "support",
@@ -8,7 +8,7 @@
   "connectorsUsed": ["dataverse"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 10 },
+    "preferred": { "colSpan": 5, "rowSpan": 6 },
     "min":       { "colSpan": 4, "rowSpan": 9 },
     "max":       { "colSpan": 10, "rowSpan": 14 }
   },
@@ -33,7 +33,7 @@
       "headerRow": {
         "type": "Row",
         "props": { "justify": "between", "align": "center" },
-        "children": ["titleGroup", "brandBadge"]
+        "children": ["titleGroup"]
       },
       "titleGroup": {
         "type": "Row",
@@ -44,7 +44,6 @@
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
       "title": { "type": "Heading", "props": { "text": "Call QA Scorecard", "level": "h2" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Dynamics 365 Customer Service" } },
-      "brandBadge": { "type": "Badge", "props": { "text": "Dynamics 365", "tone": "info" } },
 
       "statsGrid": {
         "type": "Grid",
@@ -56,10 +55,9 @@
       "stackScored": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconScored", "valScored", "lblScored"] },
       "iconScored": { "type": "Icon", "props": { "name": "ClipboardList", "size": "sm", "tone": "accent" } },
       "valScored": {
-        "type": "Heading",
+        "type": "Stat",
         "props": {
-          "text": { "$state": "/dataverse/list_call_qa_scores/count" },
-          "level": "h2"
+          "value": { "$state": "/dataverse/list_call_qa_scores/count" }
         }
       },
       "lblScored": { "type": "Caption", "props": { "text": "Scored" } },
@@ -68,10 +66,9 @@
       "stackPassed": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconPassed", "valPassed", "lblPassed"] },
       "iconPassed": { "type": "Icon", "props": { "name": "CheckCircle", "size": "sm", "tone": "positive" } },
       "valPassed": {
-        "type": "Heading",
+        "type": "Stat",
         "props": {
-          "text": { "$state": "/dataverse/list_call_qa_scores/passed_count" },
-          "level": "h2"
+          "value": { "$state": "/dataverse/list_call_qa_scores/passed_count" }
         }
       },
       "lblPassed": { "type": "Caption", "props": { "text": "Passed" } },
@@ -79,7 +76,7 @@
       "tileRate": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackRate"] },
       "stackRate": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconRate", "valRate", "lblRate"] },
       "iconRate": { "type": "Icon", "props": { "name": "TrendingUp", "size": "sm", "tone": "accent" } },
-      "valRate": { "type": "Heading", "props": { "text": { "$state": "/dataverse/list_call_qa_scores/pass_rate" }, "level": "h2" } },
+      "valRate": { "type": "Stat", "props": { "value": { "$state": "/dataverse/list_call_qa_scores/pass_rate" } } },
       "lblRate": { "type": "Caption", "props": { "text": "Pass Rate" } },
 
       "div1": { "type": "Divider" },
@@ -128,7 +125,7 @@
         "type": "Badge",
         "props": {
           "text": { "$item": "mysmbai_grade" },
-          "tone": { "$item": "grade_tone" },
+          "tone": "accent",
           "variant": "soft"
         }
       },
@@ -160,7 +157,7 @@
               "n": { "$item": "mysmbai_totalscore" }
             }
           },
-          "tone": { "$item": "grade_tone" },
+          "tone": "accent",
           "variant": "soft"
         }
       },
@@ -183,6 +180,5 @@
         }
       }
     }
-  },
-  "status": "published"
+  }
 }

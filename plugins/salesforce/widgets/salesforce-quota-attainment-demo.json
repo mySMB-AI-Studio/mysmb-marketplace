@@ -1,0 +1,134 @@
+{
+  "id": "salesforce-quota-attainment-demo",
+  "title": "Quota Attainment (Demo)",
+  "description": "STATIC DEMO — sales rep quota attainment with closed vs. quota amounts and attainment ProgressBars. Hardcoded sample data, no connector required. Switch to a live version once Salesforce OAuth is configured.",
+  "category": "sales",
+  "tags": ["salesforce", "crm", "quota", "attainment", "sales", "reps", "forecast", "demo"],
+  "keywords": ["quota", "attainment", "sales rep", "closed", "forecast", "target", "salesforce", "crm", "demo"],
+  "connectorsUsed": ["salesforce"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 7 },
+    "min":       { "colSpan": 4, "rowSpan": 5 },
+    "max":       { "colSpan": 10, "rowSpan": 12 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "colHeader", "divider", "scrollBody"]
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Target", "tone": "accent", "size": "sm" } },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title":   { "type": "Heading", "props": { "text": "Quota Attainment", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Salesforce" } },
+
+      "colHeader": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["colRep", "colAttain"]
+      },
+      "colRep":    { "type": "Caption", "props": { "text": "REP / CLOSED vs QUOTA" } },
+      "colAttain": { "type": "Caption", "props": { "text": "ATTAINMENT" } },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "scrollBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["rows"]
+      },
+
+      "rows": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["rep1", "rd1", "rep2", "rd2", "rep3", "rd3", "rep4", "rd4", "rep5"]
+      },
+
+      "rd1": { "type": "Divider", "props": {} },
+      "rd2": { "type": "Divider", "props": {} },
+      "rd3": { "type": "Divider", "props": {} },
+      "rd4": { "type": "Divider", "props": {} },
+
+      "rep1":       { "type": "Row",         "props": { "align": "start" },                             "children": ["rep1Left", "rep1Right"] },
+      "rep1Left":   { "type": "Row",         "props": { "gap": "sm", "align": "start", "grow": true },  "children": ["rep1Av", "rep1Body"] },
+      "rep1Av":     { "type": "Avatar",      "props": { "initials": "SR", "size": "md" } },
+      "rep1Body":   { "type": "Stack",       "props": { "gap": "xs", "grow": true },                    "children": ["rep1Name", "rep1Quota", "rep1BarRow"] },
+      "rep1Name":   { "type": "Text",        "props": { "text": "Sarah Reyes",              "size": "sm", "weight": "medium", "truncate": true } },
+      "rep1Quota":  { "type": "Text",        "props": { "text": "$840K closed · $700K quota", "size": "xs", "tone": "muted",   "truncate": true } },
+      "rep1BarRow": { "type": "Row",         "props": { "gap": "xs", "align": "center" },               "children": ["rep1Bar", "rep1BarVal"] },
+      "rep1Bar":    { "type": "ProgressBar", "props": { "value": 100, "max": 100, "tone": "success" } },
+      "rep1BarVal": { "type": "Caption",     "props": { "text": "120%" } },
+      "rep1Right":  { "type": "Stack",       "props": { "gap": "none", "align": "end" },                "children": ["rep1Badge"] },
+      "rep1Badge":  { "type": "Badge",       "props": { "text": "120% ↑", "tone": "success" } },
+
+      "rep2":       { "type": "Row",         "props": { "align": "start" },                             "children": ["rep2Left", "rep2Right"] },
+      "rep2Left":   { "type": "Row",         "props": { "gap": "sm", "align": "start", "grow": true },  "children": ["rep2Av", "rep2Body"] },
+      "rep2Av":     { "type": "Avatar",      "props": { "initials": "MT", "size": "md" } },
+      "rep2Body":   { "type": "Stack",       "props": { "gap": "xs", "grow": true },                    "children": ["rep2Name", "rep2Quota", "rep2BarRow"] },
+      "rep2Name":   { "type": "Text",        "props": { "text": "Marcus Tan",               "size": "sm", "weight": "medium", "truncate": true } },
+      "rep2Quota":  { "type": "Text",        "props": { "text": "$620K closed · $700K quota", "size": "xs", "tone": "muted",   "truncate": true } },
+      "rep2BarRow": { "type": "Row",         "props": { "gap": "xs", "align": "center" },               "children": ["rep2Bar", "rep2BarVal"] },
+      "rep2Bar":    { "type": "ProgressBar", "props": { "value": 89, "max": 100, "tone": "warning" } },
+      "rep2BarVal": { "type": "Caption",     "props": { "text": "89%" } },
+      "rep2Right":  { "type": "Stack",       "props": { "gap": "none", "align": "end" },                "children": ["rep2Badge"] },
+      "rep2Badge":  { "type": "Badge",       "props": { "text": "89%", "tone": "warning" } },
+
+      "rep3":       { "type": "Row",         "props": { "align": "start" },                             "children": ["rep3Left", "rep3Right"] },
+      "rep3Left":   { "type": "Row",         "props": { "gap": "sm", "align": "start", "grow": true },  "children": ["rep3Av", "rep3Body"] },
+      "rep3Av":     { "type": "Avatar",      "props": { "initials": "PK", "size": "md" } },
+      "rep3Body":   { "type": "Stack",       "props": { "gap": "xs", "grow": true },                    "children": ["rep3Name", "rep3Quota", "rep3BarRow"] },
+      "rep3Name":   { "type": "Text",        "props": { "text": "Priya Kumar",              "size": "sm", "weight": "medium", "truncate": true } },
+      "rep3Quota":  { "type": "Text",        "props": { "text": "$540K closed · $700K quota", "size": "xs", "tone": "muted",   "truncate": true } },
+      "rep3BarRow": { "type": "Row",         "props": { "gap": "xs", "align": "center" },               "children": ["rep3Bar", "rep3BarVal"] },
+      "rep3Bar":    { "type": "ProgressBar", "props": { "value": 77, "max": 100, "tone": "warning" } },
+      "rep3BarVal": { "type": "Caption",     "props": { "text": "77%" } },
+      "rep3Right":  { "type": "Stack",       "props": { "gap": "none", "align": "end" },                "children": ["rep3Badge"] },
+      "rep3Badge":  { "type": "Badge",       "props": { "text": "77%", "tone": "warning" } },
+
+      "rep4":       { "type": "Row",         "props": { "align": "start" },                             "children": ["rep4Left", "rep4Right"] },
+      "rep4Left":   { "type": "Row",         "props": { "gap": "sm", "align": "start", "grow": true },  "children": ["rep4Av", "rep4Body"] },
+      "rep4Av":     { "type": "Avatar",      "props": { "initials": "JL", "size": "md" } },
+      "rep4Body":   { "type": "Stack",       "props": { "gap": "xs", "grow": true },                    "children": ["rep4Name", "rep4Quota", "rep4BarRow"] },
+      "rep4Name":   { "type": "Text",        "props": { "text": "James Lee",               "size": "sm", "weight": "medium", "truncate": true } },
+      "rep4Quota":  { "type": "Text",        "props": { "text": "$410K closed · $700K quota", "size": "xs", "tone": "muted",   "truncate": true } },
+      "rep4BarRow": { "type": "Row",         "props": { "gap": "xs", "align": "center" },               "children": ["rep4Bar", "rep4BarVal"] },
+      "rep4Bar":    { "type": "ProgressBar", "props": { "value": 59, "max": 100, "tone": "warning" } },
+      "rep4BarVal": { "type": "Caption",     "props": { "text": "59%" } },
+      "rep4Right":  { "type": "Stack",       "props": { "gap": "none", "align": "end" },                "children": ["rep4Badge"] },
+      "rep4Badge":  { "type": "Badge",       "props": { "text": "59%", "tone": "warning" } },
+
+      "rep5":       { "type": "Row",         "props": { "align": "start" },                             "children": ["rep5Left", "rep5Right"] },
+      "rep5Left":   { "type": "Row",         "props": { "gap": "sm", "align": "start", "grow": true },  "children": ["rep5Av", "rep5Body"] },
+      "rep5Av":     { "type": "Avatar",      "props": { "initials": "AO", "size": "md" } },
+      "rep5Body":   { "type": "Stack",       "props": { "gap": "xs", "grow": true },                    "children": ["rep5Name", "rep5Quota", "rep5BarRow"] },
+      "rep5Name":   { "type": "Text",        "props": { "text": "Ana Ortega",              "size": "sm", "weight": "medium", "truncate": true } },
+      "rep5Quota":  { "type": "Text",        "props": { "text": "$280K closed · $700K quota", "size": "xs", "tone": "muted",   "truncate": true } },
+      "rep5BarRow": { "type": "Row",         "props": { "gap": "xs", "align": "center" },               "children": ["rep5Bar", "rep5BarVal"] },
+      "rep5Bar":    { "type": "ProgressBar", "props": { "value": 40, "max": 100, "tone": "destructive" } },
+      "rep5BarVal": { "type": "Caption",     "props": { "text": "40%" } },
+      "rep5Right":  { "type": "Stack",       "props": { "gap": "none", "align": "end" },                "children": ["rep5Badge"] },
+      "rep5Badge":  { "type": "Badge",       "props": { "text": "40%", "tone": "destructive" } }
+
+    }
+  },
+  "status": "draft"
+}

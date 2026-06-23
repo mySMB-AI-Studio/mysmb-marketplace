@@ -1,0 +1,539 @@
+{
+  "id": "salesforce-accounts-demo",
+  "title": "Key Accounts (Demo)",
+  "description": "STATIC DEMO — hardcoded sample data, no connector required. Switch to salesforce-recent-accounts once Salesforce OAuth is configured.",
+  "category": "sales",
+  "tags": ["salesforce", "crm", "accounts", "customers", "sales", "demo"],
+  "keywords": ["account", "accounts", "customer", "customers", "key accounts", "industry", "type", "salesforce", "crm", "demo"],
+  "connectorsUsed": ["salesforce"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 6 },
+    "min":       { "colSpan": 4, "rowSpan": 4 },
+    "max":       { "colSpan": 10, "rowSpan": 10 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "colHeader", "divider", "scrollBody", "detailOverlay"]
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Building2", "tone": "accent", "size": "sm" } },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title":   { "type": "Heading", "props": { "text": "Key Accounts", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Salesforce" } },
+
+      "colHeader": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["colAcct", "colType"]
+      },
+      "colAcct": { "type": "Caption", "props": { "text": "ACCOUNT" } },
+      "colType": { "type": "Caption", "props": { "text": "TYPE" } },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "scrollBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["rows"]
+      },
+
+      "rows": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["acct1", "rd1", "acct2", "rd2", "acct3", "rd3", "acct4", "rd4", "acct5", "rd5", "acct6", "rd6", "acct7", "rd7", "acct8", "rd8", "acct9", "rd9", "acct10"]
+      },
+
+      "rd1": { "type": "Divider", "props": {} },
+      "rd2": { "type": "Divider", "props": {} },
+      "rd3": { "type": "Divider", "props": {} },
+      "rd4": { "type": "Divider", "props": {} },
+      "rd5": { "type": "Divider", "props": {} },
+      "rd6": { "type": "Divider", "props": {} },
+      "rd7": { "type": "Divider", "props": {} },
+      "rd8": { "type": "Divider", "props": {} },
+      "rd9": { "type": "Divider", "props": {} },
+
+      "acct1": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center", "hover": true, "clickable": true },
+        "children": ["acct1Left", "acct1Type"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sel",
+              "value": {
+                "id": "acme-corporation",
+                "name": "Acme Corporation",
+                "industry": "Technology",
+                "type": "Customer",
+                "typeTone": "success",
+                "phone": "+1 (415) 555-0101",
+                "website": "acmecorp.com",
+                "city": "San Francisco, CA",
+                "owner": "Sarah Chen",
+                "revenue": "$12.4M",
+                "opps": "3",
+                "url": "https://login.salesforce.com"
+              }
+            }
+          }
+        }
+      },
+      "acct1Left": { "type": "Row",    "props": { "gap": "sm", "align": "center" }, "children": ["acct1Av", "acct1Info"] },
+      "acct1Av":   { "type": "Avatar", "props": { "initials": "AC", "size": "md" } },
+      "acct1Info": { "type": "Stack",  "props": { "gap": "none" }, "children": ["acct1Name", "acct1Ind"] },
+      "acct1Name": { "type": "Text",   "props": { "text": "Acme Corporation",    "size": "sm", "weight": "medium", "truncate": true } },
+      "acct1Ind":  { "type": "Text",   "props": { "text": "Technology",          "size": "xs", "tone": "muted",   "truncate": true } },
+      "acct1Type": { "type": "Badge",  "props": { "text": "Customer", "tone": "success" } },
+
+      "acct2": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center", "hover": true, "clickable": true },
+        "children": ["acct2Left", "acct2Type"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sel",
+              "value": {
+                "id": "global-media",
+                "name": "Global Media",
+                "industry": "Media & Entertainment",
+                "type": "Customer",
+                "typeTone": "success",
+                "phone": "+1 (212) 555-0184",
+                "website": "globalmedia.com",
+                "city": "New York, NY",
+                "owner": "James Okafor",
+                "revenue": "$8.7M",
+                "opps": "2",
+                "url": "https://login.salesforce.com"
+              }
+            }
+          }
+        }
+      },
+      "acct2Left": { "type": "Row",    "props": { "gap": "sm", "align": "center" }, "children": ["acct2Av", "acct2Info"] },
+      "acct2Av":   { "type": "Avatar", "props": { "initials": "GM", "size": "md" } },
+      "acct2Info": { "type": "Stack",  "props": { "gap": "none" }, "children": ["acct2Name", "acct2Ind"] },
+      "acct2Name": { "type": "Text",   "props": { "text": "Global Media",          "size": "sm", "weight": "medium", "truncate": true } },
+      "acct2Ind":  { "type": "Text",   "props": { "text": "Media & Entertainment", "size": "xs", "tone": "muted",   "truncate": true } },
+      "acct2Type": { "type": "Badge",  "props": { "text": "Customer", "tone": "success" } },
+
+      "acct3": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center", "hover": true, "clickable": true },
+        "children": ["acct3Left", "acct3Type"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sel",
+              "value": {
+                "id": "greenfield-inc",
+                "name": "Greenfield Inc.",
+                "industry": "Manufacturing",
+                "type": "Prospect",
+                "typeTone": "info",
+                "phone": "+1 (312) 555-0162",
+                "website": "greenfieldinc.com",
+                "city": "Chicago, IL",
+                "owner": "Maria Lopez",
+                "revenue": "$5.2M",
+                "opps": "1",
+                "url": "https://login.salesforce.com"
+              }
+            }
+          }
+        }
+      },
+      "acct3Left": { "type": "Row",    "props": { "gap": "sm", "align": "center" }, "children": ["acct3Av", "acct3Info"] },
+      "acct3Av":   { "type": "Avatar", "props": { "initials": "GI", "size": "md" } },
+      "acct3Info": { "type": "Stack",  "props": { "gap": "none" }, "children": ["acct3Name", "acct3Ind"] },
+      "acct3Name": { "type": "Text",   "props": { "text": "Greenfield Inc.",      "size": "sm", "weight": "medium", "truncate": true } },
+      "acct3Ind":  { "type": "Text",   "props": { "text": "Manufacturing",        "size": "xs", "tone": "muted",   "truncate": true } },
+      "acct3Type": { "type": "Badge",  "props": { "text": "Prospect", "tone": "info" } },
+
+      "acct4": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center", "hover": true, "clickable": true },
+        "children": ["acct4Left", "acct4Type"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sel",
+              "value": {
+                "id": "startup-io",
+                "name": "StartUp.io",
+                "industry": "Software",
+                "type": "Partner",
+                "typeTone": "accent",
+                "phone": "+1 (650) 555-0193",
+                "website": "startup.io",
+                "city": "Palo Alto, CA",
+                "owner": "David Kim",
+                "revenue": "$2.1M",
+                "opps": "2",
+                "url": "https://login.salesforce.com"
+              }
+            }
+          }
+        }
+      },
+      "acct4Left": { "type": "Row",    "props": { "gap": "sm", "align": "center" }, "children": ["acct4Av", "acct4Info"] },
+      "acct4Av":   { "type": "Avatar", "props": { "initials": "SI", "size": "md" } },
+      "acct4Info": { "type": "Stack",  "props": { "gap": "none" }, "children": ["acct4Name", "acct4Ind"] },
+      "acct4Name": { "type": "Text",   "props": { "text": "StartUp.io",           "size": "sm", "weight": "medium", "truncate": true } },
+      "acct4Ind":  { "type": "Text",   "props": { "text": "Software",             "size": "xs", "tone": "muted",   "truncate": true } },
+      "acct4Type": { "type": "Badge",  "props": { "text": "Partner", "tone": "accent" } },
+
+      "acct5": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center", "hover": true, "clickable": true },
+        "children": ["acct5Left", "acct5Type"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sel",
+              "value": {
+                "id": "blue-ridge-financial",
+                "name": "Blue Ridge Financial",
+                "industry": "Finance",
+                "type": "Customer",
+                "typeTone": "success",
+                "phone": "+1 (704) 555-0147",
+                "website": "blueridgefinancial.com",
+                "city": "Charlotte, NC",
+                "owner": "Sarah Chen",
+                "revenue": "$31.5M",
+                "opps": "1",
+                "url": "https://login.salesforce.com"
+              }
+            }
+          }
+        }
+      },
+      "acct5Left": { "type": "Row",    "props": { "gap": "sm", "align": "center" }, "children": ["acct5Av", "acct5Info"] },
+      "acct5Av":   { "type": "Avatar", "props": { "initials": "BR", "size": "md" } },
+      "acct5Info": { "type": "Stack",  "props": { "gap": "none" }, "children": ["acct5Name", "acct5Ind"] },
+      "acct5Name": { "type": "Text",   "props": { "text": "Blue Ridge Financial", "size": "sm", "weight": "medium", "truncate": true } },
+      "acct5Ind":  { "type": "Text",   "props": { "text": "Finance",              "size": "xs", "tone": "muted",   "truncate": true } },
+      "acct5Type": { "type": "Badge",  "props": { "text": "Customer", "tone": "success" } },
+
+      "acct6": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center", "hover": true, "clickable": true },
+        "children": ["acct6Left", "acct6Type"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sel",
+              "value": {
+                "id": "nexus-systems",
+                "name": "Nexus Systems",
+                "industry": "IT Services",
+                "type": "Partner",
+                "typeTone": "accent",
+                "phone": "+1 (512) 555-0138",
+                "website": "nexussystems.com",
+                "city": "Austin, TX",
+                "owner": "James Okafor",
+                "revenue": "$9.8M",
+                "opps": "2",
+                "url": "https://login.salesforce.com"
+              }
+            }
+          }
+        }
+      },
+      "acct6Left": { "type": "Row",    "props": { "gap": "sm", "align": "center" }, "children": ["acct6Av", "acct6Info"] },
+      "acct6Av":   { "type": "Avatar", "props": { "initials": "NS", "size": "md" } },
+      "acct6Info": { "type": "Stack",  "props": { "gap": "none" }, "children": ["acct6Name", "acct6Ind"] },
+      "acct6Name": { "type": "Text",   "props": { "text": "Nexus Systems",        "size": "sm", "weight": "medium", "truncate": true } },
+      "acct6Ind":  { "type": "Text",   "props": { "text": "IT Services",          "size": "xs", "tone": "muted",   "truncate": true } },
+      "acct6Type": { "type": "Badge",  "props": { "text": "Partner", "tone": "accent" } },
+
+      "acct7": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center", "hover": true, "clickable": true },
+        "children": ["acct7Left", "acct7Type"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sel",
+              "value": {
+                "id": "coastal-retail-group",
+                "name": "Coastal Retail Group",
+                "industry": "Retail",
+                "type": "Customer",
+                "typeTone": "success",
+                "phone": "+1 (619) 555-0175",
+                "website": "coastalretail.com",
+                "city": "San Diego, CA",
+                "owner": "Maria Lopez",
+                "revenue": "$18.3M",
+                "opps": "1",
+                "url": "https://login.salesforce.com"
+              }
+            }
+          }
+        }
+      },
+      "acct7Left": { "type": "Row",    "props": { "gap": "sm", "align": "center" }, "children": ["acct7Av", "acct7Info"] },
+      "acct7Av":   { "type": "Avatar", "props": { "initials": "CR", "size": "md" } },
+      "acct7Info": { "type": "Stack",  "props": { "gap": "none" }, "children": ["acct7Name", "acct7Ind"] },
+      "acct7Name": { "type": "Text",   "props": { "text": "Coastal Retail Group", "size": "sm", "weight": "medium", "truncate": true } },
+      "acct7Ind":  { "type": "Text",   "props": { "text": "Retail",               "size": "xs", "tone": "muted",   "truncate": true } },
+      "acct7Type": { "type": "Badge",  "props": { "text": "Customer", "tone": "success" } },
+
+      "acct8": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center", "hover": true, "clickable": true },
+        "children": ["acct8Left", "acct8Type"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sel",
+              "value": {
+                "id": "meridian-health",
+                "name": "Meridian Health",
+                "industry": "Healthcare",
+                "type": "Prospect",
+                "typeTone": "info",
+                "phone": "+1 (617) 555-0121",
+                "website": "meridianhealth.com",
+                "city": "Boston, MA",
+                "owner": "David Kim",
+                "revenue": "$42.0M",
+                "opps": "1",
+                "url": "https://login.salesforce.com"
+              }
+            }
+          }
+        }
+      },
+      "acct8Left": { "type": "Row",    "props": { "gap": "sm", "align": "center" }, "children": ["acct8Av", "acct8Info"] },
+      "acct8Av":   { "type": "Avatar", "props": { "initials": "MH", "size": "md" } },
+      "acct8Info": { "type": "Stack",  "props": { "gap": "none" }, "children": ["acct8Name", "acct8Ind"] },
+      "acct8Name": { "type": "Text",   "props": { "text": "Meridian Health",      "size": "sm", "weight": "medium", "truncate": true } },
+      "acct8Ind":  { "type": "Text",   "props": { "text": "Healthcare",           "size": "xs", "tone": "muted",   "truncate": true } },
+      "acct8Type": { "type": "Badge",  "props": { "text": "Prospect", "tone": "info" } },
+
+      "acct9": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center", "hover": true, "clickable": true },
+        "children": ["acct9Left", "acct9Type"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sel",
+              "value": {
+                "id": "pacific-logistics",
+                "name": "Pacific Logistics",
+                "industry": "Transportation",
+                "type": "Customer",
+                "typeTone": "success",
+                "phone": "+1 (206) 555-0169",
+                "website": "pacificlogistics.com",
+                "city": "Seattle, WA",
+                "owner": "Sarah Chen",
+                "revenue": "$14.6M",
+                "opps": "2",
+                "url": "https://login.salesforce.com"
+              }
+            }
+          }
+        }
+      },
+      "acct9Left": { "type": "Row",    "props": { "gap": "sm", "align": "center" }, "children": ["acct9Av", "acct9Info"] },
+      "acct9Av":   { "type": "Avatar", "props": { "initials": "PL", "size": "md" } },
+      "acct9Info": { "type": "Stack",  "props": { "gap": "none" }, "children": ["acct9Name", "acct9Ind"] },
+      "acct9Name": { "type": "Text",   "props": { "text": "Pacific Logistics",    "size": "sm", "weight": "medium", "truncate": true } },
+      "acct9Ind":  { "type": "Text",   "props": { "text": "Transportation",       "size": "xs", "tone": "muted",   "truncate": true } },
+      "acct9Type": { "type": "Badge",  "props": { "text": "Customer", "tone": "success" } },
+
+      "acct10": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center", "hover": true, "clickable": true },
+        "children": ["acct10Left", "acct10Type"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sel",
+              "value": {
+                "id": "aurora-creative",
+                "name": "Aurora Creative",
+                "industry": "Marketing",
+                "type": "Prospect",
+                "typeTone": "info",
+                "phone": "+1 (305) 555-0113",
+                "website": "auroracreative.com",
+                "city": "Miami, FL",
+                "owner": "James Okafor",
+                "revenue": "$3.4M",
+                "opps": "1",
+                "url": "https://login.salesforce.com"
+              }
+            }
+          }
+        }
+      },
+      "acct10Left": { "type": "Row",    "props": { "gap": "sm", "align": "center" }, "children": ["acct10Av", "acct10Info"] },
+      "acct10Av":   { "type": "Avatar", "props": { "initials": "AU", "size": "md" } },
+      "acct10Info": { "type": "Stack",  "props": { "gap": "none" }, "children": ["acct10Name", "acct10Ind"] },
+      "acct10Name": { "type": "Text",   "props": { "text": "Aurora Creative",     "size": "sm", "weight": "medium", "truncate": true } },
+      "acct10Ind":  { "type": "Text",   "props": { "text": "Marketing",           "size": "xs", "tone": "muted",   "truncate": true } },
+      "acct10Type": { "type": "Badge",  "props": { "text": "Prospect", "tone": "info" } },
+
+      "detailOverlay": {
+        "type": "Overlay",
+        "props": { "open": true },
+        "visible": { "$state": "/ui/sel/id" },
+        "children": ["detailStack"]
+      },
+      "detailStack": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["detailTitleRow", "detailMeta", "detailContact", "detailMetrics", "detailLinkRow"]
+      },
+
+      "detailTitleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["detailNameRow", "detailCloseX"]
+      },
+      "detailNameRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["detailName", "detailTypeBadge"]
+      },
+      "detailName": {
+        "type": "Heading",
+        "props": { "text": { "$state": "/ui/sel/name" }, "level": "h3" }
+      },
+      "detailTypeBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$state": "/ui/sel/type" },
+          "tone": { "$state": "/ui/sel/typeTone" }
+        }
+      },
+      "detailCloseX": {
+        "type": "OverlayClose",
+        "props": {},
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": { "statePath": "/ui/sel/id", "value": "" }
+          }
+        }
+      },
+
+      "detailMeta": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "md" },
+        "children": ["metaIndustryCell", "metaCityCell"]
+      },
+      "metaIndustryCell": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["metaIndustryLbl", "metaIndustryVal"]
+      },
+      "metaIndustryLbl": { "type": "Caption", "props": { "text": "Industry" } },
+      "metaIndustryVal": { "type": "Text",    "props": { "text": { "$state": "/ui/sel/industry" }, "size": "sm" } },
+      "metaCityCell": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["metaCityLbl", "metaCityVal"]
+      },
+      "metaCityLbl": { "type": "Caption", "props": { "text": "Location" } },
+      "metaCityVal": { "type": "Text",    "props": { "text": { "$state": "/ui/sel/city" }, "size": "sm" } },
+
+      "detailContact": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "md" },
+        "children": ["metaOwnerCell", "metaPhoneCell"]
+      },
+      "metaOwnerCell": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["metaOwnerLbl", "metaOwnerVal"]
+      },
+      "metaOwnerLbl": { "type": "Caption", "props": { "text": "Account Owner" } },
+      "metaOwnerVal": { "type": "Text",    "props": { "text": { "$state": "/ui/sel/owner" }, "size": "sm" } },
+      "metaPhoneCell": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["metaPhoneLbl", "metaPhoneVal"]
+      },
+      "metaPhoneLbl": { "type": "Caption", "props": { "text": "Phone" } },
+      "metaPhoneVal": { "type": "Text",    "props": { "text": { "$state": "/ui/sel/phone" }, "size": "sm" } },
+
+      "detailMetrics": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "md" },
+        "children": ["metaRevenueCell", "metaOppsCell"]
+      },
+      "metaRevenueCell": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["metaRevenueLbl", "metaRevenueVal"]
+      },
+      "metaRevenueLbl": { "type": "Caption", "props": { "text": "Annual Revenue" } },
+      "metaRevenueVal": { "type": "Text",    "props": { "text": { "$state": "/ui/sel/revenue" }, "size": "sm", "weight": "medium" } },
+      "metaOppsCell": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["metaOppsLbl", "metaOppsVal"]
+      },
+      "metaOppsLbl": { "type": "Caption", "props": { "text": "Open Opportunities" } },
+      "metaOppsVal": { "type": "Text",    "props": { "text": { "$state": "/ui/sel/opps" }, "size": "sm", "weight": "medium" } },
+
+      "detailLinkRow": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["detailLink"]
+      },
+      "detailLink": {
+        "type": "Button",
+        "props": { "label": "View in Salesforce", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": { "$state": "/ui/sel/url" } }
+          }
+        }
+      }
+
+    }
+  },
+  "status": "draft"
+}

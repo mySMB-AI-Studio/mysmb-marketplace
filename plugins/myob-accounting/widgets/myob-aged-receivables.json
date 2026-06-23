@@ -1,36 +1,54 @@
 {
   "id": "myob-aged-receivables",
   "title": "MYOB — Aged Receivables",
-  "description": "Open sales invoices ordered by due date — oldest overdue at the top.",
+  "description": "Open invoices aggregated per customer — total balance owed with overdue indicator, sorted worst-first.",
   "category": "finance",
   "tags": ["myob", "receivables", "aging", "ar", "finance", "overdue"],
-  "keywords": ["aged", "aging", "receivables", "ar", "outstanding", "overdue", "myob"],
+  "keywords": ["aged", "aging", "receivables", "ar", "outstanding", "overdue", "myob", "customers"],
   "connectorsUsed": ["myob-accounting"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 4 },
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
     "min": { "colSpan": 4, "rowSpan": 4 },
     "max": { "colSpan": 10, "rowSpan": 12 }
   },
   "dataProvider": {
     "mcp": "myob-accounting",
     "tool": "list_invoices",
-    "params": { "status": "Open", "page_size": 50 }
+    "params": { "status": "Open", "page_size": 500 }
   },
   "spec": {
     "root": "card",
     "elements": {
+
       "card": {
         "type": "Card",
-        "children": ["header", "body"]
+        "props": {},
+        "children": ["titleRow", "statGrid", "divider", "tableBody"],
+        "watch": {
+          "/myob-accounting/list_invoices/Items": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/arData",
+              "value": {
+                "$computed": "myob-accounting_ar_by_customer",
+                "args": {
+                  "value": { "$state": "/myob-accounting/list_invoices/Items" }
+                }
+              }
+            }
+          }
+        }
       },
-      "header": {
-        "type": "Header",
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
         "children": ["titleGroup"]
       },
       "titleGroup": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "start" },
+        "props": { "gap": "sm", "align": "center" },
         "children": ["titleIcon", "titleStack"]
       },
       "titleIcon": {
@@ -40,129 +58,97 @@
       "titleStack": {
         "type": "Stack",
         "props": { "gap": "none" },
-        "children": ["title", "subtitle"]
+        "children": ["title", "eyebrow"]
       },
       "title": {
         "type": "Heading",
         "props": { "text": "Aged Receivables", "level": "h2" }
       },
-      "subtitle": {
+      "eyebrow": {
         "type": "Eyebrow",
+        "props": { "text": "MYOB Accounting" }
+      },
+
+      "statGrid": {
+        "type": "Grid",
+        "props": { "cols": 2 },
+        "children": ["tileCount", "tileTotal"]
+      },
+      "tileCount": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["stackCount"]
+      },
+      "stackCount": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["iconCount", "valCount", "lblCount"]
+      },
+      "iconCount": {
+        "type": "Icon",
+        "props": { "name": "Users", "size": "sm", "tone": "warning" }
+      },
+      "valCount": {
+        "type": "Stat",
         "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{n} open invoices",
-              "n": {
-                "$computed": "count",
-                "args": { "value": { "$state": "/myob-accounting/list_invoices/Items" } }
-              }
-            }
-          }
+          "value": { "$state": "/ui/arData/customerCount" },
+          "tone": "warning"
         }
       },
-      "body": {
-        "type": "Body",
-        "children": ["loading", "empty", "list"]
+      "lblCount": {
+        "type": "Caption",
+        "props": { "text": "Customers Owing" }
       },
-      "loading": {
+      "tileTotal": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["stackTotal"]
+      },
+      "stackTotal": {
         "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["skel1", "skel2", "skel3", "skel4"],
-        "visible": { "$state": "/_loading/myob-accounting.list_invoices" }
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["iconTotal", "valTotal", "lblTotal"]
       },
-      "skel1": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
-      "skel2": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
-      "skel3": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
-      "skel4": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
-      "empty": {
-        "type": "Empty",
-        "props": { "message": "No outstanding receivables." },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/myob-accounting.list_invoices", "not": true },
-            { "$state": "/myob-accounting/list_invoices/Items/0", "not": true }
+      "iconTotal": {
+        "type": "Icon",
+        "props": { "name": "AlertTriangle", "size": "sm", "tone": "warning" }
+      },
+      "valTotal": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "myob-accounting_format_currency",
+            "args": { "value": { "$state": "/ui/arData/grandTotal" } }
+          },
+          "tone": "warning"
+        }
+      },
+      "lblTotal": {
+        "type": "Caption",
+        "props": { "text": "Total Outstanding" }
+      },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "tableBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["table"]
+      },
+      "table": {
+        "type": "Table",
+        "props": {
+          "loading": { "$state": "/_loading/myob-accounting.list_invoices" },
+          "skeletonRows": 4,
+          "rows": { "$state": "/ui/arData/entries" },
+          "columns": [
+            { "id": "customer",     "header": "Customer", "field": "name",         "priority": 1 },
+            { "id": "invoiceCount", "header": "Invoices", "field": "invoiceCount", "width": 96,  "priority": 1 },
+            { "id": "total",        "header": "Amount",   "field": "total",        "width": 120, "priority": 1, "format": "currency" }
           ]
         }
-      },
-      "list": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["row"],
-        "repeat": {
-          "statePath": "/myob-accounting/list_invoices/Items",
-          "key": "UID"
-        },
-        "visible": { "$state": "/_loading/myob-accounting.list_invoices", "not": true }
-      },
-      "row": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "start", "hover": true },
-        "children": ["avatar", "label", "dueBadge", "amount"]
-      },
-      "avatar": {
-        "type": "Avatar",
-        "props": {
-          "initials": {
-            "$computed": "initials",
-            "args": { "value": { "$item": "Customer/Name" } }
-          },
-          "size": "sm"
-        }
-      },
-      "label": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["labelTop", "labelBottom"]
-      },
-      "labelTop": {
-        "type": "Text",
-        "props": {
-          "text": { "$item": "Customer/Name" },
-          "size": "md",
-          "weight": "medium",
-          "truncate": true
-        }
-      },
-      "labelBottom": {
-        "type": "Text",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "Inv {num}",
-              "num": { "$item": "Number" }
-            }
-          },
-          "size": "sm",
-          "tone": "muted"
-        }
-      },
-      "dueBadge": {
-        "type": "Badge",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "Due {d}",
-              "d": { "$item": "DueDate" }
-            }
-          },
-          "tone": "destructive",
-          "variant": "soft"
-        }
-      },
-      "amount": {
-        "type": "Text",
-        "props": {
-          "text": {
-            "$computed": "format_currency",
-            "args": { "value": { "$item": "BalanceDueAmount" } }
-          },
-          "weight": "semibold",
-          "size": "sm"
-        }
       }
+
     }
   },
   "status": "published"
