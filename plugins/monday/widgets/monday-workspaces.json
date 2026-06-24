@@ -102,8 +102,13 @@
       },
 
       "wsRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true },
+        "children": ["wsLeft", "kindBadge"]
+      },
+      "wsLeft": {
         "type": "Stack",
-        "props": { "gap": "none" },
+        "props": { "gap": "none", "grow": true },
         "children": ["wsName", "wsDesc"]
       },
       "wsName": {
@@ -124,6 +129,14 @@
           "truncate": true
         },
         "visible": { "$item": "description" }
+      },
+      "kindBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "kind" },
+          "tone": "info",
+          "variant": "soft"
+        }
       }
 
     }

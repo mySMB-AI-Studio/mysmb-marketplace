@@ -24,7 +24,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["titleRow", "loading", "empty", "list"]
+        "children": ["titleRow", "statSection", "loading", "empty", "list"]
       },
 
       "titleRow": {
@@ -69,6 +69,29 @@
         "visible": { "$state": "/monday/list_users_and_teams/count" }
       },
 
+      "statSection": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["statRow"],
+        "visible": { "$state": "/_loading/monday.list_users_and_teams", "not": true }
+      },
+      "statRow": {
+        "type": "Stack",
+        "props": { "gap": "none", "align": "center" },
+        "children": ["statVal", "statLabel"]
+      },
+      "statVal": {
+        "type": "Stat",
+        "props": {
+          "value": { "$state": "/monday/list_users_and_teams/count" },
+          "tone": "accent"
+        }
+      },
+      "statLabel": {
+        "type": "Caption",
+        "props": { "text": "Workspace Members" }
+      },
+
       "loading": {
         "type": "Stack",
         "props": { "gap": "sm" },
@@ -103,7 +126,12 @@
 
       "userRow": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["userLeft", "roleBadges"]
+      },
+      "userLeft": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "grow": true },
         "children": ["avatar", "userInfo"]
       },
       "avatar": {
@@ -117,7 +145,7 @@
       },
       "userInfo": {
         "type": "Stack",
-        "props": { "gap": "none" },
+        "props": { "gap": "none", "grow": true },
         "children": ["userName", "userEmail"]
       },
       "userName": {
@@ -137,6 +165,21 @@
           "tone": "muted",
           "truncate": true
         }
+      },
+      "roleBadges": {
+        "type": "Row",
+        "props": { "gap": "xs" },
+        "children": ["adminBadge", "guestBadge"]
+      },
+      "adminBadge": {
+        "type": "Badge",
+        "props": { "text": "Admin", "tone": "accent", "variant": "soft" },
+        "visible": { "$item": "is_admin" }
+      },
+      "guestBadge": {
+        "type": "Badge",
+        "props": { "text": "Guest", "tone": "neutral", "variant": "soft" },
+        "visible": { "$item": "is_guest" }
       }
 
     }

@@ -67,7 +67,7 @@
       "content": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["profileRow", "divider", "accountKV"],
+        "children": ["profileRow", "divider", "accountKV", "openBtn"],
         "visible": { "$state": "/_loading/monday.get_user_context", "not": true }
       },
 
@@ -126,6 +126,23 @@
         "props": {
           "label": "Account",
           "value": { "$state": "/monday/get_user_context/account/name" }
+        }
+      },
+
+      "openBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Open monday.com",
+          "tone": "accent",
+          "variant": "ghost",
+          "size": "sm",
+          "icon": "ExternalLink"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": "https://monday.com" }
+          }
         }
       }
 
