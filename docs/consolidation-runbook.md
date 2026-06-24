@@ -24,7 +24,7 @@ feature/* ──► dev ──► staging ──► main (production)
 
 | Area | Detail | Resolution |
 |------|--------|------------|
-| **MCP URL host** | prod `…thankfulcliff-9090ceed…`, staging `…orangesky-e321d350…`; staging was inconsistent (some plugins already prod, `xero-scheduler` on staging) | Normalize ALL to prod host (`scripts/normalize-mcp-urls.mjs`); validator blocks regressions |
+| **MCP URL host** | All plugins normalized to prod host `…thankfulcliff-9090ceed…`; staging server `…orangesky-e321d350…` decommissioned | ✅ Done — validator blocks regressions |
 | **Plugin set** | staging adds 14: `cliniko-{billing,clinical,patients,practice,scheduling}`, `sprout-{employee,hr-general,payroll,time-attendance}`, `talkdesk`, `talkdesk-demo`, `github`, `myob-accounting`, `xero-scheduler`. Prod-only: `circle` | Superset → `staging`/`dev`; decide `circle` (keep or retire) for `main` |
 | **Versions/widgets** | `dataverse` v0.1.0 (prod) vs v0.2.0 (staging); newer widgets in `dataverse`, `microsoft-365`, `xero-accounting`, `deskcrm` | Take staging's newer versions onto `staging`/`dev`; promote to `main` when vetted |
 | **Scaffolding templates** | `scripts/create-plugin/template/*` diverge (prod has `oauth-provider.mjs`, `main.css`, `stubs/`, `system-fallback/`; staging has updated `App.tsx`, `vite.config.ts`) | Reconcile to the superset; note per-file which won |
@@ -86,7 +86,7 @@ After parity is confirmed in MyHub staging:
 
 ## Verification
 - `validate` green on `main`, `staging`, `dev`.
-- `grep -r orangesky-e321d350 plugins/` returns nothing on any branch.
+- `grep -r orangesky-e321d350 plugins/` returns nothing on any branch. ✅ Confirmed — staging server decommissioned, all URLs on prod host.
 - In MyHub staging: install the marketplace `@staging`, install a staging-only
   plugin (e.g. `cliniko-scheduling`) on a test tenant, confirm it loads and its
   MCP host resolves to the staging servers via `MCP_SERVERS_BASE_URL`.
