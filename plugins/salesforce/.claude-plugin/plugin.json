@@ -7,26 +7,16 @@
   "license": "MIT",
   "keywords": ["salesforce", "crm", "opportunities", "accounts", "sales", "oauth"],
   "connection": {
-    "authType": "oauth_client",
-    "instructions": "Salesforce requires a Connected App. In Salesforce Setup → App Manager → New Connected App:\n\n1. Enable OAuth Settings\n2. Set the Callback URL to the value shown above\n3. Add scopes: api, refresh_token, offline_access\n4. Save and copy the Consumer Key and Consumer Secret below.",
-    "docUrl": "https://developer.salesforce.com/docs/einstein/genai/guide/mcp-intro.html",
-    "scopes": ["api", "refresh_token", "offline_access"],
+    "authType": "api_key",
+    "instructions": "Before connecting, complete two one-time setup steps in your Salesforce org:\n\n**Step 1 — Activate Hosted MCP Servers**\nSetup → search \"MCP Servers\" → Salesforce Servers tab → click \"Platform SObject (All)\" → click Activate.\n\n**Step 2 — Configure your External Client App**\nSetup → External Client App Manager → open your app → API (Enable OAuth Settings):\n- Add scope: \"Access Salesforce Hosted MCP Servers\"\n- Add scope: \"Perform requests at any time\"\n- Check: \"Require Proof Key for Code Exchange (PKCE)\"\n- Check: \"Issue JSON Web Token (JWT)-based access tokens\"\n- Uncheck: \"Require secret for Web Server Flow\" and \"Require secret for Refresh Token Flow\"\n- Save, then copy the Consumer Key from Settings → OAuth Settings → Consumer Key and Secret.\n\n**Step 3 — Get an access token**\nRun in your terminal:\n`sf org login web --client-id <your-consumer-key> --alias sf-mcp`\nThen: `SF_TEMP_SHOW_SECRETS=true sf org display --target-org sf-mcp --verbose`\nCopy the Access Token value and paste it below.\n\nTokens expire after ~2 hours. Re-run the display command for a fresh token when widgets stop loading.",
+    "docUrl": "https://developer.salesforce.com/docs/platform/hosted-mcp-servers/guide/create-external-client-app.html",
     "fields": [
       {
-        "name": "OAUTH_CLIENT_ID",
-        "label": "Consumer Key (Client ID)",
-        "type": "text",
-        "required": true,
-        "role": "client_id",
-        "helpText": "From your Salesforce Connected App settings."
-      },
-      {
-        "name": "OAUTH_CLIENT_SECRET",
-        "label": "Consumer Secret (Client Secret)",
+        "name": "SALESFORCE_ACCESS_TOKEN",
+        "label": "Salesforce Access Token",
         "type": "password",
         "required": true,
-        "role": "client_secret",
-        "helpText": "From your Salesforce Connected App settings. Stored encrypted."
+        "helpText": "JWT-based OAuth access token from an External Client App with the 'Access Salesforce Hosted MCP Servers' scope. Stored encrypted."
       }
     ]
   },
