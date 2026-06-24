@@ -1,0 +1,110 @@
+{
+  "id": "linkedin-job-postings",
+  "title": "Job Postings",
+  "description": "Active LinkedIn job listings for your company — title, location, and workplace type. Set companyId in params to your LinkedIn Organization ID.",
+  "category": "recruiting",
+  "tags": ["linkedin", "jobs", "talent", "recruiting", "b2b", "hiring"],
+  "keywords": ["jobs", "postings", "hiring", "recruitment", "talent", "linkedin", "b2b", "positions"],
+  "connectorsUsed": ["linkedin"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 4 },
+    "min": { "colSpan": 4, "rowSpan": 3 },
+    "max": { "colSpan": 12, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "linkedin",
+    "tool": "linkedin_talent_get_job_postings",
+    "params": {
+      "companyId": "YOUR_COMPANY_ID",
+      "count": 10
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "children": ["header", "body"] },
+      "header": { "type": "Header", "children": ["titleGroup"] },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Briefcase", "tone": "accent", "size": "sm" } },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "count"]
+      },
+      "title": { "type": "Heading", "props": { "text": "Job Postings", "level": "h2" } },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} Open",
+              "n": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/linkedin/linkedin_talent_get_job_postings/elements" } }
+              }
+            }
+          }
+        }
+      },
+      "body": { "type": "Body", "children": ["loading", "empty", "list"] },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/linkedin.linkedin_talent_get_job_postings" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No active job postings. Check your companyId param." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/linkedin.linkedin_talent_get_job_postings", "not": true },
+            { "$state": "/linkedin/linkedin_talent_get_job_postings/elements/0", "not": true }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["jobRow"],
+        "repeat": {
+          "statePath": "/linkedin/linkedin_talent_get_job_postings/elements",
+          "key": "id"
+        },
+        "visible": { "$state": "/_loading/linkedin.linkedin_talent_get_job_postings", "not": true }
+      },
+      "jobRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true },
+        "children": ["jobLeft", "workplaceBadge"]
+      },
+      "jobLeft": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["jobTitle", "jobLocation"]
+      },
+      "jobTitle": {
+        "type": "Text",
+        "props": { "text": { "$item": "title" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "jobLocation": {
+        "type": "Caption",
+        "props": { "text": { "$item": "location" } }
+      },
+      "workplaceBadge": {
+        "type": "Badge",
+        "props": { "text": { "$item": "listingType" }, "tone": "accent", "variant": "soft" }
+      }
+    }
+  },
+  "status": "published"
+}
