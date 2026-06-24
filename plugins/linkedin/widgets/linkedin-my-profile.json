@@ -20,8 +20,8 @@
   "spec": {
     "root": "card",
     "elements": {
-      "card": { "type": "Card", "children": ["header", "body"] },
-      "header": { "type": "Header", "children": ["titleGroup"] },
+      "card": { "type": "Card", "props": {}, "children": ["header", "body"] },
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
       "titleGroup": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center" },
@@ -29,7 +29,7 @@
       },
       "titleIcon": { "type": "Icon", "props": { "name": "Linkedin", "tone": "accent", "size": "sm" } },
       "titleText": { "type": "Heading", "props": { "text": "My LinkedIn Profile", "level": "h2" } },
-      "body": { "type": "Body", "children": ["loading", "profileContent"] },
+      "body": { "type": "Body", "props": {}, "children": ["loading", "profileContent"] },
       "loading": {
         "type": "Stack",
         "props": { "gap": "md" },
@@ -54,6 +54,7 @@
       "avatar": {
         "type": "Avatar",
         "props": {
+          "src": { "$state": "/linkedin/linkedin_get_profile/pictureUrl" },
           "initials": {
             "$computed": "initials",
             "args": {
@@ -96,7 +97,8 @@
           "text": { "$state": "/linkedin/linkedin_get_profile/localizedHeadline" },
           "size": "sm",
           "tone": "muted"
-        }
+        },
+        "visible": { "$state": "/linkedin/linkedin_get_profile/localizedHeadline" }
       },
       "locationRow": {
         "type": "Row",
@@ -112,23 +114,16 @@
       "viewBtn": {
         "type": "Button",
         "props": {
-          "label": "View LinkedIn Profile",
+          "label": "Open LinkedIn",
           "tone": "accent",
           "variant": "solid",
-          "size": "md"
+          "size": "md",
+          "icon": "ExternalLink"
         },
         "on": {
           "click": {
             "action": "open_url",
-            "params": {
-              "url": {
-                "$computed": "fmt",
-                "args": {
-                  "pattern": "https://www.linkedin.com/in/{vanity}/",
-                  "vanity": { "$state": "/linkedin/linkedin_get_profile/vanityName" }
-                }
-              }
-            }
+            "params": { "url": "https://www.linkedin.com" }
           }
         }
       }
