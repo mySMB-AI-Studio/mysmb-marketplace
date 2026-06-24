@@ -1,24 +1,15 @@
 {
   "name": "salesforce",
   "version": "0.1.0",
-  "description": "Access Salesforce CRM data via the Salesforce-hosted MCP gateway. Opportunities, accounts, contacts, and SOQL queries.",
+  "description": "Access Salesforce CRM data — opportunities, accounts, contacts and SOQL queries.",
   "author": { "name": "mySMB AI Studio" },
   "homepage": "https://github.com/mySMB-AI-Studio/mysmb-marketplace/tree/main/plugins/salesforce",
   "license": "MIT",
   "keywords": ["salesforce", "crm", "opportunities", "accounts", "sales", "oauth"],
   "connection": {
-    "authType": "api_key",
-    "instructions": "Before connecting, complete two one-time setup steps in your Salesforce org:\n\n**Step 1 — Activate Hosted MCP Servers**\nSetup → search \"MCP Servers\" → Salesforce Servers tab → click \"Platform SObject (All)\" → click Activate.\n\n**Step 2 — Configure your External Client App**\nSetup → External Client App Manager → open your app → API (Enable OAuth Settings):\n- Add scope: \"Access Salesforce Hosted MCP Servers\"\n- Add scope: \"Perform requests at any time\"\n- Check: \"Require Proof Key for Code Exchange (PKCE)\"\n- Check: \"Issue JSON Web Token (JWT)-based access tokens\"\n- Uncheck: \"Require secret for Web Server Flow\" and \"Require secret for Refresh Token Flow\"\n- Save, then copy the Consumer Key from Settings → OAuth Settings → Consumer Key and Secret.\n\n**Step 3 — Get an access token**\nRun in your terminal:\n`sf org login web --client-id <your-consumer-key> --alias sf-mcp`\nThen: `SF_TEMP_SHOW_SECRETS=true sf org display --target-org sf-mcp --verbose`\nCopy the Access Token value and paste it below.\n\nTokens expire after ~2 hours. Re-run the display command for a fresh token when widgets stop loading.",
-    "docUrl": "https://developer.salesforce.com/docs/platform/hosted-mcp-servers/guide/create-external-client-app.html",
-    "fields": [
-      {
-        "name": "SALESFORCE_ACCESS_TOKEN",
-        "label": "Salesforce Access Token",
-        "type": "password",
-        "required": true,
-        "helpText": "JWT-based OAuth access token from an External Client App with the 'Access Salesforce Hosted MCP Servers' scope. Stored encrypted."
-      }
-    ]
+    "authType": "oauth",
+    "instructions": "Click Connect and sign in to your Salesforce org. Your session is managed automatically — no manual token copying needed.",
+    "docUrl": "https://developer.salesforce.com/docs/platform/hosted-mcp-servers/guide/create-external-client-app.html"
   },
   "widgets": "widgets"
 }
