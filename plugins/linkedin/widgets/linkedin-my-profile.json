@@ -1,16 +1,16 @@
 {
   "id": "linkedin-my-profile",
   "title": "My LinkedIn Profile",
-  "description": "Your LinkedIn profile summary — headline and a direct link to your public profile.",
+  "description": "Your LinkedIn profile — name, headline, location, and a direct link to your public profile.",
   "category": "productivity",
   "tags": ["linkedin", "profile", "network", "identity"],
-  "keywords": ["profile", "headline", "linkedin", "me", "identity"],
+  "keywords": ["profile", "headline", "linkedin", "me", "identity", "location"],
   "connectorsUsed": ["linkedin"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 4, "rowSpan": 3 },
-    "min": { "colSpan": 3, "rowSpan": 2 },
-    "max": { "colSpan": 8, "rowSpan": 6 }
+    "preferred": { "colSpan": 4, "rowSpan": 4 },
+    "min": { "colSpan": 3, "rowSpan": 3 },
+    "max": { "colSpan": 8, "rowSpan": 8 }
   },
   "dataProvider": {
     "mcp": "linkedin",
@@ -24,34 +24,31 @@
       "header": { "type": "Header", "children": ["titleGroup"] },
       "titleGroup": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "start" },
-        "children": ["titleIcon", "titleStack"]
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleText"]
       },
-      "titleIcon": { "type": "Icon", "props": { "name": "User", "tone": "accent", "size": "sm" } },
-      "titleStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["title", "subtitle"]
-      },
-      "title": { "type": "Heading", "props": { "text": "My LinkedIn Profile", "level": "h2" } },
-      "subtitle": { "type": "Eyebrow", "props": { "text": "Profile summary" } },
-      "body": {
-        "type": "Body",
-        "children": ["loading", "profileContent"]
-      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Linkedin", "tone": "accent", "size": "sm" } },
+      "titleText": { "type": "Heading", "props": { "text": "My LinkedIn Profile", "level": "h2" } },
+      "body": { "type": "Body", "children": ["loading", "profileContent"] },
       "loading": {
         "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3"],
+        "props": { "gap": "md" },
+        "children": ["skAvatar", "skName", "skHeadline", "skLocation"],
         "visible": { "$state": "/_loading/linkedin.linkedin_get_profile" }
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "full" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "1rem", "rounded": "md" } },
+      "skAvatar": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "full" } },
+      "skName": { "type": "Skeleton", "props": { "height": "1.75rem", "rounded": "md" } },
+      "skHeadline": { "type": "Skeleton", "props": { "height": "1rem", "rounded": "md" } },
+      "skLocation": { "type": "Skeleton", "props": { "height": "1rem", "rounded": "md" } },
       "profileContent": {
+        "type": "Stack",
+        "props": { "gap": "lg" },
+        "visible": { "$state": "/_loading/linkedin.linkedin_get_profile", "not": true },
+        "children": ["profileRow", "viewBtn"]
+      },
+      "profileRow": {
         "type": "Row",
         "props": { "gap": "md", "align": "center" },
-        "visible": { "$state": "/_loading/linkedin.linkedin_get_profile", "not": true },
         "children": ["avatar", "identity"]
       },
       "avatar": {
@@ -70,17 +67,17 @@
               }
             }
           },
-          "size": "lg",
+          "size": "xl",
           "tone": "accent"
         }
       },
       "identity": {
         "type": "Stack",
         "props": { "gap": "xs", "grow": true },
-        "children": ["nameText", "headlineText", "profileLink"]
+        "children": ["nameText", "headlineText", "locationRow"]
       },
       "nameText": {
-        "type": "Text",
+        "type": "Heading",
         "props": {
           "text": {
             "$computed": "fmt",
@@ -90,8 +87,7 @@
               "last": { "$state": "/linkedin/linkedin_get_profile/localizedLastName" }
             }
           },
-          "size": "md",
-          "weight": "semibold"
+          "level": "h3"
         }
       },
       "headlineText": {
@@ -99,16 +95,27 @@
         "props": {
           "text": { "$state": "/linkedin/linkedin_get_profile/localizedHeadline" },
           "size": "sm",
-          "truncate": true
+          "tone": "muted"
         }
       },
-      "profileLink": {
+      "locationRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "visible": { "$state": "/linkedin/linkedin_get_profile/localizedLocation" },
+        "children": ["locationIcon", "locationText"]
+      },
+      "locationIcon": { "type": "Icon", "props": { "name": "MapPin", "size": "xs", "tone": "muted" } },
+      "locationText": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/linkedin/linkedin_get_profile/localizedLocation" } }
+      },
+      "viewBtn": {
         "type": "Button",
         "props": {
-          "label": "View on LinkedIn",
+          "label": "View LinkedIn Profile",
           "tone": "accent",
-          "variant": "ghost",
-          "size": "sm"
+          "variant": "solid",
+          "size": "md"
         },
         "on": {
           "click": {
