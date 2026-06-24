@@ -1,0 +1,145 @@
+{
+  "id": "monday-team-members",
+  "title": "Team Members",
+  "description": "All users in your monday.com workspace.",
+  "category": "work-management",
+  "tags": ["monday", "team", "users", "people", "work-management"],
+  "keywords": ["team", "members", "users", "people", "monday", "workspace"],
+  "connectorsUsed": ["monday"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 4 },
+    "min":       { "colSpan": 3, "rowSpan": 3 },
+    "max":       { "colSpan": 8, "rowSpan": 8 }
+  },
+  "dataProvider": {
+    "mcp": "monday",
+    "tool": "list_users_and_teams",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "loading", "empty", "list"]
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "countBadge"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Users", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Team Members", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "monday.com" }
+      },
+      "countBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} members",
+              "n": { "$state": "/monday/list_users_and_teams/count" }
+            }
+          },
+          "tone": "neutral"
+        },
+        "visible": { "$state": "/monday/list_users_and_teams/count" }
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["s1", "s2", "s3"],
+        "visible": { "$state": "/_loading/monday.list_users_and_teams" }
+      },
+      "s1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "full" } },
+      "s2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "full" } },
+      "s3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "full" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No team members found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/monday.list_users_and_teams", "not": true },
+            { "$state": "/monday/list_users_and_teams/users/0", "not": true }
+          ]
+        }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["userRow"],
+        "repeat": {
+          "statePath": "/monday/list_users_and_teams/users",
+          "key": "id"
+        },
+        "visible": { "$state": "/_loading/monday.list_users_and_teams", "not": true }
+      },
+
+      "userRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["avatar", "userInfo"]
+      },
+      "avatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": { "value": { "$item": "name" } }
+          }
+        }
+      },
+      "userInfo": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["userName", "userEmail"]
+      },
+      "userName": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "name" },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "userEmail": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "email" },
+          "size": "xs",
+          "tone": "muted",
+          "truncate": true
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}

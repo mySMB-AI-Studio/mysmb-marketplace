@@ -1,0 +1,133 @@
+{
+  "id": "monday-my-boards",
+  "title": "My Boards",
+  "description": "All monday.com boards in your workspace.",
+  "category": "work-management",
+  "tags": ["monday", "boards", "work-management", "tasks", "projects"],
+  "keywords": ["board", "boards", "workspace", "monday", "project", "task"],
+  "connectorsUsed": ["monday"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 5 },
+    "min":       { "colSpan": 3, "rowSpan": 3 },
+    "max":       { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "monday",
+    "tool": "get_board_info",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "loading", "empty", "list"]
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "countBadge"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Layout", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "My Boards", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "monday.com" }
+      },
+      "countBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} boards",
+              "n": { "$state": "/monday/get_board_info/count" }
+            }
+          },
+          "tone": "accent"
+        },
+        "visible": { "$state": "/monday/get_board_info/count" }
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["s1", "s2", "s3", "s4"],
+        "visible": { "$state": "/_loading/monday.get_board_info" }
+      },
+      "s1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "s2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "s3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "s4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No boards found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/monday.get_board_info", "not": true },
+            { "$state": "/monday/get_board_info/boards/0", "not": true }
+          ]
+        }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": {
+          "statePath": "/monday/get_board_info/boards",
+          "key": "id"
+        },
+        "visible": { "$state": "/_loading/monday.get_board_info", "not": true }
+      },
+
+      "row": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["rowName", "rowDesc"]
+      },
+      "rowName": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "name" },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "rowDesc": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "description" },
+          "size": "xs",
+          "tone": "muted",
+          "truncate": true
+        },
+        "visible": { "$item": "description" }
+      }
+
+    }
+  },
+  "status": "published"
+}

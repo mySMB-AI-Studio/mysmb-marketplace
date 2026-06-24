@@ -1,0 +1,125 @@
+{
+  "id": "linkedin-pending-invitations",
+  "title": "Connection Requests",
+  "description": "Pending LinkedIn connection requests — see who wants to connect and open their profile to respond.",
+  "category": "productivity",
+  "tags": ["linkedin", "connections", "network", "invitations"],
+  "keywords": ["connection", "requests", "invitations", "pending", "network", "linkedin"],
+  "connectorsUsed": ["linkedin"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 4 },
+    "min": { "colSpan": 4, "rowSpan": 3 },
+    "max": { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "linkedin",
+    "tool": "linkedin_consumer_get_pending_invitations",
+    "params": { "limit": 20 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "children": ["header", "body"] },
+      "header": { "type": "Header", "children": ["titleGroup"] },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "UserPlus", "tone": "info", "size": "sm" } },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "count"]
+      },
+      "title": { "type": "Heading", "props": { "text": "Connection Requests", "level": "h2" } },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} Pending",
+              "n": { "$state": "/linkedin/linkedin_consumer_get_pending_invitations/total" }
+            }
+          }
+        }
+      },
+      "body": { "type": "Body", "children": ["loading", "empty", "list"] },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/linkedin.linkedin_consumer_get_pending_invitations" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No pending connection requests." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/linkedin.linkedin_consumer_get_pending_invitations", "not": true },
+            { "$state": "/linkedin/linkedin_consumer_get_pending_invitations/elements/0", "not": true }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["row"],
+        "repeat": {
+          "statePath": "/linkedin/linkedin_consumer_get_pending_invitations/elements",
+          "key": "invitationId"
+        },
+        "visible": { "$state": "/_loading/linkedin.linkedin_consumer_get_pending_invitations", "not": true }
+      },
+      "row": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true },
+        "children": ["rowLeft", "profileBtn"]
+      },
+      "rowLeft": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "grow": true },
+        "children": ["avatar", "labels"]
+      },
+      "avatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": { "value": { "$item": "senderName" } }
+          },
+          "size": "md"
+        }
+      },
+      "labels": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["nameText", "headlineText"]
+      },
+      "nameText": {
+        "type": "Text",
+        "props": { "text": { "$item": "senderName" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "headlineText": {
+        "type": "Caption",
+        "props": { "text": { "$item": "senderHeadline" } }
+      },
+      "profileBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ExternalLink", "tone": "muted", "ariaLabel": "View profile" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": { "$item": "senderProfileUrl" } }
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}
