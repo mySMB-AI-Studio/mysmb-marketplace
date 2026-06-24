@@ -1,22 +1,25 @@
 {
-  "id": "shopify-product-search",
-  "title": "Product Search",
-  "description": "Search your Shopify catalog and display matching products — title, vendor, and price range. Configurable search query.",
+  "id": "shopify-top-products",
+  "title": "Top Products",
+  "description": "Bestselling products from your Shopify catalog displayed in a tile grid — title, vendor, and price at a glance.",
   "category": "ecommerce",
   "tags": [
     "shopify",
     "products",
     "catalog",
-    "search",
+    "featured",
+    "bestseller",
     "ecommerce"
   ],
   "keywords": [
     "products",
+    "bestseller",
+    "featured",
     "catalog",
-    "search",
     "shopify",
-    "inventory",
-    "store"
+    "top",
+    "popular",
+    "grid"
   ],
   "connectorsUsed": [
     "shopify-ucp"
@@ -24,25 +27,25 @@
   "popularity": 0,
   "sizing": {
     "preferred": {
-      "colSpan": 6,
+      "colSpan": 8,
       "rowSpan": 6
     },
     "min": {
-      "colSpan": 4,
+      "colSpan": 6,
       "rowSpan": 4
     },
     "max": {
       "colSpan": 12,
-      "rowSpan": 12
+      "rowSpan": 10
     }
   },
   "dataProvider": {
     "mcp": "shopify-ucp",
     "tool": "search_catalog",
     "params": {
-      "query": "featured products",
+      "query": "bestseller",
       "pagination": {
-        "limit": 10
+        "limit": 6
       },
       "meta": {
         "ucp-agent": {
@@ -81,7 +84,7 @@
       "titleIcon": {
         "type": "Icon",
         "props": {
-          "name": "ShoppingBag",
+          "name": "Star",
           "tone": "accent",
           "size": "sm"
         }
@@ -93,17 +96,17 @@
         },
         "children": [
           "title",
-          "count"
+          "eyebrow"
         ]
       },
       "title": {
         "type": "Heading",
         "props": {
-          "text": "Product Search",
+          "text": "Top Products",
           "level": "h2"
         }
       },
-      "count": {
+      "eyebrow": {
         "type": "Eyebrow",
         "props": {
           "text": {
@@ -127,56 +130,73 @@
         "children": [
           "loading",
           "empty",
-          "list"
+          "grid"
         ]
       },
       "loading": {
-        "type": "Stack",
+        "type": "Grid",
         "props": {
-          "gap": "sm"
+          "cols": 3,
+          "gap": "md"
         },
         "visible": {
           "$state": "/_loading/shopify-ucp.search_catalog"
         },
         "children": [
-          "sk1",
-          "sk2",
-          "sk3",
-          "sk4"
+          "lsk1",
+          "lsk2",
+          "lsk3",
+          "lsk4",
+          "lsk5",
+          "lsk6"
         ]
       },
-      "sk1": {
+      "lsk1": {
         "type": "Skeleton",
         "props": {
-          "height": "2.5rem",
+          "height": "5rem",
           "rounded": "md"
         }
       },
-      "sk2": {
+      "lsk2": {
         "type": "Skeleton",
         "props": {
-          "height": "2.5rem",
+          "height": "5rem",
           "rounded": "md"
         }
       },
-      "sk3": {
+      "lsk3": {
         "type": "Skeleton",
         "props": {
-          "height": "2.5rem",
+          "height": "5rem",
           "rounded": "md"
         }
       },
-      "sk4": {
+      "lsk4": {
         "type": "Skeleton",
         "props": {
-          "height": "2.5rem",
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "lsk5": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "lsk6": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
           "rounded": "md"
         }
       },
       "empty": {
         "type": "Empty",
         "props": {
-          "message": "No products found for this search query."
+          "message": "No bestselling products found in your catalog."
         },
         "visible": {
           "$and": [
@@ -191,10 +211,11 @@
           ]
         }
       },
-      "list": {
-        "type": "Stack",
+      "grid": {
+        "type": "Grid",
         "props": {
-          "gap": "none"
+          "cols": 3,
+          "gap": "md"
         },
         "visible": {
           "$state": "/_loading/shopify-ucp.search_catalog",
@@ -205,45 +226,32 @@
           "key": "id"
         },
         "children": [
-          "row"
+          "tile"
         ]
       },
-      "row": {
-        "type": "Row",
+      "tile": {
+        "type": "Section",
         "props": {
-          "gap": "sm",
-          "justify": "between",
-          "align": "center",
-          "hover": true
+          "variant": "bordered"
         },
         "children": [
-          "rowLeft",
-          "rowRight"
+          "tileName",
+          "tileVendor",
+          "tilePrice"
         ]
       },
-      "rowLeft": {
-        "type": "Stack",
-        "props": {
-          "gap": "xs",
-          "grow": true
-        },
-        "children": [
-          "rowTitle",
-          "rowVendor"
-        ]
-      },
-      "rowTitle": {
+      "tileName": {
         "type": "Text",
         "props": {
           "text": {
             "$item": "title"
           },
-          "size": "md",
-          "weight": "medium",
+          "size": "sm",
+          "weight": "semibold",
           "truncate": true
         }
       },
-      "rowVendor": {
+      "tileVendor": {
         "type": "Caption",
         "props": {
           "text": {
@@ -251,7 +259,7 @@
           }
         }
       },
-      "rowRight": {
+      "tilePrice": {
         "type": "Text",
         "props": {
           "text": {
@@ -267,8 +275,8 @@
             }
           },
           "size": "sm",
-          "weight": "semibold",
-          "tone": "muted"
+          "weight": "medium",
+          "tone": "accent"
         }
       }
     }

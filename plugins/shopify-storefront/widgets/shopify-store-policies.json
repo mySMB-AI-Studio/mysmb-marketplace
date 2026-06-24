@@ -50,28 +50,131 @@
     "elements": {
       "card": {
         "type": "Card",
-        "props": {},
         "children": [
           "header",
           "body"
         ]
       },
       "header": {
-        "type": "CardHeader",
+        "type": "Header",
+        "children": [
+          "titleRow"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
         "props": {
-          "title": "Store Policies",
-          "subtitle": "Key policies and FAQ answers from your Shopify store"
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "FileText",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Store Policies",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Policies and FAQs from your Shopify store"
         }
       },
       "body": {
-        "type": "CardBody",
-        "children": ["policy-content"]
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "content"
+        ]
       },
-      "policy-content": {
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/_loading/shopify-storefront.search_shop_policies_and_faqs"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ]
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "1.25rem",
+          "rounded": "sm"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "1.25rem",
+          "rounded": "sm"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "1.25rem",
+          "rounded": "sm"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No policy information found for this query."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/shopify-storefront.search_shop_policies_and_faqs",
+              "not": true
+            },
+            {
+              "$state": "/shopify-storefront/search_shop_policies_and_faqs/answer",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
         "type": "Text",
         "props": {
-          "value": { "$state": "/shopify-storefront/search_shop_policies_and_faqs/answer" },
+          "text": {
+            "$state": "/shopify-storefront/search_shop_policies_and_faqs/answer"
+          },
           "wrap": true
+        },
+        "visible": {
+          "$state": "/_loading/shopify-storefront.search_shop_policies_and_faqs",
+          "not": true
         }
       }
     }

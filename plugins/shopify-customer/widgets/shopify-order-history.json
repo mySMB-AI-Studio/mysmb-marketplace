@@ -1,34 +1,34 @@
 {
-  "id": "shopify-product-search",
-  "title": "Product Search",
-  "description": "Search your Shopify catalog and display matching products — title, vendor, and price range. Configurable search query.",
+  "id": "shopify-order-history",
+  "title": "Order History",
+  "description": "Recent orders for the authenticated Shopify customer — order number, placed date, payment status, and total.",
   "category": "ecommerce",
   "tags": [
     "shopify",
-    "products",
-    "catalog",
-    "search",
+    "orders",
+    "customer",
+    "history",
     "ecommerce"
   ],
   "keywords": [
-    "products",
-    "catalog",
-    "search",
+    "orders",
+    "order history",
+    "purchases",
     "shopify",
-    "inventory",
-    "store"
+    "customer",
+    "account"
   ],
   "connectorsUsed": [
-    "shopify-ucp"
+    "shopify-customer"
   ],
   "popularity": 0,
   "sizing": {
     "preferred": {
-      "colSpan": 6,
+      "colSpan": 8,
       "rowSpan": 6
     },
     "min": {
-      "colSpan": 4,
+      "colSpan": 6,
       "rowSpan": 4
     },
     "max": {
@@ -37,19 +37,9 @@
     }
   },
   "dataProvider": {
-    "mcp": "shopify-ucp",
-    "tool": "search_catalog",
-    "params": {
-      "query": "featured products",
-      "pagination": {
-        "limit": 10
-      },
-      "meta": {
-        "ucp-agent": {
-          "profile": "https://shopify.dev/ucp/agent-profiles/examples/2026-04-08/valid-with-capabilities.json"
-        }
-      }
-    }
+    "mcp": "shopify-customer",
+    "tool": "get_orders",
+    "params": {}
   },
   "spec": {
     "root": "card",
@@ -81,7 +71,7 @@
       "titleIcon": {
         "type": "Icon",
         "props": {
-          "name": "ShoppingBag",
+          "name": "ShoppingCart",
           "tone": "accent",
           "size": "sm"
         }
@@ -99,7 +89,7 @@
       "title": {
         "type": "Heading",
         "props": {
-          "text": "Product Search",
+          "text": "Order History",
           "level": "h2"
         }
       },
@@ -109,12 +99,12 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{n} products",
+              "pattern": "{n} orders",
               "n": {
                 "$computed": "count",
                 "args": {
                   "value": {
-                    "$state": "/shopify-ucp/search_catalog/products"
+                    "$state": "/shopify-customer/get_orders/orders"
                   }
                 }
               }
@@ -127,7 +117,7 @@
         "children": [
           "loading",
           "empty",
-          "list"
+          "table"
         ]
       },
       "loading": {
@@ -136,7 +126,7 @@
           "gap": "sm"
         },
         "visible": {
-          "$state": "/_loading/shopify-ucp.search_catalog"
+          "$state": "/_loading/shopify-customer.get_orders"
         },
         "children": [
           "sk1",
@@ -176,99 +166,66 @@
       "empty": {
         "type": "Empty",
         "props": {
-          "message": "No products found for this search query."
+          "message": "No orders placed yet."
         },
         "visible": {
           "$and": [
             {
-              "$state": "/_loading/shopify-ucp.search_catalog",
+              "$state": "/_loading/shopify-customer.get_orders",
               "not": true
             },
             {
-              "$state": "/shopify-ucp/search_catalog/products/0",
+              "$state": "/shopify-customer/get_orders/orders/0",
               "not": true
             }
           ]
         }
       },
-      "list": {
-        "type": "Stack",
+      "table": {
+        "type": "Table",
         "props": {
-          "gap": "none"
+          "rows": {
+            "$state": "/shopify-customer/get_orders/orders"
+          },
+          "columns": [
+            {
+              "id": "name",
+              "header": "Order",
+              "field": "name",
+              "priority": 1
+            },
+            {
+              "id": "createdAt",
+              "header": "Date",
+              "field": "createdAt",
+              "format": "date",
+              "priority": 1
+            },
+            {
+              "id": "financialStatus",
+              "header": "Payment",
+              "field": "financialStatus",
+              "priority": 1
+            },
+            {
+              "id": "fulfillmentStatus",
+              "header": "Fulfillment",
+              "field": "fulfillmentStatus",
+              "priority": 2
+            },
+            {
+              "id": "total",
+              "header": "Total",
+              "field": "totalPrice.amount",
+              "align": "right",
+              "format": "currency",
+              "priority": 1
+            }
+          ]
         },
         "visible": {
-          "$state": "/_loading/shopify-ucp.search_catalog",
+          "$state": "/_loading/shopify-customer.get_orders",
           "not": true
-        },
-        "repeat": {
-          "statePath": "/shopify-ucp/search_catalog/products",
-          "key": "id"
-        },
-        "children": [
-          "row"
-        ]
-      },
-      "row": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "justify": "between",
-          "align": "center",
-          "hover": true
-        },
-        "children": [
-          "rowLeft",
-          "rowRight"
-        ]
-      },
-      "rowLeft": {
-        "type": "Stack",
-        "props": {
-          "gap": "xs",
-          "grow": true
-        },
-        "children": [
-          "rowTitle",
-          "rowVendor"
-        ]
-      },
-      "rowTitle": {
-        "type": "Text",
-        "props": {
-          "text": {
-            "$item": "title"
-          },
-          "size": "md",
-          "weight": "medium",
-          "truncate": true
-        }
-      },
-      "rowVendor": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$item": "vendor"
-          }
-        }
-      },
-      "rowRight": {
-        "type": "Text",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{amount} {currency}",
-              "amount": {
-                "$item": "priceRange.minVariantPrice.amount"
-              },
-              "currency": {
-                "$item": "priceRange.minVariantPrice.currencyCode"
-              }
-            }
-          },
-          "size": "sm",
-          "weight": "semibold",
-          "tone": "muted"
         }
       }
     }
