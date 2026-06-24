@@ -96,7 +96,8 @@
           "text": { "$state": "/linkedin/linkedin_get_profile/localizedHeadline" },
           "size": "sm",
           "tone": "muted"
-        }
+        },
+        "visible": { "$state": "/linkedin/linkedin_get_profile/localizedHeadline" }
       },
       "locationRow": {
         "type": "Row",
@@ -112,23 +113,16 @@
       "viewBtn": {
         "type": "Button",
         "props": {
-          "label": "View LinkedIn Profile",
+          "label": "Open LinkedIn",
           "tone": "accent",
           "variant": "solid",
-          "size": "md"
+          "size": "md",
+          "icon": "ExternalLink"
         },
         "on": {
           "click": {
             "action": "open_url",
-            "params": {
-              "url": {
-                "$computed": "fmt",
-                "args": {
-                  "pattern": "https://www.linkedin.com/in/{vanity}/",
-                  "vanity": { "$state": "/linkedin/linkedin_get_profile/vanityName" }
-                }
-              }
-            }
+            "params": { "url": "https://www.linkedin.com" }
           }
         }
       }
