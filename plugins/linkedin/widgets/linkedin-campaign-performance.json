@@ -1,0 +1,196 @@
+{
+  "id": "linkedin-campaign-performance",
+  "title": "Campaign Performance",
+  "description": "LinkedIn Marketing campaigns — aggregate spend, impressions, clicks, and CTR with a per-campaign breakdown for the selected date range.",
+  "category": "marketing",
+  "tags": ["linkedin", "marketing", "campaigns", "ads", "analytics"],
+  "keywords": ["linkedin", "campaign", "ads", "marketing", "impressions", "clicks", "spend", "ctr", "performance", "analytics"],
+  "connectorsUsed": ["linkedin"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 6 },
+    "min": { "colSpan": 4, "rowSpan": 5 },
+    "max": { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "linkedin",
+    "tool": "linkedin_consumer_get_campaign_analytics",
+    "params": { "date_range": "LAST_30_DAYS", "status": "ALL", "limit": 10 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["header", "body"] },
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "BarChart2", "tone": "accent", "size": "sm" } },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": { "type": "Heading", "props": { "text": "Campaign Performance", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Last 30 days" } },
+      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "content"] },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/linkedin.linkedin_consumer_get_campaign_analytics" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No campaign data found. Make sure your LinkedIn ad account is connected and has campaigns." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/linkedin.linkedin_consumer_get_campaign_analytics", "not": true },
+            { "$state": "/linkedin/linkedin_consumer_get_campaign_analytics/campaigns/0", "not": true }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "visible": { "$state": "/_loading/linkedin.linkedin_consumer_get_campaign_analytics", "not": true },
+        "children": ["summarySection", "divider", "campListLabel", "campList"]
+      },
+      "summarySection": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["statsRow"]
+      },
+      "statsRow": {
+        "type": "Row",
+        "props": { "gap": "md", "justify": "between", "align": "start" },
+        "children": ["statSpend", "statImpressions", "statClicks", "statCtr"]
+      },
+      "statSpend": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["statSpendVal", "statSpendLabel"]
+      },
+      "statSpendVal": {
+        "type": "Heading",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": { "$state": "/linkedin/linkedin_consumer_get_campaign_analytics/summary/totalSpend" },
+              "currency": { "$state": "/linkedin/linkedin_consumer_get_campaign_analytics/summary/currency" }
+            }
+          },
+          "level": "h3"
+        }
+      },
+      "statSpendLabel": { "type": "Caption", "props": { "text": "Spend" } },
+      "statImpressions": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["statImpVal", "statImpLabel"]
+      },
+      "statImpVal": {
+        "type": "Heading",
+        "props": { "text": { "$state": "/linkedin/linkedin_consumer_get_campaign_analytics/summary/totalImpressions" }, "level": "h3" }
+      },
+      "statImpLabel": { "type": "Caption", "props": { "text": "Impressions" } },
+      "statClicks": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["statClicksVal", "statClicksLabel"]
+      },
+      "statClicksVal": {
+        "type": "Heading",
+        "props": { "text": { "$state": "/linkedin/linkedin_consumer_get_campaign_analytics/summary/totalClicks" }, "level": "h3" }
+      },
+      "statClicksLabel": { "type": "Caption", "props": { "text": "Clicks" } },
+      "statCtr": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["statCtrVal", "statCtrLabel"]
+      },
+      "statCtrVal": {
+        "type": "Heading",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{ctr}%",
+              "ctr": { "$state": "/linkedin/linkedin_consumer_get_campaign_analytics/summary/ctr" }
+            }
+          },
+          "level": "h3"
+        }
+      },
+      "statCtrLabel": { "type": "Caption", "props": { "text": "CTR" } },
+      "divider": { "type": "Divider", "props": {} },
+      "campListLabel": { "type": "Caption", "props": { "text": "Campaigns" } },
+      "campList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["campRow"],
+        "repeat": {
+          "statePath": "/linkedin/linkedin_consumer_get_campaign_analytics/campaigns",
+          "key": "campaignId"
+        }
+      },
+      "campRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "justify": "between", "align": "center", "hover": true, "clickable": true },
+        "children": ["campLeft", "campRight"],
+        "on": { "click": { "action": "open_url", "params": { "url": { "$item": "campaignUrl" } } } }
+      },
+      "campLeft": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["campName", "campMeta"]
+      },
+      "campName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "campMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{imp} impressions · {clicks} clicks",
+              "imp": { "$item": "impressions" },
+              "clicks": { "$item": "clicks" }
+            }
+          }
+        }
+      },
+      "campRight": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["campStatusBadge", "campSpend"]
+      },
+      "campStatusBadge": {
+        "type": "Badge",
+        "props": { "text": { "$item": "status" }, "tone": "default", "variant": "soft" }
+      },
+      "campSpend": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": { "$item": "spend" },
+              "currency": { "$item": "currency" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}
