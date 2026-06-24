@@ -24,7 +24,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["titleRow", "loading", "empty", "list"]
+        "children": ["titleRow", "statSection", "loading", "empty", "list"]
       },
 
       "titleRow": {
@@ -69,6 +69,29 @@
         "visible": { "$state": "/monday/get_board_info/count" }
       },
 
+      "statSection": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["statRow"],
+        "visible": { "$state": "/_loading/monday.get_board_info", "not": true }
+      },
+      "statRow": {
+        "type": "Stack",
+        "props": { "gap": "none", "align": "center" },
+        "children": ["statVal", "statLabel"]
+      },
+      "statVal": {
+        "type": "Stat",
+        "props": {
+          "value": { "$state": "/monday/get_board_info/count" },
+          "tone": "accent"
+        }
+      },
+      "statLabel": {
+        "type": "Caption",
+        "props": { "text": "Total Boards" }
+      },
+
       "loading": {
         "type": "Stack",
         "props": { "gap": "sm" },
@@ -103,9 +126,28 @@
       },
 
       "row": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true, "clickable": true },
+        "children": ["rowLeft", "openBtn"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "https://monday.com/boards/{id}",
+                  "id": { "$item": "id" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "rowLeft": {
         "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["rowName", "rowDesc"]
+        "props": { "gap": "xs", "grow": true },
+        "children": ["rowName", "rowBadges"]
       },
       "rowName": {
         "type": "Text",
@@ -116,15 +158,44 @@
           "truncate": true
         }
       },
-      "rowDesc": {
-        "type": "Text",
+      "rowBadges": {
+        "type": "Row",
+        "props": { "gap": "xs" },
+        "children": ["kindBadge", "stateBadge"]
+      },
+      "kindBadge": {
+        "type": "Badge",
         "props": {
-          "text": { "$item": "description" },
-          "size": "xs",
-          "tone": "muted",
-          "truncate": true
-        },
-        "visible": { "$item": "description" }
+          "text": { "$item": "board_kind" },
+          "tone": "accent",
+          "variant": "soft"
+        }
+      },
+      "stateBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "state" },
+          "tone": "neutral",
+          "variant": "soft"
+        }
+      },
+      "openBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ExternalLink", "tone": "muted", "ariaLabel": "Open in monday.com" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "https://monday.com/boards/{id}",
+                  "id": { "$item": "id" }
+                }
+              }
+            }
+          }
+        }
       }
 
     }
