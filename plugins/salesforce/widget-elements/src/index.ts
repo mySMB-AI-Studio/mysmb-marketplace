@@ -16,9 +16,25 @@ const probability_tone: ComputedFunction = (args) => {
   return 'warning';
 };
 
+/**
+ * Map a Salesforce Account Type string to a semantic tone.
+ * "Customer" → "success", "Partner" → "info", anything else → "warning".
+ *
+ * Args: { value: string }
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_account_type_tone", "args": { "value": { "$item": "Type" } } }
+ */
+const account_type_tone: ComputedFunction = (args) => {
+  const v = String(args.value ?? '');
+  if (v === 'Customer') return 'success';
+  if (v === 'Partner') return 'info';
+  return 'warning';
+};
+
 const elements: PluginElementsModule = {
   slug: 'salesforce',
-  functions: { probability_tone },
+  functions: { probability_tone, account_type_tone },
 };
 
 export default elements;
