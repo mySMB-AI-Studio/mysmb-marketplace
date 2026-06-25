@@ -39,7 +39,7 @@
         "props": { "gap": "sm", "align": "center" },
         "children": ["titleIcon", "titleStack"]
       },
-      "titleIcon": { "type": "Icon", "props": { "name": "Building2", "tone": "accent", "size": "sm" } },
+      "titleIcon": { "type": "Icon", "props": { "name": "Star", "tone": "accent", "size": "sm" } },
       "titleStack": {
         "type": "Stack",
         "props": { "gap": "none" },
@@ -98,10 +98,16 @@
       },
 
       "row": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["rowContent", "rowDivider"]
+      },
+      "rowContent": {
         "type": "Row",
         "props": { "justify": "between", "align": "center" },
         "children": ["rowLeft", "rowType"]
       },
+      "rowDivider": { "type": "Divider", "props": {} },
       "rowLeft": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center", "grow": true },
@@ -145,7 +151,8 @@
         "type": "Badge",
         "props": {
           "text": { "$item": "Type" },
-          "tone": { "$computed": "salesforce_account_type_tone", "args": { "value": { "$item": "Type" } } }
+          "tone": { "$computed": "salesforce_account_type_tone", "args": { "value": { "$item": "Type" } } },
+          "variant": "soft"
         },
         "visible": { "$item": "Type" }
       }
