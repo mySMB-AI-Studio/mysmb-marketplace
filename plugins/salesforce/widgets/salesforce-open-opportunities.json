@@ -3,14 +3,42 @@
   "title": "Recent Opportunities",
   "description": "Open Salesforce opportunities ordered by close date, with stage and win probability.",
   "category": "sales",
-  "tags": ["salesforce", "crm", "opportunities", "pipeline", "sales"],
-  "keywords": ["opportunity", "opportunities", "deal", "deals", "pipeline", "stage", "close date", "probability", "salesforce", "crm"],
-  "connectorsUsed": ["salesforce"],
+  "tags": [
+    "salesforce",
+    "crm",
+    "opportunities",
+    "pipeline",
+    "sales"
+  ],
+  "keywords": [
+    "opportunity",
+    "opportunities",
+    "deal",
+    "deals",
+    "pipeline",
+    "stage",
+    "close date",
+    "probability",
+    "salesforce",
+    "crm"
+  ],
+  "connectorsUsed": [
+    "salesforce"
+  ],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 8 },
-    "min":       { "colSpan": 4, "rowSpan": 5 },
-    "max":       { "colSpan": 10, "rowSpan": 12 }
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 8
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 5
+    },
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 12
+    }
   },
   "dataProvider": {
     "mcp": "salesforce",
@@ -22,124 +50,246 @@
   "spec": {
     "root": "card",
     "elements": {
-
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["titleRow", "colHeader", "divider", "loading", "empty", "scrollBody"]
+        "children": [
+          "titleRow",
+          "colHeader",
+          "divider",
+          "loading",
+          "empty",
+          "scrollBody"
+        ]
       },
-
       "titleRow": {
         "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["titleGroup"]
+        "props": {
+          "justify": "between",
+          "align": "center"
+        },
+        "children": [
+          "titleGroup"
+        ]
       },
       "titleGroup": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
       },
       "titleIcon": {
         "type": "Icon",
-        "props": { "name": "BarChart2", "tone": "accent", "size": "sm" }
+        "props": {
+          "name": "BarChart2",
+          "tone": "accent",
+          "size": "sm"
+        }
       },
       "titleStack": {
         "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["title", "eyebrow"]
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
       },
       "title": {
         "type": "Heading",
-        "props": { "text": "Recent Opportunities", "level": "h2" }
+        "props": {
+          "text": "Recent Opportunities",
+          "level": "h2"
+        }
       },
       "eyebrow": {
         "type": "Eyebrow",
-        "props": { "text": "Salesforce" }
+        "props": {
+          "text": "Salesforce"
+        }
       },
-
       "colHeader": {
         "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["colOpp", "colAmt"]
+        "props": {
+          "justify": "between",
+          "align": "center"
+        },
+        "children": [
+          "colOpp",
+          "colAmt"
+        ]
       },
-      "colOpp": { "type": "Caption", "props": { "text": "OPPORTUNITY" } },
-      "colAmt": { "type": "Caption", "props": { "text": "AMOUNT / STAGE" } },
-
-      "divider": { "type": "Divider", "props": {} },
-
+      "colOpp": {
+        "type": "Caption",
+        "props": {
+          "text": "OPPORTUNITY"
+        }
+      },
+      "colAmt": {
+        "type": "Caption",
+        "props": {
+          "text": "AMOUNT / STAGE"
+        }
+      },
+      "divider": {
+        "type": "Divider",
+        "props": {}
+      },
       "loading": {
         "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["s1", "s2", "s3", "s4"],
-        "visible": { "$state": "/_loading/salesforce.soql_query" }
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "s1",
+          "s2",
+          "s3",
+          "s4"
+        ],
+        "visible": {
+          "$state": "/_loading/salesforce.soql_query"
+        }
       },
-      "s1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
-      "s2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
-      "s3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
-      "s4": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
-
+      "s1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "s2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "s3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "s4": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
       "empty": {
         "type": "Empty",
-        "props": { "message": "No open opportunities right now." },
+        "props": {
+          "message": "No open opportunities right now."
+        },
         "visible": {
           "$and": [
-            { "$state": "/_loading/salesforce.soql_query", "not": true },
-            { "$state": "/salesforce/soql_query/records/0", "not": true }
+            {
+              "$state": "/_loading/salesforce.soql_query",
+              "not": true
+            },
+            {
+              "$state": "/salesforce/soql_query/records/0",
+              "not": true
+            }
           ]
         }
       },
-
       "scrollBody": {
         "type": "Body",
         "props": {},
-        "children": ["list"],
-        "visible": { "$state": "/_loading/salesforce.soql_query", "not": true }
+        "children": [
+          "list"
+        ],
+        "visible": {
+          "$state": "/_loading/salesforce.soql_query",
+          "not": true
+        }
       },
-
       "list": {
         "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["row"],
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "row"
+        ],
         "repeat": {
           "statePath": "/salesforce/soql_query/records",
           "key": "Id"
         }
       },
-
       "row": {
         "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["rowInfo", "rowBarRow"]
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "rowInfo",
+          "rowBarRow",
+          "rowDivider"
+        ]
       },
       "rowInfo": {
         "type": "Row",
-        "props": { "align": "start" },
-        "children": ["rowLeft", "rowRight"]
+        "props": {
+          "align": "start"
+        },
+        "children": [
+          "rowLeft",
+          "rowRight"
+        ]
       },
       "rowLeft": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "start", "grow": true },
-        "children": ["rowAvatar", "rowBody"]
+        "props": {
+          "gap": "sm",
+          "align": "start",
+          "grow": true
+        },
+        "children": [
+          "rowAvatar",
+          "rowBody"
+        ]
       },
       "rowAvatar": {
         "type": "Avatar",
         "props": {
           "initials": {
             "$computed": "initials",
-            "args": { "value": { "$item": "Account/Name" } }
+            "args": {
+              "value": {
+                "$item": "Account/Name"
+              }
+            }
           },
           "size": "md"
         }
       },
       "rowBody": {
         "type": "Stack",
-        "props": { "gap": "xs", "grow": true },
-        "children": ["rowName", "rowAccount"]
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "rowName",
+          "rowAccount"
+        ]
       },
       "rowName": {
         "type": "Text",
         "props": {
-          "text": { "$item": "Name" },
+          "text": {
+            "$item": "Name"
+          },
           "size": "sm",
           "weight": "medium",
           "truncate": true
@@ -148,24 +298,35 @@
       "rowAccount": {
         "type": "Text",
         "props": {
-          "text": { "$item": "Account/Name" },
+          "text": {
+            "$item": "Account/Name"
+          },
           "size": "xs",
           "tone": "muted",
           "truncate": true
         }
       },
-
       "rowRight": {
         "type": "Stack",
-        "props": { "gap": "none", "align": "end" },
-        "children": ["rowAmount", "rowMeta"]
+        "props": {
+          "gap": "none",
+          "align": "end"
+        },
+        "children": [
+          "rowAmount",
+          "rowMeta"
+        ]
       },
       "rowAmount": {
         "type": "Text",
         "props": {
           "text": {
             "$computed": "format_currency",
-            "args": { "value": { "$item": "Amount" } }
+            "args": {
+              "value": {
+                "$item": "Amount"
+              }
+            }
           },
           "size": "sm",
           "weight": "semibold"
@@ -174,24 +335,40 @@
       "rowMeta": {
         "type": "Text",
         "props": {
-          "text": { "$item": "StageName" },
+          "text": {
+            "$item": "StageName"
+          },
           "size": "xs",
           "tone": "muted",
           "truncate": true
         }
       },
-
       "rowBarRow": {
         "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["rowBar", "rowBarVal"]
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "rowBar",
+          "rowBarVal"
+        ]
       },
       "rowBar": {
         "type": "ProgressBar",
         "props": {
-          "value": { "$item": "Probability" },
+          "value": {
+            "$item": "Probability"
+          },
           "max": 100,
-          "tone": { "$computed": "salesforce_probability_tone", "args": { "value": { "$item": "Probability" } } }
+          "tone": {
+            "$computed": "salesforce_probability_tone",
+            "args": {
+              "value": {
+                "$item": "Probability"
+              }
+            }
+          }
         }
       },
       "rowBarVal": {
@@ -201,12 +378,17 @@
             "$computed": "fmt",
             "args": {
               "pattern": "{p}%",
-              "p": { "$item": "Probability" }
+              "p": {
+                "$item": "Probability"
+              }
             }
           }
         }
+      },
+      "rowDivider": {
+        "type": "Divider",
+        "props": {}
       }
-
     }
   },
   "status": "published"
