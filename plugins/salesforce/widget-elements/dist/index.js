@@ -26,11 +26,13 @@ const probability_tone = (args) => {
  */
 const account_type_tone = (args) => {
     const v = String(args.value ?? '');
-    if (v === 'Customer')
+    if (v.includes('Customer'))
         return 'success';
-    if (v === 'Partner')
+    if (v.includes('Partner'))
         return 'info';
-    return 'warning';
+    if (v === 'Prospect')
+        return 'warning';
+    return 'accent';
 };
 const elements = {
     slug: 'salesforce',
