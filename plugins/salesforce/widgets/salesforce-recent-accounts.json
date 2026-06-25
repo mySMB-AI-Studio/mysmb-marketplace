@@ -8,15 +8,15 @@
   "connectorsUsed": ["salesforce"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 4, "rowSpan": 4 },
-    "min":       { "colSpan": 4, "rowSpan": 3 },
+    "preferred": { "colSpan": 4, "rowSpan": 6 },
+    "min":       { "colSpan": 4, "rowSpan": 4 },
     "max":       { "colSpan": 10, "rowSpan": 10 }
   },
   "dataProvider": {
     "mcp": "salesforce",
-    "tool": "getRecentItems",
+    "tool": "soql_query",
     "params": {
-      "sobjectName": "Account"
+      "query": "SELECT Id, Name, Type, Industry FROM Account WHERE LastViewedDate != null ORDER BY LastViewedDate DESC LIMIT 20"
     }
   },
   "spec": {
@@ -26,12 +26,12 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["titleRow", "loading", "empty", "list"]
+        "children": ["titleRow", "colHeader", "divider", "loading", "empty", "scrollBody"]
       },
 
       "titleRow": {
         "type": "Row",
-        "props": { "align": "center" },
+        "props": { "justify": "between", "align": "center" },
         "children": ["titleGroup"]
       },
       "titleGroup": {
@@ -39,28 +39,30 @@
         "props": { "gap": "sm", "align": "center" },
         "children": ["titleIcon", "titleStack"]
       },
-      "titleIcon": {
-        "type": "Icon",
-        "props": { "name": "Building2", "tone": "accent", "size": "sm" }
-      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Building2", "tone": "accent", "size": "sm" } },
       "titleStack": {
         "type": "Stack",
         "props": { "gap": "none" },
         "children": ["title", "eyebrow"]
       },
-      "title": {
-        "type": "Heading",
-        "props": { "text": "Key Accounts", "level": "h2" }
+      "title":   { "type": "Heading", "props": { "text": "Key Accounts", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Salesforce" } },
+
+      "colHeader": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["colAcct", "colType"]
       },
-      "eyebrow": {
-        "type": "Eyebrow",
-        "props": { "text": "Salesforce" }
-      },
+      "colAcct": { "type": "Caption", "props": { "text": "ACCOUNT" } },
+      "colType": { "type": "Caption", "props": { "text": "TYPE" } },
+
+      "divider": { "type": "Divider", "props": {} },
+
       "loading": {
         "type": "Stack",
         "props": { "gap": "sm" },
         "children": ["s1", "s2", "s3", "s4"],
-        "visible": { "$state": "/_loading/salesforce.getRecentItems" }
+        "visible": { "$state": "/_loading/salesforce.soql_query" }
       },
       "s1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
       "s2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
@@ -72,31 +74,52 @@
         "props": { "message": "No recently viewed accounts." },
         "visible": {
           "$and": [
-            { "$state": "/_loading/salesforce.getRecentItems", "not": true },
-            { "$state": "/salesforce/getRecentItems/recentItems/0", "not": true }
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/salesforce/soql_query/records/0", "not": true }
           ]
         }
       },
 
+      "scrollBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["list"],
+        "visible": { "$state": "/_loading/salesforce.soql_query", "not": true }
+      },
+
       "list": {
         "type": "Stack",
-        "props": { "gap": "xs" },
+        "props": { "gap": "sm" },
         "children": ["row"],
         "repeat": {
-          "statePath": "/salesforce/getRecentItems/recentItems",
+          "statePath": "/salesforce/soql_query/records",
           "key": "Id"
-        },
-        "visible": { "$state": "/_loading/salesforce.getRecentItems", "not": true }
+        }
       },
 
       "row": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "props": { "justify": "between", "align": "center" },
         "children": ["rowLeft", "rowType"]
       },
       "rowLeft": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "grow": true },
+        "children": ["rowAvatar", "rowInfo"]
+      },
+      "rowAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": { "value": { "$item": "Name" } }
+          },
+          "size": "md"
+        }
+      },
+      "rowInfo": {
         "type": "Stack",
-        "props": { "gap": "none" },
+        "props": { "gap": "none", "grow": true },
         "children": ["rowName", "rowIndustry"]
       },
       "rowName": {
