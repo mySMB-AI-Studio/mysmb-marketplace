@@ -16,7 +16,7 @@
     "mcp": "salesforce",
     "tool": "soql_query",
     "params": {
-      "query": "SELECT Id, Name, Type, Industry FROM Account ORDER BY LastViewedDate DESC NULLS LAST LIMIT 20"
+      "query": "SELECT Id, Name, Type, Industry, Owner.Name, Phone, Website, AnnualRevenue FROM Account ORDER BY LastViewedDate DESC NULLS LAST LIMIT 20"
     }
   },
   "spec": {
@@ -26,7 +26,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["titleRow", "colHeader", "divider", "loading", "empty", "scrollBody"]
+        "children": ["titleRow", "colHeader", "divider", "loading", "empty", "scrollBody", "detailOverlay"]
       },
 
       "titleRow": {
@@ -104,10 +104,84 @@
       },
       "rowContent": {
         "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["rowLeft", "rowType"]
+        "props": { "justify": "between", "align": "center", "hover": true, "clickable": true },
+        "children": ["rowLeft", "rowType"],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/id",
+                "value": { "$computed": "identity", "args": { "value": { "$item": "Id" } } }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/name",
+                "value": { "$computed": "identity", "args": { "value": { "$item": "Name" } } }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/type",
+                "value": { "$computed": "identity", "args": { "value": { "$item": "Type" } } }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/typeTone",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$computed": "salesforce_account_type_tone",
+                      "args": { "value": { "$item": "Type" } }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/industry",
+                "value": { "$computed": "identity", "args": { "value": { "$item": "Industry" } } }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/owner",
+                "value": { "$computed": "identity", "args": { "value": { "$item": "Owner/Name" } } }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/phone",
+                "value": { "$computed": "identity", "args": { "value": { "$item": "Phone" } } }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/website",
+                "value": { "$computed": "identity", "args": { "value": { "$item": "Website" } } }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/revenue",
+                "value": { "$computed": "identity", "args": { "value": { "$item": "AnnualRevenue" } } }
+              }
+            }
+          ]
+        }
       },
-      "rowDivider": { "type": "Divider", "props": {} },
       "rowLeft": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center", "grow": true },
@@ -155,6 +229,126 @@
           "variant": "soft"
         },
         "visible": { "$item": "Type" }
+      },
+      "rowDivider": { "type": "Divider", "props": {} },
+
+      "detailOverlay": {
+        "type": "Overlay",
+        "props": { "open": true, "maxWidth": "30rem" },
+        "visible": { "$state": "/ui/sel/id" },
+        "children": ["detailStack"]
+      },
+      "detailStack": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["detailTitleRow", "detailMeta", "detailContact", "detailRevRow", "detailWebsiteRow"]
+      },
+
+      "detailTitleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["detailNameGroup", "detailCloseX"]
+      },
+      "detailNameGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["detailName", "detailTypeBadge"]
+      },
+      "detailName": {
+        "type": "Heading",
+        "props": { "text": { "$state": "/ui/sel/name" }, "level": "h3" }
+      },
+      "detailTypeBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$state": "/ui/sel/type" },
+          "tone": { "$state": "/ui/sel/typeTone" }
+        }
+      },
+      "detailCloseX": {
+        "type": "OverlayClose",
+        "props": {},
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": { "statePath": "/ui/sel/id", "value": "" }
+          }
+        }
+      },
+
+      "detailMeta": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "md" },
+        "children": ["metaTypeCell", "metaIndustryCell"]
+      },
+      "metaTypeCell": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["metaTypeLbl", "metaTypeVal"]
+      },
+      "metaTypeLbl":    { "type": "Caption", "props": { "text": "Type" } },
+      "metaTypeVal":    { "type": "Text",    "props": { "text": { "$state": "/ui/sel/type" },     "size": "sm" } },
+      "metaIndustryCell": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["metaIndustryLbl", "metaIndustryVal"]
+      },
+      "metaIndustryLbl": { "type": "Caption", "props": { "text": "Industry" } },
+      "metaIndustryVal": { "type": "Text",    "props": { "text": { "$state": "/ui/sel/industry" }, "size": "sm" } },
+
+      "detailContact": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "md" },
+        "children": ["metaOwnerCell", "metaPhoneCell"]
+      },
+      "metaOwnerCell": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["metaOwnerLbl", "metaOwnerVal"]
+      },
+      "metaOwnerLbl": { "type": "Caption", "props": { "text": "Account Owner" } },
+      "metaOwnerVal": { "type": "Text",    "props": { "text": { "$state": "/ui/sel/owner" }, "size": "sm" } },
+      "metaPhoneCell": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["metaPhoneLbl", "metaPhoneVal"]
+      },
+      "metaPhoneLbl": { "type": "Caption", "props": { "text": "Phone" } },
+      "metaPhoneVal": { "type": "Text",    "props": { "text": { "$state": "/ui/sel/phone" }, "size": "sm" } },
+
+      "detailRevRow": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["metaRevLbl", "metaRevVal"]
+      },
+      "metaRevLbl": { "type": "Caption", "props": { "text": "Annual Revenue" } },
+      "metaRevVal": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/ui/sel/revenue" } }
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+
+      "detailWebsiteRow": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["detailWebsiteBtn"],
+        "visible": { "$state": "/ui/sel/website" }
+      },
+      "detailWebsiteBtn": {
+        "type": "Button",
+        "props": { "label": "Open Website", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": { "$state": "/ui/sel/website" } }
+          }
+        }
       }
 
     }
