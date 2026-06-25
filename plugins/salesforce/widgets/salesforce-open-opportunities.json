@@ -107,6 +107,11 @@
       },
 
       "row": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["rowInfo", "rowBarRow"]
+      },
+      "rowInfo": {
         "type": "Row",
         "props": { "align": "start" },
         "children": ["rowLeft", "rowRight"]
@@ -129,7 +134,7 @@
       "rowBody": {
         "type": "Stack",
         "props": { "gap": "xs", "grow": true },
-        "children": ["rowName", "rowAccount", "rowBarRow"]
+        "children": ["rowName", "rowAccount"]
       },
       "rowName": {
         "type": "Text",
@@ -147,32 +152,6 @@
           "size": "xs",
           "tone": "muted",
           "truncate": true
-        }
-      },
-      "rowBarRow": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["rowBar", "rowBarVal"]
-      },
-      "rowBar": {
-        "type": "ProgressBar",
-        "props": {
-          "value": { "$item": "Probability" },
-          "max": 100,
-          "grow": true,
-          "tone": { "$computed": "salesforce_probability_tone", "args": { "value": { "$item": "Probability" } } }
-        }
-      },
-      "rowBarVal": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{p}%",
-              "p": { "$item": "Probability" }
-            }
-          }
         }
       },
 
@@ -199,6 +178,32 @@
           "size": "xs",
           "tone": "muted",
           "truncate": true
+        }
+      },
+
+      "rowBarRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["rowBar", "rowBarVal"]
+      },
+      "rowBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": { "$item": "Probability" },
+          "max": 100,
+          "tone": { "$computed": "salesforce_probability_tone", "args": { "value": { "$item": "Probability" } } }
+        }
+      },
+      "rowBarVal": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{p}%",
+              "p": { "$item": "Probability" }
+            }
+          }
         }
       }
 
