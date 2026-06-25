@@ -27,9 +27,10 @@ const probability_tone: ComputedFunction = (args) => {
  */
 const account_type_tone: ComputedFunction = (args) => {
   const v = String(args.value ?? '');
-  if (v === 'Customer') return 'success';
-  if (v === 'Partner') return 'info';
-  return 'warning';
+  if (v.includes('Customer')) return 'success';
+  if (v.includes('Partner')) return 'info';
+  if (v === 'Prospect') return 'warning';
+  return 'accent';
 };
 
 const elements: PluginElementsModule = {
