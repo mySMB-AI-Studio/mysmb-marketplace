@@ -1,10 +1,10 @@
 {
   "id": "dataverse-opportunity-pipeline-v5",
   "title": "Opportunity Pipeline",
-  "description": "Open opportunities grouped by sales stage — click a stage to see the deals inside it.",
+  "description": "Every open opportunity in one list — group by owner, stage, or deal age, search across deals, and spot stalled (untouched 30d+) deals at a glance.",
   "category": "sales",
-  "tags": ["dataverse", "dynamics-365", "sales", "pipeline", "opportunities", "forecast", "crm"],
-  "keywords": ["pipeline", "opportunities", "opportunity", "stages", "forecast", "weighted", "sales", "crm"],
+  "tags": ["dataverse", "dynamics-365", "sales", "pipeline", "opportunities", "owner", "crm", "stalled"],
+  "keywords": ["pipeline", "opportunities", "opportunity", "owner", "salesperson", "rep", "stalled", "stale", "age", "stages", "sales", "crm"],
   "connectorsUsed": ["dataverse"],
   "popularity": 0,
   "sizing": {
@@ -26,27 +26,46 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "statsGrid", "div1", "stageBody", "div2", "footer"],
+        "children": ["headerRow", "controlsRow", "div1", "listBody"],
         "watch": {
           "/dataverse/list_opportunity_pipeline/items": {
             "action": "setState",
             "params": {
-              "statePath": "/ui/pipeline/stages",
+              "statePath": "/ui/groups",
               "value": {
-                "$computed": "dataverse_pipeline_stages",
-                "args": { "value": { "$state": "/dataverse/list_opportunity_pipeline/items" } }
+                "$computed": "dataverse_group_opportunities",
+                "args": {
+                  "value": { "$state": "/dataverse/list_opportunity_pipeline/items" },
+                  "mode": { "$state": "/ui/groupBy" },
+                  "search": { "$state": "/ui/search" }
+                }
               }
             }
           },
-          "/ui/pipeline/selectedStage": {
+          "/ui/groupBy": {
             "action": "setState",
             "params": {
-              "statePath": "/ui/pipeline/breakdown",
+              "statePath": "/ui/groups",
               "value": {
-                "$computed": "dataverse_ops_in_stage",
+                "$computed": "dataverse_group_opportunities",
                 "args": {
                   "value": { "$state": "/dataverse/list_opportunity_pipeline/items" },
-                  "stage": { "$state": "/ui/pipeline/selectedStage" }
+                  "mode": { "$state": "/ui/groupBy" },
+                  "search": { "$state": "/ui/search" }
+                }
+              }
+            }
+          },
+          "/ui/search": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/groups",
+              "value": {
+                "$computed": "dataverse_group_opportunities",
+                "args": {
+                  "value": { "$state": "/dataverse/list_opportunity_pipeline/items" },
+                  "mode": { "$state": "/ui/groupBy" },
+                  "search": { "$state": "/ui/search" }
                 }
               }
             }
@@ -57,7 +76,7 @@
       "headerRow": {
         "type": "Row",
         "props": { "justify": "between", "align": "center" },
-        "children": ["titleGroup"]
+        "children": ["titleGroup", "statsRow"]
       },
       "titleGroup": {
         "type": "Row",
@@ -69,70 +88,96 @@
       "title": { "type": "Heading", "props": { "text": "Opportunity Pipeline", "level": "h2" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Dynamics 365 Sales" } },
 
-      "statsGrid": {
-        "type": "Grid",
-        "props": { "cols": 2, "gap": "sm" },
-        "children": ["tileOpen", "tileValue", "tileWinRate", "tileOverdue"]
+      "statsRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["statOpen", "statStalled", "statWin"]
       },
-
-      "tileOpen": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackOpen"] },
-      "stackOpen": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconOpen", "valOpen", "lblOpen"] },
-      "iconOpen": { "type": "Icon", "props": { "name": "TrendingUp", "size": "sm", "tone": "accent" } },
-      "valOpen": {
-        "type": "Stat",
-        "props": {
-          "value": { "$computed": "count", "args": { "value": { "$state": "/dataverse/list_opportunity_pipeline/items" } } }
-        }
-      },
+      "statOpen": { "type": "Section", "props": { "variant": "muted" }, "children": ["rowOpen"] },
+      "rowOpen": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["lblOpen", "valOpen"] },
       "lblOpen": { "type": "Caption", "props": { "text": "Open" } },
-
-      "tileValue": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackValue"] },
-      "stackValue": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconValue", "valValue", "lblValue"] },
-      "iconValue": { "type": "Icon", "props": { "name": "Banknote", "size": "sm", "tone": "positive" } },
-      "valValue": {
-        "type": "Stat",
+      "valOpen": {
+        "type": "Text",
         "props": {
-          "value": {
-            "$computed": "format_currency",
-            "args": {
-              "value": {
-                "$computed": "sum",
-                "args": {
-                  "value": { "$state": "/dataverse/list_opportunity_pipeline/items" },
-                  "field": "estimatedvalue"
-                }
-              }
-            }
-          },
-          "level": "h2"
+          "text": { "$computed": "count", "args": { "value": { "$state": "/dataverse/list_opportunity_pipeline/items" } } },
+          "size": "sm", "weight": "semibold"
         }
       },
-      "lblValue": { "type": "Caption", "props": { "text": "Pipeline Value" } },
-
-      "tileWinRate": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackWinRate"] },
-      "stackWinRate": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconWinRate", "valWinRate", "lblWinRate"] },
-      "iconWinRate": { "type": "Icon", "props": { "name": "Trophy", "size": "sm", "tone": "positive" } },
-      "valWinRate": {
-        "type": "Stat",
-        "props": { "value": { "$state": "/dataverse/list_opportunity_pipeline/win_rate" } }
+      "statStalled": { "type": "Section", "props": { "variant": "muted" }, "children": ["rowStalled"] },
+      "rowStalled": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["lblStalled", "valStalled"] },
+      "lblStalled": { "type": "Caption", "props": { "text": "Stalled" } },
+      "valStalled": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "dataverse_count_stalled", "args": { "value": { "$state": "/dataverse/list_opportunity_pipeline/items" } } },
+          "size": "sm", "weight": "semibold", "tone": "destructive"
+        }
       },
-      "lblWinRate": { "type": "Caption", "props": { "text": "Win Rate" } },
-
-      "tileOverdue": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackOverdue"] },
-      "stackOverdue": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconOverdue", "valOverdue", "lblOverdue"] },
-      "iconOverdue": { "type": "Icon", "props": { "name": "AlertTriangle", "size": "sm", "tone": "destructive" } },
-      "valOverdue": {
-        "type": "Stat",
-        "props": { "value": { "$state": "/dataverse/list_opportunity_pipeline/overdue_count" } }
+      "statWin": { "type": "Section", "props": { "variant": "muted" }, "children": ["rowWin"] },
+      "rowWin": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["lblWin", "valWin"] },
+      "lblWin": { "type": "Caption", "props": { "text": "Win rate" } },
+      "valWin": {
+        "type": "Text",
+        "props": { "text": { "$state": "/dataverse/list_opportunity_pipeline/win_rate" }, "size": "sm", "weight": "semibold" }
       },
-      "lblOverdue": { "type": "Caption", "props": { "text": "Overdue", "tone": "destructive" } },
+
+      "controlsRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["segControl", "searchInput"]
+      },
+      "segControl": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["segLabel", "segOwner", "segStage", "segAge"]
+      },
+      "segLabel": { "type": "Caption", "props": { "text": "Group by" } },
+      "segOwner": {
+        "type": "Row",
+        "props": {
+          "gap": "xs", "align": "center", "hover": true, "clickable": true,
+          "selected": { "$computed": "dataverse_is_mode", "args": { "value": { "$state": "/ui/groupBy" }, "mode": "owner" } }
+        },
+        "children": ["segOwnerLbl"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/groupBy", "value": "owner" } } }
+      },
+      "segOwnerLbl": { "type": "Text", "props": { "text": "Owner", "size": "sm", "weight": "medium" } },
+      "segStage": {
+        "type": "Row",
+        "props": {
+          "gap": "xs", "align": "center", "hover": true, "clickable": true,
+          "selected": { "$computed": "dataverse_is_mode", "args": { "value": { "$state": "/ui/groupBy" }, "mode": "stage" } }
+        },
+        "children": ["segStageLbl"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/groupBy", "value": "stage" } } }
+      },
+      "segStageLbl": { "type": "Text", "props": { "text": "Stage", "size": "sm", "weight": "medium" } },
+      "segAge": {
+        "type": "Row",
+        "props": {
+          "gap": "xs", "align": "center", "hover": true, "clickable": true,
+          "selected": { "$computed": "dataverse_is_mode", "args": { "value": { "$state": "/ui/groupBy" }, "mode": "age" } }
+        },
+        "children": ["segAgeLbl"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/groupBy", "value": "age" } } }
+      },
+      "segAgeLbl": { "type": "Text", "props": { "text": "Age", "size": "sm", "weight": "medium" } },
+      "searchInput": {
+        "type": "TextInput",
+        "props": {
+          "value": { "$bindState": "/ui/search" },
+          "placeholder": "Search opportunities or accounts",
+          "size": "sm",
+          "debounce": 150
+        }
+      },
 
       "div1": { "type": "Divider", "props": {} },
 
-      "stageBody": {
+      "listBody": {
         "type": "Body",
         "props": {},
-        "children": ["loading", "empty", "stages", "breakdown"]
+        "children": ["loading", "empty", "groupsList"]
       },
 
       "loading": {
@@ -141,10 +186,10 @@
         "children": ["sk1", "sk2", "sk3", "sk4"],
         "visible": { "$state": "/_loading/dataverse.list_opportunity_pipeline" }
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
-      "sk4": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
 
       "empty": {
         "type": "Empty",
@@ -157,11 +202,11 @@
         }
       },
 
-      "stages": {
+      "groupsList": {
         "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["stageRow"],
-        "repeat": { "statePath": "/ui/pipeline/stages", "key": "key" },
+        "props": { "gap": "sm" },
+        "children": ["groupItem"],
+        "repeat": { "statePath": "/ui/groups", "key": "rowkey" },
         "visible": {
           "$and": [
             { "$state": "/_loading/dataverse.list_opportunity_pipeline", "not": true },
@@ -169,55 +214,52 @@
           ]
         }
       },
-      "stageRow": {
-        "type": "Row",
-        "props": {
-          "gap": "sm", "align": "center", "justify": "between",
-          "hover": true, "clickable": true,
-          "selected": { "$computed": "equals", "args": { "a": { "$item": "key" }, "b": { "$state": "/ui/pipeline/selectedStage" } } }
-        },
-        "children": ["stageLeft", "stageRight"],
-        "on": {
-          "click": {
-            "action": "setState",
-            "params": {
-              "statePath": "/ui/pipeline/selectedStage",
-              "value": { "$computed": "identity", "args": { "value": { "$item": "key" } } }
-            }
-          }
-        }
-      },
-      "stageLeft": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center", "grow": true },
-        "children": ["stageDot", "stageTextStack"]
-      },
-      "stageDot": { "type": "Dot", "props": { "tone": { "$item": "tone" }, "size": "sm" } },
-      "stageTextStack": {
+      "groupItem": {
         "type": "Stack",
         "props": { "gap": "none" },
-        "children": ["stageLabel", "stageSublabel"]
+        "children": ["groupHeader", "dealRow"]
       },
-      "stageLabel": { "type": "Text", "props": { "text": { "$item": "key" }, "size": "sm", "weight": "medium" } },
-      "stageSublabel": {
-        "type": "Caption",
+
+      "groupHeader": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["groupHeaderRow"],
+        "visible": { "$item": "isHeader" }
+      },
+      "groupHeaderRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["groupHeaderLeft", "groupHeaderRight"]
+      },
+      "groupHeaderLeft": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "grow": true },
+        "children": ["groupAvatar", "groupLabel"]
+      },
+      "groupAvatar": {
+        "type": "Badge",
+        "props": { "text": { "$item": "initials" }, "tone": "accent", "variant": "soft" },
+        "visible": { "$item": "initials" }
+      },
+      "groupLabel": { "type": "Text", "props": { "text": { "$item": "label" }, "size": "sm", "weight": "semibold", "truncate": true } },
+      "groupHeaderRight": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["groupStalled", "groupCount", "groupTotal"]
+      },
+      "groupStalled": {
+        "type": "Badge",
         "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{n} open · {weighted} weighted",
-              "n": { "$item": "count" },
-              "weighted": { "$computed": "format_currency", "args": { "value": { "$item": "weighted" } } }
-            }
-          }
-        }
+          "text": { "$computed": "fmt", "args": { "pattern": "{n} stalled", "n": { "$item": "stalled" } } },
+          "tone": "destructive", "variant": "soft"
+        },
+        "visible": { "$item": "stalled" }
       },
-      "stageRight": {
-        "type": "Stack",
-        "props": { "gap": "none", "align": "end" },
-        "children": ["stageTotal"]
+      "groupCount": {
+        "type": "Caption",
+        "props": { "text": { "$computed": "fmt", "args": { "pattern": "{n} open", "n": { "$item": "count" } } } }
       },
-      "stageTotal": {
+      "groupTotal": {
         "type": "Text",
         "props": {
           "text": { "$computed": "format_currency", "args": { "value": { "$item": "total" } } },
@@ -225,116 +267,32 @@
         }
       },
 
-      "breakdown": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["breakdownHeader", "breakdownDivider", "breakdownList", "breakdownEmpty"],
-        "visible": { "$state": "/ui/pipeline/selectedStage" }
-      },
-      "breakdownDivider": { "type": "Divider", "props": {} },
-      "breakdownHeader": {
+      "dealRow": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center", "justify": "between" },
-        "children": ["breakdownTitle", "breakdownClose"]
+        "props": { "gap": "sm", "align": "center", "hover": true },
+        "children": ["dealLeft", "dealStage", "dealAge", "dealAmount"],
+        "visible": { "$item": "isDeal" }
       },
-      "breakdownTitle": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": { "pattern": "{stage} stage", "stage": { "$state": "/ui/pipeline/selectedStage" } }
-          }
-        }
-      },
-      "breakdownClose": {
-        "type": "IconButton",
-        "props": { "icon": "X", "tone": "muted", "ariaLabel": "Close breakdown", "size": "sm" },
-        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/pipeline/selectedStage", "value": "" } } }
-      },
-      "breakdownList": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["bdRow"],
-        "repeat": { "statePath": "/ui/pipeline/breakdown", "key": "opportunityid" }
-      },
-      "breakdownEmpty": {
-        "type": "Caption",
-        "props": { "text": "No opportunities in this stage." },
-        "visible": { "$state": "/ui/pipeline/breakdown/0", "not": true }
-      },
-      "bdRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "start", "hover": true },
-        "children": ["bdLeft", "bdRight"]
-      },
-      "bdLeft": {
+      "dealLeft": {
         "type": "Stack",
         "props": { "gap": "none", "grow": true },
-        "children": ["bdCustomer", "bdMeta"]
+        "children": ["dealName", "dealAccount"]
       },
-      "bdCustomer": { "type": "Text", "props": { "text": { "$item": "customerid_account/name" }, "size": "sm", "weight": "medium", "truncate": true } },
-      "bdMeta": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{name} · {label}",
-              "name": { "$item": "name" },
-              "label": { "$computed": "dataverse_close_label", "args": { "value": { "$item": "estimatedclosedate" } } }
-            }
-          },
-          "tone": { "$item": "close_tone" }
-        }
+      "dealName": { "type": "Text", "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "truncate": true } },
+      "dealAccount": { "type": "Caption", "props": { "text": { "$item": "account" }, "truncate": true } },
+      "dealStage": {
+        "type": "Badge",
+        "props": { "text": { "$item": "stageLabel" }, "tone": { "$item": "stageTone" }, "variant": "soft" }
       },
-      "bdRight": {
-        "type": "Stack",
-        "props": { "gap": "none", "align": "end" },
-        "children": ["bdAmount", "bdWeighted"]
+      "dealAge": {
+        "type": "Badge",
+        "props": { "text": { "$item": "ageLabel" }, "tone": { "$item": "ageTone" }, "variant": "soft" }
       },
-      "bdAmount": {
+      "dealAmount": {
         "type": "Text",
         "props": {
-          "text": { "$computed": "format_currency", "args": { "value": { "$item": "estimatedvalue" } } },
+          "text": { "$computed": "format_currency", "args": { "value": { "$item": "amount" } } },
           "size": "sm", "weight": "semibold"
-        }
-      },
-      "bdWeighted": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{pct}% · {weighted}",
-              "pct": { "$item": "closeprobability" },
-              "weighted": {
-                "$computed": "format_currency",
-                "args": {
-                  "value": {
-                    "$computed": "dataverse_weighted",
-                    "args": { "value": { "$item": "estimatedvalue" }, "probability": { "$item": "closeprobability" } }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-
-      "div2": { "type": "Divider", "props": {} },
-      "footer": {
-        "type": "Row",
-        "props": { "justify": "end", "gap": "xs", "align": "center" },
-        "children": ["footerBtn"]
-      },
-      "footerBtn": {
-        "type": "Button",
-        "props": { "label": "Open in D365", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
-        "on": {
-          "click": {
-            "action": "open_url",
-            "params": { "url": "https://mysmb-dev.crm6.dynamics.com", "target": "_blank" }
-          }
         }
       }
     }
