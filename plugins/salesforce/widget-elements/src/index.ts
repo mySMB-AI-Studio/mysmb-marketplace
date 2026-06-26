@@ -110,7 +110,7 @@ const sort_by_key: ComputedFunction = (args) => {
  */
 const cycle_sort: ComputedFunction = (args) => {
   const current = String(args.current ?? '');
-  const options = ['CloseDate|desc', 'CloseDate|asc', 'Name|asc', 'Amount|desc', 'Probability|desc', 'StageName|asc'];
+  const options = ['Name|asc', 'Name|desc'];
   const idx = options.indexOf(current);
   return options[(idx + 1) % options.length];
 };
