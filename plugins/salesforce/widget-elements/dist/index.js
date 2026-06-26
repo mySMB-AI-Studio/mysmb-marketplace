@@ -74,8 +74,35 @@ const win_rate = (args) => {
     const won = closed.filter((i) => i['IsWon'] === true);
     return Math.round((won.length / closed.length) * 100);
 };
+/**
+ * Sort an array of records using a composite "Field|dir" key.
+ * Decodes the key, compares numerically when both values are numbers, otherwise lexically.
+ * Returns the original array unchanged if key is empty or items is empty.
+ *
+ * Args: { value: array, key: string }
+ *   value — the records array to sort
+ *   key   — composite sort key, e.g. "CloseDate|desc" or "Name|asc"
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_sort_by_key", "args": { "value": { "$state": "/salesforce/soql_query/records" }, "key": { "$state": "/ui/sortKey" } } }
+ */
+const sort_by_key = (args) => {
+    const items = Array.isArray(args.value) ? args.value : [];
+    const key = String(args.key ?? 'CloseDate|desc');
+    const [field, dir] = key.split('|');
+    if (!field || items.length === 0)
+        return items;
+    return [...items].sort((a, b) => {
+        const av = a[field] ?? '';
+        const bv = b[field] ?? '';
+        const an = Number(av);
+        const bn = Number(bv);
+        const cmp = !isNaN(an) && !isNaN(bn) ? an - bn : String(av).localeCompare(String(bv));
+        return dir === 'desc' ? -cmp : cmp;
+    });
+};
 const elements = {
     slug: 'salesforce',
-    functions: { probability_tone, account_type_tone, pct_of_max, win_rate },
+    functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key },
 };
 export default elements;

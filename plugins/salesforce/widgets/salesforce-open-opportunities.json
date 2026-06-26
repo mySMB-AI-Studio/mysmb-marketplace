@@ -44,24 +44,58 @@
     "mcp": "salesforce",
     "tool": "soql_query",
     "params": {
-      "query": "SELECT Id, Name, Account.Name, StageName, Amount, CloseDate, Probability FROM Opportunity WHERE IsClosed = false ORDER BY CloseDate ASC LIMIT 50"
+      "query": "SELECT Id, Name, Account.Name, StageName, Amount, CloseDate, Probability FROM Opportunity WHERE IsClosed = false ORDER BY CloseDate DESC LIMIT 50"
     }
   },
   "spec": {
     "root": "card",
     "elements": {
+
       "card": {
         "type": "Card",
         "props": {},
-        "children": [
-          "titleRow",
-          "colHeader",
-          "divider",
-          "loading",
-          "empty",
-          "scrollBody"
-        ]
+        "children": ["titleRow", "sortRow", "colHeader", "divider", "loading", "empty", "scrollBody"],
+        "watch": {
+          "/salesforce/soql_query/records": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sortKey",
+                "value": "CloseDate|desc"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sorted",
+                "value": {
+                  "$computed": "salesforce_sort_by_key",
+                  "args": {
+                    "value": { "$state": "/salesforce/soql_query/records" },
+                    "key": "CloseDate|desc"
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/sortKey": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sorted",
+                "value": {
+                  "$computed": "salesforce_sort_by_key",
+                  "args": {
+                    "value": { "$state": "/salesforce/soql_query/records" },
+                    "key": { "$state": "/ui/sortKey" }
+                  }
+                }
+              }
+            }
+          ]
+        }
       },
+
       "titleRow": {
         "type": "Row",
         "props": {
@@ -114,6 +148,36 @@
           "text": "Salesforce"
         }
       },
+
+      "sortRow": {
+        "type": "Row",
+        "props": {
+          "justify": "end"
+        },
+        "children": ["sortSelect"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/salesforce/soql_query/records/0" }
+          ]
+        }
+      },
+      "sortSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/sortKey" },
+          "options": [
+            { "value": "CloseDate|desc", "label": "Close Date (newest)" },
+            { "value": "CloseDate|asc",  "label": "Close Date (oldest)" },
+            { "value": "Name|asc",       "label": "Name (A-Z)" },
+            { "value": "Amount|desc",    "label": "Amount (high-low)" },
+            { "value": "Probability|desc", "label": "Probability (high-low)" },
+            { "value": "StageName|asc",  "label": "Stage (A-Z)" }
+          ],
+          "size": "sm"
+        }
+      },
+
       "colHeader": {
         "type": "Row",
         "props": {
@@ -141,6 +205,7 @@
         "type": "Divider",
         "props": {}
       },
+
       "loading": {
         "type": "Stack",
         "props": {
@@ -156,34 +221,11 @@
           "$state": "/_loading/salesforce.soql_query"
         }
       },
-      "s1": {
-        "type": "Skeleton",
-        "props": {
-          "height": "3rem",
-          "rounded": "md"
-        }
-      },
-      "s2": {
-        "type": "Skeleton",
-        "props": {
-          "height": "3rem",
-          "rounded": "md"
-        }
-      },
-      "s3": {
-        "type": "Skeleton",
-        "props": {
-          "height": "3rem",
-          "rounded": "md"
-        }
-      },
-      "s4": {
-        "type": "Skeleton",
-        "props": {
-          "height": "3rem",
-          "rounded": "md"
-        }
-      },
+      "s1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "s2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "s3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "s4": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+
       "empty": {
         "type": "Empty",
         "props": {
@@ -202,6 +244,7 @@
           ]
         }
       },
+
       "scrollBody": {
         "type": "Body",
         "props": {},
@@ -213,6 +256,7 @@
           "not": true
         }
       },
+
       "list": {
         "type": "Stack",
         "props": {
@@ -222,10 +266,11 @@
           "row"
         ],
         "repeat": {
-          "statePath": "/salesforce/soql_query/records",
+          "statePath": "/ui/sorted",
           "key": "Id"
         }
       },
+
       "row": {
         "type": "Stack",
         "props": {
@@ -389,6 +434,7 @@
         "type": "Divider",
         "props": {}
       }
+
     }
   },
   "status": "published"
