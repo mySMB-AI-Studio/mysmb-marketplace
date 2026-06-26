@@ -99,9 +99,25 @@ const sort_by_key: ComputedFunction = (args) => {
   });
 };
 
+/**
+ * Advance /ui/sortKey to the next option in the fixed 6-step cycle.
+ * Used by the sort icon-button on.click action.
+ *
+ * Args: { current: string } — the current /ui/sortKey value
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_cycle_sort", "args": { "current": { "$state": "/ui/sortKey" } } }
+ */
+const cycle_sort: ComputedFunction = (args) => {
+  const current = String(args.current ?? '');
+  const options = ['CloseDate|desc', 'CloseDate|asc', 'Name|asc', 'Amount|desc', 'Probability|desc', 'StageName|asc'];
+  const idx = options.indexOf(current);
+  return options[(idx + 1) % options.length];
+};
+
 const elements: PluginElementsModule = {
   slug: 'salesforce',
-  functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key },
+  functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort },
 };
 
 export default elements;
