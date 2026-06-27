@@ -76,50 +76,17 @@
       "headerRow": {
         "type": "Row",
         "props": { "justify": "between", "align": "center" },
-        "children": ["titleGroup", "statsRow"]
+        "children": ["titleGroup"]
       },
       "titleGroup": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
+        "props": { "gap": "sm", "align": "start" },
         "children": ["titleIcon", "titleStack"]
       },
       "titleIcon": { "type": "Icon", "props": { "name": "TrendingUp", "tone": "accent", "size": "sm" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
       "title": { "type": "Heading", "props": { "text": "Opportunity Pipeline", "level": "h2" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Dynamics 365 Sales" } },
-
-      "statsRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["statOpen", "statStalled", "statWin"]
-      },
-      "statOpen": { "type": "Section", "props": { "variant": "muted" }, "children": ["rowOpen"] },
-      "rowOpen": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["lblOpen", "valOpen"] },
-      "lblOpen": { "type": "Caption", "props": { "text": "Open" } },
-      "valOpen": {
-        "type": "Text",
-        "props": {
-          "text": { "$computed": "count", "args": { "value": { "$state": "/dataverse/list_opportunity_pipeline/items" } } },
-          "size": "sm", "weight": "semibold"
-        }
-      },
-      "statStalled": { "type": "Section", "props": { "variant": "muted" }, "children": ["rowStalled"] },
-      "rowStalled": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["lblStalled", "valStalled"] },
-      "lblStalled": { "type": "Caption", "props": { "text": "Stalled" } },
-      "valStalled": {
-        "type": "Text",
-        "props": {
-          "text": { "$computed": "dataverse_count_stalled", "args": { "value": { "$state": "/dataverse/list_opportunity_pipeline/items" } } },
-          "size": "sm", "weight": "semibold", "tone": "destructive"
-        }
-      },
-      "statWin": { "type": "Section", "props": { "variant": "muted" }, "children": ["rowWin"] },
-      "rowWin": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["lblWin", "valWin"] },
-      "lblWin": { "type": "Caption", "props": { "text": "Win rate" } },
-      "valWin": {
-        "type": "Text",
-        "props": { "text": { "$state": "/dataverse/list_opportunity_pipeline/win_rate" }, "size": "sm", "weight": "semibold" }
-      },
 
       "controlsRow": {
         "type": "Row",
