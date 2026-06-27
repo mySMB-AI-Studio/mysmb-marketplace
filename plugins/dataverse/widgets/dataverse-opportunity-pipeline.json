@@ -96,9 +96,8 @@
       "segControl": {
         "type": "Row",
         "props": { "gap": "xs", "align": "center" },
-        "children": ["segLabel", "segOwner", "segStage", "segAge"]
+        "children": ["segOwner", "segStage"]
       },
-      "segLabel": { "type": "Caption", "props": { "text": "Group by" } },
       "segOwner": {
         "type": "Button",
         "props": {
@@ -114,14 +113,6 @@
           "variant": { "$computed": "dataverse_mode_variant", "args": { "value": { "$state": "/ui/groupBy" }, "mode": "stage" } }
         },
         "on": { "click": { "action": "setState", "params": { "statePath": "/ui/groupBy", "value": "stage" } } }
-      },
-      "segAge": {
-        "type": "Button",
-        "props": {
-          "label": "Age", "size": "sm",
-          "variant": { "$computed": "dataverse_mode_variant", "args": { "value": { "$state": "/ui/groupBy" }, "mode": "age" } }
-        },
-        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/groupBy", "value": "age" } } }
       },
       "searchInput": {
         "type": "TextInput",
