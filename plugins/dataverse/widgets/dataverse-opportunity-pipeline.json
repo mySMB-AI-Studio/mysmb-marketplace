@@ -37,7 +37,8 @@
                 "args": {
                   "value": { "$state": "/dataverse/list_opportunity_pipeline/items" },
                   "mode": { "$state": "/ui/groupBy" },
-                  "search": { "$state": "/ui/search" }
+                  "search": { "$state": "/ui/search" },
+                  "collapsed": { "$state": "/ui/collapsedKeys" }
                 }
               }
             }
@@ -51,7 +52,8 @@
                 "args": {
                   "value": { "$state": "/dataverse/list_opportunity_pipeline/items" },
                   "mode": { "$state": "/ui/groupBy" },
-                  "search": { "$state": "/ui/search" }
+                  "search": { "$state": "/ui/search" },
+                  "collapsed": { "$state": "/ui/collapsedKeys" }
                 }
               }
             }
@@ -65,7 +67,23 @@
                 "args": {
                   "value": { "$state": "/dataverse/list_opportunity_pipeline/items" },
                   "mode": { "$state": "/ui/groupBy" },
-                  "search": { "$state": "/ui/search" }
+                  "search": { "$state": "/ui/search" },
+                  "collapsed": { "$state": "/ui/collapsedKeys" }
+                }
+              }
+            }
+          },
+          "/ui/collapsedKeys": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/groups",
+              "value": {
+                "$computed": "dataverse_group_opportunities",
+                "args": {
+                  "value": { "$state": "/dataverse/list_opportunity_pipeline/items" },
+                  "mode": { "$state": "/ui/groupBy" },
+                  "search": { "$state": "/ui/search" },
+                  "collapsed": { "$state": "/ui/collapsedKeys" }
                 }
               }
             }
@@ -180,20 +198,30 @@
       },
       "groupHeaderRow": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center", "justify": "between" },
-        "children": ["groupHeaderLeft", "groupHeaderRight"]
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true, "clickable": true },
+        "children": ["groupHeaderLeft", "groupHeaderRight"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/collapsedKeys",
+              "value": { "$computed": "dataverse_toggle_in_set", "args": { "value": { "$state": "/ui/collapsedKeys" }, "key": { "$item": "key" } } }
+            }
+          }
+        }
       },
       "groupHeaderLeft": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center", "grow": true },
-        "children": ["groupAvatar", "groupLabel"]
+        "children": ["groupChevron", "groupAvatar", "groupLabel"]
       },
+      "groupChevron": { "type": "Icon", "props": { "name": { "$item": "chevron" }, "tone": "muted", "size": "sm" } },
       "groupAvatar": {
         "type": "Badge",
         "props": { "text": { "$item": "initials" }, "tone": "accent", "variant": "soft" },
         "visible": { "$item": "initials" }
       },
-      "groupLabel": { "type": "Text", "props": { "text": { "$item": "label" }, "size": "sm", "weight": "semibold", "truncate": true } },
+      "groupLabel": { "type": "Text", "props": { "text": { "$item": "label" }, "size": "md", "weight": "semibold", "truncate": true } },
       "groupHeaderRight": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center" },
