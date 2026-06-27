@@ -412,6 +412,22 @@ const is_mode: ComputedFunction = (args) => {
   return current === String(args.mode);
 };
 
+// ── mode_variant ─────────────────────────────────────────────────────
+//
+// Button variant for the group-by segmented control: 'primary' (filled)
+// for the active mode, 'secondary' (outlined) otherwise. Treats an
+// empty/undefined groupBy state as the default 'owner' mode.
+//
+// Args: { value: string (current /ui/groupBy), mode: string }
+//
+// Spec example:
+//   { "$computed": "dataverse_mode_variant", "args": { "value": { "$state": "/ui/groupBy" }, "mode": "owner" } }
+
+const mode_variant: ComputedFunction = (args) => {
+  const current = args.value == null || args.value === '' ? 'owner' : String(args.value);
+  return current === String(args.mode) ? 'primary' : 'secondary';
+};
+
 // ── group_opportunities ──────────────────────────────────────────────
 //
 // Flatten opportunities into a single render list of header + deal rows
@@ -553,6 +569,7 @@ const elements: PluginElementsModule = {
     age_tone,
     count_stalled,
     is_mode,
+    mode_variant,
     group_opportunities,
   },
 };

@@ -100,35 +100,29 @@
       },
       "segLabel": { "type": "Caption", "props": { "text": "Group by" } },
       "segOwner": {
-        "type": "Row",
+        "type": "Button",
         "props": {
-          "gap": "xs", "align": "center", "hover": true, "clickable": true,
-          "selected": { "$computed": "dataverse_is_mode", "args": { "value": { "$state": "/ui/groupBy" }, "mode": "owner" } }
+          "label": "Owner", "size": "sm",
+          "variant": { "$computed": "dataverse_mode_variant", "args": { "value": { "$state": "/ui/groupBy" }, "mode": "owner" } }
         },
-        "children": ["segOwnerLbl"],
         "on": { "click": { "action": "setState", "params": { "statePath": "/ui/groupBy", "value": "owner" } } }
       },
-      "segOwnerLbl": { "type": "Text", "props": { "text": "Owner", "size": "sm", "weight": "medium" } },
       "segStage": {
-        "type": "Row",
+        "type": "Button",
         "props": {
-          "gap": "xs", "align": "center", "hover": true, "clickable": true,
-          "selected": { "$computed": "dataverse_is_mode", "args": { "value": { "$state": "/ui/groupBy" }, "mode": "stage" } }
+          "label": "Stage", "size": "sm",
+          "variant": { "$computed": "dataverse_mode_variant", "args": { "value": { "$state": "/ui/groupBy" }, "mode": "stage" } }
         },
-        "children": ["segStageLbl"],
         "on": { "click": { "action": "setState", "params": { "statePath": "/ui/groupBy", "value": "stage" } } }
       },
-      "segStageLbl": { "type": "Text", "props": { "text": "Stage", "size": "sm", "weight": "medium" } },
       "segAge": {
-        "type": "Row",
+        "type": "Button",
         "props": {
-          "gap": "xs", "align": "center", "hover": true, "clickable": true,
-          "selected": { "$computed": "dataverse_is_mode", "args": { "value": { "$state": "/ui/groupBy" }, "mode": "age" } }
+          "label": "Age", "size": "sm",
+          "variant": { "$computed": "dataverse_mode_variant", "args": { "value": { "$state": "/ui/groupBy" }, "mode": "age" } }
         },
-        "children": ["segAgeLbl"],
         "on": { "click": { "action": "setState", "params": { "statePath": "/ui/groupBy", "value": "age" } } }
       },
-      "segAgeLbl": { "type": "Text", "props": { "text": "Age", "size": "sm", "weight": "medium" } },
       "searchInput": {
         "type": "TextInput",
         "props": {
