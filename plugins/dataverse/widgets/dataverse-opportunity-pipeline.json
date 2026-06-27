@@ -26,7 +26,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "controlsRow", "div1", "listBody"],
+        "children": ["headerRow", "controlsRow", "div1", "listBody", "oppModal"],
         "watch": {
           "/dataverse/list_opportunity_pipeline/items": {
             "action": "setState",
@@ -269,9 +269,27 @@
 
       "dealRow": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center", "hover": true },
+        "props": { "gap": "sm", "align": "center", "hover": true, "clickable": true },
         "children": ["dealLeft", "dealStage", "dealAge", "dealAmount"],
-        "visible": { "$item": "isDeal" }
+        "visible": { "$item": "isDeal" },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/sel/id", "value": { "$computed": "identity", "args": { "value": { "$item": "opportunityid" } } } } },
+            { "action": "setState", "params": { "statePath": "/ui/sel/name", "value": { "$computed": "identity", "args": { "value": { "$item": "name" } } } } },
+            { "action": "setState", "params": { "statePath": "/ui/sel/account", "value": { "$computed": "identity", "args": { "value": { "$item": "account" } } } } },
+            { "action": "setState", "params": { "statePath": "/ui/sel/owner", "value": { "$computed": "identity", "args": { "value": { "$item": "owner" } } } } },
+            { "action": "setState", "params": { "statePath": "/ui/sel/stageLabel", "value": { "$computed": "identity", "args": { "value": { "$item": "stageLabel" } } } } },
+            { "action": "setState", "params": { "statePath": "/ui/sel/stageTone", "value": { "$computed": "identity", "args": { "value": { "$item": "stageTone" } } } } },
+            { "action": "setState", "params": { "statePath": "/ui/sel/ageLabel", "value": { "$computed": "identity", "args": { "value": { "$item": "ageLabel" } } } } },
+            { "action": "setState", "params": { "statePath": "/ui/sel/ageTone", "value": { "$computed": "identity", "args": { "value": { "$item": "ageTone" } } } } },
+            { "action": "setState", "params": { "statePath": "/ui/sel/amount", "value": { "$computed": "identity", "args": { "value": { "$item": "amount" } } } } },
+            { "action": "setState", "params": { "statePath": "/ui/sel/probability", "value": { "$computed": "identity", "args": { "value": { "$item": "probability" } } } } },
+            { "action": "setState", "params": { "statePath": "/ui/sel/weighted", "value": { "$computed": "identity", "args": { "value": { "$item": "weighted" } } } } },
+            { "action": "setState", "params": { "statePath": "/ui/sel/closeLabel", "value": { "$computed": "identity", "args": { "value": { "$item": "closeLabel" } } } } },
+            { "action": "setState", "params": { "statePath": "/ui/sel/closeTone", "value": { "$computed": "identity", "args": { "value": { "$item": "closeTone" } } } } },
+            { "action": "setState", "params": { "statePath": "/ui/sel/recordUrl", "value": { "$computed": "identity", "args": { "value": { "$item": "recordUrl" } } } } }
+          ]
+        }
       },
       "dealLeft": {
         "type": "Stack",
@@ -294,6 +312,117 @@
           "text": { "$computed": "format_currency", "args": { "value": { "$item": "amount" } } },
           "size": "sm", "weight": "semibold"
         }
+      },
+
+      "oppModal": {
+        "type": "Overlay",
+        "props": { "maxWidth": "30rem" },
+        "visible": { "$state": "/ui/sel/id", "neq": "" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/sel/id", "value": "" } } },
+        "children": ["modalContent"]
+      },
+      "modalContent": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["modalHeader", "modalDivider", "modalBody", "modalFooter"]
+      },
+      "modalHeader": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "justify": "between" },
+        "children": ["modalTitleStack", "modalClose"]
+      },
+      "modalTitleStack": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["modalTitle", "modalAccount"]
+      },
+      "modalTitle": { "type": "Heading", "props": { "text": { "$state": "/ui/sel/name" }, "level": "h3", "wrap": true } },
+      "modalAccount": { "type": "Caption", "props": { "text": { "$state": "/ui/sel/account" } } },
+      "modalClose": {
+        "type": "OverlayClose",
+        "props": { "ariaLabel": "Close opportunity details" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/sel/id", "value": "" } } }
+      },
+      "modalDivider": { "type": "Divider", "props": {} },
+      "modalBody": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["mrStage", "mrOwner", "mrValue", "mrProb", "mrWeighted", "mrClose", "mrActivity"]
+      },
+      "mrStage": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["mrStageLbl", "mrStageVal"]
+      },
+      "mrStageLbl": { "type": "Caption", "props": { "text": "Stage" } },
+      "mrStageVal": {
+        "type": "Badge",
+        "props": { "text": { "$state": "/ui/sel/stageLabel" }, "tone": { "$state": "/ui/sel/stageTone" }, "variant": "soft" }
+      },
+      "mrOwner": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["mrOwnerLbl", "mrOwnerVal"]
+      },
+      "mrOwnerLbl": { "type": "Caption", "props": { "text": "Owner" } },
+      "mrOwnerVal": { "type": "Text", "props": { "text": { "$state": "/ui/sel/owner" }, "size": "sm", "weight": "medium" } },
+      "mrValue": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["mrValueLbl", "mrValueVal"]
+      },
+      "mrValueLbl": { "type": "Caption", "props": { "text": "Value" } },
+      "mrValueVal": {
+        "type": "Text",
+        "props": { "text": { "$computed": "format_currency", "args": { "value": { "$state": "/ui/sel/amount" } } }, "size": "sm", "weight": "semibold" }
+      },
+      "mrProb": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["mrProbLbl", "mrProbVal"]
+      },
+      "mrProbLbl": { "type": "Caption", "props": { "text": "Probability" } },
+      "mrProbVal": {
+        "type": "Text",
+        "props": { "text": { "$computed": "fmt", "args": { "pattern": "{p}%", "p": { "$state": "/ui/sel/probability" } } }, "size": "sm", "weight": "medium" }
+      },
+      "mrWeighted": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["mrWeightedLbl", "mrWeightedVal"]
+      },
+      "mrWeightedLbl": { "type": "Caption", "props": { "text": "Weighted" } },
+      "mrWeightedVal": {
+        "type": "Text",
+        "props": { "text": { "$computed": "format_currency", "args": { "value": { "$state": "/ui/sel/weighted" } } }, "size": "sm", "weight": "medium" }
+      },
+      "mrClose": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["mrCloseLbl", "mrCloseVal"]
+      },
+      "mrCloseLbl": { "type": "Caption", "props": { "text": "Close" } },
+      "mrCloseVal": { "type": "Text", "props": { "text": { "$state": "/ui/sel/closeLabel" }, "tone": { "$state": "/ui/sel/closeTone" }, "size": "sm", "weight": "medium" } },
+      "mrActivity": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["mrActivityLbl", "mrActivityVal"]
+      },
+      "mrActivityLbl": { "type": "Caption", "props": { "text": "Last activity" } },
+      "mrActivityVal": {
+        "type": "Badge",
+        "props": { "text": { "$state": "/ui/sel/ageLabel" }, "tone": { "$state": "/ui/sel/ageTone" }, "variant": "soft" }
+      },
+      "modalFooter": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "end" },
+        "children": ["modalOpenBtn"]
+      },
+      "modalOpenBtn": {
+        "type": "Button",
+        "props": { "label": "Open in Dynamics 365", "variant": "primary", "size": "sm", "leadingIcon": "ExternalLink" },
+        "visible": { "$state": "/ui/sel/recordUrl", "neq": "" },
+        "on": { "click": { "action": "open_url", "params": { "url": { "$state": "/ui/sel/recordUrl" }, "target": "_blank" } } }
       }
     }
   }

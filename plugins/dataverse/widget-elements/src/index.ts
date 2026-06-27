@@ -314,6 +314,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 interface PipelineRow extends OpportunityRow {
   owner_name?: string;
   modifiedon?: string;
+  record_url?: string | null;
 }
 
 function daysSince(raw: unknown): number | null {
@@ -515,6 +516,13 @@ const group_opportunities: ComputedFunction = (args) => {
         ageLabel: am.label,
         ageTone: am.tone,
         amount: Number(o.estimatedvalue ?? 0) || 0,
+        // Extra fields surfaced in the click-through detail modal.
+        owner: o.owner_name && String(o.owner_name).trim() ? String(o.owner_name) : 'Unassigned',
+        probability: typeof o.closeprobability === 'number' ? o.closeprobability : 0,
+        closeLabel: close_label({ value: o.estimatedclosedate }),
+        closeTone: close_tone({ value: o.estimatedclosedate }),
+        weighted: weightedValueOf(o),
+        recordUrl: o.record_url ?? '',
       });
     }
   }
