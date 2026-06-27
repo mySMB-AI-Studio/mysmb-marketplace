@@ -288,7 +288,7 @@
             { "action": "setState", "params": { "statePath": "/ui/sel/closeLabel", "value": { "$computed": "identity", "args": { "value": { "$item": "closeLabel" } } } } },
             { "action": "setState", "params": { "statePath": "/ui/sel/closeTone", "value": { "$computed": "identity", "args": { "value": { "$item": "closeTone" } } } } },
             { "action": "setState", "params": { "statePath": "/ui/sel/recordUrl", "value": { "$computed": "identity", "args": { "value": { "$item": "recordUrl" } } } } },
-            { "action": "dataverse.list_activities", "params": { "filter": { "$computed": "fmt", "args": { "pattern": "_regardingobjectid_value eq {id}", "id": { "$item": "opportunityid" } } }, "orderby": "createdon desc", "top": 50 } }
+            { "action": "setState", "params": { "statePath": "/ui/sel/activities", "value": { "$computed": "identity", "args": { "value": { "$item": "activities" } } } } }
           ]
         }
       },
@@ -418,35 +418,20 @@
       "modalActivity": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["activityHeader", "activityLoading", "activityEmpty", "activityList"]
+        "children": ["activityHeader", "activityEmpty", "activityList"]
       },
       "activityHeader": { "type": "Eyebrow", "props": { "text": "Activity timeline" } },
-      "activityLoading": {
-        "type": "Spinner",
-        "props": { "label": "Loading activity…", "size": "sm" },
-        "visible": { "$state": "/_loading/dataverse.list_activities" }
-      },
       "activityEmpty": {
         "type": "Caption",
         "props": { "text": "No activity recorded for this opportunity." },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/dataverse.list_activities", "not": true },
-            { "$state": "/dataverse/list_activities/items/0", "not": true }
-          ]
-        }
+        "visible": { "$state": "/ui/sel/activities/0", "not": true }
       },
       "activityList": {
         "type": "Stack",
         "props": { "gap": "sm" },
         "children": ["activityRow"],
-        "repeat": { "statePath": "/dataverse/list_activities/items" },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/dataverse.list_activities", "not": true },
-            { "$state": "/dataverse/list_activities/items/0" }
-          ]
-        }
+        "repeat": { "statePath": "/ui/sel/activities" },
+        "visible": { "$state": "/ui/sel/activities/0" }
       },
       "activityRow": {
         "type": "Row",
