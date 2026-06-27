@@ -488,6 +488,7 @@ const group_opportunities = (args) => {
                 closeTone: close_tone({ value: o.estimatedclosedate }),
                 weighted: weightedValueOf(o),
                 recordUrl: o.record_url ?? '',
+                activities: Array.isArray(o.activities) ? o.activities : [],
             });
         }
     }

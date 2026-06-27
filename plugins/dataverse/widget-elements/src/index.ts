@@ -315,6 +315,7 @@ interface PipelineRow extends OpportunityRow {
   owner_name?: string;
   modifiedon?: string;
   record_url?: string | null;
+  activities?: unknown[];
 }
 
 function daysSince(raw: unknown): number | null {
@@ -523,6 +524,7 @@ const group_opportunities: ComputedFunction = (args) => {
         closeTone: close_tone({ value: o.estimatedclosedate }),
         weighted: weightedValueOf(o),
         recordUrl: o.record_url ?? '',
+        activities: Array.isArray(o.activities) ? o.activities : [],
       });
     }
   }
