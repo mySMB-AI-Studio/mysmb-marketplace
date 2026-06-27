@@ -428,6 +428,29 @@ const mode_variant: ComputedFunction = (args) => {
   return current === String(args.mode) ? 'primary' : 'secondary';
 };
 
+// ── toggle_in_set ────────────────────────────────────────────────────
+//
+// Toggle a key's membership in a newline-delimited set string. Used to
+// collapse/expand groups: the group header click flips its key in
+// /ui/collapsedKeys, and group_opportunities omits collapsed groups'
+// deal rows. Static state path + computed value (dynamic paths aren't
+// supported by setState).
+//
+// Args: { value: string (current set), key: string }
+//
+// Spec example:
+//   { "$computed": "dataverse_toggle_in_set", "args": { "value": { "$state": "/ui/collapsedKeys" }, "key": { "$item": "key" } } }
+
+const toggle_in_set: ComputedFunction = (args) => {
+  const key = String(args.key ?? '');
+  if (!key) return typeof args.value === 'string' ? args.value : '';
+  const parts = (typeof args.value === 'string' ? args.value : '').split('\n').filter(Boolean);
+  const idx = parts.indexOf(key);
+  if (idx >= 0) parts.splice(idx, 1);
+  else parts.push(key);
+  return parts.join('\n');
+};
+
 // ── group_opportunities ──────────────────────────────────────────────
 //
 // Flatten opportunities into a single render list of header + deal rows
@@ -449,6 +472,10 @@ const group_opportunities: ComputedFunction = (args) => {
   const opps = (Array.isArray(args.value) ? args.value : []) as PipelineRow[];
   const mode = args.mode === 'stage' || args.mode === 'age' ? args.mode : 'owner';
   const search = String(args.search ?? '').trim().toLowerCase();
+  // Newline-delimited set of collapsed group keys (toggled via toggle_in_set).
+  const collapsedSet = new Set(
+    (typeof args.collapsed === 'string' ? args.collapsed : '').split('\n').filter(Boolean),
+  );
 
   const filtered = search
     ? opps.filter((o) =>
@@ -506,17 +533,22 @@ const group_opportunities: ComputedFunction = (args) => {
       const d = daysSince(o.modifiedon);
       return d != null && d >= 30;
     }).length;
+    const isCollapsed = collapsedSet.has(g.key);
     out.push({
       rowkey: `h:${g.key}`,
       kind: 'header',
       isHeader: true,
       isDeal: false,
+      key: g.key,
       label: g.label,
       initials: g.initials,
       count: deals.length,
       stalled,
       total: sumValue(deals),
+      collapsed: isCollapsed,
+      chevron: isCollapsed ? 'ChevronRight' : 'ChevronDown',
     });
+    if (isCollapsed) continue;
     for (const o of deals) {
       const sm = stageMeta(o.salesstagecode);
       const am = ageMeta(o.modifiedon);
@@ -570,6 +602,7 @@ const elements: PluginElementsModule = {
     count_stalled,
     is_mode,
     mode_variant,
+    toggle_in_set,
     group_opportunities,
   },
 };
