@@ -287,7 +287,8 @@
             { "action": "setState", "params": { "statePath": "/ui/sel/weighted", "value": { "$computed": "identity", "args": { "value": { "$item": "weighted" } } } } },
             { "action": "setState", "params": { "statePath": "/ui/sel/closeLabel", "value": { "$computed": "identity", "args": { "value": { "$item": "closeLabel" } } } } },
             { "action": "setState", "params": { "statePath": "/ui/sel/closeTone", "value": { "$computed": "identity", "args": { "value": { "$item": "closeTone" } } } } },
-            { "action": "setState", "params": { "statePath": "/ui/sel/recordUrl", "value": { "$computed": "identity", "args": { "value": { "$item": "recordUrl" } } } } }
+            { "action": "setState", "params": { "statePath": "/ui/sel/recordUrl", "value": { "$computed": "identity", "args": { "value": { "$item": "recordUrl" } } } } },
+            { "action": "dataverse.list_activities", "params": { "filter": { "$computed": "fmt", "args": { "pattern": "_regardingobjectid_value eq {id}", "id": { "$item": "opportunityid" } } }, "orderby": "createdon desc", "top": 50 } }
           ]
         }
       },
@@ -316,7 +317,7 @@
 
       "oppModal": {
         "type": "Overlay",
-        "props": { "maxWidth": "30rem" },
+        "props": { "maxWidth": "34rem" },
         "visible": { "$state": "/ui/sel/id", "neq": "" },
         "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/sel/id", "value": "" } } },
         "children": ["modalContent"]
@@ -324,7 +325,7 @@
       "modalContent": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["modalHeader", "modalDivider", "modalBody", "modalFooter"]
+        "children": ["modalHeader", "modalDivider", "modalBody", "modalActivityDivider", "modalActivity", "modalFooter"]
       },
       "modalHeader": {
         "type": "Row",
@@ -412,6 +413,65 @@
       "mrActivityVal": {
         "type": "Badge",
         "props": { "text": { "$state": "/ui/sel/ageLabel" }, "tone": { "$state": "/ui/sel/ageTone" }, "variant": "soft" }
+      },
+      "modalActivityDivider": { "type": "Divider", "props": {} },
+      "modalActivity": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["activityHeader", "activityLoading", "activityEmpty", "activityList"]
+      },
+      "activityHeader": { "type": "Eyebrow", "props": { "text": "Activity timeline" } },
+      "activityLoading": {
+        "type": "Spinner",
+        "props": { "label": "Loading activity…", "size": "sm" },
+        "visible": { "$state": "/_loading/dataverse.list_activities" }
+      },
+      "activityEmpty": {
+        "type": "Caption",
+        "props": { "text": "No activity recorded for this opportunity." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dataverse.list_activities", "not": true },
+            { "$state": "/dataverse/list_activities/items/0", "not": true }
+          ]
+        }
+      },
+      "activityList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["activityRow"],
+        "repeat": { "statePath": "/dataverse/list_activities/items" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dataverse.list_activities", "not": true },
+            { "$state": "/dataverse/list_activities/items/0" }
+          ]
+        }
+      },
+      "activityRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["activityIcon", "activityTextStack"]
+      },
+      "activityIcon": {
+        "type": "Icon",
+        "props": {
+          "name": { "$computed": "dataverse_activity_type_icon", "args": { "value": { "$item": "activitytypecode" } } },
+          "tone": "muted", "size": "sm"
+        }
+      },
+      "activityTextStack": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["activitySubject", "activityMeta"]
+      },
+      "activitySubject": {
+        "type": "Text",
+        "props": { "text": { "$item": "subject" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "activityMeta": {
+        "type": "Caption",
+        "props": { "text": { "$computed": "relative_time", "args": { "value": { "$item": "createdon" } } } }
       },
       "modalFooter": {
         "type": "Row",
