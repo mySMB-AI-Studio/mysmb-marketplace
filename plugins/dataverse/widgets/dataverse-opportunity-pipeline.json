@@ -1,10 +1,10 @@
 {
   "id": "dataverse-opportunity-pipeline-v5",
   "title": "Opportunity Pipeline",
-  "description": "Every open opportunity in one list — group by owner, stage, or deal age, search across deals, and spot stalled (untouched 30d+) deals at a glance.",
+  "description": "Every open opportunity in one list — group by owner, stage, or deal age, search across deals, and surface deals with no recent activity.",
   "category": "sales",
-  "tags": ["dataverse", "dynamics-365", "sales", "pipeline", "opportunities", "owner", "crm", "stalled"],
-  "keywords": ["pipeline", "opportunities", "opportunity", "owner", "salesperson", "rep", "stalled", "stale", "age", "stages", "sales", "crm"],
+  "tags": ["dataverse", "dynamics-365", "sales", "pipeline", "opportunities", "owner", "crm"],
+  "keywords": ["pipeline", "opportunities", "opportunity", "owner", "salesperson", "rep", "age", "activity", "stages", "sales", "crm"],
   "connectorsUsed": ["dataverse"],
   "popularity": 0,
   "sizing": {
@@ -212,15 +212,7 @@
       "groupHeaderRight": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center" },
-        "children": ["groupStalled", "groupCount", "groupTotal"]
-      },
-      "groupStalled": {
-        "type": "Badge",
-        "props": {
-          "text": { "$computed": "fmt", "args": { "pattern": "{n} stalled", "n": { "$item": "stalled" } } },
-          "tone": "destructive", "variant": "soft"
-        },
-        "visible": { "$item": "stalled" }
+        "children": ["groupCount", "groupTotal"]
       },
       "groupCount": {
         "type": "Caption",

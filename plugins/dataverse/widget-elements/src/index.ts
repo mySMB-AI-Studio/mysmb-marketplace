@@ -332,10 +332,10 @@ function stageMeta(code: unknown): { label: string; tone: string } {
 
 function ageMeta(modifiedon: unknown): { label: string; tone: string; bucket: string; sort: number } {
   const d = daysSince(modifiedon);
-  if (d == null) return { label: 'No activity', tone: 'muted', bucket: 'Stalled (30d+)', sort: 0 };
-  if (d >= 30) return { label: `Stalled · ${d}d`, tone: 'destructive', bucket: 'Stalled (30d+)', sort: 0 };
-  if (d >= 14) return { label: `Watch · ${d}d`, tone: 'warning', bucket: 'Watch (14–29d)', sort: 1 };
-  return { label: `Fresh · ${d}d`, tone: 'success', bucket: 'Fresh (<14d)', sort: 2 };
+  if (d == null) return { label: 'No activity', tone: 'muted', bucket: '30+ days', sort: 0 };
+  if (d >= 30) return { label: `${d}d`, tone: 'destructive', bucket: '30+ days', sort: 0 };
+  if (d >= 14) return { label: `${d}d`, tone: 'warning', bucket: '14–29 days', sort: 1 };
+  return { label: `${d}d`, tone: 'success', bucket: 'Under 14 days', sort: 2 };
 }
 
 function sumValue(opps: OpportunityRow[]): number {

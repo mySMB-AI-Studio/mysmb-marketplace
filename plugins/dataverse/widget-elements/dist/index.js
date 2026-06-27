@@ -311,12 +311,12 @@ function stageMeta(code) {
 function ageMeta(modifiedon) {
     const d = daysSince(modifiedon);
     if (d == null)
-        return { label: 'No activity', tone: 'muted', bucket: 'Stalled (30d+)', sort: 0 };
+        return { label: 'No activity', tone: 'muted', bucket: '30+ days', sort: 0 };
     if (d >= 30)
-        return { label: `Stalled · ${d}d`, tone: 'destructive', bucket: 'Stalled (30d+)', sort: 0 };
+        return { label: `${d}d`, tone: 'destructive', bucket: '30+ days', sort: 0 };
     if (d >= 14)
-        return { label: `Watch · ${d}d`, tone: 'warning', bucket: 'Watch (14–29d)', sort: 1 };
-    return { label: `Fresh · ${d}d`, tone: 'success', bucket: 'Fresh (<14d)', sort: 2 };
+        return { label: `${d}d`, tone: 'warning', bucket: '14–29 days', sort: 1 };
+    return { label: `${d}d`, tone: 'success', bucket: 'Under 14 days', sort: 2 };
 }
 function sumValue(opps) {
     return opps.reduce((t, o) => t + (Number(o.estimatedvalue ?? 0) || 0), 0);
