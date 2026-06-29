@@ -1,0 +1,138 @@
+{
+  "id": "netsuite-vendor-bills-due-demo",
+  "title": "Vendor Bills Due",
+  "description": "Upcoming vendor bills due in the next 30 days, sorted by most urgent first. Demo version with static data.",
+  "category": "finance",
+  "tags": ["netsuite", "oracle", "erp", "finance", "ap", "bills", "payables", "vendors", "demo"],
+  "keywords": ["vendor bills", "accounts payable", "upcoming", "payables", "due", "netsuite", "erp"],
+  "connectorsUsed": ["netsuite"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 7, "rowSpan": 5 },
+    "min":       { "colSpan": 5, "rowSpan": 8 },
+    "max":       { "colSpan": 12, "rowSpan": 14 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "kpiGrid", "div1", "tableHeaderRow", "scrollBody", "div2", "kvGrid"]
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "CalendarClock", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Vendor Bills Due", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "NetSuite ERP · Next 30 days" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "kpiGrid": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["tileTotal", "tileCount"]
+      },
+
+      "tileTotal": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackTotal"] },
+      "stackTotal": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconTotal", "valTotal", "lblTotal"] },
+      "iconTotal": { "type": "Icon", "props": { "name": "DollarSign", "size": "sm", "tone": "accent" } },
+      "valTotal": { "type": "Heading", "props": { "text": "$16,940", "level": "h2" } },
+      "lblTotal": { "type": "Caption", "props": { "text": "Total Due (30 days)" } },
+
+      "tileCount": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackCount"] },
+      "stackCount": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconCount", "valCount", "lblCount"] },
+      "iconCount": { "type": "Icon", "props": { "name": "FileText", "size": "sm", "tone": "accent" } },
+      "valCount": { "type": "Heading", "props": { "text": "5", "level": "h2" } },
+      "lblCount": { "type": "Caption", "props": { "text": "Upcoming Bills" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "tableHeaderRow": {
+        "type": "Row",
+        "props": { "template": "1fr 1.5fr 1fr 0.75fr", "gap": "sm", "align": "center" },
+        "children": ["colBill", "colVendor", "colAmount", "colDue"]
+      },
+      "colBill":   { "type": "Caption", "props": { "text": "BILL #",   "tone": "muted" } },
+      "colVendor": { "type": "Caption", "props": { "text": "VENDOR",   "tone": "muted" } },
+      "colAmount": { "type": "Caption", "props": { "text": "AMOUNT",   "tone": "muted" } },
+      "colDue":    { "type": "Caption", "props": { "text": "DUE IN",   "tone": "muted" } },
+
+      "scrollBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["billList"]
+      },
+
+      "billList": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": [
+          "rowDiv0", "row0",
+          "rowDiv1", "row1",
+          "rowDiv2", "row2",
+          "rowDiv3", "row3",
+          "rowDiv4", "row4"
+        ]
+      },
+
+      "rowDiv0": { "type": "Divider", "props": {} },
+      "row0": { "type": "Row", "props": { "template": "1fr 1.5fr 1fr 0.75fr", "gap": "sm", "align": "center" }, "children": ["r0Bill", "r0Vendor", "r0Amount", "r0Due"] },
+      "r0Bill":   { "type": "Text", "props": { "text": "BILL-2234", "size": "sm", "weight": "medium" } },
+      "r0Vendor": { "type": "Text", "props": { "text": "Office Depot",  "size": "sm" } },
+      "r0Amount": { "type": "Text", "props": { "text": "$1,200",         "size": "sm" } },
+      "r0Due":    { "type": "Text", "props": { "text": "2 days",         "size": "sm", "tone": "destructive" } },
+
+      "rowDiv1": { "type": "Divider", "props": {} },
+      "row1": { "type": "Row", "props": { "template": "1fr 1.5fr 1fr 0.75fr", "gap": "sm", "align": "center" }, "children": ["r1Bill", "r1Vendor", "r1Amount", "r1Due"] },
+      "r1Bill":   { "type": "Text", "props": { "text": "BILL-2241", "size": "sm", "weight": "medium" } },
+      "r1Vendor": { "type": "Text", "props": { "text": "Amazon Web Services", "size": "sm" } },
+      "r1Amount": { "type": "Text", "props": { "text": "$8,450",              "size": "sm" } },
+      "r1Due":    { "type": "Text", "props": { "text": "5 days",              "size": "sm", "tone": "warning" } },
+
+      "rowDiv2": { "type": "Divider", "props": {} },
+      "row2": { "type": "Row", "props": { "template": "1fr 1.5fr 1fr 0.75fr", "gap": "sm", "align": "center" }, "children": ["r2Bill", "r2Vendor", "r2Amount", "r2Due"] },
+      "r2Bill":   { "type": "Text", "props": { "text": "BILL-2238", "size": "sm", "weight": "medium" } },
+      "r2Vendor": { "type": "Text", "props": { "text": "Telstra",    "size": "sm" } },
+      "r2Amount": { "type": "Text", "props": { "text": "$2,100",     "size": "sm" } },
+      "r2Due":    { "type": "Text", "props": { "text": "8 days",     "size": "sm", "tone": "warning" } },
+
+      "rowDiv3": { "type": "Divider", "props": {} },
+      "row3": { "type": "Row", "props": { "template": "1fr 1.5fr 1fr 0.75fr", "gap": "sm", "align": "center" }, "children": ["r3Bill", "r3Vendor", "r3Amount", "r3Due"] },
+      "r3Bill":   { "type": "Text", "props": { "text": "BILL-2245", "size": "sm", "weight": "medium" } },
+      "r3Vendor": { "type": "Text", "props": { "text": "Xero Software", "size": "sm" } },
+      "r3Amount": { "type": "Text", "props": { "text": "$890",           "size": "sm" } },
+      "r3Due":    { "type": "Text", "props": { "text": "14 days",        "size": "sm", "tone": "muted" } },
+
+      "rowDiv4": { "type": "Divider", "props": {} },
+      "row4": { "type": "Row", "props": { "template": "1fr 1.5fr 1fr 0.75fr", "gap": "sm", "align": "center" }, "children": ["r4Bill", "r4Vendor", "r4Amount", "r4Due"] },
+      "r4Bill":   { "type": "Text", "props": { "text": "BILL-2251", "size": "sm", "weight": "medium" } },
+      "r4Vendor": { "type": "Text", "props": { "text": "Staples",    "size": "sm" } },
+      "r4Amount": { "type": "Text", "props": { "text": "$4,300",     "size": "sm" } },
+      "r4Due":    { "type": "Text", "props": { "text": "22 days",    "size": "sm", "tone": "muted" } },
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "kvGrid": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start" },
+        "children": ["kvThisWeek", "kvThisMonth"]
+      },
+      "kvThisWeek":  { "type": "KeyValue", "props": { "label": "Largest Bill",  "value": "$8,450" } },
+      "kvThisMonth": { "type": "KeyValue", "props": { "label": "Vendor Count",  "value": "5 vendors" } }
+
+    }
+  },
+  "status": "published"
+}

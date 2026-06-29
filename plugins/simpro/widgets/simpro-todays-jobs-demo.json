@@ -1,0 +1,105 @@
+{
+  "id": "simpro-todays-jobs-demo",
+  "title": "Today's Jobs (Demo)",
+  "description": "Static demo of the SimPro Today's Jobs widget — 3 hardcoded electrical jobs with scheduled times and materials status.",
+  "category": "operations",
+  "tags": ["simpro", "jobs", "schedule", "field-service", "electrical", "trade", "demo"],
+  "keywords": ["today", "today's jobs", "schedule", "jobs", "field service", "simpro", "run sheet", "demo"],
+  "connectorsUsed": ["simpro"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 9 },
+    "min":       { "colSpan": 4, "rowSpan": 6 },
+    "max":       { "colSpan": 10, "rowSpan": 14 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "sub", "divider", "scrollBody"]
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "CalendarDays", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Today's Jobs", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "SimPro" }
+      },
+
+      "sub": {
+        "type": "Text",
+        "props": { "text": "3 jobs assigned to you  ·  Coburg → Brunswick → Preston", "size": "xs", "tone": "muted" }
+      },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "scrollBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["rows"]
+      },
+
+      "rows": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["j1", "d1", "j2", "d2", "j3"]
+      },
+
+      "d1": { "type": "Divider", "props": {} },
+      "d2": { "type": "Divider", "props": {} },
+
+      "j1":          { "type": "Row",    "props": { "gap": "sm", "align": "start" },              "children": ["j1Time", "j1Body"] },
+      "j1Time":      { "type": "simpro/TimePill", "props": { "start": "07:30", "end": "10:00" } },
+      "j1Body":      { "type": "Stack",  "props": { "gap": "xs", "grow": true },                  "children": ["j1Name", "j1Meta"] },
+      "j1Name":      { "type": "Text",   "props": { "text": "Switchboard upgrade — 60A to 100A main", "size": "sm", "weight": "medium", "truncate": true } },
+      "j1Meta":      { "type": "Row",    "props": { "gap": "xs", "align": "center", "wrap": true }, "children": ["j1No", "j1Site", "j1Status"] },
+      "j1No":        { "type": "Badge",  "props": { "text": "J-2287", "tone": "accent" } },
+      "j1Site":      { "type": "Text",   "props": { "text": "Hargreaves Residence, Coburg", "size": "xs", "tone": "muted", "truncate": true } },
+      "j1Status":    { "type": "Badge",  "props": { "text": "In progress", "tone": "warning" } },
+
+      "j2":          { "type": "Row",    "props": { "gap": "sm", "align": "start" },              "children": ["j2Time", "j2Body"] },
+      "j2Time":      { "type": "simpro/TimePill", "props": { "start": "10:30", "end": "12:30" } },
+      "j2Body":      { "type": "Stack",  "props": { "gap": "xs", "grow": true },                  "children": ["j2Name", "j2Meta"] },
+      "j2Name":      { "type": "Text",   "props": { "text": "Power & data rough-in — 6× GPO, 2× CAT6", "size": "sm", "weight": "medium", "truncate": true } },
+      "j2Meta":      { "type": "Row",    "props": { "gap": "xs", "align": "center", "wrap": true }, "children": ["j2No", "j2Site", "j2Status"] },
+      "j2No":        { "type": "Badge",  "props": { "text": "J-2301", "tone": "accent" } },
+      "j2Site":      { "type": "Text",   "props": { "text": "Brunswick St Cafe fitout", "size": "xs", "tone": "muted", "truncate": true } },
+      "j2Status":    { "type": "Badge",  "props": { "text": "Materials ready", "tone": "success" } },
+
+      "j3":          { "type": "Row",    "props": { "gap": "sm", "align": "start" },              "children": ["j3Time", "j3Body"] },
+      "j3Time":      { "type": "simpro/TimePill", "props": { "start": "13:30", "end": "16:00" } },
+      "j3Body":      { "type": "Stack",  "props": { "gap": "xs", "grow": true },                  "children": ["j3Name", "j3Meta"] },
+      "j3Name":      { "type": "Text",   "props": { "text": "RCD safety switch replacement (×2)", "size": "sm", "weight": "medium", "truncate": true } },
+      "j3Meta":      { "type": "Row",    "props": { "gap": "xs", "align": "center", "wrap": true }, "children": ["j3No", "j3Site", "j3Status"] },
+      "j3No":        { "type": "Badge",  "props": { "text": "J-2295", "tone": "accent" } },
+      "j3Site":      { "type": "Text",   "props": { "text": "Patel Residence, Preston", "size": "xs", "tone": "muted", "truncate": true } },
+      "j3Status":    { "type": "Badge",  "props": { "text": "Awaiting parts", "tone": "destructive" } }
+
+    }
+  },
+  "status": "published"
+}

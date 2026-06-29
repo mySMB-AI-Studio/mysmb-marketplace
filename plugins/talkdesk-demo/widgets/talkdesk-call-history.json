@@ -1,0 +1,112 @@
+{
+  "id": "talkdesk-call-history",
+  "title": "Call History (12 Months)",
+  "description": "Trailing 12-month inbound call volume from Talkdesk — visualised as a line chart.",
+  "category": "support",
+  "tags": ["talkdesk", "calls", "history", "trend", "support"],
+  "keywords": ["call volume", "call history", "trend", "talkdesk", "12 months"],
+  "connectorsUsed": ["talkdesk"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 4 },
+    "min":       { "colSpan": 4, "rowSpan": 3 },
+    "max":       { "colSpan": 12, "rowSpan": 6 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["headerRow", "summaryRow", "chart", "axis"]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "brandBadge"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "PhoneCall", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["hTitle", "hEyebrow"]
+      },
+      "hTitle": {
+        "type": "Heading",
+        "props": { "text": "Call History", "level": "h2" }
+      },
+      "hEyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Talkdesk · Trailing 12 Months" }
+      },
+      "brandBadge": {
+        "type": "Badge",
+        "props": { "label": "talkdesk", "tone": "success" }
+      },
+
+      "summaryRow": {
+        "type": "Row",
+        "props": { "gap": "lg", "align": "start" },
+        "children": ["statTotal", "statAvg", "statPeak"]
+      },
+      "statTotal": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["statTotalLabel", "statTotalValue"]
+      },
+      "statTotalLabel": { "type": "Caption", "props": { "text": "Total Calls" } },
+      "statTotalValue": { "type": "Stat", "props": { "value": 18420, "size": "sm" } },
+
+      "statAvg": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["statAvgLabel", "statAvgValue"]
+      },
+      "statAvgLabel": { "type": "Caption", "props": { "text": "Monthly Avg" } },
+      "statAvgValue": { "type": "Stat", "props": { "value": 1535, "size": "sm" } },
+
+      "statPeak": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["statPeakLabel", "statPeakValue"]
+      },
+      "statPeakLabel": { "type": "Caption", "props": { "text": "Peak Month" } },
+      "statPeakValue": { "type": "Stat", "props": { "value": "Mar 2026", "size": "sm" } },
+
+      "chart": {
+        "type": "Sparkline",
+        "props": {
+          "values": [1180, 1240, 1310, 1290, 1420, 1380, 1510, 1620, 1850, 1740, 1690, 1190],
+          "tone": "accent",
+          "height": 120,
+          "fill": true
+        }
+      },
+
+      "axis": {
+        "type": "Row",
+        "props": { "justify": "between", "gap": "none" },
+        "children": ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12"]
+      },
+      "m1":  { "type": "Caption", "props": { "text": "Jul" } },
+      "m2":  { "type": "Caption", "props": { "text": "Aug" } },
+      "m3":  { "type": "Caption", "props": { "text": "Sep" } },
+      "m4":  { "type": "Caption", "props": { "text": "Oct" } },
+      "m5":  { "type": "Caption", "props": { "text": "Nov" } },
+      "m6":  { "type": "Caption", "props": { "text": "Dec" } },
+      "m7":  { "type": "Caption", "props": { "text": "Jan" } },
+      "m8":  { "type": "Caption", "props": { "text": "Feb" } },
+      "m9":  { "type": "Caption", "props": { "text": "Mar" } },
+      "m10": { "type": "Caption", "props": { "text": "Apr" } },
+      "m11": { "type": "Caption", "props": { "text": "May" } },
+      "m12": { "type": "Caption", "props": { "text": "Jun" } }
+    }
+  }
+}

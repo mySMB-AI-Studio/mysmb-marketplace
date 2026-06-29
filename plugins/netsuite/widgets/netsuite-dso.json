@@ -1,0 +1,139 @@
+{
+  "id": "netsuite-dso",
+  "title": "Days Sales Outstanding",
+  "description": "Average number of days to collect payment after a sale (DSO), calculated as (Open AR Balance / 90-day Revenue) × 90.",
+  "category": "finance",
+  "tags": ["netsuite", "oracle", "erp", "finance", "dso", "receivables", "collections"],
+  "keywords": ["days sales outstanding", "dso", "collections", "accounts receivable", "netsuite", "erp"],
+  "connectorsUsed": ["netsuite"],
+  "popularity": 0,
+  "status": "published",
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 4 },
+    "min":       { "colSpan": 3, "rowSpan": 3 },
+    "max":       { "colSpan": 8, "rowSpan": 8 }
+  },
+  "dataProvider": {
+    "mcp": "netsuite",
+    "tool": "get_dso",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "heroSection", "div1", "kvGrid", "div2", "kvBenchmarks", "div3", "benchmarkSection"]
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Timer", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Days Sales Outstanding", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "NetSuite ERP · Rolling 90 days" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "heroSection": { "type": "Section", "props": { "variant": "muted" }, "children": ["heroStack"] },
+      "heroStack": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["dsoStat", "dsoCaption"]
+      },
+      "dsoStat": {
+        "type": "Stat",
+        "props": {
+          "value": { "$state": "/netsuite/get_dso/current_dso" },
+          "tone": "accent"
+        }
+      },
+      "dsoCaption": { "type": "Caption", "props": { "text": "days outstanding" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "kvGrid": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start" },
+        "children": ["kvAR", "kvRevenue"]
+      },
+      "kvAR": {
+        "type": "KeyValue",
+        "props": {
+          "label": "AR Balance",
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/get_dso/ar_balance" } }
+          }
+        }
+      },
+      "kvRevenue": {
+        "type": "KeyValue",
+        "props": {
+          "label": "90-day Revenue",
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/get_dso/revenue_90d" } }
+          }
+        }
+      }
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "kvBenchmarks": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start" },
+        "children": ["kvBenchLow", "kvBenchHigh"]
+      },
+      "kvBenchLow":  { "type": "KeyValue", "props": { "label": "Benchmark Low",  "value": "30 days" } },
+      "kvBenchHigh": { "type": "KeyValue", "props": { "label": "Benchmark High", "value": "45 days" } },
+
+      "div3": { "type": "Divider", "props": {} },
+
+      "benchmarkSection": { "type": "Section", "props": { "variant": "muted" }, "children": ["benchmarkInner"] },
+      "benchmarkInner": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["benchmarkLabel", "benchmarkScale", "benchmarkStatus"]
+      },
+      "benchmarkLabel": { "type": "Eyebrow", "props": { "text": "Industry Benchmark" } },
+      "benchmarkScale": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "xs" },
+        "children": ["scaleLow", "benchmarkBar", "scaleHigh"]
+      },
+      "scaleLow":  { "type": "Caption", "props": { "text": "30d" } },
+      "benchmarkBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": { "$state": "/netsuite/get_dso/benchmark_pct" },
+          "tone": "accent"
+        }
+      },
+      "scaleHigh": { "type": "Caption", "props": { "text": "45d" } },
+      "benchmarkStatus": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{dso} days — target ≤45d",
+              "dso": { "$state": "/netsuite/get_dso/current_dso" }
+            }
+          }
+        }
+      }
+
+    }
+  }
+}

@@ -1,0 +1,166 @@
+{
+  "id": "simpro-invoice-summary",
+  "title": "Invoice Summary",
+  "description": "Live SimPro invoices with amount and colour-coded status badge.",
+  "category": "finance",
+  "tags": ["simpro", "invoices", "finance", "billing", "accounts-receivable", "electrical", "trade"],
+  "keywords": ["invoices", "billing", "finance", "accounts receivable", "paid", "overdue", "simpro"],
+  "connectorsUsed": ["simpro"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 6 },
+    "min":       { "colSpan": 3, "rowSpan": 5 },
+    "max":       { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "simpro",
+    "tool": "list_invoices",
+    "params": { "page": 1 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "colHeader", "divider", "loading", "empty", "scrollBody"]
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Receipt", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Invoice Summary", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "SimPro" }
+      },
+
+      "colHeader": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["colLeft", "colRight"]
+      },
+      "colLeft":  { "type": "Caption", "props": { "text": "INVOICE / JOB" } },
+      "colRight": { "type": "Caption", "props": { "text": "AMOUNT / STATUS" } },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["s1", "s2", "s3", "s4"],
+        "visible": { "$state": "/_loading/simpro.list_invoices" }
+      },
+      "s1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "s2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "s3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "s4": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No invoices found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/simpro.list_invoices", "not": true },
+            { "$state": "/simpro/list_invoices/items/0", "not": true }
+          ]
+        }
+      },
+
+      "scrollBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["list"],
+        "visible": { "$state": "/_loading/simpro.list_invoices", "not": true }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["row"],
+        "repeat": {
+          "statePath": "/simpro/list_invoices/items",
+          "key": "id"
+        }
+      },
+
+      "row": {
+        "type": "Row",
+        "props": { "align": "start" },
+        "children": ["rowLeft", "rowRight"]
+      },
+      "rowLeft": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["rowInvoiceId", "rowJobId"]
+      },
+      "rowInvoiceId": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "id" },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "rowJobId": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "jobId" },
+          "size": "xs",
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+
+      "rowRight": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["rowTotal", "rowStatusBadge"]
+      },
+      "rowTotal": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": { "value": { "$item": "total" } }
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "rowStatusBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "status" },
+          "tone": {
+            "$computed": "simpro_invoice_tone",
+            "args": { "value": { "$item": "status" } }
+          }
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}

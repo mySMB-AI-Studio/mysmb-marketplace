@@ -1,0 +1,180 @@
+{
+  "id": "simpro-active-jobs",
+  "title": "Active Jobs",
+  "description": "Live SimPro jobs — active, pending, and completed — with customer, total, and status.",
+  "category": "operations",
+  "tags": ["simpro", "jobs", "field-service", "electrical", "trade", "work-orders"],
+  "keywords": ["jobs", "active jobs", "work orders", "field service", "simpro", "job management"],
+  "connectorsUsed": ["simpro"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 8 },
+    "min":       { "colSpan": 4, "rowSpan": 5 },
+    "max":       { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "simpro",
+    "tool": "list_jobs",
+    "params": { "page": 1 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "colHeader", "divider", "loading", "empty", "scrollBody"]
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Briefcase", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Active Jobs", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "SimPro" }
+      },
+
+      "colHeader": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["colLeft", "colRight"]
+      },
+      "colLeft":  { "type": "Caption", "props": { "text": "JOB / CUSTOMER" } },
+      "colRight": { "type": "Caption", "props": { "text": "TOTAL / STATUS" } },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["s1", "s2", "s3", "s4"],
+        "visible": { "$state": "/_loading/simpro.list_jobs" }
+      },
+      "s1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "s2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "s3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "s4": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No jobs found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/simpro.list_jobs", "not": true },
+            { "$state": "/simpro/list_jobs/items/0", "not": true }
+          ]
+        }
+      },
+
+      "scrollBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["list"],
+        "visible": { "$state": "/_loading/simpro.list_jobs", "not": true }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["row"],
+        "repeat": {
+          "statePath": "/simpro/list_jobs/items",
+          "key": "id"
+        }
+      },
+
+      "row": {
+        "type": "Row",
+        "props": { "align": "start" },
+        "children": ["rowLeft", "rowRight"]
+      },
+      "rowLeft": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "grow": true },
+        "children": ["rowAvatar", "rowBody"]
+      },
+      "rowAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": { "value": { "$item": "customerName" } }
+          },
+          "size": "md"
+        }
+      },
+      "rowBody": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["rowName", "rowCustomer"]
+      },
+      "rowName": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "name" },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "rowCustomer": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "customerName" },
+          "size": "xs",
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+
+      "rowRight": {
+        "type": "Stack",
+        "props": { "gap": "none", "align": "end" },
+        "children": ["rowTotal", "rowStatus"]
+      },
+      "rowTotal": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": { "value": { "$item": "total" } }
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "rowStatus": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "status" },
+          "size": "xs",
+          "tone": "muted",
+          "truncate": true
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}
