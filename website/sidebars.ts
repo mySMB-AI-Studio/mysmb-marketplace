@@ -18,7 +18,6 @@ const sidebars: SidebarsConfig = {
         'authoring/skills',
         'authoring/agents',
         'authoring/widget-elements',
-        'authoring/client-portals',
         'authoring/validate-and-ship',
       ],
     },

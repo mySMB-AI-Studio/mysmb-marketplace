@@ -65,10 +65,6 @@ MyHub's `widgets-system` extends json-render with:
 | `spec.root` | Key into `spec.elements` — the entry point of the render tree. |
 | `spec.elements` | Map of element id → element definition. |
 
-:::tip Staff dashboard vs. client portal
-The widget above renders on the **staff dashboard** and calls an MCP tool directly. The client-facing **portal** variant swaps `dataProvider` for a `portal-proxy` that routes through a server-side data map (so each client only sees their own rows). The `spec` is identical json-render. See [Client portals](/authoring/client-portals).
-:::
-
 ## Where widgets fit in MyHub
 
 ```

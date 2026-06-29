@@ -54,8 +54,6 @@ The grid is 12 columns wide. Heights are uniform-row (each `rowSpan: 1` ≈ ~80p
 
 The response is written to the state store at `/<mcp>/<tool>/...`.
 
-For **client-portal** widgets, `dataProvider` instead takes the form `{ "kind": "portal-proxy", "recipe": { "mapId", "params", "writeTo" } }`, routing through a server-side data map rather than calling a tool directly. See [Portal files](./portal-files).
-
 ## `spec`
 
 ```json

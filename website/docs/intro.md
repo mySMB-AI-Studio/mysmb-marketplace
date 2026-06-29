@@ -7,7 +7,7 @@ sidebar_position: 1
 
 # Getting started
 
-mySMB Marketplace is a registry of agent plugins. Every plugin wraps a business tool — Xero, QuickBooks, Zoho, Microsoft 365, monday.com, GitHub — as a [Model Context Protocol](https://modelcontextprotocol.io/) server, so an AI assistant can read and write to it in natural language. Browse the full [plugin catalog](/catalog) for the current list.
+mySMB Marketplace is a registry of agent plugins. Every plugin wraps a business tool — Xero, Zoho, Microsoft 365, Circle, monday.com — as a [Model Context Protocol](https://modelcontextprotocol.io/) server, so an AI assistant can read and write to it in natural language.
 
 The plugin format is the **standard Claude Code plugin format**. The same artefact installs into two places:
 
@@ -25,7 +25,6 @@ A plugin can ship any combination of:
 - **Agents** — a complete persona scoped to a domain ("CRM assistant", "billing assistant").
 - **Widget elements** — small JS helpers (date formatting, status-to-tone mapping) referenced from widget JSON specs via `$computed`.
 - **Widgets** — declarative JSON specs that render an interactive dashboard tile in MyHub. Powered by [Vercel json-render](https://json-render.vercel.app/).
-- **Portal widgets & data maps** — the client-facing variant of widgets, plus the server-side recipes that filter data to one client's slice. See [Client portals](/authoring/client-portals).
 
 Minimum legal plugin: `plugin.json` + `.mcp.json` + `README.md`. Add the rest as you need them.
 
