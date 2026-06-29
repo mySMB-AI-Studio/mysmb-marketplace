@@ -1,7 +1,7 @@
 ---
 id: validate-and-ship
 title: Validate and ship
-sidebar_position: 7
+sidebar_position: 6
 ---
 
 # Validate and ship
