@@ -302,6 +302,283 @@ const qa_score_tone: ComputedFunction = (args) => {
   return 'destructive';
 };
 
+// ── Owner-grouped "All opportunities" helpers ────────────────────────
+//
+// These back the dataverse-opportunities-by-owner widget. The pipeline
+// tool now returns owner_name + modifiedon per deal, so we can group by
+// owner / stage / age and flag stalled deals (no movement in 30+ days,
+// reusing the account-at-risk thresholds above).
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+interface PipelineRow extends OpportunityRow {
+  owner_name?: string;
+  modifiedon?: string;
+  record_url?: string | null;
+  activities?: unknown[];
+}
+
+function daysSince(raw: unknown): number | null {
+  if (!raw || typeof raw !== 'string') return null;
+  const ms = Date.parse(raw);
+  if (!Number.isFinite(ms)) return null;
+  return Math.floor((Date.now() - ms) / DAY_MS);
+}
+
+function stageMeta(code: unknown): { label: string; tone: string } {
+  const c = Number(code);
+  return STAGE_LABELS[c] ?? { label: Number.isFinite(c) ? `Stage ${c}` : 'Unknown', tone: 'muted' };
+}
+
+function ageMeta(modifiedon: unknown): { label: string; tone: string; bucket: string; sort: number } {
+  const d = daysSince(modifiedon);
+  if (d == null) return { label: 'No activity', tone: 'muted', bucket: '30+ days', sort: 0 };
+  if (d >= 30) return { label: `${d}d`, tone: 'destructive', bucket: '30+ days', sort: 0 };
+  if (d >= 14) return { label: `${d}d`, tone: 'warning', bucket: '14–29 days', sort: 1 };
+  return { label: `${d}d`, tone: 'success', bucket: 'Under 14 days', sort: 2 };
+}
+
+function sumValue(opps: OpportunityRow[]): number {
+  return opps.reduce((t, o) => t + (Number(o.estimatedvalue ?? 0) || 0), 0);
+}
+
+function accountNameOf(o: OpportunityRow): string {
+  return o.customerid_account?.name ?? '';
+}
+
+function initialsOf(name: string): string {
+  const parts = String(name).trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '—';
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : '';
+  return (parts[0][0] + last).toUpperCase();
+}
+
+// ── stage_label / stage_tone ─────────────────────────────────────────
+//
+// Resolve a deal's salesstagecode to its display label / badge tone.
+//
+// Args: { value: number } — salesstagecode
+//
+// Spec example:
+//   { "$computed": "dataverse_stage_label", "args": { "value": { "$item": "salesstagecode" } } }
+
+const stage_label: ComputedFunction = (args) => stageMeta(args.value).label;
+const stage_tone: ComputedFunction = (args) => stageMeta(args.value).tone;
+
+// ── age_label / age_tone ─────────────────────────────────────────────
+//
+// Days-since-last-touched badge for a deal: "Fresh · 4d" / "Watch · 21d"
+// / "Stalled · 48d". Uses modifiedon as the activity signal.
+//
+// Args: { value: string } — ISO datetime (modifiedon)
+//
+// Spec example:
+//   { "$computed": "dataverse_age_label", "args": { "value": { "$item": "modifiedon" } } }
+
+const age_label: ComputedFunction = (args) => ageMeta(args.value).label;
+const age_tone: ComputedFunction = (args) => ageMeta(args.value).tone;
+
+// ── count_stalled ────────────────────────────────────────────────────
+//
+// Count opportunities not touched in 30+ days (the "stalled" header stat).
+//
+// Args: { value: Opportunity[] }
+//
+// Spec example:
+//   { "$computed": "dataverse_count_stalled", "args": { "value": { "$state": "/dataverse/list_opportunity_pipeline/items" } } }
+
+const count_stalled: ComputedFunction = (args) => {
+  const opps = asOppArray(args.value) as PipelineRow[];
+  return opps.filter((o) => {
+    const d = daysSince(o.modifiedon);
+    return d != null && d >= 30;
+  }).length;
+};
+
+// ── is_mode ──────────────────────────────────────────────────────────
+//
+// Highlight helper for the group-by segmented control. Returns true when
+// the current groupBy state equals `mode`, treating an empty/undefined
+// state as the default 'owner' mode so the Owner chip is lit on first
+// paint without having to seed state (which would clobber on refetch).
+//
+// Args: { value: string (current /ui/groupBy), mode: string }
+//
+// Spec example:
+//   { "$computed": "dataverse_is_mode", "args": { "value": { "$state": "/ui/groupBy" }, "mode": "owner" } }
+
+const is_mode: ComputedFunction = (args) => {
+  const current = args.value == null || args.value === '' ? 'owner' : String(args.value);
+  return current === String(args.mode);
+};
+
+// ── mode_variant ─────────────────────────────────────────────────────
+//
+// Button variant for the group-by segmented control: 'primary' (filled)
+// for the active mode, 'secondary' (outlined) otherwise. Treats an
+// empty/undefined groupBy state as the default 'owner' mode.
+//
+// Args: { value: string (current /ui/groupBy), mode: string }
+//
+// Spec example:
+//   { "$computed": "dataverse_mode_variant", "args": { "value": { "$state": "/ui/groupBy" }, "mode": "owner" } }
+
+const mode_variant: ComputedFunction = (args) => {
+  const current = args.value == null || args.value === '' ? 'owner' : String(args.value);
+  return current === String(args.mode) ? 'primary' : 'secondary';
+};
+
+// ── toggle_in_set ────────────────────────────────────────────────────
+//
+// Toggle a key's membership in a newline-delimited set string. Used to
+// collapse/expand groups: the group header click flips its key in
+// /ui/collapsedKeys, and group_opportunities omits collapsed groups'
+// deal rows. Static state path + computed value (dynamic paths aren't
+// supported by setState).
+//
+// Args: { value: string (current set), key: string }
+//
+// Spec example:
+//   { "$computed": "dataverse_toggle_in_set", "args": { "value": { "$state": "/ui/collapsedKeys" }, "key": { "$item": "key" } } }
+
+const toggle_in_set: ComputedFunction = (args) => {
+  const key = String(args.key ?? '');
+  if (!key) return typeof args.value === 'string' ? args.value : '';
+  const parts = (typeof args.value === 'string' ? args.value : '').split('\n').filter(Boolean);
+  const idx = parts.indexOf(key);
+  if (idx >= 0) parts.splice(idx, 1);
+  else parts.push(key);
+  return parts.join('\n');
+};
+
+// ── group_opportunities ──────────────────────────────────────────────
+//
+// Flatten opportunities into a single render list of header + deal rows
+// so the widget can show every group expanded inline with one repeat.
+// Each group emits a header row (with count/stalled/total rollups) followed
+// by its deal rows (pre-computed stage + age badges + amount). Owner groups
+// sort by total value desc; stage/age groups use their natural order.
+//
+// Args: { value: Opportunity[], mode?: 'owner' | 'stage' | 'age', search?: string }
+// Returns: Array<{ rowkey, kind: 'header' | 'deal', ... }>
+//
+// Spec example:
+//   { "$computed": "dataverse_group_opportunities", "args": {
+//       "value": { "$state": "/dataverse/list_opportunity_pipeline/items" },
+//       "mode":  { "$state": "/ui/groupBy" },
+//       "search":{ "$state": "/ui/search" } } }
+
+const group_opportunities: ComputedFunction = (args) => {
+  const opps = (Array.isArray(args.value) ? args.value : []) as PipelineRow[];
+  const mode = args.mode === 'stage' || args.mode === 'age' ? args.mode : 'owner';
+  const search = String(args.search ?? '').trim().toLowerCase();
+  // Newline-delimited set of collapsed group keys (toggled via toggle_in_set).
+  const collapsedSet = new Set(
+    (typeof args.collapsed === 'string' ? args.collapsed : '').split('\n').filter(Boolean),
+  );
+
+  const filtered = search
+    ? opps.filter((o) =>
+        `${o.name ?? ''} ${accountNameOf(o)} ${o.owner_name ?? ''}`.toLowerCase().includes(search),
+      )
+    : opps;
+
+  interface Group { key: string; label: string; sort: number; initials: string; deals: PipelineRow[] }
+  const groups = new Map<string, Group>();
+
+  for (const o of filtered) {
+    let key: string;
+    let label: string;
+    let sort: number;
+    let initials = '';
+    if (mode === 'stage') {
+      const m = stageMeta(o.salesstagecode);
+      key = m.label;
+      label = m.label;
+      const idx = STAGE_ORDER.indexOf(Number(o.salesstagecode));
+      sort = idx < 0 ? 99 : idx;
+    } else if (mode === 'age') {
+      const m = ageMeta(o.modifiedon);
+      key = m.bucket;
+      label = m.bucket;
+      sort = m.sort;
+    } else {
+      const name = o.owner_name && String(o.owner_name).trim() ? String(o.owner_name) : 'Unassigned';
+      key = name;
+      label = name;
+      sort = 0;
+      initials = initialsOf(name);
+    }
+    let g = groups.get(key);
+    if (!g) {
+      g = { key, label, sort, initials, deals: [] };
+      groups.set(key, g);
+    }
+    g.deals.push(o);
+  }
+
+  const groupArr = [...groups.values()];
+  if (mode === 'owner') {
+    groupArr.sort((a, b) => sumValue(b.deals) - sumValue(a.deals));
+  } else {
+    groupArr.sort((a, b) => a.sort - b.sort);
+  }
+
+  const out: Array<Record<string, unknown>> = [];
+  for (const g of groupArr) {
+    const deals = g.deals
+      .slice()
+      .sort((a, b) => (daysSince(b.modifiedon) ?? -1) - (daysSince(a.modifiedon) ?? -1));
+    const stalled = deals.filter((o) => {
+      const d = daysSince(o.modifiedon);
+      return d != null && d >= 30;
+    }).length;
+    const isCollapsed = collapsedSet.has(g.key);
+    out.push({
+      rowkey: `h:${g.key}`,
+      kind: 'header',
+      isHeader: true,
+      isDeal: false,
+      key: g.key,
+      label: g.label,
+      initials: g.initials,
+      count: deals.length,
+      stalled,
+      total: sumValue(deals),
+      collapsed: isCollapsed,
+      chevron: isCollapsed ? 'ChevronRight' : 'ChevronDown',
+    });
+    if (isCollapsed) continue;
+    for (const o of deals) {
+      const sm = stageMeta(o.salesstagecode);
+      const am = ageMeta(o.modifiedon);
+      out.push({
+        rowkey: `d:${o.opportunityid}`,
+        kind: 'deal',
+        isHeader: false,
+        isDeal: true,
+        opportunityid: o.opportunityid,
+        name: o.name ?? 'Untitled opportunity',
+        account: accountNameOf(o),
+        stageLabel: sm.label,
+        stageTone: sm.tone,
+        ageLabel: am.label,
+        ageTone: am.tone,
+        amount: Number(o.estimatedvalue ?? 0) || 0,
+        // Extra fields surfaced in the click-through detail modal.
+        owner: o.owner_name && String(o.owner_name).trim() ? String(o.owner_name) : 'Unassigned',
+        probability: typeof o.closeprobability === 'number' ? o.closeprobability : 0,
+        closeLabel: close_label({ value: o.estimatedclosedate }),
+        closeTone: close_tone({ value: o.estimatedclosedate }),
+        weighted: weightedValueOf(o),
+        recordUrl: o.record_url ?? '',
+        activities: Array.isArray(o.activities) ? o.activities : [],
+      });
+    }
+  }
+  return out;
+};
+
 const elements: PluginElementsModule = {
   slug: 'dataverse',
   functions: {
@@ -318,6 +595,15 @@ const elements: PluginElementsModule = {
     activity_type_icon,
     qa_grade_tone,
     qa_score_tone,
+    stage_label,
+    stage_tone,
+    age_label,
+    age_tone,
+    count_stalled,
+    is_mode,
+    mode_variant,
+    toggle_in_set,
+    group_opportunities,
   },
 };
 
