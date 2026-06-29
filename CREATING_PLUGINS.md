@@ -10,9 +10,11 @@ A plugin is a packaging unit. It can ship any combination of:
 | **Skills** | Slash‑command instructions for narrow tasks | `skills/*.md` |
 | **Agents** | A persona / sub‑agent that owns a domain | `agents/*.md` |
 | **Widget elements** | JS helpers (`$computed` functions, composite components, actions) | `widget-elements/` |
-| **Widgets** | Declarative JSON UI specs | `widgets/*.json` |
+| **Widgets** | Declarative JSON UI specs (staff dashboard) | `widgets/*.json` |
+| **Portal widgets** | Client-portal UI specs (`portalWidgets`) | `portal-widgets/*.json` |
+| **Portal data maps** | Server-side recipes that filter data to one client (`portalDataMaps`) | `portal-data-maps/*.json` |
 
-You don't need all five. The minimum legal plugin is `plugin.json` + `.mcp.json` + `README.md`. Add the others as your use case demands.
+You don't need all of these. The minimum legal plugin is `plugin.json` + `.mcp.json` + `README.md`. Add the others as your use case demands. The two **portal** asset types are documented in [the client-portals guide on the docs site](https://mysmb-ai-studio.github.io/mysmb-marketplace/authoring/client-portals); `xero-projects` is the reference implementation.
 
 ---
 
@@ -84,9 +86,15 @@ plugins/<your-plugin>/
 │       ├── index.ts          → dist/index.js (commit dist/)
 │       └── types.ts
 │
-└── widgets/                   ← OPTIONAL: dashboard tiles
-    ├── <plugin>-thing.json
-    └── <plugin>-other.json
+├── widgets/                   ← OPTIONAL: staff-dashboard tiles
+│   ├── <plugin>-thing.json
+│   └── <plugin>-other.json
+│
+├── portal-widgets/            ← OPTIONAL: client-portal tiles (portalWidgets)
+│   └── <plugin>-thing.json
+│
+└── portal-data-maps/          ← OPTIONAL: server-side portal recipes (portalDataMaps)
+    └── <plugin>-thing.json
 ```
 
 ---
@@ -225,7 +233,7 @@ plugins/acme-billing/server/
 
 - Pure Node, no native modules, no platform‑specific code.
 - Read every credential from `process.env`. Exit with a clear `console.error` + non‑zero code if a required var is missing.
-- Implement the MCP wire protocol (`initialize`, `tools/list`, `tools/call`) — see `plugins/circle/server/src/index.js` for a 1‑file reference implementation.
+- Implement the MCP wire protocol (`initialize`, `tools/list`, `tools/call`) — see `plugins/deskcrm/server/src/index.js` for a reference implementation.
 - Build with esbuild, **commit `dist/`**. The runtime must not have to install anything.
 
 ---
