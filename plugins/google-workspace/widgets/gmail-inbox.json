@@ -52,8 +52,7 @@
         "type": "Card",
         "children": [
           "header",
-          "body",
-          "overlay"
+          "body"
         ]
       },
       "header": {
@@ -189,35 +188,21 @@
           "justify": "between"
         },
         "on": {
-          "click": [
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/selectedMessageId",
-                "value": {
-                  "$computed": "identity",
-                  "args": {
-                    "value": {
-                      "$item": "id"
-                    }
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "https://mail.google.com/mail/u/0/#inbox/{id}",
+                  "id": {
+                    "$item": "id"
                   }
                 }
-              }
-            },
-            {
-              "action": "google-workspace-gmail.get_message",
-              "params": {
-                "id": {
-                  "$computed": "identity",
-                  "args": {
-                    "value": {
-                      "$item": "id"
-                    }
-                  }
-                }
-              }
+              },
+              "target": "_blank"
             }
-          ]
+          }
         },
         "children": [
           "avatar",
@@ -294,180 +279,6 @@
             "args": {
               "value": {
                 "$item": "internalDate"
-              }
-            }
-          }
-        }
-      },
-      "overlay": {
-        "type": "Overlay",
-        "props": {
-          "maxWidth": "48rem"
-        },
-        "children": [
-          "detailCard"
-        ],
-        "visible": {
-          "$state": "/ui/selectedMessageId"
-        },
-        "on": {
-          "backdropClick": {
-            "action": "setState",
-            "params": {
-              "statePath": "/ui/selectedMessageId",
-              "value": ""
-            }
-          }
-        }
-      },
-      "detailCard": {
-        "type": "Card",
-        "children": [
-          "detailHeader",
-          "detailSpinner",
-          "detailBody"
-        ]
-      },
-      "detailHeader": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "center",
-          "justify": "between"
-        },
-        "children": [
-          "detailTitle",
-          "detailClose"
-        ]
-      },
-      "detailTitle": {
-        "type": "Heading",
-        "props": {
-          "text": {
-            "$state": "/google-workspace-gmail/get_message/subject"
-          },
-          "level": "h2"
-        }
-      },
-      "detailClose": {
-        "type": "IconButton",
-        "props": {
-          "icon": "X",
-          "tone": "default",
-          "ariaLabel": "Close",
-          "size": "md",
-          "variant": "outlined"
-        },
-        "on": {
-          "click": {
-            "action": "setState",
-            "params": {
-              "statePath": "/ui/selectedMessageId",
-              "value": ""
-            }
-          }
-        }
-      },
-      "detailSpinner": {
-        "type": "Spinner",
-        "props": {
-          "label": "Loading message…"
-        },
-        "visible": {
-          "$state": "/google-workspace-gmail/get_message/id",
-          "neq": {
-            "$state": "/ui/selectedMessageId"
-          }
-        }
-      },
-      "detailBody": {
-        "type": "Stack",
-        "props": {
-          "gap": "sm"
-        },
-        "visible": {
-          "$state": "/google-workspace-gmail/get_message/id",
-          "eq": {
-            "$state": "/ui/selectedMessageId"
-          }
-        },
-        "children": [
-          "kvFrom",
-          "kvDate",
-          "bodySection",
-          "detailActions"
-        ]
-      },
-      "kvFrom": {
-        "type": "KeyValue",
-        "props": {
-          "label": "From",
-          "value": {
-            "$state": "/google-workspace-gmail/get_message/from"
-          }
-        }
-      },
-      "kvDate": {
-        "type": "KeyValue",
-        "props": {
-          "label": "Received",
-          "value": {
-            "$computed": "relative_time",
-            "args": {
-              "value": {
-                "$state": "/google-workspace-gmail/get_message/internalDate"
-              }
-            }
-          }
-        }
-      },
-      "bodySection": {
-        "type": "Section",
-        "props": {
-          "variant": "muted"
-        },
-        "children": [
-          "bodyText"
-        ]
-      },
-      "bodyText": {
-        "type": "Body",
-        "props": {
-          "text": {
-            "$state": "/google-workspace-gmail/get_message/snippet"
-          }
-        }
-      },
-      "detailActions": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "justify": "end"
-        },
-        "children": [
-          "openGmailBtn"
-        ]
-      },
-      "openGmailBtn": {
-        "type": "Button",
-        "props": {
-          "label": "Open in Gmail",
-          "variant": "primary",
-          "size": "sm",
-          "leadingIcon": "ExternalLink"
-        },
-        "on": {
-          "click": {
-            "action": "open_url",
-            "params": {
-              "url": {
-                "$computed": "fmt",
-                "args": {
-                  "pattern": "https://mail.google.com/mail/u/0/#inbox/{id}",
-                  "id": {
-                    "$state": "/google-workspace-gmail/get_message/id"
-                  }
-                }
               }
             }
           }
