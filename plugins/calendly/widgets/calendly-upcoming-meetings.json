@@ -1,0 +1,136 @@
+{
+  "id": "calendly-upcoming-meetings",
+  "title": "Calendly — Upcoming meetings",
+  "description": "Feed of your next scheduled meetings, ordered by start time.",
+  "category": "scheduling",
+  "tags": ["calendly", "scheduling", "meetings", "calendar", "events"],
+  "keywords": ["meeting", "upcoming", "scheduled", "events", "calendar", "calendly"],
+  "connectorsUsed": ["calendly"],
+  "popularity": 90,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 6 },
+    "min":       { "colSpan": 4, "rowSpan": 4 },
+    "max":       { "colSpan": 12, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "calendly",
+    "tool": "meetings-list_events",
+    "params": {
+      "status": "active",
+      "count": 20,
+      "sort": "start_time:asc"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"]
+      },
+
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["headerRow"]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "refreshBtn"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "CalendarClock", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Upcoming meetings", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Calendly · Active" }
+      },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": { "name": "RefreshCw", "size": "sm", "ariaLabel": "Refresh" },
+        "on": {
+          "click": {
+            "action": "calendly.meetings-list_events",
+            "params": { "status": "active", "count": 20, "sort": "start_time:asc" }
+          }
+        }
+      },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "list"]
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["lk1", "lk2", "lk3", "lk4"],
+        "visible": { "$state": "/_loading/calendly.meetings-list_events" }
+      },
+      "lk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "lk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "lk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "lk4": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No upcoming meetings scheduled." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/calendly.meetings-list_events", "not": true },
+            { "$state": "/calendly/meetings-list_events/collection/0", "not": true }
+          ]
+        }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": {
+          "statePath": "/calendly/meetings-list_events/collection",
+          "key": "uri"
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/calendly.meetings-list_events", "not": true },
+            { "$state": "/calendly/meetings-list_events/collection/0" }
+          ]
+        }
+      },
+      "row": {
+        "type": "ActivityItem",
+        "props": {
+          "iconName": "Calendar",
+          "tone": "accent",
+          "title": { "$item": "name" },
+          "subtitle": { "$item": "location/location" },
+          "timestamp": {
+            "$computed": "relative_time",
+            "args": { "value": { "$item": "start_time" } }
+          }
+        }
+      }
+
+    }
+  }
+}
