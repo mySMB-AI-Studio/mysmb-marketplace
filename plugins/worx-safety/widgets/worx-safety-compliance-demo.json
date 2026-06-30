@@ -1,0 +1,225 @@
+{
+  "id": "worx-safety-compliance-demo",
+  "title": "Compliance & Safety Summary",
+  "description": "Static compliance checklist demo — overdue, action needed, and up-to-date status items at a glance.",
+  "category": "operations",
+  "tags": ["worx-safety", "whs", "compliance", "demo", "checklist", "australia"],
+  "keywords": ["compliance", "safety", "summary", "checklist", "whs", "worx"],
+  "connectorsUsed": [],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 4 },
+    "min":       { "colSpan": 3, "rowSpan": 4 },
+    "max":       { "colSpan": 6, "rowSpan": 8 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "divider", "body"]
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "ShieldCheck", "tone": "positive", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Compliance & Safety", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Worx Safety · snapshot" }
+      },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["items"]
+      },
+
+      "items": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": [
+          "item_ces",
+          "itemDivider1",
+          "item_swms",
+          "itemDivider2",
+          "item_ppe",
+          "itemDivider3",
+          "item_induction",
+          "itemDivider4",
+          "item_fire",
+          "itemDivider5",
+          "item_tag"
+        ]
+      },
+
+      "item_ces": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["cesLeft", "cesBadge"]
+      },
+      "cesLeft": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["cesIcon", "cesText"]
+      },
+      "cesIcon": {
+        "type": "Icon",
+        "props": { "name": "TriangleAlert", "tone": "destructive", "size": "sm" }
+      },
+      "cesText": {
+        "type": "Text",
+        "props": { "text": "Chemical Exposure Statements", "size": "sm", "weight": "medium" }
+      },
+      "cesBadge": {
+        "type": "Badge",
+        "props": { "text": "Overdue", "tone": "destructive", "variant": "soft" }
+      },
+
+      "itemDivider1": { "type": "Divider", "props": {} },
+
+      "item_swms": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["swmsLeft", "swmsBadge"]
+      },
+      "swmsLeft": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["swmsIcon", "swmsText"]
+      },
+      "swmsIcon": {
+        "type": "Icon",
+        "props": { "name": "FileText", "tone": "warning", "size": "sm" }
+      },
+      "swmsText": {
+        "type": "Text",
+        "props": { "text": "SWMS — Scaffolding works", "size": "sm", "weight": "medium" }
+      },
+      "swmsBadge": {
+        "type": "Badge",
+        "props": { "text": "Action needed", "tone": "warning", "variant": "soft" }
+      },
+
+      "itemDivider2": { "type": "Divider", "props": {} },
+
+      "item_ppe": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["ppeLeft", "ppeBadge"]
+      },
+      "ppeLeft": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["ppeIcon", "ppeText"]
+      },
+      "ppeIcon": {
+        "type": "Icon",
+        "props": { "name": "FileText", "tone": "warning", "size": "sm" }
+      },
+      "ppeText": {
+        "type": "Text",
+        "props": { "text": "PPE register review", "size": "sm", "weight": "medium" }
+      },
+      "ppeBadge": {
+        "type": "Badge",
+        "props": { "text": "Action needed", "tone": "warning", "variant": "soft" }
+      },
+
+      "itemDivider3": { "type": "Divider", "props": {} },
+
+      "item_induction": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["inductionLeft", "inductionBadge"]
+      },
+      "inductionLeft": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["inductionIcon", "inductionText"]
+      },
+      "inductionIcon": {
+        "type": "Icon",
+        "props": { "name": "CircleCheck", "tone": "positive", "size": "sm" }
+      },
+      "inductionText": {
+        "type": "Text",
+        "props": { "text": "Site inductions — all workers", "size": "sm", "weight": "medium" }
+      },
+      "inductionBadge": {
+        "type": "Badge",
+        "props": { "text": "Up to date", "tone": "positive", "variant": "soft" }
+      },
+
+      "itemDivider4": { "type": "Divider", "props": {} },
+
+      "item_fire": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["fireLeft", "fireBadge"]
+      },
+      "fireLeft": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["fireIcon", "fireText"]
+      },
+      "fireIcon": {
+        "type": "Icon",
+        "props": { "name": "CircleCheck", "tone": "positive", "size": "sm" }
+      },
+      "fireText": {
+        "type": "Text",
+        "props": { "text": "Fire extinguisher inspection", "size": "sm", "weight": "medium" }
+      },
+      "fireBadge": {
+        "type": "Badge",
+        "props": { "text": "Up to date", "tone": "positive", "variant": "soft" }
+      },
+
+      "itemDivider5": { "type": "Divider", "props": {} },
+
+      "item_tag": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["tagLeft", "tagBadge"]
+      },
+      "tagLeft": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["tagIcon", "tagText"]
+      },
+      "tagIcon": {
+        "type": "Icon",
+        "props": { "name": "CircleCheck", "tone": "positive", "size": "sm" }
+      },
+      "tagText": {
+        "type": "Text",
+        "props": { "text": "Test & tag log", "size": "sm", "weight": "medium" }
+      },
+      "tagBadge": {
+        "type": "Badge",
+        "props": { "text": "Up to date", "tone": "positive", "variant": "soft" }
+      }
+
+    }
+  },
+  "status": "published"
+}
