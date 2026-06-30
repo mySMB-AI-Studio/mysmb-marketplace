@@ -1,0 +1,80 @@
+{
+  "id": "square-payments-summary",
+  "title": "Square — Latest Payments",
+  "description": "Table of the latest Square payments — amount, status, source type, and date. Sorted most recent first.",
+  "category": "finance",
+  "tags": ["square", "payments", "pos", "transactions", "finance"],
+  "keywords": ["payments", "transactions", "square", "pos", "revenue", "collected"],
+  "connectorsUsed": ["square"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
+    "max": { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "square",
+    "tool": "make_api_request",
+    "params": { "service": "payments", "method": "list", "request": { "sort_order": "DESC" } }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "divider", "tableBody"]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "CreditCard", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Latest Payments", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Square" }
+      },
+      "divider": { "type": "Divider", "props": {} },
+      "tableBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["table"]
+      },
+      "table": {
+        "type": "Table",
+        "props": {
+          "loading": { "$state": "/_loading/square.make_api_request" },
+          "skeletonRows": 5,
+          "rows": { "$state": "/square/make_api_request/payments" },
+          "columns": [
+            { "id": "id", "header": "Payment ID", "field": "id", "priority": 2 },
+            { "id": "amount", "header": "Amount", "field": "amount_money.amount", "width": 140, "priority": 1, "format": "currency" },
+            { "id": "currency", "header": "Currency", "field": "amount_money.currency", "width": 90, "priority": 3 },
+            { "id": "status", "header": "Status", "field": "status", "width": 110, "priority": 1 },
+            { "id": "source", "header": "Source", "field": "source_type", "width": 120, "priority": 2 },
+            { "id": "created", "header": "Date", "field": "created_at", "width": 160, "priority": 1, "format": "datetime" }
+          ]
+        }
+      }
+    }
+  },
+  "status": "published"
+}
