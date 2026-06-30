@@ -1,0 +1,123 @@
+{
+  "id": "netsuite-budget-vs-actuals-demo",
+  "title": "Budget vs Actuals",
+  "description": "Side-by-side comparison of budgeted vs actual P&L amounts year-to-date. Demo version with static data.",
+  "category": "finance",
+  "tags": ["netsuite", "oracle", "erp", "finance", "budget", "actuals", "variance", "pnl", "demo"],
+  "keywords": ["budget", "actuals", "variance", "profit and loss", "p&l", "forecast", "netsuite", "erp"],
+  "connectorsUsed": ["netsuite"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 4 },
+    "min":       { "colSpan": 5, "rowSpan": 4 },
+    "max":       { "colSpan": 12, "rowSpan": 10 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "kpiRow", "div1", "dataGrid", "div2", "footerKvRow"]
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Target", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Budget vs Actuals", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "NetSuite ERP · FY 2026 · YTD (Jan–Jun)" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "kpiRow": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["tileRevVar", "tileNpVar"]
+      },
+      "tileRevVar": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackRevVar"] },
+      "stackRevVar": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["valRevVar", "lblRevVar"]
+      },
+      "valRevVar": { "type": "Stat", "props": { "value": "+$12,450", "tone": "success" } },
+      "lblRevVar": { "type": "Caption", "props": { "text": "Revenue vs Budget" } },
+
+      "tileNpVar": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackNpVar"] },
+      "stackNpVar": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["valNpVar", "lblNpVar"]
+      },
+      "valNpVar": { "type": "Stat", "props": { "value": "+$13,450", "tone": "success" } },
+      "lblNpVar": { "type": "Caption", "props": { "text": "Net Profit vs Budget" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "dataGrid": {
+        "type": "Grid",
+        "props": { "cols": 4, "gap": "xs" },
+        "children": [
+          "hdrSpacer",  "hdrBudget",  "hdrActual",  "hdrVariance",
+          "revLabel",   "revBudget",  "revActual",  "revVariance",
+          "cogsLabel",  "cogsBudget", "cogsActual", "cogsVariance",
+          "gpLabel",    "gpBudget",   "gpActual",   "gpVariance",
+          "expLabel",   "expBudget",  "expActual",  "expVariance",
+          "npLabel",    "npBudget",   "npActual",   "npVariance"
+        ]
+      },
+
+      "hdrSpacer":   { "type": "Text", "props": { "text": "",         "size": "xs", "tone": "muted" } },
+      "hdrBudget":   { "type": "Text", "props": { "text": "Budget",   "size": "xs", "tone": "muted", "weight": "medium" } },
+      "hdrActual":   { "type": "Text", "props": { "text": "Actual",   "size": "xs", "tone": "muted", "weight": "medium" } },
+      "hdrVariance": { "type": "Text", "props": { "text": "Variance", "size": "xs", "tone": "muted", "weight": "medium" } },
+
+      "revLabel":    { "type": "Text", "props": { "text": "Revenue",            "size": "sm" } },
+      "revBudget":   { "type": "Text", "props": { "text": "$150,000",           "size": "sm", "tone": "muted" } },
+      "revActual":   { "type": "Text", "props": { "text": "$162,450",           "size": "sm" } },
+      "revVariance": { "type": "Text", "props": { "text": "+$12,450",           "size": "sm", "tone": "success",     "weight": "medium" } },
+
+      "cogsLabel":    { "type": "Text", "props": { "text": "Cost of Goods Sold", "size": "sm", "tone": "muted" } },
+      "cogsBudget":   { "type": "Text", "props": { "text": "$65,000",            "size": "sm", "tone": "muted" } },
+      "cogsActual":   { "type": "Text", "props": { "text": "$71,200",            "size": "sm", "tone": "muted" } },
+      "cogsVariance": { "type": "Text", "props": { "text": "–$6,200",            "size": "sm", "tone": "destructive", "weight": "medium" } },
+
+      "gpLabel":    { "type": "Text", "props": { "text": "Gross Profit",        "size": "sm", "weight": "semibold" } },
+      "gpBudget":   { "type": "Text", "props": { "text": "$85,000",             "size": "sm", "tone": "muted" } },
+      "gpActual":   { "type": "Text", "props": { "text": "$91,250",             "size": "sm", "weight": "semibold" } },
+      "gpVariance": { "type": "Text", "props": { "text": "+$6,250",             "size": "sm", "tone": "success",     "weight": "semibold" } },
+
+      "expLabel":    { "type": "Text", "props": { "text": "Operating Expenses", "size": "sm", "tone": "muted" } },
+      "expBudget":   { "type": "Text", "props": { "text": "$52,000",            "size": "sm", "tone": "muted" } },
+      "expActual":   { "type": "Text", "props": { "text": "$44,800",            "size": "sm", "tone": "muted" } },
+      "expVariance": { "type": "Text", "props": { "text": "+$7,200",            "size": "sm", "tone": "success",     "weight": "medium" } },
+
+      "npLabel":    { "type": "Text", "props": { "text": "Net Profit",          "size": "sm", "weight": "semibold" } },
+      "npBudget":   { "type": "Text", "props": { "text": "$33,000",             "size": "sm", "tone": "muted" } },
+      "npActual":   { "type": "Text", "props": { "text": "$46,450",             "size": "sm", "weight": "semibold" } },
+      "npVariance": { "type": "Text", "props": { "text": "+$13,450",            "size": "sm", "tone": "success",     "weight": "semibold" } },
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "footerKvRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start" },
+        "children": ["kvNetVar", "kvPeriod"]
+      },
+      "kvNetVar":  { "type": "KeyValue", "props": { "label": "Net Favorable Variance", "value": "+$13,450" } },
+      "kvPeriod":  { "type": "KeyValue", "props": { "label": "YTD Period",             "value": "Jan – Jun 2026" } }
+
+    }
+  },
+  "status": "published"
+}

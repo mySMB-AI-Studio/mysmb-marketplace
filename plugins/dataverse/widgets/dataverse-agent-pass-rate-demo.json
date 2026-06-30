@@ -1,0 +1,98 @@
+{
+  "id": "dataverse-agent-pass-rate-demo",
+  "title": "Agent Pass Rate",
+  "description": "QA pass rate breakdown by agent from Dynamics 365 Customer Service. Demo version with static data.",
+  "category": "support",
+  "tags": ["dataverse", "dynamics-365", "call-qa", "agent-performance", "customer-service", "support", "demo"],
+  "keywords": ["agent", "pass rate", "qa", "call quality", "d365", "performance", "scoring"],
+  "connectorsUsed": ["dataverse"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 4 },
+    "min":       { "colSpan": 3, "rowSpan": 8 },
+    "max":       { "colSpan": 8, "rowSpan": 14 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "statsGrid", "div1", "agentList"]
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Users", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Agent Pass Rate", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Dynamics 365 Customer Service" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "statsGrid": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["tileAgents", "tileTop", "tileAvg"]
+      },
+
+      "tileAgents": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackAgents"] },
+      "stackAgents": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconAgents", "valAgents", "lblAgents"] },
+      "iconAgents": { "type": "Icon", "props": { "name": "Users", "size": "sm", "tone": "accent" } },
+      "valAgents": { "type": "Heading", "props": { "text": "5", "level": "h2" } },
+      "lblAgents": { "type": "Caption", "props": { "text": "Agents" } },
+
+      "tileTop": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackTop"] },
+      "stackTop": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconTop", "valTop", "lblTop"] },
+      "iconTop": { "type": "Icon", "props": { "name": "Trophy", "size": "sm", "tone": "warning" } },
+      "valTop": { "type": "Heading", "props": { "text": "Carol T.", "level": "h2" } },
+      "lblTop": { "type": "Caption", "props": { "text": "Top Agent" } },
+
+      "tileAvg": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackAvg"] },
+      "stackAvg": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconAvg", "valAvg", "lblAvg"] },
+      "iconAvg": { "type": "Icon", "props": { "name": "ChartBar", "size": "sm", "tone": "accent" } },
+      "valAvg": { "type": "Heading", "props": { "text": "79%", "level": "h2" } },
+      "lblAvg": { "type": "Caption", "props": { "text": "Avg Pass Rate" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "agentList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["topAgentsLabel", "agentBarChart"]
+      },
+
+      "topAgentsLabel": { "type": "Eyebrow", "props": { "text": "Top 5 Agents" } },
+
+      "agentBarChart": {
+        "type": "BarChart",
+        "props": {
+          "data": [
+            { "agent": "Carol T.",  "rate": 95 },
+            { "agent": "Alice M.",  "rate": 90 },
+            { "agent": "Jeremy F.", "rate": 79 },
+            { "agent": "Rico P.",   "rate": 66 },
+            { "agent": "Bob K.",    "rate": 58 }
+          ],
+          "labelField": "agent",
+          "valueField": "rate",
+          "valueFormat": "number",
+          "tone": "accent",
+          "sort": "none",
+          "limit": 5
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}

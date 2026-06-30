@@ -1,0 +1,284 @@
+{
+  "id": "shopify-top-products",
+  "title": "Top Products",
+  "description": "Bestselling products from your Shopify catalog displayed in a tile grid — title, vendor, and price at a glance.",
+  "category": "ecommerce",
+  "tags": [
+    "shopify",
+    "products",
+    "catalog",
+    "featured",
+    "bestseller",
+    "ecommerce"
+  ],
+  "keywords": [
+    "products",
+    "bestseller",
+    "featured",
+    "catalog",
+    "shopify",
+    "top",
+    "popular",
+    "grid"
+  ],
+  "connectorsUsed": [
+    "shopify-ucp"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 8,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 6,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 10
+    }
+  },
+  "dataProvider": {
+    "mcp": "shopify-ucp",
+    "tool": "search_catalog",
+    "params": {
+      "query": "bestseller",
+      "pagination": {
+        "limit": 6
+      },
+      "meta": {
+        "ucp-agent": {
+          "profile": "https://shopify.dev/ucp/agent-profiles/examples/2026-04-08/valid-with-capabilities.json"
+        }
+      }
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleRow"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Star",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Top Products",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} products",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/shopify-ucp/search_catalog/products"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "grid"
+        ]
+      },
+      "loading": {
+        "type": "Grid",
+        "props": {
+          "cols": 3,
+          "gap": "md"
+        },
+        "visible": {
+          "$state": "/_loading/shopify-ucp.search_catalog"
+        },
+        "children": [
+          "lsk1",
+          "lsk2",
+          "lsk3",
+          "lsk4",
+          "lsk5",
+          "lsk6"
+        ]
+      },
+      "lsk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "lsk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "lsk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "lsk4": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "lsk5": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "lsk6": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No bestselling products found in your catalog."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/shopify-ucp.search_catalog",
+              "not": true
+            },
+            {
+              "$state": "/shopify-ucp/search_catalog/products/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "grid": {
+        "type": "Grid",
+        "props": {
+          "cols": 3,
+          "gap": "md"
+        },
+        "visible": {
+          "$state": "/_loading/shopify-ucp.search_catalog",
+          "not": true
+        },
+        "repeat": {
+          "statePath": "/shopify-ucp/search_catalog/products",
+          "key": "id"
+        },
+        "children": [
+          "tile"
+        ]
+      },
+      "tile": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "tileName",
+          "tileVendor",
+          "tilePrice"
+        ]
+      },
+      "tileName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "title"
+          },
+          "size": "sm",
+          "weight": "semibold",
+          "truncate": true
+        }
+      },
+      "tileVendor": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "vendor"
+          }
+        }
+      },
+      "tilePrice": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{amount} {currency}",
+              "amount": {
+                "$item": "priceRange.minVariantPrice.amount"
+              },
+              "currency": {
+                "$item": "priceRange.minVariantPrice.currencyCode"
+              }
+            }
+          },
+          "size": "sm",
+          "weight": "medium",
+          "tone": "accent"
+        }
+      }
+    }
+  }
+}

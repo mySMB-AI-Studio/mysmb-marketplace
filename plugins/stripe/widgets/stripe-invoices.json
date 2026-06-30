@@ -1,0 +1,156 @@
+{
+  "id": "stripe-invoices",
+  "title": "Stripe Invoices",
+  "description": "Latest invoices with status badges — quickly see what's paid, open, or overdue.",
+  "category": "payments",
+  "tags": ["stripe", "invoices", "billing", "finance", "payments"],
+  "keywords": ["invoices", "stripe", "billing", "paid", "open", "draft", "uncollectible", "void"],
+  "connectorsUsed": ["stripe"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
+    "max": { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "stripe",
+    "tool": "list_invoices",
+    "params": { "limit": 20 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["header", "body"]
+      },
+      "header": {
+        "type": "Header",
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "FileText", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "count"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Stripe Invoices", "level": "h2" }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} recent",
+              "n": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/stripe/list_invoices/data" } }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": ["loading", "empty", "list"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/stripe.list_invoices" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No invoices found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/stripe.list_invoices", "not": true },
+            { "$state": "/stripe/list_invoices/data/0", "not": true }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": {
+          "statePath": "/stripe/list_invoices/data",
+          "key": "id"
+        },
+        "visible": { "$state": "/_loading/stripe.list_invoices", "not": true }
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "template": "minmax(0, 1fr) 7rem 6rem"
+        },
+        "children": ["identity", "amount", "statusBadge"]
+      },
+      "identity": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["invoiceNumber", "customerEmail"]
+      },
+      "invoiceNumber": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "number" },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "customerEmail": {
+        "type": "Caption",
+        "props": {
+          "text": { "$item": "customer_email" },
+          "truncate": true
+        }
+      },
+      "amount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "stripe_format_currency",
+            "args": {
+              "amount": { "$item": "amount_due" },
+              "currency": { "$item": "currency" }
+            }
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "statusBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "status" },
+          "tone": {
+            "$computed": "stripe_invoice_status_tone",
+            "args": { "status": { "$item": "status" } }
+          },
+          "variant": "soft"
+        }
+      }
+    }
+  }
+}

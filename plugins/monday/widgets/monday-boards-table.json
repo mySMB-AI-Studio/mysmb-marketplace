@@ -1,0 +1,94 @@
+{
+  "id": "monday-boards-table",
+  "title": "Boards Overview",
+  "description": "All monday.com boards in a compact table — name, type, and status at a glance.",
+  "category": "work-management",
+  "tags": ["monday", "boards", "work-management", "tasks", "projects", "table"],
+  "keywords": ["board", "boards", "workspace", "monday", "project", "task", "overview", "table"],
+  "connectorsUsed": ["monday"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "min":       { "colSpan": 4, "rowSpan": 4 },
+    "max":       { "colSpan": 10, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "monday",
+    "tool": "get_board_info",
+    "params": { "limit": 20 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "tableBody"]
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "countBadge"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "LayoutGrid", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Boards Overview", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "monday.com" }
+      },
+      "countBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} boards",
+              "n": { "$state": "/monday/get_board_info/count" }
+            }
+          },
+          "tone": "accent"
+        },
+        "visible": { "$state": "/monday/get_board_info/count" }
+      },
+
+      "tableBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["table"]
+      },
+      "table": {
+        "type": "Table",
+        "props": {
+          "loading": { "$state": "/_loading/monday.get_board_info" },
+          "skeletonRows": 5,
+          "rows": { "$state": "/monday/get_board_info/boards" },
+          "columns": [
+            { "id": "name",       "header": "Board",       "field": "name",       "priority": 1 },
+            { "id": "board_kind", "header": "Type",        "field": "board_kind", "width": 100,  "priority": 2 },
+            { "id": "state",      "header": "Status",      "field": "state",      "width": 100,  "priority": 2 }
+          ]
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}

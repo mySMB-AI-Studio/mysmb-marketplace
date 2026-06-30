@@ -1,0 +1,124 @@
+{
+  "id": "netsuite-cash-position-demo",
+  "title": "Cash Position",
+  "description": "Current cash balance across all NetSuite bank accounts. Demo version with static data.",
+  "category": "finance",
+  "tags": ["netsuite", "oracle", "erp", "finance", "cash", "bank", "balance", "demo"],
+  "keywords": ["cash position", "bank balance", "cash flow", "bank accounts", "netsuite", "erp"],
+  "connectorsUsed": ["netsuite"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 4 },
+    "min":       { "colSpan": 3, "rowSpan": 7 },
+    "max":       { "colSpan": 8, "rowSpan": 12 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "totalSection", "div1", "accountsLabel", "accountList", "div2", "kvGrid"]
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Banknote", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Cash Position", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "NetSuite ERP · Bank accounts" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "totalSection": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["totalStack"]
+      },
+      "totalStack": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["totalIcon", "totalVal", "totalLbl"]
+      },
+      "totalIcon": { "type": "Icon", "props": { "name": "Banknote", "size": "sm", "tone": "accent" } },
+      "totalVal": { "type": "Heading", "props": { "text": "$287,450", "level": "h1" } },
+      "totalLbl": { "type": "Caption", "props": { "text": "Total Cash · 3 accounts" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "accountsLabel": { "type": "Eyebrow", "props": { "text": "Bank Accounts" } },
+
+      "accountList": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["acctDiv0", "acct0", "acctDiv1", "acct1", "acctDiv2", "acct2"]
+      },
+
+      "acctDiv0": { "type": "Divider", "props": {} },
+      "acct0": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["acct0Info", "acct0Bal"]
+      },
+      "acct0Info": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["acct0Name", "acct0Num"]
+      },
+      "acct0Name": { "type": "Text", "props": { "text": "Operating Account", "size": "sm", "weight": "medium" } },
+      "acct0Num":  { "type": "Caption", "props": { "text": "1000 · BSB 062-001", "tone": "muted" } },
+      "acct0Bal":  { "type": "Heading", "props": { "text": "$198,230", "level": "h3" } },
+
+      "acctDiv1": { "type": "Divider", "props": {} },
+      "acct1": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["acct1Info", "acct1Bal"]
+      },
+      "acct1Info": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["acct1Name", "acct1Num"]
+      },
+      "acct1Name": { "type": "Text", "props": { "text": "Payroll Account", "size": "sm", "weight": "medium" } },
+      "acct1Num":  { "type": "Caption", "props": { "text": "1001 · BSB 062-002", "tone": "muted" } },
+      "acct1Bal":  { "type": "Heading", "props": { "text": "$64,720", "level": "h3" } },
+
+      "acctDiv2": { "type": "Divider", "props": {} },
+      "acct2": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["acct2Info", "acct2Bal"]
+      },
+      "acct2Info": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["acct2Name", "acct2Num"]
+      },
+      "acct2Name": { "type": "Text", "props": { "text": "Tax Reserve", "size": "sm", "weight": "medium" } },
+      "acct2Num":  { "type": "Caption", "props": { "text": "1002 · BSB 062-003", "tone": "muted" } },
+      "acct2Bal":  { "type": "Heading", "props": { "text": "$24,500", "level": "h3" } },
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "kvGrid": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start" },
+        "children": ["kvAccounts", "kvCurrency"]
+      },
+      "kvAccounts": { "type": "KeyValue", "props": { "label": "Largest Account", "value": "$198,230" } },
+      "kvCurrency": { "type": "KeyValue", "props": { "label": "Lowest Balance",  "value": "$24,500" } }
+
+    }
+  },
+  "status": "published"
+}

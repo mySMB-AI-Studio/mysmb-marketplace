@@ -1,0 +1,121 @@
+{
+  "id": "dataverse-recent-activity",
+  "title": "Recent Activity",
+  "description": "Completed Dynamics 365 activities in reverse-chronological order — emails, calls, tasks, and appointments.",
+  "category": "productivity",
+  "tags": ["dataverse", "dynamics-365", "activity", "feed", "email", "calls", "tasks", "crm"],
+  "keywords": ["activity", "feed", "recent", "email", "phone", "call", "task", "appointment", "history", "crm"],
+  "connectorsUsed": ["dataverse"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 9 },
+    "min":       { "colSpan": 4, "rowSpan": 7 },
+    "max":       { "colSpan": 8, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "mcp": "dataverse",
+    "tool": "list_activities",
+    "params": {
+      "org_url": "mySMB.com Prod",
+      "select": "subject,activitytypecode,createdon,regardingobjectidname,_ownerid_value",
+      "filter": "statecode eq 1",
+      "orderby": "createdon desc",
+      "top": 10
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["headerRow", "div0", "loadingBody", "activityList", "emptyState"] },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Activity", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Recent Activity", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Dynamics 365" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "loadingBody": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/dataverse.list_activities" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+
+      "activityList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "repeat": { "statePath": "/dataverse/list_activities/items", "key": "activityid" },
+        "children": ["activityRow"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dataverse.list_activities", "not": true },
+            { "$state": "/dataverse/list_activities/items/0" }
+          ]
+        }
+      },
+
+      "activityRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "hover": true },
+        "children": ["activityIcon", "activityBody", "activityTime"]
+      },
+      "activityIcon": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$computed": "dataverse_activity_type_icon",
+            "args": { "value": { "$item": "activitytypecode" } }
+          },
+          "size": "sm",
+          "tone": "muted"
+        }
+      },
+      "activityBody": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["activitySubject", "activityRegarding"]
+      },
+      "activitySubject": {
+        "type": "Text",
+        "props": { "text": { "$item": "subject" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "activityRegarding": {
+        "type": "Caption",
+        "props": { "text": { "$item": "regardingobjectidname" }, "tone": "muted" }
+      },
+      "activityTime": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "relative_time", "args": { "value": { "$item": "createdon" } } },
+          "tone": "muted"
+        }
+      },
+
+      "emptyState": {
+        "type": "Empty",
+        "props": { "message": "No recent activity." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dataverse.list_activities", "not": true },
+            { "$state": "/dataverse/list_activities/items/0", "not": true }
+          ]
+        }
+      }
+    }
+  },
+  "status": "published"
+}

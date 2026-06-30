@@ -1,0 +1,211 @@
+{
+  "id": "netsuite-pl-snapshot",
+  "title": "P&L Snapshot",
+  "description": "Profit & Loss snapshot — revenue, COGS, gross profit, expenses, and net profit for the current period.",
+  "category": "finance",
+  "tags": ["netsuite", "oracle", "erp", "finance", "pnl", "profit", "loss", "revenue", "expenses"],
+  "keywords": ["profit and loss", "p&l", "revenue", "expenses", "net profit", "gross profit", "netsuite", "erp"],
+  "connectorsUsed": ["netsuite"],
+  "popularity": 0,
+  "status": "published",
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 4 },
+    "min":       { "colSpan": 4, "rowSpan": 8 },
+    "max":       { "colSpan": 10, "rowSpan": 13 }
+  },
+  "dataProvider": {
+    "mcp": "netsuite",
+    "tool": "get_pl_snapshot",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "revenueRow", "cogsRow", "divGP", "gpRow", "expRow", "divNP", "npRow", "div1", "kvGrid", "div2", "kvRow2"]
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "BarChart2", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "P&L Snapshot", "level": "h2" } },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "netsuite_title_case",
+            "args": { "value": { "$state": "/netsuite/get_pl_snapshot/period_label" } }
+          }
+        }
+      },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "revenueRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["revenueLabel", "revenueVal"]
+      },
+      "revenueLabel": { "type": "Text", "props": { "text": "Revenue", "size": "sm", "weight": "medium" } },
+      "revenueVal": {
+        "type": "Text",
+        "props": {
+          "size": "sm", "weight": "medium",
+          "text": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/get_pl_snapshot/revenue" } }
+          }
+        }
+      },
+
+      "cogsRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["cogsLabel", "cogsVal"]
+      },
+      "cogsLabel": { "type": "Text", "props": { "text": "Cost of Goods Sold", "size": "sm", "tone": "muted" } },
+      "cogsVal": {
+        "type": "Text",
+        "props": {
+          "size": "sm", "tone": "muted",
+          "text": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/get_pl_snapshot/cogs" } }
+          }
+        }
+      },
+
+      "divGP": { "type": "Divider", "props": {} },
+
+      "gpRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["gpLabel", "gpVal"]
+      },
+      "gpLabel": { "type": "Text", "props": { "text": "Gross Profit", "size": "sm", "weight": "semibold" } },
+      "gpVal": {
+        "type": "Text",
+        "props": {
+          "size": "sm", "weight": "semibold",
+          "tone": {
+            "$computed": "netsuite_profit_tone",
+            "args": { "value": { "$state": "/netsuite/get_pl_snapshot/gross_profit" } }
+          },
+          "text": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/get_pl_snapshot/gross_profit" } }
+          }
+        }
+      },
+
+      "expRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["expLabel", "expVal"]
+      },
+      "expLabel": { "type": "Text", "props": { "text": "Operating Expenses", "size": "sm", "tone": "muted" } },
+      "expVal": {
+        "type": "Text",
+        "props": {
+          "size": "sm", "tone": "muted",
+          "text": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/get_pl_snapshot/expenses" } }
+          }
+        }
+      },
+
+      "divNP": { "type": "Divider", "props": {} },
+
+      "npRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["npLabel", "npVal"]
+      },
+      "npLabel": { "type": "Heading", "props": { "text": "Net Profit", "level": "h3" } },
+      "npVal": {
+        "type": "Heading",
+        "props": {
+          "level": "h3",
+          "tone": {
+            "$computed": "netsuite_profit_tone",
+            "args": { "value": { "$state": "/netsuite/get_pl_snapshot/net_profit" } }
+          },
+          "text": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/get_pl_snapshot/net_profit" } }
+          }
+        }
+      },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "kvGrid": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start" },
+        "children": ["kvGrossMargin", "kvNetMargin"]
+      },
+      "kvGrossMargin": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Gross Margin",
+          "value": {
+            "$computed": "netsuite_format_percent",
+            "args": { "value": { "$state": "/netsuite/get_pl_snapshot/gross_margin_pct" } }
+          }
+        }
+      },
+      "kvNetMargin": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Net Margin",
+          "value": {
+            "$computed": "netsuite_format_percent",
+            "args": { "value": { "$state": "/netsuite/get_pl_snapshot/net_margin_pct" } }
+          }
+        }
+      }
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "kvRow2": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start" },
+        "children": ["kvCOGSRatio", "kvExpenseRatio"]
+      },
+      "kvCOGSRatio": {
+        "type": "KeyValue",
+        "props": {
+          "label": "COGS Ratio",
+          "value": {
+            "$computed": "netsuite_format_percent",
+            "args": { "value": { "$state": "/netsuite/get_pl_snapshot/cogs_ratio_pct" } }
+          }
+        }
+      },
+      "kvExpenseRatio": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Expense Ratio",
+          "value": {
+            "$computed": "netsuite_format_percent",
+            "args": { "value": { "$state": "/netsuite/get_pl_snapshot/expense_ratio_pct" } }
+          }
+        }
+      }
+
+    }
+  }
+}

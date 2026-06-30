@@ -1,0 +1,138 @@
+{
+  "id": "netsuite-overdue-invoices-demo",
+  "title": "Overdue Invoices",
+  "description": "Top overdue customer invoices sorted by most overdue first. Demo version with static data.",
+  "category": "finance",
+  "tags": ["netsuite", "oracle", "erp", "finance", "ar", "invoices", "overdue", "accounts-receivable", "demo"],
+  "keywords": ["overdue invoices", "accounts receivable", "past due", "collections", "netsuite", "erp"],
+  "connectorsUsed": ["netsuite"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 7, "rowSpan": 5 },
+    "min":       { "colSpan": 5, "rowSpan": 8 },
+    "max":       { "colSpan": 12, "rowSpan": 14 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "kpiGrid", "div1", "tableHeaderRow", "scrollBody", "div2", "kvGrid"]
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "AlertTriangle", "tone": "destructive", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Overdue Invoices", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "NetSuite ERP · Requires attention" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "kpiGrid": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["tileTotal", "tileCount"]
+      },
+
+      "tileTotal": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackTotal"] },
+      "stackTotal": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconTotal", "valTotal", "lblTotal"] },
+      "iconTotal": { "type": "Icon", "props": { "name": "DollarSign", "size": "sm", "tone": "destructive" } },
+      "valTotal": { "type": "Heading", "props": { "text": "$63,500", "level": "h2", "tone": "destructive" } },
+      "lblTotal": { "type": "Caption", "props": { "text": "Total Overdue" } },
+
+      "tileCount": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackCount"] },
+      "stackCount": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconCount", "valCount", "lblCount"] },
+      "iconCount": { "type": "Icon", "props": { "name": "FileText", "size": "sm", "tone": "warning" } },
+      "valCount": { "type": "Heading", "props": { "text": "5", "level": "h2" } },
+      "lblCount": { "type": "Caption", "props": { "text": "Overdue Invoices" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "tableHeaderRow": {
+        "type": "Row",
+        "props": { "template": "1fr 1.5fr 1fr 0.75fr", "gap": "sm", "align": "center" },
+        "children": ["colInvoice", "colCustomer", "colAmount", "colDays"]
+      },
+      "colInvoice":  { "type": "Caption", "props": { "text": "INVOICE #",    "tone": "muted" } },
+      "colCustomer": { "type": "Caption", "props": { "text": "CUSTOMER",     "tone": "muted" } },
+      "colAmount":   { "type": "Caption", "props": { "text": "AMOUNT",       "tone": "muted" } },
+      "colDays":     { "type": "Caption", "props": { "text": "DAYS OVERDUE", "tone": "muted" } },
+
+      "scrollBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["invoiceList"]
+      },
+
+      "invoiceList": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": [
+          "rowDiv0", "row0",
+          "rowDiv1", "row1",
+          "rowDiv2", "row2",
+          "rowDiv3", "row3",
+          "rowDiv4", "row4"
+        ]
+      },
+
+      "rowDiv0": { "type": "Divider", "props": {} },
+      "row0": { "type": "Row", "props": { "template": "1fr 1.5fr 1fr 0.75fr", "gap": "sm", "align": "center" }, "children": ["r0Invoice", "r0Customer", "r0Amount", "r0Days"] },
+      "r0Invoice":  { "type": "Text", "props": { "text": "INV-10145", "size": "sm", "weight": "medium" } },
+      "r0Customer": { "type": "Text", "props": { "text": "Green Energy Co", "size": "sm" } },
+      "r0Amount":   { "type": "Text", "props": { "text": "$5,900",          "size": "sm" } },
+      "r0Days":     { "type": "Text", "props": { "text": "91 days",         "size": "sm", "tone": "destructive" } },
+
+      "rowDiv1": { "type": "Divider", "props": {} },
+      "row1": { "type": "Row", "props": { "template": "1fr 1.5fr 1fr 0.75fr", "gap": "sm", "align": "center" }, "children": ["r1Invoice", "r1Customer", "r1Amount", "r1Days"] },
+      "r1Invoice":  { "type": "Text", "props": { "text": "INV-10187", "size": "sm", "weight": "medium" } },
+      "r1Customer": { "type": "Text", "props": { "text": "Summit Partners", "size": "sm" } },
+      "r1Amount":   { "type": "Text", "props": { "text": "$9,800",          "size": "sm" } },
+      "r1Days":     { "type": "Text", "props": { "text": "73 days",         "size": "sm", "tone": "warning" } },
+
+      "rowDiv2": { "type": "Divider", "props": {} },
+      "row2": { "type": "Row", "props": { "template": "1fr 1.5fr 1fr 0.75fr", "gap": "sm", "align": "center" }, "children": ["r2Invoice", "r2Customer", "r2Amount", "r2Days"] },
+      "r2Invoice":  { "type": "Text", "props": { "text": "INV-10198", "size": "sm", "weight": "medium" } },
+      "r2Customer": { "type": "Text", "props": { "text": "Blue Sky Ltd",    "size": "sm" } },
+      "r2Amount":   { "type": "Text", "props": { "text": "$15,200",         "size": "sm" } },
+      "r2Days":     { "type": "Text", "props": { "text": "61 days",         "size": "sm", "tone": "warning" } },
+
+      "rowDiv3": { "type": "Divider", "props": {} },
+      "row3": { "type": "Row", "props": { "template": "1fr 1.5fr 1fr 0.75fr", "gap": "sm", "align": "center" }, "children": ["r3Invoice", "r3Customer", "r3Amount", "r3Days"] },
+      "r3Invoice":  { "type": "Text", "props": { "text": "INV-10234", "size": "sm", "weight": "medium" } },
+      "r3Customer": { "type": "Text", "props": { "text": "Apex Corp",       "size": "sm" } },
+      "r3Amount":   { "type": "Text", "props": { "text": "$28,500",         "size": "sm" } },
+      "r3Days":     { "type": "Text", "props": { "text": "47 days",         "size": "sm", "tone": "warning" } },
+
+      "rowDiv4": { "type": "Divider", "props": {} },
+      "row4": { "type": "Row", "props": { "template": "1fr 1.5fr 1fr 0.75fr", "gap": "sm", "align": "center" }, "children": ["r4Invoice", "r4Customer", "r4Amount", "r4Days"] },
+      "r4Invoice":  { "type": "Text", "props": { "text": "INV-10312", "size": "sm", "weight": "medium" } },
+      "r4Customer": { "type": "Text", "props": { "text": "Metro Systems",   "size": "sm" } },
+      "r4Amount":   { "type": "Text", "props": { "text": "$4,100",          "size": "sm" } },
+      "r4Days":     { "type": "Text", "props": { "text": "32 days",         "size": "sm", "tone": "warning" } },
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "kvGrid": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start" },
+        "children": ["kvOldest", "kvAvg"]
+      },
+      "kvOldest": { "type": "KeyValue", "props": { "label": "Oldest Invoice", "value": "91 days" } },
+      "kvAvg":    { "type": "KeyValue", "props": { "label": "Avg Days Overdue", "value": "61 days" } }
+
+    }
+  },
+  "status": "published"
+}

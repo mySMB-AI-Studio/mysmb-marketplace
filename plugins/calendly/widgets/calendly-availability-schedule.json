@@ -1,0 +1,127 @@
+{
+  "id": "calendly-availability-schedule",
+  "title": "Calendly — Availability schedules",
+  "description": "Weekly availability windows from your Calendly availability schedules.",
+  "category": "scheduling",
+  "tags": ["calendly", "availability", "schedule", "hours", "calendar"],
+  "keywords": ["availability", "schedule", "working hours", "busy", "free", "calendly"],
+  "connectorsUsed": ["calendly"],
+  "popularity": 70,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 6 },
+    "min":       { "colSpan": 4, "rowSpan": 4 },
+    "max":       { "colSpan": 12, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "calendly",
+    "tool": "availability-list_user_availability_schedules",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"]
+      },
+
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["headerRow"]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "refreshBtn"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Clock", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Availability schedules", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Calendly · Weekly hours" }
+      },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": { "name": "RefreshCw", "size": "sm", "ariaLabel": "Refresh" },
+        "on": {
+          "click": {
+            "action": "calendly.availability-list_user_availability_schedules",
+            "params": {}
+          }
+        }
+      },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "list"]
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["lk1", "lk2", "lk3"],
+        "visible": { "$state": "/_loading/calendly.availability-list_user_availability_schedules" }
+      },
+      "lk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "lk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "lk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No availability schedules found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/calendly.availability-list_user_availability_schedules", "not": true },
+            { "$state": "/calendly/availability-list_user_availability_schedules/collection/0", "not": true }
+          ]
+        }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": {
+          "statePath": "/calendly/availability-list_user_availability_schedules/collection",
+          "key": "uri"
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/calendly.availability-list_user_availability_schedules", "not": true },
+            { "$state": "/calendly/availability-list_user_availability_schedules/collection/0" }
+          ]
+        }
+      },
+      "row": {
+        "type": "ActivityItem",
+        "props": {
+          "iconName": "Clock",
+          "tone": "info",
+          "title": { "$item": "name" },
+          "subtitle": { "$item": "timezone" }
+        }
+      }
+
+    }
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "id": "talkdesk-knowledge-search",
+  "title": "Knowledge Search",
+  "description": "Search the mySMB Workspace knowledge base — the same tool Talkdesk AI Agent uses for live customer queries.",
+  "category": "support",
+  "tags": ["talkdesk", "knowledge", "search", "articles", "support"],
+  "keywords": ["knowledge base", "search", "articles", "faq", "talkdesk"],
+  "connectorsUsed": ["talkdesk"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "min":       { "colSpan": 4, "rowSpan": 4 },
+    "max":       { "colSpan": 10, "rowSpan": 10 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["headerRow", "list"]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "brandBadge"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Search", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["hTitle", "hEyebrow"]
+      },
+      "hTitle": {
+        "type": "Heading",
+        "props": { "text": "Knowledge Search", "level": "h2" }
+      },
+      "hEyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Talkdesk AI Agent · Demo" }
+      },
+      "brandBadge": {
+        "type": "Badge",
+        "props": { "label": "talkdesk", "tone": "success" }
+      },
+      "list": {
+        "type": "Stack",
+        "children": ["art1", "art2", "art3", "art4", "art5"]
+      },
+
+      "art1": { "type": "Stack", "props": { "gap": "xs" }, "children": ["a1title", "a1excerpt"] },
+      "a1title":   { "type": "Text",    "props": { "text": "How to reset your mySMB password", "weight": "bold" } },
+      "a1excerpt": { "type": "Caption", "props": { "text": "Step-by-step guide to resetting your account password via the login screen or admin portal." } },
+
+      "art2": { "type": "Stack", "props": { "gap": "xs" }, "children": ["a2title", "a2excerpt"] },
+      "a2title":   { "type": "Text",    "props": { "text": "Setting up Microsoft 365 integration", "weight": "bold" } },
+      "a2excerpt": { "type": "Caption", "props": { "text": "Connect your M365 tenant to mySMB Workspace to sync emails, calendar, and files." } },
+
+      "art3": { "type": "Stack", "props": { "gap": "xs" }, "children": ["a3title", "a3excerpt"] },
+      "a3title":   { "type": "Text",    "props": { "text": "Billing and subscription management", "weight": "bold" } },
+      "a3excerpt": { "type": "Caption", "props": { "text": "How to view invoices, update payment methods, and manage your mySMB subscription." } },
+
+      "art4": { "type": "Stack", "props": { "gap": "xs" }, "children": ["a4title", "a4excerpt"] },
+      "a4title":   { "type": "Text",    "props": { "text": "Inviting team members to the Workspace", "weight": "bold" } },
+      "a4excerpt": { "type": "Caption", "props": { "text": "Add colleagues as users, assign roles, and manage access permissions." } },
+
+      "art5": { "type": "Stack", "props": { "gap": "xs" }, "children": ["a5title", "a5excerpt"] },
+      "a5title":   { "type": "Text",    "props": { "text": "Troubleshooting Xero sync issues", "weight": "bold" } },
+      "a5excerpt": { "type": "Caption", "props": { "text": "Common Xero connection errors and how to resolve them, including token refresh and permission scopes." } }
+    }
+  }
+}

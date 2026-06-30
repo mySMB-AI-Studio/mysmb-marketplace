@@ -1,0 +1,84 @@
+{
+  "id": "linkedin-my-profile-demo",
+  "title": "My LinkedIn Profile (Demo)",
+  "description": "Sample LinkedIn profile tile — static dummy data, no connection required.",
+  "category": "productivity",
+  "tags": ["linkedin", "profile", "network", "identity", "demo"],
+  "keywords": ["profile", "headline", "linkedin", "me", "identity", "location", "demo"],
+  "connectorsUsed": [],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 4 },
+    "min": { "colSpan": 3, "rowSpan": 3 },
+    "max": { "colSpan": 8, "rowSpan": 8 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "children": ["header", "body"] },
+      "header": { "type": "Header", "children": ["titleGroup"] },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleText", "demoBadge"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Linkedin", "tone": "accent", "size": "sm" } },
+      "titleText": { "type": "Heading", "props": { "text": "My LinkedIn Profile", "level": "h2" } },
+      "demoBadge": { "type": "Badge", "props": { "text": "Demo", "tone": "warning", "variant": "soft" } },
+      "body": { "type": "Body", "children": ["profileContent"] },
+      "profileContent": {
+        "type": "Stack",
+        "props": { "gap": "lg" },
+        "children": ["profileRow", "viewBtn"]
+      },
+      "profileRow": {
+        "type": "Row",
+        "props": { "gap": "md", "align": "center" },
+        "children": ["avatar", "identity"]
+      },
+      "avatar": {
+        "type": "Avatar",
+        "props": { "initials": "JP", "size": "xl", "tone": "accent" }
+      },
+      "identity": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["nameText", "headlineText", "locationRow"]
+      },
+      "nameText": {
+        "type": "Heading",
+        "props": { "text": "Jordan Patel", "level": "h3" }
+      },
+      "headlineText": {
+        "type": "Text",
+        "props": { "text": "Co-Founder & CEO at mySMB", "size": "sm", "tone": "muted" }
+      },
+      "locationRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["locationIcon", "locationText"]
+      },
+      "locationIcon": { "type": "Icon", "props": { "name": "MapPin", "size": "xs", "tone": "muted" } },
+      "locationText": {
+        "type": "Caption",
+        "props": { "text": "Sydney, New South Wales, Australia" }
+      },
+      "viewBtn": {
+        "type": "Button",
+        "props": {
+          "label": "View LinkedIn Profile",
+          "tone": "accent",
+          "variant": "solid",
+          "size": "md"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": "https://www.linkedin.com/in/jordanpatel/" }
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}
