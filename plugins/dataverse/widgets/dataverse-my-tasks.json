@@ -1,0 +1,160 @@
+{
+  "id": "dataverse-my-tasks",
+  "title": "My Tasks / Follow-ups",
+  "description": "Open Dynamics 365 tasks sorted by due date — counts, overdue flag, priority badge, and regarding record.",
+  "category": "productivity",
+  "tags": ["dataverse", "dynamics-365", "tasks", "follow-ups", "crm", "activities"],
+  "keywords": ["tasks", "follow-ups", "to-do", "due", "overdue", "priority", "activities", "crm"],
+  "connectorsUsed": ["dataverse"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 9 },
+    "min":       { "colSpan": 4, "rowSpan": 7 },
+    "max":       { "colSpan": 8, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "mcp": "dataverse",
+    "tool": "list_tasks",
+    "params": {
+      "org_url": "mySMB.com Prod",
+      "filter": "statecode eq 0",
+      "select": "subject,scheduledend,prioritycode,regardingobjectidname",
+      "orderby": "scheduledend asc",
+      "top": 10
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["headerRow", "div0", "statsGrid", "div1", "loadingBody", "taskList", "emptyState"] },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "CheckSquare", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "My Tasks", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Dynamics 365" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "statsGrid": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["tileTotal", "tileOverdue"]
+      },
+
+      "tileTotal": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackTotal"] },
+      "stackTotal": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconTotal", "valTotal", "lblTotal"] },
+      "iconTotal": { "type": "Icon", "props": { "name": "CheckSquare", "size": "sm", "tone": "muted" } },
+      "valTotal": { "type": "Stat", "props": { "value": { "$state": "/dataverse/list_tasks/count" } } },
+      "lblTotal": { "type": "Caption", "props": { "text": "Total Open" } },
+
+      "tileOverdue": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackOverdue"] },
+      "stackOverdue": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconOverdue", "valOverdue", "lblOverdue"] },
+      "iconOverdue": { "type": "Icon", "props": { "name": "AlertCircle", "size": "sm", "tone": "destructive" } },
+      "valOverdue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "dataverse_task_overdue_count",
+            "args": { "value": { "$state": "/dataverse/list_tasks/items" } }
+          }
+        }
+      },
+      "lblOverdue": { "type": "Caption", "props": { "text": "Overdue", "tone": "destructive" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "loadingBody": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/dataverse.list_tasks" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+
+      "taskList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "repeat": { "statePath": "/dataverse/list_tasks/items", "key": "activityid" },
+        "children": ["taskRow"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dataverse.list_tasks", "not": true },
+            { "$state": "/dataverse/list_tasks/items/0" }
+          ]
+        }
+      },
+
+      "taskRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start", "gap": "sm", "hover": true },
+        "children": ["taskLeft", "taskRight"]
+      },
+      "taskLeft": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["taskSubject", "taskMeta"]
+      },
+      "taskSubject": {
+        "type": "Text",
+        "props": { "text": { "$item": "subject" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "taskMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{reg} · {due}",
+              "reg": { "$item": "regardingobjectidname" },
+              "due": { "$computed": "relative_time", "args": { "value": { "$item": "scheduledend" } } }
+            }
+          },
+          "tone": { "$computed": "is_overdue", "args": { "value": { "$item": "scheduledend" } } }
+        }
+      },
+      "taskRight": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["taskPriBadge"]
+      },
+      "taskPriBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "dataverse_task_priority_label",
+            "args": { "value": { "$item": "prioritycode" } }
+          },
+          "tone": {
+            "$computed": "dataverse_task_priority_tone",
+            "args": { "value": { "$item": "prioritycode" } }
+          },
+          "variant": "soft"
+        }
+      },
+
+      "emptyState": {
+        "type": "Empty",
+        "props": { "message": "No open tasks." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dataverse.list_tasks", "not": true },
+            { "$state": "/dataverse/list_tasks/items/0", "not": true }
+          ]
+        }
+      }
+    }
+  },
+  "status": "published"
+}

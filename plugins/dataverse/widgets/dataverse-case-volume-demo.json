@@ -1,0 +1,98 @@
+{
+  "id": "dataverse-case-volume-demo",
+  "title": "Case Volume",
+  "description": "Daily case volume over the last 7 days from Dynamics 365 Customer Service. Demo version with static data.",
+  "category": "support",
+  "tags": ["dataverse", "dynamics-365", "cases", "customer-service", "support", "demo"],
+  "keywords": ["case volume", "cases", "daily", "customer service", "d365", "trends"],
+  "connectorsUsed": ["dataverse"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 8 },
+    "min":       { "colSpan": 4, "rowSpan": 7 },
+    "max":       { "colSpan": 10, "rowSpan": 12 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "statsGrid", "div1", "barSection"]
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Inbox", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Case Volume", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Dynamics 365 Customer Service · Last 7 days" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "statsGrid": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["tileTotal", "tileAvg", "tilePeak"]
+      },
+
+      "tileTotal": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackTotal"] },
+      "stackTotal": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconTotal", "valTotal", "lblTotal"] },
+      "iconTotal": { "type": "Icon", "props": { "name": "Stack2", "size": "sm", "tone": "accent" } },
+      "valTotal": { "type": "Heading", "props": { "text": "142", "level": "h2" } },
+      "lblTotal": { "type": "Caption", "props": { "text": "Total Cases" } },
+
+      "tileAvg": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackAvg"] },
+      "stackAvg": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconAvg", "valAvg", "lblAvg"] },
+      "iconAvg": { "type": "Icon", "props": { "name": "ChartBar", "size": "sm", "tone": "accent" } },
+      "valAvg": { "type": "Heading", "props": { "text": "20", "level": "h2" } },
+      "lblAvg": { "type": "Caption", "props": { "text": "Daily Avg" } },
+
+      "tilePeak": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackPeak"] },
+      "stackPeak": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconPeak", "valPeak", "lblPeak"] },
+      "iconPeak": { "type": "Icon", "props": { "name": "TrendingUp", "size": "sm", "tone": "positive" } },
+      "valPeak": { "type": "Heading", "props": { "text": "Wed", "level": "h2" } },
+      "lblPeak": { "type": "Caption", "props": { "text": "Peak Day" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "barSection": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["barChart"]
+      },
+
+      "barChart": {
+        "type": "BarChart",
+        "props": {
+          "data": [
+            { "day": "Mon", "cases": 14 },
+            { "day": "Tue", "cases": 18 },
+            { "day": "Wed", "cases": 28 },
+            { "day": "Thu", "cases": 22 },
+            { "day": "Fri", "cases": 25 },
+            { "day": "Sat", "cases": 19 },
+            { "day": "Sun", "cases": 16 }
+          ],
+          "labelField": "day",
+          "valueField": "cases",
+          "valueFormat": "number",
+          "tone": "accent",
+          "sort": "none",
+          "limit": 7
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}

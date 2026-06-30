@@ -1,0 +1,107 @@
+{
+  "id": "netsuite-revenue-summary-demo",
+  "title": "Revenue at a Glance",
+  "description": "Monthly revenue summary — current month vs prior month with trend sparkline. Demo version with static data.",
+  "category": "finance",
+  "tags": ["netsuite", "oracle", "erp", "finance", "revenue", "invoices", "demo"],
+  "keywords": ["revenue", "sales", "monthly", "trend", "invoices", "netsuite", "erp"],
+  "connectorsUsed": ["netsuite"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 4 },
+    "min":       { "colSpan": 4, "rowSpan": 7 },
+    "max":       { "colSpan": 10, "rowSpan": 12 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "kpiGrid", "div1", "sparkSection", "dateAxis", "div2", "kvGrid"]
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "TrendingUp", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Revenue at a Glance", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "NetSuite ERP · Current month" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "kpiGrid": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["tileThisMonth", "tileLastMonth", "tileChange"]
+      },
+
+      "tileThisMonth": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackThisMonth"] },
+      "stackThisMonth": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconThisMonth", "valThisMonth", "lblThisMonth"] },
+      "iconThisMonth": { "type": "Icon", "props": { "name": "DollarSign", "size": "sm", "tone": "accent" } },
+      "valThisMonth": { "type": "Heading", "props": { "text": "$142.5K", "level": "h2" } },
+      "lblThisMonth": { "type": "Caption", "props": { "text": "June 2026" } },
+
+      "tileLastMonth": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackLastMonth"] },
+      "stackLastMonth": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconLastMonth", "valLastMonth", "lblLastMonth"] },
+      "iconLastMonth": { "type": "Icon", "props": { "name": "DollarSign", "size": "sm", "tone": "muted" } },
+      "valLastMonth": { "type": "Heading", "props": { "text": "$128.0K", "level": "h2" } },
+      "lblLastMonth": { "type": "Caption", "props": { "text": "May 2026" } },
+
+      "tileChange": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackChange"] },
+      "stackChange": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconChange", "valChange", "lblChange"] },
+      "iconChange": { "type": "Icon", "props": { "name": "TrendingUp", "size": "sm", "tone": "success" } },
+      "valChange": { "type": "Heading", "props": { "text": "+11.3%", "level": "h2", "tone": "success" } },
+      "lblChange": { "type": "Caption", "props": { "text": "vs Last Month" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "sparkSection": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["sparkLabel", "spark"]
+      },
+      "sparkLabel": { "type": "Eyebrow", "props": { "text": "Last 6 Months" } },
+      "spark": {
+        "type": "Sparkline",
+        "props": {
+          "values": [98500, 112000, 108000, 119500, 128000, 142500],
+          "tone": "accent",
+          "height": 80,
+          "fill": false
+        }
+      },
+
+      "dateAxis": {
+        "type": "Row",
+        "props": { "justify": "between" },
+        "children": ["axisJan", "axisApr", "axisJun"]
+      },
+      "axisJan": { "type": "Caption", "props": { "text": "Jan" } },
+      "axisApr": { "type": "Caption", "props": { "text": "Apr" } },
+      "axisJun": { "type": "Caption", "props": { "text": "Jun" } },
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "kvGrid": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start" },
+        "children": ["kvYTD", "kvAvg", "kvBest"]
+      },
+      "kvYTD":  { "type": "KeyValue", "props": { "label": "YTD Revenue (Jan–Jun)", "value": "$708.5K" } },
+      "kvAvg":  { "type": "KeyValue", "props": { "label": "Avg Monthly",           "value": "$118.1K" } },
+      "kvBest": { "type": "KeyValue", "props": { "label": "Best Month",            "value": "$142.5K" } }
+
+    }
+  },
+  "status": "published"
+}

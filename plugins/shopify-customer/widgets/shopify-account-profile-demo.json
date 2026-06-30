@@ -1,0 +1,166 @@
+{
+  "id": "shopify-account-profile-demo",
+  "title": "Account Profile (Demo)",
+  "description": "STATIC DEMO — hardcoded sample data, no connector required. Switch to shopify-account-profile once Shopify Customer Accounts OAuth is configured.",
+  "category": "ecommerce",
+  "tags": [
+    "shopify",
+    "account",
+    "customer",
+    "profile",
+    "ecommerce",
+    "demo"
+  ],
+  "keywords": [
+    "account",
+    "profile",
+    "customer",
+    "shopify",
+    "email",
+    "address",
+    "orders",
+    "spend",
+    "demo"
+  ],
+  "connectorsUsed": [
+    "shopify-customer"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 5
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 6,
+      "rowSpan": 8
+    }
+  },
+  "status": "published",
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "children": ["header", "body"]
+      },
+
+      "header": {
+        "type": "Header",
+        "children": ["titleRow"]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "User", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Account Profile", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Demo customer" }
+      },
+
+      "body": {
+        "type": "Body",
+        "children": ["content"]
+      },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["avatarRow", "divider1", "kvStack", "divider2", "statsRow"]
+      },
+
+      "avatarRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["avatar", "nameStack"]
+      },
+      "avatar": {
+        "type": "Avatar",
+        "props": { "initials": "JC", "size": "lg" }
+      },
+      "nameStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["fullName", "emailCaption"]
+      },
+      "fullName": {
+        "type": "Heading",
+        "props": { "text": "Jamie Chen", "level": "h3" }
+      },
+      "emailCaption": {
+        "type": "Caption",
+        "props": { "text": "jamie.chen@example.com.au" }
+      },
+
+      "divider1": { "type": "Divider" },
+
+      "kvStack": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["kvPhone", "kvCity"]
+      },
+      "kvPhone": {
+        "type": "KeyValue",
+        "props": { "label": "Phone", "value": "+61 400 123 456" }
+      },
+      "kvCity": {
+        "type": "KeyValue",
+        "props": { "label": "City", "value": "Sydney" }
+      },
+
+      "divider2": { "type": "Divider" },
+
+      "statsRow": {
+        "type": "Row",
+        "props": { "gap": "md", "justify": "around" },
+        "children": ["statOrders", "statSpent"]
+      },
+      "statOrders": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["statOrdersVal", "statOrdersLabel"]
+      },
+      "statOrdersVal": {
+        "type": "Heading",
+        "props": { "text": "24", "level": "h3" }
+      },
+      "statOrdersLabel": {
+        "type": "Caption",
+        "props": { "text": "Orders" }
+      },
+      "statSpent": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["statSpentVal", "statSpentLabel"]
+      },
+      "statSpentVal": {
+        "type": "Heading",
+        "props": { "text": "$1,847.50", "level": "h3" }
+      },
+      "statSpentLabel": {
+        "type": "Caption",
+        "props": { "text": "Total Spent" }
+      }
+
+    }
+  }
+}

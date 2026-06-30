@@ -1,0 +1,59 @@
+{
+  "name": "sprout-time-attendance",
+  "version": "0.1.0",
+  "description": "Manage Sprout time & attendance — attendance (DTR) logs, leave/overtime/undertime/official-business requests, approvals, leave credits, and schedules.",
+  "author": {
+    "name": "mySMB",
+    "email": "support@mysmb.com"
+  },
+  "category": "Human Resources",
+  "keywords": [
+    "sprout",
+    "time and attendance",
+    "dtr",
+    "timekeeping",
+    "leave",
+    "overtime",
+    "philippines"
+  ],
+  "connection": {
+    "authType": "api_key",
+    "instructions": "Connect with your Sprout API credentials. Request API access from the **Sprout Developer Portal** (Getting Started → Authorization) to receive your **Client ID** and **Client Secret**.\n\n1. In the Sprout Developer Portal, request API access and accept the terms.\n2. Once approved, copy your **Client ID** and **Client Secret**.\n3. For **production** access, also paste the **Subscription Key** (`Ocp-Apim-Subscription-Key`) Sprout issues, and your **Tenant Code** (your company code). Both can be left blank for the sandbox.\n\nWe exchange your client id/secret for a short-lived token automatically — you never paste a bearer token.",
+    "docUrl": "https://developers.sprout.ph/developers/getting-started",
+    "fields": [
+      {
+        "name": "SPROUT_CLIENT_ID",
+        "label": "Client ID",
+        "type": "text",
+        "required": true,
+        "placeholder": "your-sprout-client-id",
+        "helpText": "Issued by Sprout when your API access is approved."
+      },
+      {
+        "name": "SPROUT_CLIENT_SECRET",
+        "label": "Client Secret",
+        "type": "password",
+        "required": true,
+        "placeholder": "your-sprout-client-secret",
+        "helpText": "Issued alongside your Client ID. Stored encrypted; exchanged server-side for a token."
+      },
+      {
+        "name": "SPROUT_SUBSCRIPTION_KEY",
+        "label": "Subscription Key (production only)",
+        "type": "password",
+        "required": false,
+        "placeholder": "Ocp-Apim-Subscription-Key",
+        "helpText": "Required for production (Azure API Management). Leave blank for the sandbox."
+      },
+      {
+        "name": "SPROUT_TENANT_CODE",
+        "label": "Tenant Code",
+        "type": "text",
+        "required": false,
+        "placeholder": "your-company-code",
+        "helpText": "Identifies which company the calls target. Leave blank if your client is single-tenant."
+      }
+    ]
+  },
+  "widgets": "widgets"
+}

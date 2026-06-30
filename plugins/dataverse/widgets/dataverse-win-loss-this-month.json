@@ -1,0 +1,162 @@
+{
+  "id": "dataverse-win-loss-this-month",
+  "title": "Win/Loss This Month",
+  "description": "Won and Lost opportunities closed this month — counts, win rate, and revenue impact at a glance.",
+  "category": "sales",
+  "tags": ["dataverse", "dynamics-365", "sales", "win-loss", "opportunities", "closed", "crm"],
+  "keywords": ["win", "loss", "won", "lost", "closed", "opportunities", "win rate", "revenue", "crm", "sales"],
+  "connectorsUsed": ["dataverse"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 7 },
+    "min":       { "colSpan": 4, "rowSpan": 6 },
+    "max":       { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "dataverse",
+    "tool": "list_closed_opportunities",
+    "params": {
+      "org_url": "mySMB.com Prod"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["headerRow", "div0", "loadingBody", "contentBody", "emptyState"] },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "TrendingUp", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Win/Loss This Month", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Dynamics 365 Sales" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "loadingBody": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/dataverse.list_closed_opportunities" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+
+      "contentBody": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["statsGrid", "div1", "valueGrid"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dataverse.list_closed_opportunities", "not": true },
+            { "$state": "/dataverse/list_closed_opportunities/summary/total" }
+          ]
+        }
+      },
+
+      "statsGrid": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["tileTotal", "tileWon", "tileLost", "tileWinRate"]
+      },
+
+      "tileTotal": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackTotal"] },
+      "stackTotal": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconTotal", "valTotal", "lblTotal"] },
+      "iconTotal": { "type": "Icon", "props": { "name": "Target", "size": "sm", "tone": "muted" } },
+      "valTotal": { "type": "Stat", "props": { "value": { "$state": "/dataverse/list_closed_opportunities/summary/total" } } },
+      "lblTotal": { "type": "Caption", "props": { "text": "Total Closed" } },
+
+      "tileWon": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackWon"] },
+      "stackWon": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconWon", "valWon", "lblWon"] },
+      "iconWon": { "type": "Icon", "props": { "name": "Trophy", "size": "sm", "tone": "positive" } },
+      "valWon": { "type": "Stat", "props": { "value": { "$state": "/dataverse/list_closed_opportunities/summary/won" } } },
+      "lblWon": { "type": "Caption", "props": { "text": "Won" } },
+
+      "tileLost": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackLost"] },
+      "stackLost": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconLost", "valLost", "lblLost"] },
+      "iconLost": { "type": "Icon", "props": { "name": "XCircle", "size": "sm", "tone": "destructive" } },
+      "valLost": { "type": "Stat", "props": { "value": { "$state": "/dataverse/list_closed_opportunities/summary/lost" } } },
+      "lblLost": { "type": "Caption", "props": { "text": "Lost", "tone": "destructive" } },
+
+      "tileWinRate": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackWinRate"] },
+      "stackWinRate": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconWinRate", "valWinRate", "lblWinRate"] },
+      "iconWinRate": { "type": "Icon", "props": { "name": "Percent", "size": "sm", "tone": "accent" } },
+      "valWinRate": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{rate}%",
+              "rate": {
+                "$computed": "pct",
+                "args": {
+                  "part": { "$state": "/dataverse/list_closed_opportunities/summary/won" },
+                  "whole": { "$state": "/dataverse/list_closed_opportunities/summary/total" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "lblWinRate": { "type": "Caption", "props": { "text": "Win Rate" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "valueGrid": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["tileWonValue", "tileLostValue"]
+      },
+
+      "tileWonValue": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackWonValue"] },
+      "stackWonValue": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconWonValue", "valWonValue", "lblWonValue"] },
+      "iconWonValue": { "type": "Icon", "props": { "name": "Banknote", "size": "sm", "tone": "positive" } },
+      "valWonValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/dataverse/list_closed_opportunities/summary/won_value" } }
+          }
+        }
+      },
+      "lblWonValue": { "type": "Caption", "props": { "text": "Won Value" } },
+
+      "tileLostValue": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackLostValue"] },
+      "stackLostValue": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconLostValue", "valLostValue", "lblLostValue"] },
+      "iconLostValue": { "type": "Icon", "props": { "name": "TrendingDown", "size": "sm", "tone": "destructive" } },
+      "valLostValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/dataverse/list_closed_opportunities/summary/lost_value" } }
+          }
+        }
+      },
+      "lblLostValue": { "type": "Caption", "props": { "text": "Lost Value", "tone": "destructive" } },
+
+      "emptyState": {
+        "type": "Empty",
+        "props": { "message": "No closed opportunities this month." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dataverse.list_closed_opportunities", "not": true },
+            { "$state": "/dataverse/list_closed_opportunities/summary/total", "not": true }
+          ]
+        }
+      }
+    }
+  },
+  "status": "published"
+}
