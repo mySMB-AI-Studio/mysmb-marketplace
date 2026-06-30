@@ -1,0 +1,257 @@
+{
+  "id": "slack-channel-recent",
+  "title": "Slack Recent Activity",
+  "description": "Recent messages across your Slack workspace — sender, text snippet, and relative timestamp.",
+  "category": "productivity",
+  "tags": [
+    "slack",
+    "messages",
+    "channels",
+    "team",
+    "productivity"
+  ],
+  "keywords": [
+    "slack",
+    "messages",
+    "channel",
+    "recent",
+    "chat",
+    "team",
+    "conversation"
+  ],
+  "connectorsUsed": [
+    "slack"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "slack",
+    "tool": "search_messages",
+    "params": {
+      "query": "is:message",
+      "count": 20
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleRow"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "MessageSquare",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "count"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Slack Recent Activity",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} messages",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/slack/search_messages/messages"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/_loading/slack.search_messages"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3",
+          "sk4"
+        ]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No recent messages found."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/slack.search_messages",
+              "not": true
+            },
+            {
+              "$state": "/slack/search_messages/messages/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "visible": {
+          "$state": "/_loading/slack.search_messages",
+          "not": true
+        },
+        "repeat": {
+          "statePath": "/slack/search_messages/messages",
+          "key": "ts"
+        },
+        "children": [
+          "row"
+        ]
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start",
+          "hover": true,
+          "justify": "between"
+        },
+        "children": [
+          "avatar",
+          "messageInfo",
+          "timestamp"
+        ]
+      },
+      "avatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$item": "username"
+              }
+            }
+          },
+          "size": "sm"
+        }
+      },
+      "messageInfo": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "sender",
+          "snippet"
+        ]
+      },
+      "sender": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "username"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "snippet": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "text"
+          },
+          "size": "sm",
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+      "timestamp": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "ts"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
