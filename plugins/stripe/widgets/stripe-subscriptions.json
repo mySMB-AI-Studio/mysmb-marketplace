@@ -1,0 +1,151 @@
+{
+  "id": "stripe-subscriptions",
+  "title": "Stripe Subscriptions",
+  "description": "Active subscriptions with status badges — spot past-due and trialing customers at a glance.",
+  "category": "payments",
+  "tags": ["stripe", "subscriptions", "billing", "recurring"],
+  "keywords": ["subscriptions", "stripe", "recurring", "billing", "active", "past due", "trialing", "canceled"],
+  "connectorsUsed": ["stripe"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
+    "max": { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "stripe",
+    "tool": "list_subscriptions",
+    "params": { "limit": 20 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["header", "body"]
+      },
+      "header": {
+        "type": "Header",
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "RefreshCw", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "count"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Stripe Subscriptions", "level": "h2" }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} subscriptions",
+              "n": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/stripe/list_subscriptions/data" } }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": ["loading", "empty", "list"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/stripe.list_subscriptions" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No subscriptions found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/stripe.list_subscriptions", "not": true },
+            { "$state": "/stripe/list_subscriptions/data/0", "not": true }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": {
+          "statePath": "/stripe/list_subscriptions/data",
+          "key": "id"
+        },
+        "visible": { "$state": "/_loading/stripe.list_subscriptions", "not": true }
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "template": "minmax(0, 1fr) 6rem 7rem"
+        },
+        "children": ["identity", "periodEnd", "statusBadge"]
+      },
+      "identity": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["subId", "customerId"]
+      },
+      "subId": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "id" },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "customerId": {
+        "type": "Caption",
+        "props": {
+          "text": { "$item": "customer" },
+          "truncate": true
+        }
+      },
+      "periodEnd": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "stripe_format_stripe_date",
+            "args": { "value": { "$item": "current_period_end" } }
+          }
+        }
+      },
+      "statusBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "status" },
+          "tone": {
+            "$computed": "stripe_subscription_status_tone",
+            "args": { "status": { "$item": "status" } }
+          },
+          "variant": "soft"
+        }
+      }
+    }
+  }
+}
