@@ -87,6 +87,17 @@
                 }
               }
             }
+          },
+          "/_errors/dataverse.add_note": {
+            "action": "toast",
+            "params": {
+              "tone": "error",
+              "message": {
+                "$cond": { "$state": "/_errors/dataverse.add_note" },
+                "$then": "Couldn't add note. Please try again.",
+                "$else": ""
+              }
+            }
           }
         }
       },
@@ -260,7 +271,8 @@
             { "action": "setState", "params": { "statePath": "/ui/sel/closeLabel", "value": { "$computed": "identity", "args": { "value": { "$item": "closeLabel" } } } } },
             { "action": "setState", "params": { "statePath": "/ui/sel/closeTone", "value": { "$computed": "identity", "args": { "value": { "$item": "closeTone" } } } } },
             { "action": "setState", "params": { "statePath": "/ui/sel/recordUrl", "value": { "$computed": "identity", "args": { "value": { "$item": "recordUrl" } } } } },
-            { "action": "setState", "params": { "statePath": "/ui/sel/activities", "value": { "$computed": "identity", "args": { "value": { "$item": "activities" } } } } }
+            { "action": "setState", "params": { "statePath": "/ui/sel/activities", "value": { "$computed": "identity", "args": { "value": { "$item": "activities" } } } } },
+            { "action": "setState", "params": { "statePath": "/ui/sel/notes", "value": { "$computed": "identity", "args": { "value": { "$item": "notes" } } } } }
           ]
         }
       },
@@ -291,13 +303,18 @@
         "type": "Overlay",
         "props": { "maxWidth": "34rem" },
         "visible": { "$state": "/ui/sel/id" },
-        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/sel/id", "value": "" } } },
+        "on": {
+          "backdropClick": [
+            { "action": "setState", "params": { "statePath": "/ui/sel/id", "value": "" } },
+            { "action": "setState", "params": { "statePath": "/ui/noteText", "value": "" } }
+          ]
+        },
         "children": ["modalContent"]
       },
       "modalContent": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["modalHeader", "modalDivider", "modalBody", "modalActivityDivider", "modalActivity", "modalFooter"]
+        "children": ["modalHeader", "modalDivider", "modalBody", "modalActivityDivider", "modalActivity", "modalNotesDivider", "modalNotes", "modalFooter"]
       },
       "modalHeader": {
         "type": "Row",
@@ -314,7 +331,12 @@
       "modalClose": {
         "type": "OverlayClose",
         "props": { "ariaLabel": "Close opportunity details" },
-        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/sel/id", "value": "" } } }
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/sel/id", "value": "" } },
+            { "action": "setState", "params": { "statePath": "/ui/noteText", "value": "" } }
+          ]
+        }
       },
       "modalDivider": { "type": "Divider", "props": {} },
       "modalBody": {
@@ -430,6 +452,98 @@
         "type": "Caption",
         "props": { "text": { "$computed": "relative_time", "args": { "value": { "$item": "createdon" } } } }
       },
+
+      "modalNotesDivider": { "type": "Divider", "props": {} },
+      "modalNotes": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["notesHeader", "notesEmpty", "notesList", "noteComposer"]
+      },
+      "notesHeader": { "type": "Eyebrow", "props": { "text": "Notes" } },
+      "notesEmpty": {
+        "type": "Caption",
+        "props": { "text": "No notes yet." },
+        "visible": { "$state": "/ui/sel/notes/0", "not": true }
+      },
+      "notesList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["noteRow"],
+        "repeat": { "statePath": "/ui/sel/notes", "key": "annotationid" },
+        "visible": { "$state": "/ui/sel/notes/0" }
+      },
+      "noteRow": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["noteText", "noteMeta"]
+      },
+      "noteText": {
+        "type": "Text",
+        "props": { "text": { "$item": "notetext" }, "size": "sm", "truncate": true }
+      },
+      "noteMeta": {
+        "type": "Caption",
+        "props": { "text": { "$computed": "relative_time", "args": { "value": { "$item": "createdon" } } } }
+      },
+      "noteComposer": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "end" },
+        "children": ["noteInput", "noteAddBtn"]
+      },
+      "noteInput": {
+        "type": "TextInput",
+        "props": {
+          "value": { "$bindState": "/ui/noteText" },
+          "placeholder": "Add a note…",
+          "size": "sm",
+          "multiline": true,
+          "rows": 3
+        }
+      },
+      "noteAddBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Add note",
+          "variant": "primary",
+          "size": "sm",
+          "disabled": {
+            "$cond": { "$state": "/ui/noteText" },
+            "$then": { "$state": "/_loading/dataverse.add_note" },
+            "$else": true
+          }
+        },
+        "on": {
+          "click": [
+            {
+              "action": "dataverse.add_note",
+              "params": {
+                "org_url": "mySMB.com Prod",
+                "regarding_entity": "opportunity",
+                "regarding_id": { "$state": "/ui/sel/id" },
+                "fields": { "notetext": { "$state": "/ui/noteText" } }
+              }
+            },
+            { "action": "toast", "params": { "message": "Note added" } },
+            { "action": "setState", "params": { "statePath": "/ui/noteText", "value": "" } },
+            { "action": "bust_tool_cache", "params": { "mcp": "dataverse", "tool": "list_opportunity_pipeline" } },
+            { "action": "dataverse.list_opportunity_pipeline", "params": { "org_url": "mySMB.com Prod", "top": 200 } },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/notes",
+                "value": {
+                  "$computed": "dataverse_notes_for_selected",
+                  "args": {
+                    "value": { "$state": "/dataverse/list_opportunity_pipeline/items" },
+                    "selectedId": { "$state": "/ui/sel/id" }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+
       "modalFooter": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center", "justify": "end" },
