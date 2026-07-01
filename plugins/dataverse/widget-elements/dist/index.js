@@ -535,10 +535,36 @@ const group_opportunities = (args) => {
                 weighted: weightedValueOf(o),
                 recordUrl: o.record_url ?? '',
                 activities: Array.isArray(o.activities) ? o.activities : [],
+                notes: Array.isArray(o.notes) ? o.notes : [],
             });
         }
     }
     return out;
+};
+// ── notes_for_selected ───────────────────────────────────────────────
+//
+// Re-derive the selected opportunity's notes[] snapshot from the live
+// pipeline items after an add+refetch. Finds the opportunity whose
+// `opportunityid` equals `selectedId` and returns its `notes` array (the
+// server prefetches notes per opportunity, mirroring `activities`);
+// returns [] on no match or when the matched opportunity has no notes.
+//
+// Args: { value: Opportunity[] (items), selectedId: string }
+// Returns: Array<{ annotationid, subject, notetext, createdon }>
+//
+// Spec example (add-note chain step 6):
+//   { "$computed": "dataverse_notes_for_selected", "args": {
+//       "value":      { "$state": "/dataverse/list_opportunity_pipeline/items" },
+//       "selectedId": { "$state": "/ui/sel/id" } } }
+const notes_for_selected = (args) => {
+    const items = (Array.isArray(args.value) ? args.value : []);
+    const selectedId = typeof args.selectedId === 'string' ? args.selectedId : '';
+    if (!selectedId)
+        return [];
+    const match = items.find((o) => o.opportunityid === selectedId);
+    if (!match || !Array.isArray(match.notes))
+        return [];
+    return match.notes;
 };
 const elements = {
     slug: 'dataverse',
@@ -565,6 +591,7 @@ const elements = {
         mode_variant,
         toggle_in_set,
         group_opportunities,
+        notes_for_selected,
     },
 };
 export default elements;
