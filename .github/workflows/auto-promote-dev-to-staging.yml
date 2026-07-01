@@ -1,0 +1,57 @@
+name: Auto-promote dev → staging
+
+# When dev updates, merge it into staging (the QA tier for this repo) so
+# changes reach QA automatically. Merges ONLY when conflict-free; on conflict
+# it opens a PR for manual resolution. Pushes with PROMOTE_TOKEN so any
+# staging deploy workflow triggers — the default GITHUB_TOKEN would not.
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+concurrency:
+  group: auto-promote-dev-to-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout staging
+        uses: actions/checkout@v4
+        with:
+          ref: staging
+          fetch-depth: 0
+          token: ${{ secrets.PROMOTE_TOKEN || github.token }}
+
+      - name: Merge dev into staging (only if clean)
+        env:
+          GH_TOKEN: ${{ secrets.PROMOTE_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name  "myhub-promoter[bot]"
+          git config user.email "myhub-promoter@users.noreply.github.com"
+          git fetch origin dev
+
+          if git merge-base --is-ancestor origin/dev HEAD; then
+            echo "staging already contains dev — nothing to promote."
+            exit 0
+          fi
+
+          if git merge --no-edit --no-ff origin/dev; then
+            git push origin staging
+            echo "✅ Promoted dev → staging."
+          else
+            git merge --abort
+            echo "⚠️ dev → staging has conflicts — opening a PR."
+            gh pr create --base staging --head dev \
+              --title "Promote dev → staging (needs conflict resolution)" \
+              --body "Auto-promotion hit merge conflicts. Resolve and merge manually." \
+              || echo "PR already open."
+            exit 1
+          fi
