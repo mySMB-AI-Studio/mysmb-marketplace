@@ -606,6 +606,23 @@ const notes_for_selected: ComputedFunction = (args) => {
   return match.notes;
 };
 
+// ── prepend_note ─────────────────────────────────────────────────────
+//
+// Optimistically prepend a just-added note to the modal's `/ui/sel/notes`
+// snapshot so it appears instantly WITHOUT refetching the whole pipeline
+// (which reloads the entire tile). The authoritative annotation lands on
+// the next natural pipeline refresh; this is a display-only entry.
+//
+// Args: { notes: Note[], notetext: string }
+// Returns: [{ annotationid, subject, notetext, createdon }, ...notes]
+const prepend_note: ComputedFunction = (args) => {
+  const notes = Array.isArray(args.notes) ? args.notes : [];
+  const notetext = typeof args.notetext === 'string' ? args.notetext.trim() : '';
+  if (!notetext) return notes;
+  const now = new Date().toISOString();
+  return [{ annotationid: `optimistic-${now}`, subject: null, notetext, createdon: now }, ...notes];
+};
+
 const elements: PluginElementsModule = {
   slug: 'dataverse',
   functions: {
@@ -632,6 +649,7 @@ const elements: PluginElementsModule = {
     toggle_in_set,
     group_opportunities,
     notes_for_selected,
+    prepend_note,
   },
 };
 
