@@ -473,6 +473,15 @@
         "visible": { "$state": "/ui/sel/notes/0" }
       },
       "noteRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["noteDot", "noteBody"]
+      },
+      "noteDot": {
+        "type": "Dot",
+        "props": { "tone": "info", "size": "sm" }
+      },
+      "noteBody": {
         "type": "Stack",
         "props": { "gap": "none" },
         "children": ["noteText", "noteMeta"]
@@ -521,23 +530,21 @@
                 "fields": { "notetext": { "$state": "/ui/noteText" } }
               }
             },
-            { "action": "toast", "params": { "message": "Note added" } },
-            { "action": "setState", "params": { "statePath": "/ui/noteText", "value": "" } },
-            { "action": "bust_tool_cache", "params": { "mcp": "dataverse", "tool": "list_opportunity_pipeline" } },
-            { "action": "dataverse.list_opportunity_pipeline", "params": { "org_url": "mySMB.com Prod", "top": 200 } },
             {
               "action": "setState",
               "params": {
                 "statePath": "/ui/sel/notes",
                 "value": {
-                  "$computed": "dataverse_notes_for_selected",
+                  "$computed": "dataverse_prepend_note",
                   "args": {
-                    "value": { "$state": "/dataverse/list_opportunity_pipeline/items" },
-                    "selectedId": { "$state": "/ui/sel/id" }
+                    "notes": { "$state": "/ui/sel/notes" },
+                    "notetext": { "$state": "/ui/noteText" }
                   }
                 }
               }
-            }
+            },
+            { "action": "toast", "params": { "message": "Note added" } },
+            { "action": "setState", "params": { "statePath": "/ui/noteText", "value": "" } }
           ]
         }
       },
