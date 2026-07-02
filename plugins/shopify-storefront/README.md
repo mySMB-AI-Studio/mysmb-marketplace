@@ -31,6 +31,19 @@ The UCP catalog endpoint (`/api/ucp/mcp`) exposes:
 
 All UCP tool calls automatically include the required `meta.ucp-agent.profile` metadata — the agent skills handle this.
 
+## Platform Compatibility Note
+
+The `.mcp.json` for this plugin uses a per-user variable in the URL host:
+
+```json
+"url": "https://${SHOPIFY_SHOP_SUBDOMAIN}.myshopify.com/api/mcp"
+"url": "https://${SHOPIFY_SHOP_SUBDOMAIN}.myshopify.com/api/ucp/mcp"
+```
+
+This is correct per Shopify's own design — the [Storefront Catalog MCP docs](https://shopify.dev/docs/agents/catalog/storefront-catalog) confirm the endpoint is `https://{storedomain}/api/ucp/mcp`. There is no fixed upstream hostname to hardcode.
+
+> **TODO (platform team):** Confirm that the myHub runtime performs `${VAR}` substitution in the `.mcp.json` `url` field before making the MCP connection. If not, a relay server in `myhub-mcp-servers` will be required. Do not ship to production until this is confirmed.
+
 ## Configuration
 
 Every `${VAR}` placeholder in `.mcp.json` must be supplied before the plugin connects. The Connect dialog collects these:
