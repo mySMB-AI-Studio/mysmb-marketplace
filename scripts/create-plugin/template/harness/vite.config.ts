@@ -26,9 +26,15 @@ function findMyHubRoot(): string | null {
     if (parent === dir) break;
     dir = parent;
   }
-  // Try the conventional sibling layout: ../../../myHubV2
-  const sibling = resolve(__dirname, '..', '..', '..', '..', 'myHubV2');
-  if (existsSync(resolve(sibling, 'apps/web/src/features/widgets-system/system'))) return sibling;
+  // Try sibling layouts at several depths to cover different workspace arrangements.
+  // e.g. <parent>/<plugin>/harness/ → ../../myHubV2 = <parent>/myHubV2
+  for (const candidate of [
+    resolve(__dirname, '..', '..', 'myHubV2'),              // standard: plugin + myHubV2 siblings
+    resolve(__dirname, '..', '..', '..', 'myHubV2'),        // 3 levels up
+    resolve(__dirname, '..', '..', '..', '..', 'myHubV2'),  // conventional 4-level layout
+  ]) {
+    if (existsSync(resolve(candidate, 'apps/web/src/features/widgets-system/system'))) return candidate;
+  }
   return null;
 }
 
@@ -39,8 +45,17 @@ if (myHubRoot) {
   console.warn('[harness] MyHub source not found — falling back to local stub. Set HARNESS_MYHUB_PATH to point at your myHubV2 checkout.');
 }
 
+// lucide-react, clsx, and tailwind-merge are hoisted to the workspace root
+// node_modules. Vite can't find them when processing myHubV2 files outside
+// the project root, so we alias them explicitly. Other packages (@json-render/*)
+// must NOT be aliased — aliasing breaks their subpath exports.
+const workspaceModules = resolve(__dirname, '..', 'node_modules');
+
 const aliases: Record<string, string> = {
   '@plugin-elements': resolve(__dirname, '..', 'plugin', 'widget-elements', 'dist', 'index.js'),
+  'lucide-react': resolve(workspaceModules, 'lucide-react'),
+  'clsx': resolve(workspaceModules, 'clsx'),
+  'tailwind-merge': resolve(workspaceModules, 'tailwind-merge'),
 };
 if (myHubRoot) {
   aliases['@/lib/utils'] = resolve(myHubRoot, 'apps/web/src/lib/utils.ts');
@@ -48,13 +63,15 @@ if (myHubRoot) {
   aliases['@myhub-widgets-system/system/components'] = resolve(myHubRoot, 'apps/web/src/features/widgets-system/system/components.tsx');
   aliases['@myhub-widgets-system/system/functions'] = resolve(myHubRoot, 'apps/web/src/features/widgets-system/system/functions.ts');
   aliases['@myhub-widgets-system'] = resolve(myHubRoot, 'apps/web/src/features/widgets-system');
-  // Stubs for MyHub-only deps the system imports but the harness doesn't need.
-  // `actions.ts` pulls in MCP cache invalidation and a todo-modal store — none
-  // of which exists outside MyHub. Our harness wires actions through its own
-  // MCP handler map, so we never import actions.ts directly. But the stubs
-  // are a safety net if anything transitively reaches for them.
   aliases['@/stores/todo-modal'] = resolve(__dirname, 'src/stubs/todo-modal.ts');
   aliases['sonner'] = resolve(__dirname, 'src/stubs/sonner.ts');
+  // SurveyCard in components.tsx imports shadcn/ui primitives and internal survey
+  // components. We never render SurveyCard in the harness (not in componentNames)
+  // but Vite still needs to parse the file without errors.
+  aliases['@/components/ui/card'] = resolve(__dirname, 'src/stubs/card.tsx');
+  aliases['@/components/ui/button'] = resolve(__dirname, 'src/stubs/button.tsx');
+  aliases['@/components/surveys/survey-form-dialog'] = resolve(__dirname, 'src/stubs/survey-form-dialog.tsx');
+  aliases['@/components/surveys/survey-form'] = resolve(__dirname, 'src/stubs/survey-form.tsx');
 } else {
   // Fall back to the local system-fallback so the harness still boots when
   // MyHub isn't on disk. Widgets render with a plain Tailwind look — point

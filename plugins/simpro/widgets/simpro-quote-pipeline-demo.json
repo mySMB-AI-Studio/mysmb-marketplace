@@ -1,0 +1,166 @@
+{
+  "id": "simpro-quote-pipeline-demo",
+  "title": "Quote Pipeline (Demo)",
+  "description": "Static demo of the SimPro Quote Pipeline widget — 8 hardcoded electrical contractor quotes.",
+  "category": "operations",
+  "tags": ["simpro", "quotes", "pipeline", "estimating", "ground-plan", "electrical", "trade", "demo"],
+  "keywords": ["quote", "quotes", "estimate", "estimates", "pipeline", "ground plan", "simpro", "job management", "demo"],
+  "connectorsUsed": ["simpro"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 8 },
+    "min":       { "colSpan": 4, "rowSpan": 5 },
+    "max":       { "colSpan": 10, "rowSpan": 12 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "colHeader", "divider", "scrollBody"]
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "FileText", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Quote Pipeline", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "SimPro · Ground Plan" }
+      },
+
+      "colHeader": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["colLeft", "colRight"]
+      },
+      "colLeft":  { "type": "Caption", "props": { "text": "QUOTE / CUSTOMER" } },
+      "colRight": { "type": "Caption", "props": { "text": "TOTAL / STATUS" } },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "scrollBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["rows"]
+      },
+
+      "rows": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["q1", "rd1", "q2", "rd2", "q3", "rd3", "q4", "rd4", "q5", "rd5", "q6", "rd6", "q7", "rd7", "q8"]
+      },
+
+      "rd1": { "type": "Divider", "props": {} },
+      "rd2": { "type": "Divider", "props": {} },
+      "rd3": { "type": "Divider", "props": {} },
+      "rd4": { "type": "Divider", "props": {} },
+      "rd5": { "type": "Divider", "props": {} },
+      "rd6": { "type": "Divider", "props": {} },
+      "rd7": { "type": "Divider", "props": {} },
+
+      "q1":         { "type": "Row",    "props": { "align": "start" },                            "children": ["q1Left", "q1Right"] },
+      "q1Left":     { "type": "Row",    "props": { "gap": "sm", "align": "start", "grow": true },  "children": ["q1Av", "q1Body"] },
+      "q1Av":       { "type": "Avatar", "props": { "initials": "WR", "size": "md" } },
+      "q1Body":     { "type": "Stack",  "props": { "gap": "xs", "grow": true },                    "children": ["q1Name", "q1Customer"] },
+      "q1Name":     { "type": "Text",   "props": { "text": "Warehouse Rewire — Lot 4",            "size": "sm", "weight": "medium", "truncate": true } },
+      "q1Customer": { "type": "Text",   "props": { "text": "Blackwood Industrial",                "size": "xs", "tone": "muted",   "truncate": true } },
+      "q1Right":    { "type": "Stack",  "props": { "gap": "none", "align": "end" },                "children": ["q1Total", "q1Status"] },
+      "q1Total":    { "type": "Text",   "props": { "text": "$48,500",                             "size": "sm", "weight": "semibold" } },
+      "q1Status":   { "type": "Text",   "props": { "text": "Pending",                             "size": "xs", "tone": "muted" } },
+
+      "q2":         { "type": "Row",    "props": { "align": "start" },                            "children": ["q2Left", "q2Right"] },
+      "q2Left":     { "type": "Row",    "props": { "gap": "sm", "align": "start", "grow": true },  "children": ["q2Av", "q2Body"] },
+      "q2Av":       { "type": "Avatar", "props": { "initials": "CM", "size": "md" } },
+      "q2Body":     { "type": "Stack",  "props": { "gap": "xs", "grow": true },                    "children": ["q2Name", "q2Customer"] },
+      "q2Name":     { "type": "Text",   "props": { "text": "Commercial Fitout — Level 3",         "size": "sm", "weight": "medium", "truncate": true } },
+      "q2Customer": { "type": "Text",   "props": { "text": "Meridian Property Group",             "size": "xs", "tone": "muted",   "truncate": true } },
+      "q2Right":    { "type": "Stack",  "props": { "gap": "none", "align": "end" },                "children": ["q2Total", "q2Status"] },
+      "q2Total":    { "type": "Text",   "props": { "text": "$31,200",                             "size": "sm", "weight": "semibold" } },
+      "q2Status":   { "type": "Text",   "props": { "text": "Pending",                             "size": "xs", "tone": "muted" } },
+
+      "q3":         { "type": "Row",    "props": { "align": "start" },                            "children": ["q3Left", "q3Right"] },
+      "q3Left":     { "type": "Row",    "props": { "gap": "sm", "align": "start", "grow": true },  "children": ["q3Av", "q3Body"] },
+      "q3Av":       { "type": "Avatar", "props": { "initials": "IP", "size": "md" } },
+      "q3Body":     { "type": "Stack",  "props": { "gap": "xs", "grow": true },                    "children": ["q3Name", "q3Customer"] },
+      "q3Name":     { "type": "Text",   "props": { "text": "Industrial Panel Upgrade",            "size": "sm", "weight": "medium", "truncate": true } },
+      "q3Customer": { "type": "Text",   "props": { "text": "Coastal Concrete Co",                 "size": "xs", "tone": "muted",   "truncate": true } },
+      "q3Right":    { "type": "Stack",  "props": { "gap": "none", "align": "end" },                "children": ["q3Total", "q3Status"] },
+      "q3Total":    { "type": "Text",   "props": { "text": "$22,800",                             "size": "sm", "weight": "semibold" } },
+      "q3Status":   { "type": "Text",   "props": { "text": "Approved",                            "size": "xs", "tone": "muted" } },
+
+      "q4":         { "type": "Row",    "props": { "align": "start" },                            "children": ["q4Left", "q4Right"] },
+      "q4Left":     { "type": "Row",    "props": { "gap": "sm", "align": "start", "grow": true },  "children": ["q4Av", "q4Body"] },
+      "q4Av":       { "type": "Avatar", "props": { "initials": "EL", "size": "md" } },
+      "q4Body":     { "type": "Stack",  "props": { "gap": "xs", "grow": true },                    "children": ["q4Name", "q4Customer"] },
+      "q4Name":     { "type": "Text",   "props": { "text": "Emergency Lighting Install",          "size": "sm", "weight": "medium", "truncate": true } },
+      "q4Customer": { "type": "Text",   "props": { "text": "Westfield Shopping Centre",           "size": "xs", "tone": "muted",   "truncate": true } },
+      "q4Right":    { "type": "Stack",  "props": { "gap": "none", "align": "end" },                "children": ["q4Total", "q4Status"] },
+      "q4Total":    { "type": "Text",   "props": { "text": "$14,600",                             "size": "sm", "weight": "semibold" } },
+      "q4Status":   { "type": "Text",   "props": { "text": "Pending",                             "size": "xs", "tone": "muted" } },
+
+      "q5":         { "type": "Row",    "props": { "align": "start" },                            "children": ["q5Left", "q5Right"] },
+      "q5Left":     { "type": "Row",    "props": { "gap": "sm", "align": "start", "grow": true },  "children": ["q5Av", "q5Body"] },
+      "q5Av":       { "type": "Avatar", "props": { "initials": "DC", "size": "md" } },
+      "q5Body":     { "type": "Stack",  "props": { "gap": "xs", "grow": true },                    "children": ["q5Name", "q5Customer"] },
+      "q5Name":     { "type": "Text",   "props": { "text": "Data Centre UPS Cabling",             "size": "sm", "weight": "medium", "truncate": true } },
+      "q5Customer": { "type": "Text",   "props": { "text": "ServerHub Pty Ltd",                  "size": "xs", "tone": "muted",   "truncate": true } },
+      "q5Right":    { "type": "Stack",  "props": { "gap": "none", "align": "end" },                "children": ["q5Total", "q5Status"] },
+      "q5Total":    { "type": "Text",   "props": { "text": "$67,900",                             "size": "sm", "weight": "semibold" } },
+      "q5Status":   { "type": "Text",   "props": { "text": "Approved",                            "size": "xs", "tone": "muted" } },
+
+      "q6":         { "type": "Row",    "props": { "align": "start" },                            "children": ["q6Left", "q6Right"] },
+      "q6Left":     { "type": "Row",    "props": { "gap": "sm", "align": "start", "grow": true },  "children": ["q6Av", "q6Body"] },
+      "q6Av":       { "type": "Avatar", "props": { "initials": "RS", "size": "md" } },
+      "q6Body":     { "type": "Stack",  "props": { "gap": "xs", "grow": true },                    "children": ["q6Name", "q6Customer"] },
+      "q6Name":     { "type": "Text",   "props": { "text": "Residential Subdivision — Stage 2",   "size": "sm", "weight": "medium", "truncate": true } },
+      "q6Customer": { "type": "Text",   "props": { "text": "Pinnacle Homes",                      "size": "xs", "tone": "muted",   "truncate": true } },
+      "q6Right":    { "type": "Stack",  "props": { "gap": "none", "align": "end" },                "children": ["q6Total", "q6Status"] },
+      "q6Total":    { "type": "Text",   "props": { "text": "$89,400",                             "size": "sm", "weight": "semibold" } },
+      "q6Status":   { "type": "Text",   "props": { "text": "Pending",                             "size": "xs", "tone": "muted" } },
+
+      "q7":         { "type": "Row",    "props": { "align": "start" },                            "children": ["q7Left", "q7Right"] },
+      "q7Left":     { "type": "Row",    "props": { "gap": "sm", "align": "start", "grow": true },  "children": ["q7Av", "q7Body"] },
+      "q7Av":       { "type": "Avatar", "props": { "initials": "SR", "size": "md" } },
+      "q7Body":     { "type": "Stack",  "props": { "gap": "xs", "grow": true },                    "children": ["q7Name", "q7Customer"] },
+      "q7Name":     { "type": "Text",   "props": { "text": "Switchboard Replacement",             "size": "sm", "weight": "medium", "truncate": true } },
+      "q7Customer": { "type": "Text",   "props": { "text": "All Seasons Cold Storage",            "size": "xs", "tone": "muted",   "truncate": true } },
+      "q7Right":    { "type": "Stack",  "props": { "gap": "none", "align": "end" },                "children": ["q7Total", "q7Status"] },
+      "q7Total":    { "type": "Text",   "props": { "text": "$11,200",                             "size": "sm", "weight": "semibold" } },
+      "q7Status":   { "type": "Text",   "props": { "text": "Archived",                            "size": "xs", "tone": "muted" } },
+
+      "q8":         { "type": "Row",    "props": { "align": "start" },                            "children": ["q8Left", "q8Right"] },
+      "q8Left":     { "type": "Row",    "props": { "gap": "sm", "align": "start", "grow": true },  "children": ["q8Av", "q8Body"] },
+      "q8Av":       { "type": "Avatar", "props": { "initials": "SI", "size": "md" } },
+      "q8Body":     { "type": "Stack",  "props": { "gap": "xs", "grow": true },                    "children": ["q8Name", "q8Customer"] },
+      "q8Name":     { "type": "Text",   "props": { "text": "Solar Integration — Rooftop",         "size": "sm", "weight": "medium", "truncate": true } },
+      "q8Customer": { "type": "Text",   "props": { "text": "GreenBuild Solutions",                "size": "xs", "tone": "muted",   "truncate": true } },
+      "q8Right":    { "type": "Stack",  "props": { "gap": "none", "align": "end" },                "children": ["q8Total", "q8Status"] },
+      "q8Total":    { "type": "Text",   "props": { "text": "$38,700",                             "size": "sm", "weight": "semibold" } },
+      "q8Status":   { "type": "Text",   "props": { "text": "Approved",                            "size": "xs", "tone": "muted" } }
+
+    }
+  },
+  "status": "published"
+}

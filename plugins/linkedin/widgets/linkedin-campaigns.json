@@ -1,0 +1,115 @@
+{
+  "id": "linkedin-campaigns",
+  "title": "LinkedIn Campaigns",
+  "description": "Active LinkedIn ad campaigns — names, types, and statuses for your sponsored account. Set adAccountId in params to your LinkedIn Sponsored Account ID.",
+  "category": "marketing",
+  "tags": ["linkedin", "marketing", "campaigns", "ads", "b2b", "advertising"],
+  "keywords": ["campaigns", "ads", "sponsored", "advertising", "linkedin", "b2b", "budget"],
+  "connectorsUsed": ["linkedin"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 4 },
+    "min": { "colSpan": 4, "rowSpan": 3 },
+    "max": { "colSpan": 12, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "linkedin",
+    "tool": "linkedin_marketing_get_campaigns",
+    "params": {
+      "adAccountId": "YOUR_AD_ACCOUNT_ID",
+      "count": 10
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "children": ["header", "body"] },
+      "header": { "type": "Header", "children": ["titleGroup"] },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "BarChart2", "tone": "accent", "size": "sm" } },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "count"]
+      },
+      "title": { "type": "Heading", "props": { "text": "LinkedIn Campaigns", "level": "h2" } },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} Campaigns",
+              "n": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/linkedin/linkedin_marketing_get_campaigns/elements" } }
+              }
+            }
+          }
+        }
+      },
+      "body": { "type": "Body", "children": ["loading", "empty", "list"] },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/linkedin.linkedin_marketing_get_campaigns" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No campaigns found. Check your adAccountId param." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/linkedin.linkedin_marketing_get_campaigns", "not": true },
+            { "$state": "/linkedin/linkedin_marketing_get_campaigns/elements/0", "not": true }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["campaignRow"],
+        "repeat": {
+          "statePath": "/linkedin/linkedin_marketing_get_campaigns/elements",
+          "key": "id"
+        },
+        "visible": { "$state": "/_loading/linkedin.linkedin_marketing_get_campaigns", "not": true }
+      },
+      "campaignRow": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["campaignTop"]
+      },
+      "campaignTop": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["campaignLeft", "statusBadge"]
+      },
+      "campaignLeft": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["campaignName", "campaignType"]
+      },
+      "campaignName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "campaignType": {
+        "type": "Caption",
+        "props": { "text": { "$item": "type" } }
+      },
+      "statusBadge": {
+        "type": "Badge",
+        "props": { "text": { "$item": "status" }, "tone": "info", "variant": "soft" }
+      }
+    }
+  },
+  "status": "published"
+}

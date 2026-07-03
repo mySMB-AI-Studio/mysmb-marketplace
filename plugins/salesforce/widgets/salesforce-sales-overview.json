@@ -1,0 +1,214 @@
+{
+  "id": "salesforce-sales-overview",
+  "title": "Sales Overview",
+  "description": "Live Salesforce KPIs: open opportunities, pipeline value, closed won revenue, and win rate.",
+  "category": "sales",
+  "tags": ["salesforce", "crm", "sales", "kpi", "overview", "pipeline"],
+  "keywords": ["sales overview", "kpi", "opportunities", "pipeline", "closed won", "win rate", "salesforce", "crm"],
+  "connectorsUsed": ["salesforce"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 8, "rowSpan": 3 },
+    "min":       { "colSpan": 6, "rowSpan": 3 },
+    "max":       { "colSpan": 12, "rowSpan": 6 }
+  },
+  "dataProvider": {
+    "mcp": "salesforce",
+    "tool": "soql_query",
+    "params": {
+      "query": "SELECT Id, IsClosed, IsWon, Amount FROM Opportunity LIMIT 2000"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "loading", "kpiGrid"]
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Clock", "tone": "accent", "size": "sm" } },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title":   { "type": "Heading", "props": { "text": "Sales Overview", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Salesforce" } },
+
+      "loading": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "md" },
+        "children": ["ls1", "ls2", "ls3", "ls4"],
+        "visible": { "$state": "/_loading/salesforce.soql_query" }
+      },
+      "ls1": { "type": "Skeleton", "props": { "height": "6rem", "rounded": "md" } },
+      "ls2": { "type": "Skeleton", "props": { "height": "6rem", "rounded": "md" } },
+      "ls3": { "type": "Skeleton", "props": { "height": "6rem", "rounded": "md" } },
+      "ls4": { "type": "Skeleton", "props": { "height": "6rem", "rounded": "md" } },
+
+      "kpiGrid": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "md" },
+        "children": ["box1", "box2", "box3", "box4"],
+        "visible": { "$state": "/_loading/salesforce.soql_query", "not": true }
+      },
+
+      "box1": { "type": "Section", "props": { "variant": "muted" }, "children": ["cell1"] },
+      "cell1": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["hdr1", "val1", "sub1"]
+      },
+      "hdr1": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["ico1", "lbl1"]
+      },
+      "ico1": { "type": "Icon", "props": { "name": "Hash", "tone": "accent", "size": "xs" } },
+      "lbl1": { "type": "Caption", "props": { "text": "OPEN OPPORTUNITIES" } },
+      "val1": {
+        "type": "Heading",
+        "props": {
+          "text": {
+            "$computed": "count_where",
+            "args": {
+              "value": { "$state": "/salesforce/soql_query/records" },
+              "whereField": "IsClosed",
+              "equals": false
+            }
+          },
+          "level": "h1"
+        }
+      },
+      "sub1": { "type": "Text", "props": { "text": "currently open", "size": "xs", "tone": "muted" } },
+
+      "box2": { "type": "Section", "props": { "variant": "muted" }, "children": ["cell2"] },
+      "cell2": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["hdr2", "val2", "sub2"]
+      },
+      "hdr2": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["ico2", "lbl2"]
+      },
+      "ico2": { "type": "Icon", "props": { "name": "DollarSign", "tone": "info", "size": "xs" } },
+      "lbl2": { "type": "Caption", "props": { "text": "PIPELINE VALUE" } },
+      "val2": {
+        "type": "Heading",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "sum",
+                "args": {
+                  "value": {
+                    "$computed": "filter_by",
+                    "args": {
+                      "value": { "$state": "/salesforce/soql_query/records" },
+                      "field": "IsClosed",
+                      "equals": false
+                    }
+                  },
+                  "field": "Amount"
+                }
+              }
+            }
+          },
+          "level": "h1"
+        }
+      },
+      "sub2": { "type": "Text", "props": { "text": "sum of open Amount", "size": "xs", "tone": "muted" } },
+
+      "box3": { "type": "Section", "props": { "variant": "muted" }, "children": ["cell3"] },
+      "cell3": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["hdr3", "val3", "sub3"]
+      },
+      "hdr3": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["ico3", "lbl3"]
+      },
+      "ico3": { "type": "Icon", "props": { "name": "Check", "tone": "success", "size": "xs" } },
+      "lbl3": { "type": "Caption", "props": { "text": "CLOSED WON" } },
+      "val3": {
+        "type": "Heading",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "sum",
+                "args": {
+                  "value": {
+                    "$computed": "filter_by",
+                    "args": {
+                      "value": { "$state": "/salesforce/soql_query/records" },
+                      "field": "IsWon",
+                      "equals": true
+                    }
+                  },
+                  "field": "Amount"
+                }
+              }
+            }
+          },
+          "level": "h1"
+        }
+      },
+      "sub3": { "type": "Text", "props": { "text": "sum of won Amount", "size": "xs", "tone": "muted" } },
+
+      "box4": { "type": "Section", "props": { "variant": "muted" }, "children": ["cell4"] },
+      "cell4": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["hdr4", "val4", "sub4"]
+      },
+      "hdr4": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["ico4", "lbl4"]
+      },
+      "ico4": { "type": "Icon", "props": { "name": "Percent", "tone": "warning", "size": "xs" } },
+      "lbl4": { "type": "Caption", "props": { "text": "WIN RATE" } },
+      "val4": {
+        "type": "Heading",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{r}%",
+              "r": {
+                "$computed": "salesforce_win_rate",
+                "args": {
+                  "value": { "$state": "/salesforce/soql_query/records" }
+                }
+              }
+            }
+          },
+          "level": "h1"
+        }
+      },
+      "sub4": { "type": "Text", "props": { "text": "won ÷ all closed", "size": "xs", "tone": "muted" } }
+
+    }
+  },
+  "status": "published"
+}

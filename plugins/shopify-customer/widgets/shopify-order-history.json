@@ -1,0 +1,235 @@
+{
+  "id": "shopify-order-history",
+  "title": "Order History",
+  "description": "Recent orders for the authenticated Shopify customer — order number, placed date, payment status, and total.",
+  "category": "ecommerce",
+  "tags": [
+    "shopify",
+    "orders",
+    "customer",
+    "history",
+    "ecommerce"
+  ],
+  "keywords": [
+    "orders",
+    "order history",
+    "purchases",
+    "shopify",
+    "customer",
+    "account"
+  ],
+  "connectorsUsed": [
+    "shopify-customer"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 8,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 6,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "shopify-customer",
+    "tool": "get_orders",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleRow"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ShoppingCart",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "count"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Order History",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} orders",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/shopify-customer/get_orders/orders"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "table"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/_loading/shopify-customer.get_orders"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3",
+          "sk4"
+        ]
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "sk4": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No orders placed yet."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/shopify-customer.get_orders",
+              "not": true
+            },
+            {
+              "$state": "/shopify-customer/get_orders/orders/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "table": {
+        "type": "Table",
+        "props": {
+          "rows": {
+            "$state": "/shopify-customer/get_orders/orders"
+          },
+          "columns": [
+            {
+              "id": "name",
+              "header": "Order",
+              "field": "name",
+              "priority": 1
+            },
+            {
+              "id": "createdAt",
+              "header": "Date",
+              "field": "createdAt",
+              "format": "date",
+              "priority": 1
+            },
+            {
+              "id": "financialStatus",
+              "header": "Payment",
+              "field": "financialStatus",
+              "priority": 1
+            },
+            {
+              "id": "fulfillmentStatus",
+              "header": "Fulfillment",
+              "field": "fulfillmentStatus",
+              "priority": 2
+            },
+            {
+              "id": "total",
+              "header": "Total",
+              "field": "totalPrice.amount",
+              "currencyCode": "totalPrice.currencyCode",
+              "align": "right",
+              "format": "currency",
+              "priority": 1
+            }
+          ]
+        },
+        "visible": {
+          "$state": "/_loading/shopify-customer.get_orders",
+          "not": true
+        }
+      }
+    }
+  },
+  "status": "published"
+}

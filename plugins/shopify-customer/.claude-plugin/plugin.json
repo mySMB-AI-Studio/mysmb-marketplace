@@ -1,0 +1,35 @@
+{
+  "name": "shopify-customer",
+  "version": "0.1.0",
+  "description": "Connect to Shopify's Customer Accounts MCP server. Access authenticated customer data — order history, order details, saved addresses, and account profile — via OAuth 2.0 + PKCE.",
+  "author": { "name": "mySMB AI Studio" },
+  "homepage": "https://github.com/mySMB-AI-Studio/mysmb-marketplace/tree/main/plugins/shopify-customer",
+  "license": "MIT",
+  "keywords": ["shopify", "ecommerce", "customer", "orders", "account", "oauth", "pkce", "smb"],
+  "widgets": "widgets",
+  "connection": {
+    "authType": "oauth_client",
+    "instructions": "To enable authenticated customer data (orders, account details), you must:\n\n1. Create a **Headless app** in your Shopify Partner Dashboard or store admin.\n2. Under *Customer account UI extensions → Headless*, create a new client. Set the **redirect URI** to the value shown in the Connect dialog.\n3. Copy the **Client ID** and paste it below. No client secret is used — Shopify Customer Accounts uses PKCE (public client).\n4. Ensure your store has a custom domain (required by Shopify for Customer Accounts MCP).\n5. Your store must have completed Shopify's protected customer data requirements (Level 2 PII approval via Partner Dashboard).",
+    "docUrl": "https://shopify.dev/docs/apps/build/storefront-mcp/servers/customer-account",
+    "scopes": ["customer-account-mcp-api:full"],
+    "fields": [
+      {
+        "name": "SHOPIFY_SHOP_DOMAIN",
+        "label": "Custom shop domain",
+        "type": "text",
+        "required": true,
+        "placeholder": "shop.example.com",
+        "helpText": "Your store's custom domain (required for Customer Accounts MCP). Shopify does not support Customer Accounts on .myshopify.com — a custom domain is mandatory."
+      },
+      {
+        "name": "SHOPIFY_CUSTOMER_CLIENT_ID",
+        "label": "Customer Accounts Client ID",
+        "type": "text",
+        "required": true,
+        "role": "client_id",
+        "placeholder": "shp_client_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "helpText": "From Shopify admin: Settings → Customer accounts → Headless. This is a public client identifier — no secret is involved."
+      }
+    ]
+  }
+}

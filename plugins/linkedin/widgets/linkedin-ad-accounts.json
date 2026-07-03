@@ -1,0 +1,87 @@
+{
+  "id": "linkedin-ad-accounts",
+  "title": "Ad Accounts",
+  "description": "Your LinkedIn ad accounts — names, types, and statuses at a glance.",
+  "category": "marketing",
+  "tags": ["linkedin", "marketing", "ads", "b2b", "advertising"],
+  "keywords": ["ad accounts", "sponsored", "advertising", "linkedin", "b2b", "campaigns"],
+  "connectorsUsed": ["linkedin"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 4 },
+    "min": { "colSpan": 3, "rowSpan": 3 },
+    "max": { "colSpan": 8, "rowSpan": 8 }
+  },
+  "dataProvider": {
+    "mcp": "linkedin",
+    "tool": "linkedin_marketing_get_ad_accounts",
+    "params": { "count": 10 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "children": ["header", "body"] },
+      "header": { "type": "Header", "children": ["titleGroup"] },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleText"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Linkedin", "tone": "accent", "size": "sm" } },
+      "titleText": { "type": "Heading", "props": { "text": "Ad Accounts", "level": "h2" } },
+      "body": { "type": "Body", "children": ["loading", "empty", "list"] },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/linkedin.linkedin_marketing_get_ad_accounts" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No ad accounts found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/linkedin.linkedin_marketing_get_ad_accounts", "not": true },
+            { "$state": "/linkedin/linkedin_marketing_get_ad_accounts/elements/0", "not": true }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["row"],
+        "repeat": {
+          "statePath": "/linkedin/linkedin_marketing_get_ad_accounts/elements",
+          "key": "id"
+        },
+        "visible": { "$state": "/_loading/linkedin.linkedin_marketing_get_ad_accounts", "not": true }
+      },
+      "row": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true },
+        "children": ["rowLeft", "statusBadge"]
+      },
+      "rowLeft": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["accountName", "accountType"]
+      },
+      "accountName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "accountType": {
+        "type": "Caption",
+        "props": { "text": { "$item": "type" } }
+      },
+      "statusBadge": {
+        "type": "Badge",
+        "props": { "text": { "$item": "status" }, "tone": "success", "variant": "soft" }
+      }
+    }
+  },
+  "status": "published"
+}
