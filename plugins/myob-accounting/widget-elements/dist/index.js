@@ -723,33 +723,28 @@ const three_month_window = (args) => {
     const today = new Date();
     const cy = today.getFullYear();
     const cm = today.getMonth(); // 0-indexed
-    let months = [cm - 2, cm - 1, cm].map((m) => {
+    const months = [cm - 2, cm - 1, cm].map((m) => {
         const year = cy + Math.floor(m / 12);
         const month = ((m % 12) + 12) % 12;
         return { year, month };
     });
-    // MYOB P&L rejects date ranges that cross an Australian FY boundary.
-    // If the trailing window spans two FYs, keep the larger contiguous segment.
-    const FY_START = 6; // July = month 6 (0-indexed)
-    const fyOf = (year, month) => month >= FY_START ? year + 1 : year;
-    const fys = months.map(({ year, month }) => fyOf(year, month));
-    const currFY = fys[fys.length - 1];
-    if (!fys.every(fy => fy === currFY)) {
-        const inCurr = months.filter((_, i) => fys[i] === currFY);
-        const inPrev = months.filter((_, i) => fys[i] === currFY - 1);
-        months = inCurr.length >= inPrev.length ? inCurr : inPrev;
-    }
     const pad = (n) => String(n).padStart(2, '0');
     const lastDay = (year, month) => new Date(year, month + 1, 0).getDate();
+    const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const m0 = months[0];
     const m2 = months[months.length - 1];
     const from_date = `${m0.year}-${pad(m0.month + 1)}-01`;
-    const to_date = `${m2.year}-${pad(m2.month + 1)}-${pad(lastDay(m2.year, m2.month))}`;
+    // Use today for the current (partial) month; end-of-month for completed months.
+    const isCurrentMonth = m2.year === cy && m2.month === cm;
+    const to_date = isCurrentMonth
+        ? `${cy}-${pad(cm + 1)}-${pad(today.getDate())}`
+        : `${m2.year}-${pad(m2.month + 1)}-${pad(lastDay(m2.year, m2.month))}`;
     const from_date_ly = `${m0.year - 1}-${pad(m0.month + 1)}-01`;
-    const to_date_ly = `${m2.year - 1}-${pad(m2.month + 1)}-${pad(lastDay(m2.year - 1, m2.month))}`;
+    const to_date_ly = isCurrentMonth
+        ? `${cy - 1}-${pad(cm + 1)}-${pad(today.getDate())}`
+        : `${m2.year - 1}-${pad(m2.month + 1)}-${pad(lastDay(m2.year - 1, m2.month))}`;
     const months_cy = months.map(({ year, month }) => `${year}-${pad(month + 1)}`);
     const months_ly = months.map(({ year, month }) => `${year - 1}-${pad(month + 1)}`);
-    const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const month_0 = MONTH_NAMES[months[0].month];
     const month_1 = months.length > 1 ? MONTH_NAMES[months[1].month] : '';
     const month_2 = months.length > 2 ? MONTH_NAMES[months[2].month] : '';
