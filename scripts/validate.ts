@@ -12,6 +12,12 @@
  *   5. Every ${VAR} placeholder in .mcp.json env values (or headers, for
  *      remote transports) is either CLAUDE_PLUGIN_ROOT (reserved) or
  *      documented in the plugin README under a "Configuration" heading.
+ *   6. If plugin.json declares a MyHub `content` section (tenant-authored
+ *      plugin packaging), every listed content file exists and parses as
+ *      JSON, its filename matches the payload's originKey (and its `kind`
+ *      matches the section it is listed under), and every automation
+ *      dependency resolves to a content entity bundled in the same plugin.
+ *      Plugins without a content section are unaffected.
  *
  * Exits 1 on any failure.
  */
@@ -219,6 +225,119 @@ function validateWidgetElements(
   }
 }
 
+// ──────────────────────────────────────────────────────────────────────────
+// MyHub content section — tenant-authored plugin packaging (2026-07).
+// plugin.json may carry a `content` object listing plugin-relative paths of
+// DB-backed content files (content/<kind-dir>/<origin-key>.json) that the
+// MyHub tenant installer upserts by origin_key. Claude Code ignores the
+// section; plugins without one are unaffected. Kept in lock-step with the
+// in-app bundle validator in myHubV2:
+// packages/shared/src/plugins/authoring/validate.ts (see its parity map).
+// ──────────────────────────────────────────────────────────────────────────
+
+type ContentKind = "automation" | "workq_template" | "form_template" | "form";
+
+/** plugin.json `content` section key → the `kind` its payloads must carry. */
+const CONTENT_SECTION_KINDS: Record<string, ContentKind> = {
+  automations: "automation",
+  workqTemplates: "workq_template",
+  formTemplates: "form_template",
+  forms: "form",
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function validateContent(pluginDirName: string, content: unknown) {
+  if (!isRecord(content)) {
+    fail(`plugins/${pluginDirName}: plugin.json content section must be an object`);
+    return;
+  }
+  const pluginDir = join(repoRoot, "plugins", pluginDirName);
+
+  /** kind → originKeys of every payload that parsed (dependency targets). */
+  const bundledByKind = new Map<ContentKind, Set<string>>();
+  /** Parsed automation payloads, revisited for the dependency check. */
+  const automationPayloads: Array<{
+    entry: string;
+    payload: Record<string, unknown>;
+  }> = [];
+
+  for (const [section, expectedKind] of Object.entries(CONTENT_SECTION_KINDS)) {
+    const listed = content[section];
+    if (listed === undefined) continue;
+    if (!Array.isArray(listed)) {
+      fail(
+        `plugins/${pluginDirName}: plugin.json content.${section} must be an array of paths`,
+      );
+      continue;
+    }
+    for (const entry of listed) {
+      if (typeof entry !== "string") {
+        fail(
+          `plugins/${pluginDirName}: plugin.json content.${section} has a non-string entry`,
+        );
+        continue;
+      }
+      const filePath = join(pluginDir, entry);
+      if (!existsSync(filePath) || !statSync(filePath).isFile()) {
+        fail(
+          `plugins/${pluginDirName}: content file "${entry}" listed in plugin.json is missing`,
+        );
+        continue;
+      }
+      const payload = readJson<unknown>(filePath);
+      if (payload === null) continue; // readJson already reported the parse failure
+      if (!isRecord(payload)) {
+        fail(`plugins/${pluginDirName}: ${entry} content payload must be a JSON object`);
+        continue;
+      }
+      if (payload.kind !== expectedKind) {
+        fail(
+          `plugins/${pluginDirName}: ${entry} payload kind "${String(payload.kind)}" does not match its plugin.json section "${section}" (expected "${expectedKind}")`,
+        );
+      }
+      const originKey = typeof payload.originKey === "string" ? payload.originKey : null;
+      const fileBase = entry.slice(entry.lastIndexOf("/") + 1).replace(/\.json$/, "");
+      if (originKey === null || originKey !== fileBase) {
+        fail(
+          `plugins/${pluginDirName}: ${entry} filename "${fileBase}" does not match the payload originKey "${String(payload.originKey)}"`,
+        );
+      }
+      if (originKey !== null) {
+        const keys = bundledByKind.get(expectedKind) ?? new Set<string>();
+        keys.add(originKey);
+        bundledByKind.set(expectedKind, keys);
+      }
+      if (expectedKind === "automation") automationPayloads.push({ entry, payload });
+    }
+  }
+
+  // Automations' declared dependencies must resolve inside the same plugin —
+  // the MyHub installer upserts forms/templates first, then remaps the
+  // automation IR by originKey; a dangling key would leave the automation
+  // broken on install.
+  const allKeys = new Set<string>([...bundledByKind.values()].flatMap((s) => [...s]));
+  for (const { entry, payload } of automationPayloads) {
+    if (!Array.isArray(payload.dependencies)) continue;
+    for (const dep of payload.dependencies) {
+      if (!isRecord(dep) || typeof dep.originKey !== "string") continue;
+      const entityKind = typeof dep.entityKind === "string" ? dep.entityKind : "";
+      const kindSet = (Object.values(CONTENT_SECTION_KINDS) as string[]).includes(
+        entityKind,
+      )
+        ? (bundledByKind.get(entityKind as ContentKind) ?? new Set<string>())
+        : allKeys;
+      if (!kindSet.has(dep.originKey)) {
+        fail(
+          `plugins/${pluginDirName}: ${entry} automation dependency ${entityKind || "entity"} ${dep.originKey} is not bundled — add it to the plugin (dangling reference)`,
+        );
+      }
+    }
+  }
+}
+
 function validatePlugin(pluginDirName: string, expectedName: string) {
   const pluginDir = join(repoRoot, "plugins", pluginDirName);
   if (!existsSync(pluginDir) || !statSync(pluginDir).isDirectory()) {
@@ -243,6 +362,7 @@ function validatePlugin(pluginDirName: string, expectedName: string) {
     name?: string;
     widgetElements?: string;
     widgets?: string;
+    content?: unknown;
   }>(manifestPath);
   if (manifest && manifest.name && manifest.name !== expectedName) {
     fail(
@@ -251,6 +371,9 @@ function validatePlugin(pluginDirName: string, expectedName: string) {
   }
   if (manifest) {
     validateWidgetElements(pluginDirName, manifest);
+    if (manifest.content !== undefined) {
+      validateContent(pluginDirName, manifest.content);
+    }
   }
 
   const mcp = readJson<{
