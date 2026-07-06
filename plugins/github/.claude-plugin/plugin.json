@@ -8,9 +8,13 @@
   "keywords": ["github", "issues", "projects", "roadmap", "engineering", "dev", "oauth", "smb"],
   "connection": {
     "authType": "oauth_client",
-    "instructions": "GitHub doesn't support automatic OAuth app registration, so connecting is a one-time, two-step setup:\n\n1. **Register a GitHub OAuth App** at *Settings → Developer settings → OAuth Apps → New OAuth App* (or reuse one your admin already created).\n2. Set its **Authorization callback URL** to the value shown above.\n3. Copy the **Client ID**, generate a **Client Secret**, and paste both below.\n\nWhen you click Connect you'll sign in to GitHub and authorise read access. The server only ever sees repositories and Projects you can already access. Your Client ID and Secret are stored securely, per user.",
+    "instructions": "If your workspace administrator has enabled the built-in GitHub app, just click Connect and sign in — no setup needed. Otherwise:\n\nGitHub doesn't support automatic OAuth app registration, so connecting is a one-time, two-step setup:\n\n1. **Register a GitHub OAuth App** at *Settings → Developer settings → OAuth Apps → New OAuth App* (or reuse one your admin already created).\n2. Set its **Authorization callback URL** to the value shown above.\n3. Copy the **Client ID**, generate a **Client Secret**, and paste both below.\n\nWhen you click Connect you'll sign in to GitHub and authorise read access. The server only ever sees repositories and Projects you can already access. Your Client ID and Secret are stored securely, per user.",
     "docUrl": "https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app",
     "scopes": ["repo", "read:org", "read:project"],
+    "serverClientEnv": {
+      "clientId": "GITHUB_OAUTH_CLIENT_ID",
+      "clientSecret": "GITHUB_OAUTH_CLIENT_SECRET"
+    },
     "fields": [
       {
         "name": "OAUTH_CLIENT_ID",
