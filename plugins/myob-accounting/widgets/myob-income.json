@@ -33,14 +33,14 @@
             }
           },
           "/ui/window": {
-            "action": "myob-accounting.get_profit_and_loss",
+            "action": "myob-accounting.get_profit_and_loss_3m",
             "params": {
               "from_date": { "$state": "/ui/window/from_date" },
               "to_date": { "$state": "/ui/window/to_date" },
               "reporting_basis": "Accrual"
             }
           },
-          "/myob-accounting/get_profit_and_loss": [
+          "/myob-accounting/get_profit_and_loss_3m": [
             {
               "action": "myob-accounting.list_invoices",
               "params": {
@@ -87,7 +87,7 @@
       "heroStack": {
         "type": "Stack",
         "props": { "gap": "none" },
-        "visible": { "$state": "/myob-accounting/get_profit_and_loss" },
+        "visible": { "$state": "/myob-accounting/get_profit_and_loss_3m" },
         "children": ["heroAmt", "heroSub"]
       },
       "heroAmt": {
@@ -99,7 +99,7 @@
               "value": {
                 "$computed": "myob-accounting_pnl_get",
                 "args": {
-                  "value": { "$state": "/myob-accounting/get_profit_and_loss" },
+                  "value": { "$state": "/myob-accounting/get_profit_and_loss_3m" },
                   "key": "income"
                 }
               }
@@ -270,7 +270,7 @@
               "value": {
                 "$computed": "myob-accounting_pnl_get",
                 "args": {
-                  "value": { "$state": "/myob-accounting/get_profit_and_loss" },
+                  "value": { "$state": "/myob-accounting/get_profit_and_loss_3m" },
                   "key": "income"
                 }
               }
