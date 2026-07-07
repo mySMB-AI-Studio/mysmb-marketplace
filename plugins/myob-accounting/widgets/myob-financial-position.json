@@ -1,7 +1,7 @@
 {
   "id": "myob-financial-position",
   "title": "MYOB — Financial Position",
-  "description": "Net profit hero with monthly income, expenses and profit sparklines for the financial year.",
+  "description": "Net profit hero with monthly income, expenses and profit sparklines for the current financial year. Dates are hardcoded to AU FY Jul 2026 – Jun 2027; bump from_date/to_date and sparkline months annually at FY rollover.",
   "category": "finance",
   "tags": ["myob", "pnl", "profit", "net profit", "financial position", "income", "expenses", "finance", "report"],
   "keywords": ["financial position", "net profit", "income", "expenses", "pnl", "myob", "balance", "financial year"],
@@ -15,7 +15,7 @@
   "dataProvider": {
     "mcp": "myob-accounting",
     "tool": "get_profit_and_loss",
-    "params": { "from_date": "2025-07-01", "to_date": "2026-06-30", "reporting_basis": "Accrual" }
+    "params": { "from_date": "2026-07-01", "to_date": "2027-06-30", "reporting_basis": "Accrual" }
   },
   "spec": {
     "root": "card",
@@ -28,11 +28,11 @@
           "/myob-accounting/get_profit_and_loss": [
             {
               "action": "myob-accounting.list_invoices",
-              "params": { "status": "All", "from_date": "2025-07-01", "to_date": "2026-06-30", "page_size": 1000 }
+              "params": { "status": "All", "from_date": "2026-07-01", "to_date": "2027-06-30", "page_size": 1000 }
             },
             {
               "action": "myob-accounting.list_bills",
-              "params": { "status": "All", "from_date": "2025-07-01", "to_date": "2026-06-30", "page_size": 1000 }
+              "params": { "status": "All", "from_date": "2026-07-01", "to_date": "2027-06-30", "page_size": 1000 }
             }
           ]
         }
@@ -96,7 +96,7 @@
             "$computed": "myob-accounting_monthly_totals",
             "args": {
               "value": { "$state": "/myob-accounting/list_invoices/Items" },
-              "months": ["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"]
+              "months": ["2026-07","2026-08","2026-09","2026-10","2026-11","2026-12","2027-01","2027-02","2027-03","2027-04","2027-05","2027-06"]
             }
           },
           "tone": "success",
@@ -118,7 +118,7 @@
             "$computed": "myob-accounting_monthly_totals",
             "args": {
               "value": { "$state": "/myob-accounting/list_bills/Items" },
-              "months": ["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"]
+              "months": ["2026-07","2026-08","2026-09","2026-10","2026-11","2026-12","2027-01","2027-02","2027-03","2027-04","2027-05","2027-06"]
             }
           },
           "tone": "destructive",
@@ -143,14 +143,14 @@
                 "$computed": "myob-accounting_monthly_totals",
                 "args": {
                   "value": { "$state": "/myob-accounting/list_invoices/Items" },
-                  "months": ["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"]
+                  "months": ["2026-07","2026-08","2026-09","2026-10","2026-11","2026-12","2027-01","2027-02","2027-03","2027-04","2027-05","2027-06"]
                 }
               },
               "expenses": {
                 "$computed": "myob-accounting_monthly_totals",
                 "args": {
                   "value": { "$state": "/myob-accounting/list_bills/Items" },
-                  "months": ["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"]
+                  "months": ["2026-07","2026-08","2026-09","2026-10","2026-11","2026-12","2027-01","2027-02","2027-03","2027-04","2027-05","2027-06"]
                 }
               }
             }
@@ -166,9 +166,9 @@
         "props": { "justify": "between" },
         "children": ["dateStart", "dateMid", "dateEnd"]
       },
-      "dateStart": { "type": "Caption", "props": { "text": "Jul 2025" } },
-      "dateMid":   { "type": "Caption", "props": { "text": "Jan 2026" } },
-      "dateEnd":   { "type": "Caption", "props": { "text": "Jun 2026" } },
+      "dateStart": { "type": "Caption", "props": { "text": "Jul 2026" } },
+      "dateMid":   { "type": "Caption", "props": { "text": "Jan 2027" } },
+      "dateEnd":   { "type": "Caption", "props": { "text": "Jun 2027" } },
 
       "legend": {
         "type": "Row",
