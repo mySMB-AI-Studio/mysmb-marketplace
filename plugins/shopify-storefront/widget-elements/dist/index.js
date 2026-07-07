@@ -68,8 +68,32 @@ const cycle_sort = (args) => {
         return `${field}|asc`;
     return currentDir === 'asc' ? `${field}|desc` : `${field}|asc`;
 };
+/**
+ * Keep records whose numeric `field` value is strictly below a threshold.
+ * Non-numeric field values are excluded. Returns all items when field is
+ * missing or the threshold isn't a finite number.
+ *
+ * Args: { value: array, field: string, below: number }
+ *   value — the records array to filter
+ *   field — numeric field to compare (e.g. "totalInventory")
+ *   below — exclusive upper bound; rows with field < below are kept
+ *
+ * Spec example:
+ *   { "$computed": "shopify-storefront_filter_below", "args": { "value": { "$state": "/shopify-ucp/search_catalog/products" }, "field": "totalInventory", "below": 10 } }
+ */
+const filter_below = (args) => {
+    const items = Array.isArray(args.value) ? args.value : [];
+    const field = String(args.field ?? '');
+    const below = Number(args.below);
+    if (!field || !Number.isFinite(below))
+        return items;
+    return items.filter((row) => {
+        const n = Number(row[field]);
+        return Number.isFinite(n) && n < below;
+    });
+};
 const elements = {
     slug: 'shopify-storefront',
-    functions: { filter_contains, sort_by_key, cycle_sort },
+    functions: { filter_contains, sort_by_key, cycle_sort, filter_below },
 };
 export default elements;
