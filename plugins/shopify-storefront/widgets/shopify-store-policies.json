@@ -1,7 +1,7 @@
 {
   "id": "shopify-store-policies",
   "title": "Store Policies",
-  "description": "Surface key Shopify store policies and FAQ answers — returns, shipping, privacy, and more. Configurable query.",
+  "description": "View your Shopify store policies — returns, shipping, privacy, and terms. Select a policy to display it.",
   "category": "ecommerce",
   "tags": [
     "shopify",
@@ -27,7 +27,7 @@
   "sizing": {
     "preferred": {
       "colSpan": 6,
-      "rowSpan": 4
+      "rowSpan": 5
     },
     "min": {
       "colSpan": 4,
@@ -35,7 +35,7 @@
     },
     "max": {
       "colSpan": 12,
-      "rowSpan": 8
+      "rowSpan": 10
     }
   },
   "dataProvider": {
@@ -53,7 +53,26 @@
         "children": [
           "header",
           "body"
-        ]
+        ],
+        "watch": {
+          "/ui/selectedPolicy": [
+            {
+              "action": "bust_tool_cache",
+              "params": {
+                "mcp": "shopify-storefront",
+                "tool": "search_shop_policies_and_faqs"
+              }
+            },
+            {
+              "action": "shopify-storefront.search_shop_policies_and_faqs",
+              "params": {
+                "query": {
+                  "$state": "/ui/selectedPolicy"
+                }
+              }
+            }
+          ]
+        }
       },
       "header": {
         "type": "Header",
@@ -100,16 +119,32 @@
       "eyebrow": {
         "type": "Eyebrow",
         "props": {
-          "text": "Policies and FAQs from your Shopify store"
+          "text": "Select a policy to view it"
         }
       },
       "body": {
         "type": "Body",
         "children": [
+          "policyPicker",
           "loading",
           "empty",
           "content"
         ]
+      },
+      "policyPicker": {
+        "type": "Select",
+        "props": {
+          "value": {
+            "$bindState": "/ui/selectedPolicy"
+          },
+          "placeholder": "Choose a policy...",
+          "options": [
+            { "label": "Return Policy", "value": "return policy" },
+            { "label": "Shipping Policy", "value": "shipping policy" },
+            { "label": "Privacy Policy", "value": "privacy policy" },
+            { "label": "Terms of Service", "value": "terms of service" }
+          ]
+        }
       },
       "loading": {
         "type": "Stack",
@@ -149,7 +184,7 @@
       "empty": {
         "type": "Empty",
         "props": {
-          "message": "No policy information found for this query."
+          "message": "Select a policy above to view it."
         },
         "visible": {
           "$and": [
@@ -165,21 +200,23 @@
         }
       },
       "content": {
-        "type": "Text",
+        "type": "RichHtml",
         "props": {
-          "text": {
-            "$computed": "html_to_text",
-            "args": {
-              "value": {
-                "$state": "/shopify-storefront/search_shop_policies_and_faqs/answer"
-              }
-            }
+          "html": {
+            "$state": "/shopify-storefront/search_shop_policies_and_faqs/answer"
           },
-          "wrap": true
+          "maxHeight": 420
         },
         "visible": {
-          "$state": "/_loading/shopify-storefront.search_shop_policies_and_faqs",
-          "not": true
+          "$and": [
+            {
+              "$state": "/_loading/shopify-storefront.search_shop_policies_and_faqs",
+              "not": true
+            },
+            {
+              "$state": "/shopify-storefront/search_shop_policies_and_faqs/answer"
+            }
+          ]
         }
       }
     }
