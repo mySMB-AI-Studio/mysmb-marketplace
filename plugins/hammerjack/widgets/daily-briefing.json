@@ -1,0 +1,1204 @@
+{
+  "category": "productivity",
+  "connectorsUsed": [
+    "m365-calendar",
+    "m365-files",
+    "m365-mail-read"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "m365-mail-read",
+    "params": {
+      "limit": 10
+    },
+    "tool": "list_emails"
+  },
+  "description": "Morning digest: unread emails, today's meetings, and recent files — all in one glance.",
+  "id": "m365-daily-briefing",
+  "keywords": [
+    "daily",
+    "briefing",
+    "morning",
+    "digest",
+    "overview",
+    "start"
+  ],
+  "popularity": 88,
+  "sizing": {
+    "max": {
+      "colSpan": 16,
+      "rowSpan": 14
+    },
+    "min": {
+      "colSpan": 6,
+      "rowSpan": 6
+    },
+    "preferred": {
+      "colSpan": 8,
+      "rowSpan": 8
+    }
+  },
+  "spec": {
+    "elements": {
+      "body": {
+        "children": [
+          "bodyInner"
+        ],
+        "type": "Body"
+      },
+      "bodyInner": {
+        "children": [
+          "statsRow",
+          "divider1",
+          "mailSection",
+          "divider2",
+          "calSection",
+          "divider3",
+          "filesSection"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "type": "Stack"
+      },
+      "calHead": {
+        "props": {
+          "level": "h3",
+          "text": "Today's Meetings"
+        },
+        "type": "Heading"
+      },
+      "calLabels": {
+        "children": [
+          "calSubject",
+          "calLoc"
+        ],
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "calList": {
+        "children": [
+          "calRow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/todayEvents"
+        },
+        "type": "Stack"
+      },
+      "calLoc": {
+        "props": {
+          "text": {
+            "$item": "location/displayName"
+          }
+        },
+        "type": "Caption"
+      },
+      "calRow": {
+        "children": [
+          "calLabels",
+          "calWhen"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedEventId",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "id"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "m365-calendar.get_event",
+              "params": {
+                "id": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "id"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "props": {
+          "align": "start",
+          "clickable": true,
+          "gap": "sm",
+          "hover": true
+        },
+        "type": "Row"
+      },
+      "calSection": {
+        "children": [
+          "calHead",
+          "calList"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack"
+      },
+      "calSubject": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "subject"
+          },
+          "truncate": true,
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "calWhen": {
+        "props": {
+          "text": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "start/dateTime"
+              }
+            }
+          }
+        },
+        "type": "Caption"
+      },
+      "card": {
+        "children": [
+          "header",
+          "body",
+          "emailOverlay",
+          "eventOverlay",
+          "fileOverlay"
+        ],
+        "type": "Card",
+        "watch": {
+          "/m365-calendar/list_events": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/todayEvents",
+              "value": {
+                "$computed": "filter_date_range",
+                "args": {
+                  "field": "start.dateTime",
+                  "value": {
+                    "$state": "/m365-calendar/list_events"
+                  }
+                }
+              }
+            }
+          },
+          "/m365-mail-read/list_emails": {
+            "action": "m365-calendar.list_events",
+            "params": {
+              "endDateTime": "$today_end",
+              "limit": 10,
+              "startDateTime": "$today"
+            }
+          }
+        }
+      },
+      "divider1": {
+        "type": "Divider"
+      },
+      "divider2": {
+        "type": "Divider"
+      },
+      "divider3": {
+        "type": "Divider"
+      },
+      "emailActions": {
+        "children": [
+          "emailOpenBtn"
+        ],
+        "props": {
+          "gap": "sm",
+          "justify": "end"
+        },
+        "type": "Row"
+      },
+      "emailBodyHtml": {
+        "props": {
+          "html": {
+            "$state": "/m365-mail-read/get_email/body/content"
+          },
+          "maxHeight": 420,
+          "minHeight": 120
+        },
+        "type": "RichHtml"
+      },
+      "emailBodySection": {
+        "children": [
+          "emailBodyHtml"
+        ],
+        "props": {
+          "variant": "muted"
+        },
+        "type": "Section"
+      },
+      "emailDetailBody": {
+        "children": [
+          "emailKvFrom",
+          "emailKvReceived",
+          "emailBodySection",
+          "emailActions"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/m365-mail-read/get_email/id",
+          "eq": {
+            "$state": "/ui/selectedEmailId"
+          }
+        }
+      },
+      "emailDetailCard": {
+        "children": [
+          "emailDetailHeader",
+          "emailDetailSpinner",
+          "emailDetailBody"
+        ],
+        "type": "Card"
+      },
+      "emailDetailClose": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedEmailId",
+                "value": ""
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/replyText",
+                "value": ""
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/replySent",
+                "value": ""
+              }
+            }
+          ]
+        },
+        "props": {
+          "ariaLabel": "Close",
+          "icon": "X",
+          "size": "md",
+          "tone": "default",
+          "variant": "outlined"
+        },
+        "type": "IconButton"
+      },
+      "emailDetailHeader": {
+        "children": [
+          "emailDetailTitle",
+          "emailDetailClose"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "emailDetailSpinner": {
+        "props": {
+          "label": "Loading message…"
+        },
+        "type": "Spinner",
+        "visible": {
+          "$state": "/m365-mail-read/get_email/id",
+          "neq": {
+            "$state": "/ui/selectedEmailId"
+          }
+        }
+      },
+      "emailDetailTitle": {
+        "props": {
+          "level": "h2",
+          "text": {
+            "$state": "/m365-mail-read/get_email/subject"
+          }
+        },
+        "type": "Heading"
+      },
+      "emailKvFrom": {
+        "props": {
+          "label": "From",
+          "value": {
+            "$computed": "fmt",
+            "args": {
+              "addr": {
+                "$state": "/m365-mail-read/get_email/from/emailAddress/address"
+              },
+              "name": {
+                "$state": "/m365-mail-read/get_email/from/emailAddress/name"
+              },
+              "pattern": "{name} <{addr}>"
+            }
+          }
+        },
+        "type": "KeyValue"
+      },
+      "emailKvReceived": {
+        "props": {
+          "label": "Received",
+          "value": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$state": "/m365-mail-read/get_email/receivedDateTime"
+              }
+            }
+          }
+        },
+        "type": "KeyValue"
+      },
+      "emailOpenBtn": {
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$state": "/m365-mail-read/get_email/webLink"
+              }
+            }
+          }
+        },
+        "props": {
+          "label": "Open in Outlook",
+          "leadingIcon": "ExternalLink",
+          "size": "sm",
+          "variant": "primary"
+        },
+        "type": "Button"
+      },
+      "emailOverlay": {
+        "children": [
+          "emailDetailCard"
+        ],
+        "on": {
+          "backdropClick": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedEmailId",
+                "value": ""
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/replyText",
+                "value": ""
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/replySent",
+                "value": ""
+              }
+            }
+          ]
+        },
+        "props": {
+          "maxWidth": "44rem"
+        },
+        "type": "Overlay",
+        "visible": {
+          "$state": "/ui/selectedEmailId"
+        }
+      },
+      "eventActions": {
+        "children": [
+          "eventOpenBtn"
+        ],
+        "props": {
+          "gap": "sm",
+          "justify": "end"
+        },
+        "type": "Row"
+      },
+      "eventBodyHtml": {
+        "props": {
+          "html": {
+            "$state": "/m365-calendar/get_event/body/content"
+          },
+          "maxHeight": 360,
+          "minHeight": 80
+        },
+        "type": "RichHtml"
+      },
+      "eventBodySection": {
+        "children": [
+          "eventBodyHtml"
+        ],
+        "props": {
+          "variant": "muted"
+        },
+        "type": "Section",
+        "visible": {
+          "$state": "/m365-calendar/get_event/body/content"
+        }
+      },
+      "eventDetailBody": {
+        "children": [
+          "eventKvWhen",
+          "eventKvLocation",
+          "eventKvOrganizer",
+          "eventBodySection",
+          "eventActions"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/m365-calendar/get_event/id",
+          "eq": {
+            "$state": "/ui/selectedEventId"
+          }
+        }
+      },
+      "eventDetailCard": {
+        "children": [
+          "eventDetailHeader",
+          "eventDetailSpinner",
+          "eventDetailBody"
+        ],
+        "type": "Card"
+      },
+      "eventDetailClose": {
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selectedEventId",
+              "value": ""
+            }
+          }
+        },
+        "props": {
+          "ariaLabel": "Close",
+          "icon": "X",
+          "size": "md",
+          "tone": "default",
+          "variant": "outlined"
+        },
+        "type": "IconButton"
+      },
+      "eventDetailHeader": {
+        "children": [
+          "eventDetailTitle",
+          "eventDetailClose"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "eventDetailSpinner": {
+        "props": {
+          "label": "Loading event…"
+        },
+        "type": "Spinner",
+        "visible": {
+          "$state": "/m365-calendar/get_event/id",
+          "neq": {
+            "$state": "/ui/selectedEventId"
+          }
+        }
+      },
+      "eventDetailTitle": {
+        "props": {
+          "level": "h2",
+          "text": {
+            "$state": "/m365-calendar/get_event/subject"
+          }
+        },
+        "type": "Heading"
+      },
+      "eventKvLocation": {
+        "props": {
+          "label": "Location",
+          "value": {
+            "$state": "/m365-calendar/get_event/location/displayName"
+          }
+        },
+        "type": "KeyValue",
+        "visible": {
+          "$state": "/m365-calendar/get_event/location/displayName"
+        }
+      },
+      "eventKvOrganizer": {
+        "props": {
+          "label": "Organiser",
+          "value": {
+            "$state": "/m365-calendar/get_event/organizer/emailAddress/name"
+          }
+        },
+        "type": "KeyValue"
+      },
+      "eventKvWhen": {
+        "props": {
+          "label": "When",
+          "value": {
+            "$computed": "format_date",
+            "args": {
+              "format": "long",
+              "value": {
+                "$state": "/m365-calendar/get_event/start/dateTime"
+              }
+            }
+          }
+        },
+        "type": "KeyValue"
+      },
+      "eventOpenBtn": {
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://outlook.office.com/calendar/view/day"
+            }
+          }
+        },
+        "props": {
+          "label": "Open in Outlook",
+          "leadingIcon": "ExternalLink",
+          "size": "sm",
+          "variant": "primary"
+        },
+        "type": "Button"
+      },
+      "eventOverlay": {
+        "children": [
+          "eventDetailCard"
+        ],
+        "on": {
+          "backdropClick": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selectedEventId",
+              "value": ""
+            }
+          }
+        },
+        "props": {
+          "maxWidth": "44rem"
+        },
+        "type": "Overlay",
+        "visible": {
+          "$state": "/ui/selectedEventId"
+        }
+      },
+      "fIcon": {
+        "props": {
+          "name": "FileText",
+          "size": "sm",
+          "tone": "muted"
+        },
+        "type": "Icon"
+      },
+      "fLabels": {
+        "children": [
+          "fName",
+          "fMod"
+        ],
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "fMod": {
+        "props": {
+          "text": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "lastModifiedDateTime"
+              }
+            }
+          }
+        },
+        "type": "Caption"
+      },
+      "fName": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "name"
+          },
+          "truncate": true,
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "fileActions": {
+        "children": [
+          "fileOpenBtn"
+        ],
+        "props": {
+          "gap": "sm",
+          "justify": "end"
+        },
+        "type": "Row"
+      },
+      "fileDetailBody": {
+        "children": [
+          "fileKvModified",
+          "fileKvSize",
+          "fileActions"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack"
+      },
+      "fileDetailCard": {
+        "children": [
+          "fileDetailHeader",
+          "fileDetailBody"
+        ],
+        "type": "Card"
+      },
+      "fileDetailClose": {
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selectedFileId",
+              "value": ""
+            }
+          }
+        },
+        "props": {
+          "ariaLabel": "Close",
+          "icon": "X",
+          "size": "md",
+          "tone": "default",
+          "variant": "outlined"
+        },
+        "type": "IconButton"
+      },
+      "fileDetailHeader": {
+        "children": [
+          "fileDetailTitle",
+          "fileDetailClose"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "fileDetailTitle": {
+        "props": {
+          "level": "h2",
+          "text": {
+            "$state": "/ui/selectedFileName"
+          }
+        },
+        "type": "Heading"
+      },
+      "fileKvModified": {
+        "props": {
+          "label": "Modified",
+          "value": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$state": "/ui/selectedFileMod"
+              }
+            }
+          }
+        },
+        "type": "KeyValue"
+      },
+      "fileKvSize": {
+        "props": {
+          "label": "Size",
+          "value": {
+            "$state": "/ui/selectedFileSize"
+          }
+        },
+        "type": "KeyValue",
+        "visible": {
+          "$state": "/ui/selectedFileSize"
+        }
+      },
+      "fileOpenBtn": {
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$state": "/ui/selectedFileWebUrl"
+              }
+            }
+          }
+        },
+        "props": {
+          "label": "Open file",
+          "leadingIcon": "ExternalLink",
+          "size": "sm",
+          "variant": "primary"
+        },
+        "type": "Button"
+      },
+      "fileOverlay": {
+        "children": [
+          "fileDetailCard"
+        ],
+        "on": {
+          "backdropClick": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selectedFileId",
+              "value": ""
+            }
+          }
+        },
+        "props": {
+          "maxWidth": "36rem"
+        },
+        "type": "Overlay",
+        "visible": {
+          "$state": "/ui/selectedFileId"
+        }
+      },
+      "filesHead": {
+        "props": {
+          "level": "h3",
+          "text": "Recent Files"
+        },
+        "type": "Heading"
+      },
+      "filesList": {
+        "children": [
+          "filesRow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/m365-files/list_recent_files"
+        },
+        "type": "Stack"
+      },
+      "filesRow": {
+        "children": [
+          "fIcon",
+          "fLabels"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedFileId",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "id"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedFileName",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "name"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedFileWebUrl",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "webUrl"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedFileSize",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "size"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedFileMod",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "lastModifiedDateTime"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "props": {
+          "align": "start",
+          "clickable": true,
+          "gap": "sm",
+          "hover": true
+        },
+        "type": "Row"
+      },
+      "filesSection": {
+        "children": [
+          "filesHead",
+          "filesList"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "watch": {
+          "/m365-mail-read/list_emails": {
+            "action": "m365-files.list_recent_files",
+            "params": {
+              "limit": 5
+            }
+          }
+        }
+      },
+      "header": {
+        "children": [
+          "titleRow"
+        ],
+        "type": "Header"
+      },
+      "mailAge": {
+        "props": {
+          "text": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "receivedDateTime"
+              }
+            }
+          }
+        },
+        "type": "Caption"
+      },
+      "mailDot": {
+        "props": {
+          "size": "sm",
+          "tone": {
+            "$cond": {
+              "$item": "isRead"
+            },
+            "$else": "accent",
+            "$then": "muted"
+          }
+        },
+        "type": "Dot"
+      },
+      "mailFrom": {
+        "props": {
+          "text": {
+            "$item": "from/emailAddress/name"
+          }
+        },
+        "type": "Caption"
+      },
+      "mailHead": {
+        "props": {
+          "level": "h3",
+          "text": "Inbox"
+        },
+        "type": "Heading"
+      },
+      "mailLabels": {
+        "children": [
+          "mailSubject",
+          "mailFrom"
+        ],
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "mailList": {
+        "children": [
+          "mailRow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/m365-mail-read/list_emails"
+        },
+        "type": "Stack"
+      },
+      "mailRow": {
+        "children": [
+          "mailDot",
+          "mailLabels",
+          "mailAge"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedEmailId",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "id"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "m365-mail-read.get_email",
+              "params": {
+                "id": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "id"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "props": {
+          "align": "start",
+          "clickable": true,
+          "gap": "sm",
+          "hover": true
+        },
+        "type": "Row"
+      },
+      "mailSection": {
+        "children": [
+          "mailHead",
+          "mailList"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack"
+      },
+      "mailSubject": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "subject"
+          },
+          "truncate": true,
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "statCal": {
+        "children": [
+          "statCalEyebrow",
+          "statCalValue"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "statCalEyebrow": {
+        "props": {
+          "text": "Meetings"
+        },
+        "type": "Eyebrow"
+      },
+      "statCalValue": {
+        "props": {
+          "tone": "accent",
+          "value": {
+            "$computed": "count",
+            "args": {
+              "value": {
+                "$state": "/ui/todayEvents"
+              }
+            }
+          }
+        },
+        "type": "Stat"
+      },
+      "statFiles": {
+        "children": [
+          "statFilesEyebrow",
+          "statFilesValue"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "statFilesEyebrow": {
+        "props": {
+          "text": "Recent Files"
+        },
+        "type": "Eyebrow"
+      },
+      "statFilesValue": {
+        "props": {
+          "tone": "accent",
+          "value": {
+            "$computed": "count",
+            "args": {
+              "value": {
+                "$state": "/m365-files/list_recent_files"
+              }
+            }
+          }
+        },
+        "type": "Stat"
+      },
+      "statMail": {
+        "children": [
+          "statMailEyebrow",
+          "statMailValue"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "statMailEyebrow": {
+        "props": {
+          "text": "Unread"
+        },
+        "type": "Eyebrow"
+      },
+      "statMailValue": {
+        "props": {
+          "tone": "accent",
+          "value": {
+            "$computed": "count_where",
+            "args": {
+              "equals": false,
+              "value": {
+                "$state": "/m365-mail-read/list_emails"
+              },
+              "whereField": "isRead"
+            }
+          }
+        },
+        "type": "Stat"
+      },
+      "statsRow": {
+        "children": [
+          "statMail",
+          "statCal",
+          "statFiles"
+        ],
+        "props": {
+          "cols": 3,
+          "gap": "md"
+        },
+        "type": "Grid"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Daily Briefing"
+        },
+        "type": "Heading"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Sunrise",
+          "size": "sm",
+          "tone": "warning"
+        },
+        "type": "Icon"
+      },
+      "titleRow": {
+        "children": [
+          "titleIcon",
+          "title"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "m365",
+    "briefing",
+    "daily",
+    "digest",
+    "overview"
+  ],
+  "title": "Daily Briefing"
+}
