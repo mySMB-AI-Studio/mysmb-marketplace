@@ -1,0 +1,272 @@
+{
+  "id": "shopify-low-stock",
+  "title": "Low Stock Alerts",
+  "description": "Products running low or out of stock in your Shopify store, sorted by urgency — restock before you lose a sale.",
+  "category": "ecommerce",
+  "tags": [
+    "shopify",
+    "inventory",
+    "stock",
+    "alerts",
+    "restock",
+    "ecommerce"
+  ],
+  "keywords": [
+    "inventory",
+    "low stock",
+    "out of stock",
+    "restock",
+    "alerts",
+    "shopify",
+    "products"
+  ],
+  "connectorsUsed": [
+    "shopify-ucp"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 5
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 3
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 10
+    }
+  },
+  "dataProvider": {
+    "mcp": "shopify-ucp",
+    "tool": "search_catalog",
+    "params": {
+      "query": "status:active",
+      "pagination": {
+        "limit": 50
+      },
+      "meta": {
+        "ucp-agent": {
+          "profile": "https://shopify.dev/ucp/agent-profiles/examples/2026-04-08/valid-with-capabilities.json"
+        }
+      }
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/shopify-ucp/search_catalog/products": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/lowStock",
+                "value": {
+                  "$computed": "shopify-storefront_sort_by_key",
+                  "args": {
+                    "value": {
+                      "$computed": "shopify-storefront_filter_below",
+                      "args": {
+                        "value": { "$state": "/shopify-ucp/search_catalog/products" },
+                        "field": "totalInventory",
+                        "below": 10
+                      }
+                    },
+                    "key": "totalInventory|asc"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleRow"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "TriangleAlert",
+          "tone": "warning",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "count"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Low Stock Alerts",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{oos} out of stock · {n} under 10 units",
+              "oos": {
+                "$computed": "count_where",
+                "args": {
+                  "value": {
+                    "$state": "/ui/lowStock"
+                  },
+                  "whereField": "totalInventory",
+                  "equals": 0
+                }
+              },
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/ui/lowStock"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "table"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/_loading/shopify-ucp.search_catalog"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ]
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "All products are well stocked — nothing under 10 units."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/shopify-ucp.search_catalog",
+              "not": true
+            },
+            {
+              "$state": "/ui/lowStock/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "table": {
+        "type": "Table",
+        "props": {
+          "rows": {
+            "$state": "/ui/lowStock"
+          },
+          "columns": [
+            {
+              "id": "name",
+              "header": "Product",
+              "field": "title",
+              "priority": 1
+            },
+            {
+              "id": "vendor",
+              "header": "Vendor",
+              "field": "vendor",
+              "priority": 2
+            },
+            {
+              "id": "stock",
+              "header": "Stock",
+              "field": "stockStatus",
+              "width": 120,
+              "priority": 1
+            },
+            {
+              "id": "price",
+              "header": "Price",
+              "field": "price",
+              "width": 110,
+              "priority": 2
+            }
+          ]
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/shopify-ucp.search_catalog",
+              "not": true
+            },
+            {
+              "$state": "/ui/lowStock/0"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "status": "published"
+}
