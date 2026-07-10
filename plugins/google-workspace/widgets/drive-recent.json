@@ -1,0 +1,283 @@
+{
+  "id": "google-workspace-drive-recent",
+  "title": "Recent Files",
+  "description": "Recently accessed Google Drive files — name, type badge, and last modified time. Click a row to open the file.",
+  "category": "productivity",
+  "tags": [
+    "google",
+    "drive",
+    "files",
+    "documents",
+    "productivity"
+  ],
+  "keywords": [
+    "drive",
+    "files",
+    "recent",
+    "documents",
+    "sheets",
+    "slides",
+    "google"
+  ],
+  "connectorsUsed": [
+    "google-workspace-drive"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 5
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 10
+    }
+  },
+  "dataProvider": {
+    "mcp": "google-workspace-drive",
+    "tool": "list_recent_files",
+    "params": {
+      "pageSize": 15
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleRow"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "HardDrive",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "count"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Recent Files",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} files",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/google-workspace-drive/list_recent_files/files"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/_loading/google-workspace-drive.list_recent_files"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3",
+          "sk4"
+        ]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No recent files."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/google-workspace-drive.list_recent_files",
+              "not": true
+            },
+            {
+              "$state": "/google-workspace-drive/list_recent_files/files/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "visible": {
+          "$state": "/_loading/google-workspace-drive.list_recent_files",
+          "not": true
+        },
+        "repeat": {
+          "statePath": "/google-workspace-drive/list_recent_files/files",
+          "key": "id"
+        },
+        "children": [
+          "row"
+        ]
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start",
+          "justify": "between",
+          "hover": true,
+          "clickable": true
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$item": "webViewLink"
+              }
+            }
+          }
+        },
+        "children": [
+          "rowLeft",
+          "mimeTypeBadge"
+        ]
+      },
+      "rowLeft": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start",
+          "grow": true
+        },
+        "children": [
+          "fileIcon",
+          "fileInfo"
+        ]
+      },
+      "fileIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "FileText",
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "fileInfo": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "fileName",
+          "fileMeta"
+        ]
+      },
+      "fileName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "fileMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "modifiedTime"
+              }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "mimeTypeBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "google-workspace_mime_label",
+            "args": {
+              "value": {
+                "$item": "mimeType"
+              }
+            }
+          },
+          "tone": {
+            "$computed": "google-workspace_mime_tone",
+            "args": {
+              "value": {
+                "$item": "mimeType"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

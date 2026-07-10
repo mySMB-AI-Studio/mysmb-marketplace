@@ -1,0 +1,294 @@
+{
+  "id": "google-workspace-gmail-inbox",
+  "title": "Gmail Inbox",
+  "description": "Recent unread Gmail messages — sender, subject, and relative timestamp. Click a row to read the full message.",
+  "category": "productivity",
+  "tags": [
+    "google",
+    "gmail",
+    "inbox",
+    "email",
+    "productivity"
+  ],
+  "keywords": [
+    "gmail",
+    "email",
+    "inbox",
+    "unread",
+    "messages",
+    "mail",
+    "google"
+  ],
+  "connectorsUsed": [
+    "google-workspace-gmail"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "google-workspace-gmail",
+    "tool": "list_messages",
+    "params": {
+      "labelIds": ["INBOX", "UNREAD"],
+      "maxResults": 20
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleRow"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Mail",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "count"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Gmail Inbox",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} unread",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/google-workspace-gmail/list_messages/messages"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/_loading/google-workspace-gmail.list_messages"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3",
+          "sk4"
+        ]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "Inbox zero — enjoy it while it lasts."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/google-workspace-gmail.list_messages",
+              "not": true
+            },
+            {
+              "$state": "/google-workspace-gmail/list_messages/messages/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "visible": {
+          "$state": "/_loading/google-workspace-gmail.list_messages",
+          "not": true
+        },
+        "repeat": {
+          "statePath": "/google-workspace-gmail/list_messages/messages",
+          "key": "id"
+        },
+        "children": [
+          "row"
+        ]
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start",
+          "hover": true,
+          "clickable": true,
+          "justify": "between"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "https://mail.google.com/mail/u/0/#inbox/{threadId}",
+                  "threadId": {
+                    "$item": "threadId"
+                  }
+                }
+              },
+              "target": "_blank"
+            }
+          }
+        },
+        "children": [
+          "avatar",
+          "labels",
+          "received"
+        ]
+      },
+      "avatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$computed": "google-workspace_sender_name",
+                "args": {
+                  "value": {
+                    "$item": "from"
+                  }
+                }
+              }
+            }
+          },
+          "size": "md"
+        }
+      },
+      "labels": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "labelTop",
+          "labelBottom"
+        ]
+      },
+      "labelTop": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{name} — {subject}",
+              "name": {
+                "$computed": "google-workspace_sender_name",
+                "args": {
+                  "value": {
+                    "$item": "from"
+                  }
+                }
+              },
+              "subject": {
+                "$item": "subject"
+              }
+            }
+          },
+          "size": "md",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "labelBottom": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "snippet"
+          },
+          "size": "sm",
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+      "received": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "internalDate"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
