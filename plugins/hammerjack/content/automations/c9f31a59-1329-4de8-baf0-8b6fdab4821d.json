@@ -1,11 +1,87 @@
 {
-  "contentHash": "3ed3fd5d2910d5df1fcca675c2d63d6c0d014403ebed37cbd2836a5f892acdff",
+  "attachments": [
+    {
+      "bundlePath": "content/automations/c9f31a59-1329-4de8-baf0-8b6fdab4821d/files/lato-regular.ttf",
+      "contentType": "application/octet-stream",
+      "fileName": "Lato-Regular.ttf",
+      "kind": "other",
+      "role": "resource",
+      "scope": "org",
+      "sha256": "e79e1d2371fd277467f7151eb10b5b2a9f58a2cb0a843df42d27f518af78f213",
+      "sizeBytes": 28240,
+      "storage": "knowledge",
+      "summary": "TTF font (Lato Regular) — bundled font used to overlay text onto the report template.",
+      "tokens": []
+    },
+    {
+      "bundlePath": "content/automations/c9f31a59-1329-4de8-baf0-8b6fdab4821d/files/rubik-semibold.ttf",
+      "contentType": "application/octet-stream",
+      "fileName": "Rubik-SemiBold.ttf",
+      "kind": "other",
+      "role": "resource",
+      "scope": "org",
+      "sha256": "24e71a032cbd4e739020ca380ec933e56e5c514301f2b443ff75d2a4add07b9c",
+      "sizeBytes": 47620,
+      "storage": "knowledge",
+      "summary": "TTF font (Rubik SemiBold) — bundled font used to overlay text onto the report template.",
+      "tokens": []
+    },
+    {
+      "bundlePath": "content/automations/c9f31a59-1329-4de8-baf0-8b6fdab4821d/files/rubik-bold.ttf",
+      "contentType": "application/octet-stream",
+      "fileName": "Rubik-Bold.ttf",
+      "kind": "other",
+      "role": "resource",
+      "scope": "org",
+      "sha256": "500ce175bf2237a826087f16a97739c5131590d2f75d4d6943afe70818f90c2a",
+      "sizeBytes": 47688,
+      "storage": "knowledge",
+      "summary": "TTF font (Rubik Bold) — bundled font used to overlay text onto the report template.",
+      "tokens": []
+    },
+    {
+      "bundlePath": "content/automations/c9f31a59-1329-4de8-baf0-8b6fdab4821d/files/rubik-regular.ttf",
+      "contentType": "application/octet-stream",
+      "fileName": "Rubik-Regular.ttf",
+      "kind": "other",
+      "role": "resource",
+      "scope": "org",
+      "sha256": "ad0554f561259a3bc07b4d642db8c6073cc0d8ea9a2c690f7bee2e58ef91d752",
+      "sizeBytes": 47288,
+      "storage": "knowledge",
+      "summary": "TTF font (Rubik Regular) — bundled font used to overlay text onto the report template.",
+      "tokens": []
+    },
+    {
+      "bundlePath": "content/automations/c9f31a59-1329-4de8-baf0-8b6fdab4821d/files/template.pdf",
+      "contentType": "application/pdf",
+      "fileName": "template.pdf",
+      "kind": "pdf",
+      "role": "resource",
+      "scope": "org",
+      "sha256": "f9520e67ce4ac5fe4640aa399296a2e59c1edce2be0c5ecb090d3544256d7b36",
+      "sizeBytes": 2655684,
+      "storage": "knowledge",
+      "summary": "PDF — bundled monthly-report template read by the flow via api.files.get.",
+      "tokens": []
+    },
+    {
+      "bundlePath": "content/automations/c9f31a59-1329-4de8-baf0-8b6fdab4821d/files/template-2.pdf",
+      "contentType": "application/pdf",
+      "fileName": "template.pdf",
+      "kind": "pdf",
+      "role": "reference",
+      "sha256": "f9520e67ce4ac5fe4640aa399296a2e59c1edce2be0c5ecb090d3544256d7b36",
+      "sizeBytes": 2655684,
+      "storage": "automation",
+      "summary": "PDF, 2 pages — content readable on demand by the AI builder.",
+      "tokens": []
+    }
+  ],
+  "contentHash": "3e3018c8125c5d0ad85666bf6b8072bd63131b21a08cc6c36d0fd87d56110413",
   "declaredScopes": [
     "portal_reports:read",
     "portals:read",
-    "employees:read",
-    "users:read",
-    "snapshots:read",
     "files:read",
     "files:write",
     "notify:send"
@@ -13,33 +89,83 @@
   "dependencies": [],
   "description": "On the 1st of each month, builds a per-client Monthly Report PDF from the latest published report + snapshot data and saves it into each client portal's folder.",
   "flowIr": {
-    "description": "On the 1st of each month, builds a per-client Monthly Report PDF from the latest published report + snapshot data and saves it into each client portal's folder.",
+    "description": "On the 1st of each month, builds a pixel-faithful per-client Monthly Report PDF by overlaying the current month's dynamic values (reporting date, attendance metrics, past/upcoming events, gallery photos) onto the bundled hammerjack template.pdf with fpdf2 + pypdf, and saves it into each client portal's folder.",
     "irVersion": 1,
     "name": "Monthly Client Report PDF Generator",
     "nodes": [
       {
-        "code": "report = api.portal_reports.latest_published()\nhas_report = bool(report)\nif report:\n    report_id = report.get(\"id\") or \"\"\n    month_val = report.get(\"month\") or report.get(\"reportMonth\") or report.get(\"period\") or report.get(\"periodStart\") or \"\"\n    if isinstance(month_val, str) and len(month_val) >= 7:\n        report_month = month_val[:7] + \"-01\"\n    else:\n        report_month = \"\"\nelse:\n    report_id = \"\"\n    report_month = \"\"",
+        "code": "import datetime\n\nreport = api.portal_reports.latest_published()\nhas_report = bool(report)\n\nreport_id = \"\"\nmonth_label = \"\"\nmonth_yyyy_mm = \"\"\npast_events = []\nupcoming_events = []\ngallery_paths = []\ntemplate_path = \"\"\nfont_regular_path = \"\"\nfont_bold_path = \"\"\nfont_semibold_path = \"\"\nfont_lato_path = \"\"\nmetrics = []\n\nif report:\n    report_id = report.get(\"id\") or \"\"\n\n    report_month = report.get(\"reportMonth\") or \"\"\n    try:\n        dt = datetime.datetime.fromisoformat(str(report_month).replace(\"Z\", \"+00:00\"))\n    except Exception:\n        dt = datetime.datetime.utcnow()\n    month_label = dt.strftime(\"%B %Y\")\n    month_yyyy_mm = dt.strftime(\"%Y-%m\")\n\n    def _paragraphs(body):\n        \"\"\"Reconstruct logical bullet items from a body that stores each\n        wrapped display line as its own '\\n'-separated line: a line starting\n        with an uppercase word begins a new item, a lowercase-initial line is\n        a wrap-continuation of the previous item.\"\"\"\n        text = body or \"\"\n        lines = [ln for ln in text.split(\"\\n\") if ln.strip()]\n        paras = []\n        current = \"\"\n        for line in lines:\n            first_word = line.split(\" \", 1)[0] if line else \"\"\n            is_continuation = bool(current) and first_word[:1].islower()\n            if is_continuation:\n                current = current + \" \" + line\n            else:\n                if current:\n                    paras.append(current.strip())\n                current = line\n        if current:\n            paras.append(current.strip())\n        return paras\n\n    for e in (report.get(\"events\") or []):\n        section = e.get(\"section\") or \"\"\n        heading = e.get(\"heading\") or \"\"\n        paras = _paragraphs(e.get(\"body\") or \"\")\n        if section == \"past_month\":\n            past_events.append({\"heading\": heading, \"body\": paras})\n        elif section == \"upcoming\":\n            items = []\n            for p in paras:\n                if \":\" in p:\n                    lead, _, rest = p.partition(\":\")\n                    items.append([lead.strip(), rest.strip()])\n                else:\n                    items.append([p.strip(), \"\"])\n            upcoming_events.append({\"heading\": heading, \"items\": items})\n\n    for gpath in (report.get(\"galleryPaths\") or [])[:4]:\n        try:\n            local_path = api.portal_reports.read_image(path=gpath)\n            if local_path:\n                gallery_paths.append(local_path)\n        except Exception:\n            pass\n\n    metrics = api.portal_reports.metrics(report_id=report_id) or []\n\n    template_path = api.files.get(file=\"Automations/template.pdf\")\n    font_regular_path = api.files.get(file=\"Automations/Rubik-Regular.ttf\")\n    font_bold_path = api.files.get(file=\"Automations/Rubik-Bold.ttf\")\n    font_semibold_path = api.files.get(file=\"Automations/Rubik-SemiBold.ttf\")\n    font_lato_path = api.files.get(file=\"Automations/Lato-Regular.ttf\")\n",
         "id": "get_latest_report",
         "kind": "python",
         "outputs": [
           {
-            "description": "Id of the most recent PUBLISHED monthly report, or null if none exists",
+            "description": "True if a published report was found",
+            "name": "has_report",
+            "type": "bool"
+          },
+          {
+            "description": "Id of the most recent PUBLISHED monthly report",
             "name": "report_id",
             "type": "uuid"
           },
           {
-            "description": "First day of the reporting month for that report, or null",
-            "name": "report_month",
-            "type": "date"
+            "description": "Human-readable month label e.g. 'July 2026'",
+            "name": "month_label",
+            "type": "str"
           },
           {
-            "description": "True if a published report was found",
-            "name": "has_report",
-            "type": "bool"
+            "description": "Month in YYYY-MM form, used for the PDF filename",
+            "name": "month_yyyy_mm",
+            "type": "str"
+          },
+          {
+            "description": "Past-month event cards: heading + body (list of bullet paragraphs)",
+            "name": "past_events",
+            "type": "list[dict]"
+          },
+          {
+            "description": "Upcoming event groups: heading (group/category label) + items (list of [lead_in, body] pairs)",
+            "name": "upcoming_events",
+            "type": "list[dict]"
+          },
+          {
+            "description": "Local scratch paths for up to 4 of the report's gallery photos",
+            "name": "gallery_paths",
+            "type": "list[str]"
+          },
+          {
+            "description": "Per-portal metric rows for this report: portalId, leaveTakenDays, officeDaysPct, attendancePct",
+            "name": "metrics",
+            "type": "list[dict]"
+          },
+          {
+            "description": "Local scratch path of the bundled template.pdf",
+            "name": "template_path",
+            "type": "str"
+          },
+          {
+            "description": "Local scratch path of Rubik-Regular.ttf",
+            "name": "font_regular_path",
+            "type": "str"
+          },
+          {
+            "description": "Local scratch path of Rubik-Bold.ttf",
+            "name": "font_bold_path",
+            "type": "str"
+          },
+          {
+            "description": "Local scratch path of Rubik-SemiBold.ttf",
+            "name": "font_semibold_path",
+            "type": "str"
+          },
+          {
+            "description": "Local scratch path of Lato-Regular.ttf",
+            "name": "font_lato_path",
+            "type": "str"
           }
         ],
         "params": [],
-        "title": "Get latest published monthly report"
+        "title": "Get latest published monthly report, events, gallery and template assets"
       },
       {
         "cond": "steps[\"get_latest_report\"][\"outputs\"][\"has_report\"]",
@@ -49,35 +175,10 @@
         "id": "check_report_exists",
         "kind": "if",
         "then": [
-          "read_template",
           "list_portals",
-          "get_report_events",
           "foreach_portal"
         ],
         "title": "Has a published report?"
-      },
-      {
-        "code": "template_text = api.files.read(file=params[\"path\"]) or \"\"",
-        "id": "read_template",
-        "kind": "python",
-        "outputs": [
-          {
-            "description": "Full text content of the layout template with {{tokens}} placeholders",
-            "name": "template_text",
-            "type": "str"
-          }
-        ],
-        "params": [
-          {
-            "control": "text",
-            "label": "Template file path",
-            "name": "path",
-            "required": true,
-            "type": "str",
-            "value": "Automations/monthly-report-template.md"
-          }
-        ],
-        "title": "Read report layout template"
       },
       {
         "code": "raw_portals = api.portals.list() or []\nportals = []\nfor p in raw_portals:\n    portals.append({\n        \"portalId\": p.get(\"portalId\") or \"\",\n        \"name\": p.get(\"portalName\") or \"\",\n        \"clientId\": p.get(\"clientId\") or \"\",\n        \"clientName\": p.get(\"clientName\") or \"\"\n    })\n",
@@ -94,64 +195,8 @@
         "title": "List active client portals"
       },
       {
-        "code": "import datetime\nreport = api.portal_reports.get(report_id=params[\"report_id\"]) or {}\nevents = report.get(\"events\") or []\npast_events = []\nupcoming_events = []\nfor e in events:\n    heading = e.get(\"heading\") or e.get(\"title\") or \"\"\n    body = e.get(\"body\") or e.get(\"description\") or \"\"\n    section = (e.get(\"section\") or e.get(\"type\") or e.get(\"timing\") or e.get(\"category\") or \"\").lower()\n    row = {\"heading\": heading, \"body\": body}\n    if \"past\" in section:\n        past_events.append(row)\n    elif \"upcoming\" in section or \"future\" in section:\n        upcoming_events.append(row)\n    else:\n        ev_date = e.get(\"date\") or e.get(\"event_date\")\n        is_past = False\n        if ev_date:\n            try:\n                d = datetime.datetime.fromisoformat(str(ev_date).replace(\"Z\", \"+00:00\"))\n                is_past = d.date() < datetime.datetime.utcnow().date()\n            except Exception:\n                is_past = False\n        if is_past:\n            past_events.append(row)\n        else:\n            upcoming_events.append(row)\ngallery = report.get(\"gallery\") or report.get(\"gallery_paths\") or []\ngallery_paths = []\nfor p in gallery:\n    try:\n        local_path = api.portal_reports.read_image(path=p)\n        if local_path:\n            gallery_paths.append(local_path)\n    except Exception:\n        pass\nreport_month = params.get(\"report_month\") or \"\"\ntry:\n    dt = datetime.datetime.fromisoformat(str(report_month).replace(\"Z\", \"+00:00\"))\nexcept Exception:\n    dt = datetime.datetime.utcnow()\nmonth_label = dt.strftime(\"%B %Y\")\nmonth_yyyy_mm = dt.strftime(\"%Y-%m\")\ngenerated_date = datetime.datetime.utcnow().strftime(\"%B %d, %Y\")\n",
-        "id": "get_report_events",
-        "kind": "python",
-        "outputs": [
-          {
-            "description": "Past-month events from the report, each with heading and body text",
-            "name": "past_events",
-            "type": "list[dict]"
-          },
-          {
-            "description": "Upcoming events from the report, each with heading and body text",
-            "name": "upcoming_events",
-            "type": "list[dict]"
-          },
-          {
-            "description": "Local scratch file paths of the report's gallery images fetched via api.portal_reports.read_image, empty if none",
-            "name": "gallery_paths",
-            "type": "list[str]"
-          },
-          {
-            "description": "Human-readable month label e.g. 'June 2026'",
-            "name": "month_label",
-            "type": "str"
-          },
-          {
-            "description": "Month in YYYY-MM form, used for the PDF filename",
-            "name": "month_yyyy_mm",
-            "type": "str"
-          },
-          {
-            "description": "Human-readable date this report was generated",
-            "name": "generated_date",
-            "type": "str"
-          }
-        ],
-        "params": [
-          {
-            "binding": "{{ steps.get_latest_report.outputs.report_id }}",
-            "control": "hidden",
-            "label": "Report id",
-            "name": "report_id",
-            "required": true,
-            "type": "uuid"
-          },
-          {
-            "binding": "{{ steps.get_latest_report.outputs.report_month }}",
-            "control": "hidden",
-            "label": "Report month",
-            "name": "report_month",
-            "required": true,
-            "type": "date"
-          }
-        ],
-        "title": "Get report events, gallery and month labels"
-      },
-      {
         "body": [
-          "get_client_metrics",
+          "match_portal_metrics",
           "build_and_save_pdf"
         ],
         "id": "foreach_portal",
@@ -162,50 +207,27 @@
         "title": "For each client portal"
       },
       {
-        "code": "report_id = params.get(\"report_id\")\nportal_id = params.get(\"portal_id\")\nclient_id = params.get(\"client_id\")\n\nattendance_pct = None\noffice_days_pct = None\nleave_taken_days = None\nhas_attendance_data = False\n\nmetrics = api.portal_reports.metrics(report_id=report_id) or []\nmatch = None\nfor m in metrics:\n    mp = m.get(\"portalId\") or m.get(\"portal_id\")\n    if mp == portal_id:\n        match = m\n        break\n\nif match is not None and (match.get(\"attendancePct\") is not None or match.get(\"officeDaysPct\") is not None or match.get(\"leaveTakenDays\") is not None):\n    attendance_pct = match.get(\"attendancePct\")\n    office_days_pct = match.get(\"officeDaysPct\")\n    leave_taken_days = match.get(\"leaveTakenDays\")\n    has_attendance_data = True\n\nrows = api.snapshots.query(portal_id=portal_id, entity_type=\"attendance\", limit=5000) or []\n\ndef row_user_key(payload):\n    return payload.get(\"employeeId\") or payload.get(\"employee_id\") or payload.get(\"userId\") or payload.get(\"user_id\")\n\ndef row_status(payload):\n    s = payload.get(\"status\") or payload.get(\"attendanceStatus\") or \"\"\n    return str(s).lower()\n\ndef classify(payload):\n    status = row_status(payload)\n    is_leave = status in (\"leave\", \"on_leave\", \"onleave\") or bool(payload.get(\"isLeave\"))\n    is_office = status in (\"office\", \"onsite\", \"in_office\") or payload.get(\"location\") == \"office\" or bool(payload.get(\"isOffice\"))\n    is_present = (not is_leave and status not in (\"absent\",)) or bool(payload.get(\"isPresent\"))\n    return is_present, is_office, is_leave\n\nif not has_attendance_data and rows:\n    total = len(rows)\n    present_n = 0\n    office_n = 0\n    leave_n = 0\n    for r in rows:\n        payload = r.get(\"payload\") or {}\n        is_present, is_office, is_leave = classify(payload)\n        if is_present:\n            present_n += 1\n        if is_office:\n            office_n += 1\n        if is_leave:\n            leave_n += 1\n    if total > 0:\n        attendance_pct = round(present_n / total * 100, 1)\n        office_days_pct = round(office_n / total * 100, 1)\n        leave_taken_days = float(leave_n)\n        has_attendance_data = True\n\nemployees = api.employees.list(client_id=client_id) or []\nusers = api.users.list() or []\nuser_map = {}\nfor u in users:\n    uid = u.get(\"id\") or u.get(\"user_id\")\n    if uid:\n        user_map[uid] = u\n\nscorecard_rows = []\nfor emp in employees:\n    uid = emp.get(\"user_id\")\n    if not uid:\n        continue\n    user = user_map.get(uid) or {}\n    name = user.get(\"name\") or user.get(\"email\") or \"\"\n    emp_rows = [r for r in rows if row_user_key(r.get(\"payload\") or {}) == uid]\n    total = len(emp_rows)\n    if total > 0:\n        present_n = 0\n        office_n = 0\n        leave_n = 0\n        for r in emp_rows:\n            payload = r.get(\"payload\") or {}\n            is_present, is_office, is_leave = classify(payload)\n            if is_present:\n                present_n += 1\n            if is_office:\n                office_n += 1\n            if is_leave:\n                leave_n += 1\n        emp_attendance_pct = round(present_n / total * 100, 1)\n        emp_office_days_pct = round(office_n / total * 100, 1)\n        emp_leave_taken_days = float(leave_n)\n    else:\n        emp_attendance_pct = 0.0\n        emp_office_days_pct = 0.0\n        emp_leave_taken_days = 0.0\n    scorecard_rows.append({\n        \"user_id\": uid,\n        \"name\": name,\n        \"attendance_pct\": emp_attendance_pct,\n        \"office_days_pct\": emp_office_days_pct,\n        \"leave_taken_days\": emp_leave_taken_days\n    })\n\nhas_scorecard_data = len(scorecard_rows) > 0\n\nattendance_pct = attendance_pct or 0.0\noffice_days_pct = office_days_pct or 0.0\nleave_taken_days = leave_taken_days or 0.0\n",
-        "id": "get_client_metrics",
+        "code": "portal_id = params[\"portal_id\"]\nmetrics = params[\"metrics\"] or []\n\nleave_taken_days = None\noffice_days_pct = None\nattendance_pct = None\n\nfor m in metrics:\n    if (m.get(\"portalId\") or m.get(\"portal_id\")) == portal_id:\n        leave_taken_days = m.get(\"leaveTakenDays\")\n        office_days_pct = m.get(\"officeDaysPct\")\n        attendance_pct = m.get(\"attendancePct\")\n        break\n",
+        "id": "match_portal_metrics",
         "kind": "python",
         "outputs": [
           {
-            "description": "Client's overall attendance percentage for the month, from report metrics or computed from snapshot rows; null if no data",
-            "name": "attendance_pct",
-            "type": "float"
-          },
-          {
-            "description": "Client's office-days percentage for the month; null if no data",
-            "name": "office_days_pct",
-            "type": "float"
-          },
-          {
-            "description": "Total leave days taken by the client's employees for the month; null if no data",
+            "description": "Portal's leave days taken for the month, or null if not yet computed",
             "name": "leave_taken_days",
-            "type": "float"
+            "type": "int | None"
           },
           {
-            "description": "True if any attendance summary data was found (report metrics or snapshot fallback)",
-            "name": "has_attendance_data",
-            "type": "bool"
+            "description": "Portal's office-days percentage, or null if not yet computed",
+            "name": "office_days_pct",
+            "type": "int | None"
           },
           {
-            "description": "One row per employee assigned to this client: user_id, name, attendance_pct, office_days_pct, leave_taken_days",
-            "name": "scorecard_rows",
-            "type": "list[dict]"
-          },
-          {
-            "description": "True if at least one scorecard row was produced",
-            "name": "has_scorecard_data",
-            "type": "bool"
+            "description": "Portal's attendance percentage, or null if not yet computed",
+            "name": "attendance_pct",
+            "type": "int | None"
           }
         ],
         "params": [
-          {
-            "binding": "{{ steps.get_latest_report.outputs.report_id }}",
-            "control": "hidden",
-            "label": "Report id",
-            "name": "report_id",
-            "required": true,
-            "type": "uuid"
-          },
           {
             "binding": "{{ item.portalId }}",
             "control": "hidden",
@@ -215,53 +237,29 @@
             "type": "uuid"
           },
           {
-            "binding": "{{ item.clientId }}",
+            "binding": "{{ steps.get_latest_report.outputs.metrics }}",
             "control": "hidden",
-            "label": "Client id",
-            "name": "client_id",
+            "label": "Report metrics",
+            "name": "metrics",
             "required": true,
-            "type": "uuid"
+            "type": "list[dict]"
           }
         ],
-        "title": "Compute attendance summary and employee scorecard"
+        "title": "Find this portal's attendance metrics"
       },
       {
-        "code": "from fpdf import FPDF\n\ndef sanitize(t):\n    t = t or ''\n    t = t.replace('\\u2014', '-').replace('\\u2013', '-').replace('\\u2018', \"'\").replace('\\u2019', \"'\").replace('\\u201c', '\"').replace('\\u201d', '\"').replace('\\u2026', '...')\n    return t.encode('latin-1', 'replace').decode('latin-1')\n\ndef get_section(lines, keywords):\n    start = None\n    for i, line in enumerate(lines):\n        s2 = line.strip()\n        if s2.startswith('#') and any(k.lower() in s2.lower() for k in keywords):\n            start = i + 1\n            break\n    if start is None:\n        return []\n    end = len(lines)\n    for j in range(start, len(lines)):\n        if lines[j].strip().startswith('#'):\n            end = j\n            break\n    return lines[start:end]\n\ndef empty_state(lines):\n    candidates = []\n    for l in lines:\n        s2 = l.strip()\n        if not s2:\n            continue\n        if s2.startswith('#'):\n            continue\n        if '{{' in s2:\n            continue\n        if s2.startswith('|'):\n            continue\n        if set(s2) <= set('-|: '):\n            continue\n        candidates.append(s2.strip('_* '))\n    return candidates[-1] if candidates else 'No data available for this period.'\n\ntemplate_text = params.get('template_text') or ''\nlines = template_text.splitlines()\n\nattendance_section = get_section(lines, ['Attendance Summary'])\nscorecard_section = get_section(lines, ['Performance Scorecard', 'Scorecard'])\npast_section = get_section(lines, ['Past Month Events', 'Past Events'])\nupcoming_section = get_section(lines, ['Upcoming Events'])\n\nattendance_empty = sanitize(empty_state(attendance_section))\nscorecard_empty = sanitize(empty_state(scorecard_section))\npast_empty = sanitize(empty_state(past_section))\nupcoming_empty = sanitize(empty_state(upcoming_section))\n\ntenant_name = sanitize(params.get('tenant_name') or '')\nclient_name = sanitize(params.get('client_name') or '')\nmonth_label = sanitize(params.get('month_label') or '')\nmonth_yyyy_mm = params.get('month_yyyy_mm') or ''\ngenerated_date = sanitize(params.get('generated_date') or '')\nattendance_pct = params.get('attendance_pct')\noffice_days_pct = params.get('office_days_pct')\nleave_taken_days = params.get('leave_taken_days')\nhas_attendance_data = params.get('has_attendance_data') or False\nscorecard_rows = params.get('scorecard_rows') or []\nhas_scorecard_data = params.get('has_scorecard_data') or False\npast_events = params.get('past_events') or []\nupcoming_events = params.get('upcoming_events') or []\ngallery_paths = params.get('gallery_paths') or []\nportal_id = params.get('portal_id') or ''\n\npdf = FPDF()\npdf.set_auto_page_break(auto=True, margin=15)\npdf.add_page()\nusable = pdf.w - pdf.l_margin - pdf.r_margin\n\npdf.set_font('Helvetica', 'B', 20)\npdf.set_x(pdf.l_margin)\npdf.cell(usable, 12, sanitize(f'{client_name} - Monthly Report'), new_x='LMARGIN', new_y='NEXT', align='C')\npdf.set_font('Helvetica', '', 12)\npdf.set_x(pdf.l_margin)\npdf.cell(usable, 8, sanitize(f'Period: {month_label} ({month_yyyy_mm})'), new_x='LMARGIN', new_y='NEXT', align='C')\npdf.set_x(pdf.l_margin)\npdf.cell(usable, 8, sanitize(f'Prepared for: {tenant_name}'), new_x='LMARGIN', new_y='NEXT', align='C')\npdf.set_x(pdf.l_margin)\npdf.cell(usable, 8, sanitize(f'Generated: {generated_date}'), new_x='LMARGIN', new_y='NEXT', align='C')\npdf.ln(6)\n\npdf.set_x(pdf.l_margin)\npdf.set_font('Helvetica', 'B', 14)\npdf.cell(usable, 10, '1. Employee Attendance Summary', new_x='LMARGIN', new_y='NEXT')\npdf.set_font('Helvetica', '', 11)\npdf.set_x(pdf.l_margin)\nif has_attendance_data:\n    ap = attendance_pct if attendance_pct is not None else 0.0\n    od = office_days_pct if office_days_pct is not None else 0.0\n    lt = leave_taken_days if leave_taken_days is not None else 0.0\n    pdf.multi_cell(usable, 8, sanitize(f'Attendance: {ap:.1f}%\\nOffice Days: {od:.1f}%\\nLeave Taken: {lt:.1f} days'))\nelse:\n    pdf.multi_cell(usable, 8, attendance_empty)\npdf.ln(4)\n\npdf.set_x(pdf.l_margin)\npdf.set_font('Helvetica', 'B', 14)\npdf.cell(usable, 10, '2. Monthly Performance Scorecard', new_x='LMARGIN', new_y='NEXT')\nif has_scorecard_data and scorecard_rows:\n    col_w = usable / 4\n    pdf.set_x(pdf.l_margin)\n    pdf.set_font('Helvetica', 'B', 10)\n    pdf.cell(col_w, 8, 'Employee', border=1)\n    pdf.cell(col_w, 8, 'Attendance %', border=1)\n    pdf.cell(col_w, 8, 'Office Days %', border=1)\n    pdf.cell(col_w, 8, 'Leave Days', border=1, new_x='LMARGIN', new_y='NEXT')\n    pdf.set_font('Helvetica', '', 10)\n    for row in scorecard_rows:\n        name = sanitize(row.get('name') or '')\n        a = row.get('attendance_pct')\n        o = row.get('office_days_pct')\n        l = row.get('leave_taken_days')\n        pdf.set_x(pdf.l_margin)\n        pdf.cell(col_w, 8, name, border=1)\n        pdf.cell(col_w, 8, (f'{a:.1f}' if a is not None else '-'), border=1)\n        pdf.cell(col_w, 8, (f'{o:.1f}' if o is not None else '-'), border=1)\n        pdf.cell(col_w, 8, (f'{l:.1f}' if l is not None else '-'), border=1, new_x='LMARGIN', new_y='NEXT')\nelse:\n    pdf.set_font('Helvetica', '', 11)\n    pdf.set_x(pdf.l_margin)\n    pdf.multi_cell(usable, 8, scorecard_empty)\npdf.ln(4)\n\npdf.set_x(pdf.l_margin)\npdf.set_font('Helvetica', 'B', 14)\npdf.cell(usable, 10, '3. Past Month Events', new_x='LMARGIN', new_y='NEXT')\npdf.set_font('Helvetica', '', 11)\nif past_events:\n    for ev in past_events:\n        heading = sanitize(ev.get('heading') or '')\n        body = sanitize(ev.get('body') or '')\n        pdf.set_x(pdf.l_margin)\n        pdf.set_font('Helvetica', 'B', 11)\n        pdf.multi_cell(usable, 8, heading)\n        pdf.set_font('Helvetica', '', 11)\n        pdf.set_x(pdf.l_margin)\n        pdf.multi_cell(usable, 8, body)\n        pdf.ln(2)\nelse:\n    pdf.set_x(pdf.l_margin)\n    pdf.multi_cell(usable, 8, past_empty)\npdf.ln(4)\n\npdf.set_x(pdf.l_margin)\npdf.set_font('Helvetica', 'B', 14)\npdf.cell(usable, 10, '4. Upcoming Events', new_x='LMARGIN', new_y='NEXT')\npdf.set_font('Helvetica', '', 11)\nif upcoming_events:\n    for ev in upcoming_events:\n        heading = sanitize(ev.get('heading') or '')\n        body = sanitize(ev.get('body') or '')\n        pdf.set_x(pdf.l_margin)\n        pdf.set_font('Helvetica', 'B', 11)\n        pdf.multi_cell(usable, 8, heading)\n        pdf.set_font('Helvetica', '', 11)\n        pdf.set_x(pdf.l_margin)\n        pdf.multi_cell(usable, 8, body)\n        pdf.ln(2)\nelse:\n    pdf.set_x(pdf.l_margin)\n    pdf.multi_cell(usable, 8, upcoming_empty)\npdf.ln(4)\n\nif gallery_paths:\n    pdf.set_x(pdf.l_margin)\n    pdf.set_font('Helvetica', 'B', 14)\n    pdf.cell(usable, 10, '5. Photo Gallery', new_x='LMARGIN', new_y='NEXT')\n    cols = 2\n    col_w = usable / cols - 4\n    y = pdf.get_y()\n    x_start = pdf.l_margin\n    for idx, img_path in enumerate(gallery_paths):\n        col = idx % cols\n        if col == 0 and idx != 0:\n            y = y + col_w + 6\n        if y + col_w > pdf.h - pdf.b_margin:\n            pdf.add_page()\n            y = pdf.t_margin\n        x = x_start + col * (col_w + 4)\n        pdf.image(img_path, x=x, y=y, w=col_w)\n    pdf.set_y(y + col_w + 6)\n\npdf_path = api.files.scratch_path(f'{month_yyyy_mm}.pdf')\npdf.output(pdf_path)\nsaved_path = f'Monthly Reports/{month_yyyy_mm}.pdf'\napi.files.put(file=saved_path, scratch_file=pdf_path, scope='client', scope_id=portal_id)\nsaved_path = saved_path or ''\n",
+        "code": "from fpdf import FPDF\nfrom pypdf import PdfReader, PdfWriter\n\nW, H = 595.5, 842.25\nORANGE = (254, 96, 0)\nNAVY = (10, 36, 63)\nWHITE = (255, 255, 255)\nBLACK = (0, 0, 0)\nGRAY = (239, 239, 239)\n\n\ndef _s(t):\n    t = t or \"\"\n    for a, b in [\n        (\"—\", \"-\"), (\"–\", \"-\"), (\"‘\", \"'\"), (\"’\", \"'\"),\n        (\"“\", '\"'), (\"”\", '\"'), (\"…\", \"...\"),\n    ]:\n        t = t.replace(a, b)\n    return t\n\n\ndef _font_setup(pdf, regular, bold, semibold, lato):\n    pdf.add_font(\"Rubik\", \"\", regular)\n    pdf.add_font(\"Rubik\", \"B\", bold)\n    pdf.add_font(\"RubikSemi\", \"\", semibold)\n    pdf.add_font(\"Lato\", \"\", lato)\n\n\ndef _cover(pdf, x0, y0, x1, y1, rgb):\n    pdf.set_fill_color(*rgb)\n    pdf.rect(x0, y0, x1 - x0, y1 - y0, style=\"F\")\n\n\ndef _ctext(pdf, cx, baseline, text, font, style, size, rgb):\n    pdf.set_font(font, style, size)\n    pdf.set_text_color(*rgb)\n    w = pdf.get_string_width(text)\n    pdf.text(cx - w / 2, baseline, text)\n\n\ndef _wrapped(pdf, x, y, width, lines, font, style, size, rgb, leading, bullet=\"• \", markdown=False):\n    pdf.set_font(font, style, size)\n    pdf.set_text_color(*rgb)\n    for para in lines:\n        pdf.set_xy(x, y)\n        pdf.multi_cell(width, leading, bullet + para, align=\"L\", markdown=markdown,\n                        new_x=\"LMARGIN\", new_y=\"NEXT\")\n        y = pdf.get_y() + 2.5\n    return y\n\n\ndef _build_overlay(data, fonts):\n    pdf = FPDF(unit=\"pt\", format=(W, H))\n    _font_setup(pdf, *fonts)\n\n    # ===================== PAGE 1 =====================\n    pdf.add_page()\n    _cover(pdf, 451, 40, 566, 59, NAVY)\n    pdf.set_font(\"Lato\", \"\", 9)\n    pdf.set_text_color(*WHITE)\n    w = pdf.get_string_width(data[\"date_label\"])\n    pdf.text(562 - w, 56.5, data[\"date_label\"])\n\n    # metric circles\n    # The template's own artwork has placeholder numbers baked into these\n    # circles (\"19 DAYS\", \"76%\", …) — the zone must always be covered even\n    # when this portal has no value yet (null leave_taken_days renders as a\n    # blank circle, never the template's leftover placeholder digits).\n    _cover(pdf, 165, 188, 210, 233, ORANGE)\n    if data[\"leave\"] is not None:\n        _ctext(pdf, 187.5, 214, data[\"leave\"], \"Rubik\", \"\", 21, WHITE)\n    _ctext(pdf, 187.5, 227, \"DAYS\", \"Rubik\", \"\", 9, WHITE)\n    _cover(pdf, 277, 190, 324, 223, ORANGE)\n    if data[\"office\"] is not None:\n        _ctext(pdf, 300.6, 218, data[\"office\"], \"Rubik\", \"\", 21, WHITE)\n    pdf.set_fill_color(239, 233, 232)\n    pdf.ellipse(409 - 21, 208 - 21, 42, 42, style=\"F\")\n    if data[\"attend\"] is not None:\n        _ctext(pdf, 409, 217, data[\"attend\"], \"Rubik\", \"\", 17, BLACK)\n\n    # past-month events (cover gray band, redraw up to 2 columns)\n    _cover(pdf, 38, 568, 560, 688, GRAY)\n    cols = [(42, 200), (256, 205)]\n    for i, ev in enumerate(data[\"past\"][:2]):\n        cx, cw = cols[i]\n        pdf.set_font(\"Rubik\", \"B\", 11)\n        pdf.set_text_color(*NAVY)\n        pdf.text(cx, 588, ev[\"heading\"])\n        _wrapped(pdf, cx, 614, cw, ev[\"body\"], \"Rubik\", \"\", 9, NAVY, 11.5)\n\n    # 4 gallery photos\n    rects = [(39.9, 695.2, 182.5, 786.0), (190.8, 696.3, 306.3, 786.3),\n             (313.7, 696.6, 435.2, 785.9), (442.9, 696.6, 557.7, 785.9)]\n    for path, (x0, y0, x1, y1) in zip(data[\"photos\"], rects):\n        try:\n            pdf.image(path, x=x0, y=y0, w=x1 - x0, h=y1 - y0)\n        except Exception:\n            pass\n\n    # ===================== PAGE 2 =====================\n    pdf.add_page()\n    _cover(pdf, 451, 40, 566, 59, NAVY)\n    pdf.set_font(\"Lato\", \"\", 9)\n    pdf.set_text_color(*WHITE)\n    w = pdf.get_string_width(data[\"date_label\"])\n    pdf.text(562 - w, 56.5, data[\"date_label\"])\n\n    _cover(pdf, 40, 120, 366, 338, WHITE)\n    gy = 129\n    for gi, grp in enumerate(data[\"upcoming\"][:2]):\n        pdf.set_font(\"RubikSemi\", \"\", 10)\n        pdf.set_text_color(*ORANGE)\n        pdf.text(44, gy + 10, grp[\"category\"])\n        y = gy + 20\n        paras = []\n        for lead, body in grp[\"items\"]:\n            clean_lead = lead.rstrip(\":\")\n            clean_body = body.lstrip(\": \")\n            paras.append(\"**\" + clean_lead + \":** \" + clean_body)\n        y = _wrapped(pdf, 61, y, 295, paras, \"Rubik\", \"\", 10, NAVY, 11.8, markdown=True)\n        gy = max(241, y + 10) if gi == 0 else y\n\n    return pdf\n\n\nmonth_label = params[\"month_label\"]\nleave_taken_days = params.get(\"leave_taken_days\")\noffice_days_pct = params.get(\"office_days_pct\")\nattendance_pct = params.get(\"attendance_pct\")\npast_events = params[\"past_events\"] or []\nupcoming_events = params[\"upcoming_events\"] or []\ngallery_paths = params[\"gallery_paths\"] or []\ntemplate_path = params[\"template_path\"]\nfont_regular_path = params[\"font_regular_path\"]\nfont_bold_path = params[\"font_bold_path\"]\nfont_semibold_path = params[\"font_semibold_path\"]\nfont_lato_path = params[\"font_lato_path\"]\nportal_id = params[\"portal_id\"]\nmonth_yyyy_mm = params[\"month_yyyy_mm\"]\n\ndata = {\n    \"date_label\": _s(\"Reporting Date: \" + month_label),\n    \"leave\": ((\"%.0f\" % leave_taken_days) if leave_taken_days is not None else None),\n    \"office\": ((\"%.0f%%\" % office_days_pct) if office_days_pct is not None else None),\n    \"attend\": ((\"%.0f%%\" % attendance_pct) if attendance_pct is not None else None),\n    \"past\": [\n        {\"heading\": _s(ev.get(\"heading\") or \"\"), \"body\": [_s(b) for b in (ev.get(\"body\") or [])]}\n        for ev in past_events\n    ],\n    \"upcoming\": [\n        {\n            \"category\": _s(ev.get(\"heading\") or \"\"),\n            \"items\": [[_s(lead), _s(body)] for lead, body in (ev.get(\"items\") or [])],\n        }\n        for ev in upcoming_events\n    ],\n    \"photos\": gallery_paths,\n}\n\noverlay = _build_overlay(data, (font_regular_path, font_bold_path, font_semibold_path, font_lato_path))\noverlay_path = api.files.scratch_path(\"overlay-\" + portal_id + \".pdf\")\noverlay.output(overlay_path)\n\ntpl_reader = PdfReader(template_path)\noverlay_reader = PdfReader(overlay_path)\nwriter = PdfWriter()\npage_count = min(len(tpl_reader.pages), len(overlay_reader.pages), 2)\nfor i in range(page_count):\n    page = tpl_reader.pages[i]\n    page.merge_page(overlay_reader.pages[i])\n    writer.add_page(page)\n\nmerged_path = api.files.scratch_path(\"report-\" + portal_id + \".pdf\")\nwith open(merged_path, \"wb\") as fh:\n    writer.write(fh)\n\nsaved_path = \"Monthly Reports/\" + month_yyyy_mm + \".pdf\"\napi.files.put(file=saved_path, scratch_file=merged_path, scope=\"client\", scope_id=portal_id)\n",
         "id": "build_and_save_pdf",
         "kind": "python",
         "outputs": [
           {
-            "description": "Path the PDF was saved to, e.g. Monthly Reports/2026-06.pdf",
+            "description": "Path the PDF was saved to, e.g. Monthly Reports/2026-07.pdf",
             "name": "saved_path",
             "type": "str"
           }
         ],
         "params": [
           {
-            "binding": "{{ steps.read_template.outputs.template_text }}",
-            "control": "hidden",
-            "label": "Template text",
-            "name": "template_text",
-            "required": true,
-            "type": "str"
-          },
-          {
-            "control": "text",
-            "label": "Tenant/workspace name shown on cover",
-            "name": "tenant_name",
-            "required": true,
-            "type": "str",
-            "value": "mySMB"
-          },
-          {
-            "binding": "{{ item.clientName }}",
-            "control": "hidden",
-            "label": "Client name",
-            "name": "client_name",
-            "required": true,
-            "type": "str"
-          },
-          {
             "binding": "{{ item.portalId }}",
             "control": "hidden",
             "label": "Portal id",
@@ -270,7 +268,7 @@
             "type": "uuid"
           },
           {
-            "binding": "{{ steps.get_report_events.outputs.month_label }}",
+            "binding": "{{ steps.get_latest_report.outputs.month_label }}",
             "control": "hidden",
             "label": "Month label",
             "name": "month_label",
@@ -278,7 +276,7 @@
             "type": "str"
           },
           {
-            "binding": "{{ steps.get_report_events.outputs.month_yyyy_mm }}",
+            "binding": "{{ steps.get_latest_report.outputs.month_yyyy_mm }}",
             "control": "hidden",
             "label": "Month YYYY-MM",
             "name": "month_yyyy_mm",
@@ -286,63 +284,31 @@
             "type": "str"
           },
           {
-            "binding": "{{ steps.get_report_events.outputs.generated_date }}",
-            "control": "hidden",
-            "label": "Generated date",
-            "name": "generated_date",
-            "required": true,
-            "type": "str"
-          },
-          {
-            "binding": "{{ steps.get_client_metrics.outputs.attendance_pct }}",
-            "control": "hidden",
-            "label": "Attendance %",
-            "name": "attendance_pct",
-            "required": false,
-            "type": "float"
-          },
-          {
-            "binding": "{{ steps.get_client_metrics.outputs.office_days_pct }}",
-            "control": "hidden",
-            "label": "Office days %",
-            "name": "office_days_pct",
-            "required": false,
-            "type": "float"
-          },
-          {
-            "binding": "{{ steps.get_client_metrics.outputs.leave_taken_days }}",
+            "binding": "{{ steps.match_portal_metrics.outputs.leave_taken_days }}",
             "control": "hidden",
             "label": "Leave taken days",
             "name": "leave_taken_days",
             "required": false,
-            "type": "float"
+            "type": "int"
           },
           {
-            "binding": "{{ steps.get_client_metrics.outputs.has_attendance_data }}",
+            "binding": "{{ steps.match_portal_metrics.outputs.office_days_pct }}",
             "control": "hidden",
-            "label": "Has attendance data",
-            "name": "has_attendance_data",
-            "required": true,
-            "type": "bool"
+            "label": "Office days %",
+            "name": "office_days_pct",
+            "required": false,
+            "type": "int"
           },
           {
-            "binding": "{{ steps.get_client_metrics.outputs.scorecard_rows }}",
+            "binding": "{{ steps.match_portal_metrics.outputs.attendance_pct }}",
             "control": "hidden",
-            "label": "Scorecard rows",
-            "name": "scorecard_rows",
-            "required": true,
-            "type": "list[dict]"
+            "label": "Attendance %",
+            "name": "attendance_pct",
+            "required": false,
+            "type": "int"
           },
           {
-            "binding": "{{ steps.get_client_metrics.outputs.has_scorecard_data }}",
-            "control": "hidden",
-            "label": "Has scorecard data",
-            "name": "has_scorecard_data",
-            "required": true,
-            "type": "bool"
-          },
-          {
-            "binding": "{{ steps.get_report_events.outputs.past_events }}",
+            "binding": "{{ steps.get_latest_report.outputs.past_events }}",
             "control": "hidden",
             "label": "Past events",
             "name": "past_events",
@@ -350,7 +316,7 @@
             "type": "list[dict]"
           },
           {
-            "binding": "{{ steps.get_report_events.outputs.upcoming_events }}",
+            "binding": "{{ steps.get_latest_report.outputs.upcoming_events }}",
             "control": "hidden",
             "label": "Upcoming events",
             "name": "upcoming_events",
@@ -358,15 +324,55 @@
             "type": "list[dict]"
           },
           {
-            "binding": "{{ steps.get_report_events.outputs.gallery_paths }}",
+            "binding": "{{ steps.get_latest_report.outputs.gallery_paths }}",
             "control": "hidden",
-            "label": "Gallery image paths",
+            "label": "Gallery photo paths",
             "name": "gallery_paths",
             "required": true,
             "type": "list[str]"
+          },
+          {
+            "binding": "{{ steps.get_latest_report.outputs.template_path }}",
+            "control": "hidden",
+            "label": "Template PDF path",
+            "name": "template_path",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.get_latest_report.outputs.font_regular_path }}",
+            "control": "hidden",
+            "label": "Rubik Regular path",
+            "name": "font_regular_path",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.get_latest_report.outputs.font_bold_path }}",
+            "control": "hidden",
+            "label": "Rubik Bold path",
+            "name": "font_bold_path",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.get_latest_report.outputs.font_semibold_path }}",
+            "control": "hidden",
+            "label": "Rubik SemiBold path",
+            "name": "font_semibold_path",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.get_latest_report.outputs.font_lato_path }}",
+            "control": "hidden",
+            "label": "Lato Regular path",
+            "name": "font_lato_path",
+            "required": true,
+            "type": "str"
           }
         ],
-        "title": "Build monthly report PDF and save to client folder"
+        "title": "Overlay dynamic content onto template.pdf and save to the client folder"
       },
       {
         "code": "api.notify.send(title=params[\"title\"] or \"\", body=params[\"body\"] or \"\", user_ids=[params[\"user_id\"]])",
