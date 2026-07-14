@@ -19,6 +19,31 @@ const invoice_tone: ComputedFunction = (args) => {
 };
 
 /**
+ * Map a SimPro quote status to a badge tone.
+ * Args: { value: string }
+ *
+ * Matched against real values confirmed in the sandbox — Simpro's own
+ * quote list colours these dots red/green/orange respectively, so this
+ * intentionally does NOT use keyword substring matching (e.g. "To Be
+ * Completed" contains "complete" but is the not-yet-started red state,
+ * the opposite of what a naive keyword match would suggest).
+ *
+ * Quote : To Be Completed    → "destructive" (red)
+ * Quote : In Progress        → "success"     (green)
+ * Quote : Employee Scheduled → "warning"     (orange)
+ * Approved                   → "success"
+ * (default)                  → "muted"
+ */
+const quote_status_tone: ComputedFunction = (args) => {
+  const v = String(args.value ?? '');
+  if (v === 'Quote : To Be Completed') return 'destructive';
+  if (v === 'Quote : In Progress') return 'success';
+  if (v === 'Quote : Employee Scheduled') return 'warning';
+  if (v === 'Approved') return 'success';
+  return 'muted';
+};
+
+/**
  * Map a SimPro job status to a badge tone.
  * Args: { value: string }
  *
@@ -66,7 +91,7 @@ const TimePill: CompositeComponentDef = {
 
 const elements: PluginElementsModule = {
   slug: 'simpro',
-  functions: { invoice_tone, job_status_tone },
+  functions: { invoice_tone, job_status_tone, quote_status_tone },
   components: { TimePill },
 };
 

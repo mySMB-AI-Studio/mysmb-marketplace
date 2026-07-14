@@ -150,8 +150,8 @@
 
       "rowRight": {
         "type": "Stack",
-        "props": { "gap": "none", "align": "end" },
-        "children": ["rowTotal", "rowStatus"]
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["rowTotal", "rowStatusBadge"]
       },
       "rowTotal": {
         "type": "Text",
@@ -164,13 +164,14 @@
           "weight": "semibold"
         }
       },
-      "rowStatus": {
-        "type": "Text",
+      "rowStatusBadge": {
+        "type": "Badge",
         "props": {
           "text": { "$item": "Status" },
-          "size": "xs",
-          "tone": "muted",
-          "truncate": true
+          "tone": {
+            "$computed": "simpro_quote_status_tone",
+            "args": { "value": { "$item": "Status" } }
+          }
         }
       }
 
