@@ -5,7 +5,7 @@ export const slug = 'simpro';
 // ─── Computed functions ───────────────────────────────────────────────────────
 
 /**
- * Map a SimPro invoice status to a badge tone.
+ * Map a Simpro invoice status to a badge tone.
  * Args: { value: string }
  */
 const invoice_tone: ComputedFunction = (args) => {
@@ -19,7 +19,7 @@ const invoice_tone: ComputedFunction = (args) => {
 };
 
 /**
- * Map a SimPro quote status to a badge tone.
+ * Map a Simpro quote status to a badge tone.
  * Args: { value: string }
  *
  * Matched against real values confirmed in the sandbox — Simpro's own
@@ -44,7 +44,7 @@ const quote_status_tone: ComputedFunction = (args) => {
 };
 
 /**
- * Map a SimPro job status to a badge tone.
+ * Map a Simpro job status to a badge tone.
  * Args: { value: string }
  *
  * In Progress      → "warning"   (active, ongoing)

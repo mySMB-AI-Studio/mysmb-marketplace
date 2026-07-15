@@ -1,24 +1,24 @@
-# SimPro
+# Simpro
 
-Connect SimPro job management software to myHub. SimPro is the leading field-service platform used by Australian trade contractors — electricians, plumbers, HVAC, and construction businesses — to manage quotes, jobs, customers, and invoices end-to-end.
+Connect Simpro job management software to myHub. Simpro is the leading field-service platform used by Australian trade contractors — electricians, plumbers, HVAC, and construction businesses — to manage quotes, jobs, customers, and invoices end-to-end.
 
-Quotes in SimPro represent the estimation pipeline. For electrical contractors using **Ground Plan** estimating software, Ground Plan pushes completed estimates directly into SimPro as quotes, making SimPro the single source of truth for the entire estimation-to-completion lifecycle.
+Quotes in Simpro represent the estimation pipeline. For electrical contractors using **Ground Plan** estimating software, Ground Plan pushes completed estimates directly into Simpro as quotes, making Simpro the single source of truth for the entire estimation-to-completion lifecycle.
 
 ## Authentication
 
-SimPro uses API key authentication. Keys are created by a SimPro administrator and scoped to a company.
+Simpro uses API key authentication. Keys are created by a Simpro administrator and scoped to a company.
 
 **Step 1 — Create an API key**
 
-In SimPro: **Administration** > **API Keys** > **Add API Key**. Give the key a descriptive name (e.g. "myHub Integration"), set an expiry if required by your security policy, and click Save. Copy the key — it will not be shown again.
+In Simpro: **Administration** > **API Keys** > **Add API Key**. Give the key a descriptive name (e.g. "myHub Integration"), set an expiry if required by your security policy, and click Save. Copy the key — it will not be shown again.
 
 **Step 2 — Find your Company ID**
 
-In SimPro: **Administration** > **Company** > note the numeric Company ID shown in the URL or on the company details page (e.g. `0` for the default company).
+In Simpro: **Administration** > **Company** > note the numeric Company ID shown in the URL or on the company details page (e.g. `0` for the default company).
 
 **Step 3 — Find your Base URL**
 
-Your SimPro base URL is the root of your SimPro instance, e.g. `https://api.simprosuite.com` or a region-specific URL provided by SimPro support.
+Your Simpro base URL is the root of your Simpro instance, e.g. `https://api.simprosuite.com` or a region-specific URL provided by Simpro support.
 
 **Step 4 — Enter credentials in the Connect modal**
 
@@ -28,8 +28,8 @@ Enter your Base URL, Company ID, and API Key when prompted by the myHub Connect 
 
 | Variable | Description |
 |---|---|
-| `SIMPRO_BASE_URL` | The root URL of your SimPro instance, e.g. `https://api.simprosuite.com`. No trailing slash. |
-| `SIMPRO_COMPANY_ID` | The numeric SimPro company ID. Usually `0` for the default company. |
+| `SIMPRO_BASE_URL` | The root URL of your Simpro instance, e.g. `https://api.simprosuite.com`. No trailing slash. |
+| `SIMPRO_COMPANY_ID` | The numeric Simpro company ID. Usually `0` for the default company. |
 | `SIMPRO_API_KEY` | API key created under Administration > API Keys. Stored encrypted per user. |
 
 ## Tools
@@ -47,7 +47,7 @@ Enter your Base URL, Company ID, and API Key when prompted by the myHub Connect 
 
 ### Live (requires connector)
 
-- **Quote Pipeline** — scrollable list of quotes from SimPro (including Ground Plan estimates), showing quote name, customer, total, and status
+- **Quote Pipeline** — scrollable list of quotes from Simpro (including Ground Plan estimates), showing quote name, customer, total, and status
 - **Active Jobs** — scrollable list of current jobs with customer, total, and status
 - **Invoice Summary** — scrollable list of invoices with amount and colour-coded status badge (Paid, Sent, Pending, Overdue, Void)
 
@@ -59,6 +59,6 @@ Enter your Base URL, Company ID, and API Key when prompted by the myHub Connect 
 
 ## See also
 
-- [SimPro API reference](https://developer.simpro.co/reference)
-- [SimPro API authentication](https://developer.simpro.co/reference/authentication)
+- [Simpro API reference](https://developer.simpro.co/reference)
+- [Simpro API authentication](https://developer.simpro.co/reference/authentication)
 - [Ground Plan estimating software](https://www.groundplan.com.au)
