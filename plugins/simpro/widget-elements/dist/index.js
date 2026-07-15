@@ -50,17 +50,25 @@ const quote_status_tone = (args) => {
  * Map a Simpro job status to a badge tone.
  * Args: { value: string }
  *
- * In Progress      → "warning"   (active, ongoing)
- * Scheduled        → "accent"    (booked, not started)
- * Pending          → "accent"
- * Awaiting Parts   → "destructive" (blocked)
- * Awaiting Materials → "destructive"
- * Completed / Complete → "success"
- * Ready to Invoice → "success"
- * (default)        → "muted"
+ * Matched against real values confirmed in the sandbox first (status names
+ * are admin-customizable per Build, e.g. "Mobile : Awaiting Parts" rather
+ * than a bare "Awaiting Parts"), then generic fallbacks for other Builds.
+ *
+ * Mobile : Awaiting Parts → "destructive" (blocked)
+ * Job : Fully Invoiced    → "success"
+ * Job : Fully-paid        → "success"
+ * In Progress             → "warning"   (active, ongoing)
+ * Scheduled / Pending     → "accent"    (booked, not started)
+ * Awaiting Parts / Awaiting Materials → "destructive"
+ * Completed / Complete / Ready to Invoice → "success"
+ * (default)               → "muted"
  */
 const job_status_tone = (args) => {
     const v = String(args.value ?? '');
+    if (v === 'Mobile : Awaiting Parts')
+        return 'destructive';
+    if (v === 'Job : Fully Invoiced' || v === 'Job : Fully-paid')
+        return 'success';
     if (v === 'In Progress')
         return 'warning';
     if (v === 'Scheduled' || v === 'Pending')
