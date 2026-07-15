@@ -14,8 +14,7 @@
   },
   "dataProvider": {
     "mcp": "simpro",
-    "tool": "list_jobs",
-    "params": { "page": 1 }
+    "tool": "list_todays_jobs"
   },
   "spec": {
     "root": "card",
@@ -61,7 +60,7 @@
         "type": "Stack",
         "props": { "gap": "sm" },
         "children": ["s1", "s2", "s3"],
-        "visible": { "$state": "/_loading/simpro.list_jobs" }
+        "visible": { "$state": "/_loading/simpro.list_todays_jobs" }
       },
       "s1": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
       "s2": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
@@ -72,8 +71,8 @@
         "props": { "message": "No jobs scheduled for today." },
         "visible": {
           "$and": [
-            { "$state": "/_loading/simpro.list_jobs", "not": true },
-            { "$state": "/simpro/list_jobs/jobs/0", "not": true }
+            { "$state": "/_loading/simpro.list_todays_jobs", "not": true },
+            { "$state": "/simpro/list_todays_jobs/jobs/0", "not": true }
           ]
         }
       },
@@ -82,7 +81,7 @@
         "type": "Body",
         "props": {},
         "children": ["list"],
-        "visible": { "$state": "/_loading/simpro.list_jobs", "not": true }
+        "visible": { "$state": "/_loading/simpro.list_todays_jobs", "not": true }
       },
 
       "list": {
@@ -90,14 +89,28 @@
         "props": { "gap": "md" },
         "children": ["row"],
         "repeat": {
-          "statePath": "/simpro/list_jobs/jobs",
+          "statePath": "/simpro/list_todays_jobs/jobs",
           "key": "ID"
         }
       },
 
       "row": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["rowTime", "rowBody"]
+      },
+
+      "rowTime": {
+        "type": "simpro_TimePill",
+        "props": {
+          "start": { "$item": "ScheduledStart" },
+          "end": { "$item": "ScheduledEnd" }
+        }
+      },
+
+      "rowBody": {
         "type": "Stack",
-        "props": { "gap": "xs" },
+        "props": { "gap": "xs", "grow": true },
         "children": ["rowName", "rowMeta"]
       },
 
