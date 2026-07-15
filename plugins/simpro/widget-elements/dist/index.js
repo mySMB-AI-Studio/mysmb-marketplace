@@ -1,7 +1,7 @@
 export const slug = 'simpro';
 // ─── Computed functions ───────────────────────────────────────────────────────
 /**
- * Map a SimPro invoice status to a badge tone.
+ * Map a Simpro invoice status to a badge tone.
  * Args: { value: string }
  */
 const invoice_tone = (args) => {
@@ -19,20 +19,56 @@ const invoice_tone = (args) => {
     return 'muted';
 };
 /**
- * Map a SimPro job status to a badge tone.
+ * Map a Simpro quote status to a badge tone.
  * Args: { value: string }
  *
- * In Progress      → "warning"   (active, ongoing)
- * Scheduled        → "accent"    (booked, not started)
- * Pending          → "accent"
- * Awaiting Parts   → "destructive" (blocked)
- * Awaiting Materials → "destructive"
- * Completed / Complete → "success"
- * Ready to Invoice → "success"
- * (default)        → "muted"
+ * Matched against real values confirmed in the sandbox — Simpro's own
+ * quote list colours these dots red/green/orange respectively, so this
+ * intentionally does NOT use keyword substring matching (e.g. "To Be
+ * Completed" contains "complete" but is the not-yet-started red state,
+ * the opposite of what a naive keyword match would suggest).
+ *
+ * Quote : To Be Completed    → "destructive" (red)
+ * Quote : In Progress        → "success"     (green)
+ * Quote : Employee Scheduled → "warning"     (orange)
+ * Approved                   → "success"
+ * (default)                  → "muted"
+ */
+const quote_status_tone = (args) => {
+    const v = String(args.value ?? '');
+    if (v === 'Quote : To Be Completed')
+        return 'destructive';
+    if (v === 'Quote : In Progress')
+        return 'success';
+    if (v === 'Quote : Employee Scheduled')
+        return 'warning';
+    if (v === 'Approved')
+        return 'success';
+    return 'muted';
+};
+/**
+ * Map a Simpro job status to a badge tone.
+ * Args: { value: string }
+ *
+ * Matched against real values confirmed in the sandbox first (status names
+ * are admin-customizable per Build, e.g. "Mobile : Awaiting Parts" rather
+ * than a bare "Awaiting Parts"), then generic fallbacks for other Builds.
+ *
+ * Mobile : Awaiting Parts → "destructive" (blocked)
+ * Job : Fully Invoiced    → "success"
+ * Job : Fully-paid        → "success"
+ * In Progress             → "warning"   (active, ongoing)
+ * Scheduled / Pending     → "accent"    (booked, not started)
+ * Awaiting Parts / Awaiting Materials → "destructive"
+ * Completed / Complete / Ready to Invoice → "success"
+ * (default)               → "muted"
  */
 const job_status_tone = (args) => {
     const v = String(args.value ?? '');
+    if (v === 'Mobile : Awaiting Parts')
+        return 'destructive';
+    if (v === 'Job : Fully Invoiced' || v === 'Job : Fully-paid')
+        return 'success';
     if (v === 'In Progress')
         return 'warning';
     if (v === 'Scheduled' || v === 'Pending')
@@ -66,7 +102,7 @@ const TimePill = {
 // ─── Module export ────────────────────────────────────────────────────────────
 const elements = {
     slug: 'simpro',
-    functions: { invoice_tone, job_status_tone },
+    functions: { invoice_tone, job_status_tone, quote_status_tone },
     components: { TimePill },
 };
 export default elements;

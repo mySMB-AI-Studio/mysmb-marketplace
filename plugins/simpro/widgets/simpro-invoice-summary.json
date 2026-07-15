@@ -1,7 +1,7 @@
 {
   "id": "simpro-invoice-summary",
   "title": "Invoice Summary",
-  "description": "Live SimPro invoices with amount and colour-coded status badge.",
+  "description": "Live Simpro invoices with amount and colour-coded status badge.",
   "category": "finance",
   "tags": ["simpro", "invoices", "finance", "billing", "accounts-receivable", "electrical", "trade"],
   "keywords": ["invoices", "billing", "finance", "accounts receivable", "paid", "overdue", "simpro"],
@@ -52,7 +52,7 @@
       },
       "eyebrow": {
         "type": "Eyebrow",
-        "props": { "text": "SimPro" }
+        "props": { "text": "Simpro" }
       },
 
       "colHeader": {
@@ -100,7 +100,7 @@
         "children": ["row"],
         "repeat": {
           "statePath": "/simpro/list_invoices/invoices",
-          "key": "id"
+          "key": "ID"
         }
       },
 
@@ -117,7 +117,7 @@
       "rowInvoiceId": {
         "type": "Text",
         "props": {
-          "text": { "$item": "id" },
+          "text": { "$item": "ID" },
           "size": "sm",
           "weight": "medium",
           "truncate": true
@@ -126,7 +126,7 @@
       "rowJobId": {
         "type": "Text",
         "props": {
-          "text": { "$item": "jobId" },
+          "text": { "$item": "JobID" },
           "size": "xs",
           "tone": "muted",
           "truncate": true
@@ -143,7 +143,7 @@
         "props": {
           "text": {
             "$computed": "format_currency",
-            "args": { "value": { "$item": "total" } }
+            "args": { "value": { "$item": "Total" } }
           },
           "size": "sm",
           "weight": "semibold"
@@ -152,10 +152,10 @@
       "rowStatusBadge": {
         "type": "Badge",
         "props": {
-          "text": { "$item": "status" },
+          "text": { "$item": "Status" },
           "tone": {
             "$computed": "simpro_invoice_tone",
-            "args": { "value": { "$item": "status" } }
+            "args": { "value": { "$item": "Status" } }
           }
         }
       }
