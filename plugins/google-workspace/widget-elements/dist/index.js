@@ -20,7 +20,9 @@
 function str(value) {
     return value == null ? '' : String(value);
 }
-// ── google_workspace_mime_label ──────────────────────────────────────
+// ── mime_label ─────────────────────────────────────────────────────────
+// Referenced in widget JSON as "google-workspace_mime_label" — the slug
+// prefix is added automatically by the platform, not baked in here.
 //
 // Maps a Google Drive MIME type to a short human-readable label.
 //
@@ -33,7 +35,7 @@ function str(value) {
 //   anything else → last segment after "/" or "File"
 //
 // Args: { value: string } — the file's mimeType field
-const google_workspace_mime_label = (args) => {
+const mime_label = (args) => {
     const mime = str(args.value).toLowerCase();
     if (mime === 'application/vnd.google-apps.document')
         return 'Doc';
@@ -71,7 +73,7 @@ const google_workspace_mime_label = (args) => {
     }
     return 'File';
 };
-// ── google_workspace_mime_tone ───────────────────────────────────────
+// ── mime_tone ──────────────────────────────────────────────────────────
 //
 // Maps a Google Drive MIME type to a badge tone:
 //   Docs     → "info"
@@ -82,7 +84,7 @@ const google_workspace_mime_label = (args) => {
 //   else     → "default"
 //
 // Args: { value: string } — the file's mimeType field
-const google_workspace_mime_tone = (args) => {
+const mime_tone = (args) => {
     const mime = str(args.value).toLowerCase();
     if (mime === 'application/vnd.google-apps.document')
         return 'info';
@@ -96,7 +98,7 @@ const google_workspace_mime_tone = (args) => {
         return 'muted';
     return 'default';
 };
-// ── google_workspace_sender_name ─────────────────────────────────────
+// ── sender_name ────────────────────────────────────────────────────────
 //
 // Extracts the display name from a Gmail "From" header string.
 //
@@ -106,7 +108,7 @@ const google_workspace_mime_tone = (args) => {
 //   "<bob@example.com>"               → "bob@example.com"
 //
 // Args: { value: string } — the message's `from` field
-const google_workspace_sender_name = (args) => {
+const sender_name = (args) => {
     const raw = str(args.value).trim();
     if (!raw)
         return '';
@@ -127,9 +129,9 @@ const google_workspace_sender_name = (args) => {
 const elements = {
     slug: 'google-workspace',
     functions: {
-        google_workspace_mime_label,
-        google_workspace_mime_tone,
-        google_workspace_sender_name,
+        mime_label,
+        mime_tone,
+        sender_name,
     },
 };
 export default elements;

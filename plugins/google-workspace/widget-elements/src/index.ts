@@ -25,7 +25,9 @@ function str(value: unknown): string {
   return value == null ? '' : String(value);
 }
 
-// ── google_workspace_mime_label ──────────────────────────────────────
+// ── mime_label ─────────────────────────────────────────────────────────
+// Referenced in widget JSON as "google-workspace_mime_label" — the slug
+// prefix is added automatically by the platform, not baked in here.
 //
 // Maps a Google Drive MIME type to a short human-readable label.
 //
@@ -39,7 +41,7 @@ function str(value: unknown): string {
 //
 // Args: { value: string } — the file's mimeType field
 
-const google_workspace_mime_label: ComputedFunction = (args) => {
+const mime_label: ComputedFunction = (args) => {
   const mime = str(args.value).toLowerCase();
 
   if (mime === 'application/vnd.google-apps.document') return 'Doc';
@@ -66,7 +68,7 @@ const google_workspace_mime_label: ComputedFunction = (args) => {
   return 'File';
 };
 
-// ── google_workspace_mime_tone ───────────────────────────────────────
+// ── mime_tone ──────────────────────────────────────────────────────────
 //
 // Maps a Google Drive MIME type to a badge tone:
 //   Docs     → "info"
@@ -78,7 +80,7 @@ const google_workspace_mime_label: ComputedFunction = (args) => {
 //
 // Args: { value: string } — the file's mimeType field
 
-const google_workspace_mime_tone: ComputedFunction = (args) => {
+const mime_tone: ComputedFunction = (args) => {
   const mime = str(args.value).toLowerCase();
 
   if (mime === 'application/vnd.google-apps.document') return 'info';
@@ -89,7 +91,7 @@ const google_workspace_mime_tone: ComputedFunction = (args) => {
   return 'default';
 };
 
-// ── google_workspace_sender_name ─────────────────────────────────────
+// ── sender_name ────────────────────────────────────────────────────────
 //
 // Extracts the display name from a Gmail "From" header string.
 //
@@ -100,7 +102,7 @@ const google_workspace_mime_tone: ComputedFunction = (args) => {
 //
 // Args: { value: string } — the message's `from` field
 
-const google_workspace_sender_name: ComputedFunction = (args) => {
+const sender_name: ComputedFunction = (args) => {
   const raw = str(args.value).trim();
   if (!raw) return '';
 
@@ -123,9 +125,9 @@ const google_workspace_sender_name: ComputedFunction = (args) => {
 const elements: PluginElementsModule = {
   slug: 'google-workspace',
   functions: {
-    google_workspace_mime_label,
-    google_workspace_mime_tone,
-    google_workspace_sender_name,
+    mime_label,
+    mime_tone,
+    sender_name,
   },
 };
 
