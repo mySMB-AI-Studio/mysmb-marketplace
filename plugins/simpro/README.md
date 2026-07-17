@@ -1,45 +1,31 @@
-# SimPro
+# Simpro
 
-Connect SimPro job management software to myHub. SimPro is the leading field-service platform used by Australian trade contractors — electricians, plumbers, HVAC, and construction businesses — to manage quotes, jobs, customers, and invoices end-to-end.
+Connect Simpro job management software to myHub. Simpro is the leading field-service platform used by Australian trade contractors — electricians, plumbers, HVAC, and construction businesses — to manage quotes, jobs, customers, and invoices end-to-end.
 
-Quotes in SimPro represent the estimation pipeline. For electrical contractors using **Ground Plan** estimating software, Ground Plan pushes completed estimates directly into SimPro as quotes, making SimPro the single source of truth for the entire estimation-to-completion lifecycle.
+Quotes in Simpro represent the estimation pipeline. For electrical contractors using **Ground Plan** estimating software, Ground Plan pushes completed estimates directly into Simpro as quotes, making Simpro the single source of truth for the entire estimation-to-completion lifecycle.
 
 ## Authentication
 
-SimPro uses API key authentication. Keys are created by a SimPro administrator and scoped to a company.
+Simpro uses browser OAuth 2.0 via the Simpro Partner Program — no API keys.
 
-**Step 1 — Create an API key**
-
-In SimPro: **Administration** > **API Keys** > **Add API Key**. Give the key a descriptive name (e.g. "myHub Integration"), set an expiry if required by your security policy, and click Save. Copy the key — it will not be shown again.
-
-**Step 2 — Find your Company ID**
-
-In SimPro: **Administration** > **Company** > note the numeric Company ID shown in the URL or on the company details page (e.g. `0` for the default company).
-
-**Step 3 — Find your Base URL**
-
-Your SimPro base URL is the root of your SimPro instance, e.g. `https://api.simprosuite.com` or a region-specific URL provided by SimPro support.
-
-**Step 4 — Enter credentials in the Connect modal**
-
-Enter your Base URL, Company ID, and API Key when prompted by the myHub Connect modal.
+Click **Connect** in myHub, enter your Simpro **Build domain** (e.g. `yourcompany.simprosuite.com`) when prompted, sign in to Simpro in the popup, and pick the company to connect. Tokens are stored and refreshed by the myHub-hosted MCP gateway.
 
 ## Configuration
 
-| Variable | Description |
-|---|---|
-| `SIMPRO_BASE_URL` | The root URL of your SimPro instance, e.g. `https://api.simprosuite.com`. No trailing slash. |
-| `SIMPRO_COMPANY_ID` | The numeric SimPro company ID. Usually `0` for the default company. |
-| `SIMPRO_API_KEY` | API key created under Administration > API Keys. Stored encrypted per user. |
+No `${VAR}` placeholders — the connection is browser OAuth (no user-supplied credentials). The MCP gateway itself must be deployed with `SIMPRO_CLIENT_ID` / `SIMPRO_CLIENT_SECRET` (Simpro Partner Program app credentials) on the Container App; see `myhub-mcp-servers`.
 
 ## Tools
 
 | Tool | Description |
 |---|---|
+| `list_companies` | List the companies visible to the connected user. |
 | `list_quotes` | List quotes (estimates from Ground Plan and manual entries). Returns `{ items, totalCount }`. |
 | `get_quote` | Get full detail for a single quote by ID. |
+| `get_quote_sections` | Get the sections/cost-centre breakdown for a quote. |
 | `list_jobs` | List jobs (active, completed, and pending). Returns `{ items, totalCount }`. |
+| `list_todays_jobs` | List jobs scheduled for today with real schedule times. |
 | `get_job` | Get full detail for a single job by ID. |
+| `list_cost_center_items` | List cost-centre line items. |
 | `list_customers` | List customers. Returns `{ items, totalCount }`. |
 | `list_invoices` | List invoices. Returns `{ items, totalCount }`. |
 
