@@ -1,0 +1,177 @@
+{
+  "id": "myob-open-invoices",
+  "title": "MYOB — Open Invoices",
+  "description": "Outstanding sales invoices from MYOB AccountRight — customer, amount due, and due date at a glance.",
+  "category": "finance",
+  "tags": ["myob", "invoices", "finance", "accounting", "receivables"],
+  "keywords": ["invoice", "invoices", "outstanding", "myob", "sales", "receivables", "open"],
+  "connectorsUsed": ["myob-accounting"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
+    "max": { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "myob-accounting",
+    "tool": "list_invoices",
+    "params": { "status": "Open", "page_size": 50 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "statGrid", "divider", "tableBody"],
+        "watch": {
+          "/myob-accounting/list_invoices/Items": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/tableRows",
+              "value": {
+                "$computed": "myob-accounting_flatten_invoices",
+                "args": {
+                  "value": { "$state": "/myob-accounting/list_invoices/Items" }
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "FileText", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Open Invoices", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "MYOB Accounting" }
+      },
+
+      "statGrid": {
+        "type": "Grid",
+        "props": { "cols": 2 },
+        "children": ["tileCount", "tileTotal"]
+      },
+      "tileCount": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["stackCount"]
+      },
+      "stackCount": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["iconCount", "valCount", "lblCount"]
+      },
+      "iconCount": {
+        "type": "Icon",
+        "props": { "name": "FileText", "size": "sm", "tone": "accent" }
+      },
+      "valCount": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "count",
+            "args": { "value": { "$state": "/myob-accounting/list_invoices/Items" } }
+          },
+          "tone": "accent"
+        }
+      },
+      "lblCount": {
+        "type": "Caption",
+        "props": { "text": "Open Invoices" }
+      },
+      "tileTotal": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["stackTotal"]
+      },
+      "stackTotal": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "center" },
+        "children": ["iconTotal", "valTotal", "lblTotal"]
+      },
+      "iconTotal": {
+        "type": "Icon",
+        "props": { "name": "DollarSign", "size": "sm", "tone": "accent" }
+      },
+      "valTotal": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "myob-accounting_format_currency",
+            "args": {
+              "value": {
+                "$computed": "sum",
+                "args": {
+                  "value": { "$state": "/myob-accounting/list_invoices/Items" },
+                  "field": "BalanceDueAmount"
+                }
+              }
+            }
+          },
+          "tone": "accent"
+        }
+      },
+      "lblTotal": {
+        "type": "Caption",
+        "props": { "text": "Total Due" }
+      },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "tableBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["table"]
+      },
+      "table": {
+        "type": "Table",
+        "props": {
+          "loading": { "$state": "/_loading/myob-accounting.list_invoices" },
+          "skeletonRows": 4,
+          "rows": { "$state": "/ui/tableRows" },
+          "columns": [
+            { "id": "customer", "header": "Customer",  "field": "customerName", "priority": 1 },
+            { "id": "number",   "header": "Invoice #", "field": "number",       "width": 96,  "priority": 2 },
+            {
+              "id": "dueDate",
+              "header": "Due Date",
+              "field": "dueDate",
+              "width": 130,
+              "priority": 1,
+              "tone": {
+                "$computed": "myob-accounting_is_overdue",
+                "args": { "value": { "$item": "rawDue" } }
+              }
+            },
+            { "id": "amount",   "header": "Amount",    "field": "amount",       "width": 120, "priority": 1 }
+          ]
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}
