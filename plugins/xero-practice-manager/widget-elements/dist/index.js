@@ -36,7 +36,7 @@ const TimeBlock = {
             },
             labelStack: {
                 type: 'Stack',
-                props: { gap: 'none', grow: true },
+                props: { gap: 'none', style: { flex: 1, minWidth: 0 } },
                 children: ['taskLabel', 'subtitleText'],
             },
             taskLabel: {
@@ -90,7 +90,7 @@ const StaffRow = {
             // Name · job count (one line) + role below
             nameStack: {
                 type: 'Stack',
-                props: { gap: 'none', grow: true },
+                props: { gap: 'none', style: { flex: 1, minWidth: 0 } },
                 children: ['nameText', 'roleText'],
             },
             nameText: {
