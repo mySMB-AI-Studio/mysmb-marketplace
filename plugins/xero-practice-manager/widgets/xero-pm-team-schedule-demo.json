@@ -1,0 +1,165 @@
+{
+  "id": "xero-pm-team-schedule-demo",
+  "title": "Team Schedule (Demo)",
+  "description": "Static demo of the Xero Practice Manager Team Schedule widget — weekly workload overview for 6 staff members with job counts, load indicators, and status badges.",
+  "category": "project-management",
+  "tags": ["xero", "practice-manager", "xpm", "team", "schedule", "workload", "staff", "accounting-practice", "demo"],
+  "keywords": ["team schedule", "workload", "staff", "weekly", "job allocation", "xpm", "practice manager", "demo"],
+  "connectorsUsed": ["xero-practice-manager"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 6 },
+    "min":       { "colSpan": 3, "rowSpan": 5 },
+    "max":       { "colSpan": 8, "rowSpan": 12 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "sub", "div0", "body", "div1", "footer"]
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "pmBadge"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Users", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Team Schedule", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "6 staff · Week of 13 Jul" }
+      },
+      "pmBadge": {
+        "type": "Badge",
+        "props": { "text": "Practice Manager", "tone": "muted" }
+      },
+
+      "sub": {
+        "type": "Text",
+        "props": { "text": "Workload overview · jobs assigned this week", "size": "xs", "tone": "muted" }
+      },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["rows"]
+      },
+
+      "rows": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": [
+          "sr1", "rd1",
+          "sr2", "rd2",
+          "sr3", "rd3",
+          "sr4", "rd4",
+          "sr5", "rd5",
+          "sr6"
+        ]
+      },
+
+      "rd1": { "type": "Divider", "props": {} },
+      "rd2": { "type": "Divider", "props": {} },
+      "rd3": { "type": "Divider", "props": {} },
+      "rd4": { "type": "Divider", "props": {} },
+      "rd5": { "type": "Divider", "props": {} },
+
+      "sr1": {
+        "type": "xero-practice-manager/StaffRow",
+        "props": {
+          "initials": "PN", "color": "accent",
+          "name": "Priya Nair", "role": "Senior Accountant",
+          "jobCount": "4 jobs today", "loadLevel": 4, "status": "on-track"
+        }
+      },
+      "sr2": {
+        "type": "xero-practice-manager/StaffRow",
+        "props": {
+          "initials": "TB", "color": "destructive",
+          "name": "Tom Blackwell", "role": "Bookkeeper",
+          "jobCount": "6 jobs today", "loadLevel": 5, "status": "overloaded"
+        }
+      },
+      "sr3": {
+        "type": "xero-practice-manager/StaffRow",
+        "props": {
+          "initials": "SC", "color": "muted",
+          "name": "Sarah Chen", "role": "Tax Advisor",
+          "jobCount": "2 jobs today", "loadLevel": 2, "status": "available"
+        }
+      },
+      "sr4": {
+        "type": "xero-practice-manager/StaffRow",
+        "props": {
+          "initials": "JW", "color": "accent",
+          "name": "Josh Whitfield", "role": "Graduate Accountant",
+          "jobCount": "5 jobs today", "loadLevel": 4, "status": "on-track"
+        }
+      },
+      "sr5": {
+        "type": "xero-practice-manager/StaffRow",
+        "props": {
+          "initials": "BT", "color": "accent",
+          "name": "Ben Torres", "role": "BAS Agent",
+          "jobCount": "3 jobs today", "loadLevel": 3, "status": "on-track"
+        }
+      },
+      "sr6": {
+        "type": "xero-practice-manager/StaffRow",
+        "props": {
+          "initials": "AM", "color": "muted",
+          "name": "Aisha Malik", "role": "Practice Manager",
+          "jobCount": "1 job today", "loadLevel": 1, "status": "available"
+        }
+      },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "footer": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["footerIcon", "footerWarning", "footerLink", "footerArrow"]
+      },
+      "footerIcon": {
+        "type": "Icon",
+        "props": { "name": "AlertTriangle", "tone": "warning", "size": "xs" }
+      },
+      "footerWarning": {
+        "type": "Text",
+        "props": { "text": "2 staff need reallocation this week", "size": "xs", "tone": "muted" }
+      },
+      "footerLink": {
+        "type": "Text",
+        "props": { "text": "Open Job Scheduler", "size": "xs", "tone": "accent" }
+      },
+      "footerArrow": {
+        "type": "Icon",
+        "props": { "name": "ArrowRight", "size": "xs", "tone": "accent" }
+      }
+
+    }
+  },
+  "status": "published"
+}
