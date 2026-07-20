@@ -17,21 +17,16 @@ export const slug = 'xero-practice-manager';
  *
  * Props:
  *   time     (string)  — left-aligned time label, e.g. "08:30"
- *   label    (string)  — task name, bold when tone is "billable"
+ *   label    (string)  — task name
  *   subtitle (string)  — optional "Client · Job #XXXX" muted line
  *   duration (string)  — right-aligned, e.g. "1h 38m"
- *   tone     (string)  — "neutral" | "billable" | "admin"
+ *   tone     (string)  — system tone: "success" (billable) | "warning" (admin) | "muted" (neutral)
  *
  * Usage:
  *   { "type": "xero-practice-manager/TimeBlock",
  *     "props": { "time": "08:30", "label": "FY26 Tax Return prep",
  *                "subtitle": "Heritage Trust · Job #4821",
- *                "duration": "1h 38m", "tone": "billable" } }
- *
- * Accent bar colour:
- *   billable → success (teal/green)
- *   admin    → warning (orange)
- *   neutral  → muted   (gray)
+ *                "duration": "1h 38m", "tone": "success" } }
  */
 const TimeBlock: CompositeComponentDef = {
   kind: 'composite',
@@ -66,10 +61,10 @@ const TimeBlock: CompositeComponentDef = {
         },
       },
 
-      // Middle: label + optional subtitle
+      // Middle: label + optional subtitle — flex: 1 ensures it fills available space
       labelStack: {
         type: 'Stack',
-        props: { gap: 'none', grow: true },
+        props: { gap: 'none', style: { flex: 1, minWidth: 0 } },
         children: ['taskLabel', 'subtitleText'],
       },
       taskLabel: {
@@ -78,7 +73,6 @@ const TimeBlock: CompositeComponentDef = {
           text: { $prop: 'label' },
           size: 'sm',
           weight: 'medium',
-          truncate: true,
         },
       },
       subtitleText: {
@@ -87,7 +81,6 @@ const TimeBlock: CompositeComponentDef = {
           text: { $prop: 'subtitle' },
           size: 'xs',
           tone: 'muted',
-          truncate: true,
         },
         visible: { $prop: 'subtitle' },
       },
@@ -110,74 +103,62 @@ const TimeBlock: CompositeComponentDef = {
  * StaffRow — one staff member row in the Team Schedule list.
  *
  * Props:
- *   initials  (string)  — 2-letter avatar, e.g. "PN"
- *   color     (string)  — badge tone for the avatar chip, e.g. "accent"
- *   name      (string)  — staff member name
- *   role      (string)  — job title / role
- *   jobCount  (string)  — e.g. "4 jobs today"
- *   loadLevel (number)  — 0–5 filled squares
- *   status    (string)  — "on-track" | "overloaded" | "available"
+ *   initials      (string)  — 2-letter avatar, e.g. "PN"
+ *   statusTone    (string)  — system tone for avatar + status badge: "success" | "destructive" | "muted"
+ *   nameWithCount (string)  — combined name + job count, e.g. "Priya Nair · 4 jobs today"
+ *   role          (string)  — job title / role
+ *   statusLabel   (string)  — display text for status badge, e.g. "On track"
  *
  * Usage:
  *   { "type": "xero-practice-manager/StaffRow",
- *     "props": { "initials": "PN", "color": "accent",
- *                "name": "Priya Nair", "role": "Senior Accountant",
- *                "jobCount": "4 jobs today", "loadLevel": 4,
- *                "status": "on-track" } }
+ *     "props": { "initials": "PN", "statusTone": "success",
+ *                "nameWithCount": "Priya Nair · 4 jobs today",
+ *                "role": "Senior Accountant", "statusLabel": "On track" } }
  */
 const StaffRow: CompositeComponentDef = {
   kind: 'composite',
-  props: ['initials', 'color', 'name', 'role', 'jobCount', 'loadLevel', 'status'],
+  props: ['initials', 'statusTone', 'nameWithCount', 'role', 'statusLabel'],
   spec: {
     root: 'row',
     elements: {
-      // Outer row: [avatar] [nameStack] [rightStack]
+      // Outer row: [avatar] [nameStack] [statusBadge]
       row: {
         type: 'Row',
         props: { gap: 'sm', align: 'center' },
-        children: ['avatar', 'nameStack', 'rightStack'],
+        children: ['avatar', 'nameStack', 'statusBadge'],
       },
 
-      // Initials chip
+      // Initials chip — colour reflects workload status
       avatar: {
         type: 'Badge',
         props: {
           text: { $prop: 'initials' },
-          tone: { $prop: 'color' },
+          tone: { $prop: 'statusTone' },
           style: { minWidth: '32px', textAlign: 'center', fontWeight: '600' },
         },
       },
 
-      // Name + role
+      // Name · job count (one line) + role below
       nameStack: {
         type: 'Stack',
-        props: { gap: 'none', grow: true },
+        props: { gap: 'none', style: { flex: 1, minWidth: 0 } },
         children: ['nameText', 'roleText'],
       },
       nameText: {
         type: 'Text',
-        props: { text: { $prop: 'name' }, size: 'sm', weight: 'medium', truncate: true },
+        props: { text: { $prop: 'nameWithCount' }, size: 'sm', weight: 'medium', truncate: true },
       },
       roleText: {
         type: 'Text',
         props: { text: { $prop: 'role' }, size: 'xs', tone: 'muted', truncate: true },
       },
 
-      // Right side: job count + status badge
-      rightStack: {
-        type: 'Stack',
-        props: { gap: 'xs', align: 'end' },
-        children: ['jobCountText', 'statusBadge'],
-      },
-      jobCountText: {
-        type: 'Text',
-        props: { text: { $prop: 'jobCount' }, size: 'xs', tone: 'muted' },
-      },
+      // Status badge
       statusBadge: {
         type: 'Badge',
         props: {
-          text: { $prop: 'status' },
-          tone: { $prop: 'status' },
+          text: { $prop: 'statusLabel' },
+          tone: { $prop: 'statusTone' },
         },
       },
     },
