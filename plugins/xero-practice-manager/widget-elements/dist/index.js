@@ -115,6 +115,7 @@ const StaffRow = {
                 props: {
                     value: { $prop: 'loadPercent' },
                     tone: { $prop: 'statusTone' },
+                    style: { width: '100%' },
                 },
             },
             // Status badge — default (no variant) renders soft pastel background with coloured text

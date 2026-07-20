@@ -140,6 +140,7 @@ const StaffRow: CompositeComponentDef = {
         props: {
           value: { $prop: 'loadPercent' },
           tone: { $prop: 'statusTone' },
+          style: { width: '100%' },
         },
       },
 
