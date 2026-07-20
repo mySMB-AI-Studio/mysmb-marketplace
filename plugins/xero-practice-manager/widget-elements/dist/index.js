@@ -68,7 +68,7 @@ const TimeBlock = {
  */
 const StaffRow = {
     kind: 'composite',
-    props: ['initials', 'statusTone', 'nameWithCount', 'role', 'loadPercent', 'statusLabel'],
+    props: ['initials', 'statusTone', 'name', 'roleWithCount', 'loadPercent', 'statusLabel'],
     spec: {
         root: 'row',
         elements: {
@@ -87,21 +87,23 @@ const StaffRow = {
                     style: { minWidth: '32px', textAlign: 'center', fontWeight: '600' },
                 },
             },
-            // Name · job count (one line) + role below
+            // Fixed-width name column — ensures load bars align across all rows
             nameStack: {
                 type: 'Stack',
-                props: { gap: 'none', style: { flex: 1, minWidth: 0 } },
+                props: { gap: 'none', style: { width: '155px', flexShrink: 0 } },
                 children: ['nameText', 'roleText'],
             },
+            // Name only on first line
             nameText: {
                 type: 'Text',
-                props: { text: { $prop: 'nameWithCount' }, size: 'sm', weight: 'medium', truncate: true },
+                props: { text: { $prop: 'name' }, size: 'sm', weight: 'medium', truncate: true },
             },
+            // Role + job count on second line
             roleText: {
                 type: 'Text',
-                props: { text: { $prop: 'role' }, size: 'xs', tone: 'muted', truncate: true },
+                props: { text: { $prop: 'roleWithCount' }, size: 'xs', tone: 'muted', truncate: true },
             },
-            // Workload bar — ProgressBar treats value as 0-100 %, so pass pre-computed percent
+            // Workload bar — ProgressBar treats value as 0-100 %
             loadBar: {
                 type: 'ProgressBar',
                 props: {
@@ -110,12 +112,13 @@ const StaffRow = {
                     style: { width: '60px', flexShrink: 0 },
                 },
             },
-            // Status badge
+            // Status badge — variant solid forces filled pill on all tones incl. warning
             statusBadge: {
                 type: 'Badge',
                 props: {
                     text: { $prop: 'statusLabel' },
                     tone: { $prop: 'statusTone' },
+                    variant: 'solid',
                 },
             },
         },
