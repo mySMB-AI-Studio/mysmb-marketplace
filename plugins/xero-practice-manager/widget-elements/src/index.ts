@@ -149,6 +149,7 @@ const StaffRow: CompositeComponentDef = {
         props: {
           text: { $prop: 'statusLabel' },
           tone: { $prop: 'statusTone' },
+          variant: 'solid',
         },
       },
     },
