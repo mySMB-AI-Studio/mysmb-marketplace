@@ -76,7 +76,7 @@ const StaffRow = {
             row: {
                 type: 'Row',
                 props: { gap: 'sm', align: 'center' },
-                children: ['avatar', 'nameStack', 'barCol', 'statusBadge'],
+                children: ['avatar', 'nameStack', 'loadBar', 'statusBadge'],
             },
             // Initials chip — colour reflects workload status
             avatar: {
@@ -87,44 +87,35 @@ const StaffRow = {
                     style: { minWidth: '32px', textAlign: 'center', fontWeight: '600' },
                 },
             },
-            // Fixed-width name column — ensures load bars align across all rows
+            // Fixed-width name column — overflow:hidden prevents text from pushing bar right
             nameStack: {
                 type: 'Stack',
-                props: { gap: 'none', style: { width: '155px', flexShrink: 0 } },
+                props: { gap: 'none', style: { width: '155px', flexShrink: 0, overflow: 'hidden' } },
                 children: ['nameText', 'roleText'],
             },
-            // Name only on first line
             nameText: {
                 type: 'Text',
                 props: { text: { $prop: 'name' }, size: 'sm', weight: 'medium', truncate: true },
             },
-            // Role + job count on second line
             roleText: {
                 type: 'Text',
                 props: { text: { $prop: 'roleWithCount' }, size: 'xs', tone: 'muted', truncate: true },
             },
-            // Fixed-width column wrapping the bar — ensures left edges align across all rows
-            barCol: {
-                type: 'Stack',
-                props: { style: { width: '68px', flexShrink: 0, justifyContent: 'center' } },
-                children: ['loadBar'],
-            },
-            // Workload bar — ProgressBar treats value as 0-100 %
+            // Workload bar — fixed width so left edge aligns across all rows
             loadBar: {
                 type: 'ProgressBar',
                 props: {
                     value: { $prop: 'loadPercent' },
                     tone: { $prop: 'statusTone' },
-                    style: { width: '100%' },
+                    style: { width: '60px', flexShrink: 0 },
                 },
             },
-            // Status badge — default (no variant) renders soft pastel background with coloured text
+            // Status badge — default (no variant) = soft pastel background with coloured text
             statusBadge: {
                 type: 'Badge',
                 props: {
                     text: { $prop: 'statusLabel' },
                     tone: { $prop: 'statusTone' },
-                    variant: 'solid',
                 },
             },
         },
