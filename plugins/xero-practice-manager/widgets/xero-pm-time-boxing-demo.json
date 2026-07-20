@@ -66,75 +66,56 @@
       "rows": {
         "type": "Stack",
         "props": { "gap": "xs" },
-        "children": [
-          "tb1", "rd1",
-          "tb2", "rd2",
-          "tb3", "rd3",
-          "tb4", "rd4",
-          "tb5", "rd5",
-          "tb6", "rd6",
-          "tb7", "rd7",
-          "tb8", "rd8",
-          "tb9"
-        ]
+        "children": ["tb1", "tb2", "tb3", "tb4", "tb5", "tb6", "tb7", "tb8", "tb9"]
       },
-
-      "rd1": { "type": "Divider", "props": {} },
-      "rd2": { "type": "Divider", "props": {} },
-      "rd3": { "type": "Divider", "props": {} },
-      "rd4": { "type": "Divider", "props": {} },
-      "rd5": { "type": "Divider", "props": {} },
-      "rd6": { "type": "Divider", "props": {} },
-      "rd7": { "type": "Divider", "props": {} },
-      "rd8": { "type": "Divider", "props": {} },
 
       "tb1": {
         "type": "xero-practice-manager/TimeBlock",
-        "props": { "time": "08:00", "task": "Inbox triage / buffer", "subtitle": "", "duration": "30m", "tone": "muted" }
+        "props": { "task": "Inbox triage / buffer", "subtitle": "", "duration": "30m", "tone": "muted" }
       },
       "tb2": {
         "type": "xero-practice-manager/TimeBlock",
-        "props": { "time": "08:30", "task": "FY26 Tax Return prep", "subtitle": "Heritage Trust · Job #4821", "duration": "1h 38m", "tone": "success" }
+        "props": { "task": "FY26 Tax Return prep", "subtitle": "Heritage Trust · Job #4821", "duration": "1h 38m", "tone": "success" }
       },
       "tb3": {
         "type": "xero-practice-manager/TimeBlock",
-        "props": { "time": "10:00", "task": "Break", "subtitle": "", "duration": "15m", "tone": "muted" }
+        "props": { "task": "Break", "subtitle": "", "duration": "15m", "tone": "muted" }
       },
       "tb4": {
         "type": "xero-practice-manager/TimeBlock",
-        "props": { "time": "10:15", "task": "BAS Lodgement Review", "subtitle": "Bayside Club · Job #4809", "duration": "1h 45m", "tone": "success" }
+        "props": { "task": "BAS Lodgement Review", "subtitle": "Bayside Club · Job #4809", "duration": "1h 45m", "tone": "success" }
       },
       "tb5": {
         "type": "xero-practice-manager/TimeBlock",
-        "props": { "time": "12:00", "task": "Lunch", "subtitle": "", "duration": "45m", "tone": "muted" }
+        "props": { "task": "Lunch", "subtitle": "", "duration": "45m", "tone": "muted" }
       },
       "tb6": {
         "type": "xero-practice-manager/TimeBlock",
-        "props": { "time": "12:45", "task": "Year-end reconciliation", "subtitle": "Capital Cab Co · Job #4795", "duration": "1h 45m", "tone": "success" }
+        "props": { "task": "Year-end reconciliation", "subtitle": "Capital Cab Co · Job #4795", "duration": "1h 45m", "tone": "success" }
       },
       "tb7": {
         "type": "xero-practice-manager/TimeBlock",
-        "props": { "time": "14:30", "task": "Admin / client emails", "subtitle": "", "duration": "30m", "tone": "warning" }
+        "props": { "task": "Admin / client emails", "subtitle": "", "duration": "30m", "tone": "warning" }
       },
       "tb8": {
         "type": "xero-practice-manager/TimeBlock",
-        "props": { "time": "15:00", "task": "Payroll compliance check", "subtitle": "Mitchell River Lodge · Job #4831", "duration": "1h 38m", "tone": "success" }
+        "props": { "task": "Payroll compliance check", "subtitle": "Mitchell River Lodge · Job #4831", "duration": "1h 38m", "tone": "success" }
       },
       "tb9": {
         "type": "xero-practice-manager/TimeBlock",
-        "props": { "time": "16:30", "task": "Catch-up / overflow", "subtitle": "", "duration": "30m", "tone": "muted" }
+        "props": { "task": "Catch-up / overflow", "subtitle": "", "duration": "30m", "tone": "muted" }
       },
 
       "div1": { "type": "Divider", "props": {} },
 
       "footer": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["footerRow", "footerBar", "footerHint"]
+      },
+      "footerRow": {
         "type": "Row",
         "props": { "justify": "between", "align": "center" },
-        "children": ["footerLeft", "footerRight"]
-      },
-      "footerLeft": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
         "children": ["footerLabel", "footerStat"]
       },
       "footerLabel": {
@@ -143,11 +124,15 @@
       },
       "footerStat": {
         "type": "Text",
-        "props": { "text": "5h 45m / 7h 30m", "size": "xs", "weight": "semibold" }
+        "props": { "text": "5h 45m / 7h 30m", "size": "sm", "weight": "semibold" }
       },
-      "footerRight": {
-        "type": "Badge",
-        "props": { "text": "77%", "tone": "success" }
+      "footerBar": {
+        "type": "ProgressBar",
+        "props": { "value": 77, "tone": "success" }
+      },
+      "footerHint": {
+        "type": "Text",
+        "props": { "text": "Blocks generated from XPM scheduled jobs · drag to re-box your day", "size": "xs", "tone": "accent" }
       }
 
     }
