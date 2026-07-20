@@ -17,28 +17,28 @@ export const slug = 'xero-practice-manager';
  *
  * Props:
  *   time     (string)  — left-aligned time label, e.g. "08:30"
- *   label    (string)  — task name
+ *   task     (string)  — task name (renamed from "label" to avoid reserved-prop conflicts)
  *   subtitle (string)  — optional "Client · Job #XXXX" muted line
  *   duration (string)  — right-aligned, e.g. "1h 38m"
  *   tone     (string)  — system tone: "success" (billable) | "warning" (admin) | "muted" (neutral)
  *
  * Usage:
  *   { "type": "xero-practice-manager/TimeBlock",
- *     "props": { "time": "08:30", "label": "FY26 Tax Return prep",
+ *     "props": { "time": "08:30", "task": "FY26 Tax Return prep",
  *                "subtitle": "Heritage Trust · Job #4821",
  *                "duration": "1h 38m", "tone": "success" } }
  */
 const TimeBlock: CompositeComponentDef = {
   kind: 'composite',
-  props: ['time', 'label', 'subtitle', 'duration', 'tone'],
+  props: ['time', 'task', 'subtitle', 'duration', 'tone'],
   spec: {
     root: 'row',
     elements: {
-      // Outer row: [timeCol] [accentBar] [labelStack] [durationText]
+      // Outer row: [timeCol] [dot] [labelStack] [durText]
       row: {
         type: 'Row',
-        props: { gap: 'sm', align: 'start' },
-        children: ['timeCol', 'accentBar', 'labelStack', 'durText'],
+        props: { gap: 'sm', align: 'center' },
+        children: ['timeCol', 'dot', 'labelStack', 'durText'],
       },
 
       // Left: time label
@@ -52,25 +52,26 @@ const TimeBlock: CompositeComponentDef = {
         },
       },
 
-      // Coloured accent bar (2px wide, full row height via stretch)
-      accentBar: {
-        type: 'Divider',
+      // Coloured dot indicator — replaces vertical Divider (not reliably supported)
+      dot: {
+        type: 'Badge',
         props: {
-          orientation: 'vertical',
+          text: '■',
           tone: { $prop: 'tone' },
+          style: { padding: '2px 4px', flexShrink: 0 },
         },
       },
 
-      // Middle: label + optional subtitle — flex: 1 ensures it fills available space
+      // Middle: task name + optional subtitle
       labelStack: {
         type: 'Stack',
-        props: { gap: 'none', style: { flex: 1, minWidth: 0 } },
+        props: { gap: 'none', grow: true },
         children: ['taskLabel', 'subtitleText'],
       },
       taskLabel: {
         type: 'Text',
         props: {
-          text: { $prop: 'label' },
+          text: { $prop: 'task' },
           size: 'sm',
           weight: 'medium',
         },
