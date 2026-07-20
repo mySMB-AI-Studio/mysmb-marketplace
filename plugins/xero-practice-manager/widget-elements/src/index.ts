@@ -98,7 +98,7 @@ const StaffRow: CompositeComponentDef = {
       row: {
         type: 'Row',
         props: { gap: 'sm', align: 'center' },
-        children: ['avatar', 'nameStack', 'loadBar', 'statusBadge'],
+        children: ['avatar', 'nameStack', 'barCol', 'statusBadge'],
       },
 
       // Initials chip — colour reflects workload status
@@ -128,23 +128,27 @@ const StaffRow: CompositeComponentDef = {
         props: { text: { $prop: 'roleWithCount' }, size: 'xs', tone: 'muted', truncate: true },
       },
 
+      // Fixed-width column wrapping the bar — ensures left edges align across all rows
+      barCol: {
+        type: 'Stack',
+        props: { style: { width: '68px', flexShrink: 0, justifyContent: 'center' } },
+        children: ['loadBar'],
+      },
       // Workload bar — ProgressBar treats value as 0-100 %
       loadBar: {
         type: 'ProgressBar',
         props: {
           value: { $prop: 'loadPercent' },
           tone: { $prop: 'statusTone' },
-          style: { width: '60px', flexShrink: 0 },
         },
       },
 
-      // Status badge — variant solid forces filled pill on all tones incl. warning
+      // Status badge — default (no variant) renders soft pastel background with coloured text
       statusBadge: {
         type: 'Badge',
         props: {
           text: { $prop: 'statusLabel' },
           tone: { $prop: 'statusTone' },
-          variant: 'solid',
         },
       },
     },
