@@ -68,7 +68,7 @@ const TimeBlock = {
  */
 const StaffRow = {
     kind: 'composite',
-    props: ['initials', 'statusTone', 'nameWithCount', 'role', 'loadLevel', 'statusLabel'],
+    props: ['initials', 'statusTone', 'nameWithCount', 'role', 'loadPercent', 'statusLabel'],
     spec: {
         root: 'row',
         elements: {
@@ -101,12 +101,11 @@ const StaffRow = {
                 type: 'Text',
                 props: { text: { $prop: 'role' }, size: 'xs', tone: 'muted', truncate: true },
             },
-            // Workload bar — 0–5 scale, coloured by status tone
+            // Workload bar — ProgressBar treats value as 0-100 %, so pass pre-computed percent
             loadBar: {
                 type: 'ProgressBar',
                 props: {
-                    value: { $prop: 'loadLevel' },
-                    max: 5,
+                    value: { $prop: 'loadPercent' },
                     tone: { $prop: 'statusTone' },
                     style: { width: '60px', flexShrink: 0 },
                 },

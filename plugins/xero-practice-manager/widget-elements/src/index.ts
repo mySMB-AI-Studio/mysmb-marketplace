@@ -78,19 +78,19 @@ const TimeBlock: CompositeComponentDef = {
  *   statusTone    (string)  — system tone: "success" | "destructive" | "muted"
  *   nameWithCount (string)  — combined name + job count, e.g. "Priya Nair · 4 jobs today"
  *   role          (string)  — job title / role
- *   loadLevel     (number)  — 0–5, drives the workload progress bar
+ *   loadPercent   (number)  — 0–100, pre-computed fill % for the workload bar (ProgressBar treats value as %)
  *   statusLabel   (string)  — display text for status badge, e.g. "On track"
  *
  * Usage:
  *   { "type": "xero-practice-manager/StaffRow",
  *     "props": { "initials": "PN", "statusTone": "success",
  *                "nameWithCount": "Priya Nair · 4 jobs today",
- *                "role": "Senior Accountant", "loadLevel": 4,
+ *                "role": "Senior Accountant", "loadPercent": 80,
  *                "statusLabel": "On track" } }
  */
 const StaffRow: CompositeComponentDef = {
   kind: 'composite',
-  props: ['initials', 'statusTone', 'nameWithCount', 'role', 'loadLevel', 'statusLabel'],
+  props: ['initials', 'statusTone', 'nameWithCount', 'role', 'loadPercent', 'statusLabel'],
   spec: {
     root: 'row',
     elements: {
@@ -126,12 +126,11 @@ const StaffRow: CompositeComponentDef = {
         props: { text: { $prop: 'role' }, size: 'xs', tone: 'muted', truncate: true },
       },
 
-      // Workload bar — 0–5 scale, coloured by status tone
+      // Workload bar — ProgressBar treats value as 0-100 %, so pass pre-computed percent
       loadBar: {
         type: 'ProgressBar',
         props: {
-          value: { $prop: 'loadLevel' },
-          max: 5,
+          value: { $prop: 'loadPercent' },
           tone: { $prop: 'statusTone' },
           style: { width: '60px', flexShrink: 0 },
         },
