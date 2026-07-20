@@ -75,22 +75,22 @@ const TimeBlock: CompositeComponentDef = {
  *
  * Props:
  *   initials      (string)  — 2-letter avatar, e.g. "PN"
- *   statusTone    (string)  — system tone: "success" | "destructive" | "muted"
- *   nameWithCount (string)  — combined name + job count, e.g. "Priya Nair · 4 jobs today"
- *   role          (string)  — job title / role
- *   loadPercent   (number)  — 0–100, pre-computed fill % for the workload bar (ProgressBar treats value as %)
+ *   statusTone    (string)  — system tone: "success" | "destructive" | "warning"
+ *   name          (string)  — staff member name, e.g. "Priya Nair"
+ *   roleWithCount (string)  — role + job count, e.g. "Senior Accountant · 4 jobs today"
+ *   loadPercent   (number)  — 0–100, pre-computed fill % for the workload bar
  *   statusLabel   (string)  — display text for status badge, e.g. "On track"
  *
  * Usage:
  *   { "type": "xero-practice-manager/StaffRow",
  *     "props": { "initials": "PN", "statusTone": "success",
- *                "nameWithCount": "Priya Nair · 4 jobs today",
- *                "role": "Senior Accountant", "loadPercent": 80,
- *                "statusLabel": "On track" } }
+ *                "name": "Priya Nair",
+ *                "roleWithCount": "Senior Accountant · 4 jobs today",
+ *                "loadPercent": 80, "statusLabel": "On track" } }
  */
 const StaffRow: CompositeComponentDef = {
   kind: 'composite',
-  props: ['initials', 'statusTone', 'nameWithCount', 'role', 'loadPercent', 'statusLabel'],
+  props: ['initials', 'statusTone', 'name', 'roleWithCount', 'loadPercent', 'statusLabel'],
   spec: {
     root: 'row',
     elements: {
@@ -111,22 +111,24 @@ const StaffRow: CompositeComponentDef = {
         },
       },
 
-      // Name · job count (one line) + role below
+      // Fixed-width name column — ensures load bars align across all rows
       nameStack: {
         type: 'Stack',
-        props: { gap: 'none', style: { flex: 1, minWidth: 0 } },
+        props: { gap: 'none', style: { width: '155px', flexShrink: 0 } },
         children: ['nameText', 'roleText'],
       },
+      // Name only on first line
       nameText: {
         type: 'Text',
-        props: { text: { $prop: 'nameWithCount' }, size: 'sm', weight: 'medium', truncate: true },
+        props: { text: { $prop: 'name' }, size: 'sm', weight: 'medium', truncate: true },
       },
+      // Role + job count on second line
       roleText: {
         type: 'Text',
-        props: { text: { $prop: 'role' }, size: 'xs', tone: 'muted', truncate: true },
+        props: { text: { $prop: 'roleWithCount' }, size: 'xs', tone: 'muted', truncate: true },
       },
 
-      // Workload bar — ProgressBar treats value as 0-100 %, so pass pre-computed percent
+      // Workload bar — ProgressBar treats value as 0-100 %
       loadBar: {
         type: 'ProgressBar',
         props: {
@@ -136,12 +138,13 @@ const StaffRow: CompositeComponentDef = {
         },
       },
 
-      // Status badge
+      // Status badge — variant solid forces filled pill on all tones incl. warning
       statusBadge: {
         type: 'Badge',
         props: {
           text: { $prop: 'statusLabel' },
           tone: { $prop: 'statusTone' },
+          variant: 'solid',
         },
       },
     },
