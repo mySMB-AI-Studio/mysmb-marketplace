@@ -1,0 +1,160 @@
+{
+  "id": "xero-pm-time-boxing-demo",
+  "title": "Time Boxing (Demo)",
+  "description": "Static demo of the Xero Practice Manager Time Boxing widget — daily schedule card showing 9 time-blocked entries for a staff member with billable vs non-billable breakdown.",
+  "category": "project-management",
+  "tags": ["xero", "practice-manager", "xpm", "time-boxing", "schedule", "timesheets", "accounting-practice", "demo"],
+  "keywords": ["time boxing", "schedule", "daily", "billable", "timesheet", "staff", "xpm", "practice manager", "demo"],
+  "connectorsUsed": ["xero-practice-manager"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 7 },
+    "min":       { "colSpan": 3, "rowSpan": 6 },
+    "max":       { "colSpan": 8, "rowSpan": 14 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "sub", "div0", "body", "div1", "footer"]
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "pmBadge"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Clock", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Time Boxing", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Priya Nair · Wed 15 Jul" }
+      },
+      "pmBadge": {
+        "type": "Badge",
+        "props": { "text": "Practice Manager", "tone": "muted" }
+      },
+
+      "sub": {
+        "type": "Text",
+        "props": { "text": "Daily time blocks · 9 entries", "size": "xs", "tone": "muted" }
+      },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["rows"]
+      },
+
+      "rows": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": [
+          "tb1", "rd1",
+          "tb2", "rd2",
+          "tb3", "rd3",
+          "tb4", "rd4",
+          "tb5", "rd5",
+          "tb6", "rd6",
+          "tb7", "rd7",
+          "tb8", "rd8",
+          "tb9"
+        ]
+      },
+
+      "rd1": { "type": "Divider", "props": {} },
+      "rd2": { "type": "Divider", "props": {} },
+      "rd3": { "type": "Divider", "props": {} },
+      "rd4": { "type": "Divider", "props": {} },
+      "rd5": { "type": "Divider", "props": {} },
+      "rd6": { "type": "Divider", "props": {} },
+      "rd7": { "type": "Divider", "props": {} },
+      "rd8": { "type": "Divider", "props": {} },
+
+      "tb1": {
+        "type": "xero-practice-manager/TimeBlock",
+        "props": { "time": "08:00", "label": "Inbox triage / buffer", "subtitle": "", "duration": "30m", "tone": "neutral" }
+      },
+      "tb2": {
+        "type": "xero-practice-manager/TimeBlock",
+        "props": { "time": "08:30", "label": "FY26 Tax Return prep", "subtitle": "Heritage Trust · Job #4821", "duration": "1h 38m", "tone": "billable" }
+      },
+      "tb3": {
+        "type": "xero-practice-manager/TimeBlock",
+        "props": { "time": "10:00", "label": "Break", "subtitle": "", "duration": "15m", "tone": "neutral" }
+      },
+      "tb4": {
+        "type": "xero-practice-manager/TimeBlock",
+        "props": { "time": "10:15", "label": "BAS Lodgement Review", "subtitle": "Bayside Club · Job #4809", "duration": "1h 45m", "tone": "billable" }
+      },
+      "tb5": {
+        "type": "xero-practice-manager/TimeBlock",
+        "props": { "time": "12:00", "label": "Lunch", "subtitle": "", "duration": "45m", "tone": "neutral" }
+      },
+      "tb6": {
+        "type": "xero-practice-manager/TimeBlock",
+        "props": { "time": "12:45", "label": "Year-end reconciliation", "subtitle": "Capital Cab Co · Job #4795", "duration": "1h 45m", "tone": "billable" }
+      },
+      "tb7": {
+        "type": "xero-practice-manager/TimeBlock",
+        "props": { "time": "14:30", "label": "Admin / client emails", "subtitle": "", "duration": "30m", "tone": "admin" }
+      },
+      "tb8": {
+        "type": "xero-practice-manager/TimeBlock",
+        "props": { "time": "15:00", "label": "Payroll compliance check", "subtitle": "Mitchell River Lodge · Job #4831", "duration": "1h 38m", "tone": "billable" }
+      },
+      "tb9": {
+        "type": "xero-practice-manager/TimeBlock",
+        "props": { "time": "16:30", "label": "Catch-up / overflow", "subtitle": "", "duration": "30m", "tone": "neutral" }
+      },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "footer": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["footerLeft", "footerRight"]
+      },
+      "footerLeft": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["footerLabel", "footerStat"]
+      },
+      "footerLabel": {
+        "type": "Text",
+        "props": { "text": "Billable scheduled", "size": "xs", "tone": "muted" }
+      },
+      "footerStat": {
+        "type": "Text",
+        "props": { "text": "5h 45m / 7h 30m", "size": "xs", "weight": "semibold" }
+      },
+      "footerRight": {
+        "type": "Badge",
+        "props": { "text": "77%", "tone": "success" }
+      }
+
+    }
+  },
+  "status": "published"
+}
