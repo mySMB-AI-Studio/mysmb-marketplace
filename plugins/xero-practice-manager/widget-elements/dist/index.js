@@ -57,7 +57,7 @@ const TimeBlock = {
             // Middle: task name + optional subtitle
             labelStack: {
                 type: 'Stack',
-                props: { gap: 'none', grow: true },
+                props: { gap: 'none', style: { flex: 1, minWidth: 0 } },
                 children: ['taskLabel', 'subtitleText'],
             },
             taskLabel: {
