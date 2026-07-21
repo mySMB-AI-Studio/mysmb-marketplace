@@ -129,7 +129,7 @@ const StaffRow = {
             // Fixed-width name column — overflow:hidden prevents text from pushing bar right
             nameStack: {
                 type: 'Stack',
-                props: { gap: 'none', style: { width: '155px', flexShrink: 0, overflow: 'hidden' } },
+                props: { gap: 'none', style: { minWidth: '155px', maxWidth: '155px', overflow: 'hidden' } },
                 children: ['nameText', 'roleText'],
             },
             nameText: {
