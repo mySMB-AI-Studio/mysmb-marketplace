@@ -222,11 +222,12 @@
           "align": "center",
           "hover": true,
           "clickable": true,
-          "template": "auto minmax(0, 1fr) auto"
+          "template": "auto minmax(0, 1fr) auto auto"
         },
         "children": [
           "rowAvatar",
           "rowIdentity",
+          "rowAge",
           "rowChevron"
         ],
         "on": {
@@ -344,7 +345,8 @@
         },
         "children": [
           "rowName",
-          "rowEmail"
+          "rowEmail",
+          "rowAdded"
         ]
       },
       "rowName": {
@@ -373,6 +375,48 @@
           "text": {
             "$item": "email"
           }
+        },
+        "visible": {
+          "$item": "email"
+        }
+      },
+      "rowAdded": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Added {d}",
+              "d": {
+                "$computed": "format_date",
+                "args": {
+                  "value": {
+                    "$item": "created_at"
+                  },
+                  "format": "medium"
+                }
+              }
+            }
+          }
+        },
+        "visible": {
+          "$item": "email",
+          "not": true
+        }
+      },
+      "rowAge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "created_at"
+              }
+            }
+          },
+          "tone": "muted",
+          "variant": "soft"
         }
       },
       "rowChevron": {
