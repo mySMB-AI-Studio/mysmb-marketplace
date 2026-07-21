@@ -16,46 +16,45 @@ export const slug = 'xero-practice-manager';
  * TimeBlock — one row in the Time Boxing list.
  *
  * Props:
- *   time     (string)  — optional time label in the left gutter, e.g. "08:30"
+ *   time     (string)  — optional time label shown left of task, e.g. "08:30"
  *   task     (string)  — task name
  *   subtitle (string)  — optional "Client · Job #XXXX" muted line
  *   duration (string)  — right-aligned, e.g. "1h 38m"
  *   tone     (string)  — system tone: "success" (billable) | "warning" (admin) | "muted" (neutral)
+ *
+ * NOTE — composite renderer constraint: a Row as the spec root with a direct child
+ * that carries `visible: { $prop: ... }` causes the entire composite to render nothing
+ * (root cause unconfirmed — composite.ts lives in the host app, not this repo).
+ * Keep Card as root and place conditional elements deeper in the tree to avoid this.
  */
 const TimeBlock = {
     kind: 'composite',
     props: ['time', 'task', 'subtitle', 'duration', 'tone'],
     spec: {
-        root: 'outerRow',
+        root: 'rowCard',
         elements: {
-            // Outer row: [time gutter] [tinted card]
-            outerRow: {
-                type: 'Row',
-                props: { gap: 'xs', align: 'center' },
-                children: ['timeText', 'rowCard'],
+            // Tinted card — tone drives background colour
+            rowCard: {
+                type: 'Card',
+                props: { tone: { $prop: 'tone' } },
+                children: ['contentRow'],
             },
-            // Time label sits outside the card so it aligns flush left across all blocks
+            // Content: [time] [labelStack] [duration]
+            contentRow: {
+                type: 'Row',
+                props: { justify: 'between', align: 'center', gap: 'sm' },
+                children: ['timeText', 'labelStack', 'durText'],
+            },
+            // Fixed-width time column — hidden when no time prop supplied (backward-compat)
             timeText: {
                 type: 'Text',
                 props: {
                     text: { $prop: 'time' },
                     size: 'xs',
                     tone: 'muted',
-                    style: { width: '42px', flexShrink: 0, textAlign: 'right' },
+                    style: { width: '40px', flexShrink: 0, textAlign: 'right' },
                 },
                 visible: { $prop: 'time' },
-            },
-            // Tinted card — tone drives background colour
-            rowCard: {
-                type: 'Card',
-                props: { tone: { $prop: 'tone' }, style: { flex: 1 } },
-                children: ['contentRow'],
-            },
-            // Content: [labelStack] [duration]
-            contentRow: {
-                type: 'Row',
-                props: { justify: 'between', align: 'start', gap: 'sm' },
-                children: ['labelStack', 'durText'],
             },
             labelStack: {
                 type: 'Stack',
