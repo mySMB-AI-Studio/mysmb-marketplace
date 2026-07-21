@@ -160,12 +160,13 @@ const StaffRow: CompositeComponentDef = {
         },
       },
 
-      // Status badge — default (no variant) = soft pastel background with coloured text
+      // Status badge — variant:'soft' = tinted background + coloured text (no-variant renders plain text on warning tone)
       statusBadge: {
         type: 'Badge',
         props: {
           text: { $prop: 'statusLabel' },
           tone: { $prop: 'statusTone' },
+          variant: 'soft',
         },
       },
     },

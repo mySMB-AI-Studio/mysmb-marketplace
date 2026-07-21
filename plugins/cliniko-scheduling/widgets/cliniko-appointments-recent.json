@@ -220,12 +220,20 @@
       "row": {
         "type": "ActivityItem",
         "props": {
-          "iconName": "CalendarClock",
-          "tone": "accent",
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$item": "patient_name"
+              }
+            }
+          },
           "title": {
+            "$item": "patient_name"
+          },
+          "subtitle": {
             "$item": "notes"
           },
-          "subtitle": "Appointment",
           "timestamp": {
             "$computed": "relative_time",
             "args": {
