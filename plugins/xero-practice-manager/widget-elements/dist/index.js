@@ -31,29 +31,12 @@ const TimeBlock = {
     kind: 'composite',
     props: ['time', 'task', 'subtitle', 'duration', 'tone'],
     spec: {
-        root: 'outerRow',
+        root: 'rowCard',
         elements: {
-            // Outer row: [time gutter] [tinted card]
-            outerRow: {
-                type: 'Row',
-                props: { gap: 'xs', align: 'center' },
-                children: ['timeText', 'rowCard'],
-            },
-            // Time label sits outside the card so it aligns flush left across all blocks
-            timeText: {
-                type: 'Text',
-                props: {
-                    text: { $prop: 'time' },
-                    size: 'xs',
-                    tone: 'muted',
-                    style: { width: '42px', flexShrink: 0, textAlign: 'right' },
-                },
-                visible: { $prop: 'time' },
-            },
-            // Tinted card — tone drives background colour
+            // Tinted card — tone drives background colour (success=teal, warning=amber, muted=grey)
             rowCard: {
                 type: 'Card',
-                props: { tone: { $prop: 'tone' }, style: { flex: 1 } },
+                props: { tone: { $prop: 'tone' } },
                 children: ['contentRow'],
             },
             // Content: [time] [labelStack] [duration]
@@ -129,7 +112,7 @@ const StaffRow = {
             // Fixed-width name column — overflow:hidden prevents text from pushing bar right
             nameStack: {
                 type: 'Stack',
-                props: { gap: 'none', style: { width: '155px', flexShrink: 0, overflow: 'hidden' } },
+                props: { gap: 'none', style: { minWidth: '155px', maxWidth: '155px', overflow: 'hidden' } },
                 children: ['nameText', 'roleText'],
             },
             nameText: {
