@@ -31,12 +31,29 @@ const TimeBlock = {
     kind: 'composite',
     props: ['time', 'task', 'subtitle', 'duration', 'tone'],
     spec: {
-        root: 'rowCard',
+        root: 'outerRow',
         elements: {
+            // Outer row: [time gutter] [tinted card]
+            outerRow: {
+                type: 'Row',
+                props: { gap: 'xs', align: 'center' },
+                children: ['timeText', 'rowCard'],
+            },
+            // Time label sits outside the card so it aligns flush left across all blocks
+            timeText: {
+                type: 'Text',
+                props: {
+                    text: { $prop: 'time' },
+                    size: 'xs',
+                    tone: 'muted',
+                    style: { width: '42px', flexShrink: 0, textAlign: 'right' },
+                },
+                visible: { $prop: 'time' },
+            },
             // Tinted card — tone drives background colour
             rowCard: {
                 type: 'Card',
-                props: { tone: { $prop: 'tone' } },
+                props: { tone: { $prop: 'tone' }, style: { flex: 1 } },
                 children: ['contentRow'],
             },
             // Content: [time] [labelStack] [duration]
