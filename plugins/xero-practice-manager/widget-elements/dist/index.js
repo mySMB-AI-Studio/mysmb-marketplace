@@ -76,7 +76,7 @@ const StaffRow = {
             row: {
                 type: 'Row',
                 props: { gap: 'sm', align: 'center' },
-                children: ['avatar', 'nameStack', 'barCol', 'statusBadge'],
+                children: ['avatar', 'nameStack', 'loadBar', 'statusBadge'],
             },
             // Initials chip — colour reflects workload status
             avatar: {
@@ -107,6 +107,7 @@ const StaffRow = {
                 props: {
                     value: { $prop: 'loadPercent' },
                     tone: { $prop: 'statusTone' },
+                    style: { width: '60px', flexShrink: 0 },
                 },
             },
             // Status badge — default (no variant) = soft pastel background with coloured text

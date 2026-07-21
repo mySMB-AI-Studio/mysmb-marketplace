@@ -98,7 +98,7 @@ const StaffRow: CompositeComponentDef = {
       row: {
         type: 'Row',
         props: { gap: 'sm', align: 'center' },
-        children: ['avatar', 'nameStack', 'barCol', 'statusBadge'],
+        children: ['avatar', 'nameStack', 'loadBar', 'statusBadge'],
       },
 
       // Initials chip — colour reflects workload status
@@ -132,6 +132,7 @@ const StaffRow: CompositeComponentDef = {
         props: {
           value: { $prop: 'loadPercent' },
           tone: { $prop: 'statusTone' },
+          style: { width: '60px', flexShrink: 0 },
         },
       },
 
