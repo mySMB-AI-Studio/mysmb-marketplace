@@ -28,7 +28,12 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["titleRow", "divider0", "loading", "content"]
+        "children": ["titleRow", "divider0", "body"]
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "content"]
       },
 
       "titleRow": {
@@ -41,7 +46,7 @@
         "props": { "gap": "sm", "align": "start" },
         "children": ["titleIcon", "titleStack"]
       },
-      "titleIcon": { "type": "Icon", "props": { "name": "Receipt", "tone": "accent", "size": "sm" } },
+      "titleIcon": { "type": "Icon", "props": { "name": "Receipt", "tone": "warning", "size": "sm" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
       "title": { "type": "Heading", "props": { "text": "Recent Donations", "level": "h2" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Charitabl · Last 30 Days" } },
@@ -114,8 +119,8 @@
       },
 
       "tableBody": {
-        "type": "Body",
-        "props": {},
+        "type": "Stack",
+        "props": { "gap": "none" },
         "children": ["table"],
         "visible": { "$state": "/charitabl-curator/search_donations/donations/0" }
       },

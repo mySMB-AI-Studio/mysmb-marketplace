@@ -24,7 +24,12 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "divider0", "loading", "content"]
+        "children": ["headerRow", "divider0", "body"]
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "content"]
       },
 
       "headerRow": {
@@ -37,7 +42,7 @@
         "props": { "gap": "sm", "align": "start" },
         "children": ["titleIcon", "titleStack", "widgetStatusGroup"]
       },
-      "titleIcon": { "type": "Icon", "props": { "name": "HeartHandshake", "tone": "accent", "size": "sm" } },
+      "titleIcon": { "type": "Icon", "props": { "name": "HeartHandshake", "tone": "warning", "size": "sm" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
       "title": { "type": "Heading", "props": { "text": "Donation Summary", "level": "h2" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Charitabl · Curator" } },
@@ -102,7 +107,7 @@
 
       "tileTotal": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackTotal"] },
       "stackTotal": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconTotal", "valTotal", "lblTotal"] },
-      "iconTotal": { "type": "Icon", "props": { "name": "DollarSign", "size": "sm", "tone": "accent" } },
+      "iconTotal": { "type": "Icon", "props": { "name": "DollarSign", "size": "sm", "tone": "warning" } },
       "valTotal": {
         "type": "Stat",
         "props": {
@@ -117,7 +122,7 @@
 
       "tileCount": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackCount"] },
       "stackCount": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconCount", "valCount", "lblCount"] },
-      "iconCount": { "type": "Icon", "props": { "name": "Gift", "size": "sm", "tone": "accent" } },
+      "iconCount": { "type": "Icon", "props": { "name": "Gift", "size": "sm", "tone": "warning" } },
       "valCount": {
         "type": "Stat",
         "props": { "value": { "$state": "/charitabl-curator/get_dashboard/oneOff30d/donationCount" }, "size": "md" }
@@ -126,7 +131,7 @@
 
       "tileRecurring": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackRecurring"] },
       "stackRecurring": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconRecurring", "valRecurring", "lblRecurring"] },
-      "iconRecurring": { "type": "Icon", "props": { "name": "Repeat", "size": "sm", "tone": "accent" } },
+      "iconRecurring": { "type": "Icon", "props": { "name": "Repeat", "size": "sm", "tone": "warning" } },
       "valRecurring": {
         "type": "Stat",
         "props": {
@@ -159,7 +164,7 @@
           "labelField": "date",
           "valueField": "amount",
           "valueFormat": "currency",
-          "tone": "accent",
+          "tone": "warning",
           "sort": "none",
           "emptyMessage": "No donations in the last 30 days."
         }
