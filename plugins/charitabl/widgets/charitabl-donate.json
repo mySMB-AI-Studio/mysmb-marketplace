@@ -1,0 +1,209 @@
+{
+  "id": "charitabl-donate",
+  "title": "Donate",
+  "description": "Spotlights one of Charitabl's featured causes — activities, suggested giving amounts, and a one-click Donate button that opens Charitabl's secure checkout in a new tab.",
+  "category": "giving",
+  "tags": ["charitabl", "charity", "donations", "giving", "nonprofit", "fundraising"],
+  "keywords": ["donate", "donation", "charity", "giving", "featured", "spotlight", "nonprofit", "checkout"],
+  "connectorsUsed": ["charitabl"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 5 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
+    "max": { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "charitabl",
+    "tool": "featured_charities",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "divider0", "loading", "empty", "spotlight"]
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Heart", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Donate", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Charitabl · Featured Charity" } },
+
+      "divider0": { "type": "Divider", "props": {} },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["s1", "s2", "s3"],
+        "visible": { "$state": "/_loading/charitabl.featured_charities" }
+      },
+      "s1": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "s2": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "s3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No featured charities right now — check back soon." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/charitabl.featured_charities", "not": true },
+            { "$state": "/charitabl/featured_charities/charities/0", "not": true }
+          ]
+        }
+      },
+
+      "spotlight": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["charityHeader", "activitiesText", "appealText", "expressLabel", "expressRow", "notDonatable", "donateSection"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/charitabl.featured_charities", "not": true },
+            { "$state": "/charitabl/featured_charities/charities/0" }
+          ]
+        }
+      },
+
+      "charityHeader": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["charityIcon", "charityNameStack"]
+      },
+      "charityIcon": { "type": "Icon", "props": { "name": "Landmark", "tone": "accent", "size": "md" } },
+      "charityNameStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["charityName", "charityCategory"] },
+      "charityName": {
+        "type": "Heading",
+        "props": { "text": { "$state": "/charitabl/featured_charities/charities/0/displayName" }, "level": "h3" }
+      },
+      "charityCategory": {
+        "type": "Eyebrow",
+        "props": { "text": { "$state": "/charitabl/featured_charities/charities/0/categoryName" } }
+      },
+
+      "activitiesText": {
+        "type": "Text",
+        "props": {
+          "text": { "$state": "/charitabl/featured_charities/charities/0/activitiesSnippet" },
+          "size": "sm",
+          "tone": "muted"
+        }
+      },
+
+      "appealText": {
+        "type": "Text",
+        "props": {
+          "text": { "$state": "/charitabl/featured_charities/charities/0/appealText" },
+          "size": "sm",
+          "weight": "medium"
+        },
+        "visible": { "$state": "/charitabl/featured_charities/charities/0/appealText" }
+      },
+
+      "expressLabel": {
+        "type": "Caption",
+        "props": { "text": "Suggested amounts" },
+        "visible": { "$state": "/charitabl/featured_charities/charities/0/expressAmounts" }
+      },
+      "expressRow": {
+        "type": "Row",
+        "props": { "gap": "sm" },
+        "children": ["expressLeftBtn", "expressCenterBtn", "expressRightBtn"],
+        "visible": { "$state": "/charitabl/featured_charities/charities/0/expressAmounts" }
+      },
+      "expressLeftBtn": {
+        "type": "Button",
+        "props": {
+          "label": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/charitabl/featured_charities/charities/0/expressAmounts/left" }, "fractionDigits": 0 }
+          },
+          "variant": "secondary",
+          "size": "sm"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": { "$state": "/charitabl/featured_charities/charities/0/donateUrl" } }
+          }
+        }
+      },
+      "expressCenterBtn": {
+        "type": "Button",
+        "props": {
+          "label": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/charitabl/featured_charities/charities/0/expressAmounts/center" }, "fractionDigits": 0 }
+          },
+          "variant": "secondary",
+          "size": "sm"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": { "$state": "/charitabl/featured_charities/charities/0/donateUrl" } }
+          }
+        }
+      },
+      "expressRightBtn": {
+        "type": "Button",
+        "props": {
+          "label": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/charitabl/featured_charities/charities/0/expressAmounts/right" }, "fractionDigits": 0 }
+          },
+          "variant": "secondary",
+          "size": "sm"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": { "$state": "/charitabl/featured_charities/charities/0/donateUrl" } }
+          }
+        }
+      },
+
+      "notDonatable": {
+        "type": "Caption",
+        "props": { "text": "This charity isn't currently accepting donations." },
+        "visible": { "$state": "/charitabl/featured_charities/charities/0/donatable", "not": true }
+      },
+
+      "donateSection": {
+        "type": "Row",
+        "props": { "justify": "center" },
+        "children": ["donateButton"],
+        "visible": { "$state": "/charitabl/featured_charities/charities/0/donatable" }
+      },
+      "donateButton": {
+        "type": "Button",
+        "props": {
+          "label": "Donate Now",
+          "variant": "primary",
+          "size": "md",
+          "leadingIcon": "HeartHandshake"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": { "$state": "/charitabl/featured_charities/charities/0/donateUrl" } }
+          }
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}

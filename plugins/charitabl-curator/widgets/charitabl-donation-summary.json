@@ -1,0 +1,171 @@
+{
+  "id": "charitabl-donation-summary",
+  "title": "Donation Summary",
+  "description": "Your charity's last-30-day one-off giving and active recurring donations, with a daily trend and your donation widget's status.",
+  "category": "giving",
+  "tags": ["charitabl", "charity", "donations", "giving", "curator", "dashboard", "recurring"],
+  "keywords": ["donations", "giving", "charity", "dashboard", "recurring", "widget status", "curator", "trend", "fundraising"],
+  "connectorsUsed": ["charitabl-curator"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 3 },
+    "min": { "colSpan": 6, "rowSpan": 3 },
+    "max": { "colSpan": 12, "rowSpan": 6 }
+  },
+  "dataProvider": {
+    "mcp": "charitabl-curator",
+    "tool": "get_dashboard",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "divider0", "loading", "content"]
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "widgetStatusGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "HeartHandshake", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Donation Summary", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Charitabl · Curator" } },
+
+      "widgetStatusGroup": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["badgeNotConfigured", "badgeActive", "badgeInactive"]
+      },
+      "badgeNotConfigured": {
+        "type": "Badge",
+        "props": { "text": "Widget not set up", "tone": "muted", "variant": "soft" },
+        "visible": { "$state": "/charitabl-curator/get_dashboard/widget/configured", "not": true }
+      },
+      "badgeActive": {
+        "type": "Badge",
+        "props": { "text": "Widget active", "tone": "success", "variant": "soft" },
+        "visible": {
+          "$and": [
+            { "$state": "/charitabl-curator/get_dashboard/widget/configured" },
+            { "$state": "/charitabl-curator/get_dashboard/widget/active" }
+          ]
+        }
+      },
+      "badgeInactive": {
+        "type": "Badge",
+        "props": { "text": "Widget inactive", "tone": "warning", "variant": "soft" },
+        "visible": {
+          "$and": [
+            { "$state": "/charitabl-curator/get_dashboard/widget/configured" },
+            { "$state": "/charitabl-curator/get_dashboard/widget/active", "not": true }
+          ]
+        }
+      },
+
+      "divider0": { "type": "Divider", "props": {} },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["loadingStats", "loadingChart"],
+        "visible": { "$state": "/_loading/charitabl-curator.get_dashboard" }
+      },
+      "loadingStats": { "type": "Grid", "props": { "cols": 3, "gap": "sm" }, "children": ["s1", "s2", "s3"] },
+      "s1": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "s2": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "s3": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "loadingChart": { "type": "Skeleton", "props": { "height": "6rem", "rounded": "md" } },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["statsGrid", "divider1", "chartLabel", "chart"],
+        "visible": { "$state": "/_loading/charitabl-curator.get_dashboard", "not": true }
+      },
+
+      "statsGrid": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["tileTotal", "tileCount", "tileRecurring"]
+      },
+
+      "tileTotal": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackTotal"] },
+      "stackTotal": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconTotal", "valTotal", "lblTotal"] },
+      "iconTotal": { "type": "Icon", "props": { "name": "DollarSign", "size": "sm", "tone": "accent" } },
+      "valTotal": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/charitabl-curator/get_dashboard/oneOff30d/totalAmount" } }
+          },
+          "size": "md"
+        }
+      },
+      "lblTotal": { "type": "Caption", "props": { "text": "Last 30 Days" } },
+
+      "tileCount": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackCount"] },
+      "stackCount": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconCount", "valCount", "lblCount"] },
+      "iconCount": { "type": "Icon", "props": { "name": "Gift", "size": "sm", "tone": "accent" } },
+      "valCount": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/charitabl-curator/get_dashboard/oneOff30d/donationCount" }, "size": "md" }
+      },
+      "lblCount": { "type": "Caption", "props": { "text": "Donations" } },
+
+      "tileRecurring": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackRecurring"] },
+      "stackRecurring": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconRecurring", "valRecurring", "lblRecurring"] },
+      "iconRecurring": { "type": "Icon", "props": { "name": "Repeat", "size": "sm", "tone": "accent" } },
+      "valRecurring": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/charitabl-curator/get_dashboard/recurring/monthlyAmount" } }
+          },
+          "size": "md"
+        }
+      },
+      "lblRecurring": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n}/mo active",
+              "n": { "$state": "/charitabl-curator/get_dashboard/recurring/activeCount" }
+            }
+          }
+        }
+      },
+
+      "divider1": { "type": "Divider", "props": {} },
+      "chartLabel": { "type": "Eyebrow", "props": { "text": "Daily Giving — Last 30 Days" } },
+      "chart": {
+        "type": "BarChart",
+        "props": {
+          "data": { "$state": "/charitabl-curator/get_dashboard/oneOff30d/daySeries" },
+          "labelField": "date",
+          "valueField": "amount",
+          "valueFormat": "currency",
+          "tone": "accent",
+          "sort": "none",
+          "emptyMessage": "No donations in the last 30 days."
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}

@@ -1,0 +1,205 @@
+{
+  "id": "charitabl-my-giving",
+  "title": "My Giving",
+  "description": "Your personal giving for the current fiscal year — total given, tax-deductible amount, donation count, recent donations, and active recurring gifts.",
+  "category": "giving",
+  "tags": ["charitabl", "charity", "donations", "giving", "donor", "giving history", "tax", "recurring"],
+  "keywords": ["giving", "donations", "donor", "tax deductible", "recurring", "gifts", "fiscal year", "charity"],
+  "connectorsUsed": ["charitabl-giving"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 7 },
+    "min": { "colSpan": 4, "rowSpan": 5 },
+    "max": { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "charitabl-giving",
+    "tool": "giving_summary",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "divider0", "loading", "content"]
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "HeartHandshake", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "My Giving", "level": "h2" } },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Charitabl · FY{year}", "year": { "$state": "/charitabl-giving/giving_summary/year" } }
+          }
+        }
+      },
+
+      "divider0": { "type": "Divider", "props": {} },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["loadingStats", "loadingRecent", "loadingRecurring"],
+        "visible": { "$state": "/_loading/charitabl-giving.giving_summary" }
+      },
+      "loadingStats": { "type": "Grid", "props": { "cols": 3, "gap": "sm" }, "children": ["s1", "s2", "s3"] },
+      "s1": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "s2": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "s3": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "loadingRecent": { "type": "Skeleton", "props": { "height": "6rem", "rounded": "md" } },
+      "loadingRecurring": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["statsGrid", "divider1", "recentLabel", "recentEmpty", "recentList", "divider2", "recurringLabel", "recurringEmpty", "recurringList"],
+        "visible": { "$state": "/_loading/charitabl-giving.giving_summary", "not": true }
+      },
+
+      "statsGrid": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["tileTotal", "tileDeductible", "tileCount"]
+      },
+      "tileTotal": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackTotal"] },
+      "stackTotal": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconTotal", "valTotal", "lblTotal"] },
+      "iconTotal": { "type": "Icon", "props": { "name": "DollarSign", "size": "sm", "tone": "accent" } },
+      "valTotal": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/charitabl-giving/giving_summary/totalGiven" } }
+          },
+          "size": "md"
+        }
+      },
+      "lblTotal": { "type": "Caption", "props": { "text": "Total Given" } },
+
+      "tileDeductible": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackDeductible"] },
+      "stackDeductible": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconDeductible", "valDeductible", "lblDeductible"] },
+      "iconDeductible": { "type": "Icon", "props": { "name": "ReceiptText", "size": "sm", "tone": "accent" } },
+      "valDeductible": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/charitabl-giving/giving_summary/taxDeductibleTotal" } }
+          },
+          "size": "md"
+        }
+      },
+      "lblDeductible": { "type": "Caption", "props": { "text": "Tax-Deductible" } },
+
+      "tileCount": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackCount"] },
+      "stackCount": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["iconCount", "valCount", "lblCount"] },
+      "iconCount": { "type": "Icon", "props": { "name": "Gift", "size": "sm", "tone": "accent" } },
+      "valCount": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/charitabl-giving/giving_summary/donationCount" }, "size": "md" }
+      },
+      "lblCount": { "type": "Caption", "props": { "text": "Donations" } },
+
+      "divider1": { "type": "Divider", "props": {} },
+      "recentLabel": { "type": "Eyebrow", "props": { "text": "Recent Donations" } },
+      "recentEmpty": {
+        "type": "Empty",
+        "props": { "message": "No donations yet this fiscal year." },
+        "visible": { "$state": "/charitabl-giving/giving_summary/recentDonations/0", "not": true }
+      },
+      "recentList": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["recentRow"],
+        "repeat": {
+          "statePath": "/charitabl-giving/giving_summary/recentDonations",
+          "key": "date"
+        },
+        "visible": { "$state": "/charitabl-giving/giving_summary/recentDonations/0" }
+      },
+      "recentRow": {
+        "type": "ListItem",
+        "props": {
+          "title": { "$item": "charityName" },
+          "subtitle": {
+            "$computed": "format_date",
+            "args": { "value": { "$item": "date" } }
+          },
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$item": "amount" } }
+          }
+        }
+      },
+
+      "divider2": { "type": "Divider", "props": {} },
+      "recurringLabel": { "type": "Eyebrow", "props": { "text": "Recurring Gifts" } },
+      "recurringEmpty": {
+        "type": "Empty",
+        "props": { "message": "No active recurring gifts." },
+        "visible": { "$state": "/charitabl-giving/giving_summary/recurringGifts/0", "not": true }
+      },
+      "recurringList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["recurringRowWrap"],
+        "repeat": {
+          "statePath": "/charitabl-giving/giving_summary/recurringGifts",
+          "key": "charityName"
+        },
+        "visible": { "$state": "/charitabl-giving/giving_summary/recurringGifts/0" }
+      },
+      "recurringRowWrap": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center", "gap": "sm" },
+        "children": ["recurringName", "recurringRight"]
+      },
+      "recurringName": {
+        "type": "Text",
+        "props": { "text": { "$item": "charityName" }, "size": "sm", "weight": "medium", "truncate": true, "grow": true }
+      },
+      "recurringRight": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["recurringAmount", "recurringStatus"]
+      },
+      "recurringAmount": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{amt}/mo",
+              "amt": {
+                "$computed": "format_currency",
+                "args": { "value": { "$item": "amount" } }
+              }
+            }
+          }
+        }
+      },
+      "recurringStatus": {
+        "type": "Badge",
+        "props": { "text": { "$item": "status" }, "tone": "success", "variant": "soft" }
+      }
+
+    }
+  },
+  "status": "published"
+}
