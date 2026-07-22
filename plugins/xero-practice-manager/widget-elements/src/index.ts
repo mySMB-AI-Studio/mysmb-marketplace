@@ -143,11 +143,11 @@ const StaffRow: CompositeComponentDef = {
       },
       nameText: {
         type: 'Text',
-        props: { text: { $prop: 'name' }, size: 'sm', weight: 'medium', truncate: true },
+        props: { text: { $prop: 'name' }, size: 'sm', weight: 'medium', truncate: true, style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
       },
       roleText: {
         type: 'Text',
-        props: { text: { $prop: 'roleWithCount' }, size: 'xs', tone: 'muted', truncate: true },
+        props: { text: { $prop: 'roleWithCount' }, size: 'xs', tone: 'muted', truncate: true, style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
       },
 
       // Workload bar — fixed width so left edge aligns across all rows
