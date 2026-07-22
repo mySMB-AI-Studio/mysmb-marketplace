@@ -1,0 +1,148 @@
+{
+  "id": "charitabl-recent-donations",
+  "title": "Recent Donations",
+  "description": "Donation-level detail for your charity over the last 30 days — donor, amount, net after fees, recurring flag, and any note left by the donor. Requires an active Charitabl subscription.",
+  "category": "giving",
+  "tags": ["charitabl", "charity", "donations", "giving", "curator", "reports", "recurring"],
+  "keywords": ["donations", "giving", "charity", "donor", "reports", "recurring", "curator", "transactions", "fundraising"],
+  "connectorsUsed": ["charitabl-curator"],
+  "brandColor": "#f87e5f",
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 5 },
+    "min": { "colSpan": 5, "rowSpan": 4 },
+    "max": { "colSpan": 12, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "charitabl-curator",
+    "tool": "search_donations",
+    "params": {
+      "from": "$days_ago_30_date",
+      "to": "$today_date",
+      "page": 1
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "divider0", "body"]
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "content"]
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Receipt", "tone": "brand", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Recent Donations", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Charitabl · Last 30 Days" } },
+
+      "divider0": { "type": "Divider", "props": {} },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["loadingStats", "loadingRows"],
+        "visible": { "$state": "/_loading/charitabl-curator.search_donations" }
+      },
+      "loadingStats": { "type": "Grid", "props": { "cols": 3, "gap": "sm" }, "children": ["s1", "s2", "s3"] },
+      "s1": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "s2": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "s3": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "loadingRows": { "type": "Skeleton", "props": { "height": "8rem", "rounded": "md" } },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["summaryGrid", "divider1", "empty", "tableBody"],
+        "visible": { "$state": "/_loading/charitabl-curator.search_donations", "not": true }
+      },
+
+      "summaryGrid": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["tileCount", "tileTotal", "tileNet"]
+      },
+      "tileCount": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackCount"] },
+      "stackCount": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["valCount", "lblCount"] },
+      "valCount": { "type": "Stat", "props": { "value": { "$state": "/charitabl-curator/search_donations/summary/count" }, "size": "md" } },
+      "lblCount": { "type": "Caption", "props": { "text": "Donations" } },
+
+      "tileTotal": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackTotal"] },
+      "stackTotal": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["valTotal", "lblTotal"] },
+      "valTotal": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/charitabl-curator/search_donations/summary/totalAmount" } }
+          },
+          "size": "md"
+        }
+      },
+      "lblTotal": { "type": "Caption", "props": { "text": "Total" } },
+
+      "tileNet": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackNet"] },
+      "stackNet": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["valNet", "lblNet"] },
+      "valNet": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/charitabl-curator/search_donations/summary/totalNet" } }
+          },
+          "size": "md"
+        }
+      },
+      "lblNet": { "type": "Caption", "props": { "text": "Net" } },
+
+      "divider1": { "type": "Divider", "props": {} },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No donations in the last 30 days." },
+        "visible": { "$state": "/charitabl-curator/search_donations/donations/0", "not": true }
+      },
+
+      "tableBody": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["table"],
+        "visible": { "$state": "/charitabl-curator/search_donations/donations/0" }
+      },
+      "table": {
+        "type": "Table",
+        "props": {
+          "loading": { "$state": "/_loading/charitabl-curator.search_donations" },
+          "skeletonRows": 5,
+          "rows": { "$state": "/charitabl-curator/search_donations/donations" },
+          "columns": [
+            { "id": "date", "header": "Date", "field": "date", "format": "xero_date_short", "width": 90, "priority": 1 },
+            { "id": "donor", "header": "Donor", "field": "donorName", "priority": 1 },
+            { "id": "amount", "header": "Amount", "field": "amount", "format": "currency", "align": "right", "width": 100, "priority": 1 },
+            { "id": "net", "header": "Net", "field": "net", "format": "currency", "align": "right", "width": 100, "priority": 2 },
+            { "id": "recurring", "header": "", "field": "recurringLabel", "variant": "badge", "width": 90, "priority": 2 },
+            { "id": "note", "header": "Note", "field": "note", "format": "dash_if_empty", "priority": 3 }
+          ]
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}
