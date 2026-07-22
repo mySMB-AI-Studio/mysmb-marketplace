@@ -18,7 +18,7 @@ Anyone can use this plugin. It never sees personal donor or curator data; it onl
 
 No environment variables. This plugin talks to Charitabl's public MCP server, which requires no authentication (`authType: none`) — Charitabl's charity directory and donation links are available to everyone.
 
-**Environment URLs:** This dev-branch artifact points at `http://localhost:3003` (local Charitabl). Promotion to staging/main rewrites the `.mcp.json` URL to `https://dev.charitabl.org` / `https://www.charitabl.org` respectively.
+**Environment URLs:** This staging-branch artifact points at `https://dev.charitabl.org` (Charitabl dev environment). The dev branch points at `http://localhost:3003` (local Charitabl); promotion to main rewrites the `.mcp.json` URL to `https://www.charitabl.org`.
 
 ## See also
 - [Charitabl](https://www.charitabl.org)

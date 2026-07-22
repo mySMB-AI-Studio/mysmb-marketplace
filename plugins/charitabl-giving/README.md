@@ -16,7 +16,7 @@ The server acts on your behalf using your Charitabl donor login, so it only ever
 
 No environment variables. This plugin uses OAuth (scope `giving`) — connecting signs you into Charitabl with your personal donor account (the login you use in the Charitabl app). Your workspace can then show your own giving history, totals, and recurring gifts.
 
-**Environment URLs:** This dev-branch artifact points at `http://localhost:3003` (local Charitabl). Promotion to staging/main rewrites the `.mcp.json` URL to `https://dev.charitabl.org` / `https://www.charitabl.org` respectively.
+**Environment URLs:** This staging-branch artifact points at `https://dev.charitabl.org` (Charitabl dev environment). The dev branch points at `http://localhost:3003` (local Charitabl); promotion to main rewrites the `.mcp.json` URL to `https://www.charitabl.org`.
 
 ## See also
 - [Charitabl](https://www.charitabl.org)
