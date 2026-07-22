@@ -111,7 +111,12 @@
         "on": {
           "click": {
             "action": "open_url",
-            "params": { "url": { "$item": "donateUrl" } }
+            "params": {
+              "url": {
+                "$computed": "identity",
+                "args": { "value": { "$item": "donateUrl" } }
+              }
+            }
           }
         },
         "visible": { "$item": "donatable" }
