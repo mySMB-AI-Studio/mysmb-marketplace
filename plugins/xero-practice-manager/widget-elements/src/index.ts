@@ -21,7 +21,7 @@ export const slug = 'xero-practice-manager';
  * TimeBlock — one row in the Time Boxing list.
  *
  * Props:
- *   time     (string)  — optional time label shown left of task, e.g. "08:30"
+ *   time     (string)  — optional time label in the left gutter, e.g. "08:30"
  *   task     (string)  — task name
  *   subtitle (string)  — optional "Client · Job #XXXX" muted line
  *   duration (string)  — right-aligned, e.g. "1h 38m"
@@ -43,12 +43,31 @@ const TimeBlock: CompositeComponentDef = {
   kind: 'composite',
   props: ['time', 'task', 'subtitle', 'duration', 'tone'],
   spec: {
-    root: 'rowCard',
+    root: 'outerRow',
     elements: {
+      // Outer row: [time gutter] [tinted card]
+      outerRow: {
+        type: 'Row',
+        props: { gap: 'xs', align: 'center' },
+        children: ['timeText', 'rowCard'],
+      },
+
+      // Time label sits outside the card so it aligns flush left across all blocks
+      timeText: {
+        type: 'Text',
+        props: {
+          text: { $prop: 'time' },
+          size: 'xs',
+          tone: 'muted',
+          style: { width: '42px', flexShrink: 0, textAlign: 'right' },
+        },
+        visible: { $prop: 'time' },
+      },
+
       // Tinted card — tone drives background colour (success=teal, warning=amber, muted=grey)
       rowCard: {
         type: 'Card',
-        props: { tone: { $prop: 'tone' } },
+        props: { tone: { $prop: 'tone' }, style: { flex: 1 } },
         children: ['contentRow'],
       },
 
@@ -97,6 +116,12 @@ const TimeBlock: CompositeComponentDef = {
 /**
  * StaffRow — one staff member row in the Team Schedule list.
  *
+ * Layout: [avatar][name/role][status badge] on top, workload bar spans the
+ * full row width underneath. The bar used to sit in a fixed-width column
+ * between the name and the badge, which meant its length depended on
+ * whatever space was left over — it never lined up across rows and shrank
+ * on narrower tiles. Putting it on its own full-width row fixes both.
+ *
  * Props:
  *   initials      (string)  — 2-letter avatar, e.g. "PN"
  *   statusTone    (string)  — system tone: "success" | "destructive" | "warning"
@@ -116,13 +141,26 @@ const StaffRow: CompositeComponentDef = {
   kind: 'composite',
   props: ['initials', 'statusTone', 'name', 'roleWithCount', 'loadPercent', 'statusLabel'],
   spec: {
-    root: 'row',
+    root: 'container',
     elements: {
-      // Outer row: [avatar] [nameStack] [loadBar] [statusBadge]
-      row: {
+      // [topRow] above, [barRow] full-width below.
+      // NOTE: these system components don't read a `style` prop at all — every
+      // `style: {...}` in earlier versions of this composite was a silent
+      // no-op. Layout is done entirely with real supported props: Stack/Row's
+      // `grow` (adds flex-1 min-w-0) and Text's `truncate`.
+      container: {
+        type: 'Stack',
+        props: { gap: 'xs' },
+        children: ['topRow', 'barRow'],
+      },
+
+      // Top row: [avatar] [nameStack] [statusBadge]. nameStack's `grow`
+      // fills the space between avatar and badge, so badge lands at the
+      // row's end without needing an explicit justify.
+      topRow: {
         type: 'Row',
         props: { gap: 'sm', align: 'center' },
-        children: ['avatar', 'nameStack', 'loadBar', 'statusBadge'],
+        children: ['avatar', 'nameStack', 'statusBadge'],
       },
 
       // Initials chip — colour reflects workload status
@@ -131,42 +169,49 @@ const StaffRow: CompositeComponentDef = {
         props: {
           text: { $prop: 'initials' },
           tone: { $prop: 'statusTone' },
-          style: { minWidth: '32px', textAlign: 'center', fontWeight: '600' },
         },
       },
 
-      // Fixed-width name column — overflow:hidden prevents text from pushing bar right
       nameStack: {
         type: 'Stack',
-        props: { gap: 'none', style: { minWidth: '155px', maxWidth: '155px', overflow: 'hidden' } },
+        props: { gap: 'none', grow: true },
         children: ['nameText', 'roleText'],
       },
       nameText: {
         type: 'Text',
-        props: { text: { $prop: 'name' }, size: 'sm', weight: 'medium', truncate: true, style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
+        props: { text: { $prop: 'name' }, size: 'sm', weight: 'medium', truncate: true },
       },
       roleText: {
         type: 'Text',
-        props: { text: { $prop: 'roleWithCount' }, size: 'xs', tone: 'muted', truncate: true, style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
+        props: { text: { $prop: 'roleWithCount' }, size: 'xs', tone: 'muted', truncate: true },
       },
 
-      // Workload bar — fixed width so left edge aligns across all rows
-      loadBar: {
-        type: 'ProgressBar',
-        props: {
-          value: { $prop: 'loadPercent' },
-          tone: { $prop: 'statusTone' },
-          style: { width: '60px', flexShrink: 0 },
-        },
-      },
-
-      // Status badge — variant:'soft' = tinted background + coloured text (no-variant renders plain text on warning tone)
+      // Status badge — variant:'soft' = tinted background + coloured text
       statusBadge: {
         type: 'Badge',
         props: {
           text: { $prop: 'statusLabel' },
           tone: { $prop: 'statusTone' },
           variant: 'soft',
+        },
+      },
+
+      // Workload bar's own row. ProgressBar always renders `flex-1` — as
+      // the sole child of a Row (horizontal flex), that grows its WIDTH to
+      // fill the full row, identically on every row regardless of name
+      // length or tile size. (Putting it directly in the outer Stack — a
+      // COLUMN flex container — made flex-1 grow its height instead, which
+      // collapsed it to nothing.)
+      barRow: {
+        type: 'Row',
+        props: {},
+        children: ['loadBar'],
+      },
+      loadBar: {
+        type: 'ProgressBar',
+        props: {
+          value: { $prop: 'loadPercent' },
+          tone: { $prop: 'statusTone' },
         },
       },
     },
