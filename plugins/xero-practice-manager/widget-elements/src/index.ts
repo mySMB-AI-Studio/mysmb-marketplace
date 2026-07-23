@@ -33,6 +33,11 @@ export const slug = 'xero-practice-manager';
  *                "task": "FY26 Tax Return prep",
  *                "subtitle": "Heritage Trust · Job #4821",
  *                "duration": "1h 38m", "tone": "success" } }
+ *
+ * NOTE — composite renderer constraint: a Row as the spec root with a direct child
+ * that carries `visible: { $prop: ... }` causes the entire composite to render nothing
+ * (root cause unconfirmed — composite.ts lives in the host app, not this repo).
+ * Keep Card as root and place conditional elements deeper in the tree to avoid this.
  */
 const TimeBlock: CompositeComponentDef = {
   kind: 'composite',
@@ -66,11 +71,23 @@ const TimeBlock: CompositeComponentDef = {
         children: ['contentRow'],
       },
 
-      // Content: [labelStack] [duration]
+      // Content: [time] [labelStack] [duration]
       contentRow: {
         type: 'Row',
-        props: { justify: 'between', align: 'start', gap: 'sm' },
-        children: ['labelStack', 'durText'],
+        props: { justify: 'between', align: 'center', gap: 'sm' },
+        children: ['timeText', 'labelStack', 'durText'],
+      },
+
+      // Fixed-width time column — hidden when no time prop supplied (backward-compat)
+      timeText: {
+        type: 'Text',
+        props: {
+          text: { $prop: 'time' },
+          size: 'xs',
+          tone: 'muted',
+          style: { width: '40px', flexShrink: 0, textAlign: 'right' },
+        },
+        visible: { $prop: 'time' },
       },
 
       labelStack: {
@@ -145,11 +162,11 @@ const StaffRow: CompositeComponentDef = {
       },
       nameText: {
         type: 'Text',
-        props: { text: { $prop: 'name' }, size: 'sm', weight: 'medium', truncate: true },
+        props: { text: { $prop: 'name' }, size: 'sm', weight: 'medium', truncate: true, style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
       },
       roleText: {
         type: 'Text',
-        props: { text: { $prop: 'roleWithCount' }, size: 'xs', tone: 'muted', truncate: true },
+        props: { text: { $prop: 'roleWithCount' }, size: 'xs', tone: 'muted', truncate: true, style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
       },
 
       // Workload bar — fixed width so left edge aligns across all rows

@@ -1,0 +1,135 @@
+{
+  "id": "charitabl-charity-discovery",
+  "title": "Charity Discovery",
+  "description": "Browse Charitabl's featured causes — name, category, and a snippet of their activities — with a one-click Donate button per charity that can currently receive donations.",
+  "category": "giving",
+  "tags": ["charitabl", "charity", "donations", "giving", "nonprofit", "fundraising", "discovery"],
+  "keywords": ["charity", "charities", "discover", "browse", "featured", "giving", "donate", "nonprofit"],
+  "connectorsUsed": ["charitabl"],
+  "brandColor": "#f87e5f",
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 5 },
+    "min": { "colSpan": 5, "rowSpan": 4 },
+    "max": { "colSpan": 12, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "charitabl",
+    "tool": "featured_charities",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "divider0", "body"]
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "list"]
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Compass", "tone": "brand", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Charity Discovery", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Charitabl · Featured" } },
+
+      "divider0": { "type": "Divider", "props": {} },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["s1", "s2", "s3", "s4"],
+        "visible": { "$state": "/_loading/charitabl.featured_charities" }
+      },
+      "s1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "s2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "s3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "s4": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No featured charities right now — check back soon." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/charitabl.featured_charities", "not": true },
+            { "$state": "/charitabl/featured_charities/charities/0", "not": true }
+          ]
+        }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["rowWrap"],
+        "repeat": {
+          "statePath": "/charitabl/featured_charities/charities",
+          "key": "id"
+        },
+        "visible": { "$state": "/_loading/charitabl.featured_charities", "not": true }
+      },
+
+      "rowWrap": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["rowContent", "rowDivider"]
+      },
+      "rowContent": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center", "gap": "sm" },
+        "children": ["rowLeft", "rowDonateBtn"]
+      },
+      "rowLeft": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["rowName", "rowCategory", "rowSnippet"]
+      },
+      "rowName": {
+        "type": "Text",
+        "props": { "text": { "$item": "displayName" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "rowCategory": {
+        "type": "Caption",
+        "props": { "text": { "$item": "categoryName" } },
+        "visible": { "$item": "categoryName" }
+      },
+      "rowSnippet": {
+        "type": "Text",
+        "props": { "text": { "$item": "activitiesSnippet" }, "size": "xs", "tone": "muted", "truncate": true }
+      },
+      "rowDonateBtn": {
+        "type": "Button",
+        "props": { "label": "Donate", "leadingIcon": "Heart", "variant": "secondary", "size": "sm" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "identity",
+                "args": { "value": { "$item": "donateUrl" } }
+              }
+            }
+          }
+        },
+        "visible": { "$item": "acceptsDonations" }
+      },
+      "rowDivider": { "type": "Divider", "props": {} }
+
+    }
+  },
+  "status": "published"
+}
