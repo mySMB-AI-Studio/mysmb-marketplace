@@ -116,6 +116,12 @@ const TimeBlock: CompositeComponentDef = {
 /**
  * StaffRow — one staff member row in the Team Schedule list.
  *
+ * Layout: [avatar][name/role][status badge] on top, workload bar spans the
+ * full row width underneath. The bar used to sit in a fixed-width column
+ * between the name and the badge, which meant its length depended on
+ * whatever space was left over — it never lined up across rows and shrank
+ * on narrower tiles. Putting it on its own full-width row fixes both.
+ *
  * Props:
  *   initials      (string)  — 2-letter avatar, e.g. "PN"
  *   statusTone    (string)  — system tone: "success" | "destructive" | "warning"
@@ -135,13 +141,26 @@ const StaffRow: CompositeComponentDef = {
   kind: 'composite',
   props: ['initials', 'statusTone', 'name', 'roleWithCount', 'loadPercent', 'statusLabel'],
   spec: {
-    root: 'row',
+    root: 'container',
     elements: {
-      // Outer row: [avatar] [nameStack] [loadBar] [statusBadge]
-      row: {
+      // [topRow] above, [barRow] full-width below.
+      // NOTE: these system components don't read a `style` prop at all — every
+      // `style: {...}` in earlier versions of this composite was a silent
+      // no-op. Layout is done entirely with real supported props: Stack/Row's
+      // `grow` (adds flex-1 min-w-0) and Text's `truncate`.
+      container: {
+        type: 'Stack',
+        props: { gap: 'xs' },
+        children: ['topRow', 'barRow'],
+      },
+
+      // Top row: [avatar] [nameStack] [statusBadge]. nameStack's `grow`
+      // fills the space between avatar and badge, so badge lands at the
+      // row's end without needing an explicit justify.
+      topRow: {
         type: 'Row',
         props: { gap: 'sm', align: 'center' },
-        children: ['avatar', 'nameStack', 'loadBar', 'statusBadge'],
+        children: ['avatar', 'nameStack', 'statusBadge'],
       },
 
       // Initials chip — colour reflects workload status
@@ -150,11 +169,9 @@ const StaffRow: CompositeComponentDef = {
         props: {
           text: { $prop: 'initials' },
           tone: { $prop: 'statusTone' },
-          style: { minWidth: '32px', textAlign: 'center', fontWeight: '600' },
         },
       },
 
-      // Fixed-width name column — overflow:hidden prevents text from pushing bar right
       nameStack: {
         type: 'Stack',
         props: { gap: 'none', style: { width: '155px', flexShrink: 0, overflow: 'hidden' } },
@@ -162,20 +179,20 @@ const StaffRow: CompositeComponentDef = {
       },
       nameText: {
         type: 'Text',
-        props: { text: { $prop: 'name' }, size: 'sm', weight: 'medium', truncate: true, style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
+        props: { text: { $prop: 'name' }, size: 'sm', weight: 'medium', truncate: true },
       },
       roleText: {
         type: 'Text',
-        props: { text: { $prop: 'roleWithCount' }, size: 'xs', tone: 'muted', truncate: true, style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
+        props: { text: { $prop: 'roleWithCount' }, size: 'xs', tone: 'muted', truncate: true },
       },
 
-      // Workload bar — fixed width so left edge aligns across all rows
-      loadBar: {
-        type: 'ProgressBar',
+      // Status badge — variant:'soft' = tinted background + coloured text
+      statusBadge: {
+        type: 'Badge',
         props: {
-          value: { $prop: 'loadPercent' },
+          text: { $prop: 'statusLabel' },
           tone: { $prop: 'statusTone' },
-          style: { width: '60px', flexShrink: 0 },
+          variant: 'soft',
         },
       },
 
@@ -183,7 +200,7 @@ const StaffRow: CompositeComponentDef = {
       statusBadge: {
         type: 'Badge',
         props: {
-          text: { $prop: 'statusLabel' },
+          value: { $prop: 'loadPercent' },
           tone: { $prop: 'statusTone' },
         },
       },
