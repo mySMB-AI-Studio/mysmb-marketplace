@@ -116,12 +116,6 @@ const TimeBlock: CompositeComponentDef = {
 /**
  * StaffRow — one staff member row in the Team Schedule list.
  *
- * Layout: [avatar][name/role][status badge] on top, workload bar spans the
- * full row width underneath. The bar used to sit in a fixed-width column
- * between the name and the badge, which meant its length depended on
- * whatever space was left over — it never lined up across rows and shrank
- * on narrower tiles. Putting it on its own full-width row fixes both.
- *
  * Props:
  *   initials      (string)  — 2-letter avatar, e.g. "PN"
  *   statusTone    (string)  — system tone: "success" | "destructive" | "warning"
@@ -141,26 +135,13 @@ const StaffRow: CompositeComponentDef = {
   kind: 'composite',
   props: ['initials', 'statusTone', 'name', 'roleWithCount', 'loadPercent', 'statusLabel'],
   spec: {
-    root: 'container',
+    root: 'row',
     elements: {
-      // [topRow] above, [barRow] full-width below.
-      // NOTE: these system components don't read a `style` prop at all — every
-      // `style: {...}` in earlier versions of this composite was a silent
-      // no-op. Layout is done entirely with real supported props: Stack/Row's
-      // `grow` (adds flex-1 min-w-0) and Text's `truncate`.
-      container: {
-        type: 'Stack',
-        props: { gap: 'xs' },
-        children: ['topRow', 'barRow'],
-      },
-
-      // Top row: [avatar] [nameStack] [statusBadge]. nameStack's `grow`
-      // fills the space between avatar and badge, so badge lands at the
-      // row's end without needing an explicit justify.
-      topRow: {
+      // Outer row: [avatar] [nameStack] [loadBar] [statusBadge]
+      row: {
         type: 'Row',
         props: { gap: 'sm', align: 'center' },
-        children: ['avatar', 'nameStack', 'statusBadge'],
+        children: ['avatar', 'nameStack', 'loadBar', 'statusBadge'],
       },
 
       // Initials chip — colour reflects workload status
@@ -169,48 +150,40 @@ const StaffRow: CompositeComponentDef = {
         props: {
           text: { $prop: 'initials' },
           tone: { $prop: 'statusTone' },
+          style: { minWidth: '32px', textAlign: 'center', fontWeight: '600' },
         },
       },
 
+      // Fixed-width name column — overflow:hidden prevents text from pushing bar right
       nameStack: {
         type: 'Stack',
-        props: { gap: 'none', grow: true },
+        props: { gap: 'none', style: { width: '155px', flexShrink: 0, overflow: 'hidden' } },
         children: ['nameText', 'roleText'],
       },
       nameText: {
         type: 'Text',
-        props: { text: { $prop: 'name' }, size: 'sm', weight: 'medium', truncate: true },
+        props: { text: { $prop: 'name' }, size: 'sm', weight: 'medium', truncate: true, style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
       },
       roleText: {
         type: 'Text',
-        props: { text: { $prop: 'roleWithCount' }, size: 'xs', tone: 'muted', truncate: true },
+        props: { text: { $prop: 'roleWithCount' }, size: 'xs', tone: 'muted', truncate: true, style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
       },
 
-      // Status badge — variant:'soft' = tinted background + coloured text
-      statusBadge: {
-        type: 'Badge',
-        props: {
-          text: { $prop: 'statusLabel' },
-          tone: { $prop: 'statusTone' },
-          variant: 'soft',
-        },
-      },
-
-      // Workload bar's own row. ProgressBar always renders `flex-1` — as
-      // the sole child of a Row (horizontal flex), that grows its WIDTH to
-      // fill the full row, identically on every row regardless of name
-      // length or tile size. (Putting it directly in the outer Stack — a
-      // COLUMN flex container — made flex-1 grow its height instead, which
-      // collapsed it to nothing.)
-      barRow: {
-        type: 'Row',
-        props: {},
-        children: ['loadBar'],
-      },
+      // Workload bar — fixed width so left edge aligns across all rows
       loadBar: {
         type: 'ProgressBar',
         props: {
           value: { $prop: 'loadPercent' },
+          tone: { $prop: 'statusTone' },
+          style: { width: '60px', flexShrink: 0 },
+        },
+      },
+
+      // Status badge — default (no variant) = soft pastel background with coloured text
+      statusBadge: {
+        type: 'Badge',
+        props: {
+          text: { $prop: 'statusLabel' },
           tone: { $prop: 'statusTone' },
         },
       },
