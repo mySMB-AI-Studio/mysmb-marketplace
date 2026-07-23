@@ -159,7 +159,7 @@ const StaffRow = {
             },
             nameStack: {
                 type: 'Stack',
-                props: { gap: 'none', grow: true },
+                props: { gap: 'none', style: { width: '155px', flexShrink: 0, overflow: 'hidden' } },
                 children: ['nameText', 'roleText'],
             },
             nameText: {
@@ -178,19 +178,9 @@ const StaffRow = {
                     tone: { $prop: 'statusTone' },
                 },
             },
-            // Workload bar's own row. ProgressBar always renders `flex-1` — as
-            // the sole child of a Row (horizontal flex), that grows its WIDTH to
-            // fill the full row, identically on every row regardless of name
-            // length or tile size. (Putting it directly in the outer Stack — a
-            // COLUMN flex container — made flex-1 grow its height instead, which
-            // collapsed it to nothing.)
-            barRow: {
-                type: 'Row',
-                props: {},
-                children: ['loadBar'],
-            },
-            loadBar: {
-                type: 'ProgressBar',
+            // Status badge — default (no variant) = soft pastel background with coloured text
+            statusBadge: {
+                type: 'Badge',
                 props: {
                     value: { $prop: 'loadPercent' },
                     tone: { $prop: 'statusTone' },
