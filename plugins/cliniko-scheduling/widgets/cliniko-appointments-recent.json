@@ -218,22 +218,234 @@
         }
       },
       "row": {
-        "type": "ActivityItem",
+        "type": "Row",
         "props": {
-          "iconName": "CalendarClock",
-          "tone": "accent",
-          "title": {
-            "$item": "notes"
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "template": "auto minmax(0, 1fr) auto"
+        },
+        "children": [
+          "rowAvatar",
+          "rowIdentity",
+          "rowStatus"
+        ]
+      },
+      "rowAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$item": "patient_name"
+              }
+            }
           },
-          "subtitle": "Appointment",
-          "timestamp": {
+          "tone": "info",
+          "size": "md"
+        }
+      },
+      "rowIdentity": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "rowName",
+          "rowWhen",
+          "rowNotes"
+        ]
+      },
+      "rowWhen": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "baseline"
+        },
+        "children": [
+          "rowWhenDate",
+          "rowWhenDuration"
+        ]
+      },
+      "rowName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "patient_name"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "rowWhenDate": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{d} · {t}",
+              "d": {
+                "$computed": "format_date",
+                "args": {
+                  "value": {
+                    "$item": "starts_at"
+                  },
+                  "format": "short"
+                }
+              },
+              "t": {
+                "$computed": "format_time",
+                "args": {
+                  "value": {
+                    "$item": "starts_at"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "rowWhenDuration": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "· {dur}",
+              "dur": {
+                "$computed": "duration_between",
+                "args": {
+                  "start": {
+                    "$item": "starts_at"
+                  },
+                  "end": {
+                    "$item": "ends_at"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "visible": {
+          "$item": "ends_at"
+        }
+      },
+      "rowNotes": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "truncate",
+            "args": {
+              "value": {
+                "$item": "notes"
+              },
+              "max": 60
+            }
+          }
+        },
+        "visible": {
+          "$item": "notes"
+        }
+      },
+      "rowStatus": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "badgeCancelled",
+          "badgeNoShow",
+          "badgeArrived",
+          "badgeWhen"
+        ]
+      },
+      "badgeCancelled": {
+        "type": "Badge",
+        "props": {
+          "text": "Cancelled",
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "cancelled_at"
+        }
+      },
+      "badgeNoShow": {
+        "type": "Badge",
+        "props": {
+          "text": "No-show",
+          "tone": "warning",
+          "variant": "soft"
+        },
+        "visible": {
+          "$and": [
+            {
+              "$item": "cancelled_at",
+              "not": true
+            },
+            {
+              "$item": "did_not_arrive",
+              "eq": true
+            }
+          ]
+        }
+      },
+      "badgeArrived": {
+        "type": "Badge",
+        "props": {
+          "text": "Arrived",
+          "tone": "success",
+          "variant": "soft"
+        },
+        "visible": {
+          "$and": [
+            {
+              "$item": "cancelled_at",
+              "not": true
+            },
+            {
+              "$item": "did_not_arrive",
+              "not": true
+            },
+            {
+              "$item": "patient_arrived",
+              "eq": true
+            }
+          ]
+        }
+      },
+      "badgeWhen": {
+        "type": "Badge",
+        "props": {
+          "text": {
             "$computed": "relative_time",
             "args": {
               "value": {
                 "$item": "starts_at"
               }
             }
-          }
+          },
+          "tone": "muted",
+          "variant": "soft"
+        },
+        "visible": {
+          "$and": [
+            {
+              "$item": "cancelled_at",
+              "not": true
+            },
+            {
+              "$item": "did_not_arrive",
+              "not": true
+            },
+            {
+              "$item": "patient_arrived",
+              "not": true
+            }
+          ]
         }
       },
       "card": {

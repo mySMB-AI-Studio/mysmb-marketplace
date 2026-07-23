@@ -21,6 +21,18 @@ export const slug = 'xero-practice-manager';
  *   subtitle (string)  — optional "Client · Job #XXXX" muted line
  *   duration (string)  — right-aligned, e.g. "1h 38m"
  *   tone     (string)  — system tone: "success" (billable) | "warning" (admin) | "muted" (neutral)
+ *
+ * Usage:
+ *   { "type": "xero-practice-manager/TimeBlock",
+ *     "props": { "time": "08:30",
+ *                "task": "FY26 Tax Return prep",
+ *                "subtitle": "Heritage Trust · Job #4821",
+ *                "duration": "1h 38m", "tone": "success" } }
+ *
+ * NOTE — composite renderer constraint: a Row as the spec root with a direct child
+ * that carries `visible: { $prop: ... }` causes the entire composite to render nothing
+ * (root cause unconfirmed — composite.ts lives in the host app, not this repo).
+ * Keep Card as root and place conditional elements deeper in the tree to avoid this.
  */
 const TimeBlock = {
     kind: 'composite',
@@ -51,11 +63,22 @@ const TimeBlock = {
                 props: { tone: { $prop: 'tone' }, style: { flex: 1 } },
                 children: ['contentRow'],
             },
-            // Content: [labelStack] [duration]
+            // Content: [time] [labelStack] [duration]
             contentRow: {
                 type: 'Row',
-                props: { justify: 'between', align: 'start', gap: 'sm' },
-                children: ['labelStack', 'durText'],
+                props: { justify: 'between', align: 'center', gap: 'sm' },
+                children: ['timeText', 'labelStack', 'durText'],
+            },
+            // Fixed-width time column — hidden when no time prop supplied (backward-compat)
+            timeText: {
+                type: 'Text',
+                props: {
+                    text: { $prop: 'time' },
+                    size: 'xs',
+                    tone: 'muted',
+                    style: { width: '40px', flexShrink: 0, textAlign: 'right' },
+                },
+                visible: { $prop: 'time' },
             },
             labelStack: {
                 type: 'Stack',
@@ -81,6 +104,12 @@ const TimeBlock = {
 /**
  * StaffRow — one staff member row in the Team Schedule list.
  *
+ * Layout: [avatar][name/role][status badge] on top, workload bar spans the
+ * full row width underneath. The bar used to sit in a fixed-width column
+ * between the name and the badge, which meant its length depended on
+ * whatever space was left over — it never lined up across rows and shrank
+ * on narrower tiles. Putting it on its own full-width row fixes both.
+ *
  * Props:
  *   initials      (string)  — 2-letter avatar, e.g. "PN"
  *   statusTone    (string)  — system tone: "success" | "destructive" | "warning"
@@ -88,18 +117,37 @@ const TimeBlock = {
  *   roleWithCount (string)  — role + job count, e.g. "Senior Accountant · 4 jobs today"
  *   loadPercent   (number)  — 0–100, pre-computed fill % for the workload bar
  *   statusLabel   (string)  — display text for status badge, e.g. "On track"
+ *
+ * Usage:
+ *   { "type": "xero-practice-manager/StaffRow",
+ *     "props": { "initials": "PN", "statusTone": "success",
+ *                "name": "Priya Nair",
+ *                "roleWithCount": "Senior Accountant · 4 jobs today",
+ *                "loadPercent": 80, "statusLabel": "On track" } }
  */
 const StaffRow = {
     kind: 'composite',
     props: ['initials', 'statusTone', 'name', 'roleWithCount', 'loadPercent', 'statusLabel'],
     spec: {
-        root: 'row',
+        root: 'container',
         elements: {
-            // Outer row: [avatar] [nameStack] [loadBar] [statusBadge]
-            row: {
+            // [topRow] above, [barRow] full-width below.
+            // NOTE: these system components don't read a `style` prop at all — every
+            // `style: {...}` in earlier versions of this composite was a silent
+            // no-op. Layout is done entirely with real supported props: Stack/Row's
+            // `grow` (adds flex-1 min-w-0) and Text's `truncate`.
+            container: {
+                type: 'Stack',
+                props: { gap: 'xs' },
+                children: ['topRow', 'barRow'],
+            },
+            // Top row: [avatar] [nameStack] [statusBadge]. nameStack's `grow`
+            // fills the space between avatar and badge, so badge lands at the
+            // row's end without needing an explicit justify.
+            topRow: {
                 type: 'Row',
                 props: { gap: 'sm', align: 'center' },
-                children: ['avatar', 'nameStack', 'loadBar', 'statusBadge'],
+                children: ['avatar', 'nameStack', 'statusBadge'],
             },
             // Initials chip — colour reflects workload status
             avatar: {
@@ -107,13 +155,11 @@ const StaffRow = {
                 props: {
                     text: { $prop: 'initials' },
                     tone: { $prop: 'statusTone' },
-                    style: { minWidth: '32px', textAlign: 'center', fontWeight: '600' },
                 },
             },
-            // Fixed-width name column — overflow:hidden prevents text from pushing bar right
             nameStack: {
                 type: 'Stack',
-                props: { gap: 'none', style: { width: '155px', flexShrink: 0, overflow: 'hidden' } },
+                props: { gap: 'none', grow: true },
                 children: ['nameText', 'roleText'],
             },
             nameText: {
@@ -124,20 +170,29 @@ const StaffRow = {
                 type: 'Text',
                 props: { text: { $prop: 'roleWithCount' }, size: 'xs', tone: 'muted', truncate: true },
             },
-            // Workload bar — fixed width so left edge aligns across all rows
-            loadBar: {
-                type: 'ProgressBar',
-                props: {
-                    value: { $prop: 'loadPercent' },
-                    tone: { $prop: 'statusTone' },
-                    style: { width: '60px', flexShrink: 0 },
-                },
-            },
-            // Status badge — default (no variant) = soft pastel background with coloured text
+            // Status badge — variant:'soft' = tinted background + coloured text
             statusBadge: {
                 type: 'Badge',
                 props: {
                     text: { $prop: 'statusLabel' },
+                    tone: { $prop: 'statusTone' },
+                },
+            },
+            // Workload bar's own row. ProgressBar always renders `flex-1` — as
+            // the sole child of a Row (horizontal flex), that grows its WIDTH to
+            // fill the full row, identically on every row regardless of name
+            // length or tile size. (Putting it directly in the outer Stack — a
+            // COLUMN flex container — made flex-1 grow its height instead, which
+            // collapsed it to nothing.)
+            barRow: {
+                type: 'Row',
+                props: {},
+                children: ['loadBar'],
+            },
+            loadBar: {
+                type: 'ProgressBar',
+                props: {
+                    value: { $prop: 'loadPercent' },
                     tone: { $prop: 'statusTone' },
                 },
             },
@@ -150,6 +205,7 @@ const StaffRow = {
  * Returns "Xh Ym", "Xh", "Ym", or "—" for zero/missing values.
  *
  * Args: { minutes?: number, hours?: number }
+ *   Pass `minutes` when the source is EstimatedMinutes; pass `hours` for TimeEntry.Hours.
  *
  * Spec example:
  *   { "$computed": "xero-practice-manager_format_duration",
@@ -166,8 +222,10 @@ const format_duration = (args) => {
     else {
         return '—';
     }
-    if (mins <= 0) return '—';
-    if (mins < 60) return `${mins}m`;
+    if (mins <= 0)
+        return '—';
+    if (mins < 60)
+        return `${mins}m`;
     const h = Math.floor(mins / 60);
     const m = mins % 60;
     return m === 0 ? `${h}h` : `${h}h ${m}m`;
