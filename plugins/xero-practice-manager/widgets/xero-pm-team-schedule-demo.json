@@ -1,7 +1,7 @@
 {
   "id": "xero-pm-team-schedule-demo",
   "title": "Team Schedule (Demo)",
-  "description": "Static demo of the Xero Practice Manager Team Schedule widget — weekly workload overview for 6 staff members, with an inline load bar between name/role and status badge on each row. Spacer count per row adjusted to approximate consistent bar alignment.",
+  "description": "Static demo of the Xero Practice Manager Team Schedule widget — weekly workload overview for 6 staff members with job counts, load bars, and status badges.",
   "category": "project-management",
   "tags": ["xero", "practice-manager", "xpm", "team", "schedule", "workload", "staff", "accounting-practice", "demo"],
   "keywords": ["team schedule", "workload", "staff", "weekly", "job allocation", "xpm", "practice manager", "demo"],
@@ -22,75 +22,114 @@
         "children": ["headerRow", "sub", "div0", "body", "div1", "footer"]
       },
 
-      "headerRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["titleGroup"] },
-      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
-      "titleIcon": { "type": "Icon", "props": { "name": "Users", "tone": "accent", "size": "sm" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Team Schedule", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "6 staff · Week of 13 Jul" } },
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Users", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Team Schedule", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "6 staff · Week of 13 Jul" }
+      },
 
-      "sub": { "type": "Text", "props": { "text": "Workload overview · jobs assigned this week", "size": "xs", "tone": "muted" } },
+      "sub": {
+        "type": "Text",
+        "props": { "text": "Workload overview · jobs assigned this week", "size": "xs", "tone": "muted" }
+      },
+
       "div0": { "type": "Divider", "props": {} },
 
-      "body": { "type": "Body", "props": {}, "children": ["rows"] },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["rows"]
+      },
+
       "rows": {
         "type": "Stack",
         "props": { "gap": "xs" },
-        "children": ["row1","rd1","row2","rd2","row3","rd3","row4","rd4","row5","rd5","row6"]
+        "children": [
+          "sr1", "rd1",
+          "sr2", "rd2",
+          "sr3", "rd3",
+          "sr4", "rd4",
+          "sr5", "rd5",
+          "sr6"
+        ]
       },
+
       "rd1": { "type": "Divider", "props": {} },
       "rd2": { "type": "Divider", "props": {} },
       "rd3": { "type": "Divider", "props": {} },
       "rd4": { "type": "Divider", "props": {} },
       "rd5": { "type": "Divider", "props": {} },
 
-      "row1": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["avatar1", "leftGroup1", "bar1", "badge1"] },
-      "avatar1": { "type": "Badge", "props": { "text": "PN", "tone": "success", "variant": "soft", "style": { "width": "32px", "textAlign": "center", "flexShrink": 0 } } },
-      "leftGroup1": { "type": "Stack", "props": { "gap": "none", "style": { "flex": 1, "minWidth": 0 } }, "children": ["name1", "role1"] },
-      "name1": { "type": "Text", "props": { "text": "Priya Nair", "size": "sm", "weight": "medium", "truncate": true } },
-      "role1": { "type": "Text", "props": { "text": "Senior Accountant · 4 jobs today", "size": "xs", "tone": "muted", "truncate": true } },
-      "bar1": { "type": "ProgressBar", "props": { "value": 80, "tone": "success", "style": { "width": "80px", "flexShrink": 0 } } },
-      "badge1": { "type": "Badge", "props": { "text": "On track", "tone": "success", "variant": "soft", "style": { "width": "90px", "textAlign": "center", "flexShrink": 0 } } },
-
-      "row2": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["avatar2", "leftGroup2", "bar2", "badge2"] },
-      "avatar2": { "type": "Badge", "props": { "text": "TB", "tone": "destructive", "variant": "soft", "style": { "width": "32px", "textAlign": "center", "flexShrink": 0 } } },
-      "leftGroup2": { "type": "Stack", "props": { "gap": "none", "style": { "flex": 1, "minWidth": 0 } }, "children": ["name2", "role2"] },
-      "name2": { "type": "Text", "props": { "text": "Tom Blackwell", "size": "sm", "weight": "medium", "truncate": true } },
-      "role2": { "type": "Text", "props": { "text": "Bookkeeper · 6 jobs today", "size": "xs", "tone": "muted", "truncate": true } },
-      "bar2": { "type": "ProgressBar", "props": { "value": 100, "tone": "destructive", "style": { "width": "80px", "flexShrink": 0 } } },
-      "badge2": { "type": "Badge", "props": { "text": "Overloaded", "tone": "destructive", "variant": "soft", "style": { "width": "90px", "textAlign": "center", "flexShrink": 0 } } },
-
-      "row3": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["avatar3", "leftGroup3", "bar3", "badge3"] },
-      "avatar3": { "type": "Badge", "props": { "text": "SC", "tone": "warning", "variant": "soft", "style": { "width": "32px", "textAlign": "center", "flexShrink": 0 } } },
-      "leftGroup3": { "type": "Stack", "props": { "gap": "none", "style": { "flex": 1, "minWidth": 0 } }, "children": ["name3", "role3"] },
-      "name3": { "type": "Text", "props": { "text": "Sarah Chen", "size": "sm", "weight": "medium", "truncate": true } },
-      "role3": { "type": "Text", "props": { "text": "Tax Advisor · 2 jobs today", "size": "xs", "tone": "muted", "truncate": true } },
-      "bar3": { "type": "ProgressBar", "props": { "value": 40, "tone": "warning", "style": { "width": "80px", "flexShrink": 0 } } },
-      "badge3": { "type": "Badge", "props": { "text": "Available", "tone": "warning", "variant": "soft", "style": { "width": "90px", "textAlign": "center", "flexShrink": 0 } } },
-
-      "row4": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["avatar4", "leftGroup4", "bar4", "badge4"] },
-      "avatar4": { "type": "Badge", "props": { "text": "JW", "tone": "success", "variant": "soft", "style": { "width": "32px", "textAlign": "center", "flexShrink": 0 } } },
-      "leftGroup4": { "type": "Stack", "props": { "gap": "none", "style": { "flex": 1, "minWidth": 0 } }, "children": ["name4", "role4"] },
-      "name4": { "type": "Text", "props": { "text": "Josh Whitfield", "size": "sm", "weight": "medium", "truncate": true } },
-      "role4": { "type": "Text", "props": { "text": "Graduate Accountant · 5 jobs today", "size": "xs", "tone": "muted", "truncate": true } },
-      "bar4": { "type": "ProgressBar", "props": { "value": 80, "tone": "success", "style": { "width": "80px", "flexShrink": 0 } } },
-      "badge4": { "type": "Badge", "props": { "text": "On track", "tone": "success", "variant": "soft", "style": { "width": "90px", "textAlign": "center", "flexShrink": 0 } } },
-
-      "row5": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["avatar5", "leftGroup5", "bar5", "badge5"] },
-      "avatar5": { "type": "Badge", "props": { "text": "BT", "tone": "success", "variant": "soft", "style": { "width": "32px", "textAlign": "center", "flexShrink": 0 } } },
-      "leftGroup5": { "type": "Stack", "props": { "gap": "none", "style": { "flex": 1, "minWidth": 0 } }, "children": ["name5", "role5"] },
-      "name5": { "type": "Text", "props": { "text": "Ben Torres", "size": "sm", "weight": "medium", "truncate": true } },
-      "role5": { "type": "Text", "props": { "text": "BAS Agent · 3 jobs today", "size": "xs", "tone": "muted", "truncate": true } },
-      "bar5": { "type": "ProgressBar", "props": { "value": 60, "tone": "success", "style": { "width": "80px", "flexShrink": 0 } } },
-      "badge5": { "type": "Badge", "props": { "text": "On track", "tone": "success", "variant": "soft", "style": { "width": "90px", "textAlign": "center", "flexShrink": 0 } } },
-
-      "row6": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["avatar6", "leftGroup6", "bar6", "badge6"] },
-      "avatar6": { "type": "Badge", "props": { "text": "AM", "tone": "warning", "variant": "soft", "style": { "width": "32px", "textAlign": "center", "flexShrink": 0 } } },
-      "leftGroup6": { "type": "Stack", "props": { "gap": "none", "style": { "flex": 1, "minWidth": 0 } }, "children": ["name6", "role6"] },
-      "name6": { "type": "Text", "props": { "text": "Aisha Malik", "size": "sm", "weight": "medium", "truncate": true } },
-      "role6": { "type": "Text", "props": { "text": "Practice Manager · 1 job today", "size": "xs", "tone": "muted", "truncate": true } },
-      "bar6": { "type": "ProgressBar", "props": { "value": 20, "tone": "warning", "style": { "width": "80px", "flexShrink": 0 } } },
-      "badge6": { "type": "Badge", "props": { "text": "Available", "tone": "warning", "variant": "soft", "style": { "width": "90px", "textAlign": "center", "flexShrink": 0 } } },
+      "sr1": {
+        "type": "xero-practice-manager/StaffRow",
+        "props": {
+          "initials": "PN", "statusTone": "success",
+          "name": "Priya Nair", "roleWithCount": "Senior Accountant · 4 jobs today",
+          "loadPercent": 80, "statusLabel": "On track"
+        }
+      },
+      "sr2": {
+        "type": "xero-practice-manager/StaffRow",
+        "props": {
+          "initials": "TB", "statusTone": "destructive",
+          "name": "Tom Blackwell", "roleWithCount": "Bookkeeper · 6 jobs today",
+          "loadPercent": 100, "statusLabel": "Overloaded"
+        }
+      },
+      "sr3": {
+        "type": "xero-practice-manager/StaffRow",
+        "props": {
+          "initials": "SC", "statusTone": "warning",
+          "name": "Sarah Chen", "roleWithCount": "Tax Advisor · 2 jobs today",
+          "loadPercent": 40, "statusLabel": "Available"
+        }
+      },
+      "sr4": {
+        "type": "xero-practice-manager/StaffRow",
+        "props": {
+          "initials": "JW", "statusTone": "success",
+          "name": "Josh Whitfield", "roleWithCount": "Graduate Accountant · 5 jobs today",
+          "loadPercent": 80, "statusLabel": "On track"
+        }
+      },
+      "sr5": {
+        "type": "xero-practice-manager/StaffRow",
+        "props": {
+          "initials": "BT", "statusTone": "success",
+          "name": "Ben Torres", "roleWithCount": "BAS Agent · 3 jobs today",
+          "loadPercent": 60, "statusLabel": "On track"
+        }
+      },
+      "sr6": {
+        "type": "xero-practice-manager/StaffRow",
+        "props": {
+          "initials": "AM", "statusTone": "warning",
+          "name": "Aisha Malik", "roleWithCount": "Practice Manager · 1 job today",
+          "loadPercent": 20, "statusLabel": "Available"
+        }
+      },
 
       "div1": { "type": "Divider", "props": {} },
 
@@ -99,10 +138,22 @@
         "props": { "gap": "xs", "align": "center" },
         "children": ["footerIcon", "footerWarning", "footerLink", "footerArrow"]
       },
-      "footerIcon": { "type": "Icon", "props": { "name": "AlertTriangle", "tone": "warning", "size": "xs" } },
-      "footerWarning": { "type": "Text", "props": { "text": "2 staff need reallocation this week", "size": "xs", "tone": "muted" } },
-      "footerLink": { "type": "Text", "props": { "text": "Open Job Scheduler", "size": "xs", "tone": "accent" } },
-      "footerArrow": { "type": "Icon", "props": { "name": "ArrowRight", "size": "xs", "tone": "accent" } }
+      "footerIcon": {
+        "type": "Icon",
+        "props": { "name": "AlertTriangle", "tone": "warning", "size": "xs" }
+      },
+      "footerWarning": {
+        "type": "Text",
+        "props": { "text": "2 staff need reallocation this week", "size": "xs", "tone": "muted" }
+      },
+      "footerLink": {
+        "type": "Text",
+        "props": { "text": "Open Job Scheduler", "size": "xs", "tone": "accent" }
+      },
+      "footerArrow": {
+        "type": "Icon",
+        "props": { "name": "ArrowRight", "size": "xs", "tone": "accent" }
+      }
 
     }
   },
