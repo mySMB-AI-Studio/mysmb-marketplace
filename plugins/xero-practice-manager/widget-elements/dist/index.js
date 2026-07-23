@@ -16,7 +16,7 @@ export const slug = 'xero-practice-manager';
  * TimeBlock — one row in the Time Boxing list.
  *
  * Props:
- *   time     (string)  — optional time label shown left of task, e.g. "08:30"
+ *   time     (string)  — optional time label in the left gutter, e.g. "08:30"
  *   task     (string)  — task name
  *   subtitle (string)  — optional "Client · Job #XXXX" muted line
  *   duration (string)  — right-aligned, e.g. "1h 38m"
@@ -31,12 +31,29 @@ const TimeBlock = {
     kind: 'composite',
     props: ['time', 'task', 'subtitle', 'duration', 'tone'],
     spec: {
-        root: 'rowCard',
+        root: 'outerRow',
         elements: {
-            // Tinted card — tone drives background colour (success=teal, warning=amber, muted=grey)
+            // Outer row: [time gutter] [tinted card]
+            outerRow: {
+                type: 'Row',
+                props: { gap: 'xs', align: 'center' },
+                children: ['timeText', 'rowCard'],
+            },
+            // Time label sits outside the card so it aligns flush left across all blocks
+            timeText: {
+                type: 'Text',
+                props: {
+                    text: { $prop: 'time' },
+                    size: 'xs',
+                    tone: 'muted',
+                    style: { width: '42px', flexShrink: 0, textAlign: 'right' },
+                },
+                visible: { $prop: 'time' },
+            },
+            // Tinted card — tone drives background colour
             rowCard: {
                 type: 'Card',
-                props: { tone: { $prop: 'tone' } },
+                props: { tone: { $prop: 'tone' }, style: { flex: 1 } },
                 children: ['contentRow'],
             },
             // Content: [time] [labelStack] [duration]
@@ -112,7 +129,7 @@ const StaffRow = {
             // Fixed-width name column — overflow:hidden prevents text from pushing bar right
             nameStack: {
                 type: 'Stack',
-                props: { gap: 'none', style: { minWidth: '155px', maxWidth: '155px', overflow: 'hidden' } },
+                props: { gap: 'none', style: { width: '155px', flexShrink: 0, overflow: 'hidden' } },
                 children: ['nameText', 'roleText'],
             },
             nameText: {
@@ -132,13 +149,12 @@ const StaffRow = {
                     style: { width: '60px', flexShrink: 0 },
                 },
             },
-            // Status badge — variant:'soft' = tinted background + coloured text (no-variant renders plain text on warning tone)
+            // Status badge — default (no variant) = soft pastel background with coloured text
             statusBadge: {
                 type: 'Badge',
                 props: {
                     text: { $prop: 'statusLabel' },
                     tone: { $prop: 'statusTone' },
-                    variant: 'soft',
                 },
             },
         },
