@@ -71,23 +71,11 @@ const TimeBlock: CompositeComponentDef = {
         children: ['contentRow'],
       },
 
-      // Content: [time] [labelStack] [duration]
+      // Content: [labelStack] [duration] — time is already in the outer gutter
       contentRow: {
         type: 'Row',
         props: { justify: 'between', align: 'center', gap: 'sm' },
-        children: ['timeText', 'labelStack', 'durText'],
-      },
-
-      // Fixed-width time column — hidden when no time prop supplied (backward-compat)
-      timeText: {
-        type: 'Text',
-        props: {
-          text: { $prop: 'time' },
-          size: 'xs',
-          tone: 'muted',
-          style: { width: '40px', flexShrink: 0, textAlign: 'right' },
-        },
-        visible: { $prop: 'time' },
+        children: ['labelStack', 'durText'],
       },
 
       labelStack: {
@@ -172,9 +160,10 @@ const StaffRow: CompositeComponentDef = {
         },
       },
 
+      // grow:true adds flex-1 min-w-0 so nameStack fills the space between avatar and badge
       nameStack: {
         type: 'Stack',
-        props: { gap: 'none', style: { width: '155px', flexShrink: 0, overflow: 'hidden' } },
+        props: { gap: 'none', grow: true },
         children: ['nameText', 'roleText'],
       },
       nameText: {
@@ -196,9 +185,15 @@ const StaffRow: CompositeComponentDef = {
         },
       },
 
-      // Status badge — default (no variant) = soft pastel background with coloured text
-      statusBadge: {
-        type: 'Badge',
+      // Full-width workload bar on its own row — ProgressBar renders flex-1, so as
+      // the sole child of a Row it spans the full container width identically on every row.
+      barRow: {
+        type: 'Row',
+        props: {},
+        children: ['loadBar'],
+      },
+      loadBar: {
+        type: 'ProgressBar',
         props: {
           value: { $prop: 'loadPercent' },
           tone: { $prop: 'statusTone' },
