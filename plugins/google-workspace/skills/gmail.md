@@ -1,9 +1,9 @@
 ---
 name: google-workspace-gmail
-description: Read, search, send, and manage Gmail emails via the Google Workspace MCP server. Use when the user asks to check their inbox, find an email, send a message, reply, forward, label, or trash a message.
+description: Read and search Gmail emails via the Google Workspace MCP server. Use when the user asks to check their inbox, find an email, or read a message. Send, reply, forward, label, and trash are not available (read-only scope).
 ---
 
-# Gmail — reading, searching, and sending email
+# Gmail — reading and searching email
 
 Use the `google-workspace-gmail` MCP server for all Gmail operations.
 
@@ -30,36 +30,24 @@ Combine terms with spaces (implicit AND) or `OR`. Present results as a numbered 
 
 Call `get_message` with the message `id`. Parse the `payload.parts` tree to extract `text/plain` or `text/html` body parts. Surface the plain-text body; render HTML only if plain-text is absent.
 
-## Sending email
-
-Use `send_message`. Required fields: `to` (array of addresses), `subject`, `body`. Optional: `cc`, `bcc`, `replyTo`.
-
-**Before calling**: confirm the recipient(s), subject, and body text with the user. Never send without explicit confirmation.
-
-After a successful send, echo: "Email sent to [recipients] — subject: [subject]."
-
-## Replying and forwarding
-
-Use `reply_to_message` with the original message `id` plus the reply body. The server preserves threading headers automatically.
-
-Use `forward_message` with the original message `id` plus new `to` recipients and an optional forwarding note.
-
-**Both operations send real email** — confirm before calling.
-
 ## Labels
 
-- `list_labels` — returns all user-created and system labels with their `id` and `name`.
-- `modify_message_labels` — accepts `addLabelIds` and `removeLabelIds` arrays.
+Call `list_labels` to return all user-created and system labels with their `id` and `name`. Labels are read-only — modifying or applying labels is not available with this scope.
 
-Common system label IDs: `INBOX`, `SENT`, `TRASH`, `SPAM`, `STARRED`, `IMPORTANT`, `UNREAD`.
+## What is not available
 
-## Trashing messages
+Gmail is connected with `gmail.readonly` scope. The following operations are not available:
 
-Call `trash_message` with the message `id`. The message moves to Trash and can be recovered within 30 days. Confirm before calling; do not use for bulk operations without explicit permission.
+- Sending, replying to, or forwarding emails
+- Trashing or archiving messages
+- Applying or removing labels
+- Any modification to mailbox state
+
+If the user asks to send or manage email, explain that the Gmail connection is read-only and they would need to reconnect with a broader scope.
 
 ## Error handling
 
-- `401 Unauthorized` — the `GOOGLE_ACCESS_TOKEN` is expired or lacks the `gmail.modify` scope. Ask the user to reconnect.
-- `403 Forbidden` — insufficient scope; the token does not include `https://www.googleapis.com/auth/gmail.modify`.
-- `404 Not Found` — the message ID no longer exists (likely already trashed or expunged).
+- `401 Unauthorized` — the `GOOGLE_ACCESS_TOKEN` is expired or lacks the `gmail.readonly` scope. Ask the user to reconnect.
+- `403 Forbidden` — insufficient scope; the token does not include `https://www.googleapis.com/auth/gmail.readonly`.
+- `404 Not Found` — the message ID no longer exists.
 - Rate limits: back off and retry once; if it fails again, surface the error.
