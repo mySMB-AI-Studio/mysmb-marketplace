@@ -1,7 +1,7 @@
 {
   "id": "google-workspace-calendar-today",
   "title": "Upcoming Events",
-  "description": "Upcoming Google Calendar events — title, time range, and location. Click a row to see attendees and a join link.",
+  "description": "Upcoming Google Calendar events — title, time range, and location. Click a row to open the event in Google Calendar.",
   "category": "productivity",
   "tags": [
     "google",
@@ -55,8 +55,7 @@
         "type": "Card",
         "children": [
           "header",
-          "body",
-          "overlay"
+          "body"
         ]
       },
       "header": {
@@ -190,43 +189,16 @@
           "template": "4.5rem 1fr"
         },
         "on": {
-          "click": [
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/_errors/google-workspace-calendar.get_event",
-                "value": ""
-              }
-            },
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/selectedEventId",
-                "value": {
-                  "$computed": "identity",
-                  "args": {
-                    "value": {
-                      "$item": "id"
-                    }
-                  }
-                }
-              }
-            },
-            {
-              "action": "google-workspace-calendar.get_event",
-              "params": {
-                "calendarId": "primary",
-                "eventId": {
-                  "$computed": "identity",
-                  "args": {
-                    "value": {
-                      "$item": "id"
-                    }
-                  }
-                }
-              }
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "identity",
+                "args": { "value": { "$item": "htmlLink" } }
+              },
+              "target": "_blank"
             }
-          ]
+          }
         },
         "children": [
           "timePill",
@@ -322,315 +294,6 @@
         },
         "visible": {
           "$item": "location"
-        }
-      },
-      "overlay": {
-        "type": "Overlay",
-        "props": {
-          "maxWidth": "36rem"
-        },
-        "children": [
-          "detailCard"
-        ],
-        "visible": {
-          "$state": "/ui/selectedEventId"
-        },
-        "on": {
-          "backdropClick": {
-            "action": "setState",
-            "params": {
-              "statePath": "/ui/selectedEventId",
-              "value": ""
-            }
-          }
-        }
-      },
-      "detailCard": {
-        "type": "Card",
-        "children": [
-          "detailHeader",
-          "detailSpinner",
-          "detailError",
-          "detailBody"
-        ]
-      },
-      "detailHeader": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "center",
-          "justify": "between"
-        },
-        "children": [
-          "detailTitle",
-          "detailClose"
-        ]
-      },
-      "detailTitle": {
-        "type": "Heading",
-        "props": {
-          "text": {
-            "$state": "/google-workspace-calendar/get_event/summary"
-          },
-          "level": "h2"
-        }
-      },
-      "detailClose": {
-        "type": "IconButton",
-        "props": {
-          "icon": "X",
-          "tone": "default",
-          "ariaLabel": "Close",
-          "size": "md",
-          "variant": "outlined"
-        },
-        "on": {
-          "click": {
-            "action": "setState",
-            "params": {
-              "statePath": "/ui/selectedEventId",
-              "value": ""
-            }
-          }
-        }
-      },
-      "detailSpinner": {
-        "type": "Spinner",
-        "props": {
-          "label": "Loading event…"
-        },
-        "visible": {
-          "$and": [
-            {
-              "$state": "/_errors/google-workspace-calendar.get_event",
-              "not": true
-            },
-            {
-              "$state": "/google-workspace-calendar/get_event/id",
-              "neq": {
-                "$state": "/ui/selectedEventId"
-              }
-            }
-          ]
-        }
-      },
-      "detailError": {
-        "type": "Empty",
-        "props": {
-          "message": "Couldn’t load this event. Close and try again."
-        },
-        "visible": {
-          "$state": "/_errors/google-workspace-calendar.get_event"
-        }
-      },
-      "detailBody": {
-        "type": "Stack",
-        "props": {
-          "gap": "md"
-        },
-        "visible": {
-          "$state": "/google-workspace-calendar/get_event/id",
-          "eq": {
-            "$state": "/ui/selectedEventId"
-          }
-        },
-        "children": [
-          "detailMeta",
-          "attDivider",
-          "attHeader",
-          "attList",
-          "linksRow"
-        ]
-      },
-      "detailMeta": {
-        "type": "Stack",
-        "props": {
-          "gap": "sm"
-        },
-        "children": [
-          "kvWhen",
-          "kvOrganizer",
-          "kvLocation"
-        ]
-      },
-      "kvWhen": {
-        "type": "KeyValue",
-        "props": {
-          "label": "When",
-          "value": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{date} · {start} – {end}",
-              "date": {
-                "$computed": "format_date",
-                "args": {
-                  "value": {
-                    "$state": "/google-workspace-calendar/get_event/start/dateTime"
-                  },
-                  "format": "long"
-                }
-              },
-              "start": {
-                "$computed": "format_time",
-                "args": {
-                  "value": {
-                    "$state": "/google-workspace-calendar/get_event/start/dateTime"
-                  }
-                }
-              },
-              "end": {
-                "$computed": "format_time",
-                "args": {
-                  "value": {
-                    "$state": "/google-workspace-calendar/get_event/end/dateTime"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "kvOrganizer": {
-        "type": "KeyValue",
-        "props": {
-          "label": "Organizer",
-          "value": {
-            "$state": "/google-workspace-calendar/get_event/organizer/email"
-          }
-        }
-      },
-      "kvLocation": {
-        "type": "KeyValue",
-        "props": {
-          "label": "Where",
-          "value": {
-            "$state": "/google-workspace-calendar/get_event/location"
-          }
-        },
-        "visible": {
-          "$state": "/google-workspace-calendar/get_event/location"
-        }
-      },
-      "attDivider": {
-        "type": "Divider"
-      },
-      "attHeader": {
-        "type": "Eyebrow",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{n} Attendees",
-              "n": {
-                "$computed": "count",
-                "args": {
-                  "value": {
-                    "$state": "/google-workspace-calendar/get_event/attendees"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "attList": {
-        "type": "Stack",
-        "props": {
-          "gap": "xs"
-        },
-        "repeat": {
-          "statePath": "/google-workspace-calendar/get_event/attendees",
-          "key": "email"
-        },
-        "children": [
-          "attRow"
-        ]
-      },
-      "attRow": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "center"
-        },
-        "children": [
-          "attAvatar",
-          "attName"
-        ]
-      },
-      "attAvatar": {
-        "type": "Avatar",
-        "props": {
-          "initials": {
-            "$computed": "initials",
-            "args": {
-              "value": {
-                "$item": "displayName"
-              }
-            }
-          },
-          "size": "sm"
-        }
-      },
-      "attName": {
-        "type": "Text",
-        "props": {
-          "text": {
-            "$item": "displayName"
-          },
-          "size": "sm",
-          "truncate": true
-        }
-      },
-      "linksRow": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "justify": "end"
-        },
-        "children": [
-          "joinBtn",
-          "calBtn"
-        ]
-      },
-      "joinBtn": {
-        "type": "Button",
-        "props": {
-          "label": "Join meeting",
-          "variant": "primary",
-          "size": "sm",
-          "leadingIcon": "Video"
-        },
-        "visible": {
-          "$state": "/google-workspace-calendar/get_event/hangoutLink"
-        },
-        "on": {
-          "click": {
-            "action": "open_url",
-            "params": {
-              "url": {
-                "$state": "/google-workspace-calendar/get_event/hangoutLink"
-              }
-            }
-          }
-        }
-      },
-      "calBtn": {
-        "type": "Button",
-        "props": {
-          "label": "Open in Calendar",
-          "variant": "ghost",
-          "size": "sm",
-          "leadingIcon": "ExternalLink"
-        },
-        "on": {
-          "click": {
-            "action": "open_url",
-            "params": {
-              "url": {
-                "$state": "/google-workspace-calendar/get_event/htmlLink"
-              }
-            }
-          }
         }
       }
     }
