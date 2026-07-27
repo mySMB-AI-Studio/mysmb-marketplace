@@ -24,10 +24,9 @@ Each service requires the following Google OAuth 2.0 scopes:
 
 | Service | Scope | Notes |
 |---------|-------|-------|
-| Gmail | `https://www.googleapis.com/auth/gmail.modify` | Read, send, label, and trash — does not allow permanent deletion |
-| Google Drive (read) | `https://www.googleapis.com/auth/drive.readonly` | List, search, and read files |
-| Google Drive (write) | `https://www.googleapis.com/auth/drive.file` | Upload and update files the app creates or opens |
-| Google Calendar | `https://www.googleapis.com/auth/calendar.events` | Event CRUD only — does not grant calendar-level access |
+| Gmail | `https://www.googleapis.com/auth/gmail.readonly` | Read and search only — no send, label, or trash |
+| Google Drive | `https://www.googleapis.com/auth/drive.readonly` | List, search, and read files — no upload or edit |
+| Google Calendar | `https://www.googleapis.com/auth/calendar.events.readonly` | Read-only event access — no create, update, or delete |
 | Google Chat (messages) | `https://www.googleapis.com/auth/chat.messages` | Read, send, update, and delete messages |
 | Google Chat (members) | `https://www.googleapis.com/auth/chat.memberships.readonly` | List space members (`list_members` tool) |
 | People (Contacts) | `https://www.googleapis.com/auth/contacts.readonly` | Read-only contact and profile access |
@@ -64,10 +63,6 @@ Each service requires the following Google OAuth 2.0 scopes:
 - List messages in the inbox or any label/folder
 - Search messages using Gmail search syntax (`from:`, `subject:`, `has:attachment`, etc.)
 - Get the full content of a specific message
-- Send a new email
-- Reply to or forward an existing message
-- Move messages to trash
-- Apply or remove labels
 - List available labels
 
 ### Google Drive (`google-workspace-drive`)
@@ -75,18 +70,12 @@ Each service requires the following Google OAuth 2.0 scopes:
 - List files and folders in My Drive or a specific folder
 - Search files by name, MIME type, or content
 - Read file content (Docs, Sheets exported as plain text; binary files as base64)
-- Upload a new file or update an existing file's content
-- Create folders
-- Share a file and generate a sharing link
 - List recently accessed files
 
 ### Google Calendar (`google-workspace-calendar`)
 
 - List upcoming events on the primary or a named calendar
 - Get the details of a specific event (attendees, location, conference link)
-- Create a new event with title, date/time, attendees, and description
-- Update an existing event (reschedule, add attendees, change description)
-- Delete or cancel an event
 - List all calendars the user has access to
 - Find free/busy slots for a set of attendees
 
@@ -110,10 +99,9 @@ Each service requires the following Google OAuth 2.0 scopes:
 
 The following operations make irreversible or externally visible changes — confirm before calling:
 
-- **Gmail**: `send_message` / `reply` / `forward` — sends real email from the user's address; `trash_message` — moves messages to trash (recoverable within 30 days)
-- **Drive**: `delete_file` — moves to trash; `update_file` — overwrites existing content
-- **Calendar**: `delete_event` — removes the event and notifies attendees; `create_event` / `update_event` — sends invitations
 - **Chat**: `send_message` / `update_message` / `delete_message` — visible to all space members
+
+Gmail, Drive, and Calendar are read-only — no send, write, or delete operations are available for those services.
 
 ## Widgets
 
