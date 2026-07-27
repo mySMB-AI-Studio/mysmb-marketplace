@@ -1,9 +1,9 @@
 ---
 name: google-workspace-drive
-description: List, search, read, and upload files in Google Drive via the Google Workspace MCP server. Use when the user asks to find a file, read a document, upload content, or browse Drive folders.
+description: List, search, and read files in Google Drive via the Google Workspace MCP server. Use when the user asks to find a file, read a document, or browse Drive folders. Upload, edit, share, and folder creation are not available (read-only scope).
 ---
 
-# Google Drive — browsing, searching, and managing files
+# Google Drive — browsing, searching, and reading files
 
 Use the `google-workspace-drive` MCP server for all Drive operations.
 
@@ -46,37 +46,20 @@ Call `get_file_content` with the file `id`. The server exports Google Workspace 
 
 Binary files (PDFs, images, Office files) are returned as base64. Surface the content inline for text; for binary files, describe the file type and size instead of dumping base64.
 
-## Uploading files
+## What is not available
 
-Use `upload_file` with:
+Drive is connected with `drive.readonly` scope. The following operations are not available:
 
-- `name` — desired file name
-- `content` — file content (text string or base64 for binary)
-- `mimeType` — MIME type of the content
-- `parents` — array of folder IDs (optional; omit to place in My Drive root)
+- Uploading or updating files
+- Creating folders
+- Sharing files or changing permissions
+- Moving or deleting files
 
-Confirm the destination with the user before uploading. After success, surface the new file's `id` and web link.
-
-## Creating folders
-
-Call `create_folder` with a `name` and optional `parents` array. Returns the new folder `id`.
-
-## Sharing files
-
-Call `share_file` with the file `id`, the role (`reader`, `commenter`, `writer`), and the type (`user`, `group`, `domain`, `anyone`). For a public link, use `type: "anyone"` and `role: "reader"`.
-
-**Sharing changes permissions for all affected users** — confirm before calling.
-
-## Updating existing files
-
-When calling `upload_file` with an existing file `id`, the operation **overwrites** the file's current content. Before calling:
-
-1. Confirm with the user: "This will replace the content of [file name]. Proceed?"
-2. Only call `upload_file` after explicit approval.
+If the user asks to upload or edit a file, explain that the Drive connection is read-only and they would need to reconnect with a broader scope.
 
 ## Error handling
 
 - `401` — token expired or missing Drive scope; ask the user to re-paste a fresh token.
-- `403 insufficientPermissions` — the token lacks `https://www.googleapis.com/auth/drive.readonly` (for reads) or `https://www.googleapis.com/auth/drive.file` (for writes).
+- `403 insufficientPermissions` — the token lacks `https://www.googleapis.com/auth/drive.readonly`.
 - `404` — file not found or the user does not have access; confirm the file ID.
 - `403 rateLimitExceeded` — back off and retry once.
