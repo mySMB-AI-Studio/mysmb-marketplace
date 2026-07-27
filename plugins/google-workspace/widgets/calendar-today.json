@@ -194,6 +194,13 @@
             {
               "action": "setState",
               "params": {
+                "statePath": "/_errors/google-workspace-calendar.get_event",
+                "value": ""
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
                 "statePath": "/ui/selectedEventId",
                 "value": {
                   "$computed": "identity",
@@ -343,6 +350,7 @@
         "children": [
           "detailHeader",
           "detailSpinner",
+          "detailError",
           "detailBody"
         ]
       },
@@ -392,10 +400,27 @@
           "label": "Loading event…"
         },
         "visible": {
-          "$state": "/google-workspace-calendar/get_event/id",
-          "neq": {
-            "$state": "/ui/selectedEventId"
-          }
+          "$and": [
+            {
+              "$state": "/_errors/google-workspace-calendar.get_event",
+              "not": true
+            },
+            {
+              "$state": "/google-workspace-calendar/get_event/id",
+              "neq": {
+                "$state": "/ui/selectedEventId"
+              }
+            }
+          ]
+        }
+      },
+      "detailError": {
+        "type": "Empty",
+        "props": {
+          "message": "Couldn’t load this event. Close and try again."
+        },
+        "visible": {
+          "$state": "/_errors/google-workspace-calendar.get_event"
         }
       },
       "detailBody": {

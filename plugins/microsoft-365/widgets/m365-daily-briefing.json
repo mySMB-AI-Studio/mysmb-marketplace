@@ -294,6 +294,13 @@
             {
               "action": "setState",
               "params": {
+                "statePath": "/_errors/m365-mail-read.get_email",
+                "value": ""
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
                 "statePath": "/ui/selectedEmailId",
                 "value": {
                   "$computed": "identity",
@@ -424,6 +431,13 @@
         ],
         "on": {
           "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/_errors/m365-calendar.get_event",
+                "value": ""
+              }
+            },
             {
               "action": "setState",
               "params": {
@@ -710,6 +724,7 @@
         "children": [
           "emailDetailHeader",
           "emailDetailSpinner",
+          "emailDetailError",
           "emailDetailBody"
         ]
       },
@@ -775,10 +790,18 @@
           "label": "Loading message\u2026"
         },
         "visible": {
-          "$state": "/m365-mail-read/get_email/id",
-          "neq": {
-            "$state": "/ui/selectedEmailId"
-          }
+          "$and": [
+            {
+              "$state": "/_errors/m365-mail-read.get_email",
+              "not": true
+            },
+            {
+              "$state": "/m365-mail-read/get_email/id",
+              "neq": {
+                "$state": "/ui/selectedEmailId"
+              }
+            }
+          ]
         }
       },
       "emailDetailBody": {
@@ -905,6 +928,7 @@
         "children": [
           "eventDetailHeader",
           "eventDetailSpinner",
+          "eventDetailError",
           "eventDetailBody"
         ]
       },
@@ -954,10 +978,18 @@
           "label": "Loading event\u2026"
         },
         "visible": {
-          "$state": "/m365-calendar/get_event/id",
-          "neq": {
-            "$state": "/ui/selectedEventId"
-          }
+          "$and": [
+            {
+              "$state": "/_errors/m365-calendar.get_event",
+              "not": true
+            },
+            {
+              "$state": "/m365-calendar/get_event/id",
+              "neq": {
+                "$state": "/ui/selectedEventId"
+              }
+            }
+          ]
         }
       },
       "eventDetailBody": {
@@ -1196,6 +1228,24 @@
               }
             }
           }
+        }
+      },
+      "emailDetailError": {
+        "type": "Empty",
+        "props": {
+          "message": "Couldn\u2019t load this message. Close and try again."
+        },
+        "visible": {
+          "$state": "/_errors/m365-mail-read.get_email"
+        }
+      },
+      "eventDetailError": {
+        "type": "Empty",
+        "props": {
+          "message": "Couldn\u2019t load this event. Close and try again."
+        },
+        "visible": {
+          "$state": "/_errors/m365-calendar.get_event"
         }
       }
     }
