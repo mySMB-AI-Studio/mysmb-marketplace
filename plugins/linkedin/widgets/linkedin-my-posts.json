@@ -1,0 +1,142 @@
+{
+  "id": "linkedin-my-posts",
+  "title": "My Posts",
+  "description": "Your recent LinkedIn posts with engagement metrics — impressions, likes, comments, and reposts.",
+  "category": "productivity",
+  "tags": ["linkedin", "posts", "content", "engagement", "analytics"],
+  "keywords": ["posts", "content", "likes", "comments", "impressions", "engagement", "reposts", "shares"],
+  "connectorsUsed": ["linkedin"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 4 },
+    "min": { "colSpan": 4, "rowSpan": 3 },
+    "max": { "colSpan": 12, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "linkedin",
+    "tool": "linkedin_consumer_list_my_posts",
+    "params": { "limit": 10 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["header", "body"] },
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "FileText", "tone": "info", "size": "sm" } },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "count"]
+      },
+      "title": { "type": "Heading", "props": { "text": "My Posts", "level": "h2" } },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} Recent",
+              "n": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/linkedin/linkedin_consumer_list_my_posts/elements" } }
+              }
+            }
+          }
+        }
+      },
+      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "list"] },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/linkedin.linkedin_consumer_list_my_posts" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "You haven't posted anything yet." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/linkedin.linkedin_consumer_list_my_posts", "not": true },
+            { "$state": "/linkedin/linkedin_consumer_list_my_posts/elements/0", "not": true }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["postRow"],
+        "repeat": {
+          "statePath": "/linkedin/linkedin_consumer_list_my_posts/elements",
+          "key": "postId"
+        },
+        "visible": { "$state": "/_loading/linkedin.linkedin_consumer_list_my_posts", "not": true }
+      },
+      "postRow": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["postTop", "postStats"]
+      },
+      "postTop": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "justify": "between" },
+        "children": ["postText", "openBtn"]
+      },
+      "postText": {
+        "type": "Text",
+        "props": { "text": { "$item": "text" }, "size": "sm", "truncate": true, "grow": true }
+      },
+      "openBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ExternalLink", "tone": "muted", "ariaLabel": "View post" },
+        "on": { "click": { "action": "open_url", "params": { "url": { "$item": "postUrl" } } } }
+      },
+      "postStats": {
+        "type": "Row",
+        "props": { "gap": "md" },
+        "children": ["impressionsStat", "likesStat", "commentsStat", "repostsStat"]
+      },
+      "impressionsStat": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{n} impressions", "n": { "$item": "impressions" } }
+          }
+        }
+      },
+      "likesStat": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "{n} likes", "n": { "$item": "likes" } } },
+          "tone": "accent",
+          "variant": "soft"
+        }
+      },
+      "commentsStat": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "{n} comments", "n": { "$item": "comments" } } },
+          "tone": "info",
+          "variant": "soft"
+        }
+      },
+      "repostsStat": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "{n} reposts", "n": { "$item": "reposts" } } },
+          "tone": "success",
+          "variant": "soft"
+        }
+      }
+    }
+  },
+  "status": "published"
+}

@@ -124,29 +124,27 @@
       "div2": { "type": "Divider", "props": {} },
 
       "kvFooter": {
-        "type": "Grid",
-        "props": { "cols": 2, "gap": "sm" },
-        "children": ["kvAccounts", "kvCurrency"]
+        "type": "Row",
+        "props": { "justify": "between", "align": "start" },
+        "children": ["kvLargest", "kvLowest"]
       },
-      "kvAccounts": {
+      "kvLargest": {
         "type": "KeyValue",
         "props": {
-          "label": "Bank Accounts",
+          "label": "Largest Account",
           "value": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{n} active",
-              "n": { "$state": "/netsuite/get_cash_position/account_count" }
-            }
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/get_cash_position/largest_account_balance" } }
           }
         }
       },
-      "kvCurrency": {
+      "kvLowest": {
         "type": "KeyValue",
         "props": {
-          "label": "Currency",
+          "label": "Lowest Balance",
           "value": {
-            "$state": "/netsuite/get_cash_position/accounts/0/currency"
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/netsuite/get_cash_position/lowest_account_balance" } }
           }
         }
       }

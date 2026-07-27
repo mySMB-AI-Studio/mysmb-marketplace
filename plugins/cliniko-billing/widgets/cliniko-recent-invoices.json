@@ -218,28 +218,168 @@
         }
       },
       "row": {
-        "type": "ListItem",
+        "type": "Row",
         "props": {
-          "title": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "template": "minmax(0, 1fr) auto auto"
+        },
+        "children": [
+          "rowIdentity",
+          "rowAmount",
+          "rowStatus"
+        ]
+      },
+      "rowIdentity": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "rowNumber",
+          "rowMeta"
+        ]
+      },
+      "rowMeta": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "baseline"
+        },
+        "children": [
+          "rowMetaDate",
+          "rowMetaWho"
+        ]
+      },
+      "rowNumber": {
+        "type": "Text",
+        "props": {
+          "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "Invoice {n}",
+              "pattern": "Invoice #{n}",
               "n": {
                 "$item": "number"
               }
             }
           },
-          "subtitle": {
-            "$item": "status"
-          },
-          "value": {
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "rowMetaDate": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "format_date",
+            "args": {
+              "value": {
+                "$item": "issue_date"
+              },
+              "format": "short"
+            }
+          }
+        }
+      },
+      "rowMetaWho": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "· {who}",
+              "who": {
+                "$computed": "first_line",
+                "args": {
+                  "value": {
+                    "$item": "invoice_to"
+                  },
+                  "max": 28
+                }
+              }
+            }
+          }
+        },
+        "visible": {
+          "$item": "invoice_to"
+        }
+      },
+      "rowAmount": {
+        "type": "Text",
+        "props": {
+          "text": {
             "$computed": "format_currency",
             "args": {
               "value": {
                 "$item": "total_amount"
               }
             }
-          }
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "rowStatus": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "badgeOpen",
+          "badgePaid",
+          "badgeClosed",
+          "badgeCredit"
+        ]
+      },
+      "badgeOpen": {
+        "type": "Badge",
+        "props": {
+          "text": "Open",
+          "tone": "warning",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "status",
+          "eq": 10
+        }
+      },
+      "badgePaid": {
+        "type": "Badge",
+        "props": {
+          "text": "Paid",
+          "tone": "success",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "status",
+          "eq": 20
+        }
+      },
+      "badgeClosed": {
+        "type": "Badge",
+        "props": {
+          "text": "Closed",
+          "tone": "muted",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "status",
+          "eq": 30
+        }
+      },
+      "badgeCredit": {
+        "type": "Badge",
+        "props": {
+          "text": "Open credit",
+          "tone": "info",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "status",
+          "eq": 40
         }
       },
       "card": {

@@ -14,7 +14,7 @@
   },
   "dataProvider": {
     "mcp": "myob-accounting",
-    "tool": "get_profit_and_loss_3m",
+    "tool": "get_profit_and_loss",
     "params": { "from_date": "2026-04-01", "to_date": "2026-06-30", "reporting_basis": "Accrual" }
   },
   "spec": {
@@ -25,7 +25,7 @@
         "type": "Card",
         "children": ["header", "loadingSpinner", "heroStack", "lastYearSpark", "thisYearSpark", "monthAxis", "legend", "divider", "collapseRow", "collapseBody"],
         "watch": {
-          "/myob-accounting/get_profit_and_loss_3m": {
+          "/myob-accounting/get_profit_and_loss": {
             "action": "myob-accounting.list_invoices",
             "params": { "status": "All", "from_date": "2025-04-01", "to_date": "2026-06-30", "page_size": 1000 }
           }
@@ -53,7 +53,7 @@
 
       "loadingSpinner": {
         "type": "Spinner",
-        "visible": { "$state": "/_loading/myob-accounting.get_profit_and_loss_3m" }
+        "visible": { "$state": "/_loading/myob-accounting.get_profit_and_loss" }
       },
 
       "heroStack": {
@@ -69,7 +69,7 @@
             "args": {
               "value": {
                 "$computed": "myob-accounting_pnl_get",
-                "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss_3m" }, "key": "income" }
+                "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" }, "key": "income" }
               }
             }
           }

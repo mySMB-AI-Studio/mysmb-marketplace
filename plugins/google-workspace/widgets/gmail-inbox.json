@@ -1,7 +1,7 @@
 {
   "id": "google-workspace-gmail-inbox",
   "title": "Gmail Inbox",
-  "description": "Recent unread Gmail messages — sender, subject, and relative timestamp. Click a row to read the full message.",
+  "description": "Recent Gmail messages — sender, subject, and relative timestamp. Click a row to read the full message.",
   "category": "productivity",
   "tags": [
     "google",
@@ -41,7 +41,7 @@
     "mcp": "google-workspace-gmail",
     "tool": "list_messages",
     "params": {
-      "labelIds": ["INBOX", "UNREAD"],
+      "labelIds": ["INBOX"],
       "maxResults": 20
     }
   },
@@ -103,7 +103,7 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{n} unread",
+              "pattern": "{n} messages",
               "n": {
                 "$computed": "count",
                 "args": {
@@ -146,7 +146,7 @@
       "empty": {
         "type": "Empty",
         "props": {
-          "message": "Inbox zero — enjoy it while it lasts."
+          "message": "No messages in your inbox."
         },
         "visible": {
           "$and": [
@@ -194,9 +194,9 @@
               "url": {
                 "$computed": "fmt",
                 "args": {
-                  "pattern": "https://mail.google.com/mail/u/0/#inbox/{id}",
-                  "id": {
-                    "$item": "id"
+                  "pattern": "https://mail.google.com/mail/u/0/#inbox/{threadId}",
+                  "threadId": {
+                    "$item": "threadId"
                   }
                 }
               },
@@ -217,11 +217,16 @@
             "$computed": "initials",
             "args": {
               "value": {
-                "$item": "from"
+                "$computed": "google-workspace_sender_name",
+                "args": {
+                  "value": {
+                    "$item": "from"
+                  }
+                }
               }
             }
           },
-          "size": "sm"
+          "size": "md"
         }
       },
       "labels": {
@@ -243,7 +248,7 @@
             "args": {
               "pattern": "{name} — {subject}",
               "name": {
-                "$computed": "google_workspace_sender_name",
+                "$computed": "google-workspace_sender_name",
                 "args": {
                   "value": {
                     "$item": "from"

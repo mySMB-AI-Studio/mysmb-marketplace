@@ -215,6 +215,13 @@
             {
               "action": "setState",
               "params": {
+                "statePath": "/_errors/m365-mail-read.get_email",
+                "value": ""
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
                 "statePath": "/ui/selectedEmailId",
                 "value": {
                   "$computed": "identity",
@@ -355,6 +362,7 @@
         "children": [
           "detailHeader",
           "detailSpinner",
+          "detailError",
           "detailBody"
         ]
       },
@@ -420,10 +428,18 @@
           "label": "Loading message\u2026"
         },
         "visible": {
-          "$state": "/m365-mail-read/get_email/id",
-          "neq": {
-            "$state": "/ui/selectedEmailId"
-          }
+          "$and": [
+            {
+              "$state": "/_errors/m365-mail-read.get_email",
+              "not": true
+            },
+            {
+              "$state": "/m365-mail-read/get_email/id",
+              "neq": {
+                "$state": "/ui/selectedEmailId"
+              }
+            }
+          ]
         }
       },
       "detailBody": {
@@ -533,6 +549,15 @@
         "children": [
           "openBtn"
         ]
+      },
+      "detailError": {
+        "type": "Empty",
+        "props": {
+          "message": "Couldn\u2019t load this message. Close and try again."
+        },
+        "visible": {
+          "$state": "/_errors/m365-mail-read.get_email"
+        }
       }
     }
   }

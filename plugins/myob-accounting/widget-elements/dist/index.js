@@ -215,6 +215,7 @@ const pnl_get = (args) => {
     const key = String(args.key ?? '');
     if (!r)
         return 0;
+    // eslint-disable-next-line no-console
     // Auto-unwrap common MCP response wrapper keys ({ data: {...} })
     if (typeof r === 'object' && !Array.isArray(r) &&
         r.data != null && typeof r.data === 'object' && !Array.isArray(r.data)) {
@@ -562,6 +563,7 @@ const PURCHASE_BILL_TYPES = new Set(['Item', 'Miscellaneous', 'Professional', 'S
 // filter: "all" | "open" | "closed" | "overdue"  (MYOB bills use "Paid" for closed)
 // from_date / to_date: YYYY-MM-DD — scopes to item Date field
 // record_type: "bill" | "adjustment" — splits by MYOB Type field
+// overdue_asof: YYYY-MM-DD — cutoff for overdue; defaults to today when omitted
 const txn_count = (args) => {
     const raw = args.value;
     const items = Array.isArray(raw)
@@ -575,7 +577,7 @@ const txn_count = (args) => {
     const toMs = args.to_date
         ? (() => { const d = new Date(String(args.to_date)); d.setDate(d.getDate() + 1); return d.getTime(); })()
         : null;
-    const now = Date.now();
+    const now = args.overdue_asof ? new Date(String(args.overdue_asof)).getTime() : Date.now();
     const parse = (s) => {
         const m = s.match(/\/Date\((-?\d+)(?:[+-]\d{4})?\)\//);
         return m ? Number(m[1]) : new Date(s).getTime();
@@ -610,6 +612,7 @@ const txn_count = (args) => {
 // Uses BalanceDueAmount for open/overdue; TotalAmount otherwise.
 // from_date / to_date: YYYY-MM-DD — scopes to item Date field
 // record_type: "bill" | "adjustment" — splits by MYOB Type field
+// overdue_asof: YYYY-MM-DD — cutoff for overdue; defaults to today when omitted
 const txn_amount = (args) => {
     const raw = args.value;
     const items = Array.isArray(raw)
@@ -623,7 +626,7 @@ const txn_amount = (args) => {
     const toMs = args.to_date
         ? (() => { const d = new Date(String(args.to_date)); d.setDate(d.getDate() + 1); return d.getTime(); })()
         : null;
-    const now = Date.now();
+    const now = args.overdue_asof ? new Date(String(args.overdue_asof)).getTime() : Date.now();
     const parse = (s) => {
         const m = s.match(/\/Date\((-?\d+)(?:[+-]\d{4})?\)\//);
         return m ? Number(m[1]) : new Date(s).getTime();
@@ -655,9 +658,18 @@ const txn_amount = (args) => {
             || (filter === 'overdue' && overdue);
     })
         .reduce((sum, item) => {
-        return sum + Number(useBalance
-            ? (item.BalanceDueAmount ?? item.TotalAmount ?? 0)
-            : (item.TotalAmount ?? 0));
+        // Prefer Subtotal (ex-tax); fall back to TotalAmount if missing.
+        const subtotal = Number((item.Subtotal ?? item.SubTotal) ?? item.TotalAmount ?? 0);
+        const totalAmt = Number(item.TotalAmount ?? 0);
+        const balDue = Number(item.BalanceDueAmount ?? 0);
+        let amt;
+        if (useBalance) {
+            amt = balDue;
+        }
+        else {
+            amt = subtotal;
+        }
+        return sum + amt;
     }, 0);
     return 'A$' + new Intl.NumberFormat('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(total);
 };
@@ -682,9 +694,67 @@ const net_monthly = (args) => {
     const len = Math.max(inc.length, exp.length);
     return Array.from({ length: len }, (_, i) => (inc[i] ?? 0) - (exp[i] ?? 0));
 };
+// ── cash_received ─────────────────────────────────────────────────────
+// Sums MYOB ReceivePayment records by totalling Invoices[].AmountApplied.
+// Returns formatted AUD. Returns A$0.00 when no payments in the period.
+// Args: { value: ReceivePayment[] }
+const cash_received = (args) => {
+    const items = Array.isArray(args.value) ? args.value : [];
+    const total = items.reduce((sum, payment) => {
+        const invoices = Array.isArray(payment.Invoices)
+            ? payment.Invoices
+            : [];
+        return sum + invoices.reduce((s, inv) => s + Number(inv.AmountApplied ?? 0), 0);
+    }, 0);
+    return 'A$' + new Intl.NumberFormat('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(total);
+};
 // ── bool_not ───────────────────────────────────────────────────────────
 // Negates a boolean — used for collapsible section toggle visibility.
 const bool_not = (args) => !args.value;
+// ── three_month_window ─────────────────────────────────────────────────
+// Returns the current 3-month calendar window: current month + 2 prior.
+// MYOB P&L requires dates within the same Australian FY (Jul 1 – Jun 30).
+// When the trailing window spans two FYs, the larger contiguous segment is
+// used (e.g. Jul 2026 → May-Jun since those 2 months dominate FY2026).
+// Optional { field } arg extracts a single key; omit for the full object.
+// Fields: from_date, to_date, from_date_ly, to_date_ly,
+//         months_cy, months_ly, month_0, month_1, month_2
+const three_month_window = (args) => {
+    const today = new Date();
+    const cy = today.getFullYear();
+    const cm = today.getMonth(); // 0-indexed
+    const months = [cm - 2, cm - 1, cm].map((m) => {
+        const year = cy + Math.floor(m / 12);
+        const month = ((m % 12) + 12) % 12;
+        return { year, month };
+    });
+    const pad = (n) => String(n).padStart(2, '0');
+    const lastDay = (year, month) => new Date(year, month + 1, 0).getDate();
+    const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const m0 = months[0];
+    const m2 = months[months.length - 1];
+    const from_date = `${m0.year}-${pad(m0.month + 1)}-01`;
+    // Use today for the current (partial) month; end-of-month for completed months.
+    const isCurrentMonth = m2.year === cy && m2.month === cm;
+    const to_date = isCurrentMonth
+        ? `${cy}-${pad(cm + 1)}-${pad(today.getDate())}`
+        : `${m2.year}-${pad(m2.month + 1)}-${pad(lastDay(m2.year, m2.month))}`;
+    const from_date_ly = `${m0.year - 1}-${pad(m0.month + 1)}-01`;
+    const to_date_ly = isCurrentMonth
+        ? `${cy - 1}-${pad(cm + 1)}-${pad(today.getDate())}`
+        : `${m2.year - 1}-${pad(m2.month + 1)}-${pad(lastDay(m2.year - 1, m2.month))}`;
+    const months_cy = months.map(({ year, month }) => `${year}-${pad(month + 1)}`);
+    const months_ly = months.map(({ year, month }) => `${year - 1}-${pad(month + 1)}`);
+    const month_0 = MONTH_NAMES[months[0].month];
+    const month_1 = months.length > 1 ? MONTH_NAMES[months[1].month] : '';
+    const month_2 = months.length > 2 ? MONTH_NAMES[months[2].month] : '';
+    const window = { from_date, to_date, from_date_ly, to_date_ly, months_cy, months_ly, month_0, month_1, month_2 };
+    const field = args?.field ? String(args.field) : null;
+    if (field && Object.prototype.hasOwnProperty.call(window, field)) {
+        return window[field];
+    }
+    return window;
+};
 const elements = {
     slug: 'myob-accounting',
     functions: {
@@ -710,7 +780,9 @@ const elements = {
         txn_amount,
         txn_truncated,
         net_monthly,
+        cash_received,
         bool_not,
+        three_month_window,
     },
 };
 export default elements;

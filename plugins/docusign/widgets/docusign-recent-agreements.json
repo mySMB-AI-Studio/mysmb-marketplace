@@ -1,0 +1,133 @@
+{
+  "id": "docusign-recent-agreements",
+  "title": "Recent Agreements",
+  "description": "Latest DocuSign agreements from Agreement Manager with status badge and agreement type.",
+  "category": "documents",
+  "tags": ["docusign", "agreements", "contracts", "clm", "esignature"],
+  "keywords": ["agreement", "agreements", "contract", "contracts", "clm", "recent", "status", "docusign"],
+  "connectorsUsed": ["docusign"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 5 },
+    "min":       { "colSpan": 4, "rowSpan": 3 },
+    "max":       { "colSpan": 10, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "docusign",
+    "tool": "getAllAgreements",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "loading", "empty", "list"]
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "FileBadge", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Recent Agreements", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "DocuSign" }
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["s1", "s2", "s3", "s4"],
+        "visible": { "$state": "/_loading/docusign.getAllAgreements" }
+      },
+      "s1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "s2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "s3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "s4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No agreements found. Agreement Manager may not be enabled on this account." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/docusign.getAllAgreements", "not": true },
+            { "$state": "/docusign/getAllAgreements/agreements/0", "not": true }
+          ]
+        }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": {
+          "statePath": "/docusign/getAllAgreements/agreements",
+          "key": "agreementId"
+        },
+        "visible": { "$state": "/_loading/docusign.getAllAgreements", "not": true }
+      },
+
+      "row": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["rowLeft", "rowStatus"]
+      },
+      "rowLeft": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["rowName", "rowType"]
+      },
+      "rowName": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "name" },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "rowType": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "type" },
+          "size": "xs",
+          "tone": "muted",
+          "truncate": true
+        },
+        "visible": { "$item": "type" }
+      },
+      "rowStatus": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "status" },
+          "tone": "accent",
+          "variant": "soft"
+        },
+        "visible": { "$item": "status" }
+      }
+
+    }
+  },
+  "status": "published"
+}

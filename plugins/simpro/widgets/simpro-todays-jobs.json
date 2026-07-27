@@ -1,0 +1,169 @@
+{
+  "id": "simpro-todays-jobs",
+  "title": "Today's Jobs",
+  "description": "Active Simpro jobs for the day — job number, description, site, and materials status badge.",
+  "category": "operations",
+  "tags": ["simpro", "jobs", "schedule", "field-service", "electrical", "trade"],
+  "keywords": ["today", "today's jobs", "schedule", "jobs", "active", "field service", "simpro", "run sheet"],
+  "connectorsUsed": ["simpro"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 4 },
+    "min":       { "colSpan": 4, "rowSpan": 4 },
+    "max":       { "colSpan": 10, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "mcp": "simpro",
+    "tool": "list_todays_jobs",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "divider", "loading", "empty", "scrollBody"]
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "CalendarDays", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Today's Jobs", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Simpro" }
+      },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["s1", "s2", "s3"],
+        "visible": { "$state": "/_loading/simpro.list_todays_jobs" }
+      },
+      "s1": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "s2": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "s3": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No jobs scheduled for today." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/simpro.list_todays_jobs", "not": true },
+            { "$state": "/simpro/list_todays_jobs/jobs/0", "not": true }
+          ]
+        }
+      },
+
+      "scrollBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["list"],
+        "visible": { "$state": "/_loading/simpro.list_todays_jobs", "not": true }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["row"],
+        "repeat": {
+          "statePath": "/simpro/list_todays_jobs/jobs",
+          "key": "ID"
+        }
+      },
+
+      "row": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["rowTime", "rowBody"]
+      },
+
+      "rowTime": {
+        "type": "simpro_TimePill",
+        "props": {
+          "start": { "$item": "ScheduledStart" },
+          "end": { "$item": "ScheduledEnd" }
+        }
+      },
+
+      "rowBody": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["rowName", "rowMeta"]
+      },
+
+      "rowName": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "Name" },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+
+      "rowMeta": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "wrap": true },
+        "children": ["rowJobNo", "rowSite", "rowStatus"]
+      },
+
+      "rowJobNo": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "J-{n}", "n": { "$item": "ID" } }
+          },
+          "tone": "accent"
+        }
+      },
+
+      "rowSite": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "Site" },
+          "size": "xs",
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+
+      "rowStatus": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "Status" },
+          "tone": {
+            "$computed": "simpro_job_status_tone",
+            "args": { "value": { "$item": "Status" } }
+          }
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}

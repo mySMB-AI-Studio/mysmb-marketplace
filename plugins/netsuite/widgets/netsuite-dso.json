@@ -9,7 +9,7 @@
   "popularity": 0,
   "status": "published",
   "sizing": {
-    "preferred": { "colSpan": 4, "rowSpan": 3 },
+    "preferred": { "colSpan": 4, "rowSpan": 4 },
     "min":       { "colSpan": 3, "rowSpan": 3 },
     "max":       { "colSpan": 8, "rowSpan": 8 }
   },
@@ -25,7 +25,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "div0", "heroSection", "div1", "kvGrid"]
+        "children": ["headerRow", "div0", "heroSection", "div1", "kvGrid", "div2", "kvBenchmarks", "div3", "benchmarkSection"]
       },
 
       "headerRow": {
@@ -84,6 +84,52 @@
           "value": {
             "$computed": "format_currency",
             "args": { "value": { "$state": "/netsuite/get_dso/revenue_90d" } }
+          }
+        }
+      }
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "kvBenchmarks": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start" },
+        "children": ["kvBenchLow", "kvBenchHigh"]
+      },
+      "kvBenchLow":  { "type": "KeyValue", "props": { "label": "Benchmark Low",  "value": "30 days" } },
+      "kvBenchHigh": { "type": "KeyValue", "props": { "label": "Benchmark High", "value": "45 days" } },
+
+      "div3": { "type": "Divider", "props": {} },
+
+      "benchmarkSection": { "type": "Section", "props": { "variant": "muted" }, "children": ["benchmarkInner"] },
+      "benchmarkInner": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["benchmarkLabel", "benchmarkScale", "benchmarkStatus"]
+      },
+      "benchmarkLabel": { "type": "Eyebrow", "props": { "text": "Industry Benchmark" } },
+      "benchmarkScale": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "xs" },
+        "children": ["scaleLow", "benchmarkBar", "scaleHigh"]
+      },
+      "scaleLow":  { "type": "Caption", "props": { "text": "30d" } },
+      "benchmarkBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": { "$state": "/netsuite/get_dso/benchmark_pct" },
+          "tone": "accent"
+        }
+      },
+      "scaleHigh": { "type": "Caption", "props": { "text": "45d" } },
+      "benchmarkStatus": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{dso} days — target ≤45d",
+              "dso": { "$state": "/netsuite/get_dso/current_dso" }
+            }
           }
         }
       }

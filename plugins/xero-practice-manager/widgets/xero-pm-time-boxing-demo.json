@@ -1,0 +1,208 @@
+{
+  "id": "xero-pm-time-boxing-demo",
+  "title": "Time Boxing (Demo)",
+  "description": "Static demo of the Xero Practice Manager Time Boxing widget — daily schedule card showing 9 time-blocked entries for a staff member with billable vs non-billable breakdown.",
+  "category": "project-management",
+  "tags": ["xero", "practice-manager", "xpm", "time-boxing", "schedule", "timesheets", "accounting-practice", "demo"],
+  "keywords": ["time boxing", "schedule", "daily", "billable", "timesheet", "staff", "xpm", "practice manager", "demo"],
+  "connectorsUsed": ["xero-practice-manager"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 7 },
+    "min":       { "colSpan": 3, "rowSpan": 6 },
+    "max":       { "colSpan": 8, "rowSpan": 14 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": { "type": "Card", "props": {}, "children": ["headerRow", "div0", "body", "div1", "footer", "overlay"] },
+
+      "headerRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "Clock", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Time Boxing", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Priya Nair · Wed 15 Jul" } },
+      "div0": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["rows"] },
+      "rows": { "type": "Stack", "props": { "gap": "xs" }, "children": ["r1","r2","r3","r4","r5","r6","r7","r8","r9"] },
+
+      "r1": { "type": "Section", "props": { "variant": "muted" }, "on": { "click": [
+        { "action": "setState", "params": { "statePath": "/ui/tb/key",    "value": "tb1" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/title",  "value": "Inbox triage / buffer" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/time",   "value": "08:00" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/dur",    "value": "38m" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/client", "value": "" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/url",    "value": "" } }
+      ]}, "children": ["cr1"] },
+      "cr1":  { "type": "Row",   "props": { "justify": "between", "align": "center", "gap": "sm" }, "children": ["grp1","d1"] },
+      "grp1": { "type": "Row",   "props": { "gap": "md", "align": "center" }, "children": ["t1","dot1","tk1"] },
+      "t1":   { "type": "Text",  "props": { "text": "08:00", "size": "xs", "tone": "muted", "style": { "width": "40px", "flexShrink": 0, "textAlign": "right" } } },
+      "dot1": { "type": "Dot",   "props": { "tone": "muted" } },
+      "tk1":  { "type": "Text",  "props": { "text": "Inbox triage / buffer", "size": "sm", "weight": "medium" } },
+      "d1":   { "type": "Text",  "props": { "text": "38m", "size": "xs", "tone": "muted", "style": { "flexShrink": 0 } } },
+
+      "r2": { "type": "Section", "props": { "variant": "muted" }, "on": { "click": [
+        { "action": "setState", "params": { "statePath": "/ui/tb/key",    "value": "tb2" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/title",  "value": "FY26 Tax Return prep" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/time",   "value": "08:30" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/dur",    "value": "1h 38m" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/client", "value": "Heritage Trust · Job #4821" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/url",    "value": "https://go.xero.com/app/practicemanager/job/a7f2c301-9b8e-4d5f-a123-456789abcdef" } }
+      ]}, "children": ["cr2"] },
+      "cr2":  { "type": "Row",   "props": { "justify": "between", "align": "center", "gap": "sm" }, "children": ["grp2","d2"] },
+      "grp2": { "type": "Row",   "props": { "gap": "md", "align": "center" }, "children": ["t2","dot2","ls2"] },
+      "t2":   { "type": "Text",  "props": { "text": "08:30", "size": "xs", "tone": "muted", "style": { "width": "40px", "flexShrink": 0, "textAlign": "right" } } },
+      "dot2": { "type": "Dot",   "props": { "tone": "success" } },
+      "ls2":  { "type": "Stack", "props": { "gap": "none" }, "children": ["tk2","st2"] },
+      "tk2":  { "type": "Text",  "props": { "text": "FY26 Tax Return prep", "size": "sm", "weight": "medium" } },
+      "st2":  { "type": "Text",  "props": { "text": "Heritage Trust · Job #4821", "size": "xs", "tone": "muted" } },
+      "d2":   { "type": "Text",  "props": { "text": "1h 38m", "size": "xs", "tone": "muted", "style": { "flexShrink": 0 } } },
+
+      "r3": { "type": "Section", "props": { "variant": "muted" }, "on": { "click": [
+        { "action": "setState", "params": { "statePath": "/ui/tb/key",    "value": "tb3" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/title",  "value": "Break" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/time",   "value": "10:00" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/dur",    "value": "15m" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/client", "value": "" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/url",    "value": "" } }
+      ]}, "children": ["cr3"] },
+      "cr3":  { "type": "Row",   "props": { "justify": "between", "align": "center", "gap": "sm" }, "children": ["grp3","d3"] },
+      "grp3": { "type": "Row",   "props": { "gap": "md", "align": "center" }, "children": ["t3","dot3","tk3"] },
+      "t3":   { "type": "Text",  "props": { "text": "10:00", "size": "xs", "tone": "muted", "style": { "width": "40px", "flexShrink": 0, "textAlign": "right" } } },
+      "dot3": { "type": "Dot",   "props": { "tone": "muted" } },
+      "tk3":  { "type": "Text",  "props": { "text": "Break", "size": "sm", "weight": "medium" } },
+      "d3":   { "type": "Text",  "props": { "text": "15m", "size": "xs", "tone": "muted", "style": { "flexShrink": 0 } } },
+
+      "r4": { "type": "Section", "props": { "variant": "muted" }, "on": { "click": [
+        { "action": "setState", "params": { "statePath": "/ui/tb/key",    "value": "tb4" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/title",  "value": "BAS Lodgement Review" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/time",   "value": "10:15" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/dur",    "value": "1h 45m" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/client", "value": "Bayside Club · Job #4809" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/url",    "value": "https://go.xero.com/app/practicemanager/job/b8e3d412-0c9f-5e6a-b234-567890bcdef0" } }
+      ]}, "children": ["cr4"] },
+      "cr4":  { "type": "Row",   "props": { "justify": "between", "align": "center", "gap": "sm" }, "children": ["grp4","d4"] },
+      "grp4": { "type": "Row",   "props": { "gap": "md", "align": "center" }, "children": ["t4","dot4","ls4"] },
+      "t4":   { "type": "Text",  "props": { "text": "10:15", "size": "xs", "tone": "muted", "style": { "width": "40px", "flexShrink": 0, "textAlign": "right" } } },
+      "dot4": { "type": "Dot",   "props": { "tone": "success" } },
+      "ls4":  { "type": "Stack", "props": { "gap": "none" }, "children": ["tk4","st4"] },
+      "tk4":  { "type": "Text",  "props": { "text": "BAS Lodgement Review", "size": "sm", "weight": "medium" } },
+      "st4":  { "type": "Text",  "props": { "text": "Bayside Club · Job #4809", "size": "xs", "tone": "muted" } },
+      "d4":   { "type": "Text",  "props": { "text": "1h 45m", "size": "xs", "tone": "muted", "style": { "flexShrink": 0 } } },
+
+      "r5": { "type": "Section", "props": { "variant": "muted" }, "on": { "click": [
+        { "action": "setState", "params": { "statePath": "/ui/tb/key",    "value": "tb5" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/title",  "value": "Lunch" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/time",   "value": "12:00" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/dur",    "value": "45m" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/client", "value": "" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/url",    "value": "" } }
+      ]}, "children": ["cr5"] },
+      "cr5":  { "type": "Row",   "props": { "justify": "between", "align": "center", "gap": "sm" }, "children": ["grp5","d5"] },
+      "grp5": { "type": "Row",   "props": { "gap": "md", "align": "center" }, "children": ["t5","dot5","tk5"] },
+      "t5":   { "type": "Text",  "props": { "text": "12:00", "size": "xs", "tone": "muted", "style": { "width": "40px", "flexShrink": 0, "textAlign": "right" } } },
+      "dot5": { "type": "Dot",   "props": { "tone": "muted" } },
+      "tk5":  { "type": "Text",  "props": { "text": "Lunch", "size": "sm", "weight": "medium" } },
+      "d5":   { "type": "Text",  "props": { "text": "45m", "size": "xs", "tone": "muted", "style": { "flexShrink": 0 } } },
+
+      "r6": { "type": "Section", "props": { "variant": "muted" }, "on": { "click": [
+        { "action": "setState", "params": { "statePath": "/ui/tb/key",    "value": "tb6" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/title",  "value": "Year-end reconciliation" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/time",   "value": "12:45" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/dur",    "value": "1h 45m" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/client", "value": "Capital Cab Co · Job #4795" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/url",    "value": "https://go.xero.com/app/practicemanager/job/c9f4e523-1d0a-6f7b-c345-678901cdef01" } }
+      ]}, "children": ["cr6"] },
+      "cr6":  { "type": "Row",   "props": { "justify": "between", "align": "center", "gap": "sm" }, "children": ["grp6","d6"] },
+      "grp6": { "type": "Row",   "props": { "gap": "md", "align": "center" }, "children": ["t6","dot6","ls6"] },
+      "t6":   { "type": "Text",  "props": { "text": "12:45", "size": "xs", "tone": "muted", "style": { "width": "40px", "flexShrink": 0, "textAlign": "right" } } },
+      "dot6": { "type": "Dot",   "props": { "tone": "success" } },
+      "ls6":  { "type": "Stack", "props": { "gap": "none" }, "children": ["tk6","st6"] },
+      "tk6":  { "type": "Text",  "props": { "text": "Year-end reconciliation", "size": "sm", "weight": "medium" } },
+      "st6":  { "type": "Text",  "props": { "text": "Capital Cab Co · Job #4795", "size": "xs", "tone": "muted" } },
+      "d6":   { "type": "Text",  "props": { "text": "1h 45m", "size": "xs", "tone": "muted", "style": { "flexShrink": 0 } } },
+
+      "r7": { "type": "Section", "props": { "variant": "muted" }, "on": { "click": [
+        { "action": "setState", "params": { "statePath": "/ui/tb/key",    "value": "tb7" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/title",  "value": "Admin / client emails" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/time",   "value": "14:30" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/dur",    "value": "38m" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/client", "value": "" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/url",    "value": "" } }
+      ]}, "children": ["cr7"] },
+      "cr7":  { "type": "Row",   "props": { "justify": "between", "align": "center", "gap": "sm" }, "children": ["grp7","d7"] },
+      "grp7": { "type": "Row",   "props": { "gap": "md", "align": "center" }, "children": ["t7","dot7","tk7"] },
+      "t7":   { "type": "Text",  "props": { "text": "14:30", "size": "xs", "tone": "muted", "style": { "width": "40px", "flexShrink": 0, "textAlign": "right" } } },
+      "dot7": { "type": "Dot",   "props": { "tone": "warning" } },
+      "tk7":  { "type": "Text",  "props": { "text": "Admin / client emails", "size": "sm", "weight": "medium" } },
+      "d7":   { "type": "Text",  "props": { "text": "38m", "size": "xs", "tone": "muted", "style": { "flexShrink": 0 } } },
+
+      "r8": { "type": "Section", "props": { "variant": "muted" }, "on": { "click": [
+        { "action": "setState", "params": { "statePath": "/ui/tb/key",    "value": "tb8" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/title",  "value": "Payroll compliance check" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/time",   "value": "15:00" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/dur",    "value": "1h 38m" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/client", "value": "Mitchell River Lodge · Job #4831" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/url",    "value": "https://go.xero.com/app/practicemanager/job/d0a5f634-2e1b-7a8c-d456-789012def012" } }
+      ]}, "children": ["cr8"] },
+      "cr8":  { "type": "Row",   "props": { "justify": "between", "align": "center", "gap": "sm" }, "children": ["grp8","d8"] },
+      "grp8": { "type": "Row",   "props": { "gap": "md", "align": "center" }, "children": ["t8","dot8","ls8"] },
+      "t8":   { "type": "Text",  "props": { "text": "15:00", "size": "xs", "tone": "muted", "style": { "width": "40px", "flexShrink": 0, "textAlign": "right" } } },
+      "dot8": { "type": "Dot",   "props": { "tone": "success" } },
+      "ls8":  { "type": "Stack", "props": { "gap": "none" }, "children": ["tk8","st8"] },
+      "tk8":  { "type": "Text",  "props": { "text": "Payroll compliance check", "size": "sm", "weight": "medium" } },
+      "st8":  { "type": "Text",  "props": { "text": "Mitchell River Lodge · Job #4831", "size": "xs", "tone": "muted" } },
+      "d8":   { "type": "Text",  "props": { "text": "1h 38m", "size": "xs", "tone": "muted", "style": { "flexShrink": 0 } } },
+
+      "r9": { "type": "Section", "props": { "variant": "muted" }, "on": { "click": [
+        { "action": "setState", "params": { "statePath": "/ui/tb/key",    "value": "tb9" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/title",  "value": "Catch-up / overflow" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/time",   "value": "16:30" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/dur",    "value": "38m" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/client", "value": "" } },
+        { "action": "setState", "params": { "statePath": "/ui/tb/url",    "value": "" } }
+      ]}, "children": ["cr9"] },
+      "cr9":  { "type": "Row",   "props": { "justify": "between", "align": "center", "gap": "sm" }, "children": ["grp9","d9"] },
+      "grp9": { "type": "Row",   "props": { "gap": "md", "align": "center" }, "children": ["t9","dot9","tk9"] },
+      "t9":   { "type": "Text",  "props": { "text": "16:30", "size": "xs", "tone": "muted", "style": { "width": "40px", "flexShrink": 0, "textAlign": "right" } } },
+      "dot9": { "type": "Dot",   "props": { "tone": "muted" } },
+      "tk9":  { "type": "Text",  "props": { "text": "Catch-up / overflow", "size": "sm", "weight": "medium" } },
+      "d9":   { "type": "Text",  "props": { "text": "38m", "size": "xs", "tone": "muted", "style": { "flexShrink": 0 } } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "footer": { "type": "Stack", "props": { "gap": "xs" }, "children": ["footerRow","footerBarRow","footerHint"] },
+      "footerRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["footerLabel","footerStat"] },
+      "footerLabel": { "type": "Text", "props": { "text": "Billable scheduled", "size": "xs", "tone": "muted" } },
+      "footerStat": { "type": "Text", "props": { "text": "5h 45m / 7h 30m", "size": "sm", "weight": "semibold" } },
+      "footerBarRow": { "type": "Row", "props": { "align": "center" }, "children": ["footerBar"] },
+      "footerBar": { "type": "ProgressBar", "props": { "value": 77, "tone": "success" } },
+      "footerHint": { "type": "Text", "props": { "text": "Blocks generated from XPM scheduled jobs · drag to re-box your day", "size": "xs", "tone": "accent" } },
+
+      "overlay": {
+        "type": "Overlay", "props": { "maxWidth": "28rem" },
+        "visible": { "$state": "/ui/tb/key" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/tb/key", "value": "" } } },
+        "children": ["ovCard"]
+      },
+      "ovCard":   { "type": "Card",    "props": {}, "children": ["ovHeader","ovHR","ovBody"] },
+      "ovHeader": { "type": "Row",     "props": { "justify": "between", "align": "center" }, "children": ["ovTitle","ovClose"] },
+      "ovTitle":  { "type": "Heading", "props": { "text": { "$state": "/ui/tb/title" }, "level": "h3" } },
+      "ovClose":  { "type": "OverlayClose", "props": { "ariaLabel": "Close" },
+                    "on": { "click": { "action": "setState", "params": { "statePath": "/ui/tb/key", "value": "" } } } },
+      "ovHR":     { "type": "Divider", "props": {} },
+      "ovBody":   { "type": "Stack",   "props": { "gap": "sm" }, "children": ["ovMeta","ovClient","ovXpmBtn"] },
+      "ovMeta":   { "type": "Text",    "props": { "text": { "$computed": "fmt", "args": { "template": "{time} · {dur}", "time": { "$state": "/ui/tb/time" }, "dur": { "$state": "/ui/tb/dur" } } }, "size": "sm", "tone": "muted" } },
+      "ovClient": { "type": "Text",    "props": { "text": { "$state": "/ui/tb/client" }, "size": "sm", "tone": "muted" },
+                    "visible": { "$state": "/ui/tb/client" } },
+      "ovXpmBtn": { "type": "Button",  "props": { "label": "Open in XPM", "variant": "secondary", "size": "sm" },
+                    "visible": { "$state": "/ui/tb/url" },
+                    "on": { "click": { "action": "open_url", "params": { "url": { "$state": "/ui/tb/url" }, "target": "_blank" } } } }
+
+    }
+  },
+  "status": "published"
+}

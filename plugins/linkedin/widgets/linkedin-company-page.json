@@ -1,0 +1,103 @@
+{
+  "id": "linkedin-company-page",
+  "title": "Company Page",
+  "description": "Your LinkedIn company page — name, description, and a direct link to the page. Set organizationId in params to your LinkedIn Organization ID.",
+  "category": "marketing",
+  "tags": ["linkedin", "company", "page", "b2b", "brand", "organization"],
+  "keywords": ["company", "page", "organization", "brand", "linkedin", "b2b", "profile"],
+  "connectorsUsed": ["linkedin"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 4 },
+    "min": { "colSpan": 3, "rowSpan": 3 },
+    "max": { "colSpan": 8, "rowSpan": 8 }
+  },
+  "dataProvider": {
+    "mcp": "linkedin",
+    "tool": "linkedin_marketing_get_organization",
+    "params": {
+      "organizationId": "YOUR_ORGANIZATION_ID"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "children": ["header", "body"] },
+      "header": { "type": "Header", "children": ["titleGroup"] },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleText"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Building2", "tone": "accent", "size": "sm" } },
+      "titleText": { "type": "Heading", "props": { "text": "Company Page", "level": "h2" } },
+      "body": { "type": "Body", "children": ["loading", "pageContent"] },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["skName", "skDesc", "skWebsite"],
+        "visible": { "$state": "/_loading/linkedin.linkedin_marketing_get_organization" }
+      },
+      "skName": { "type": "Skeleton", "props": { "height": "1.75rem", "rounded": "md" } },
+      "skDesc": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "skWebsite": { "type": "Skeleton", "props": { "height": "1rem", "rounded": "md" } },
+      "pageContent": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "visible": { "$state": "/_loading/linkedin.linkedin_marketing_get_organization", "not": true },
+        "children": ["orgName", "orgDesc", "websiteRow", "viewBtn"]
+      },
+      "orgName": {
+        "type": "Heading",
+        "props": {
+          "text": { "$state": "/linkedin/linkedin_marketing_get_organization/localizedName" },
+          "level": "h3"
+        }
+      },
+      "orgDesc": {
+        "type": "Text",
+        "props": {
+          "text": { "$state": "/linkedin/linkedin_marketing_get_organization/localizedDescription" },
+          "size": "sm",
+          "tone": "muted"
+        },
+        "visible": { "$state": "/linkedin/linkedin_marketing_get_organization/localizedDescription" }
+      },
+      "websiteRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "visible": { "$state": "/linkedin/linkedin_marketing_get_organization/localizedWebsite" },
+        "children": ["webIcon", "webText"]
+      },
+      "webIcon": { "type": "Icon", "props": { "name": "Globe", "size": "xs", "tone": "muted" } },
+      "webText": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/linkedin/linkedin_marketing_get_organization/localizedWebsite" } }
+      },
+      "viewBtn": {
+        "type": "Button",
+        "props": {
+          "label": "View Company Page",
+          "tone": "accent",
+          "variant": "solid",
+          "size": "md"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "https://www.linkedin.com/company/{vanity}/",
+                  "vanity": { "$state": "/linkedin/linkedin_marketing_get_organization/vanityName" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}
