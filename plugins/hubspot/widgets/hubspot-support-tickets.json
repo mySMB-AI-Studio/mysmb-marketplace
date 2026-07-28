@@ -1,0 +1,152 @@
+{
+  "id": "hubspot-support-tickets",
+  "title": "Support Tickets",
+  "description": "Recent HubSpot support tickets with subject, pipeline stage, and a colour-coded priority badge.",
+  "category": "support",
+  "tags": ["hubspot", "tickets", "support", "helpdesk"],
+  "keywords": ["tickets", "support", "helpdesk", "open tickets", "priority", "queue"],
+  "connectorsUsed": ["hubspot"],
+  "popularity": 60,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 12, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "hubspot",
+    "tool": "search_tickets",
+    "params": {
+      "properties": ["subject", "hs_pipeline_stage", "hs_ticket_priority", "createdate"],
+      "sorts": ["createdate DESC"],
+      "limit": 20
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["header", "body"]
+      },
+      "header": {
+        "type": "Header",
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "LifeBuoy", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Support Tickets", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} recent tickets",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": { "$state": "/hubspot/search_tickets/items" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": ["loading", "empty", "ticketList"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/hubspot.search_tickets" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No tickets found in HubSpot." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hubspot.search_tickets", "not": true },
+            { "$state": "/hubspot/search_tickets/items/0", "not": true }
+          ]
+        }
+      },
+      "ticketList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["ticketRow"],
+        "repeat": {
+          "statePath": "/hubspot/search_tickets/items",
+          "key": "id"
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hubspot.search_tickets", "not": true },
+            { "$state": "/hubspot/search_tickets/items/0" }
+          ]
+        }
+      },
+      "ticketRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true },
+        "children": ["ticketLeft", "priorityBadge"]
+      },
+      "ticketLeft": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["ticketSubject", "ticketMeta"]
+      },
+      "ticketSubject": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "properties/subject" },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "ticketMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Stage {stage}",
+              "stage": { "$item": "properties/hs_pipeline_stage" }
+            }
+          }
+        }
+      },
+      "priorityBadge": {
+        "type": "Badge",
+        "props": {
+          "label": { "$item": "properties/hs_ticket_priority" },
+          "tone": {
+            "$computed": "hubspot_ticket_priority_tone",
+            "args": { "value": { "$item": "properties/hs_ticket_priority" } }
+          }
+        }
+      }
+    }
+  }
+}

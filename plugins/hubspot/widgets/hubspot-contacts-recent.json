@@ -14,11 +14,10 @@
   },
   "dataProvider": {
     "mcp": "hubspot",
-    "tool": "search_crm_objects",
+    "tool": "search_contacts",
     "params": {
-      "objectType": "contacts",
       "properties": ["firstname", "lastname", "email", "company", "lifecyclestage", "createdate"],
-      "sorts": [{ "propertyName": "createdate", "direction": "DESCENDING" }],
+      "sorts": ["createdate DESC"],
       "limit": 20
     }
   },
@@ -54,7 +53,7 @@
         "type": "Stack",
         "props": { "gap": "sm" },
         "children": ["sk1", "sk2", "sk3", "sk4"],
-        "visible": { "$state": "/_loading/hubspot.search_crm_objects" }
+        "visible": { "$state": "/_loading/hubspot.search_contacts" }
       },
       "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
       "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
@@ -65,8 +64,8 @@
         "props": { "message": "No contacts found in HubSpot." },
         "visible": {
           "$and": [
-            { "$state": "/_loading/hubspot.search_crm_objects", "not": true },
-            { "$state": "/hubspot/search_crm_objects/results/0", "not": true }
+            { "$state": "/_loading/hubspot.search_contacts", "not": true },
+            { "$state": "/hubspot/search_contacts/items/0", "not": true }
           ]
         }
       },
@@ -75,13 +74,13 @@
         "props": { "gap": "xs" },
         "children": ["contactRow"],
         "repeat": {
-          "statePath": "/hubspot/search_crm_objects/results",
+          "statePath": "/hubspot/search_contacts/items",
           "key": "id"
         },
         "visible": {
           "$and": [
-            { "$state": "/_loading/hubspot.search_crm_objects", "not": true },
-            { "$state": "/hubspot/search_crm_objects/results/0" }
+            { "$state": "/_loading/hubspot.search_contacts", "not": true },
+            { "$state": "/hubspot/search_contacts/items/0" }
           ]
         }
       },
