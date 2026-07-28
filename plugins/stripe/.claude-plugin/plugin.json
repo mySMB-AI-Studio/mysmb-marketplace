@@ -1,7 +1,7 @@
 {
   "name": "stripe",
-  "version": "0.2.0",
-  "description": "Manage Stripe payments, subscriptions, customers, and invoices via the official Stripe MCP server.",
+  "version": "0.1.0",
+  "description": "Read-only Stripe data via the myHub-hosted MCP gateway. Payments, customers, subscriptions, invoices, balance, payouts, products, and prices. No API keys required — server-side auth.",
   "author": {
     "name": "mySMB AI Studio"
   },
@@ -17,22 +17,10 @@
     "smb"
   ],
   "connection": {
-    "authType": "api_key",
-    "instructions": "Create a restricted API key in your Stripe Dashboard to limit agent access to only the permissions it needs.\n\n1. Go to https://dashboard.stripe.com/apikeys\n2. Click \"Create restricted key\".\n3. Grant the required permissions (Customers, Invoices, Payment Intents, Subscriptions, etc.).\n4. Copy the key and paste it below.",
-    "docUrl": "https://docs.stripe.com/mcp",
-    "fields": [
-      {
-        "name": "STRIPE_SECRET_KEY",
-        "label": "Stripe Restricted API Key",
-        "type": "password",
-        "required": true,
-        "placeholder": "rk_live_...",
-        "helpText": "Restricted API key from https://dashboard.stripe.com/apikeys — use a restricted key, not a full secret key"
-      }
-    ]
+    "authType": "none",
+    "instructions": "No credentials required. The myHub-hosted Stripe MCP server authenticates using server-side keys. Simply install the plugin and start using it."
   },
   "widgetElements": "widget-elements/dist/index.js",
   "widgets": "widgets",
-  "displayName": "Stripe",
-  "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAP1BMVEU3JrhNMv3y8f9oVP5UOvxTOv7///9TOv5ONu9QOPVDIP1RNv3Z1/8yA/2poP+Kfv5fSP6/uv93Zv75+P////+WWfkRAAAAFXRSTlMB////h///3UCW/////////////wEOWdCmAAABDElEQVRYhe2XyxKDIAxFCTRVeYn6//9aUjqdPgSh6Uy74K4950Y2mQgRM04DNmeYRnHLqZ1OOSX+g/b7FKz+2wwjh0ccxcQTTJwXoAyCxyN2wS8EhiEwoLUOnwkMgHYuzN5a9TxDhYB6gVh5jpEKGgSGerWalwS3CajYELudH1MlSMWrfyiuFqSXjuw7WiWA60vLLUMfCoyy9FGBPxCAyk3eBV3QBV3wl4LSZioKNmmXWennAaoF0vo1XHcNtgpisZ/ROQfwClcI4tAr0nLdY8uC+MNe0YbLs3kBDR0MFRfZHUHcTMS64+KMADEUf7hC0MLuCprTBd8QsE8e9tHFPvvYhyf/9OUf37zz/wIR81RmJMEmwwAAAABJRU5ErkJggg=="
+  "displayName": "Stripe"
 }
