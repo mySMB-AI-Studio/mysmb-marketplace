@@ -1,0 +1,196 @@
+{
+  "id": "hubspot-membership-by-state",
+  "title": "Membership by State",
+  "description": "Breakdown of membership count by state/territory, computed from a HubSpot custom object (e.g. a Members object for association-management customers) grouped by a state/territory property. Requires the connected portal to be on HubSpot Enterprise tier on at least one Hub; on lower tiers the underlying custom-object records don't exist, so this returns no results, not an error. The `objectType` and `propertyName` in this widget's data provider are illustrative placeholders — edit them in tile settings to match your portal's actual custom-object schema and state/territory property (see list_object_schemas / list_properties).",
+  "category": "crm",
+  "tags": ["hubspot", "membership", "custom-object", "association", "geography"],
+  "keywords": ["members by state", "membership breakdown", "state distribution", "association", "geography", "territory", "chapters"],
+  "connectorsUsed": ["hubspot"],
+  "popularity": 35,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 6 },
+    "min": { "colSpan": 3, "rowSpan": 5 },
+    "max": { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "hubspot",
+    "tool": "count_objects_by_property",
+    "params": {
+      "objectType": "2-00000",
+      "propertyName": "state"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["header", "body"]
+      },
+      "header": {
+        "type": "Header",
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "MapPin", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Membership by State", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{total} active members across {states} states/territories",
+              "total": { "$state": "/hubspot/count_objects_by_property/total" },
+              "states": {
+                "$computed": "count",
+                "args": {
+                  "value": { "$state": "/hubspot/count_objects_by_property/counts" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": ["loading", "empty", "stateList", "insightDivider", "insightRow"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/hubspot.count_objects_by_property" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No membership data found. Confirm objectType/propertyName match your portal's Members object and state/territory property (see list_object_schemas / list_properties), and that the portal is on HubSpot Enterprise tier."
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hubspot.count_objects_by_property", "not": true },
+            { "$state": "/hubspot/count_objects_by_property/counts/0", "not": true }
+          ]
+        }
+      },
+      "stateList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["stateRow"],
+        "repeat": {
+          "statePath": "/hubspot/count_objects_by_property/counts",
+          "key": "value"
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hubspot.count_objects_by_property", "not": true },
+            { "$state": "/hubspot/count_objects_by_property/counts/0" }
+          ]
+        }
+      },
+      "stateRow": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["stateTopRow", "stateBarRow"]
+      },
+      "stateTopRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["stateName", "stateStats"]
+      },
+      "stateName": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "value" },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "stateStats": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{count} · {pct}%",
+              "count": { "$item": "count" },
+              "pct": { "$item": "percentage" }
+            }
+          }
+        }
+      },
+      "stateBarRow": {
+        "type": "Row",
+        "props": {},
+        "children": ["stateBar"]
+      },
+      "stateBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": { "$item": "percentage" },
+          "max": 100,
+          "tone": "accent"
+        }
+      },
+      "insightDivider": {
+        "type": "Divider",
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hubspot.count_objects_by_property", "not": true },
+            { "$state": "/hubspot/count_objects_by_property/counts/0" }
+          ]
+        }
+      },
+      "insightRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["insightIcon", "insightText"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hubspot.count_objects_by_property", "not": true },
+            { "$state": "/hubspot/count_objects_by_property/counts/0" }
+          ]
+        }
+      },
+      "insightIcon": {
+        "type": "Icon",
+        "props": { "name": "Lightbulb", "tone": "accent", "size": "sm" }
+      },
+      "insightText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "hubspot_membership_state_insight",
+            "args": {
+              "counts": { "$state": "/hubspot/count_objects_by_property/counts" },
+              "total": { "$state": "/hubspot/count_objects_by_property/total" }
+            }
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      }
+    }
+  }
+}

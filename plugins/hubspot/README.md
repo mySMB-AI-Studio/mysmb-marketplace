@@ -76,6 +76,7 @@ Confirm before calling — these mutate CRM records:
 - **Deals Pipeline** (`hubspot-pipeline`) — open deals (excluding closed-won/closed-lost) with stage and amount.
 - **Support Tickets** (`hubspot-support-tickets`) — recent tickets with a priority badge (tone-mapped: `HIGH` → destructive, `MEDIUM` → warning, `LOW` → neutral).
 - **Members** (`hubspot-members-list`) — records from a custom object (e.g. a `Members` object). The `objectTypeId` and `properties` in this widget's data provider are illustrative placeholders — edit them in tile settings to match your portal's actual custom-object schema (`list_object_schemas` / `list_properties`).
+- **Membership by State** (`hubspot-membership-by-state`) — count-and-percentage breakdown of a custom object's records by a state/territory property, with a data-driven insight callout naming the top state(s). Requires HubSpot Enterprise tier (same as Members, above). The `objectType` and `propertyName` in this widget's data provider are illustrative placeholders — edit them in tile settings to match your portal's actual custom-object schema and state/territory property (`list_object_schemas` / `list_properties`).
 
 ## See also
 
