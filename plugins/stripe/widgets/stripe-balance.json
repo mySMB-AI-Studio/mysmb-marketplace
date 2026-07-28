@@ -14,7 +14,7 @@
   },
   "dataProvider": {
     "mcp": "stripe",
-    "tool": "retrieve_balance",
+    "tool": "get_balance",
     "params": {}
   },
   "spec": {
@@ -22,10 +22,12 @@
     "elements": {
       "card": {
         "type": "Card",
+        "props": {},
         "children": ["header", "body"]
       },
       "header": {
         "type": "Header",
+        "props": {},
         "children": ["titleGroup"]
       },
       "titleGroup": {
@@ -52,13 +54,14 @@
       },
       "body": {
         "type": "Body",
+        "props": {},
         "children": ["loading", "empty", "balanceGrid"]
       },
       "loading": {
         "type": "Stack",
         "props": { "gap": "sm" },
         "children": ["sk1", "sk2"],
-        "visible": { "$state": "/_loading/stripe.retrieve_balance" }
+        "visible": { "$state": "/_loading/stripe.get_balance" }
       },
       "sk1": {
         "type": "Skeleton",
@@ -73,8 +76,8 @@
         "props": { "message": "No balance data available." },
         "visible": {
           "$and": [
-            { "$state": "/_loading/stripe.retrieve_balance", "not": true },
-            { "$state": "/stripe/retrieve_balance/available/0", "not": true }
+            { "$state": "/_loading/stripe.get_balance", "not": true },
+            { "$state": "/stripe/get_balance/available/0", "not": true }
           ]
         }
       },
@@ -82,7 +85,7 @@
         "type": "Grid",
         "props": { "cols": 2, "gap": "md" },
         "children": ["availableSection", "pendingSection"],
-        "visible": { "$state": "/_loading/stripe.retrieve_balance", "not": true }
+        "visible": { "$state": "/_loading/stripe.get_balance", "not": true }
       },
       "availableSection": {
         "type": "Stack",
@@ -98,7 +101,7 @@
         "props": { "gap": "xs" },
         "children": ["availableRow"],
         "repeat": {
-          "statePath": "/stripe/retrieve_balance/available",
+          "statePath": "/stripe/get_balance/available",
           "key": "currency"
         }
       },
@@ -130,7 +133,7 @@
         "props": { "gap": "xs" },
         "children": ["pendingRow"],
         "repeat": {
-          "statePath": "/stripe/retrieve_balance/pending",
+          "statePath": "/stripe/get_balance/pending",
           "key": "currency"
         }
       },
