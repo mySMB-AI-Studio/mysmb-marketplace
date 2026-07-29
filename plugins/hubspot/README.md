@@ -1,83 +1,87 @@
 # HubSpot
 
-Access HubSpot CRM via HubSpot's official hosted OAuth MCP server at `https://mcp.hubspot.com`. Contacts, companies, deals, tickets, campaigns, owners, and CRM properties — all 12 tools from HubSpot's MCP server with browser OAuth (PKCE), no API keys.
+Access HubSpot CRM through a mySMB-owned OAuth app and a myHub-hosted MCP gateway (`/hubspot/mcp`) — click Connect and sign in with your HubSpot account. No client ID/secret to create or paste in; that step is gone.
 
-Each user authorises individually; the MCP server only sees data that user can already see in HubSpot.
+This is a full custom build on top of HubSpot's standard CRM REST APIs, not a proxy to HubSpot's own `mcp.hubspot.com` remote server — that official server doesn't support custom objects or fine-grained Associations control, both of which are required for the membership-management use case (e.g. a `Members` custom object linked to Contacts via Associations).
+
+Covers contacts, companies, deals, tickets, custom objects, and the Associations API. Each user's session is managed automatically, including silent token refresh — HubSpot access tokens expire after ~30 minutes.
 
 ## Configuration
 
-Connecting requires two credentials from a HubSpot MCP Auth App you create. No environment variables or API keys are required — everything is handled through the workspace Connect dialog.
+No environment variables required. Click **Connect** and sign in to your HubSpot account; the workspace completes the OAuth exchange and stores your session securely.
 
-| Field | Example format | Description |
-|---|---|---|
-| `OAUTH_CLIENT_ID` | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` | Client ID from your HubSpot MCP Auth App |
-| `OAUTH_CLIENT_SECRET` | *(generated secret)* | Client Secret from your HubSpot MCP Auth App — stored encrypted, per user |
+Scopes requested during Connect:
 
-### One-time setup: create a HubSpot MCP Auth App
+| Scope | Grants |
+|---|---|
+| `crm.objects.contacts.read` / `.write` | Read and write contacts |
+| `crm.objects.companies.read` / `.write` | Read and write companies |
+| `crm.objects.deals.read` / `.write` | Read and write deals |
+| `tickets` | Read and write tickets |
+| `crm.objects.custom.read` / `.write` | Read and write custom object records (e.g. a `Members` object) |
+| `crm.schemas.custom.read` | List custom object schemas (`objectTypeId`s) |
 
-You only need to do this once per HubSpot account:
-
-1. Log into your HubSpot account and go to **Development** → **MCP Auth Apps**.
-2. Click **Create MCP auth app** and fill in:
-   - **App name** — any label (e.g. "myHub Workspace")
-   - **Redirect URL** — paste the callback URL shown in the workspace Connect dialog
-3. Click **Create** — the app details page shows your **Client ID** and **Client Secret**.
-4. Copy both values and paste them into the workspace Connect dialog.
-5. Click **Connect** — the browser opens HubSpot's OAuth authorisation page.
-6. Sign in and grant the requested permissions. The workspace completes the token exchange and stores the session securely.
-
-### How the authentication works
-
-This plugin uses **OAuth 2.0 with PKCE** (Proof Key for Code Exchange), which is required by HubSpot's MCP server. The flow:
-
-1. **Authorisation request** — the workspace generates a random `code_verifier`, derives a `code_challenge` (SHA-256), and redirects your browser to `https://app.hubspot.com/oauth/authorize` with `code_challenge_method=S256`.
-2. **User consent** — you sign in to HubSpot and grant permissions. HubSpot redirects back to the workspace callback URL with a short-lived `code`.
-3. **Token exchange** — the workspace POSTs the `code` + `code_verifier` to `https://api.hubapi.com/oauth/v1/token` and receives an `access_token` and `refresh_token`.
-4. **Requests** — every MCP call carries the `access_token` as a Bearer token in the `Authorization` header.
-5. **Refresh** — when the access token expires, the workspace silently exchanges the `refresh_token` for a new one — no re-login required.
-
-Scopes are determined automatically by the MCP server based on the tools it exposes and the permissions you grant during step 2. No manual scope configuration is needed.
+> **Known limitation — custom objects require HubSpot Enterprise tier.** The six custom-object tools (`list_object_schemas`, `list_custom_objects`, `get_custom_object`, `search_custom_objects`, `create_custom_object`, `update_custom_object`) only return data if the connected HubSpot portal is on **Enterprise tier on at least one Hub**. On lower tiers, `list_object_schemas` returns an empty list and the other custom-object tools return empty results — not an error. Contacts/companies/deals/tickets tools work regardless of tier.
 
 ## Tool categories
 
-### CRM records (4)
-- `get_user_details` — Returns authenticated user's information, account details, and per-object read/write access
-- `search_crm_objects` — Search and filter CRM records using filter groups (AND within group, OR between groups); up to 5 groups × 6 filters; max 200 results/page
-- `get_crm_objects` — Fetch one or more CRM objects by their IDs; max 100 IDs per request
-- `manage_crm_objects` — Create or update CRM records and activities (contacts, companies, deals, tickets, calls, emails, meetings, notes, tasks)
+### Contacts (5)
+- `list_contacts` — cursor-paginated list. Returns `{ items, has_more, next_after }`.
+- `get_contact` — fetch one contact by ID (or an alternate `idProperty`, e.g. `email`).
+- `search_contacts` — `filterGroups` + free-text `query` + `sorts`. Returns `{ items, has_more, next_after, total }`.
+- `create_contact` — create; at minimum supply `email` and/or `firstname`/`lastname`.
+- `update_contact` — partial update by ID.
 
-### Properties & ownership (3)
-- `search_properties` — Find property definitions for an object type by keyword; max 5 keywords per request
-- `get_properties` — Get full property definitions including data types and enumeration values
-- `search_owners` — Find CRM record owners by name or email, or look up owners by ID; max 100 results
+### Companies (5)
+- `list_companies`, `get_company`, `search_companies`, `create_company` (at minimum supply `name`), `update_company`.
 
-### Campaigns & marketing (4)
-- `get_campaign_contacts_by_type` — Fetch paginated contact IDs for a campaign filtered by attribution type
-- `get_campaign_analytics` — Get campaign analytics (metrics or revenue attribution) for one or more campaigns
-- `get_campaign_asset_types` — List available campaign asset type names (e.g., landing pages, blog posts)
-- `get_campaign_asset_metrics` — Get metrics and properties for CRM objects associated with a campaign
+### Deals (5)
+- `list_deals`, `get_deal`, `search_deals`, `create_deal`, `update_deal`.
+- Creating a deal requires `dealname`, plus `pipeline`/`dealstage` as the **internal IDs** from `list_pipelines` — not the display labels shown in the HubSpot UI.
 
-### Feedback (1)
-- `submit_feedback` — Send feedback about the MCP server experience to HubSpot
+### Tickets (5)
+- `list_tickets`, `get_ticket`, `search_tickets`, `create_ticket`, `update_ticket`.
+- Creating a ticket requires `subject` and `hs_pipeline_stage` (internal numeric stage ID from `list_pipelines`). `hs_pipeline` defaults to the account's default pipeline if omitted. `hs_ticket_priority` is typically `LOW`/`MEDIUM`/`HIGH`.
 
-## Data access
+### Custom objects (6) — this is what makes the Members model work
+- `list_object_schemas` — every custom object schema on the portal, and the `objectTypeId` every other custom-object tool needs.
+- `list_custom_objects` / `get_custom_object` / `search_custom_objects` / `create_custom_object` / `update_custom_object` — same shape as the standard-object tools above, but take an explicit `objectTypeId` (numeric ID like `2-12345`, or fully-qualified name like `p12345_members`) instead of a fixed object type.
 
-**Read:** contacts, companies, deals, tickets, users, carts, invoices, orders, line items, products, quotes, subscriptions, segments, activities (calls, emails, meetings, notes, tasks), and content (blog posts, landing pages, site pages, campaigns, marketing events)
+### Associations (3) — linking records, e.g. Members ↔ Contacts
+- `list_associations` — batch-read associations from one or more records of `fromObjectType` to `toObjectType`.
+- `create_association` — link two records with a specific `associationCategory`/`associationTypeId`.
+- `list_association_labels` — valid `associationTypeId` values between two object types (call before `create_association`).
 
-**Write:** contacts, companies, deals, tickets, line items, products, and activities (calls, emails, meetings, notes, tasks)
+### Lookup helpers (2)
+- `list_pipelines` — pipelines + stages for `deals`/`tickets` (or a pipeline-enabled custom object) — the internal IDs `create_deal`/`create_ticket` require.
+- `list_properties` — every property (standard + custom) for an object type — internal `name`, display `label`, `type`, `fieldType`. Use before create/update to confirm valid property names; never guess.
 
-> Activity objects are blocked if the account has **Sensitive Data** enabled.
+Pagination is HubSpot's native `after`/`limit` cursor (never page numbers) — `limit` is capped at 100. `list_*` tools return `{ items, has_more, next_after }`; `search_*` tools add `total`.
+
+**No delete tools exist.** Deleting records is not supported via this connector — use the HubSpot UI.
+
+**Out of scope for this build:** Marketing Events and campaign-analytics endpoints (Marketing-Hub-gated, secondary to the contacts/companies/deals/tickets/Members use cases this connector targets). Tracked as backlog, not silently dropped.
 
 ## Destructive operations
 
-Confirm before calling — these mutate or overwrite CRM records:
+Confirm before calling — these mutate CRM records:
 
-- `manage_crm_objects` with action `update` — overwrites existing field values
-- `manage_crm_objects` with action `create` — creates new records visible to all users with access
-- Deleting records is not supported via the MCP API — use the HubSpot UI for deletions.
+- `create_contact` / `create_company` / `create_deal` / `create_ticket` / `create_custom_object` — creates a new record visible to everyone with access to that object type.
+- `update_contact` / `update_company` / `update_deal` / `update_ticket` / `update_custom_object` — overwrites the supplied fields on an existing record.
+- `create_association` — links two records; not easily reversible via this connector.
+
+## Widgets
+
+- **Recent Contacts** (`hubspot-contacts-recent`) — the most recently created contacts, sorted by create date, with name, company, email, and lifecycle-stage badge.
+- **Deals Pipeline** (`hubspot-pipeline`) — open deals (excluding closed-won/closed-lost) with stage and amount.
+- **Support Tickets** (`hubspot-support-tickets`) — recent tickets with a priority badge (tone-mapped: `HIGH` → destructive, `MEDIUM` → warning, `LOW` → neutral).
+- **Members** (`hubspot-members-list`) — records from a custom object (e.g. a `Members` object). The `objectTypeId` and `properties` in this widget's data provider are illustrative placeholders — edit them in tile settings to match your portal's actual custom-object schema (`list_object_schemas` / `list_properties`).
+- **Membership by State** (`hubspot-membership-by-state`) — count-and-percentage breakdown of a custom object's records by a state/territory property, with a data-driven insight callout naming the top state(s). Requires HubSpot Enterprise tier (same as Members, above). The `objectType` and `propertyName` in this widget's data provider are illustrative placeholders — edit them in tile settings to match your portal's actual custom-object schema and state/territory property (`list_object_schemas` / `list_properties`).
 
 ## See also
 
-- [HubSpot MCP server documentation](https://developers.hubspot.com/docs/apps/developer-platform/build-apps/integrate-with-the-remote-hubspot-mcp-server)
+- [HubSpot OAuth quickstart](https://developers.hubspot.com/docs/api/oauth-quickstart-guide)
 - [HubSpot CRM API reference](https://developers.hubspot.com/docs/api/crm/contacts)
+- [HubSpot custom objects overview](https://developers.hubspot.com/docs/api/crm/crm-custom-objects)
+- [HubSpot Associations API](https://developers.hubspot.com/docs/api/crm/associations)
 - [HubSpot developer portal](https://developers.hubspot.com/)

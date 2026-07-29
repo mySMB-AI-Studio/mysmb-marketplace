@@ -14,9 +14,8 @@
   },
   "dataProvider": {
     "mcp": "hubspot",
-    "tool": "search_crm_objects",
+    "tool": "search_deals",
     "params": {
-      "objectType": "deals",
       "filterGroups": [
         {
           "filters": [
@@ -25,8 +24,8 @@
           ]
         }
       ],
-      "properties": ["dealname", "dealstage", "amount", "closedate", "hubspot_owner_id"],
-      "limit": 200
+      "properties": ["dealname", "dealstage", "amount", "closedate"],
+      "limit": 100
     }
   },
   "spec": {
@@ -68,7 +67,7 @@
               "n": {
                 "$computed": "count",
                 "args": {
-                  "value": { "$state": "/hubspot/search_crm_objects/results" }
+                  "value": { "$state": "/hubspot/search_deals/items" }
                 }
               }
             }
@@ -83,7 +82,7 @@
         "type": "Stack",
         "props": { "gap": "sm" },
         "children": ["sk1", "sk2", "sk3", "sk4", "sk5"],
-        "visible": { "$state": "/_loading/hubspot.search_crm_objects" }
+        "visible": { "$state": "/_loading/hubspot.search_deals" }
       },
       "sk1": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
       "sk2": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
@@ -95,8 +94,8 @@
         "props": { "message": "No open deals found in HubSpot." },
         "visible": {
           "$and": [
-            { "$state": "/_loading/hubspot.search_crm_objects", "not": true },
-            { "$state": "/hubspot/search_crm_objects/results/0", "not": true }
+            { "$state": "/_loading/hubspot.search_deals", "not": true },
+            { "$state": "/hubspot/search_deals/items/0", "not": true }
           ]
         }
       },
@@ -105,13 +104,13 @@
         "props": { "gap": "xs" },
         "children": ["stageRow"],
         "repeat": {
-          "statePath": "/hubspot/search_crm_objects/results",
+          "statePath": "/hubspot/search_deals/items",
           "key": "id"
         },
         "visible": {
           "$and": [
-            { "$state": "/_loading/hubspot.search_crm_objects", "not": true },
-            { "$state": "/hubspot/search_crm_objects/results/0" }
+            { "$state": "/_loading/hubspot.search_deals", "not": true },
+            { "$state": "/hubspot/search_deals/items/0" }
           ]
         }
       },

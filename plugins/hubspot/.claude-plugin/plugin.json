@@ -1,7 +1,7 @@
 {
   "name": "hubspot",
-  "version": "0.1.0",
-  "description": "Access HubSpot CRM via HubSpot's official hosted OAuth MCP server. Contacts, companies, deals, tickets, campaigns, and CRM properties — browser OAuth with PKCE, no API keys.",
+  "version": "0.2.0",
+  "description": "Access HubSpot CRM via a mySMB-owned OAuth app — contacts, companies, deals, tickets, custom objects (e.g. a Members object for association-management use cases), and the Associations API for linking records across object types.",
   "author": {
     "name": "mySMB AI Studio"
   },
@@ -11,39 +11,21 @@
     "hubspot",
     "crm",
     "contacts",
+    "companies",
     "deals",
     "tickets",
-    "companies",
-    "campaigns",
-    "marketing",
+    "custom-objects",
+    "associations",
+    "membership",
     "oauth",
     "smb"
   ],
   "connection": {
-    "authType": "oauth_client",
-    "instructions": "Before connecting, create a HubSpot MCP Auth App:\n1. In your HubSpot account, go to **Development** → **MCP Auth Apps** → **Create MCP auth app**.\n2. Enter an app name and set the **Redirect URL** to the value shown above.\n3. Click **Create**, then copy the **Client ID** and **Client Secret** from the app details page.\n4. Paste them below, then click **Connect** to complete the OAuth flow.",
-    "docUrl": "https://developers.hubspot.com/docs/apps/developer-platform/build-apps/integrate-with-the-remote-hubspot-mcp-server",
-    "fields": [
-      {
-        "name": "OAUTH_CLIENT_ID",
-        "label": "Client ID",
-        "type": "text",
-        "required": true,
-        "role": "client_id",
-        "placeholder": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-        "helpText": "From your HubSpot MCP Auth App settings page."
-      },
-      {
-        "name": "OAUTH_CLIENT_SECRET",
-        "label": "Client Secret",
-        "type": "password",
-        "required": true,
-        "role": "client_secret",
-        "placeholder": "••••••••••••••••••••••••••••••••",
-        "helpText": "From your HubSpot MCP Auth App. Stored encrypted, per user."
-      }
-    ]
+    "authType": "oauth",
+    "instructions": "Click Connect and sign in to your HubSpot account. Your session is managed automatically — no manual token copying needed.",
+    "docUrl": "https://developers.hubspot.com/docs/api/oauth-quickstart-guide"
   },
+  "widgetElements": "widget-elements/dist/index.js",
   "widgets": "widgets",
   "displayName": "HubSpot",
   "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAbFBMVEX/SAD49e7/RQD4+/X/PwD4+fL/NwD/OwD4/vj/MAD48un3//v49/H6xLP46uD8mX7608X9fVv+Wij53M/7uqf/VB36ybj8noX9gmL+bET7v637tqP9iWv+YDL/TgX+aD/7qZT55Nn7sJv8k3dh7eeXAAACdUlEQVRYhe1W2ZKqMBQkyclCCMiiiAIq8v//eJOwCU5hMj7e6Seq4HS6zxaC4A9/eAPG34Wz2x2z33NAW0RClLefGDBnHD6d31KFECLJDz4gP6ZxxvYJWGHiNcORv8VXgiga1bsM+CRsPFLJ9jscUPsmyvZc4HYkQCLcCjgQ+4KWb9pWoCOB3KYLHgOBKnY9sJiMHuR9fRI0gzh63VWAcUIUUppFkX7tgkmbX3Hf7xEMz0QW50RbEfGqn3CeaAZV7adAQ3cL40GqRZDu9JoI0CUihw99MB8XPrVlSquX73FuCD614gxWUWPjGc42PAm04s7YKIIpxJdAz2VsbMjLmDa4aYLea1DD3tRUnE09OVRHimjan3wo+F2aRJScQ42E6VJKSNl+rOQCgFSY6W7k2KGGQzwca2mA2SNCtjVfIMrtqO2BZUukmhiuHhp0IsZBFrSTYhhX0XiUk5X2YFJkIQvb68Am3SXg3IaIOjSHYlbZsSa9s4Rhk6g5b8yuJpo6S2CpsS3yuX1YYi25T5VdA91SOF5vGD8gtPUrF8VwNh7ExZlAbiz7ErDOWJaLhaGs7hZ4bCyTuXPwjfo1wrjP5bhYcJgaATR2H0mQtpGTlgEAx6ntq8g5BVPS9ESWfdbUyBpQqcc8Yj7ed4oQMj7Sk7sAjLtpipeFsHtFb+PNLTWdPCihmWsGMUDQUb1H7sdoolCiyF3PZ5dDZeNbYO1VCp0DgdIsdO7BUocoG29Sydumby7AnO3zevgjkC3MhsDnWoHBM+k9roEVhp5H5OGxP1cYN4+ofksAfWSXsc8VsJHQy0jEwRf/3sBu8MV/t8F30X/4v/APeCwZ2Ivm9jMAAAAASUVORK5CYII="
