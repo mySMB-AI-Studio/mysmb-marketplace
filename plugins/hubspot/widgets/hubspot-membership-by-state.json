@@ -1,7 +1,7 @@
 {
   "id": "hubspot-membership-by-state",
   "title": "Membership by State",
-  "description": "Breakdown of membership count by state/territory, computed from a HubSpot custom object (e.g. a Members object for association-management customers) grouped by a state/territory property. Requires the connected portal to be on HubSpot Enterprise tier on at least one Hub; on lower tiers the underlying custom-object records don't exist, so this returns no results, not an error. The `objectType` and `propertyName` in this widget's data provider are illustrative placeholders — edit them in tile settings to match your portal's actual custom-object schema and state/territory property (see list_object_schemas / list_properties).",
+  "description": "Breakdown of membership count by state/territory, computed from a HubSpot custom object (e.g. a Members object for association-management customers) grouped by a state/territory property. Automatically finds the portal's custom object whose name/label matches \"member\" — no manual configuration needed. Click a state to see up to 25 member names in that state, and use the footer link to browse the full list in HubSpot. Assumes the state/territory property is internally named `state`; if a portal names it differently, this tile won't find any data (there's currently no way to override this per portal — a limitation of the property name specifically, not the object lookup). Requires the connected portal to be on HubSpot Enterprise tier on at least one Hub, and that a member-named custom object with a `state` property has been created there.",
   "category": "crm",
   "tags": ["hubspot", "membership", "custom-object", "association", "geography"],
   "keywords": ["members by state", "membership breakdown", "state distribution", "association", "geography", "territory", "chapters"],
@@ -16,7 +16,7 @@
     "mcp": "hubspot",
     "tool": "count_objects_by_property",
     "params": {
-      "objectType": "2-00000",
+      "objectTypeHint": "member",
       "propertyName": "state"
     }
   },
@@ -25,7 +25,7 @@
     "elements": {
       "card": {
         "type": "Card",
-        "children": ["header", "body"]
+        "children": ["header", "body", "footerDivider", "footer"]
       },
       "header": {
         "type": "Header",
@@ -69,7 +69,7 @@
       },
       "body": {
         "type": "Body",
-        "children": ["loading", "empty", "stateList", "insightDivider", "insightRow"]
+        "children": ["loading", "empty", "stateList", "detailSection"]
       },
       "loading": {
         "type": "Stack",
@@ -84,7 +84,7 @@
       "empty": {
         "type": "Empty",
         "props": {
-          "message": "No membership data found. Confirm objectType/propertyName match your portal's Members object and state/territory property (see list_object_schemas / list_properties), and that the portal is on HubSpot Enterprise tier."
+          "message": "No membership data found. Make sure a custom object with \"member\" in its name exists on this HubSpot portal with a `state` property (Enterprise tier required for custom objects), and that it has records."
         },
         "visible": {
           "$and": [
@@ -109,8 +109,43 @@
         }
       },
       "stateRow": {
+        "type": "Row",
+        "props": { "hover": true, "clickable": true },
+        "children": ["stateRowContent"],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedState",
+                "value": {
+                  "value": { "$item": "value" },
+                  "count": { "$item": "count" },
+                  "percentage": { "$item": "percentage" }
+                }
+              }
+            },
+            {
+              "action": "hubspot.search_custom_objects",
+              "params": {
+                "objectTypeHint": "member",
+                "filterGroups": [
+                  {
+                    "filters": [
+                      { "propertyName": "state", "operator": "EQ", "value": { "$item": "value" } }
+                    ]
+                  }
+                ],
+                "properties": ["name"],
+                "limit": 25
+              }
+            }
+          ]
+        }
+      },
+      "stateRowContent": {
         "type": "Stack",
-        "props": { "gap": "xxs" },
+        "props": { "gap": "xxs", "grow": true },
         "children": ["stateTopRow", "stateBarRow"]
       },
       "stateTopRow": {
@@ -153,8 +188,97 @@
           "tone": "accent"
         }
       },
-      "insightDivider": {
+      "detailSection": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "visible": { "$state": "/ui/selectedState/value" },
+        "children": ["detailHeader", "detailLoading", "detailList", "detailMoreNote"]
+      },
+      "detailHeader": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["detailTitle", "detailClose"]
+      },
+      "detailTitle": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Members in {state}",
+              "state": { "$state": "/ui/selectedState/value" }
+            }
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "detailClose": {
+        "type": "IconButton",
+        "props": { "icon": "X", "variant": "ghost", "size": "sm", "label": "Close" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": { "statePath": "/ui/selectedState/value", "value": "" }
+          }
+        }
+      },
+      "detailLoading": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["detailSk1", "detailSk2", "detailSk3"],
+        "visible": { "$state": "/_loading/hubspot.search_custom_objects" }
+      },
+      "detailSk1": { "type": "Skeleton", "props": { "height": "1.25rem", "rounded": "sm" } },
+      "detailSk2": { "type": "Skeleton", "props": { "height": "1.25rem", "rounded": "sm" } },
+      "detailSk3": { "type": "Skeleton", "props": { "height": "1.25rem", "rounded": "sm" } },
+      "detailList": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": ["detailMemberName"],
+        "repeat": {
+          "statePath": "/hubspot/search_custom_objects/items",
+          "key": "id"
+        },
+        "visible": { "$state": "/_loading/hubspot.search_custom_objects", "not": true }
+      },
+      "detailMemberName": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "properties/name" },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "detailMoreNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "hubspot_remaining_members_note",
+            "args": {
+              "count": { "$state": "/ui/selectedState/count" },
+              "shown": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/hubspot/search_custom_objects/items" } }
+              }
+            }
+          }
+        },
+        "visible": { "$state": "/_loading/hubspot.search_custom_objects", "not": true }
+      },
+      "footerDivider": {
         "type": "Divider",
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hubspot.count_objects_by_property", "not": true },
+            { "$state": "/hubspot/count_objects_by_property/counts/0" }
+          ]
+        }
+      },
+      "footer": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["insightRow", "growthText", "openHubspotRow"],
         "visible": {
           "$and": [
             { "$state": "/_loading/hubspot.count_objects_by_property", "not": true },
@@ -165,13 +289,7 @@
       "insightRow": {
         "type": "Row",
         "props": { "gap": "sm", "align": "start" },
-        "children": ["insightIcon", "insightText"],
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/hubspot.count_objects_by_property", "not": true },
-            { "$state": "/hubspot/count_objects_by_property/counts/0" }
-          ]
-        }
+        "children": ["insightIcon", "insightText"]
       },
       "insightIcon": {
         "type": "Icon",
@@ -190,6 +308,42 @@
           "size": "sm",
           "weight": "semibold"
         }
+      },
+      "growthText": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "hubspot_membership_growth_insight",
+            "args": {
+              "counts": { "$state": "/hubspot/count_objects_by_property/counts" },
+              "total": { "$state": "/hubspot/count_objects_by_property/total" }
+            }
+          }
+        }
+      },
+      "openHubspotRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "hover": true, "clickable": true },
+        "children": ["openHubspotIcon", "openHubspotText"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$template": "https://app.hubspot.com/contacts/${/hubspot/count_objects_by_property/portalId}/objects/${/hubspot/count_objects_by_property/objectTypeId}/views/all/list"
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "openHubspotIcon": {
+        "type": "Icon",
+        "props": { "name": "ExternalLink", "tone": "accent", "size": "sm" }
+      },
+      "openHubspotText": {
+        "type": "Text",
+        "props": { "text": "Open full list in HubSpot", "size": "xs", "tone": "accent" }
       }
     }
   }

@@ -1,14 +1,14 @@
 {
   "id": "hubspot-contacts-recent",
   "title": "Recent Contacts",
-  "description": "The most recently created HubSpot contacts with name, company, email, and lifecycle stage.",
+  "description": "The most recently created HubSpot contacts, in a table layout matching HubSpot's own Contacts view — name, email, phone, and create date.",
   "category": "crm",
   "tags": ["hubspot", "crm", "contacts", "leads"],
-  "keywords": ["contacts", "leads", "recent", "new", "lifecycle"],
+  "keywords": ["contacts", "leads", "recent", "new", "table"],
   "connectorsUsed": ["hubspot"],
   "popularity": 65,
   "sizing": {
-    "preferred": { "colSpan": 4, "rowSpan": 5 },
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
     "min": { "colSpan": 3, "rowSpan": 4 },
     "max": { "colSpan": 10, "rowSpan": 10 }
   },
@@ -16,7 +16,7 @@
     "mcp": "hubspot",
     "tool": "search_contacts",
     "params": {
-      "properties": ["firstname", "lastname", "email", "company", "lifecyclestage", "createdate"],
+      "properties": ["firstname", "lastname", "email", "phone", "createdate"],
       "sorts": ["createdate DESC"],
       "limit": 20
     }
@@ -47,7 +47,7 @@
       },
       "body": {
         "type": "Body",
-        "children": ["loading", "empty", "contactList"]
+        "children": ["loading", "empty", "tableHeaderRow", "contactList"]
       },
       "loading": {
         "type": "Stack",
@@ -69,6 +69,21 @@
           ]
         }
       },
+      "tableHeaderRow": {
+        "type": "Row",
+        "props": { "template": "1.3fr 1.5fr 1fr 0.9fr", "gap": "sm" },
+        "children": ["headerName", "headerEmail", "headerPhone", "headerCreated"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hubspot.search_contacts", "not": true },
+            { "$state": "/hubspot/search_contacts/items/0" }
+          ]
+        }
+      },
+      "headerName": { "type": "Caption", "props": { "text": "Name", "weight": "semibold" } },
+      "headerEmail": { "type": "Caption", "props": { "text": "Email", "weight": "semibold" } },
+      "headerPhone": { "type": "Caption", "props": { "text": "Phone", "weight": "semibold" } },
+      "headerCreated": { "type": "Caption", "props": { "text": "Created", "weight": "semibold" } },
       "contactList": {
         "type": "Stack",
         "props": { "gap": "xs" },
@@ -86,13 +101,8 @@
       },
       "contactRow": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center", "hover": true },
-        "children": ["contactInfo", "stageBadge"]
-      },
-      "contactInfo": {
-        "type": "Stack",
-        "props": { "gap": "none", "grow": true },
-        "children": ["contactName", "contactMeta"]
+        "props": { "template": "1.3fr 1.5fr 1fr 0.9fr", "gap": "sm", "align": "center", "hover": true },
+        "children": ["contactName", "contactEmail", "contactPhone", "contactCreated"]
       },
       "contactName": {
         "type": "Text",
@@ -110,17 +120,27 @@
           "truncate": true
         }
       },
-      "contactMeta": {
+      "contactEmail": {
         "type": "Caption",
         "props": {
-          "text": { "$item": "properties/company" }
+          "text": { "$item": "properties/email" },
+          "truncate": true
         }
       },
-      "stageBadge": {
-        "type": "Badge",
+      "contactPhone": {
+        "type": "Caption",
         "props": {
-          "label": { "$item": "properties/lifecyclestage" },
-          "tone": "neutral"
+          "text": { "$item": "properties/phone" },
+          "truncate": true
+        }
+      },
+      "contactCreated": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "format_date",
+            "args": { "value": { "$item": "properties/createdate" } }
+          }
         }
       }
     }

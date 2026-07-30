@@ -1,0 +1,181 @@
+{
+  "id": "hubspot-membership-by-category",
+  "title": "Membership by Category",
+  "description": "Total membership count with a breakdown by membership type/category (e.g. Full/Accredited, Student, Associate, Retired/Honorary), computed from a HubSpot custom object for association-management customers. Automatically finds the portal's custom object whose name/label matches \"member\" — no manual configuration needed. Assumes the membership-type property is internally named `membership_type`; if a portal names it differently, this tile won't find any data (there's currently no way to override this per portal). Requires the connected portal to be on HubSpot Enterprise tier on at least one Hub, and that a member-named custom object with a `membership_type` property has been created there. Categories are color-coded by rank (highest count first), not by matching specific category names, since membership-type labels vary far more across portals than something like a state/territory list.",
+  "category": "crm",
+  "tags": ["hubspot", "membership", "custom-object", "association"],
+  "keywords": ["members by category", "membership breakdown", "membership type", "membership tier", "association", "statistics"],
+  "connectorsUsed": ["hubspot"],
+  "popularity": 35,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 3 },
+    "min": { "colSpan": 3, "rowSpan": 3 },
+    "max": { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "hubspot",
+    "tool": "count_objects_by_property",
+    "params": {
+      "objectTypeHint": "member",
+      "propertyName": "membership_type"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["header", "body"]
+      },
+      "header": {
+        "type": "Header",
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "PieChart", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Membership by Category", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{total} active members across {n} categories",
+              "total": { "$state": "/hubspot/count_objects_by_property/total" },
+              "n": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/hubspot/count_objects_by_property/counts" } }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": ["loading", "empty", "totalStack", "categoryDivider", "categoryList"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/hubspot.count_objects_by_property" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No membership data found. Make sure a custom object with \"member\" in its name exists on this HubSpot portal with a `membership_type` property (Enterprise tier required for custom objects), and that it has records."
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hubspot.count_objects_by_property", "not": true },
+            { "$state": "/hubspot/count_objects_by_property/counts/0", "not": true }
+          ]
+        }
+      },
+      "totalStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["totalValue", "totalCaption"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hubspot.count_objects_by_property", "not": true },
+            { "$state": "/hubspot/count_objects_by_property/counts/0" }
+          ]
+        }
+      },
+      "totalValue": {
+        "type": "Stat",
+        "props": {
+          "value": { "$state": "/hubspot/count_objects_by_property/total" },
+          "size": "lg"
+        }
+      },
+      "totalCaption": {
+        "type": "Caption",
+        "props": { "text": "active members" }
+      },
+      "categoryDivider": {
+        "type": "Divider",
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hubspot.count_objects_by_property", "not": true },
+            { "$state": "/hubspot/count_objects_by_property/counts/0" }
+          ]
+        }
+      },
+      "categoryList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["categoryRow"],
+        "repeat": {
+          "statePath": "/hubspot/count_objects_by_property/counts",
+          "key": "value"
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hubspot.count_objects_by_property", "not": true },
+            { "$state": "/hubspot/count_objects_by_property/counts/0" }
+          ]
+        }
+      },
+      "categoryRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["categoryLeft", "categoryCount"]
+      },
+      "categoryLeft": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["categoryDot", "categoryLabel"]
+      },
+      "categoryDot": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$computed": "hubspot_category_rank_tone",
+            "args": {
+              "counts": { "$state": "/hubspot/count_objects_by_property/counts" },
+              "value": { "$item": "value" }
+            }
+          },
+          "size": "sm"
+        }
+      },
+      "categoryLabel": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "value" },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "categoryCount": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "count" },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      }
+    }
+  }
+}
