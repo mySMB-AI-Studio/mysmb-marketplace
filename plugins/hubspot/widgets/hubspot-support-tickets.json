@@ -129,18 +129,15 @@
         "type": "Caption",
         "props": {
           "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "Stage {stage}",
-              "stage": { "$item": "properties/hs_pipeline_stage" }
-            }
+            "$computed": "hubspot_ticket_stage_label",
+            "args": { "value": { "$item": "properties/hs_pipeline_stage" } }
           }
         }
       },
       "priorityBadge": {
         "type": "Badge",
         "props": {
-          "label": { "$item": "properties/hs_ticket_priority" },
+          "text": { "$item": "properties/hs_ticket_priority" },
           "tone": {
             "$computed": "hubspot_ticket_priority_tone",
             "args": { "value": { "$item": "properties/hs_ticket_priority" } }

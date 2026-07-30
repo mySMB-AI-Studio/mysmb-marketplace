@@ -1,15 +1,15 @@
 {
   "id": "hubspot-pipeline",
   "title": "Deals Pipeline",
-  "description": "Open deals grouped by pipeline stage — count and total deal value per stage.",
+  "description": "Open deals in a table layout matching HubSpot's own Deals view — deal name, stage (color-coded pill), close date, and amount. Excludes closed-won/closed-lost.",
   "category": "crm",
   "tags": ["hubspot", "crm", "deals", "pipeline", "sales"],
-  "keywords": ["deals", "pipeline", "stage", "forecast", "revenue"],
+  "keywords": ["deals", "pipeline", "stage", "forecast", "revenue", "table"],
   "connectorsUsed": ["hubspot"],
   "popularity": 72,
   "sizing": {
-    "preferred": { "colSpan": 4, "rowSpan": 5 },
-    "min": { "colSpan": 3, "rowSpan": 4 },
+    "preferred": { "colSpan": 5, "rowSpan": 3 },
+    "min": { "colSpan": 3, "rowSpan": 3 },
     "max": { "colSpan": 10, "rowSpan": 10 }
   },
   "dataProvider": {
@@ -76,7 +76,7 @@
       },
       "body": {
         "type": "Body",
-        "children": ["loading", "empty", "stageList"]
+        "children": ["loading", "empty", "tableHeaderRow", "dealList"]
       },
       "loading": {
         "type": "Stack",
@@ -99,10 +99,25 @@
           ]
         }
       },
-      "stageList": {
+      "tableHeaderRow": {
+        "type": "Row",
+        "props": { "template": "2fr 1.2fr 1fr 0.9fr", "gap": "sm" },
+        "children": ["headerDeal", "headerStage", "headerCloseDate", "headerAmount"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hubspot.search_deals", "not": true },
+            { "$state": "/hubspot/search_deals/items/0" }
+          ]
+        }
+      },
+      "headerDeal": { "type": "Caption", "props": { "text": "Deal", "weight": "semibold" } },
+      "headerStage": { "type": "Caption", "props": { "text": "Stage", "weight": "semibold" } },
+      "headerCloseDate": { "type": "Caption", "props": { "text": "Close Date", "weight": "semibold" } },
+      "headerAmount": { "type": "Caption", "props": { "text": "Amount", "weight": "semibold", "align": "right" } },
+      "dealList": {
         "type": "Stack",
         "props": { "gap": "xs" },
-        "children": ["stageRow"],
+        "children": ["dealRow"],
         "repeat": {
           "statePath": "/hubspot/search_deals/items",
           "key": "id"
@@ -114,15 +129,10 @@
           ]
         }
       },
-      "stageRow": {
+      "dealRow": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true },
-        "children": ["stageLeft", "stageRight"]
-      },
-      "stageLeft": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["dealName", "stageMeta"]
+        "props": { "template": "2fr 1.2fr 1fr 0.9fr", "gap": "sm", "align": "center", "hover": true },
+        "children": ["dealName", "dealStage", "dealCloseDate", "dealAmount"]
       },
       "dealName": {
         "type": "Text",
@@ -133,23 +143,39 @@
           "truncate": true
         }
       },
-      "stageMeta": {
-        "type": "Caption",
+      "dealStage": {
+        "type": "Badge",
         "props": {
-          "text": { "$item": "properties/dealstage" }
+          "text": {
+            "$computed": "hubspot_deal_stage_label",
+            "args": { "value": { "$item": "properties/dealstage" } }
+          },
+          "tone": {
+            "$computed": "hubspot_deal_stage_tone",
+            "args": { "value": { "$item": "properties/dealstage" } }
+          },
+          "variant": "soft"
         }
       },
-      "stageRight": {
+      "dealCloseDate": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "format_date",
+            "args": { "value": { "$item": "properties/closedate" } }
+          }
+        }
+      },
+      "dealAmount": {
         "type": "Text",
         "props": {
           "text": {
             "$computed": "format_currency",
-            "args": {
-              "value": { "$item": "properties/amount" }
-            }
+            "args": { "value": { "$item": "properties/amount" } }
           },
           "size": "sm",
-          "weight": "semibold"
+          "weight": "semibold",
+          "align": "right"
         }
       }
     }
