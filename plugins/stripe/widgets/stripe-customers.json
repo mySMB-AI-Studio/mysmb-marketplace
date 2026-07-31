@@ -195,7 +195,24 @@
           "gap": "sm",
           "align": "center",
           "hover": true,
+          "clickable": true,
           "template": "minmax(0, 1fr) 7rem 6rem"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "stripe_build_customer_url",
+                "args": {
+                  "customer_id": { "$item": "id" },
+                  "livemode": { "$item": "livemode" },
+                  "platform_id": { "$state": "/stripe/list_customers/platform_account_id" },
+                  "connected_id": { "$state": "/stripe/list_customers/connected_account_id" }
+                }
+              }
+            }
+          }
         },
         "children": ["identity", "createdDate", "balanceText"]
       },
