@@ -63,7 +63,7 @@
       },
       "body": {
         "type": "Body",
-        "children": ["loading", "empty", "list"]
+        "children": ["loading", "empty", "columnHeaders", "list"]
       },
       "loading": {
         "type": "Stack",
@@ -85,6 +85,32 @@
           ]
         }
       },
+      "columnHeaders": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "template": "minmax(0, 1fr) 7rem 6rem"
+        },
+        "children": ["headerCustomer", "headerCreated", "headerSpend"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/stripe.list_customers", "not": true },
+            { "$state": "/stripe/list_customers/data/0" }
+          ]
+        }
+      },
+      "headerCustomer": {
+        "type": "Eyebrow",
+        "props": { "text": "Customer" }
+      },
+      "headerCreated": {
+        "type": "Eyebrow",
+        "props": { "text": "Created" }
+      },
+      "headerSpend": {
+        "type": "Eyebrow",
+        "props": { "text": "Balance" }
+      },
       "list": {
         "type": "Stack",
         "props": { "gap": "xs" },
@@ -101,9 +127,9 @@
           "gap": "sm",
           "align": "center",
           "hover": true,
-          "template": "7rem minmax(0, 1fr)"
+          "template": "minmax(0, 1fr) 7rem 6rem"
         },
-        "children": ["createdDate", "identity"]
+        "children": ["identity", "createdDate", "balanceText"]
       },
       "identity": {
         "type": "Stack",
@@ -132,6 +158,18 @@
           "text": {
             "$computed": "stripe_format_stripe_date",
             "args": { "value": { "$item": "created" } }
+          }
+        }
+      },
+      "balanceText": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "stripe_format_currency",
+            "args": {
+              "amount": { "$item": "balance" },
+              "currency": { "$item": "currency" }
+            }
           }
         }
       }
