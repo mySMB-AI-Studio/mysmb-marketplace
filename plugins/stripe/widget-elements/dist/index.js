@@ -138,6 +138,22 @@ const format_stripe_date = (args) => {
         year: 'numeric',
     });
 };
+// ── build_customer_url ────────────────────────────────────────────────────────
+// Build a Stripe Dashboard URL for a customer. Uses platform→connected URL when
+// both account IDs are present; falls back to simple URL otherwise.
+// Args: { customer_id: string, livemode: boolean, platform_id: string, connected_id: string }
+// Returns: string URL
+const build_customer_url = (args) => {
+    const customerId = String(args.customer_id ?? '');
+    const livemode = Boolean(args.livemode);
+    const platformId = String(args.platform_id ?? '');
+    const connectedId = String(args.connected_id ?? '');
+    const mode = livemode ? '' : '/test';
+    if (platformId && connectedId) {
+        return `https://dashboard.stripe.com/${platformId}${mode}/connect/accounts/${connectedId}/customers/${customerId}`;
+    }
+    return `https://dashboard.stripe.com${mode}/customers/${customerId}`;
+};
 const elements = {
     slug: 'stripe',
     functions: {
@@ -148,6 +164,7 @@ const elements = {
         invoice_status_tone,
         payment_intent_status_tone,
         format_stripe_date,
+        build_customer_url,
     },
 };
 export default elements;
