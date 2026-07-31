@@ -95,6 +95,28 @@ const payment_intent_status_tone = (args) => {
     // requires_capture, etc.
     return 'muted';
 };
+// ── sort_by_key ───────────────────────────────────────────────────────────
+// Sort an array of objects by a composite key string "field|asc" or "field|desc".
+// Args: { value: unknown[], key: string }
+// Returns: sorted array
+const sort_by_key = (args) => {
+    const arr = Array.isArray(args.value) ? [...args.value] : [];
+    const keyStr = String(args.key ?? 'name|asc');
+    const [field, dir] = keyStr.split('|');
+    return arr.sort((a, b) => {
+        const aVal = String(a[field] ?? '').toLowerCase();
+        const bVal = String(b[field] ?? '').toLowerCase();
+        const cmp = aVal.localeCompare(bVal);
+        return dir === 'desc' ? -cmp : cmp;
+    });
+};
+// ── cycle_sort ────────────────────────────────────────────────────────────
+// Toggle sort direction between name|asc and name|desc.
+// Args: { current: string }
+// Returns: "name|asc" | "name|desc"
+const cycle_sort = (args) => {
+    return String(args.current ?? '') === 'name|asc' ? 'name|desc' : 'name|asc';
+};
 // ── format_stripe_date ────────────────────────────────────────────────────
 // Convert a Unix timestamp (seconds since epoch, as returned by Stripe) to a
 // human-readable date string.
@@ -120,6 +142,8 @@ const elements = {
     slug: 'stripe',
     functions: {
         format_currency,
+        sort_by_key,
+        cycle_sort,
         subscription_status_tone,
         invoice_status_tone,
         payment_intent_status_tone,
