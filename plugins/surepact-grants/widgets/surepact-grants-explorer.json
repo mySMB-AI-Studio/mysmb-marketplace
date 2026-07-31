@@ -22,7 +22,7 @@
     "eligibility"
   ],
   "connectorsUsed": ["surepact-grants"],
-  "brandColor": "#1D4ED8",
+  "brandColor": "#1c1a45",
   "popularity": 0,
   "sizing": {
     "preferred": { "colSpan": 12, "rowSpan": 6 },
@@ -47,16 +47,11 @@
       "header": {
         "type": "Header",
         "props": {},
-        "children": ["headerRow"]
-      },
-      "headerRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["titleGroup", "headerActions"]
+        "children": ["titleGroup"]
       },
       "titleGroup": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
+        "props": { "gap": "sm", "align": "start" },
         "children": ["titleIcon", "titleStack"]
       },
       "titleIcon": {
@@ -86,10 +81,21 @@
         }
       },
 
-      "headerActions": {
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["controls", "empty", "table", "footer"]
+      },
+
+      "controls": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["controlsLeft", "refreshBtn"]
+      },
+      "controlsLeft": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center" },
-        "children": ["statePicker", "refreshBtn"]
+        "children": ["statePicker"]
       },
       "statePicker": {
         "type": "Select",
@@ -105,7 +111,7 @@
             { "value": "ACT", "label": "Aust. Capital Territory" },
             { "value": "NT", "label": "Northern Territory" }
           ],
-          "placeholder": "State…",
+          "placeholder": "New South Wales",
           "ariaLabel": "State or territory",
           "size": "sm"
         },
@@ -134,7 +140,7 @@
           "icon": "RefreshCw",
           "tone": "muted",
           "size": "sm",
-          "ariaLabel": "Refresh"
+          "ariaLabel": "Refresh grants"
         },
         "on": {
           "click": [
@@ -156,16 +162,10 @@
         }
       },
 
-      "body": {
-        "type": "Body",
-        "props": {},
-        "children": ["empty", "table"]
-      },
-
       "empty": {
         "type": "Empty",
         "props": {
-          "message": "No grants currently listed for this state."
+          "message": "No grants currently listed for this state. Try another jurisdiction."
         },
         "visible": {
           "$and": [
@@ -229,6 +229,35 @@
               "width": 200
             }
           ]
+        }
+      },
+
+      "footer": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "visible": {
+          "$state": "/_loading/surepact-grants.surepact_search_grants",
+          "not": true
+        },
+        "children": ["footerNote", "visitBtn"]
+      },
+      "footerNote": {
+        "type": "Caption",
+        "props": { "text": "Grant data from SurePact" }
+      },
+      "visitBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Apply via SurePact",
+          "variant": "ghost",
+          "size": "sm",
+          "leadingIcon": "ExternalLink"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": "https://surepact.com/for-recipients/" }
+          }
         }
       }
     }
