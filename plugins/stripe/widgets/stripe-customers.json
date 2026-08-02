@@ -22,7 +22,7 @@
     "elements": {
       "card": {
         "type": "Card",
-        "children": ["header", "body"],
+        "children": ["titleRow", "divider", "body"],
         "watch": {
           "/stripe/list_customers/data": [
             {
@@ -63,13 +63,14 @@
           ]
         }
       },
-      "header": {
-        "type": "Header",
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
         "children": ["titleGroup"]
       },
       "titleGroup": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "start" },
+        "props": { "gap": "sm", "align": "center" },
         "children": ["titleIcon", "titleStack"]
       },
       "titleIcon": {
@@ -79,19 +80,19 @@
       "titleStack": {
         "type": "Stack",
         "props": { "gap": "none" },
-        "children": ["title", "count"]
+        "children": ["title", "eyebrow"]
       },
       "title": {
         "type": "Heading",
         "props": { "text": "Stripe Customers", "level": "h2" }
       },
-      "count": {
+      "eyebrow": {
         "type": "Eyebrow",
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{n} recent",
+              "pattern": "Stripe · {n} recent",
               "n": {
                 "$computed": "count",
                 "args": { "value": { "$state": "/stripe/list_customers/data" } }
@@ -100,6 +101,7 @@
           }
         }
       },
+      "divider": { "type": "Divider", "props": {} },
       "body": {
         "type": "Body",
         "children": ["loading", "empty", "columnHeaders", "list"]
