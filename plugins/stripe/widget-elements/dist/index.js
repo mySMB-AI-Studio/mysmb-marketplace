@@ -177,9 +177,10 @@ const flatten_invoices = (args) => {
     return raw.map(item => ({
         customer_name: String(item.customer_name ?? ''),
         number: String(item.number ?? ''),
-        amount: format_currency({ amount: item.amount_due, currency: item.currency }),
+        amount: format_currency({ amount: item.amount_due, currency: 'aud' }),
         due_date: format_stripe_date({ value: item.due_date }),
         status: String(item.status ?? ''),
+        hosted_invoice_url: String(item.hosted_invoice_url ?? ''),
     }));
 };
 const elements = {
