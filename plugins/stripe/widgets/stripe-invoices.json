@@ -63,7 +63,7 @@
       },
       "body": {
         "type": "Body",
-        "children": ["loading", "empty", "list"]
+        "children": ["loading", "empty", "columnHeaders", "list"]
       },
       "loading": {
         "type": "Stack",
@@ -85,6 +85,26 @@
           ]
         }
       },
+      "columnHeaders": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "template": "minmax(0, 1fr) 8rem 6rem 7rem auto"
+        },
+        "children": ["hBilledTo", "hInvoiceNumber", "hAmount", "hDueDate", "hStatus"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/stripe.list_invoices", "not": true },
+            { "$state": "/stripe/list_invoices/data/0" }
+          ]
+        }
+      },
+      "hBilledTo": { "type": "Eyebrow", "props": { "text": "Billed to" } },
+      "hInvoiceNumber": { "type": "Eyebrow", "props": { "text": "Invoice Number" } },
+      "hAmount": { "type": "Eyebrow", "props": { "text": "Amount" } },
+      "hDueDate": { "type": "Eyebrow", "props": { "text": "Due date" } },
+      "hStatus": { "type": "Eyebrow", "props": { "text": "Status" } },
       "list": {
         "type": "Stack",
         "props": { "gap": "xs" },
@@ -101,33 +121,28 @@
           "gap": "sm",
           "align": "center",
           "hover": true,
-          "template": "minmax(0, 1fr) 7rem 6rem"
+          "template": "minmax(0, 1fr) 8rem 6rem 7rem auto"
         },
-        "children": ["identity", "amount", "statusBadge"]
+        "children": ["nameText", "invoiceNumText", "amountText", "dueDateText", "statusBadge"]
       },
-      "identity": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["invoiceNumber", "customerEmail"]
-      },
-      "invoiceNumber": {
+      "nameText": {
         "type": "Text",
         "props": {
-          "text": { "$item": "number" },
+          "text": { "$item": "customer_name" },
           "size": "sm",
           "weight": "medium",
           "truncate": true
         }
       },
-      "customerEmail": {
+      "invoiceNumText": {
         "type": "Caption",
         "props": {
-          "text": { "$item": "customer_email" },
+          "text": { "$item": "number" },
           "truncate": true
         }
       },
-      "amount": {
-        "type": "Text",
+      "amountText": {
+        "type": "Caption",
         "props": {
           "text": {
             "$computed": "stripe_format_currency",
@@ -135,9 +150,16 @@
               "amount": { "$item": "amount_due" },
               "currency": { "$item": "currency" }
             }
-          },
-          "size": "sm",
-          "weight": "semibold"
+          }
+        }
+      },
+      "dueDateText": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "stripe_format_stripe_date",
+            "args": { "value": { "$item": "due_date" } }
+          }
         }
       },
       "statusBadge": {
