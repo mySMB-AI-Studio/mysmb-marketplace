@@ -1,7 +1,7 @@
 {
   "id": "stripe-mrr",
   "title": "Stripe MRR",
-  "description": "Active subscription count and per-subscription breakdown — customer, price interval, and period end.",
+  "description": "Monthly recurring revenue and active subscription breakdown.",
   "category": "payments",
   "tags": ["stripe", "subscriptions", "mrr", "billing", "recurring", "revenue"],
   "keywords": ["mrr", "subscriptions", "recurring", "stripe", "active", "monthly", "revenue"],
@@ -23,7 +23,21 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "heroRow", "divider", "body"]
+        "children": ["header", "heroRow", "divider", "body"],
+        "watch": {
+          "/stripe/list_subscriptions/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/subRows",
+                "value": {
+                  "$computed": "stripe_flatten_subscriptions",
+                  "args": { "value": { "$state": "/stripe/list_subscriptions/data" } }
+                }
+              }
+            }
+          ]
+        }
       },
       "header": {
         "type": "Header",
@@ -37,7 +51,7 @@
       },
       "titleIcon": {
         "type": "Icon",
-        "props": { "name": "RefreshCw", "tone": "success", "size": "sm" }
+        "props": { "name": "TrendingUp", "tone": "success", "size": "sm" }
       },
       "titleStack": {
         "type": "Stack",
@@ -50,34 +64,57 @@
       },
       "eyebrow": {
         "type": "Eyebrow",
-        "props": { "text": "Active Subscriptions" }
+        "props": { "text": "Stripe" }
       },
       "heroRow": {
         "type": "Row",
-        "props": { "gap": "xl", "align": "center" },
-        "children": ["heroCount"],
+        "props": { "gap": "xl", "align": "center", "justify": "center" },
+        "children": ["heroMrr", "heroSubCount"],
         "visible": { "$state": "/_loading/stripe.list_subscriptions", "not": true }
       },
-      "heroCount": {
+      "heroMrr": {
         "type": "Stack",
         "props": { "gap": "none", "align": "center" },
-        "children": ["heroCountIcon", "heroCountValue", "heroCountLabel"]
+        "children": ["heroMrrIcon", "heroMrrValue", "heroMrrLabel"]
       },
-      "heroCountIcon": {
+      "heroMrrIcon": {
         "type": "Icon",
-        "props": { "name": "Users", "tone": "success", "size": "md" }
+        "props": { "name": "TrendingUp", "tone": "success", "size": "md" }
       },
-      "heroCountValue": {
+      "heroMrrValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "stripe_calc_mrr",
+            "args": { "value": { "$state": "/stripe/list_subscriptions/data" } }
+          },
+          "tone": "success"
+        }
+      },
+      "heroMrrLabel": {
+        "type": "Caption",
+        "props": { "text": "Monthly Recurring Revenue" }
+      },
+      "heroSubCount": {
+        "type": "Stack",
+        "props": { "gap": "none", "align": "center" },
+        "children": ["heroSubCountIcon", "heroSubCountValue", "heroSubCountLabel"]
+      },
+      "heroSubCountIcon": {
+        "type": "Icon",
+        "props": { "name": "Users", "tone": "muted", "size": "md" }
+      },
+      "heroSubCountValue": {
         "type": "Stat",
         "props": {
           "value": {
             "$computed": "count",
             "args": { "value": { "$state": "/stripe/list_subscriptions/data" } }
           },
-          "tone": "success"
+          "tone": "muted"
         }
       },
-      "heroCountLabel": {
+      "heroSubCountLabel": {
         "type": "Caption",
         "props": { "text": "Active Subscriptions" }
       },
@@ -115,7 +152,7 @@
         "props": { "gap": "xs" },
         "children": ["subRow"],
         "repeat": {
-          "statePath": "/stripe/list_subscriptions/data",
+          "statePath": "/ui/subRows",
           "key": "id"
         },
         "visible": { "$state": "/_loading/stripe.list_subscriptions", "not": true }
@@ -126,30 +163,39 @@
           "gap": "sm",
           "align": "center",
           "hover": true,
-          "template": "minmax(0, 1fr) 9rem"
+          "template": "minmax(0, 1fr) 7rem"
         },
-        "children": ["subIdentity", "subPeriodEnd"]
+        "children": ["subIdentity", "subAmountStack"]
       },
       "subIdentity": {
         "type": "Stack",
         "props": { "gap": "none" },
-        "children": ["subCustomer", "subId"]
+        "children": ["subCustomer", "subPlan"]
       },
       "subCustomer": {
         "type": "Text",
         "props": {
-          "text": { "$item": "customer" },
+          "text": { "$item": "customer_name" },
           "size": "sm",
           "weight": "medium",
           "truncate": true
         }
       },
-      "subId": {
+      "subPlan": {
         "type": "Caption",
         "props": {
-          "text": { "$item": "id" },
+          "text": { "$item": "plan_name" },
           "truncate": true
         }
+      },
+      "subAmountStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["subAmount", "subPeriodEnd"]
+      },
+      "subAmount": {
+        "type": "Caption",
+        "props": { "text": { "$item": "amount" } }
       },
       "subPeriodEnd": {
         "type": "Caption",

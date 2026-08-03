@@ -185,6 +185,79 @@ const flatten_invoices: ComputedFunction = (args) => {
   }));
 };
 
+// ── to_monthly_cents ─────────────────────────────────────────────────────────
+// Internal helper: convert a single subscription line-item to its monthly
+// equivalent in cents, accounting for interval and quantity.
+function toMonthlyCents(item: Record<string, unknown>): number {
+  const price = (item.price as Record<string, unknown>) ?? {};
+  const unitAmount = typeof price.unit_amount === 'number' ? price.unit_amount : 0;
+  const quantity = typeof item.quantity === 'number' ? item.quantity : 1;
+  const recurring = (price.recurring as Record<string, unknown>) ?? {};
+  const interval = String(recurring.interval ?? 'month');
+  const intervalCount = typeof recurring.interval_count === 'number' ? recurring.interval_count : 1;
+
+  switch (interval) {
+    case 'year':  return (unitAmount * quantity) / (12 * intervalCount);
+    case 'week':  return (unitAmount * quantity * 52) / (12 * intervalCount);
+    case 'day':   return (unitAmount * quantity * 365) / (12 * intervalCount);
+    default:      return (unitAmount * quantity) / intervalCount; // month
+  }
+}
+
+// ── calc_mrr ──────────────────────────────────────────────────────────────────
+// Sum normalized monthly revenue across all active subscriptions and return a
+// formatted AUD currency string.
+// Args: { value: raw subscription array (expanded items + price) }
+// Returns: string e.g. "A$198.00"
+const calc_mrr: ComputedFunction = (args) => {
+  const subs = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  let totalCents = 0;
+  for (const sub of subs) {
+    const items = ((sub.items as Record<string, unknown>)?.data as Record<string, unknown>[]) ?? [];
+    for (const item of items) totalCents += toMonthlyCents(item);
+  }
+  return format_currency({ amount: totalCents, currency: 'aud' });
+};
+
+// ── flatten_subscriptions ─────────────────────────────────────────────────────
+// Pre-process raw expanded Stripe subscription objects into display-ready rows.
+// Resolves expanded customer/product objects to plain strings.
+// Args: { value: raw subscription array }
+// Returns: display row array
+const flatten_subscriptions: ComputedFunction = (args) => {
+  const subs = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+
+  return subs.map(sub => {
+    const customer = sub.customer;
+    let customerName = '';
+    if (customer && typeof customer === 'object') {
+      const c = customer as Record<string, unknown>;
+      customerName = String(c.name ?? c.email ?? '');
+    } else {
+      customerName = String(customer ?? '');
+    }
+
+    const items = ((sub.items as Record<string, unknown>)?.data as Record<string, unknown>[]) ?? [];
+    let planName = '';
+    if (items.length > 0) {
+      const price = (items[0].price as Record<string, unknown>) ?? {};
+      const product = (price.product as Record<string, unknown>) ?? {};
+      planName = String(product.name ?? price.id ?? '');
+    }
+
+    let subCents = 0;
+    for (const item of items) subCents += toMonthlyCents(item);
+
+    return {
+      id:                 String(sub.id ?? ''),
+      customer_name:      customerName,
+      plan_name:          planName,
+      amount:             format_currency({ amount: subCents, currency: 'aud' }),
+      current_period_end: typeof sub.current_period_end === 'number' ? sub.current_period_end : 0,
+    };
+  });
+};
+
 const elements: PluginElementsModule = {
   slug: 'stripe',
   functions: {
@@ -197,6 +270,8 @@ const elements: PluginElementsModule = {
     format_stripe_date,
     build_customer_url,
     flatten_invoices,
+    calc_mrr,
+    flatten_subscriptions,
   },
 };
 
