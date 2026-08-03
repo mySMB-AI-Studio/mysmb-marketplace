@@ -237,7 +237,7 @@ const flatten_subscriptions = (args) => {
         if (items.length > 0) {
             const price = items[0].price ?? {};
             const product = price.product ?? {};
-            planName = String(product.name ?? price.id ?? '');
+            planName = String(product.name ?? price.nickname ?? price.id ?? '');
         }
         let subCents = 0;
         for (const item of items)

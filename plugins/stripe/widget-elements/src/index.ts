@@ -242,7 +242,7 @@ const flatten_subscriptions: ComputedFunction = (args) => {
     if (items.length > 0) {
       const price = (items[0].price as Record<string, unknown>) ?? {};
       const product = (price.product as Record<string, unknown>) ?? {};
-      planName = String(product.name ?? price.id ?? '');
+      planName = String(product.name ?? price.nickname ?? price.id ?? '');
     }
 
     let subCents = 0;
