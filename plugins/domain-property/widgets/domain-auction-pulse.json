@@ -1,0 +1,122 @@
+{
+  "id": "domain-auction-pulse",
+  "title": "Auction Pulse",
+  "description": "Latest weekend auction results for a capital city — clearance rate, volumes and median price. Edit dataProvider.params.city to change city.",
+  "category": "real-estate",
+  "tags": ["domain", "auctions", "clearance rate", "market"],
+  "keywords": ["auction results", "clearance", "weekend", "median price", "market pulse"],
+  "connectorsUsed": ["domain-property"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 3 },
+    "min": { "colSpan": 4, "rowSpan": 2 },
+    "max": { "colSpan": 12, "rowSpan": 4 }
+  },
+  "dataProvider": {
+    "mcp": "domain-property",
+    "tool": "get_auction_results",
+    "params": { "city": "Sydney" }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["header", "body"] },
+      "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "refreshBtn"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Gavel", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Auction pulse — Sydney", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Latest weekend · powered by Domain" } },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": { "name": "RefreshCw", "size": "sm", "ariaLabel": "Refresh" },
+        "on": {
+          "click": {
+            "action": "domain-property.get_auction_results",
+            "params": { "city": "Sydney" }
+          }
+        }
+      },
+      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "statsGrid"] },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["lk1", "lk2"],
+        "visible": { "$state": "/_loading/domain-property.get_auction_results" }
+      },
+      "lk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "lk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No auction results available." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/domain-property.get_auction_results", "not": true },
+            { "$state": "/domain-property/get_auction_results/numberAuctioned", "not": true }
+          ]
+        }
+      },
+      "statsGrid": {
+        "type": "Grid",
+        "props": { "cols": 4, "gap": "sm" },
+        "children": ["statClearance", "statSold", "statAuctioned", "statMedian"],
+        "visible": { "$state": "/_loading/domain-property.get_auction_results", "not": true }
+      },
+      "statClearance": {
+        "type": "Stat",
+        "props": {
+          "label": "Clearance",
+          "value": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{v}%",
+              "v": {
+                "$computed": "pct",
+                "args": {
+                  "part": { "$state": "/domain-property/get_auction_results/adjClearanceRate" },
+                  "whole": 1
+                }
+              }
+            }
+          }
+        }
+      },
+      "statSold": {
+        "type": "Stat",
+        "props": {
+          "label": "Sold",
+          "value": { "$state": "/domain-property/get_auction_results/numberSold" }
+        }
+      },
+      "statAuctioned": {
+        "type": "Stat",
+        "props": {
+          "label": "Auctioned",
+          "value": { "$state": "/domain-property/get_auction_results/numberAuctioned" }
+        }
+      },
+      "statMedian": {
+        "type": "Stat",
+        "props": {
+          "label": "Median",
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": { "$state": "/domain-property/get_auction_results/median" },
+              "fractionDigits": 0
+            }
+          }
+        }
+      }
+    }
+  }
+}
