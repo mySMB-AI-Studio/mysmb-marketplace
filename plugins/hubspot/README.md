@@ -6,7 +6,7 @@ This is a full custom build on top of HubSpot's standard CRM REST APIs, not a pr
 
 Covers contacts, companies, deals, tickets, custom objects, and the Associations API. Each user's session is managed automatically, including silent token refresh — HubSpot access tokens expire after ~30 minutes.
 
-Covers contacts, companies, deals, tickets, custom objects, and the Associations API. Each user's session is managed automatically, including silent token refresh — HubSpot access tokens expire after ~30 minutes.
+## Configuration
 
 No environment variables required. Click **Connect** and sign in to your HubSpot account; the workspace completes the OAuth exchange and stores your session securely.
 
