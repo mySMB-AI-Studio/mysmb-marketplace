@@ -8,7 +8,7 @@
   "connectorsUsed": ["stripe"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "preferred": { "colSpan": 6, "rowSpan": 5 },
     "min": { "colSpan": 4, "rowSpan": 4 },
     "max": { "colSpan": 10, "rowSpan": 12 }
   },
@@ -22,15 +22,56 @@
     "elements": {
       "card": {
         "type": "Card",
-        "children": ["header", "body"]
+        "props": {},
+        "children": ["titleRow", "divider", "tableBody"],
+        "watch": {
+          "/stripe/list_invoices/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sortKey",
+                "value": "customer_name|asc"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/tableRows",
+                "value": {
+                  "$computed": "stripe_flatten_invoices",
+                  "args": {
+                    "value": { "$state": "/stripe/list_invoices/data" },
+                    "key": "customer_name|asc"
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/sortKey": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/tableRows",
+                "value": {
+                  "$computed": "stripe_flatten_invoices",
+                  "args": {
+                    "value": { "$state": "/stripe/list_invoices/data" },
+                    "key": { "$state": "/ui/sortKey" }
+                  }
+                }
+              }
+            }
+          ]
+        }
       },
-      "header": {
-        "type": "Header",
-        "children": ["titleGroup"]
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "sortBtn"]
       },
       "titleGroup": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "start" },
+        "props": { "gap": "sm", "align": "center" },
         "children": ["titleIcon", "titleStack"]
       },
       "titleIcon": {
@@ -40,139 +81,87 @@
       "titleStack": {
         "type": "Stack",
         "props": { "gap": "none" },
-        "children": ["title", "count"]
+        "children": ["title", "eyebrow"]
       },
       "title": {
         "type": "Heading",
-        "props": { "text": "Stripe Invoices", "level": "h2" }
+        "props": { "text": "Invoices", "level": "h2" }
       },
-      "count": {
+      "eyebrow": {
         "type": "Eyebrow",
+        "props": { "text": "Stripe" }
+      },
+      "sortBtn": {
+        "type": "Button",
         "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{n} recent",
-              "n": {
-                "$computed": "count",
-                "args": { "value": { "$state": "/stripe/list_invoices/data" } }
+          "leadingIcon": "ArrowUpDown",
+          "variant": "ghost",
+          "size": "sm",
+          "ariaLabel": "Cycle sort order"
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "stripe_cycle_sort",
+                "args": { "current": { "$state": "/ui/sortKey" } }
               }
             }
           }
         }
       },
-      "body": {
+      "divider": { "type": "Divider", "props": {} },
+      "tableBody": {
         "type": "Body",
-        "children": ["loading", "empty", "columnHeaders", "list"]
+        "props": {},
+        "children": ["table"]
       },
-      "loading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3", "sk4"],
-        "visible": { "$state": "/_loading/stripe.list_invoices" }
-      },
-      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "empty": {
-        "type": "Empty",
-        "props": { "message": "No invoices found." },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/stripe.list_invoices", "not": true },
-            { "$state": "/stripe/list_invoices/data/0", "not": true }
-          ]
-        }
-      },
-      "columnHeaders": {
-        "type": "Row",
+      "table": {
+        "type": "Table",
         "props": {
-          "gap": "sm",
-          "align": "center",
-          "template": "minmax(0, 1fr) 8rem 6rem 7rem auto"
-        },
-        "children": ["hBilledTo", "hInvoiceNumber", "hAmount", "hDueDate", "hStatus"],
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/stripe.list_invoices", "not": true },
-            { "$state": "/stripe/list_invoices/data/0" }
-          ]
-        }
-      },
-      "hBilledTo": { "type": "Eyebrow", "props": { "text": "Billed to" } },
-      "hInvoiceNumber": { "type": "Eyebrow", "props": { "text": "Invoice Number" } },
-      "hAmount": { "type": "Eyebrow", "props": { "text": "Amount" } },
-      "hDueDate": { "type": "Eyebrow", "props": { "text": "Due date" } },
-      "hStatus": { "type": "Eyebrow", "props": { "text": "Status" } },
-      "list": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["row"],
-        "repeat": {
-          "statePath": "/stripe/list_invoices/data",
-          "key": "id"
-        },
-        "visible": { "$state": "/_loading/stripe.list_invoices", "not": true }
-      },
-      "row": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "center",
-          "hover": true,
-          "template": "minmax(0, 1fr) 8rem 6rem 7rem auto"
-        },
-        "children": ["nameText", "invoiceNumText", "amountText", "dueDateText", "statusBadge"]
-      },
-      "nameText": {
-        "type": "Text",
-        "props": {
-          "text": { "$item": "customer_name" },
-          "size": "sm",
-          "weight": "medium",
-          "truncate": true
-        }
-      },
-      "invoiceNumText": {
-        "type": "Caption",
-        "props": {
-          "text": { "$item": "number" },
-          "truncate": true
-        }
-      },
-      "amountText": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "stripe_format_currency",
-            "args": {
-              "amount": { "$item": "amount_due" },
-              "currency": { "$item": "currency" }
+          "loading": { "$state": "/_loading/stripe.list_invoices" },
+          "skeletonRows": 4,
+          "rows": { "$state": "/ui/tableRows" },
+          "columns": [
+            {
+              "id": "customer",
+              "header": "Billed to",
+              "field": "customer_name",
+              "priority": 1
+            },
+            {
+              "id": "status",
+              "header": "Status",
+              "field": "status",
+              "priority": 1
+            },
+            {
+              "id": "amount",
+              "header": "Amount",
+              "field": "amount",
+              "width": 100,
+              "priority": 1
+            },
+            {
+              "id": "dueDate",
+              "header": "Due date",
+              "field": "due_date",
+              "width": 120,
+              "priority": 2
+            },
+            {
+              "id": "number",
+              "header": "Invoice Number",
+              "field": "number",
+              "width": 130,
+              "priority": 3
             }
-          }
-        }
-      },
-      "dueDateText": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "stripe_format_stripe_date",
-            "args": { "value": { "$item": "due_date" } }
-          }
-        }
-      },
-      "statusBadge": {
-        "type": "Badge",
-        "props": {
-          "text": { "$item": "status" },
-          "tone": {
-            "$computed": "stripe_invoice_status_tone",
-            "args": { "status": { "$item": "status" } }
-          },
-          "variant": "soft"
+          ]
         }
       }
     }
-  }
+  },
+  "status": "published"
 }

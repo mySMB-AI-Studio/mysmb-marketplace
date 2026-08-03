@@ -115,7 +115,9 @@ const sort_by_key = (args) => {
 // Args: { current: string }
 // Returns: "name|asc" | "name|desc"
 const cycle_sort = (args) => {
-    return String(args.current ?? '') === 'name|asc' ? 'name|desc' : 'name|asc';
+    const current = String(args.current ?? '');
+    const [field, dir] = current.split('|');
+    return `${field}|${dir === 'asc' ? 'desc' : 'asc'}`;
 };
 // ── format_stripe_date ────────────────────────────────────────────────────
 // Convert a Unix timestamp (seconds since epoch, as returned by Stripe) to a
@@ -154,6 +156,32 @@ const build_customer_url = (args) => {
     }
     return `https://dashboard.stripe.com${mode}/customers/${customerId}`;
 };
+// ── flatten_invoices ──────────────────────────────────────────────────────────
+// Sort and pre-format raw Stripe invoice objects into display-ready table rows.
+// Pre-formats amount via format_currency and due_date via format_stripe_date so
+// the Table component receives plain strings and needs no column formatters.
+// Args: { value: raw invoice array, key: sort key e.g. "customer_name|asc" }
+// Returns: display row array
+const flatten_invoices = (args) => {
+    const raw = Array.isArray(args.value)
+        ? [...args.value]
+        : [];
+    const keyStr = String(args.key ?? 'customer_name|asc');
+    const [field, dir] = keyStr.split('|');
+    raw.sort((a, b) => {
+        const aVal = String(a[field] ?? '').toLowerCase();
+        const bVal = String(b[field] ?? '').toLowerCase();
+        const cmp = aVal.localeCompare(bVal);
+        return dir === 'desc' ? -cmp : cmp;
+    });
+    return raw.map(item => ({
+        customer_name: String(item.customer_name ?? ''),
+        number: String(item.number ?? ''),
+        amount: format_currency({ amount: item.amount_due, currency: item.currency }),
+        due_date: format_stripe_date({ value: item.due_date }),
+        status: String(item.status ?? ''),
+    }));
+};
 const elements = {
     slug: 'stripe',
     functions: {
@@ -165,6 +193,7 @@ const elements = {
         payment_intent_status_tone,
         format_stripe_date,
         build_customer_url,
+        flatten_invoices,
     },
 };
 export default elements;
