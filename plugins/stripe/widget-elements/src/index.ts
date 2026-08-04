@@ -138,6 +138,19 @@ const format_stripe_date: ComputedFunction = (args) => {
   });
 };
 
+// ── format_stripe_date_short ─────────────────────────────────────────────────
+// Convert a Unix timestamp to a short date string without the year.
+// Args: { value: number }
+// Returns: string e.g. "29 Aug"
+const format_stripe_date_short: ComputedFunction = (args) => {
+  const raw = args.value;
+  if (raw == null || raw === '') return '';
+  const ts = typeof raw === 'number' ? raw : Number(raw);
+  if (!Number.isFinite(ts) || ts === 0) return '';
+  const d = new Date(ts * 1000);
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+};
+
 // ── build_customer_url ────────────────────────────────────────────────────────
 // Build a Stripe Dashboard URL for a customer. Uses platform→connected URL when
 // both account IDs are present; falls back to simple URL otherwise.
@@ -268,6 +281,7 @@ const elements: PluginElementsModule = {
     invoice_status_tone,
     payment_intent_status_tone,
     format_stripe_date,
+    format_stripe_date_short,
     build_customer_url,
     flatten_invoices,
     calc_mrr,
