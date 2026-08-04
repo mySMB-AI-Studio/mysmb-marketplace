@@ -69,6 +69,18 @@
           "titleRow"
         ]
       },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "titleGroup",
+          "brandChip"
+        ]
+      },
       "titleGroup": {
         "type": "Row",
         "props": {
@@ -101,7 +113,7 @@
       "title": {
         "type": "Heading",
         "props": {
-          "text": "Grant discovery",
+          "text": "Grant Discovery",
           "level": "h2"
         }
       },
@@ -111,83 +123,69 @@
           "text": "Search approved grants and match them to a profile."
         }
       },
+      "brandChip": {
+        "type": "Badge",
+        "props": {
+          "text": "SurePact",
+          "tone": "brand",
+          "variant": "solid"
+        }
+      },
       "body": {
         "type": "Body",
         "props": {},
         "children": [
-          "filtersHeading",
-          "filterGrid",
-          "resultsBar",
-          "loading",
-          "empty",
-          "list",
-          "footer"
+          "mainRow"
         ]
       },
-      "filtersHeading": {
+      "mainRow": {
         "type": "Row",
         "props": {
-          "gap": "sm",
-          "align": "center",
-          "justify": "between"
+          "template": "216px minmax(0, 1fr)",
+          "gap": "md",
+          "align": "start"
+        },
+        "children": [
+          "filterRail",
+          "resultsCol"
+        ]
+      },
+      "filterRail": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
         },
         "children": [
           "filtersEyebrow",
-          "refreshBtn"
+          "filtersHeading",
+          "filtersBlurb",
+          "locationField",
+          "applicantField",
+          "industryField",
+          "railDivider",
+          "matchingStat",
+          "activeChips"
         ]
       },
       "filtersEyebrow": {
         "type": "Eyebrow",
         "props": {
-          "text": "Refine your search"
+          "text": "Filters"
         }
       },
-      "refreshBtn": {
-        "type": "IconButton",
+      "filtersHeading": {
+        "type": "Heading",
         "props": {
-          "icon": "RefreshCw",
-          "tone": "muted",
-          "size": "sm",
-          "ariaLabel": "Refresh grants"
-        },
-        "on": {
-          "click": [
-            {
-              "action": "bust_tool_cache",
-              "params": {
-                "mcp": "surepact-grants",
-                "tool": "surepact_search_grants"
-              }
-            },
-            {
-              "action": "surepact-grants.surepact_search_grants",
-              "params": {
-                "state": {
-                  "$state": "/ui/state"
-                },
-                "whoCanApply": {
-                  "$state": "/ui/whoCanApply"
-                },
-                "industry": {
-                  "$state": "/ui/industry"
-                },
-                "count": 50
-              }
-            }
-          ]
+          "text": "Refine your search",
+          "level": "h3"
         }
       },
-      "filterGrid": {
-        "type": "Grid",
+      "filtersBlurb": {
+        "type": "Caption",
         "props": {
-          "cols": 3,
-          "gap": "sm"
-        },
-        "children": [
-          "locationField",
-          "applicantField",
-          "industryField"
-        ]
+          "text": "Search approved grants using their reviewed public and matching data.",
+          "tone": "muted"
+        }
       },
       "locationField": {
         "type": "Stack",
@@ -477,17 +475,102 @@
           ]
         }
       },
-      "resultsBar": {
+      "railDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "matchingStat": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/surepact-grants/surepact_search_grants/count"
+          },
+          "label": "matching grants",
+          "size": "sm"
+        }
+      },
+      "activeChips": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "chipLocation",
+          "chipApplicant",
+          "chipIndustry"
+        ]
+      },
+      "chipLocation": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$state": "/ui/state"
+          },
+          "tone": "brand",
+          "variant": "soft"
+        }
+      },
+      "chipApplicant": {
+        "type": "Badge",
+        "visible": {
+          "$state": "/ui/whoCanApply"
+        },
+        "props": {
+          "text": {
+            "$state": "/ui/whoCanApply"
+          },
+          "tone": "brand",
+          "variant": "soft"
+        }
+      },
+      "chipIndustry": {
+        "type": "Badge",
+        "visible": {
+          "$state": "/ui/industry"
+        },
+        "props": {
+          "text": {
+            "$state": "/ui/industry"
+          },
+          "tone": "brand",
+          "variant": "soft"
+        }
+      },
+      "resultsCol": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm",
+          "grow": true
+        },
+        "children": [
+          "resultsHead",
+          "loading",
+          "empty",
+          "list",
+          "footer"
+        ]
+      },
+      "resultsHead": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start",
+          "justify": "between"
+        },
+        "children": [
+          "resultsHeadStack",
+          "refreshBtn"
+        ]
+      },
+      "resultsHeadStack": {
         "type": "Stack",
         "props": {
           "gap": "none"
         },
-        "visible": {
-          "$state": "/_loading/surepact-grants.surepact_search_grants",
-          "not": true
-        },
         "children": [
           "resultsEyebrow",
+          "resultsTitle",
           "resultsCount"
         ]
       },
@@ -497,20 +580,62 @@
           "text": "Results"
         }
       },
+      "resultsTitle": {
+        "type": "Heading",
+        "props": {
+          "text": "Search results",
+          "level": "h3"
+        }
+      },
       "resultsCount": {
         "type": "Text",
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{n} grants match your filters",
+              "pattern": "{n} results match your filters.",
               "n": {
                 "$state": "/surepact-grants/surepact_search_grants/count"
               }
             }
           },
           "size": "sm",
-          "tone": "brand"
+          "tone": "muted"
+        }
+      },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": {
+          "icon": "RefreshCw",
+          "tone": "muted",
+          "size": "sm",
+          "ariaLabel": "Refresh grants"
+        },
+        "on": {
+          "click": [
+            {
+              "action": "bust_tool_cache",
+              "params": {
+                "mcp": "surepact-grants",
+                "tool": "surepact_search_grants"
+              }
+            },
+            {
+              "action": "surepact-grants.surepact_search_grants",
+              "params": {
+                "state": {
+                  "$state": "/ui/state"
+                },
+                "whoCanApply": {
+                  "$state": "/ui/whoCanApply"
+                },
+                "industry": {
+                  "$state": "/ui/industry"
+                },
+                "count": 50
+              }
+            }
+          ]
         }
       },
       "loading": {
@@ -524,35 +649,27 @@
         "children": [
           "sk1",
           "sk2",
-          "sk3",
-          "sk4"
+          "sk3"
         ]
       },
       "sk1": {
         "type": "Skeleton",
         "props": {
-          "height": "5rem",
+          "height": "6rem",
           "rounded": "md"
         }
       },
       "sk2": {
         "type": "Skeleton",
         "props": {
-          "height": "5rem",
+          "height": "6rem",
           "rounded": "md"
         }
       },
       "sk3": {
         "type": "Skeleton",
         "props": {
-          "height": "5rem",
-          "rounded": "md"
-        }
-      },
-      "sk4": {
-        "type": "Skeleton",
-        "props": {
-          "height": "5rem",
+          "height": "6rem",
           "rounded": "md"
         }
       },
@@ -597,33 +714,33 @@
           "variant": "bordered"
         },
         "children": [
-          "resultRow"
+          "cardGrid"
         ]
       },
-      "resultRow": {
+      "cardGrid": {
         "type": "Row",
         "props": {
+          "template": "minmax(0, 1fr) 200px auto",
           "gap": "md",
-          "align": "start",
-          "justify": "between"
+          "align": "start"
         },
         "children": [
-          "resultMain",
-          "resultMeta"
+          "cardMain",
+          "cardMeta",
+          "cardActions"
         ]
       },
-      "resultMain": {
+      "cardMain": {
         "type": "Stack",
         "props": {
-          "gap": "xs",
-          "grow": true
+          "gap": "xs"
         },
         "children": [
-          "resultTitle",
-          "resultDesc"
+          "cardTitle",
+          "cardDesc"
         ]
       },
-      "resultTitle": {
+      "cardTitle": {
         "type": "Heading",
         "props": {
           "text": {
@@ -633,7 +750,7 @@
           "wrap": true
         }
       },
-      "resultDesc": {
+      "cardDesc": {
         "type": "Text",
         "props": {
           "text": {
@@ -644,7 +761,7 @@
           "truncate": true
         }
       },
-      "resultMeta": {
+      "cardMeta": {
         "type": "Stack",
         "props": {
           "gap": "xs",
@@ -686,6 +803,53 @@
           "tone": "brand"
         }
       },
+      "cardActions": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "copyBtn",
+          "openBtn"
+        ]
+      },
+      "copyBtn": {
+        "type": "IconButton",
+        "props": {
+          "icon": "Copy",
+          "tone": "muted",
+          "size": "sm",
+          "ariaLabel": "Copy grant title"
+        },
+        "on": {
+          "click": {
+            "action": "copy_to_clipboard",
+            "params": {
+              "text": {
+                "$item": "title"
+              }
+            }
+          }
+        }
+      },
+      "openBtn": {
+        "type": "IconButton",
+        "props": {
+          "icon": "ExternalLink",
+          "tone": "muted",
+          "size": "sm",
+          "ariaLabel": "Open SurePact"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://surepact.com/for-recipients/"
+            }
+          }
+        }
+      },
       "footer": {
         "type": "Row",
         "props": {
@@ -724,26 +888,6 @@
             }
           }
         }
-      },
-      "brandChip": {
-        "type": "Badge",
-        "props": {
-          "text": "SurePact",
-          "tone": "brand",
-          "variant": "solid"
-        }
-      },
-      "titleRow": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "center",
-          "justify": "between"
-        },
-        "children": [
-          "titleGroup",
-          "brandChip"
-        ]
       }
     }
   }
