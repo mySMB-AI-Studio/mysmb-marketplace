@@ -285,7 +285,7 @@ function formatPaymentStatusLabel(status) {
 const flatten_payments = (args) => {
     const raw = Array.isArray(args.value) ? [...args.value] : [];
     const keyStr = String(args.key ?? 'created|desc');
-    const [, dir] = keyStr.split('|');
+    const [field, dir] = keyStr.split('|');
     const rows = raw.map(pi => {
         const customer = pi.customer;
         let customerName = '';
@@ -329,8 +329,14 @@ const flatten_payments = (args) => {
         };
     });
     rows.sort((a, b) => {
-        const diff = a.created_ts - b.created_ts;
-        return dir === 'asc' ? diff : -diff;
+        if (field === 'created') {
+            const diff = a.created_ts - b.created_ts;
+            return dir === 'asc' ? diff : -diff;
+        }
+        const aVal = String(a[field] ?? '').toLowerCase();
+        const bVal = String(b[field] ?? '').toLowerCase();
+        const cmp = aVal.localeCompare(bVal);
+        return dir === 'asc' ? cmp : -cmp;
     });
     return rows.map(row => {
         const { created_ts: _ts, ...rest } = row;
