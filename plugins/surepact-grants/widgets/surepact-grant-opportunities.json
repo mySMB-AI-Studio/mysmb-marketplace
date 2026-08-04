@@ -1,7 +1,7 @@
 {
   "id": "surepact-grant-opportunities",
   "title": "Grant Opportunities",
-  "description": "Australian government and community grants currently listed, filtered by state — funding amount and closing date at a glance, with a state picker to switch jurisdictions.",
+  "description": "Australian government and community grants currently listed, filtered by location — funding amount, closing date and a short summary per grant, with a location picker to switch jurisdictions.",
   "category": "grants",
   "tags": [
     "surepact",
@@ -72,7 +72,7 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "Showing {n} · {state}",
+              "pattern": "{n} results · {state}",
               "n": { "$state": "/surepact-grants/surepact_search_grants/count" },
               "state": { "$state": "/surepact-grants/surepact_search_grants/state" }
             }
@@ -94,7 +94,11 @@
       "controlsLeft": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center" },
-        "children": ["statePicker"]
+        "children": ["locationLabel", "statePicker"]
+      },
+      "locationLabel": {
+        "type": "Caption",
+        "props": { "text": "Location", "tone": "muted" }
       },
       "statePicker": {
         "type": "Select",
@@ -169,15 +173,15 @@
         },
         "children": ["sk1", "sk2", "sk3", "sk4"]
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
-      "sk4": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk1": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
 
       "empty": {
         "type": "Empty",
         "props": {
-          "message": "No grants currently listed for this state. Try another jurisdiction."
+          "message": "No grants currently listed for this location. Try another jurisdiction."
         },
         "visible": {
           "$and": [
@@ -195,7 +199,7 @@
 
       "list": {
         "type": "Stack",
-        "props": { "gap": "none" },
+        "props": { "gap": "sm" },
         "visible": {
           "$state": "/_loading/surepact-grants.surepact_search_grants",
           "not": true
@@ -204,21 +208,57 @@
           "statePath": "/surepact-grants/surepact_search_grants/grants",
           "key": "title"
         },
-        "children": ["row"]
+        "children": ["resultCard"]
       },
-      "row": {
-        "type": "ListItem",
+
+      "resultCard": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["resultStack"]
+      },
+      "resultStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["resultBadgeRow", "resultTitle", "resultDesc", "resultMetaRow"]
+      },
+      "resultBadgeRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["resultLocationBadge"]
+      },
+      "resultLocationBadge": {
+        "type": "Badge",
         "props": {
-          "title": { "$item": "title" },
-          "subtitle": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{funding} · Closes {close}",
-              "funding": { "$item": "fundingAmount" },
-              "close": { "$item": "closeDate" }
-            }
-          }
+          "text": { "$item": "location" },
+          "tone": "accent",
+          "variant": "soft"
         }
+      },
+      "resultTitle": {
+        "type": "Heading",
+        "props": { "text": { "$item": "title" }, "level": "h3", "wrap": true }
+      },
+      "resultDesc": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "description" },
+          "size": "sm",
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+      "resultMetaRow": {
+        "type": "Row",
+        "props": { "gap": "md", "align": "center", "justify": "start" },
+        "children": ["metaFunding", "metaClosing"]
+      },
+      "metaFunding": {
+        "type": "KeyValue",
+        "props": { "label": "Funding", "value": { "$item": "fundingAmount" } }
+      },
+      "metaClosing": {
+        "type": "KeyValue",
+        "props": { "label": "Closing", "value": { "$item": "closeDate" } }
       },
 
       "footer": {
@@ -237,7 +277,7 @@
       "visitBtn": {
         "type": "Button",
         "props": {
-          "label": "Apply via SurePact",
+          "label": "Open in SurePact",
           "variant": "ghost",
           "size": "sm",
           "leadingIcon": "ExternalLink"
