@@ -22,7 +22,21 @@
     "elements": {
       "card": {
         "type": "Card",
-        "children": ["header", "body"]
+        "children": ["header", "body"],
+        "watch": {
+          "/stripe/list_subscriptions/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/subRows",
+                "value": {
+                  "$computed": "stripe_flatten_subscriptions",
+                  "args": { "value": { "$state": "/stripe/list_subscriptions/data" } }
+                }
+              }
+            }
+          ]
+        }
       },
       "header": {
         "type": "Header",
@@ -90,10 +104,15 @@
         "props": { "gap": "xs" },
         "children": ["row"],
         "repeat": {
-          "statePath": "/stripe/list_subscriptions/data",
+          "statePath": "/ui/subRows",
           "key": "id"
         },
-        "visible": { "$state": "/_loading/stripe.list_subscriptions", "not": true }
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/stripe.list_subscriptions", "not": true },
+            { "$state": "/stripe/list_subscriptions/data/0" }
+          ]
+        }
       },
       "row": {
         "type": "Row",
@@ -103,7 +122,7 @@
           "hover": true,
           "template": "minmax(0, 1fr) 6rem 7rem"
         },
-        "children": ["identity", "periodEnd", "statusBadge"]
+        "children": ["identity", "periodEnd", "statusWrap"]
       },
       "identity": {
         "type": "Stack",
@@ -113,7 +132,7 @@
       "customerName": {
         "type": "Text",
         "props": {
-          "text": { "$item": "customer/name" },
+          "text": { "$item": "customer_name" },
           "size": "sm",
           "weight": "medium",
           "truncate": true
@@ -122,7 +141,7 @@
       "customerEmail": {
         "type": "Caption",
         "props": {
-          "text": { "$item": "customer/email" },
+          "text": { "$item": "customer_email" },
           "truncate": true
         }
       },
@@ -135,10 +154,15 @@
           }
         }
       },
+      "statusWrap": {
+        "type": "Stack",
+        "props": { "align": "start" },
+        "children": ["statusBadge"]
+      },
       "statusBadge": {
         "type": "Badge",
         "props": {
-          "text": { "$item": "status" },
+          "text": { "$item": "status_label" },
           "tone": {
             "$computed": "stripe_subscription_status_tone",
             "args": { "status": { "$item": "status" } }
