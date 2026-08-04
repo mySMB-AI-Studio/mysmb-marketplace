@@ -67,7 +67,7 @@
       },
       "body": {
         "type": "Body",
-        "children": ["loading", "empty", "totalStack", "categoryDivider", "categoryList"]
+        "children": ["loading", "empty", "totalStack", "misconfigured", "categoryDivider", "categoryList"]
       },
       "loading": {
         "type": "Stack",
@@ -113,12 +113,32 @@
         "type": "Caption",
         "props": { "text": "active members" }
       },
+      "misconfigured": {
+        "type": "Empty",
+        "props": {
+          "message": "Every member is showing under \"(not set)\" — this usually means the membership-type property on this HubSpot portal isn't named exactly `membership_type`. Rename the property (or add one named `membership_type`) to see the real breakdown; check the exact internal name via list_properties if unsure."
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hubspot.count_objects_by_property", "not": true },
+            { "$state": "/hubspot/count_objects_by_property/counts/0" },
+            { "$state": "/hubspot/count_objects_by_property/counts/1", "not": true },
+            { "$state": "/hubspot/count_objects_by_property/counts/0/value", "eq": "(not set)" }
+          ]
+        }
+      },
       "categoryDivider": {
         "type": "Divider",
         "visible": {
           "$and": [
             { "$state": "/_loading/hubspot.count_objects_by_property", "not": true },
-            { "$state": "/hubspot/count_objects_by_property/counts/0" }
+            { "$state": "/hubspot/count_objects_by_property/counts/0" },
+            {
+              "$or": [
+                { "$state": "/hubspot/count_objects_by_property/counts/1" },
+                { "$state": "/hubspot/count_objects_by_property/counts/0/value", "eq": "(not set)", "not": true }
+              ]
+            }
           ]
         }
       },
@@ -133,7 +153,13 @@
         "visible": {
           "$and": [
             { "$state": "/_loading/hubspot.count_objects_by_property", "not": true },
-            { "$state": "/hubspot/count_objects_by_property/counts/0" }
+            { "$state": "/hubspot/count_objects_by_property/counts/0" },
+            {
+              "$or": [
+                { "$state": "/hubspot/count_objects_by_property/counts/1" },
+                { "$state": "/hubspot/count_objects_by_property/counts/0/value", "eq": "(not set)", "not": true }
+              ]
+            }
           ]
         }
       },
