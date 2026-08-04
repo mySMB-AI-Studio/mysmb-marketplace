@@ -271,6 +271,85 @@ const flatten_subscriptions: ComputedFunction = (args) => {
   });
 };
 
+// ── flatten_payments ──────────────────────────────────────────────────────────
+// Pre-process expanded Stripe PaymentIntent objects into display-ready rows.
+// Resolves expanded customer/payment_method to plain strings.
+// Args: { value: raw payment intent array, key: sort key e.g. "created|desc" }
+// Returns: display row array
+function formatPaymentStatusLabel(status: string): string {
+  switch (status.toLowerCase()) {
+    case 'succeeded':                return 'Succeeded';
+    case 'processing':               return 'Processing';
+    case 'requires_action':          return 'Action required';
+    case 'requires_confirmation':    return 'Pending';
+    case 'requires_payment_method':  return 'Incomplete';
+    case 'requires_capture':         return 'Ready';
+    case 'canceled':                 return 'Cancelled';
+    default: return status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ');
+  }
+}
+
+const flatten_payments: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? [...(args.value as Record<string, unknown>[])] : [];
+  const keyStr = String(args.key ?? 'created|desc');
+  const [, dir] = keyStr.split('|');
+
+  const rows = raw.map(pi => {
+    const customer = pi.customer;
+    let customerName = '';
+    if (customer && typeof customer === 'object') {
+      const c = customer as Record<string, unknown>;
+      customerName = String(c.name ?? c.email ?? '');
+    } else {
+      customerName = String(customer ?? '');
+    }
+
+    const created = typeof pi.created === 'number' ? pi.created : Number(pi.created ?? 0);
+    let createdAt = '';
+    if (created) {
+      const d = new Date(created * 1000);
+      const datePart = d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+      const timePart = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
+      createdAt = `${datePart}, ${timePart}`;
+    }
+
+    const pm = (pi.payment_method as Record<string, unknown>) ?? {};
+    const card = (pm.card as Record<string, unknown>) ?? {};
+    let method = '';
+    if (card.brand) {
+      const brand = String(card.brand);
+      const brandDisplay = brand.charAt(0).toUpperCase() + brand.slice(1).toLowerCase();
+      method = card.last4 ? `${brandDisplay} ••${card.last4}` : brandDisplay;
+    } else {
+      const types = Array.isArray(pi.payment_method_types) ? (pi.payment_method_types as string[]) : [];
+      method = types[0] ? String(types[0]) : '';
+    }
+
+    const status = String(pi.status ?? '');
+
+    return {
+      id: String(pi.id ?? ''),
+      customer_name: customerName,
+      created_at: createdAt,
+      created_ts: created,
+      amount: format_currency({ amount: pi.amount, currency: String(pi.currency ?? 'aud') }),
+      method,
+      status,
+      status_label: formatPaymentStatusLabel(status),
+    };
+  });
+
+  rows.sort((a, b) => {
+    const diff = (a.created_ts as number) - (b.created_ts as number);
+    return dir === 'asc' ? diff : -diff;
+  });
+
+  return rows.map(row => {
+    const { created_ts: _ts, ...rest } = row;
+    return rest;
+  });
+};
+
 const elements: PluginElementsModule = {
   slug: 'stripe',
   functions: {
@@ -286,6 +365,7 @@ const elements: PluginElementsModule = {
     flatten_invoices,
     calc_mrr,
     flatten_subscriptions,
+    flatten_payments,
   },
 };
 
