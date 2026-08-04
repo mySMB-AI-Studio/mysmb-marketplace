@@ -116,7 +116,7 @@
       "title": {
         "type": "Heading",
         "props": {
-          "text": "MRR Overview",
+          "text": "MRR overview",
           "level": "h2"
         }
       },
@@ -187,7 +187,7 @@
       "lblMrr": {
         "type": "Caption",
         "props": {
-          "text": "Monthly Recurring Revenue"
+          "text": "Monthly recurring revenue"
         }
       },
       "tileSubCount": {
@@ -236,7 +236,7 @@
       "lblSubCount": {
         "type": "Caption",
         "props": {
-          "text": "Active Subscriptions"
+          "text": "Active subscriptions"
         }
       },
       "divider": {
@@ -249,6 +249,7 @@
         "children": [
           "loading",
           "empty",
+          "listHeader",
           "list"
         ]
       },
@@ -313,6 +314,48 @@
           ]
         }
       },
+      "listHeader": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "template": "minmax(0, 1fr) 6rem 5rem"
+        },
+        "children": [
+          "hdrSubscriber",
+          "hdrAmount",
+          "hdrRenews"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/stripe.list_subscriptions",
+              "not": true
+            },
+            {
+              "$state": "/stripe/list_subscriptions/data/0"
+            }
+          ]
+        }
+      },
+      "hdrSubscriber": {
+        "type": "Caption",
+        "props": {
+          "text": "Subscriber"
+        }
+      },
+      "hdrAmount": {
+        "type": "Caption",
+        "props": {
+          "text": "Amount"
+        }
+      },
+      "hdrRenews": {
+        "type": "Caption",
+        "props": {
+          "text": "Renews"
+        }
+      },
       "list": {
         "type": "Stack",
         "props": {
@@ -326,8 +369,15 @@
           "key": "id"
         },
         "visible": {
-          "$state": "/_loading/stripe.list_subscriptions",
-          "not": true
+          "$and": [
+            {
+              "$state": "/_loading/stripe.list_subscriptions",
+              "not": true
+            },
+            {
+              "$state": "/stripe/list_subscriptions/data/0"
+            }
+          ]
         }
       },
       "subRow": {
@@ -336,11 +386,12 @@
           "gap": "sm",
           "align": "center",
           "hover": true,
-          "template": "minmax(0, 1fr) 7rem"
+          "template": "minmax(0, 1fr) 6rem 5rem"
         },
         "children": [
           "subIdentity",
-          "subAmountStack"
+          "subAmount",
+          "subRenews"
         ]
       },
       "subIdentity": {
@@ -373,16 +424,6 @@
           "truncate": true
         }
       },
-      "subAmountStack": {
-        "type": "Stack",
-        "props": {
-          "gap": "none"
-        },
-        "children": [
-          "subAmount",
-          "subPeriodEnd"
-        ]
-      },
       "subAmount": {
         "type": "Caption",
         "props": {
@@ -391,11 +432,11 @@
           }
         }
       },
-      "subPeriodEnd": {
+      "subRenews": {
         "type": "Caption",
         "props": {
           "text": {
-            "$computed": "stripe_format_stripe_date",
+            "$computed": "stripe_format_stripe_date_short",
             "args": {
               "value": {
                 "$item": "current_period_end"
