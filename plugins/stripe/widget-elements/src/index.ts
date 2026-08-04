@@ -237,15 +237,31 @@ const calc_mrr: ComputedFunction = (args) => {
 // Resolves expanded customer/product objects to plain strings.
 // Args: { value: raw subscription array }
 // Returns: display row array
+function formatSubscriptionStatusLabel(status: string): string {
+  switch (status.toLowerCase()) {
+    case 'active':             return 'Active';
+    case 'trialing':           return 'Trialing';
+    case 'past_due':           return 'Past due';
+    case 'canceled':           return 'Canceled';
+    case 'unpaid':             return 'Unpaid';
+    case 'incomplete':         return 'Incomplete';
+    case 'incomplete_expired': return 'Expired';
+    case 'paused':             return 'Paused';
+    default: return status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ');
+  }
+}
+
 const flatten_subscriptions: ComputedFunction = (args) => {
   const subs = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
 
   return subs.map(sub => {
     const customer = sub.customer;
     let customerName = '';
+    let customerEmail = '';
     if (customer && typeof customer === 'object') {
       const c = customer as Record<string, unknown>;
       customerName = String(c.name ?? c.email ?? '');
+      customerEmail = String(c.email ?? '');
     } else {
       customerName = String(customer ?? '');
     }
@@ -261,12 +277,17 @@ const flatten_subscriptions: ComputedFunction = (args) => {
     let subCents = 0;
     for (const item of items) subCents += toMonthlyCents(item);
 
+    const status = String(sub.status ?? '');
+
     return {
       id:                 String(sub.id ?? ''),
       customer_name:      customerName,
+      customer_email:     customerEmail,
       plan_name:          planName,
       amount:             format_currency({ amount: subCents, currency: 'aud' }),
       current_period_end: typeof sub.current_period_end === 'number' ? sub.current_period_end : 0,
+      status,
+      status_label:       formatSubscriptionStatusLabel(status),
     };
   });
 };
