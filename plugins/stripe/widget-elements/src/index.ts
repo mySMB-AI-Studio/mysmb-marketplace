@@ -292,7 +292,7 @@ function formatPaymentStatusLabel(status: string): string {
 const flatten_payments: ComputedFunction = (args) => {
   const raw = Array.isArray(args.value) ? [...(args.value as Record<string, unknown>[])] : [];
   const keyStr = String(args.key ?? 'created|desc');
-  const [, dir] = keyStr.split('|');
+  const [field, dir] = keyStr.split('|');
 
   const rows = raw.map(pi => {
     const customer = pi.customer;
@@ -340,8 +340,14 @@ const flatten_payments: ComputedFunction = (args) => {
   });
 
   rows.sort((a, b) => {
-    const diff = (a.created_ts as number) - (b.created_ts as number);
-    return dir === 'asc' ? diff : -diff;
+    if (field === 'created') {
+      const diff = (a.created_ts as number) - (b.created_ts as number);
+      return dir === 'asc' ? diff : -diff;
+    }
+    const aVal = String((a as Record<string, unknown>)[field] ?? '').toLowerCase();
+    const bVal = String((b as Record<string, unknown>)[field] ?? '').toLowerCase();
+    const cmp = aVal.localeCompare(bVal);
+    return dir === 'asc' ? cmp : -cmp;
   });
 
   return rows.map(row => {
