@@ -1,7 +1,7 @@
 {
   "id": "surepact-grants-explorer",
   "title": "Grant Discovery",
-  "description": "Search approved Australian grants and match them to a profile. Results show funding, eligible locations and closing dates, laid out like SurePact's own Grant Discovery.",
+  "description": "Search approved Australian grants and match them to a profile. Filter by location, applicant type and industry; each result shows funding, eligible locations and closing dates.",
   "category": "grants",
   "tags": [
     "surepact",
@@ -19,15 +19,16 @@
     "funding",
     "browse grants",
     "search grants",
-    "compare grants",
+    "who can apply",
+    "industry",
     "eligibility"
   ],
   "connectorsUsed": ["surepact-grants"],
   "brandColor": "#1c1a45",
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 12, "rowSpan": 6 },
-    "min": { "colSpan": 6, "rowSpan": 4 },
+    "preferred": { "colSpan": 12, "rowSpan": 8 },
+    "min": { "colSpan": 6, "rowSpan": 5 },
     "max": { "colSpan": 12, "rowSpan": 12 }
   },
   "dataProvider": {
@@ -76,17 +77,46 @@
       "body": {
         "type": "Body",
         "props": {},
-        "children": ["filters", "resultsBar", "empty", "loading", "list", "footer"]
+        "children": [
+          "filtersHeading",
+          "filterGrid",
+          "resultsBar",
+          "loading",
+          "empty",
+          "list",
+          "footer"
+        ]
       },
 
-      "filters": {
+      "filtersHeading": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center", "justify": "between" },
-        "children": ["filtersLeft", "refreshBtn"]
+        "children": ["filtersEyebrow", "refreshBtn"]
       },
-      "filtersLeft": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
+      "filtersEyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Refine your search" }
+      },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": {
+          "icon": "RefreshCw",
+          "tone": "muted",
+          "size": "sm",
+          "ariaLabel": "Refresh grants"
+        },
+        "on": { "click": [{ "action": "bust_tool_cache", "params": { "mcp": "surepact-grants", "tool": "surepact_search_grants" } }, { "action": "surepact-grants.surepact_search_grants", "params": { "state": { "$state": "/ui/state" }, "whoCanApply": { "$state": "/ui/whoCanApply" }, "industry": { "$state": "/ui/industry" }, "count": 50 } }] }
+      },
+
+      "filterGrid": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["locationField", "applicantField", "industryField"]
+      },
+
+      "locationField": {
+        "type": "Stack",
+        "props": { "gap": "none" },
         "children": ["locationLabel", "statePicker"]
       },
       "locationLabel": {
@@ -108,54 +138,76 @@
             { "value": "NT", "label": "Northern Territory" }
           ],
           "placeholder": "New South Wales",
-          "ariaLabel": "State or territory",
+          "ariaLabel": "Location",
           "size": "sm"
         },
-        "on": {
-          "change": [
-            {
-              "action": "bust_tool_cache",
-              "params": {
-                "mcp": "surepact-grants",
-                "tool": "surepact_search_grants"
-              }
-            },
-            {
-              "action": "surepact-grants.surepact_search_grants",
-              "params": {
-                "state": { "$state": "/ui/state" },
-                "count": 50
-              }
-            }
-          ]
-        }
+        "on": { "change": [{ "action": "bust_tool_cache", "params": { "mcp": "surepact-grants", "tool": "surepact_search_grants" } }, { "action": "surepact-grants.surepact_search_grants", "params": { "state": { "$state": "/ui/state" }, "whoCanApply": { "$state": "/ui/whoCanApply" }, "industry": { "$state": "/ui/industry" }, "count": 50 } }] }
       },
-      "refreshBtn": {
-        "type": "IconButton",
+
+      "applicantField": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["applicantLabel", "applicantPicker"]
+      },
+      "applicantLabel": {
+        "type": "Caption",
+        "props": { "text": "Who can apply", "tone": "muted" }
+      },
+      "applicantPicker": {
+        "type": "Select",
         "props": {
-          "icon": "RefreshCw",
-          "tone": "muted",
-          "size": "sm",
-          "ariaLabel": "Refresh grants"
+          "value": { "$bindState": "/ui/whoCanApply" },
+          "options": [
+            { "value": "", "label": "Any applicant type" },
+            { "value": "Business", "label": "Business" },
+            { "value": "Not-for-profit", "label": "Not-for-profit" },
+            { "value": "Individual", "label": "Individual" },
+            { "value": "Government", "label": "Government" },
+            { "value": "Research organisation", "label": "Research organisation" },
+            { "value": "Community organisation", "label": "Community organisation" }
+          ],
+          "placeholder": "Any applicant type",
+          "ariaLabel": "Who can apply",
+          "size": "sm"
         },
-        "on": {
-          "click": [
-            {
-              "action": "bust_tool_cache",
-              "params": {
-                "mcp": "surepact-grants",
-                "tool": "surepact_search_grants"
-              }
-            },
-            {
-              "action": "surepact-grants.surepact_search_grants",
-              "params": {
-                "state": { "$state": "/ui/state" },
-                "count": 50
-              }
-            }
-          ]
-        }
+        "on": { "change": [{ "action": "bust_tool_cache", "params": { "mcp": "surepact-grants", "tool": "surepact_search_grants" } }, { "action": "surepact-grants.surepact_search_grants", "params": { "state": { "$state": "/ui/state" }, "whoCanApply": { "$state": "/ui/whoCanApply" }, "industry": { "$state": "/ui/industry" }, "count": 50 } }] }
+      },
+
+      "industryField": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["industryLabel", "industryPicker"]
+      },
+      "industryLabel": {
+        "type": "Caption",
+        "props": { "text": "Industry", "tone": "muted" }
+      },
+      "industryPicker": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/industry" },
+          "options": [
+            { "value": "", "label": "Any industry" },
+            { "value": "All industries", "label": "All industries" },
+            { "value": "Agriculture, forestry and fishing", "label": "Agriculture, forestry and fishing" },
+            { "value": "Arts and recreation", "label": "Arts and recreation" },
+            { "value": "Construction", "label": "Construction" },
+            { "value": "Education and training", "label": "Education and training" },
+            { "value": "Financial and insurance", "label": "Financial and insurance" },
+            { "value": "Health care and social assistance", "label": "Health care and social assistance" },
+            { "value": "Information media and telecommunications", "label": "Information media and telecommunications" },
+            { "value": "Manufacturing", "label": "Manufacturing" },
+            { "value": "Mining", "label": "Mining" },
+            { "value": "Professional, scientific and technical", "label": "Professional, scientific and technical" },
+            { "value": "Retail and wholesale", "label": "Retail and wholesale" },
+            { "value": "Tourism", "label": "Tourism" },
+            { "value": "Transport, postal and warehousing", "label": "Transport, postal and warehousing" }
+          ],
+          "placeholder": "Any industry",
+          "ariaLabel": "Industry",
+          "size": "sm"
+        },
+        "on": { "change": [{ "action": "bust_tool_cache", "params": { "mcp": "surepact-grants", "tool": "surepact_search_grants" } }, { "action": "surepact-grants.surepact_search_grants", "params": { "state": { "$state": "/ui/state" }, "whoCanApply": { "$state": "/ui/whoCanApply" }, "industry": { "$state": "/ui/industry" }, "count": 50 } }] }
       },
 
       "resultsBar": {
@@ -177,9 +229,8 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{n} results match your filters · {state}",
-              "n": { "$state": "/surepact-grants/surepact_search_grants/count" },
-              "state": { "$state": "/surepact-grants/surepact_search_grants/state" }
+              "pattern": "{n} grants match your filters",
+              "n": { "$state": "/surepact-grants/surepact_search_grants/count" }
             }
           },
           "size": "sm",
@@ -190,9 +241,7 @@
       "loading": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "visible": {
-          "$state": "/_loading/surepact-grants.surepact_search_grants"
-        },
+        "visible": { "$state": "/_loading/surepact-grants.surepact_search_grants" },
         "children": ["sk1", "sk2", "sk3", "sk4"]
       },
       "sk1": { "type": "Skeleton", "props": { "height": "5rem", "rounded": "md" } },
@@ -203,18 +252,12 @@
       "empty": {
         "type": "Empty",
         "props": {
-          "message": "No grants match your filters. Try another location."
+          "message": "No grants match your filters. Try a different location, applicant type or industry."
         },
         "visible": {
           "$and": [
-            {
-              "$state": "/_loading/surepact-grants.surepact_search_grants",
-              "not": true
-            },
-            {
-              "$state": "/surepact-grants/surepact_search_grants/grants/0",
-              "not": true
-            }
+            { "$state": "/_loading/surepact-grants.surepact_search_grants", "not": true },
+            { "$state": "/surepact-grants/surepact_search_grants/grants/0", "not": true }
           ]
         }
       },
@@ -247,15 +290,7 @@
       "resultMain": {
         "type": "Stack",
         "props": { "gap": "xs", "grow": true },
-        "children": ["resultLocationBadge", "resultTitle", "resultDesc"]
-      },
-      "resultLocationBadge": {
-        "type": "Badge",
-        "props": {
-          "text": { "$item": "location" },
-          "tone": "accent",
-          "variant": "soft"
-        }
+        "children": ["resultTitle", "resultDesc"]
       },
       "resultTitle": {
         "type": "Heading",
@@ -274,7 +309,11 @@
       "resultMeta": {
         "type": "Stack",
         "props": { "gap": "xs", "align": "start" },
-        "children": ["metaFunding", "metaClosing", "metaOpens"]
+        "children": ["metaLocation", "metaFunding", "metaClosing"]
+      },
+      "metaLocation": {
+        "type": "KeyValue",
+        "props": { "label": "Location", "value": { "$item": "location" } }
       },
       "metaFunding": {
         "type": "KeyValue",
@@ -283,10 +322,6 @@
       "metaClosing": {
         "type": "KeyValue",
         "props": { "label": "Closing", "value": { "$item": "closeDate" } }
-      },
-      "metaOpens": {
-        "type": "KeyValue",
-        "props": { "label": "Opens", "value": { "$item": "openDate" } }
       },
 
       "footer": {
