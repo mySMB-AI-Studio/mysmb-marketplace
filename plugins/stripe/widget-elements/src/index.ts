@@ -68,7 +68,7 @@ const subscription_status_tone: ComputedFunction = (args) => {
 const invoice_status_tone: ComputedFunction = (args) => {
   const s = String(args.status ?? '').toLowerCase();
   if (s === 'paid') return 'success';
-  if (s === 'open') return 'info';
+  if (s === 'open') return 'warning';
   if (s === 'draft') return 'muted';
   if (s === 'void') return 'muted';
   if (s === 'uncollectible') return 'destructive';
@@ -138,6 +138,20 @@ const format_stripe_date: ComputedFunction = (args) => {
   });
 };
 
+// ── format_stripe_date_dmy ───────────────────────────────────────────────────
+// Convert a Unix timestamp to dd-mmm-yyyy format (e.g. "03-Sep-2026").
+// Args: { value: number }
+// Returns: string e.g. "03-Sep-2026"
+const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const format_stripe_date_dmy: ComputedFunction = (args) => {
+  const raw = args.value;
+  if (raw == null || raw === '') return '';
+  const ts = typeof raw === 'number' ? raw : Number(raw);
+  if (!Number.isFinite(ts) || ts === 0) return '';
+  const d = new Date(ts * 1000);
+  return `${String(d.getDate()).padStart(2, '0')}-${MONTH_ABBR[d.getMonth()]}-${d.getFullYear()}`;
+};
+
 // ── format_stripe_date_short ─────────────────────────────────────────────────
 // Convert a Unix timestamp to a short date string without the year.
 // Args: { value: number }
@@ -169,11 +183,20 @@ const build_customer_url: ComputedFunction = (args) => {
 };
 
 // ── flatten_invoices ──────────────────────────────────────────────────────────
-// Sort and pre-format raw Stripe invoice objects into display-ready table rows.
-// Pre-formats amount via format_currency and due_date via format_stripe_date so
-// the Table component receives plain strings and needs no column formatters.
+// Sort and pre-format raw Stripe invoice objects into display-ready row data.
 // Args: { value: raw invoice array, key: sort key e.g. "customer_name|asc" }
 // Returns: display row array
+function formatInvoiceStatusLabel(status: string): string {
+  switch (status.toLowerCase()) {
+    case 'paid':          return 'Paid';
+    case 'open':          return 'Open';
+    case 'draft':         return 'Draft';
+    case 'void':          return 'Void';
+    case 'uncollectible': return 'Uncollectible';
+    default: return status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ');
+  }
+}
+
 const flatten_invoices: ComputedFunction = (args) => {
   const raw = Array.isArray(args.value)
     ? [...(args.value as Record<string, unknown>[])]
@@ -188,14 +211,19 @@ const flatten_invoices: ComputedFunction = (args) => {
     return dir === 'desc' ? -cmp : cmp;
   });
 
-  return raw.map(item => ({
-    customer_name:      String(item.customer_name ?? ''),
-    number:             String(item.number ?? ''),
-    amount:             format_currency({ amount: item.amount_due, currency: 'aud' }),
-    due_date:           format_stripe_date({ value: item.due_date }),
-    status:             String(item.status ?? ''),
-    hosted_invoice_url: String(item.hosted_invoice_url ?? ''),
-  }));
+  return raw.map(item => {
+    const status = String(item.status ?? '');
+    return {
+      id:                 String(item.id ?? ''),
+      customer_name:      String(item.customer_name ?? ''),
+      number:             String(item.number ?? ''),
+      amount:             format_currency({ amount: item.amount_due, currency: 'aud' }),
+      due_date:           format_stripe_date_dmy({ value: item.due_date }),
+      status,
+      status_label:       formatInvoiceStatusLabel(status),
+      hosted_invoice_url: String(item.hosted_invoice_url ?? ''),
+    };
+  });
 };
 
 // ── to_monthly_cents ─────────────────────────────────────────────────────────
@@ -387,6 +415,7 @@ const elements: PluginElementsModule = {
     invoice_status_tone,
     payment_intent_status_tone,
     format_stripe_date,
+    format_stripe_date_dmy,
     format_stripe_date_short,
     build_customer_url,
     flatten_invoices,
