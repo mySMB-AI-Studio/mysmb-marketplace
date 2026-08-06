@@ -401,6 +401,20 @@
             {
               "action": "setState",
               "params": {
+                "statePath": "/ui/sel/billingState",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "BillingState"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
                 "statePath": "/ui/sel/website",
                 "value": { "$computed": "identity", "args": { "value": { "$item": "Website" } } }
               }
@@ -512,6 +526,27 @@
           "$item": "Phone"
         }
       },
+      "rowPhoneCell": {
+        "type": "Stack",
+        "props": {},
+        "children": [
+          "rowPhone"
+        ]
+      },
+      "rowPhone": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "Phone"
+          },
+          "size": "xs",
+          "tone": "muted",
+          "truncate": true
+        },
+        "visible": {
+          "$item": "Phone"
+        }
+      },
       "rowStateCell": {
         "type": "Stack",
         "props": {},
@@ -521,6 +556,29 @@
       },
       "rowState": {
         "type": "Text",
+        "props": {
+          "text": {
+            "$item": "BillingState"
+          },
+          "size": "xs",
+          "tone": "muted",
+          "truncate": true
+        },
+        "visible": {
+          "$item": "BillingState"
+        }
+      },
+      "rowTypeCell": {
+        "type": "Stack",
+        "props": {
+          "align": "start"
+        },
+        "children": [
+          "rowType"
+        ]
+      },
+      "rowType": {
+        "type": "Badge",
         "props": {
           "text": {
             "$item": "BillingState"
@@ -720,6 +778,31 @@
         }
       },
       "metaBillingStateCell": {
+        "type": "Stack",
+        "props": {
+          "gap": "xxs"
+        },
+        "children": [
+          "metaBillingStateLbl",
+          "metaBillingStateVal"
+        ]
+      },
+      "metaBillingStateLbl": {
+        "type": "Caption",
+        "props": {
+          "text": "Billing State"
+        }
+      },
+      "metaBillingStateVal": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/sel/billingState"
+          },
+          "size": "sm"
+        }
+      },
+      "detailRevRow": {
         "type": "Stack",
         "props": { "gap": "xxs" },
         "children": [ "metaBillingStateLbl", "metaBillingStateVal" ]

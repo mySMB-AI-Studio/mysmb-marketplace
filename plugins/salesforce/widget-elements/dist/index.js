@@ -198,8 +198,81 @@ const flatten_quota_attainment = (args) => {
         };
     });
 };
+/**
+ * Flatten aggregate SOQL records grouped by a state/region field into display rows.
+ * Each row gets a bar_value relative to the highest-count state (not total), so bars
+ * reflect visual proportion rather than absolute percentage.
+ *
+ * Args:
+ *   value      — aggregate records array, e.g. [{ MailingState: "NSW", cnt: 128 }, ...]
+ *   stateField — field name for the state/region (default "MailingState")
+ *   countField — field name for the count (default "cnt")
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_flatten_by_state", "args": { "value": { "$state": "/salesforce/soql_query/records" } } }
+ */
+const flatten_by_state = (args) => {
+    const records = Array.isArray(args.value) ? args.value : [];
+    if (records.length === 0)
+        return [];
+    const stateField = String(args.stateField ?? 'MailingState');
+    const countField = String(args.countField ?? 'cnt');
+    const total = records.reduce((s, r) => s + Number(r[countField] ?? 0), 0);
+    const max = Math.max(...records.map(r => Number(r[countField] ?? 0)));
+    return records.map((r, i) => {
+        const state = String(r[stateField] ?? '');
+        const count = Number(r[countField] ?? 0);
+        const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+        const barValue = max > 0 ? Math.round((count / max) * 100) : 0;
+        return {
+            id: state || String(i),
+            state,
+            count,
+            bar_value: barValue,
+            count_label: `${count}  ${pct}%`,
+        };
+    });
+};
+/**
+ * Compute summary stats for a state breakdown: subtitle text and top-2 insight string.
+ *
+ * Args:
+ *   value      — same aggregate records array passed to salesforce_flatten_by_state
+ *   stateField — field name for the state/region (default "MailingState")
+ *   countField — field name for the count (default "cnt")
+ *   label      — noun for the items being counted, e.g. "members" (default "records")
+ *
+ * Returns: { subtitleText: string, insightText: string }
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_state_summary", "args": { "value": { "$state": "/salesforce/soql_query/records" }, "label": "members" } }
+ */
+const state_summary = (args) => {
+    const records = Array.isArray(args.value) ? args.value : [];
+    if (records.length === 0)
+        return { subtitleText: '', insightText: '' };
+    const stateField = String(args.stateField ?? 'MailingState');
+    const countField = String(args.countField ?? 'cnt');
+    const label = String(args.label ?? 'records');
+    const total = records.reduce((s, r) => s + Number(r[countField] ?? 0), 0);
+    const stateCount = records.length;
+    const sorted = [...records].sort((a, b) => Number(b[countField] ?? 0) - Number(a[countField] ?? 0));
+    const top1 = sorted[0];
+    const top2 = sorted[1];
+    const top2Total = Number(top1?.[countField] ?? 0) + Number(top2?.[countField] ?? 0);
+    const top2Pct = total > 0 ? Math.round((top2Total / total) * 100) : 0;
+    const s1 = String(top1?.[stateField] ?? '');
+    const s2 = String(top2?.[stateField] ?? '');
+    const subtitleText = `${total.toLocaleString()} ${label} across ${stateCount} states/territories`;
+    const insightText = s1 && s2
+        ? `${s1} and ${s2} hold ${top2Pct}% of total ${label}.`
+        : s1
+            ? `${s1} leads with ${total > 0 ? Math.round((Number(top1[countField] ?? 0) / total) * 100) : 0}% of total ${label}.`
+            : '';
+    return { subtitleText, insightText };
+};
 const elements = {
     slug: 'salesforce',
-    functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment },
+    functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_summary },
 };
 export default elements;
