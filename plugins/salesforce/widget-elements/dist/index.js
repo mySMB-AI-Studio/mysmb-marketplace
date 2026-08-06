@@ -116,8 +116,90 @@ const cycle_sort = (args) => {
     const idx = options.indexOf(current);
     return options[(idx + 1) % options.length];
 };
+/**
+ * Group individual won Opportunity records by rep and compute quota attainment.
+ * Accepts non-aggregate Opportunity rows (Owner is a nested object with Name/FirstName/LastName).
+ * Groups by OwnerId client-side, then computes attainment % vs a fixed per-rep quota.
+ *
+ * Thresholds: >=80% → "success", 50–79% → "warning", <50% → "destructive".
+ * Progress bar is capped at 100. Amounts formatted as compact currency (e.g. "$840K").
+ *
+ * Args:
+ *   value  — Opportunity[] from a non-aggregate soql_query (IsClosed=true, IsWon=true)
+ *   quota  — fixed quota per rep in dollars (default 100000)
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_flatten_quota_attainment", "args": { "value": { "$state": "/salesforce/soql_query/records" }, "quota": 100000 } }
+ */
+const flatten_quota_attainment = (args) => {
+    const records = Array.isArray(args.value) ? args.value : [];
+    const quotaAmount = typeof args.quota === 'number' && args.quota > 0 ? args.quota : 100_000;
+    const fmt = (v) => {
+        const abs = Math.abs(v);
+        if (abs >= 1_000_000)
+            return `$${(v / 1_000_000).toFixed(1)}M`;
+        if (abs >= 1_000)
+            return `$${Math.round(v / 1_000)}K`;
+        return `$${Math.round(v)}`;
+    };
+    const repMap = new Map();
+    for (const rec of records) {
+        const ownerId = String(rec.OwnerId ?? '');
+        if (!ownerId)
+            continue;
+        // Owner fields: nested object (non-aggregate) or flat dotted keys (AggregateResult)
+        const owner = rec.Owner ?? {};
+        const firstName = String(owner.FirstName ?? rec['Owner.FirstName'] ?? '');
+        const lastName = String(owner.LastName ?? rec['Owner.LastName'] ?? '');
+        const fullName = firstName && lastName ? `${firstName} ${lastName}` : '';
+        const ownerName = String(owner.Name ?? rec['Owner.Name'] ?? (fullName || ownerId));
+        let initials;
+        if (firstName && lastName) {
+            initials = (firstName[0] + lastName[0]).toUpperCase();
+        }
+        else {
+            const parts = ownerName.trim().split(/\s+/);
+            initials = parts.length >= 2
+                ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+                : ownerName.slice(0, 2).toUpperCase();
+        }
+        // Amount: direct field (non-aggregate) or SUM alias closedAmount (aggregate)
+        const rawAmt = rec.Amount ?? rec.closedAmount;
+        const amount = typeof rawAmt === 'number' ? rawAmt : parseFloat(String(rawAmt ?? '0')) || 0;
+        const existing = repMap.get(ownerId);
+        if (existing) {
+            existing.total += amount;
+        }
+        else {
+            repMap.set(ownerId, { name: ownerName, initials, total: amount });
+        }
+    }
+    return [...repMap.entries()]
+        .sort((a, b) => b[1].total - a[1].total)
+        .map(([ownerId, rep]) => {
+        const pct = quotaAmount > 0 ? Math.round((rep.total / quotaAmount) * 100) : 0;
+        const barValue = Math.min(pct, 100);
+        let tone;
+        if (pct >= 80)
+            tone = 'success';
+        else if (pct >= 50)
+            tone = 'warning';
+        else
+            tone = 'destructive';
+        return {
+            id: ownerId,
+            name: rep.name,
+            initials: rep.initials,
+            quota_line: `${fmt(rep.total)} closed · ${fmt(quotaAmount)} quota`,
+            bar_value: barValue,
+            pct_label: `${pct}%`,
+            tone,
+            badge: pct >= 100 ? `${pct}% ↑` : `${pct}%`,
+        };
+    });
+};
 const elements = {
     slug: 'salesforce',
-    functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort },
+    functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment },
 };
 export default elements;
