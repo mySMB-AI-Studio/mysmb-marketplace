@@ -255,9 +255,6 @@ const calc_mrr = (args) => {
         const items = sub.items?.data ?? [];
         for (const item of items) {
             totalCents += toMonthlyCents(item);
-            const price = item.price ?? {};
-            if (price.currency)
-                currency = String(price.currency);
         }
     }
     return format_currency({ amount: totalCents, currency });
@@ -304,12 +301,8 @@ const flatten_subscriptions = (args) => {
             planName = String(product.name ?? price.nickname ?? price.id ?? '');
         }
         let subCents = 0;
-        let currency = 'usd';
         for (const item of items) {
             subCents += toMonthlyCents(item);
-            const itemPrice = item.price ?? {};
-            if (itemPrice.currency)
-                currency = String(itemPrice.currency);
         }
         const status = String(sub.status ?? '');
         return {
