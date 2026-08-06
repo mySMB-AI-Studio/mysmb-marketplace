@@ -250,14 +250,13 @@ function toMonthlyCents(item) {
 const calc_mrr = (args) => {
     const subs = Array.isArray(args.value) ? args.value : [];
     let totalCents = 0;
-    let currency = 'usd';
     for (const sub of subs) {
         const items = sub.items?.data ?? [];
         for (const item of items) {
             totalCents += toMonthlyCents(item);
         }
     }
-    return format_currency({ amount: totalCents, currency });
+    return format_currency({ amount: totalCents, currency: 'aud' });
 };
 // ── flatten_subscriptions ─────────────────────────────────────────────────────
 // Pre-process raw expanded Stripe subscription objects into display-ready rows.
@@ -310,7 +309,7 @@ const flatten_subscriptions = (args) => {
             customer_name: customerName,
             customer_email: customerEmail,
             plan_name: planName,
-            amount: format_currency({ amount: subCents, currency }),
+            amount: format_currency({ amount: subCents, currency: 'aud' }),
             current_period_end: typeof sub.current_period_end === 'number' ? sub.current_period_end : 0,
             status,
             status_label: formatSubscriptionStatusLabel(status),
