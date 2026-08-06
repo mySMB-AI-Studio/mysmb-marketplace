@@ -1,7 +1,7 @@
 {
   "id": "salesforce-recent-accounts",
-  "title": "Key Accounts",
-  "description": "Recently viewed Salesforce accounts with industry and account type.",
+  "title": "Recent Accounts",
+  "description": "Recently viewed Salesforce accounts with type, industry, phone, and billing state.",
   "category": "sales",
   "tags": [
     "salesforce",
@@ -15,9 +15,12 @@
     "accounts",
     "customer",
     "customers",
-    "key accounts",
+    "recent accounts",
     "industry",
     "type",
+    "phone",
+    "state",
+    "billing",
     "salesforce",
     "crm"
   ],
@@ -27,7 +30,7 @@
   "popularity": 0,
   "sizing": {
     "preferred": {
-      "colSpan": 4,
+      "colSpan": 5,
       "rowSpan": 6
     },
     "min": {
@@ -43,7 +46,7 @@
     "mcp": "salesforce",
     "tool": "soql_query",
     "params": {
-      "query": "SELECT Id, Name, Type, Industry, Owner.Name, Phone, Website, AnnualRevenue FROM Account ORDER BY LastViewedDate DESC NULLS LAST LIMIT 20"
+      "query": "SELECT Id, Name, Type, Industry, Owner.Name, Phone, BillingState, Website, AnnualRevenue FROM Account ORDER BY LastViewedDate DESC NULLS LAST LIMIT 20"
     }
   },
   "spec": {
@@ -143,7 +146,7 @@
       "title": {
         "type": "Heading",
         "props": {
-          "text": "Key Accounts",
+          "text": "Recent Accounts",
           "level": "h2"
         }
       },
@@ -156,11 +159,13 @@
       "colHeader": {
         "type": "Row",
         "props": {
-          "justify": "between",
-          "align": "center"
+          "align": "center",
+          "template": "minmax(0, 1fr) 9rem 5rem 7rem"
         },
         "children": [
           "colLeft",
+          "colPhone",
+          "colState",
           "colType"
         ]
       },
@@ -204,6 +209,18 @@
           }
         }
       },
+      "colPhone": {
+        "type": "Caption",
+        "props": {
+          "text": "PHONE"
+        }
+      },
+      "colState": {
+        "type": "Caption",
+        "props": {
+          "text": "STATE"
+        }
+      },
       "colType": {
         "type": "Caption",
         "props": {
@@ -229,34 +246,10 @@
           "$state": "/_loading/salesforce.soql_query"
         }
       },
-      "s1": {
-        "type": "Skeleton",
-        "props": {
-          "height": "2.5rem",
-          "rounded": "md"
-        }
-      },
-      "s2": {
-        "type": "Skeleton",
-        "props": {
-          "height": "2.5rem",
-          "rounded": "md"
-        }
-      },
-      "s3": {
-        "type": "Skeleton",
-        "props": {
-          "height": "2.5rem",
-          "rounded": "md"
-        }
-      },
-      "s4": {
-        "type": "Skeleton",
-        "props": {
-          "height": "2.5rem",
-          "rounded": "md"
-        }
-      },
+      "s1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "s2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "s3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "s4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
       "empty": {
         "type": "Empty",
         "props": {
@@ -264,14 +257,8 @@
         },
         "visible": {
           "$and": [
-            {
-              "$state": "/_loading/salesforce.soql_query",
-              "not": true
-            },
-            {
-              "$state": "/salesforce/soql_query/records/0",
-              "not": true
-            }
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/salesforce/soql_query/records/0", "not": true }
           ]
         }
       },
@@ -312,13 +299,15 @@
       "rowContent": {
         "type": "Row",
         "props": {
-          "justify": "between",
           "align": "center",
           "hover": true,
-          "clickable": true
+          "clickable": true,
+          "template": "minmax(0, 1fr) 9rem 5rem 7rem"
         },
         "children": [
           "rowLeft",
+          "rowPhone",
+          "rowState",
           "rowType"
         ],
         "on": {
@@ -327,42 +316,21 @@
               "action": "setState",
               "params": {
                 "statePath": "/ui/sel/id",
-                "value": {
-                  "$computed": "identity",
-                  "args": {
-                    "value": {
-                      "$item": "Id"
-                    }
-                  }
-                }
+                "value": { "$computed": "identity", "args": { "value": { "$item": "Id" } } }
               }
             },
             {
               "action": "setState",
               "params": {
                 "statePath": "/ui/sel/name",
-                "value": {
-                  "$computed": "identity",
-                  "args": {
-                    "value": {
-                      "$item": "Name"
-                    }
-                  }
-                }
+                "value": { "$computed": "identity", "args": { "value": { "$item": "Name" } } }
               }
             },
             {
               "action": "setState",
               "params": {
                 "statePath": "/ui/sel/type",
-                "value": {
-                  "$computed": "identity",
-                  "args": {
-                    "value": {
-                      "$item": "Type"
-                    }
-                  }
-                }
+                "value": { "$computed": "identity", "args": { "value": { "$item": "Type" } } }
               }
             },
             {
@@ -374,11 +342,7 @@
                   "args": {
                     "value": {
                       "$computed": "salesforce_account_type_tone",
-                      "args": {
-                        "value": {
-                          "$item": "Type"
-                        }
-                      }
+                      "args": { "value": { "$item": "Type" } }
                     }
                   }
                 }
@@ -388,70 +352,42 @@
               "action": "setState",
               "params": {
                 "statePath": "/ui/sel/industry",
-                "value": {
-                  "$computed": "identity",
-                  "args": {
-                    "value": {
-                      "$item": "Industry"
-                    }
-                  }
-                }
+                "value": { "$computed": "identity", "args": { "value": { "$item": "Industry" } } }
               }
             },
             {
               "action": "setState",
               "params": {
                 "statePath": "/ui/sel/owner",
-                "value": {
-                  "$computed": "identity",
-                  "args": {
-                    "value": {
-                      "$item": "Owner/Name"
-                    }
-                  }
-                }
+                "value": { "$computed": "identity", "args": { "value": { "$item": "Owner/Name" } } }
               }
             },
             {
               "action": "setState",
               "params": {
                 "statePath": "/ui/sel/phone",
-                "value": {
-                  "$computed": "identity",
-                  "args": {
-                    "value": {
-                      "$item": "Phone"
-                    }
-                  }
-                }
+                "value": { "$computed": "identity", "args": { "value": { "$item": "Phone" } } }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/billingState",
+                "value": { "$computed": "identity", "args": { "value": { "$item": "BillingState" } } }
               }
             },
             {
               "action": "setState",
               "params": {
                 "statePath": "/ui/sel/website",
-                "value": {
-                  "$computed": "identity",
-                  "args": {
-                    "value": {
-                      "$item": "Website"
-                    }
-                  }
-                }
+                "value": { "$computed": "identity", "args": { "value": { "$item": "Website" } } }
               }
             },
             {
               "action": "setState",
               "params": {
                 "statePath": "/ui/sel/revenue",
-                "value": {
-                  "$computed": "identity",
-                  "args": {
-                    "value": {
-                      "$item": "AnnualRevenue"
-                    }
-                  }
-                }
+                "value": { "$computed": "identity", "args": { "value": { "$item": "AnnualRevenue" } } }
               }
             }
           ]
@@ -475,11 +411,7 @@
         "props": {
           "initials": {
             "$computed": "initials",
-            "args": {
-              "value": {
-                "$item": "Name"
-              }
-            }
+            "args": { "value": { "$item": "Name" } }
           },
           "size": "md"
         }
@@ -498,9 +430,7 @@
       "rowName": {
         "type": "Text",
         "props": {
-          "text": {
-            "$item": "Name"
-          },
+          "text": { "$item": "Name" },
           "size": "sm",
           "weight": "medium",
           "truncate": true
@@ -509,40 +439,44 @@
       "rowIndustry": {
         "type": "Text",
         "props": {
-          "text": {
-            "$item": "Industry"
-          },
+          "text": { "$item": "Industry" },
           "size": "xs",
           "tone": "muted",
           "truncate": true
         },
-        "visible": {
-          "$item": "Industry"
-        }
+        "visible": { "$item": "Industry" }
+      },
+      "rowPhone": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "Phone" },
+          "size": "xs",
+          "tone": "muted",
+          "truncate": true
+        },
+        "visible": { "$item": "Phone" }
+      },
+      "rowState": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "BillingState" },
+          "size": "xs",
+          "tone": "muted",
+          "truncate": true
+        },
+        "visible": { "$item": "BillingState" }
       },
       "rowType": {
         "type": "Badge",
         "props": {
-          "text": {
-            "$item": "Type"
-          },
+          "text": { "$item": "Type" },
           "tone": {
             "$computed": "salesforce_account_type_tone",
-            "args": {
-              "value": {
-                "$item": "Type"
-              }
-            }
+            "args": { "value": { "$item": "Type" } }
           },
           "variant": "soft"
         },
-        "visible": {
-          "$item": "Type"
-        }
-      },
-      "rowDivider": {
-        "type": "Divider",
-        "props": {}
+        "visible": { "$item": "Type" }
       },
       "detailOverlay": {
         "type": "Overlay",
@@ -595,21 +529,15 @@
       "detailName": {
         "type": "Heading",
         "props": {
-          "text": {
-            "$state": "/ui/sel/name"
-          },
+          "text": { "$state": "/ui/sel/name" },
           "level": "h3"
         }
       },
       "detailTypeBadge": {
         "type": "Badge",
         "props": {
-          "text": {
-            "$state": "/ui/sel/type"
-          },
-          "tone": {
-            "$state": "/ui/sel/typeTone"
-          }
+          "text": { "$state": "/ui/sel/type" },
+          "tone": { "$state": "/ui/sel/typeTone" }
         }
       },
       "detailCloseX": {
@@ -638,53 +566,23 @@
       },
       "metaTypeCell": {
         "type": "Stack",
-        "props": {
-          "gap": "xxs"
-        },
-        "children": [
-          "metaTypeLbl",
-          "metaTypeVal"
-        ]
+        "props": { "gap": "xxs" },
+        "children": [ "metaTypeLbl", "metaTypeVal" ]
       },
-      "metaTypeLbl": {
-        "type": "Caption",
-        "props": {
-          "text": "Type"
-        }
-      },
+      "metaTypeLbl": { "type": "Caption", "props": { "text": "Type" } },
       "metaTypeVal": {
         "type": "Text",
-        "props": {
-          "text": {
-            "$state": "/ui/sel/type"
-          },
-          "size": "sm"
-        }
+        "props": { "text": { "$state": "/ui/sel/type" }, "size": "sm" }
       },
       "metaIndustryCell": {
         "type": "Stack",
-        "props": {
-          "gap": "xxs"
-        },
-        "children": [
-          "metaIndustryLbl",
-          "metaIndustryVal"
-        ]
+        "props": { "gap": "xxs" },
+        "children": [ "metaIndustryLbl", "metaIndustryVal" ]
       },
-      "metaIndustryLbl": {
-        "type": "Caption",
-        "props": {
-          "text": "Industry"
-        }
-      },
+      "metaIndustryLbl": { "type": "Caption", "props": { "text": "Industry" } },
       "metaIndustryVal": {
         "type": "Text",
-        "props": {
-          "text": {
-            "$state": "/ui/sel/industry"
-          },
-          "size": "sm"
-        }
+        "props": { "text": { "$state": "/ui/sel/industry" }, "size": "sm" }
       },
       "detailContact": {
         "type": "Grid",
@@ -694,85 +592,52 @@
         },
         "children": [
           "metaOwnerCell",
-          "metaPhoneCell"
+          "metaPhoneCell",
+          "metaBillingStateCell"
         ]
       },
       "metaOwnerCell": {
         "type": "Stack",
-        "props": {
-          "gap": "xxs"
-        },
-        "children": [
-          "metaOwnerLbl",
-          "metaOwnerVal"
-        ]
+        "props": { "gap": "xxs" },
+        "children": [ "metaOwnerLbl", "metaOwnerVal" ]
       },
-      "metaOwnerLbl": {
-        "type": "Caption",
-        "props": {
-          "text": "Account Owner"
-        }
-      },
+      "metaOwnerLbl": { "type": "Caption", "props": { "text": "Account Owner" } },
       "metaOwnerVal": {
         "type": "Text",
-        "props": {
-          "text": {
-            "$state": "/ui/sel/owner"
-          },
-          "size": "sm"
-        }
+        "props": { "text": { "$state": "/ui/sel/owner" }, "size": "sm" }
       },
       "metaPhoneCell": {
         "type": "Stack",
-        "props": {
-          "gap": "xxs"
-        },
-        "children": [
-          "metaPhoneLbl",
-          "metaPhoneVal"
-        ]
+        "props": { "gap": "xxs" },
+        "children": [ "metaPhoneLbl", "metaPhoneVal" ]
       },
-      "metaPhoneLbl": {
-        "type": "Caption",
-        "props": {
-          "text": "Phone"
-        }
-      },
+      "metaPhoneLbl": { "type": "Caption", "props": { "text": "Phone" } },
       "metaPhoneVal": {
         "type": "Text",
-        "props": {
-          "text": {
-            "$state": "/ui/sel/phone"
-          },
-          "size": "sm"
-        }
+        "props": { "text": { "$state": "/ui/sel/phone" }, "size": "sm" }
+      },
+      "metaBillingStateCell": {
+        "type": "Stack",
+        "props": { "gap": "xxs" },
+        "children": [ "metaBillingStateLbl", "metaBillingStateVal" ]
+      },
+      "metaBillingStateLbl": { "type": "Caption", "props": { "text": "Billing State" } },
+      "metaBillingStateVal": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/sel/billingState" }, "size": "sm" }
       },
       "detailRevRow": {
         "type": "Stack",
-        "props": {
-          "gap": "xxs"
-        },
-        "children": [
-          "metaRevLbl",
-          "metaRevVal"
-        ]
+        "props": { "gap": "xxs" },
+        "children": [ "metaRevLbl", "metaRevVal" ]
       },
-      "metaRevLbl": {
-        "type": "Caption",
-        "props": {
-          "text": "Annual Revenue"
-        }
-      },
+      "metaRevLbl": { "type": "Caption", "props": { "text": "Annual Revenue" } },
       "metaRevVal": {
         "type": "Text",
         "props": {
           "text": {
             "$computed": "format_currency",
-            "args": {
-              "value": {
-                "$state": "/ui/sel/revenue"
-              }
-            }
+            "args": { "value": { "$state": "/ui/sel/revenue" } }
           },
           "size": "sm",
           "weight": "medium"
@@ -780,15 +645,9 @@
       },
       "detailWebsiteRow": {
         "type": "Row",
-        "props": {
-          "justify": "end"
-        },
-        "children": [
-          "detailWebsiteBtn"
-        ],
-        "visible": {
-          "$state": "/ui/sel/website"
-        }
+        "props": { "justify": "end" },
+        "children": [ "detailWebsiteBtn" ],
+        "visible": { "$state": "/ui/sel/website" }
       },
       "detailWebsiteBtn": {
         "type": "Button",
@@ -801,11 +660,7 @@
         "on": {
           "click": {
             "action": "open_url",
-            "params": {
-              "url": {
-                "$state": "/ui/sel/website"
-              }
-            }
+            "params": { "url": { "$state": "/ui/sel/website" } }
           }
         }
       }
