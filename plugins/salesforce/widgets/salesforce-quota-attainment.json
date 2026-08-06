@@ -1,0 +1,151 @@
+{
+  "id": "salesforce-quota-attainment",
+  "title": "Quota Attainment",
+  "description": "Sales rep quota attainment for the current fiscal quarter — closed amount vs. per-rep quota with ProgressBars and tone badges.",
+  "category": "sales",
+  "tags": ["salesforce", "crm", "quota", "attainment", "sales", "reps", "forecast"],
+  "keywords": ["quota", "attainment", "sales rep", "closed", "forecast", "target", "salesforce", "crm"],
+  "connectorsUsed": ["salesforce"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 7 },
+    "min":       { "colSpan": 4, "rowSpan": 5 },
+    "max":       { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "salesforce",
+    "tool": "soql_query",
+    "params": {
+      "query": "SELECT OwnerId, Owner.Name, Owner.FirstName, Owner.LastName, Amount FROM Opportunity WHERE IsClosed = true AND IsWon = true AND CloseDate = THIS_FISCAL_QUARTER ORDER BY OwnerId LIMIT 200"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "colHeader", "divider", "scrollBody"],
+        "watch": {
+          "/salesforce/soql_query/records": [
+            { "action": "setState", "params": { "statePath": "/ui/repRows", "value": { "$computed": "salesforce_flatten_quota_attainment", "args": { "value": { "$state": "/salesforce/soql_query/records" }, "quota": 100000 } } } }
+          ]
+        }
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Target", "tone": "accent", "size": "sm" } },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title":   { "type": "Heading", "props": { "text": "Quota Attainment", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Salesforce · This Fiscal Quarter" } },
+
+      "colHeader": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["colRep", "colAttain"],
+        "visible": { "$and": [{ "$state": "/_loading/salesforce.soql_query", "not": true }, { "$state": "/ui/repRows/0" }] }
+      },
+      "colRep":    { "type": "Caption", "props": { "text": "Rep / closed vs quota" } },
+      "colAttain": { "type": "Caption", "props": { "text": "Attainment" } },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "scrollBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "repList"]
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/salesforce.soql_query" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No closed opportunities this fiscal quarter." },
+        "visible": { "$and": [{ "$state": "/_loading/salesforce.soql_query", "not": true }, { "$state": "/ui/repRows/0", "not": true }] }
+      },
+
+      "repList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["repRow"],
+        "repeat": { "statePath": "/ui/repRows", "key": "id" },
+        "visible": { "$and": [{ "$state": "/_loading/salesforce.soql_query", "not": true }, { "$state": "/ui/repRows/0" }] }
+      },
+
+      "repRow": {
+        "type": "Row",
+        "props": { "align": "start" },
+        "children": ["repLeft", "repRight"]
+      },
+      "repLeft": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "grow": true },
+        "children": ["repAv", "repBody"]
+      },
+      "repAv": {
+        "type": "Avatar",
+        "props": { "initials": { "$item": "initials" }, "size": "md" }
+      },
+      "repBody": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["repName", "repQuota", "repBarRow"]
+      },
+      "repName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "repQuota": {
+        "type": "Text",
+        "props": { "text": { "$item": "quota_line" }, "size": "xs", "tone": "muted", "truncate": true }
+      },
+      "repBarRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["repBar", "repBarVal"]
+      },
+      "repBar": {
+        "type": "ProgressBar",
+        "props": { "value": { "$item": "bar_value" }, "max": 100, "tone": { "$item": "tone" } }
+      },
+      "repBarVal": {
+        "type": "Caption",
+        "props": { "text": { "$item": "pct_label" } }
+      },
+      "repRight": {
+        "type": "Stack",
+        "props": { "gap": "none", "align": "end" },
+        "children": ["repBadge"]
+      },
+      "repBadge": {
+        "type": "Badge",
+        "props": { "text": { "$item": "badge" }, "tone": { "$item": "tone" }, "variant": "soft" }
+      }
+
+    }
+  },
+  "status": "published"
+}
