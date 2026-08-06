@@ -200,13 +200,15 @@ const flatten_quota_attainment = (args) => {
 };
 /**
  * Flatten aggregate SOQL records grouped by a state/region field into display rows.
- * Each row gets a bar_value relative to the highest-count state (not total), so bars
- * reflect visual proportion rather than absolute percentage.
+ * Returns { id, value, count, percentage } matching the HubSpot counts shape so
+ * insight functions and widget bindings are consistent across connectors.
+ * Note: SOQL cannot alias non-aggregate GROUP BY fields, so the stateField must be
+ * the raw API name (e.g. "MailingState") — the function renames it to "value" in output.
  *
  * Args:
  *   value      — aggregate records array, e.g. [{ MailingState: "NSW", cnt: 128 }, ...]
  *   stateField — field name for the state/region (default "MailingState")
- *   countField — field name for the count (default "cnt")
+ *   countField — field name for the count alias (default "cnt")
  *
  * Spec example:
  *   { "$computed": "salesforce_flatten_by_state", "args": { "value": { "$state": "/salesforce/soql_query/records" } } }
@@ -218,20 +220,73 @@ const flatten_by_state = (args) => {
     const stateField = String(args.stateField ?? 'MailingState');
     const countField = String(args.countField ?? 'cnt');
     const total = records.reduce((s, r) => s + Number(r[countField] ?? 0), 0);
-    const max = Math.max(...records.map(r => Number(r[countField] ?? 0)));
     return records.map((r, i) => {
-        const state = String(r[stateField] ?? '');
+        const value = String(r[stateField] ?? '');
         const count = Number(r[countField] ?? 0);
-        const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-        const barValue = max > 0 ? Math.round((count / max) * 100) : 0;
+        const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
         return {
-            id: state || String(i),
-            state,
+            id: value || String(i),
+            value,
             count,
-            bar_value: barValue,
-            count_label: `${count}  ${pct}%`,
+            percentage,
         };
     });
+};
+/**
+ * Sum the count field across all aggregate SOQL state-grouped records.
+ * Used to populate /ui/stateTotal for the subtitle and percentage calculations.
+ *
+ * Args:
+ *   value      — aggregate records array
+ *   countField — field name for the count alias (default "cnt")
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_state_total", "args": { "value": { "$state": "/salesforce/soql_query/records" } } }
+ */
+const state_total = (args) => {
+    const records = Array.isArray(args.value) ? args.value : [];
+    const countField = String(args.countField ?? 'cnt');
+    return records.reduce((s, r) => s + Number(r[countField] ?? 0), 0);
+};
+/**
+ * Top-2 state membership insight. Mirrors hubspot_membership_state_insight.
+ * Args: { counts: Array<{ value: string, count: number, percentage: number }>, total: number }
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_membership_state_insight", "args": { "counts": { "$state": "/ui/stateRows" }, "total": { "$state": "/ui/stateTotal" } } }
+ */
+const membership_state_insight = (args) => {
+    const counts = Array.isArray(args.counts) ? args.counts : [];
+    const total = typeof args.total === 'number' ? args.total : 0;
+    const named = counts.filter(c => String(c.value ?? '') !== '(not set)');
+    if (named.length === 0 || total <= 0)
+        return 'Not enough data yet to surface a membership insight.';
+    const top = named.slice(0, 2);
+    const combinedCount = top.reduce((sum, c) => sum + Number(c.count ?? 0), 0);
+    const combinedPct = Math.round((combinedCount / total) * 100);
+    const names = top.map(c => String(c.value ?? '')).join(' and ');
+    const verb = top.length > 1 ? 'account for' : 'accounts for';
+    return `${names} ${verb} ${combinedPct}% of total membership.`;
+};
+/**
+ * Bottom-2 state growth opportunity insight. Mirrors hubspot_membership_growth_insight.
+ * Only returns a sentence when there are 3+ distinct states.
+ * Args: { counts: Array<{ value: string, count: number, percentage: number }>, total: number }
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_membership_growth_insight", "args": { "counts": { "$state": "/ui/stateRows" }, "total": { "$state": "/ui/stateTotal" } } }
+ */
+const membership_growth_insight = (args) => {
+    const counts = Array.isArray(args.counts) ? args.counts : [];
+    const total = typeof args.total === 'number' ? args.total : 0;
+    const named = counts.filter(c => String(c.value ?? '') !== '(not set)');
+    if (named.length < 3 || total <= 0)
+        return '';
+    const lowest = named.slice(-2);
+    const names = lowest.map(c => String(c.value ?? '')).join(' and ');
+    const combinedPct = Math.round(lowest.reduce((sum, c) => sum + Number(c.percentage ?? 0), 0));
+    const verb = lowest.length > 1 ? 'have' : 'has';
+    return `${names} ${verb} the smallest share (~${combinedPct}% combined) — potential outreach targets.`;
 };
 /**
  * Compute summary stats for a state breakdown: subtitle text and top-2 insight string.
@@ -273,6 +328,6 @@ const state_summary = (args) => {
 };
 const elements = {
     slug: 'salesforce',
-    functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_summary },
+    functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight },
 };
 export default elements;
