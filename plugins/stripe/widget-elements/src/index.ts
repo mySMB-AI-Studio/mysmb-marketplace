@@ -253,17 +253,22 @@ function toMonthlyCents(item: Record<string, unknown>): number {
 const calc_mrr: ComputedFunction = (args) => {
   const subs = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
   let totalCents = 0;
+  let currency = 'usd';
   for (const sub of subs) {
     const items = ((sub.items as Record<string, unknown>)?.data as Record<string, unknown>[]) ?? [];
-    for (const item of items) totalCents += toMonthlyCents(item);
+    for (const item of items) {
+      totalCents += toMonthlyCents(item);
+      const price = (item.price as Record<string, unknown>) ?? {};
+      if (price.currency) currency = String(price.currency);
+    }
   }
-  return format_currency({ amount: totalCents, currency: 'aud' });
+  return format_currency({ amount: totalCents, currency });
 };
 
 // ── flatten_subscriptions ─────────────────────────────────────────────────────
 // Pre-process raw expanded Stripe subscription objects into display-ready rows.
 // Resolves expanded customer/product objects to plain strings.
-// Args: { value: raw subscription array }
+// Args: { value: raw subscription array, key: sort key e.g. "customer_name|asc" }
 // Returns: display row array
 function formatSubscriptionStatusLabel(status: string): string {
   switch (status.toLowerCase()) {
@@ -281,8 +286,10 @@ function formatSubscriptionStatusLabel(status: string): string {
 
 const flatten_subscriptions: ComputedFunction = (args) => {
   const subs = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  const keyStr = String(args.key ?? 'customer_name|asc');
+  const [field, dir] = keyStr.split('|');
 
-  return subs.map(sub => {
+  const rows = subs.map(sub => {
     const customer = sub.customer;
     let customerName = '';
     let customerEmail = '';
@@ -303,7 +310,12 @@ const flatten_subscriptions: ComputedFunction = (args) => {
     }
 
     let subCents = 0;
-    for (const item of items) subCents += toMonthlyCents(item);
+    let currency = 'usd';
+    for (const item of items) {
+      subCents += toMonthlyCents(item);
+      const itemPrice = (item.price as Record<string, unknown>) ?? {};
+      if (itemPrice.currency) currency = String(itemPrice.currency);
+    }
 
     const status = String(sub.status ?? '');
 
@@ -312,12 +324,21 @@ const flatten_subscriptions: ComputedFunction = (args) => {
       customer_name:      customerName,
       customer_email:     customerEmail,
       plan_name:          planName,
-      amount:             format_currency({ amount: subCents, currency: 'aud' }),
+      amount:             format_currency({ amount: subCents, currency }),
       current_period_end: typeof sub.current_period_end === 'number' ? sub.current_period_end : 0,
       status,
       status_label:       formatSubscriptionStatusLabel(status),
     };
   });
+
+  rows.sort((a, b) => {
+    const aVal = String((a as Record<string, unknown>)[field] ?? '').toLowerCase();
+    const bVal = String((b as Record<string, unknown>)[field] ?? '').toLowerCase();
+    const cmp = aVal.localeCompare(bVal);
+    return dir === 'desc' ? -cmp : cmp;
+  });
+
+  return rows;
 };
 
 // ── flatten_payments ──────────────────────────────────────────────────────────

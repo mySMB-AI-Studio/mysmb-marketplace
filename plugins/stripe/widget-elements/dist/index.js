@@ -250,17 +250,22 @@ function toMonthlyCents(item) {
 const calc_mrr = (args) => {
     const subs = Array.isArray(args.value) ? args.value : [];
     let totalCents = 0;
+    let currency = 'usd';
     for (const sub of subs) {
         const items = sub.items?.data ?? [];
-        for (const item of items)
+        for (const item of items) {
             totalCents += toMonthlyCents(item);
+            const price = item.price ?? {};
+            if (price.currency)
+                currency = String(price.currency);
+        }
     }
-    return format_currency({ amount: totalCents, currency: 'aud' });
+    return format_currency({ amount: totalCents, currency });
 };
 // ── flatten_subscriptions ─────────────────────────────────────────────────────
 // Pre-process raw expanded Stripe subscription objects into display-ready rows.
 // Resolves expanded customer/product objects to plain strings.
-// Args: { value: raw subscription array }
+// Args: { value: raw subscription array, key: sort key e.g. "customer_name|asc" }
 // Returns: display row array
 function formatSubscriptionStatusLabel(status) {
     switch (status.toLowerCase()) {
@@ -277,7 +282,9 @@ function formatSubscriptionStatusLabel(status) {
 }
 const flatten_subscriptions = (args) => {
     const subs = Array.isArray(args.value) ? args.value : [];
-    return subs.map(sub => {
+    const keyStr = String(args.key ?? 'customer_name|asc');
+    const [field, dir] = keyStr.split('|');
+    const rows = subs.map(sub => {
         const customer = sub.customer;
         let customerName = '';
         let customerEmail = '';
@@ -297,20 +304,32 @@ const flatten_subscriptions = (args) => {
             planName = String(product.name ?? price.nickname ?? price.id ?? '');
         }
         let subCents = 0;
-        for (const item of items)
+        let currency = 'usd';
+        for (const item of items) {
             subCents += toMonthlyCents(item);
+            const itemPrice = item.price ?? {};
+            if (itemPrice.currency)
+                currency = String(itemPrice.currency);
+        }
         const status = String(sub.status ?? '');
         return {
             id: String(sub.id ?? ''),
             customer_name: customerName,
             customer_email: customerEmail,
             plan_name: planName,
-            amount: format_currency({ amount: subCents, currency: 'aud' }),
+            amount: format_currency({ amount: subCents, currency }),
             current_period_end: typeof sub.current_period_end === 'number' ? sub.current_period_end : 0,
             status,
             status_label: formatSubscriptionStatusLabel(status),
         };
     });
+    rows.sort((a, b) => {
+        const aVal = String(a[field] ?? '').toLowerCase();
+        const bVal = String(b[field] ?? '').toLowerCase();
+        const cmp = aVal.localeCompare(bVal);
+        return dir === 'desc' ? -cmp : cmp;
+    });
+    return rows;
 };
 // ── flatten_payments ──────────────────────────────────────────────────────────
 // Pre-process expanded Stripe PaymentIntent objects into display-ready rows.
