@@ -26,7 +26,6 @@
         "children": ["header", "kpiRow", "divider", "body"],
         "watch": {
           "/stripe/list_subscriptions/data": [
-            { "action": "setState", "params": { "statePath": "/ui/sortKey", "value": "customer_name|asc" } },
             { "action": "setState", "params": { "statePath": "/ui/subRows", "value": { "$computed": "stripe_flatten_subscriptions", "args": { "value": { "$state": "/stripe/list_subscriptions/data" }, "key": "customer_name|asc" } } } }
           ],
           "/ui/sortKey": [
@@ -133,5 +132,6 @@
         }
       }
     }
-  }
+  },
+  "status": "published"
 }
