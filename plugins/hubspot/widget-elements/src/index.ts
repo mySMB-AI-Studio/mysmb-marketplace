@@ -2,7 +2,30 @@ import type { ComputedFunction, PluginElementsModule } from './types';
 
 /**
  * Map a HubSpot ticket's `hs_ticket_priority` value to a semantic badge tone.
- * "HIGH" → "destructive", "MEDIUM" → "warning", "LOW" (or anything else) → "neutral".
+ * Follows TILE-DISPLAY-STANDARDS.md §6's reference model (WorkQ's
+ * todo_priority_tone): destructive for the most severe/urgent, warning for
+ * elevated, muted for normal/default — deliberately NOT `success` for LOW,
+ * even though HubSpot's own dashboard shows a green dot there. `success`
+ * means done/paid/completed platform-wide; "low priority" is neither, and
+ * borrowing it here would misleadingly read as "resolved." (Considered and
+ * rejected matching HubSpot's own UI exactly — see §6 "Matching a
+ * connector's own source UI" for why platform consistency won here.)
+ *
+ * Must be a real `Tone` — this used to return "neutral" for LOW, which
+ * isn't a valid tone key, so the LOW badge silently rendered with no
+ * background/text color at all (not a wrong color — no color, no pill).
+ *
+ * `muted` itself is confirmed correct semantically (matches WorkQ's own
+ * `todo_priority_tone`, which also uses `muted` for low/normal priority).
+ * The shared widget-tiles `Badge` component's `soft` variant for `muted`
+ * used to render as effectively invisible in both light and dark mode
+ * (confirmed by direct visual check) — root-caused against WorkQ's own
+ * working priority pill and fixed directly in the shared `Badge` component
+ * (`myHubV2/apps/web/src/features/widgets-system/system/components.tsx`),
+ * not worked around here. This tile relies on that platform fix; until it's
+ * promoted through myHubV2's own release pipeline, the badge will render
+ * correctly in the harness/dev but not yet in a live tenant — acceptable
+ * for now since this tile isn't in active use yet.
  *
  * Args: { value: string }
  *
@@ -13,7 +36,34 @@ const ticket_priority_tone: ComputedFunction = (args) => {
   const v = String(args.value ?? '').toUpperCase();
   if (v === 'HIGH' || v === 'URGENT') return 'destructive';
   if (v === 'MEDIUM') return 'warning';
-  return 'neutral';
+  return 'muted';
+};
+
+/**
+ * Title-cases a HubSpot ticket's raw `hs_ticket_priority` value for display
+ * ("LOW" → "Low", "URGENT" → "Urgent"), matching WorkQ's status_label /
+ * priority_label convention (TILE-DISPLAY-STANDARDS.md §3). Capitalizes
+ * every word, not just the first — HubSpot priority values are single
+ * words today, but this is held up as the reference `<connector>_<field>_label`
+ * pattern for other connectors' multi-word statuses to copy, so it needs to
+ * be genuinely correct Title Case, not a sentence-case shortcut that happens
+ * to look right only because this particular field has no multi-word values.
+ * Kept separate from `ticket_priority_tone`, which keeps matching against
+ * the raw uppercase value regardless of display casing.
+ *
+ * Args: { value: string }
+ *
+ * Spec example:
+ *   { "$computed": "hubspot_ticket_priority_label", "args": { "value": { "$item": "properties/hs_ticket_priority" } } }
+ */
+const ticket_priority_label: ComputedFunction = (args) => {
+  const v = String(args.value ?? '');
+  if (!v) return v;
+  return v
+    .toLowerCase()
+    .split(' ')
+    .map((word) => (word ? word[0].toUpperCase() + word.slice(1) : word))
+    .join(' ');
 };
 
 // Standard HubSpot default Sales pipeline stage internal IDs → display label /
@@ -107,6 +157,89 @@ const TICKET_STAGE_LABELS: Record<string, string> = {
 const ticket_stage_label: ComputedFunction = (args) => {
   const v = String(args.value ?? '');
   return TICKET_STAGE_LABELS[v] ?? v;
+};
+
+/**
+ * A HubSpot ticket's `content` (description) property, or a fallback
+ * message when it's blank — most tickets created via forms/chat have one,
+ * but manually-created tickets often don't, and an empty expanded row reads
+ * as broken rather than "there's nothing more to show."
+ *
+ * Args: { value: string }
+ *
+ * Spec example:
+ *   { "$computed": "hubspot_ticket_content_or_fallback", "args": { "value": { "$item": "properties/content" } } }
+ */
+const ticket_content_or_fallback: ComputedFunction = (args) => {
+  const v = String(args.value ?? '').trim();
+  return v || 'No description provided.';
+};
+
+interface HubSpotOwner {
+  id?: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+/**
+ * Resolves a record's `hubspot_owner_id` to a display name, given the full
+ * owners list from `list_owners`. Records only ever store the owner's
+ * internal ID, never a name, so this is always a lookup against that
+ * separately-fetched list (see `list_owners` in the HubSpot MCP server).
+ * Falls back to the owner's email if their name fields are blank, and to
+ * "Unassigned" if the record has no owner set OR the owners list hasn't
+ * resolved it yet (visibility conditions can't gate on a $computed result,
+ * so this always returns a real string rather than '' — a brief incorrect
+ * "Unassigned" during the one-time owners fetch self-corrects the moment it
+ * lands, which reads better than an empty line).
+ *
+ * Args: { ownerId: string, owners: HubSpotOwner[] }
+ *
+ * Spec example:
+ *   {
+ *     "$computed": "hubspot_ticket_owner_name",
+ *     "args": {
+ *       "ownerId": { "$item": "properties/hubspot_owner_id" },
+ *       "owners": { "$state": "/hubspot/list_owners/items" }
+ *     }
+ *   }
+ */
+const ticket_owner_name: ComputedFunction = (args) => {
+  const ownerId = String(args.ownerId ?? '');
+  if (!ownerId) return 'Unassigned';
+  const owners = Array.isArray(args.owners) ? (args.owners as HubSpotOwner[]) : [];
+  const owner = owners.find((o) => o && String(o.id) === ownerId);
+  if (!owner) return 'Unassigned';
+  const name = [owner.firstName, owner.lastName].filter(Boolean).join(' ').trim();
+  return name || owner.email || 'Unassigned';
+};
+
+const MONTH_ABBR = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+/**
+ * Formats a HubSpot date/datetime property as `dd-Mmm-yy` (e.g. "05-Aug-26"),
+ * the standard date format agreed across all tiles. Returns '' for a
+ * missing/unparseable value rather than "Invalid Date".
+ *
+ * Args: { value: string }
+ *
+ * Spec example:
+ *   { "$computed": "hubspot_format_date", "args": { "value": { "$item": "properties/createdate" } } }
+ */
+const format_date: ComputedFunction = (args) => {
+  const raw = args.value;
+  if (!raw) return '';
+  const ms = Date.parse(String(raw));
+  if (Number.isNaN(ms)) return '';
+  const d = new Date(ms);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = MONTH_ABBR[d.getMonth()];
+  const year = String(d.getFullYear()).slice(-2);
+  return `${day}-${month}-${year}`;
 };
 
 interface StateCount {
@@ -251,6 +384,10 @@ const elements: PluginElementsModule = {
   slug: 'hubspot',
   functions: {
     ticket_priority_tone,
+    ticket_priority_label,
+    ticket_content_or_fallback,
+    ticket_owner_name,
+    format_date,
     membership_state_insight,
     membership_growth_insight,
     remaining_members_note,
