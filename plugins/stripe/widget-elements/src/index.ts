@@ -258,8 +258,6 @@ const calc_mrr: ComputedFunction = (args) => {
     const items = ((sub.items as Record<string, unknown>)?.data as Record<string, unknown>[]) ?? [];
     for (const item of items) {
       totalCents += toMonthlyCents(item);
-      const price = (item.price as Record<string, unknown>) ?? {};
-      if (price.currency) currency = String(price.currency);
     }
   }
   return format_currency({ amount: totalCents, currency });
@@ -310,11 +308,8 @@ const flatten_subscriptions: ComputedFunction = (args) => {
     }
 
     let subCents = 0;
-    let currency = 'usd';
     for (const item of items) {
       subCents += toMonthlyCents(item);
-      const itemPrice = (item.price as Record<string, unknown>) ?? {};
-      if (itemPrice.currency) currency = String(itemPrice.currency);
     }
 
     const status = String(sub.status ?? '');
