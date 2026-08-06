@@ -253,16 +253,13 @@ function toMonthlyCents(item: Record<string, unknown>): number {
 const calc_mrr: ComputedFunction = (args) => {
   const subs = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
   let totalCents = 0;
-  let currency = 'usd';
   for (const sub of subs) {
     const items = ((sub.items as Record<string, unknown>)?.data as Record<string, unknown>[]) ?? [];
     for (const item of items) {
       totalCents += toMonthlyCents(item);
-      const price = (item.price as Record<string, unknown>) ?? {};
-      if (price.currency) currency = String(price.currency);
     }
   }
-  return format_currency({ amount: totalCents, currency });
+  return format_currency({ amount: totalCents, currency: 'aud' });
 };
 
 // ── flatten_subscriptions ─────────────────────────────────────────────────────
@@ -310,11 +307,8 @@ const flatten_subscriptions: ComputedFunction = (args) => {
     }
 
     let subCents = 0;
-    let currency = 'usd';
     for (const item of items) {
       subCents += toMonthlyCents(item);
-      const itemPrice = (item.price as Record<string, unknown>) ?? {};
-      if (itemPrice.currency) currency = String(itemPrice.currency);
     }
 
     const status = String(sub.status ?? '');
@@ -324,7 +318,7 @@ const flatten_subscriptions: ComputedFunction = (args) => {
       customer_name:      customerName,
       customer_email:     customerEmail,
       plan_name:          planName,
-      amount:             format_currency({ amount: subCents, currency }),
+      amount:             format_currency({ amount: subCents, currency: 'aud' }),
       current_period_end: typeof sub.current_period_end === 'number' ? sub.current_period_end : 0,
       status,
       status_label:       formatSubscriptionStatusLabel(status),
