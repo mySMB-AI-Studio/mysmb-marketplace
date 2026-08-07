@@ -79,11 +79,17 @@ const DEAL_STAGE_LABELS = {
     closedwon: 'Closed Won',
     closedlost: 'Closed Lost',
 };
+// `accent` used to be here for presentationscheduled/decisionmakerboughtin --
+// it's a near-invisible menu-hover gray in the real theme, not a display
+// color (same root cause as the Membership-by-State bar bug and the
+// Support Tickets priority-pill bug). Both stages now use `info`, matching
+// qualifiedtobuy -- all three represent "actively progressing, not yet at
+// contract stage", escalating to `warning` right before close.
 const DEAL_STAGE_TONES = {
     appointmentscheduled: 'muted',
     qualifiedtobuy: 'info',
-    presentationscheduled: 'accent',
-    decisionmakerboughtin: 'accent',
+    presentationscheduled: 'info',
+    decisionmakerboughtin: 'info',
     contractsent: 'warning',
     closedwon: 'success',
     closedlost: 'destructive',
@@ -317,14 +323,17 @@ const remaining_members_note = (args) => {
     const remaining = count - shown;
     return remaining > 0 ? `+${remaining} more` : '';
 };
-// Fixed cycle of Badge/Dot tones. Used for rank-based (position-in-list)
-// coloring when the underlying values are portal-defined labels with no
-// standard vocabulary to look up by name (e.g. membership category names
-// vary far more across portals than something like AU state abbreviations
-// or HubSpot's own default deal-stage IDs) — so we color by the row's
-// position in the (already count-descending-sorted) list instead of trying
-// to match specific category names.
-const RANK_TONE_CYCLE = ['accent', 'info', 'success', 'warning', 'destructive', 'muted'];
+// Fixed cycle of Dot tones. Used for rank-based (position-in-list) coloring
+// when the underlying values are portal-defined labels with no standard
+// vocabulary to look up by name (e.g. membership category names vary far
+// more across portals than something like AU state abbreviations or
+// HubSpot's own default deal-stage IDs) — so we color by the row's position
+// in the (already count-descending-sorted) list instead of trying to match
+// specific category names. Uses the categorical `chart-1..5` tones, not
+// status tones like `warning`/`destructive` — a category ranked 4th or 5th
+// isn't an error or a caution, just less common (TILE-DISPLAY-STANDARDS.md,
+// "Decorative color").
+const RANK_TONE_CYCLE = ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5'];
 /**
  * Colors a `count_objects_by_property` row by its position in the list
  * (already sorted descending by count) rather than by matching its value
@@ -351,6 +360,33 @@ const category_rank_tone = (args) => {
         return 'muted';
     return RANK_TONE_CYCLE[index % RANK_TONE_CYCLE.length];
 };
+/**
+ * Adds a combined `properties.full_name` field to each HubSpot contact,
+ * for a `Table` column to bind to directly -- `Table`'s `field` is a single
+ * dotted path into the row object, it can't combine two fields into one
+ * cell the way a `$computed` prop binding can. Falls back to "(no name)"
+ * when both firstname and lastname are blank, rather than an empty cell
+ * that reads as a loading/data problem.
+ *
+ * Args: { items: HubSpotContactLike[] }
+ *
+ * Spec example:
+ *   {
+ *     "$computed": "hubspot_contacts_with_full_name",
+ *     "args": { "items": { "$state": "/hubspot/search_contacts/items" } }
+ *   }
+ */
+const contacts_with_full_name = (args) => {
+    const items = Array.isArray(args.items) ? args.items : [];
+    return items.map((item) => {
+        const props = item.properties ?? {};
+        const fullName = [props.firstname, props.lastname].filter(Boolean).join(' ').trim();
+        return {
+            ...item,
+            properties: { ...props, full_name: fullName || '(no name)' },
+        };
+    });
+};
 const elements = {
     slug: 'hubspot',
     functions: {
@@ -359,6 +395,7 @@ const elements = {
         ticket_content_or_fallback,
         ticket_owner_name,
         format_date,
+        contacts_with_full_name,
         membership_state_insight,
         membership_growth_insight,
         remaining_members_note,
