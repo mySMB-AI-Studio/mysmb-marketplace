@@ -153,7 +153,7 @@ const format_stripe_date_dmy = (args) => {
     if (!Number.isFinite(ts) || ts === 0)
         return '';
     const d = new Date(ts * 1000);
-    return `${String(d.getDate()).padStart(2, '0')}-${MONTH_ABBR[d.getMonth()]}-${d.getFullYear()}`;
+    return `${String(d.getDate()).padStart(2, '0')}-${MONTH_ABBR[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
 };
 // ── format_stripe_date_short ─────────────────────────────────────────────────
 // Convert a Unix timestamp to a short date string without the year.
@@ -372,7 +372,8 @@ const flatten_payments = (args) => {
         }
         else {
             const types = Array.isArray(pi.payment_method_types) ? pi.payment_method_types : [];
-            method = types[0] ? String(types[0]) : '';
+            const t = types[0] ? String(types[0]) : '';
+            method = t ? t.charAt(0).toUpperCase() + t.slice(1) : '';
         }
         const status = String(pi.status ?? '');
         return {
@@ -380,7 +381,7 @@ const flatten_payments = (args) => {
             customer_name: customerName,
             created_at: createdAt,
             created_ts: created,
-            amount: format_currency({ amount: pi.amount, currency: String(pi.currency ?? 'aud') }),
+            amount: format_currency({ amount: pi.amount, currency: 'aud' }),
             method,
             status,
             status_label: formatPaymentStatusLabel(status),
