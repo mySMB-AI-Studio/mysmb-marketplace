@@ -149,7 +149,7 @@ const format_stripe_date_dmy: ComputedFunction = (args) => {
   const ts = typeof raw === 'number' ? raw : Number(raw);
   if (!Number.isFinite(ts) || ts === 0) return '';
   const d = new Date(ts * 1000);
-  return `${String(d.getDate()).padStart(2, '0')}-${MONTH_ABBR[d.getMonth()]}-${d.getFullYear()}`;
+  return `${String(d.getDate()).padStart(2, '0')}-${MONTH_ABBR[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
 };
 
 // ── format_stripe_date_short ─────────────────────────────────────────────────
@@ -386,7 +386,8 @@ const flatten_payments: ComputedFunction = (args) => {
       method = card.last4 ? `${brandDisplay} ••${card.last4}` : brandDisplay;
     } else {
       const types = Array.isArray(pi.payment_method_types) ? (pi.payment_method_types as string[]) : [];
-      method = types[0] ? String(types[0]) : '';
+      const t = types[0] ? String(types[0]) : '';
+      method = t ? t.charAt(0).toUpperCase() + t.slice(1) : '';
     }
 
     const status = String(pi.status ?? '');
@@ -396,7 +397,7 @@ const flatten_payments: ComputedFunction = (args) => {
       customer_name: customerName,
       created_at: createdAt,
       created_ts: created,
-      amount: format_currency({ amount: pi.amount, currency: String(pi.currency ?? 'aud') }),
+      amount: format_currency({ amount: pi.amount, currency: 'aud' }),
       method,
       status,
       status_label: formatPaymentStatusLabel(status),
