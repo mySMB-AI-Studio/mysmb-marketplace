@@ -1,0 +1,190 @@
+{
+  "id": "xero-pm-recent-time",
+  "title": "Recent Time Entries",
+  "description": "Recent time entries logged in Xero Practice Manager — staff member, job, task, date, duration, and notes.",
+  "category": "project-management",
+  "tags": [
+    "xero",
+    "practice-manager",
+    "xpm",
+    "timesheets",
+    "time-tracking",
+    "accounting-practice"
+  ],
+  "keywords": [
+    "time",
+    "timesheets",
+    "time entries",
+    "hours",
+    "practice manager",
+    "xpm",
+    "xero",
+    "staff",
+    "logged"
+  ],
+  "connectorsUsed": [
+    "xero-practice-manager"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 5
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "xero-practice-manager",
+    "tool": "list_xpm_time",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Clock",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "count"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Recent Time Entries",
+          "level": "h2"
+        }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} entries",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/xero-practice-manager/list_xpm_time/TimeEntries"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "visible": {
+          "$state": "/xero-practice-manager/list_xpm_time/TimeEntries/0"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "timeTable"
+        ]
+      },
+      "timeTable": {
+        "type": "Table",
+        "props": {
+          "loading": {
+            "$state": "/_loading/xero-practice-manager.list_xpm_time"
+          },
+          "skeletonRows": 6,
+          "rows": {
+            "$state": "/xero-practice-manager/list_xpm_time/TimeEntries"
+          },
+          "emptyMessage": "No time entries found.",
+          "columns": [
+            {
+              "id": "staff",
+              "header": "Staff",
+              "field": "Staff/Name",
+              "width": 140,
+              "priority": 1
+            },
+            {
+              "id": "job",
+              "header": "Job",
+              "field": "Job/Name",
+              "width": 150,
+              "priority": 1
+            },
+            {
+              "id": "task",
+              "header": "Task",
+              "field": "Task/Name",
+              "width": 140,
+              "priority": 2
+            },
+            {
+              "id": "date",
+              "header": "Date",
+              "field": "DateUtc",
+              "format": "date",
+              "align": "right",
+              "width": 110,
+              "priority": 2
+            },
+            {
+              "id": "duration",
+              "header": "Hours",
+              "field": "Hours",
+              "align": "right",
+              "width": 80,
+              "priority": 1
+            },
+            {
+              "id": "notes",
+              "header": "Notes",
+              "field": "Notes",
+              "width": 200,
+              "priority": 3
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "id": "stripe-invoices",
+  "title": "Stripe Invoices",
+  "description": "Latest invoices with status badges — quickly see what's paid, open, or overdue.",
+  "category": "payments",
+  "tags": ["stripe", "invoices", "billing", "finance", "payments"],
+  "keywords": ["invoices", "stripe", "billing", "paid", "open", "draft", "uncollectible", "void"],
+  "connectorsUsed": ["stripe"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 5 },
+    "min": { "colSpan": 6, "rowSpan": 4 },
+    "max": { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "stripe",
+    "tool": "list_invoices",
+    "params": { "limit": 20 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"],
+        "watch": {
+          "/stripe/list_invoices/data": [
+            { "action": "setState", "params": { "statePath": "/ui/sortKey", "value": "customer_name|asc" } },
+            { "action": "setState", "params": { "statePath": "/ui/invoiceRows", "value": { "$computed": "stripe_flatten_invoices", "args": { "value": { "$state": "/stripe/list_invoices/data" }, "key": "customer_name|asc" } } } }
+          ],
+          "/ui/sortKey": [
+            { "action": "setState", "params": { "statePath": "/ui/invoiceRows", "value": { "$computed": "stripe_flatten_invoices", "args": { "value": { "$state": "/stripe/list_invoices/data" }, "key": { "$state": "/ui/sortKey" } } } } }
+          ]
+        }
+      },
+      "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
+      "headerRow": { "type": "Row", "props": { "align": "center" }, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "FileText", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Invoices", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Stripe" } },
+      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "listHeader", "list"] },
+      "loading": {
+        "type": "Stack", "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/stripe.list_invoices" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty", "props": { "message": "No invoices found." },
+        "visible": { "$and": [{ "$state": "/_loading/stripe.list_invoices", "not": true }, { "$state": "/stripe/list_invoices/data/0", "not": true }] }
+      },
+      "listHeader": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "template": "minmax(0, 1fr) 7rem 6rem 8rem 9rem" },
+        "children": ["hdrBilledToOuter", "hdrStatus", "hdrAmount", "hdrDueDate", "hdrNumber"],
+        "visible": { "$and": [{ "$state": "/_loading/stripe.list_invoices", "not": true }, { "$state": "/stripe/list_invoices/data/0" }] }
+      },
+      "hdrBilledToOuter": { "type": "Stack", "props": { "align": "start" }, "children": ["hdrBilledToGroup"] },
+      "hdrBilledToGroup": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["hdrBilledTo", "sortBtn"] },
+      "hdrBilledTo": { "type": "Caption", "props": { "text": "Billed to" } },
+      "sortBtn": {
+        "type": "IconButton", "props": { "icon": "ArrowUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Cycle sort order" },
+        "on": { "click": [{ "action": "setState", "params": { "statePath": "/ui/sortKey", "value": { "$computed": "stripe_cycle_sort", "args": { "current": { "$state": "/ui/sortKey" } } } } }] }
+      },
+      "hdrStatus": { "type": "Caption", "props": { "text": "Status" } },
+      "hdrAmount": { "type": "Caption", "props": { "text": "Amount" } },
+      "hdrDueDate": { "type": "Caption", "props": { "text": "Due date" } },
+      "hdrNumber": { "type": "Caption", "props": { "text": "Invoice number" } },
+      "list": {
+        "type": "Stack", "props": { "gap": "xs" },
+        "children": ["invoiceRow"],
+        "repeat": { "statePath": "/ui/invoiceRows", "key": "id" },
+        "visible": { "$and": [{ "$state": "/_loading/stripe.list_invoices", "not": true }, { "$state": "/stripe/list_invoices/data/0" }] }
+      },
+      "invoiceRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "hover": true, "template": "minmax(0, 1fr) 7rem 6rem 8rem 9rem" },
+        "children": ["identity", "statusWrap", "invoiceAmount", "invoiceDueDate", "invoiceNumber"]
+      },
+      "identity": { "type": "Stack", "props": { "gap": "none" }, "children": ["customerName"] },
+      "customerName": {
+        "type": "Text",
+        "props": { "text": { "$item": "customer_name" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "statusWrap": { "type": "Stack", "props": { "align": "start" }, "children": ["statusBadge"] },
+      "statusBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "status_label" },
+          "tone": { "$computed": "stripe_invoice_status_tone", "args": { "status": { "$item": "status" } } },
+          "variant": "soft"
+        }
+      },
+      "invoiceAmount": { "type": "Caption", "props": { "text": { "$item": "amount" } } },
+      "invoiceDueDate": { "type": "Caption", "props": { "text": { "$item": "due_date" } } },
+      "invoiceNumber": { "type": "Caption", "props": { "text": { "$item": "number" }, "truncate": true } }
+    }
+  },
+  "status": "published"
+}

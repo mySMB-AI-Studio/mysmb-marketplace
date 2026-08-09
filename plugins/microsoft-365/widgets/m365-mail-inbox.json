@@ -42,7 +42,8 @@
     "mcp": "m365-mail-read",
     "tool": "list_emails",
     "params": {
-      "limit": 20
+      "folder": "inbox",
+      "limit": 50
     }
   },
   "spec": {
@@ -163,7 +164,7 @@
       "empty": {
         "type": "Empty",
         "props": {
-          "message": "Inbox zero \u2014 enjoy it while it lasts."
+          "message": "Inbox zero — enjoy it while it lasts."
         },
         "visible": {
           "$and": [
@@ -208,10 +209,24 @@
           "unreadDot",
           "avatar",
           "labels",
-          "received"
+          "receivedCol"
         ],
         "on": {
           "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/m365-mail-read/get_email",
+                "value": {}
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/_errors/m365-mail-read.get_email",
+                "value": ""
+              }
+            },
             {
               "action": "setState",
               "params": {
@@ -286,7 +301,7 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{name} \u2014 {subject}",
+              "pattern": "{name} — {subject}",
               "name": {
                 "$item": "from/emailAddress/name"
               },
@@ -355,6 +370,7 @@
         "children": [
           "detailHeader",
           "detailSpinner",
+          "detailError",
           "detailBody"
         ]
       },
@@ -417,13 +433,21 @@
       "detailSpinner": {
         "type": "Spinner",
         "props": {
-          "label": "Loading message\u2026"
+          "label": "Loading message…"
         },
         "visible": {
-          "$state": "/m365-mail-read/get_email/id",
-          "neq": {
-            "$state": "/ui/selectedEmailId"
-          }
+          "$and": [
+            {
+              "$state": "/_errors/m365-mail-read.get_email",
+              "not": true
+            },
+            {
+              "$state": "/m365-mail-read/get_email/id",
+              "neq": {
+                "$state": "/ui/selectedEmailId"
+              }
+            }
+          ]
         }
       },
       "detailBody": {
@@ -533,6 +557,39 @@
         "children": [
           "openBtn"
         ]
+      },
+      "detailError": {
+        "type": "Empty",
+        "props": {
+          "message": "Couldn’t load this message. Close and try again."
+        },
+        "visible": {
+          "$state": "/_errors/m365-mail-read.get_email"
+        }
+      },
+      "receivedCol": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "align": "end"
+        },
+        "children": [
+          "received",
+          "accountPill"
+        ]
+      },
+      "accountPill": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "_account/label"
+          },
+          "tone": "muted",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "_account/label"
+        }
       }
     }
   }

@@ -1,0 +1,166 @@
+{
+  "id": "simpro-materials-required",
+  "title": "Materials Required",
+  "description": "Simpro jobs awaiting parts or materials — job number, description, site, and blocking status.",
+  "category": "operations",
+  "tags": ["simpro", "materials", "parts", "procurement", "field-service", "electrical", "trade"],
+  "keywords": ["materials", "parts", "awaiting", "procurement", "supplier", "stock", "simpro", "jobs"],
+  "connectorsUsed": ["simpro"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 8 },
+    "min":       { "colSpan": 4, "rowSpan": 5 },
+    "max":       { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "simpro",
+    "tool": "list_jobs",
+    "params": { "page": 1, "status": "Awaiting Parts" }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "sub", "divider", "loading", "empty", "scrollBody"]
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Package", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Materials Required", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Simpro" }
+      },
+
+      "sub": {
+        "type": "Text",
+        "props": { "text": "Required per job · supplier orders tracked", "size": "xs", "tone": "muted" }
+      },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["s1", "s2", "s3"],
+        "visible": { "$state": "/_loading/simpro.list_jobs" }
+      },
+      "s1": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "s2": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "s3": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No jobs are currently awaiting parts." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/simpro.list_jobs", "not": true },
+            { "$state": "/simpro/list_jobs/jobs/0", "not": true }
+          ]
+        }
+      },
+
+      "scrollBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["list"],
+        "visible": { "$state": "/_loading/simpro.list_jobs", "not": true }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["row"],
+        "repeat": {
+          "statePath": "/simpro/list_jobs/jobs",
+          "key": "ID"
+        }
+      },
+
+      "row": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["rowHeader", "rowSite", "rowStatusRow"]
+      },
+
+      "rowHeader": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["rowJobNo", "rowName"]
+      },
+
+      "rowJobNo": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "J-{n}", "n": { "$item": "ID" } }
+          },
+          "tone": "accent"
+        }
+      },
+
+      "rowName": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "Name" },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+
+      "rowSite": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "Site" },
+          "size": "xs",
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+
+      "rowStatusRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["rowStatus"]
+      },
+
+      "rowStatus": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "Status" },
+          "tone": {
+            "$computed": "simpro_job_status_tone",
+            "args": { "value": { "$item": "Status" } }
+          }
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}

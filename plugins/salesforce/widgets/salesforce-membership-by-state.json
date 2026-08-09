@@ -1,0 +1,238 @@
+{
+  "id": "salesforce-membership-by-state",
+  "title": "Membership by State",
+  "description": "Active contact count broken down by state/territory with relative progress bars and insight summary.",
+  "category": "sales",
+  "tags": ["salesforce", "crm", "contacts", "state", "membership", "distribution"],
+  "keywords": ["membership", "state", "territory", "contacts", "distribution", "breakdown", "NSW", "VIC", "QLD"],
+  "connectorsUsed": ["salesforce"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 6 },
+    "min":       { "colSpan": 3, "rowSpan": 5 },
+    "max":       { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "salesforce",
+    "tool": "soql_query",
+    "params": {
+      "query": "SELECT MailingState, COUNT(Id) cnt FROM Contact WHERE MailingState != null GROUP BY MailingState ORDER BY COUNT(Id) DESC LIMIT 20"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body", "footerDivider", "footer"],
+        "watch": {
+          "/salesforce/soql_query/records": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/stateRows",
+                "value": {
+                  "$computed": "salesforce_flatten_by_state",
+                  "args": { "value": { "$state": "/salesforce/soql_query/records" } }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/stateTotal",
+                "value": {
+                  "$computed": "salesforce_state_total",
+                  "args": { "value": { "$state": "/salesforce/soql_query/records" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "MapPin", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Membership by State", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{total} active members across {states} states/territories",
+              "total": { "$state": "/ui/stateTotal" },
+              "states": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/ui/stateRows" } }
+              }
+            }
+          }
+        }
+      },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "stateList"]
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/salesforce.soql_query" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No contact state data found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/ui/stateRows/0", "not": true }
+          ]
+        }
+      },
+
+      "stateList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["stateRow"],
+        "repeat": { "statePath": "/ui/stateRows", "key": "id" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/ui/stateRows/0" }
+          ]
+        }
+      },
+
+      "stateRow": {
+        "type": "Row",
+        "props": { "hover": true },
+        "children": ["stateRowContent"]
+      },
+      "stateRowContent": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "grow": true },
+        "children": ["stateTopRow", "stateBarRow"]
+      },
+      "stateTopRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["stateName", "stateStats"]
+      },
+      "stateName": {
+        "type": "Text",
+        "props": { "text": { "$item": "value" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "stateStats": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{count} · {pct}%",
+              "count": { "$item": "count" },
+              "pct": { "$item": "percentage" }
+            }
+          }
+        }
+      },
+      "stateBarRow": {
+        "type": "Row",
+        "props": {},
+        "children": ["stateBar"]
+      },
+      "stateBar": {
+        "type": "ProgressBar",
+        "props": { "value": { "$item": "percentage" }, "max": 100, "tone": "success" }
+      },
+
+      "footerDivider": {
+        "type": "Divider",
+        "props": {},
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/ui/stateRows/0" }
+          ]
+        }
+      },
+
+      "footer": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["insightRow", "growthText"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/ui/stateRows/0" }
+          ]
+        }
+      },
+      "insightRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["insightIcon", "insightText"]
+      },
+      "insightIcon": {
+        "type": "Icon",
+        "props": { "name": "Lightbulb", "tone": "accent", "size": "sm" }
+      },
+      "insightText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "salesforce_membership_state_insight",
+            "args": {
+              "counts": { "$state": "/ui/stateRows" },
+              "total": { "$state": "/ui/stateTotal" }
+            }
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "growthText": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "salesforce_membership_growth_insight",
+            "args": {
+              "counts": { "$state": "/ui/stateRows" },
+              "total": { "$state": "/ui/stateTotal" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}

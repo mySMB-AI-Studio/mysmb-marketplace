@@ -1,0 +1,107 @@
+{
+  "contentHash": "a1c29c24a6a62f74d5f70ef661107eb1e7f7e73971bf7d6c67e69e40a420cab1",
+  "declaredScopes": [
+    "workq:read",
+    "notify:send"
+  ],
+  "dependencies": [],
+  "description": "When someone comments on a WorkQ item, notifies the item's assignees (excluding the commenter) that a new comment was added.",
+  "flowIr": {
+    "description": "When someone comments on a WorkQ item, notifies the item's assignees (excluding the commenter) that a new comment was added.",
+    "irVersion": 1,
+    "name": "Notify Assignees on New Comment",
+    "nodes": [
+      {
+        "code": "todo = api.workq.get(todo_id=params[\"todo_id\"])\nassignee_ids = (todo.get(\"assigneeIds\") or []) if todo else []\ntitle = (todo.get(\"title\") or \"\") if todo else \"\"",
+        "id": "get_item_details",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "User ids currently assigned to the WorkQ item.",
+            "name": "assignee_ids",
+            "type": "list[str]"
+          },
+          {
+            "description": "Title of the WorkQ item.",
+            "name": "title",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ trigger.event.subject.todo_id }}",
+            "control": "hidden",
+            "label": "Item ID",
+            "name": "todo_id",
+            "required": true,
+            "type": "uuid"
+          }
+        ],
+        "summary": "Looks up the commented-on WorkQ item to find its title and who is currently assigned to it.",
+        "title": "Get item details and assignees"
+      },
+      {
+        "code": "assignee_ids = params.get(\"assignee_ids\") or []\ntitle = params.get(\"title\") or \"\"\ntodo_id = params.get(\"todo_id\") or \"\"\nactor_user_id = params.get(\"actor_user_id\") or \"\"\nrecipients = [uid for uid in assignee_ids if uid and uid != actor_user_id]\nif recipients:\n    api.notify.send(title=f\"New comment on: {title}\", body=f\"A new comment was added to the WorkQ item \\\"{title}\\\". Check it out for the latest update.\", user_ids=recipients)",
+        "id": "notify_assignees",
+        "kind": "python",
+        "outputs": [],
+        "params": [
+          {
+            "binding": "{{ steps.get_item_details.outputs.assignee_ids }}",
+            "control": "hidden",
+            "label": "Assignees",
+            "name": "assignee_ids",
+            "required": true,
+            "type": "list[str]"
+          },
+          {
+            "binding": "{{ steps.get_item_details.outputs.title }}",
+            "control": "hidden",
+            "label": "Item title",
+            "name": "title",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ trigger.event.subject.todo_id }}",
+            "control": "hidden",
+            "label": "Item ID",
+            "name": "todo_id",
+            "required": true,
+            "type": "uuid"
+          },
+          {
+            "binding": "{{ trigger.actor_user_id }}",
+            "control": "hidden",
+            "label": "Commenter (to exclude)",
+            "name": "actor_user_id",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Alerts the people assigned to a WorkQ item whenever someone leaves a new comment on it, letting them know to check the update (excluding the person who commented).",
+        "title": "Notify assignees of new comment"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "get_item_details",
+      "notify_assignees"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      },
+      {
+        "eventType": "workq.item.commented",
+        "filter": {},
+        "kind": "event"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Notify Assignees on New Comment",
+  "originKey": "701b5a62-abe8-4945-9ccb-a7e834f1f388",
+  "tags": []
+}

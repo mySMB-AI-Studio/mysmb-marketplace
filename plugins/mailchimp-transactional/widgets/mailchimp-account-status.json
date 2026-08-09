@@ -1,0 +1,153 @@
+{
+  "id": "mailchimp-account-status",
+  "title": "Mailchimp Transactional — Account Status",
+  "description": "Live account health for your Mandrill account: reputation score, hourly and daily sending quota used vs available, and overall account standing.",
+  "category": "marketing",
+  "tags": ["mailchimp", "mandrill", "transactional", "email", "status", "quota", "reputation"],
+  "keywords": ["mailchimp", "mandrill", "email", "transactional", "account", "reputation", "quota", "status", "deliverability"],
+  "connectorsUsed": ["mailchimp-transactional"],
+  "popularity": 0,
+  "status": "published",
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 4 },
+    "min": { "colSpan": 3, "rowSpan": 3 },
+    "max": { "colSpan": 8, "rowSpan": 6 }
+  },
+  "dataProvider": {
+    "mcp": "mailchimp-transactional",
+    "tool": "account_status",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"]
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["headerRow"]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "refreshBtn"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Mail", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Account Status", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Mailchimp Transactional" }
+      },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": { "icon": "RefreshCw", "tone": "muted", "size": "sm", "ariaLabel": "Refresh" },
+        "on": {
+          "click": {
+            "action": "mailchimp-transactional.account_status",
+            "params": {}
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "errorBanner", "statStack"]
+      },
+      "errorBanner": {
+        "type": "Banner",
+        "props": {
+          "tone": "critical",
+          "text": "Could not load account status. Check your Mandrill API key in Settings → Connections."
+        },
+        "visible": { "$state": "/_error/mailchimp-transactional.account_status" }
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$state": "/_loading/mailchimp-transactional.account_status" },
+        "children": ["sk1", "sk2", "sk3"]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "statStack": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "visible": { "$state": "/_loading/mailchimp-transactional.account_status", "not": true },
+        "children": ["reputationRow", "divider1", "hourlyRow", "divider2", "dailyRow"]
+      },
+      "reputationRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["reputationLabel", "reputationBadge"]
+      },
+      "reputationLabel": {
+        "type": "Text",
+        "props": { "text": "Reputation", "size": "sm", "tone": "muted" }
+      },
+      "reputationBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$state": "/mailchimp-transactional/account_status/reputation" },
+          "tone": "neutral"
+        }
+      },
+      "divider1": { "type": "Divider", "props": {} },
+      "hourlyRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["hourlyLabel", "hourlyValue"]
+      },
+      "hourlyLabel": {
+        "type": "Text",
+        "props": { "text": "Hourly quota", "size": "sm", "tone": "muted" }
+      },
+      "hourlyValue": {
+        "type": "Text",
+        "props": {
+          "text": { "$state": "/mailchimp-transactional/account_status/hourly_quota" },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "divider2": { "type": "Divider", "props": {} },
+      "dailyRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["dailyLabel", "dailyValue"]
+      },
+      "dailyLabel": {
+        "type": "Text",
+        "props": { "text": "Daily quota", "size": "sm", "tone": "muted" }
+      },
+      "dailyValue": {
+        "type": "Text",
+        "props": {
+          "text": { "$state": "/mailchimp-transactional/account_status/daily_quota" },
+          "size": "sm",
+          "weight": "medium"
+        }
+      }
+    }
+  }
+}

@@ -56,7 +56,9 @@ Shopify Customer Accounts MCP uses the **authorization code grant flow with PKCE
    &code={code}
    &code_verifier={code_verifier}
    ```
-6. The access token is sent as `Authorization: {access_token}` (raw token, **no `Bearer` prefix**) on every Customer Accounts MCP request. Shopify's Customer Accounts MCP uses a non-standard header format — not RFC 6750 Bearer. myHub's OAuth runtime handles this injection automatically.
+6. The access token is injected as `Authorization: Bearer {access_token}` on every Customer Accounts MCP (`/customer/api/mcp`) request. This follows the Shopify UCP auth spec (JWT Bearer token authentication per shopify.dev/docs/agents/profiles/auth-and-rate-limiting). myHub's `authType: oauth_client` runtime handles this injection automatically.
+
+   > **Note:** The underlying Customer Account GraphQL API uses a raw `Authorization: {access_token}` header without the `Bearer` prefix — but that applies only to direct GraphQL calls, not to the MCP endpoint. The MCP layer always uses standard RFC 6750 Bearer authentication.
 7. Tokens are stored per-user in myHub's encrypted credential vault and refreshed via the `refresh_token` when they expire.
 
 **Prerequisites (Shopify side):**
@@ -64,6 +66,18 @@ Shopify Customer Accounts MCP uses the **authorization code grant flow with PKCE
 - A **Headless app** client must be registered in Shopify admin → Settings → Customer accounts → Headless.
 - The redirect URI shown in the myHub Connect dialog must be added to the Headless client's allowed redirect URIs.
 - Your store/app must have completed Shopify's protected customer data requirements (Level 2 PII approval via Partner Dashboard).
+
+## Platform Compatibility Note
+
+The `.mcp.json` for this plugin uses a per-user variable in the URL host:
+
+```json
+"url": "https://${SHOPIFY_SHOP_DOMAIN}/customer/api/mcp"
+```
+
+This is correct per Shopify's own design — the [Customer Account API discovery endpoint](https://shopify.dev/docs/api/customer) (`GET /.well-known/customer-account-api`) returns the MCP URL as `"mcp_api": "https://{shopDomain}/customer/api/mcp"`. There is no fixed upstream hostname to hardcode.
+
+> **TODO (platform team):** Confirm that the myHub runtime performs `${VAR}` substitution in the `.mcp.json` `url` field before making the MCP connection. If not, a relay server in `myhub-mcp-servers` will be required. Do not ship to production until this is confirmed.
 
 ## Configuration
 

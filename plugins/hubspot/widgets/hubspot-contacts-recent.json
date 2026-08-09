@@ -1,0 +1,148 @@
+{
+  "id": "hubspot-contacts-recent",
+  "title": "Recent Contacts",
+  "description": "The most recently created HubSpot contacts, in a table layout matching HubSpot's own Contacts view — name, email, phone, and create date.",
+  "category": "crm",
+  "tags": ["hubspot", "crm", "contacts", "leads"],
+  "keywords": ["contacts", "leads", "recent", "new", "table"],
+  "connectorsUsed": ["hubspot"],
+  "popularity": 65,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 10, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "hubspot",
+    "tool": "search_contacts",
+    "params": {
+      "properties": ["firstname", "lastname", "email", "phone", "createdate"],
+      "sorts": ["createdate DESC"],
+      "limit": 20
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["header", "body"]
+      },
+      "header": {
+        "type": "Header",
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "title"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Users", "tone": "accent", "size": "sm" }
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Recent Contacts", "level": "h2" }
+      },
+      "body": {
+        "type": "Body",
+        "children": ["loading", "empty", "tableHeaderRow", "contactList"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/hubspot.search_contacts" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No contacts found in HubSpot." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hubspot.search_contacts", "not": true },
+            { "$state": "/hubspot/search_contacts/items/0", "not": true }
+          ]
+        }
+      },
+      "tableHeaderRow": {
+        "type": "Row",
+        "props": { "template": "1.3fr 1.5fr 1fr 0.9fr", "gap": "sm" },
+        "children": ["headerName", "headerEmail", "headerPhone", "headerCreated"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hubspot.search_contacts", "not": true },
+            { "$state": "/hubspot/search_contacts/items/0" }
+          ]
+        }
+      },
+      "headerName": { "type": "Caption", "props": { "text": "Name", "weight": "semibold" } },
+      "headerEmail": { "type": "Caption", "props": { "text": "Email", "weight": "semibold" } },
+      "headerPhone": { "type": "Caption", "props": { "text": "Phone", "weight": "semibold" } },
+      "headerCreated": { "type": "Caption", "props": { "text": "Created", "weight": "semibold" } },
+      "contactList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["contactRow"],
+        "repeat": {
+          "statePath": "/hubspot/search_contacts/items",
+          "key": "id"
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hubspot.search_contacts", "not": true },
+            { "$state": "/hubspot/search_contacts/items/0" }
+          ]
+        }
+      },
+      "contactRow": {
+        "type": "Row",
+        "props": { "template": "1.3fr 1.5fr 1fr 0.9fr", "gap": "sm", "align": "center", "hover": true },
+        "children": ["contactName", "contactEmail", "contactPhone", "contactCreated"]
+      },
+      "contactName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{first} {last}",
+              "first": { "$item": "properties/firstname" },
+              "last": { "$item": "properties/lastname" }
+            }
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "contactEmail": {
+        "type": "Caption",
+        "props": {
+          "text": { "$item": "properties/email" },
+          "truncate": true
+        }
+      },
+      "contactPhone": {
+        "type": "Caption",
+        "props": {
+          "text": { "$item": "properties/phone" },
+          "truncate": true
+        }
+      },
+      "contactCreated": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "format_date",
+            "args": { "value": { "$item": "properties/createdate" } }
+          }
+        }
+      }
+    }
+  }
+}

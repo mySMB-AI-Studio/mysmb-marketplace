@@ -1,0 +1,183 @@
+{
+  "id": "hubspot-pipeline",
+  "title": "Deals Pipeline",
+  "description": "Open deals in a table layout matching HubSpot's own Deals view — deal name, stage (color-coded pill), close date, and amount. Excludes closed-won/closed-lost.",
+  "category": "crm",
+  "tags": ["hubspot", "crm", "deals", "pipeline", "sales"],
+  "keywords": ["deals", "pipeline", "stage", "forecast", "revenue", "table"],
+  "connectorsUsed": ["hubspot"],
+  "popularity": 72,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 3 },
+    "min": { "colSpan": 3, "rowSpan": 3 },
+    "max": { "colSpan": 10, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "hubspot",
+    "tool": "search_deals",
+    "params": {
+      "filterGroups": [
+        {
+          "filters": [
+            { "propertyName": "dealstage", "operator": "NEQ", "value": "closedwon" },
+            { "propertyName": "dealstage", "operator": "NEQ", "value": "closedlost" }
+          ]
+        }
+      ],
+      "properties": ["dealname", "dealstage", "amount", "closedate"],
+      "limit": 100
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["header", "body"]
+      },
+      "header": {
+        "type": "Header",
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "TrendingUp", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Deals Pipeline", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} open deals",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": { "$state": "/hubspot/search_deals/items" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": ["loading", "empty", "tableHeaderRow", "dealList"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4", "sk5"],
+        "visible": { "$state": "/_loading/hubspot.search_deals" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk5": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No open deals found in HubSpot." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hubspot.search_deals", "not": true },
+            { "$state": "/hubspot/search_deals/items/0", "not": true }
+          ]
+        }
+      },
+      "tableHeaderRow": {
+        "type": "Row",
+        "props": { "template": "2fr 1.2fr 1fr 0.9fr", "gap": "sm" },
+        "children": ["headerDeal", "headerStage", "headerCloseDate", "headerAmount"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hubspot.search_deals", "not": true },
+            { "$state": "/hubspot/search_deals/items/0" }
+          ]
+        }
+      },
+      "headerDeal": { "type": "Caption", "props": { "text": "Deal", "weight": "semibold" } },
+      "headerStage": { "type": "Caption", "props": { "text": "Stage", "weight": "semibold" } },
+      "headerCloseDate": { "type": "Caption", "props": { "text": "Close Date", "weight": "semibold" } },
+      "headerAmount": { "type": "Caption", "props": { "text": "Amount", "weight": "semibold", "align": "right" } },
+      "dealList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["dealRow"],
+        "repeat": {
+          "statePath": "/hubspot/search_deals/items",
+          "key": "id"
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hubspot.search_deals", "not": true },
+            { "$state": "/hubspot/search_deals/items/0" }
+          ]
+        }
+      },
+      "dealRow": {
+        "type": "Row",
+        "props": { "template": "2fr 1.2fr 1fr 0.9fr", "gap": "sm", "align": "center", "hover": true },
+        "children": ["dealName", "dealStage", "dealCloseDate", "dealAmount"]
+      },
+      "dealName": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "properties/dealname" },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "dealStage": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "hubspot_deal_stage_label",
+            "args": { "value": { "$item": "properties/dealstage" } }
+          },
+          "tone": {
+            "$computed": "hubspot_deal_stage_tone",
+            "args": { "value": { "$item": "properties/dealstage" } }
+          },
+          "variant": "soft"
+        }
+      },
+      "dealCloseDate": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "format_date",
+            "args": { "value": { "$item": "properties/closedate" } }
+          }
+        }
+      },
+      "dealAmount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": { "value": { "$item": "properties/amount" } }
+          },
+          "size": "sm",
+          "weight": "semibold",
+          "align": "right"
+        }
+      }
+    }
+  }
+}

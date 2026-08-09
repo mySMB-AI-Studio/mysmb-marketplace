@@ -2,15 +2,29 @@
   "name": "shopify-customer",
   "version": "0.1.0",
   "description": "Connect to Shopify's Customer Accounts MCP server. Access authenticated customer data — order history, order details, saved addresses, and account profile — via OAuth 2.0 + PKCE.",
-  "author": { "name": "mySMB AI Studio" },
+  "author": {
+    "name": "mySMB AI Studio"
+  },
   "homepage": "https://github.com/mySMB-AI-Studio/mysmb-marketplace/tree/main/plugins/shopify-customer",
   "license": "MIT",
-  "keywords": ["shopify", "ecommerce", "customer", "orders", "account", "oauth", "pkce", "smb"],
+  "keywords": [
+    "shopify",
+    "ecommerce",
+    "customer",
+    "orders",
+    "account",
+    "oauth",
+    "pkce",
+    "smb"
+  ],
+  "widgets": "widgets",
   "connection": {
     "authType": "oauth_client",
     "instructions": "To enable authenticated customer data (orders, account details), you must:\n\n1. Create a **Headless app** in your Shopify Partner Dashboard or store admin.\n2. Under *Customer account UI extensions → Headless*, create a new client. Set the **redirect URI** to the value shown in the Connect dialog.\n3. Copy the **Client ID** and paste it below. No client secret is used — Shopify Customer Accounts uses PKCE (public client).\n4. Ensure your store has a custom domain (required by Shopify for Customer Accounts MCP).\n5. Your store must have completed Shopify's protected customer data requirements (Level 2 PII approval via Partner Dashboard).",
     "docUrl": "https://shopify.dev/docs/apps/build/storefront-mcp/servers/customer-account",
-    "scopes": ["customer-account-mcp-api:full"],
+    "scopes": [
+      "customer-account-mcp-api:full"
+    ],
     "fields": [
       {
         "name": "SHOPIFY_SHOP_DOMAIN",
@@ -30,5 +44,7 @@
         "helpText": "From Shopify admin: Settings → Customer accounts → Headless. This is a public client identifier — no secret is involved."
       }
     ]
-  }
+  },
+  "displayName": "Shopify Customer",
+  "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAApVBMVEX///+Vv0dejj7+/v5smkCRvEdaiz2Wv0qXwE+TvkFhkESDtgD8/fv4+vWQvDdkkUjZ58bl7tjq8eDx9uqMuievzneZwUGTvjPA15/V5L7M37GlyGPg69C81pRNhCPU3s/t8eq20oeyz36btY5YizWgxVmqy27A1aTQ3cVYjwquwaaIuBiqwJ7e5tp6oGbC0rlGgxeEpnJxmFhAgAB2rwAwegCuxZpVKx4XAAAEtUlEQVRYhZ2X6ZqiOBSGgfR0EiARSJDdEgTsLrS02p65/0ubgyyGxeqqzh8fIeflO1sWTVsfSGNOTvQkRvc/fzHSxJLbbWAVnmB/AbAj2RSOJ0I9oMSP2FftUSxpzABTUUIJl9nXCEhzaOCAjFjyKGtyJ2nCrwnwkiaGH4eTVHObmqW4cTWEPh0KllmZrWmibmUwQjwttoqvOJByIjRkx1bruu3TVGOVFO7xxyclsMKKACNI5QEO5dyBR5Rbv3++2p8CpNwHASA7bOfbmcwyneo6Id92nyEgljURxAuku5ot3DjhQQP2uv7PN2N3+kQ+RZV4rQdB7TqhX0mOMcEdwATCC4zzBxikRU2bAvhJEhwEFN+NO8B30yhNc2O+nZ+2ByQ7C1LNi3JCdQ7Wo/kdYBhGCeP7yxPA/WlNM3/LKbitWo8AGObuslZU90fIDe9f1lfGA3A92UsAgvinGbaaxZdXAIdlFJHmZsRqKCGjAe7GmgvvK2lgpKFYtaaU38ca4Nd+KcALCFbMA46r2i+KusILAIxFHqGDGsWe8yR0XCEYE24Y4DnA3C3yCPVjjfpxkMRirPq4IQvA7bIEHB8AnnuQk36GXcgVwGleCEjLBgDmORv50BOULl24HZaF4A+ucp+pYGdUpsbgbdbXgCPDh7be+GyiTM1CudlPgwD7kOzsiQyHJwKyoGkVx0uAeT3PAaL/EAm87pWTFb6fx85KIRnG5vYyB7gdAHO/d51LKQMJ+8oq4N/LHNDHili9BzXvGuFhP1VwmAOOA6BdkCEAZNmSkxi8zbOYd0EkltOioTB/kzlB7YXSnGz6qF2HVACMSHL8HGDc9lMA6ycR6zi88IqAPgVsbucpwOsLvs/C/ZkdV5O1bQKYpgGyOLQcCdz+DcQyrfliVR4UvE4BTjO2ks9GguaphAngepgmIR56FgjZ2Iyg7AnAKGftlCkTaa4QlGViAjBLpvpgFwoAy9obvWDN6poIPkzyyBI1X4QH0bjiFHKlG1vApJ3EdpJxot8r+i4hXFsP2jRc1BC4w3KEuwWMUD74ED8BXE+TLA4AmpBAhy4gltDQRwCzfLcVH6Kg125FUDySUylZD3jigmH8Ure3kA8J8DQR5QmuogH/JIigYa/4kHVFj3nVYpnwBOpjaPOxo6YAszwrWfS7WaTJUL+lDDFMnxRSe8p4xEAkA6BTjsZCZEpDzhW8PhR4Fe1DEKuhBTGhfOz4sxiUSju54yQaCiW27Bg8aecW8P5oJ2eYg6n0I6/PD3Ozx6awAlBOGfE4CU4WNIHtJE2dOK8m9nOA8WtIA0KhsvhhONnA3y2ccGaHtTnAeBldzSefaneElWPiAlCO7SR8urKPLMYCMC6Lom4aSdtT8YeUBeAwpMEWXnQskm0AB9xWu45X9cx7oXxXuqGNhJdGYZHAfgqHQ+DgOUYFmGZZ7sY0KBcyxjwnzoqkgmVNws6ECV6UsgmH/t2u3LydJgrQY7e04XSYAqYmVDaSA+WOaQFwWSh3193m/XA57z++/6D2kAlq/AQoDVw84M60Ma63m/l+AuM/X306OXarxjnmNW4s6+dt93a47Jn9eP8nyBAcBLcvJ/zvZW+jufH/Ol1ezksXKawAAAAASUVORK5CYII="
 }
