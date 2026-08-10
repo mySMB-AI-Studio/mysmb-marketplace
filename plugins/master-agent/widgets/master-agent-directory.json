@@ -1,0 +1,140 @@
+{
+  "id": "master-agent-directory",
+  "title": "Master Agent — Copilot Agents",
+  "description": "The Microsoft Copilot Studio agents available in your tenant — name, description, and environment. Your Master Agent can route questions to any of them.",
+  "category": "productivity",
+  "tags": ["copilot-studio", "copilot", "agents", "master-agent", "microsoft", "directory"],
+  "keywords": ["copilot", "agents", "bots", "assistants", "directory", "master agent", "copilot studio"],
+  "connectorsUsed": ["copilot-studio"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 8 },
+    "min":       { "colSpan": 4, "rowSpan": 5 },
+    "max":       { "colSpan": 12, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "mcp": "copilot-studio",
+    "tool": "list_copilot_agents",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["header", "body"] },
+
+      "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "refreshBtn"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Bot", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "count"] },
+      "title": { "type": "Heading", "props": { "text": "Master Agent", "level": "h2" } },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} agents available",
+              "n": { "$state": "/copilot-studio/list_copilot_agents/count" }
+            }
+          }
+        }
+      },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": { "icon": "RefreshCw", "tone": "muted", "size": "sm", "ariaLabel": "Refresh" },
+        "on": {
+          "click": { "action": "copilot-studio.list_copilot_agents", "params": {} }
+        }
+      },
+
+      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "list"] },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$state": "/_loading/copilot-studio.list_copilot_agents" },
+        "children": ["sk1", "sk2", "sk3"]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No Copilot Studio agents found for your account. Make sure you have access to a Power Platform environment with published agents." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/copilot-studio.list_copilot_agents", "not": true },
+            { "$state": "/copilot-studio/list_copilot_agents/agents/0", "not": true }
+          ]
+        }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/copilot-studio.list_copilot_agents", "not": true },
+            { "$state": "/copilot-studio/list_copilot_agents/agents/0" }
+          ]
+        },
+        "repeat": { "statePath": "/copilot-studio/list_copilot_agents/agents", "key": "schemaName" },
+        "children": ["row"]
+      },
+      "row": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true },
+        "children": ["rowLeft", "rowRight"]
+      },
+      "rowLeft": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "grow": true },
+        "children": ["avatar", "labels"]
+      },
+      "avatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": { "$computed": "initials", "args": { "value": { "$item": "name" } } },
+          "size": "md"
+        }
+      },
+      "labels": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["nameRow", "descRow"]
+      },
+      "nameRow": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "descRow": {
+        "type": "Caption",
+        "props": { "text": { "$item": "description" }, "truncate": true }
+      },
+      "rowRight": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["envBadge"]
+      },
+      "envBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "environmentName" },
+          "tone": "info",
+          "variant": "soft"
+        }
+      }
+    }
+  },
+  "status": "published"
+}

@@ -45,7 +45,9 @@ const overdue_buckets: ComputedFunction = (args) => {
     let count = 0;
     let total = 0;
     for (const item of items) {
-      const due = new Date(String(item['DueDate'])).getTime();
+      const terms = (item.Terms ?? item.terms) as Record<string, unknown> | undefined;
+      const rawDue = String(terms?.DueDate ?? item['DueDate'] ?? '');
+      const due = new Date(rawDue).getTime();
       if (!Number.isFinite(due)) continue;
       const days = Math.floor((now - due) / MS_PER_DAY);
       if (days >= b.min && days <= b.max) {
