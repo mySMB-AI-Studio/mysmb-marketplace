@@ -92,6 +92,7 @@ const payment_intent_status_tone: ComputedFunction = (args) => {
 
 // ── sort_by_key ───────────────────────────────────────────────────────────
 // Sort an array of objects by a composite key string "field|asc" or "field|desc".
+// Compares numerically when both values are numbers, otherwise lexically.
 // Args: { value: unknown[], key: string }
 // Returns: sorted array
 const sort_by_key: ComputedFunction = (args) => {
@@ -99,21 +100,34 @@ const sort_by_key: ComputedFunction = (args) => {
   const keyStr = String(args.key ?? 'name|asc');
   const [field, dir] = keyStr.split('|');
   return arr.sort((a, b) => {
-    const aVal = String(a[field] ?? '').toLowerCase();
-    const bVal = String(b[field] ?? '').toLowerCase();
-    const cmp = aVal.localeCompare(bVal);
+    const av = a[field] ?? '';
+    const bv = b[field] ?? '';
+    const an = Number(av);
+    const bn = Number(bv);
+    const cmp = !isNaN(an) && !isNaN(bn) ? an - bn : String(av).localeCompare(String(bv));
     return dir === 'desc' ? -cmp : cmp;
   });
 };
 
 // ── cycle_sort ────────────────────────────────────────────────────────────
-// Toggle sort direction between name|asc and name|desc.
+// Toggle sort direction on the current field (asc ↔ desc).
 // Args: { current: string }
-// Returns: "name|asc" | "name|desc"
 const cycle_sort: ComputedFunction = (args) => {
   const current = String(args.current ?? '');
   const [field, dir] = current.split('|');
   return `${field}|${dir === 'asc' ? 'desc' : 'asc'}`;
+};
+
+// ── set_sort_field ────────────────────────────────────────────────────────
+// Set the active sort field. If already sorting by that field, toggles
+// direction (asc ↔ desc). Otherwise resets to field|asc.
+// Args: { current: string, field: string }
+const set_sort_field: ComputedFunction = (args) => {
+  const current = String(args.current ?? '');
+  const field = String(args.field ?? '');
+  const [currentField, currentDir] = current.split('|');
+  if (currentField === field) return `${field}|${currentDir === 'asc' ? 'desc' : 'asc'}`;
+  return `${field}|asc`;
 };
 
 // ── format_stripe_date ────────────────────────────────────────────────────
@@ -198,32 +212,38 @@ function formatInvoiceStatusLabel(status: string): string {
 }
 
 const flatten_invoices: ComputedFunction = (args) => {
-  const raw = Array.isArray(args.value)
-    ? [...(args.value as Record<string, unknown>[])]
-    : [];
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
   const keyStr = String(args.key ?? 'customer_name|asc');
   const [field, dir] = keyStr.split('|');
 
-  raw.sort((a, b) => {
-    const aVal = String(a[field] ?? '').toLowerCase();
-    const bVal = String(b[field] ?? '').toLowerCase();
-    const cmp = aVal.localeCompare(bVal);
-    return dir === 'desc' ? -cmp : cmp;
-  });
-
-  return raw.map(item => {
+  const rows = raw.map(item => {
     const status = String(item.status ?? '');
+    const amountCents = typeof item.amount_due === 'number' ? item.amount_due : Number(item.amount_due ?? 0);
+    const dueDateTs = typeof item.due_date === 'number' ? item.due_date : Number(item.due_date ?? 0);
     return {
       id:                 String(item.id ?? ''),
       customer_name:      String(item.customer_name ?? ''),
       number:             String(item.number ?? ''),
       amount:             format_currency({ amount: item.amount_due, currency: 'aud' }),
+      amount_cents:       amountCents,
       due_date:           format_stripe_date_dmy({ value: item.due_date }),
+      due_date_ts:        dueDateTs,
       status,
       status_label:       formatInvoiceStatusLabel(status),
       hosted_invoice_url: String(item.hosted_invoice_url ?? ''),
     };
   });
+
+  rows.sort((a, b) => {
+    const av = (a as Record<string, unknown>)[field] ?? '';
+    const bv = (b as Record<string, unknown>)[field] ?? '';
+    const an = Number(av);
+    const bn = Number(bv);
+    const cmp = !isNaN(an) && !isNaN(bn) ? an - bn : String(av).localeCompare(String(bv));
+    return dir === 'desc' ? -cmp : cmp;
+  });
+
+  return rows;
 };
 
 // ── to_monthly_cents ─────────────────────────────────────────────────────────
@@ -319,6 +339,7 @@ const flatten_subscriptions: ComputedFunction = (args) => {
       customer_email:     customerEmail,
       plan_name:          planName,
       amount:             format_currency({ amount: subCents, currency: 'aud' }),
+      amount_cents:       subCents,
       current_period_end: typeof sub.current_period_end === 'number' ? sub.current_period_end : 0,
       status,
       status_label:       formatSubscriptionStatusLabel(status),
@@ -326,9 +347,11 @@ const flatten_subscriptions: ComputedFunction = (args) => {
   });
 
   rows.sort((a, b) => {
-    const aVal = String((a as Record<string, unknown>)[field] ?? '').toLowerCase();
-    const bVal = String((b as Record<string, unknown>)[field] ?? '').toLowerCase();
-    const cmp = aVal.localeCompare(bVal);
+    const av = (a as Record<string, unknown>)[field] ?? '';
+    const bv = (b as Record<string, unknown>)[field] ?? '';
+    const an = Number(av);
+    const bn = Number(bv);
+    const cmp = !isNaN(an) && !isNaN(bn) ? an - bn : String(av).localeCompare(String(bv));
     return dir === 'desc' ? -cmp : cmp;
   });
 
@@ -398,6 +421,7 @@ const flatten_payments: ComputedFunction = (args) => {
       created_at: createdAt,
       created_ts: created,
       amount: format_currency({ amount: pi.amount, currency: 'aud' }),
+      amount_cents: typeof pi.amount === 'number' ? pi.amount : Number(pi.amount ?? 0),
       method,
       status,
       status_label: formatPaymentStatusLabel(status),
@@ -405,18 +429,16 @@ const flatten_payments: ComputedFunction = (args) => {
   });
 
   rows.sort((a, b) => {
-    if (field === 'created') {
-      const diff = (a.created_ts as number) - (b.created_ts as number);
-      return dir === 'asc' ? diff : -diff;
-    }
-    const aVal = String((a as Record<string, unknown>)[field] ?? '').toLowerCase();
-    const bVal = String((b as Record<string, unknown>)[field] ?? '').toLowerCase();
-    const cmp = aVal.localeCompare(bVal);
-    return dir === 'asc' ? cmp : -cmp;
+    const av = (a as Record<string, unknown>)[field] ?? '';
+    const bv = (b as Record<string, unknown>)[field] ?? '';
+    const an = Number(av);
+    const bn = Number(bv);
+    const cmp = !isNaN(an) && !isNaN(bn) ? an - bn : String(av).localeCompare(String(bv));
+    return dir === 'desc' ? -cmp : cmp;
   });
 
   return rows.map(row => {
-    const { created_ts: _ts, ...rest } = row;
+    const { created_ts: _ts, amount_cents: _ac, ...rest } = row;
     return rest;
   });
 };
@@ -427,6 +449,7 @@ const elements: PluginElementsModule = {
     format_currency,
     sort_by_key,
     cycle_sort,
+    set_sort_field,
     subscription_status_tone,
     invoice_status_tone,
     payment_intent_status_tone,
