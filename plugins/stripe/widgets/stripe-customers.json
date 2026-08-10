@@ -156,7 +156,7 @@
           "leadingIcon": "ArrowUpDown",
           "variant": "ghost",
           "size": "sm",
-          "ariaLabel": "Cycle sort order"
+          "ariaLabel": "Sort by customer name"
         },
         "on": {
           "click": {
@@ -164,9 +164,10 @@
             "params": {
               "statePath": "/ui/sortKey",
               "value": {
-                "$computed": "stripe_cycle_sort",
+                "$computed": "stripe_set_sort_field",
                 "args": {
-                  "current": { "$state": "/ui/sortKey" }
+                  "current": { "$state": "/ui/sortKey" },
+                  "field": "name"
                 }
               }
             }
@@ -174,12 +175,54 @@
         }
       },
       "headerCreated": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["headerCreatedLabel", "sortCreatedBtn"]
+      },
+      "headerCreatedLabel": {
         "type": "Eyebrow",
         "props": { "text": "Created" }
       },
+      "sortCreatedBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ArrowUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by date created" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "stripe_set_sort_field",
+                "args": { "current": { "$state": "/ui/sortKey" }, "field": "created" }
+              }
+            }
+          }
+        }
+      },
       "headerSpend": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["headerSpendLabel", "sortBalanceBtn"]
+      },
+      "headerSpendLabel": {
         "type": "Eyebrow",
         "props": { "text": "Balance" }
+      },
+      "sortBalanceBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ArrowUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by balance" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "stripe_set_sort_field",
+                "args": { "current": { "$state": "/ui/sortKey" }, "field": "balance" }
+              }
+            }
+          }
+        }
       },
       "list": {
         "type": "Stack",

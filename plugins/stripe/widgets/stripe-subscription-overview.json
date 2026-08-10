@@ -26,6 +26,7 @@
         "children": ["header", "kpiRow", "divider", "body"],
         "watch": {
           "/stripe/list_subscriptions/data": [
+            { "action": "setState", "params": { "statePath": "/ui/sortKey", "value": "customer_name|asc" } },
             { "action": "setState", "params": { "statePath": "/ui/subRows", "value": { "$computed": "stripe_flatten_subscriptions", "args": { "value": { "$state": "/stripe/list_subscriptions/data" }, "key": "customer_name|asc" } } } }
           ],
           "/ui/sortKey": [
@@ -91,11 +92,21 @@
       "hdrSubscriberGroup": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["hdrSubscriber", "sortBtn"] },
       "hdrSubscriber": { "type": "Caption", "props": { "text": "Subscriber" } },
       "sortBtn": {
-        "type": "IconButton", "props": { "icon": "ArrowUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Cycle sort order" },
-        "on": { "click": [{ "action": "setState", "params": { "statePath": "/ui/sortKey", "value": { "$computed": "stripe_cycle_sort", "args": { "current": { "$state": "/ui/sortKey" } } } } }] }
+        "type": "IconButton", "props": { "icon": "ArrowUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by subscriber" },
+        "on": { "click": [{ "action": "setState", "params": { "statePath": "/ui/sortKey", "value": { "$computed": "stripe_set_sort_field", "args": { "current": { "$state": "/ui/sortKey" }, "field": "customer_name" } } } }] }
       },
-      "hdrAmount": { "type": "Caption", "props": { "text": "Amount" } },
-      "hdrRenews": { "type": "Caption", "props": { "text": "Renews" } },
+      "hdrAmount": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["hdrAmountLabel", "sortAmountBtn"] },
+      "hdrAmountLabel": { "type": "Caption", "props": { "text": "Amount" } },
+      "sortAmountBtn": {
+        "type": "IconButton", "props": { "icon": "ArrowUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by amount" },
+        "on": { "click": [{ "action": "setState", "params": { "statePath": "/ui/sortKey", "value": { "$computed": "stripe_set_sort_field", "args": { "current": { "$state": "/ui/sortKey" }, "field": "amount_cents" } } } }] }
+      },
+      "hdrRenews": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["hdrRenewsLabel", "sortRenewsBtn"] },
+      "hdrRenewsLabel": { "type": "Caption", "props": { "text": "Renews" } },
+      "sortRenewsBtn": {
+        "type": "IconButton", "props": { "icon": "ArrowUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by renewal date" },
+        "on": { "click": [{ "action": "setState", "params": { "statePath": "/ui/sortKey", "value": { "$computed": "stripe_set_sort_field", "args": { "current": { "$state": "/ui/sortKey" }, "field": "current_period_end" } } } }] }
+      },
       "hdrStatus": { "type": "Caption", "props": { "text": "Status" } },
       "list": {
         "type": "Stack", "props": { "gap": "xs" },
