@@ -85,8 +85,17 @@ const DEAL_STAGE_LABELS = {
 // Support Tickets priority-pill bug). Both stages now use `info`, matching
 // qualifiedtobuy -- all three represent "actively progressing, not yet at
 // contract stage", escalating to `warning` right before close.
+//
+// appointmentscheduled was `muted` until 2026-08-10 -- copied from
+// ticket_priority_tone's LOW-is-muted pattern, but that pattern fits a
+// "normal, nothing to report" default value, not the first stage of an
+// open deal (which is neither normal-and-ongoing nor nothing-to-report --
+// it's the literal start of the thing being tracked). Moved to `info` so
+// the whole open pipeline (this tile never shows closedwon/closedlost --
+// see the dealstage NEQ filters in hubspot-pipeline.json) reads as one
+// continuous "actively progressing" band, breaking only at contractsent.
 const DEAL_STAGE_TONES = {
-    appointmentscheduled: 'muted',
+    appointmentscheduled: 'info',
     qualifiedtobuy: 'info',
     presentationscheduled: 'info',
     decisionmakerboughtin: 'info',
