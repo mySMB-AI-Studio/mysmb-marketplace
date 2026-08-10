@@ -426,6 +426,72 @@ const pnl_summary_bars: ComputedFunction = (args) => {
   ];
 };
 
+// ── flatten_overdue_invoices ──────────────────────────────────────────
+// Filters open invoice Items to only overdue ones, computes days_overdue,
+// sorts by most overdue first, and returns aggregated stats.
+// Returns { rows, totalOverdue, overdueCount, oldestDays, avgDays }
+// Args: { value: Invoice[] }
+const flatten_overdue_invoices: ComputedFunction = (args) => {
+  const items = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  const now = Date.now();
+  const MS_PER_DAY = 86_400_000;
+
+  const parseDue = (raw: string): number => {
+    if (!raw) return NaN;
+    const ms = raw.match(/\/Date\((-?\d+)(?:[+-]\d{4})?\)\//);
+    return ms ? Number(ms[1]) : new Date(raw).getTime();
+  };
+
+  const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const fmtDate = (raw: string): string => {
+    const t = parseDue(raw);
+    if (!Number.isFinite(t)) return '';
+    const d = new Date(t);
+    return `${String(d.getDate()).padStart(2,'0')}-${MONTH_ABBR[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
+  };
+
+  const fmtAmt = (n: unknown): string => {
+    const v = Number(n);
+    if (!Number.isFinite(v)) return '';
+    return 'A$' + new Intl.NumberFormat('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+  };
+
+  const rows: Record<string, unknown>[] = [];
+  let totalOverdue = 0;
+
+  for (const item of items) {
+    const terms = (item.Terms ?? item.terms) as Record<string, unknown> | undefined;
+    const rawDue = String(terms?.DueDate ?? item['DueDate'] ?? '');
+    const dueMs = parseDue(rawDue);
+    if (!Number.isFinite(dueMs)) continue;
+    const days = Math.floor((now - dueMs) / MS_PER_DAY);
+    if (days < 1) continue;
+
+    const customer = item.Customer as Record<string, unknown> | undefined;
+    const amount = Number(item['BalanceDueAmount']) || 0;
+    totalOverdue += amount;
+
+    rows.push({
+      id:            String(item.UID ?? item.Number ?? rows.length),
+      number:        String(item.Number ?? ''),
+      customer_name: String(customer?.Name ?? ''),
+      amount:        fmtAmt(amount),
+      days_overdue:  days,
+      due_date:      fmtDate(rawDue),
+    });
+  }
+
+  rows.sort((a, b) => (b.days_overdue as number) - (a.days_overdue as number));
+
+  const overdueCount = rows.length;
+  const oldestDays = rows.length > 0 ? (rows[0].days_overdue as number) : 0;
+  const avgDays = overdueCount > 0
+    ? Math.round(rows.reduce((s, r) => s + (r.days_overdue as number), 0) / overdueCount)
+    : 0;
+
+  return { rows, totalOverdue, overdueCount, oldestDays, avgDays };
+};
+
 // ── flatten_invoices ─────────────────────────────────────────────────
 // Flattens MYOB invoice items into display-ready flat rows for Table.
 // Extracts nested Customer.Name, Terms.DueDate and pre-formats date/amount.
@@ -767,6 +833,7 @@ const elements: PluginElementsModule = {
     pnl_debug,
     pnl_spark_values,
     pnl_summary_bars,
+    flatten_overdue_invoices,
     flatten_invoices,
     flatten_bills,
     is_overdue,

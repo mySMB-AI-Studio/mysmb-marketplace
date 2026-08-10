@@ -14,8 +14,8 @@
   },
   "dataProvider": {
     "mcp": "myob-accounting",
-    "tool": "get_profit_and_loss",
-    "params": { "from_date": "2026-04-01", "to_date": "2026-06-30", "reporting_basis": "Accrual" }
+    "tool": "list_invoices",
+    "params": { "status": "All", "page_size": 1000 }
   },
   "spec": {
     "root": "card",
@@ -23,13 +23,7 @@
 
       "card": {
         "type": "Card",
-        "children": ["header", "loadingSpinner", "heroStack", "lastYearSpark", "thisYearSpark", "monthAxis", "legend", "divider", "collapseRow", "collapseBody"],
-        "watch": {
-          "/myob-accounting/get_profit_and_loss": {
-            "action": "myob-accounting.list_invoices",
-            "params": { "status": "All", "from_date": "2025-04-01", "to_date": "2026-06-30", "page_size": 1000 }
-          }
-        }
+        "children": ["header", "loadingSpinner", "heroStack", "lastYearSpark", "thisYearSpark", "monthAxis", "legend", "divider", "collapseRow", "collapseBody"]
       },
 
       "header": {
@@ -53,7 +47,7 @@
 
       "loadingSpinner": {
         "type": "Spinner",
-        "visible": { "$state": "/_loading/myob-accounting.get_profit_and_loss" }
+        "visible": { "$state": "/_loading/myob-accounting.list_invoices" }
       },
 
       "heroStack": {
@@ -65,12 +59,12 @@
         "type": "Stat",
         "props": {
           "value": {
-            "$computed": "myob-accounting_format_currency",
+            "$computed": "myob-accounting_txn_amount",
             "args": {
-              "value": {
-                "$computed": "myob-accounting_pnl_get",
-                "args": { "value": { "$state": "/myob-accounting/get_profit_and_loss" }, "key": "income" }
-              }
+              "value": { "$state": "/myob-accounting/list_invoices/Items" },
+              "filter": "all",
+              "from_date": { "$computed": "myob-accounting_three_month_window", "args": { "field": "from_date" } },
+              "to_date": { "$computed": "myob-accounting_three_month_window", "args": { "field": "to_date" } }
             }
           }
         }
@@ -84,7 +78,7 @@
             "$computed": "myob-accounting_monthly_totals",
             "args": {
               "value": { "$state": "/myob-accounting/list_invoices/Items" },
-              "months": ["2025-04", "2025-05", "2025-06"]
+              "months": { "$computed": "myob-accounting_three_month_window", "args": { "field": "months_ly" } }
             }
           },
           "tone": "destructive",
@@ -99,7 +93,7 @@
             "$computed": "myob-accounting_monthly_totals",
             "args": {
               "value": { "$state": "/myob-accounting/list_invoices/Items" },
-              "months": ["2026-04", "2026-05", "2026-06"]
+              "months": { "$computed": "myob-accounting_three_month_window", "args": { "field": "months_cy" } }
             }
           },
           "tone": "accent",
@@ -113,9 +107,9 @@
         "props": { "justify": "between" },
         "children": ["mApr", "mMay", "mJun"]
       },
-      "mApr": { "type": "Caption", "props": { "text": "Apr" } },
-      "mMay": { "type": "Caption", "props": { "text": "May" } },
-      "mJun": { "type": "Caption", "props": { "text": "Jun" } },
+      "mApr": { "type": "Caption", "props": { "text": { "$computed": "myob-accounting_three_month_window", "args": { "field": "month_0" } } } },
+      "mMay": { "type": "Caption", "props": { "text": { "$computed": "myob-accounting_three_month_window", "args": { "field": "month_1" } } } },
+      "mJun": { "type": "Caption", "props": { "text": { "$computed": "myob-accounting_three_month_window", "args": { "field": "month_2" } } } },
 
       "legend": {
         "type": "Row",
@@ -208,7 +202,12 @@
         "props": {
           "text": {
             "$computed": "myob-accounting_txn_count",
-            "args": { "value": { "$state": "/myob-accounting/list_invoices/Items" }, "filter": "closed", "from_date": "2026-04-01", "to_date": "2026-06-30" }
+            "args": {
+              "value": { "$state": "/myob-accounting/list_invoices/Items" },
+              "filter": "closed",
+              "from_date": { "$computed": "myob-accounting_three_month_window", "args": { "field": "from_date" } },
+              "to_date": { "$computed": "myob-accounting_three_month_window", "args": { "field": "to_date" } }
+            }
           }
         }
       },
@@ -217,7 +216,12 @@
         "props": {
           "text": {
             "$computed": "myob-accounting_txn_amount",
-            "args": { "value": { "$state": "/myob-accounting/list_invoices/Items" }, "filter": "closed", "from_date": "2026-04-01", "to_date": "2026-06-30" }
+            "args": {
+              "value": { "$state": "/myob-accounting/list_invoices/Items" },
+              "filter": "closed",
+              "from_date": { "$computed": "myob-accounting_three_month_window", "args": { "field": "from_date" } },
+              "to_date": { "$computed": "myob-accounting_three_month_window", "args": { "field": "to_date" } }
+            }
           },
           "size": "sm",
           "weight": "medium"
@@ -240,7 +244,12 @@
         "props": {
           "text": {
             "$computed": "myob-accounting_txn_count",
-            "args": { "value": { "$state": "/myob-accounting/list_invoices/Items" }, "filter": "all", "from_date": "2026-04-01", "to_date": "2026-06-30" }
+            "args": {
+              "value": { "$state": "/myob-accounting/list_invoices/Items" },
+              "filter": "all",
+              "from_date": { "$computed": "myob-accounting_three_month_window", "args": { "field": "from_date" } },
+              "to_date": { "$computed": "myob-accounting_three_month_window", "args": { "field": "to_date" } }
+            }
           }
         }
       },
@@ -249,7 +258,12 @@
         "props": {
           "text": {
             "$computed": "myob-accounting_txn_amount",
-            "args": { "value": { "$state": "/myob-accounting/list_invoices/Items" }, "filter": "all", "from_date": "2026-04-01", "to_date": "2026-06-30" }
+            "args": {
+              "value": { "$state": "/myob-accounting/list_invoices/Items" },
+              "filter": "all",
+              "from_date": { "$computed": "myob-accounting_three_month_window", "args": { "field": "from_date" } },
+              "to_date": { "$computed": "myob-accounting_three_month_window", "args": { "field": "to_date" } }
+            }
           },
           "size": "sm",
           "weight": "medium"
@@ -275,7 +289,12 @@
         "props": {
           "text": {
             "$computed": "myob-accounting_txn_count",
-            "args": { "value": { "$state": "/myob-accounting/list_invoices/Items" }, "filter": "open", "from_date": "2026-04-01", "to_date": "2026-06-30" }
+            "args": {
+              "value": { "$state": "/myob-accounting/list_invoices/Items" },
+              "filter": "open",
+              "from_date": { "$computed": "myob-accounting_three_month_window", "args": { "field": "from_date" } },
+              "to_date": { "$computed": "myob-accounting_three_month_window", "args": { "field": "to_date" } }
+            }
           }
         }
       },
@@ -284,7 +303,12 @@
         "props": {
           "text": {
             "$computed": "myob-accounting_txn_amount",
-            "args": { "value": { "$state": "/myob-accounting/list_invoices/Items" }, "filter": "open", "from_date": "2026-04-01", "to_date": "2026-06-30" }
+            "args": {
+              "value": { "$state": "/myob-accounting/list_invoices/Items" },
+              "filter": "open",
+              "from_date": { "$computed": "myob-accounting_three_month_window", "args": { "field": "from_date" } },
+              "to_date": { "$computed": "myob-accounting_three_month_window", "args": { "field": "to_date" } }
+            }
           },
           "size": "sm",
           "weight": "medium"
@@ -307,7 +331,12 @@
         "props": {
           "text": {
             "$computed": "myob-accounting_txn_count",
-            "args": { "value": { "$state": "/myob-accounting/list_invoices/Items" }, "filter": "overdue", "from_date": "2026-04-01", "to_date": "2026-06-30" }
+            "args": {
+              "value": { "$state": "/myob-accounting/list_invoices/Items" },
+              "filter": "overdue",
+              "from_date": { "$computed": "myob-accounting_three_month_window", "args": { "field": "from_date" } },
+              "to_date": { "$computed": "myob-accounting_three_month_window", "args": { "field": "to_date" } }
+            }
           },
           "tone": "destructive"
         }
@@ -317,7 +346,12 @@
         "props": {
           "text": {
             "$computed": "myob-accounting_txn_amount",
-            "args": { "value": { "$state": "/myob-accounting/list_invoices/Items" }, "filter": "overdue", "from_date": "2026-04-01", "to_date": "2026-06-30" }
+            "args": {
+              "value": { "$state": "/myob-accounting/list_invoices/Items" },
+              "filter": "overdue",
+              "from_date": { "$computed": "myob-accounting_three_month_window", "args": { "field": "from_date" } },
+              "to_date": { "$computed": "myob-accounting_three_month_window", "args": { "field": "to_date" } }
+            }
           },
           "size": "sm",
           "weight": "medium",
