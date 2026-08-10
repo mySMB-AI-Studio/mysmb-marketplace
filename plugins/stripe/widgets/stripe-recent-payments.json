@@ -51,10 +51,15 @@
       "hdrCustomerGroup": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["hdrCustomer","sortBtn"] },
       "hdrCustomer": { "type": "Caption", "props": { "text": "Customer" } },
       "sortBtn": {
-        "type": "IconButton", "props": { "icon": "ArrowUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Cycle sort order" },
-        "on": { "click": [{ "action": "setState", "params": { "statePath": "/ui/sortKey", "value": { "$computed": "stripe_cycle_sort", "args": { "current": { "$state": "/ui/sortKey" } } } } }] }
+        "type": "IconButton", "props": { "icon": "ArrowUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by customer" },
+        "on": { "click": [{ "action": "setState", "params": { "statePath": "/ui/sortKey", "value": { "$computed": "stripe_set_sort_field", "args": { "current": { "$state": "/ui/sortKey" }, "field": "customer_name" } } } }] }
       },
-      "hdrAmount": { "type": "Caption", "props": { "text": "Amount" } },
+      "hdrAmount": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["hdrAmountLabel", "sortAmountBtn"] },
+      "hdrAmountLabel": { "type": "Caption", "props": { "text": "Amount" } },
+      "sortAmountBtn": {
+        "type": "IconButton", "props": { "icon": "ArrowUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by amount" },
+        "on": { "click": [{ "action": "setState", "params": { "statePath": "/ui/sortKey", "value": { "$computed": "stripe_set_sort_field", "args": { "current": { "$state": "/ui/sortKey" }, "field": "amount_cents" } } } }] }
+      },
       "hdrMethod": { "type": "Caption", "props": { "text": "Method" } },
       "hdrStatus": { "type": "Caption", "props": { "text": "Status" } },
       "list": { "type": "Stack", "props": { "gap": "xs" }, "children": ["payRow"], "repeat": { "statePath": "/ui/paymentRows", "key": "id" }, "visible": { "$and": [{ "$state": "/_loading/stripe.list_payments", "not": true }, { "$state": "/stripe/list_payments/data/0" }] } },
