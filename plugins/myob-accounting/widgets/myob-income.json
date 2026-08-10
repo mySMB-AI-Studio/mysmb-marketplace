@@ -14,12 +14,8 @@
   },
   "dataProvider": {
     "mcp": "myob-accounting",
-    "tool": "get_profit_and_loss",
-    "params": {
-      "from_date": { "$computed": "myob-accounting_three_month_window", "args": { "field": "from_date" } },
-      "to_date": { "$computed": "myob-accounting_three_month_window", "args": { "field": "to_date" } },
-      "reporting_basis": "Accrual"
-    }
+    "tool": "list_invoices",
+    "params": { "status": "All", "page_size": 1000 }
   },
   "spec": {
     "root": "card",
@@ -27,18 +23,7 @@
 
       "card": {
         "type": "Card",
-        "children": ["header", "loadingSpinner", "heroStack", "lastYearSpark", "thisYearSpark", "monthAxis", "legend", "divider", "collapseRow", "collapseBody"],
-        "watch": {
-          "/myob-accounting/get_profit_and_loss": {
-            "action": "myob-accounting.list_invoices",
-            "params": {
-              "status": "All",
-              "from_date": { "$computed": "myob-accounting_three_month_window", "args": { "field": "from_date_ly" } },
-              "to_date": { "$computed": "myob-accounting_three_month_window", "args": { "field": "to_date" } },
-              "page_size": 1000
-            }
-          }
-        }
+        "children": ["header", "loadingSpinner", "heroStack", "lastYearSpark", "thisYearSpark", "monthAxis", "legend", "divider", "collapseRow", "collapseBody"]
       },
 
       "header": {
