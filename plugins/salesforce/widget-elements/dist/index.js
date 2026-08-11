@@ -288,6 +288,26 @@ const membership_growth_insight = (args) => {
     const verb = lowest.length > 1 ? 'have' : 'has';
     return `${names} ${verb} the smallest share (~${combinedPct}% combined) — potential outreach targets.`;
 };
+// Fixed cycle of Badge/Dot tones — same as HubSpot's RANK_TONE_CYCLE.
+const RANK_TONE_CYCLE = ['accent', 'info', 'success', 'warning', 'destructive', 'muted'];
+/**
+ * Colors a category row by its position in the count-descending-sorted list rather
+ * than by matching its label against a fixed name lookup — membership-type labels
+ * vary too much across orgs to reliably map by name.
+ *
+ * Args: { counts: Array<{ value: string; count: number; percentage: number }>, value: string }
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_category_rank_tone", "args": { "counts": { "$state": "/ui/categoryRows" }, "value": { "$item": "value" } } }
+ */
+const category_rank_tone = (args) => {
+    const counts = Array.isArray(args.counts) ? args.counts : [];
+    const value = args.value;
+    const index = counts.findIndex((c) => c && c['value'] === value);
+    if (index < 0)
+        return 'muted';
+    return RANK_TONE_CYCLE[index % RANK_TONE_CYCLE.length];
+};
 /**
  * Compute summary stats for a state breakdown: subtitle text and top-2 insight string.
  *
@@ -328,6 +348,6 @@ const state_summary = (args) => {
 };
 const elements = {
     slug: 'salesforce',
-    functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight },
+    functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone },
 };
 export default elements;
