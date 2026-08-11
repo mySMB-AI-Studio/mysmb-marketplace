@@ -55,9 +55,10 @@ Scopes requested during Connect:
 - `create_association` — link two records with a specific `associationCategory`/`associationTypeId`.
 - `list_association_labels` — valid `associationTypeId` values between two object types (call before `create_association`).
 
-### Lookup helpers (2)
+### Lookup helpers (3)
 - `list_pipelines` — pipelines + stages for `deals`/`tickets` (or a pipeline-enabled custom object) — the internal IDs `create_deal`/`create_ticket` require.
 - `list_properties` — every property (standard + custom) for an object type — internal `name`, display `label`, `type`, `fieldType`. Use before create/update to confirm valid property names; never guess.
+- `list_owners` — HubSpot users who can be record owners — resolves a `hubspot_owner_id` value (records only ever store the ID, never a display name) to `{ id, email, firstName, lastName }`.
 
 Pagination is HubSpot's native `after`/`limit` cursor (never page numbers) — `limit` is capped at 100. `list_*` tools return `{ items, has_more, next_after }`; `search_*` tools add `total`.
 

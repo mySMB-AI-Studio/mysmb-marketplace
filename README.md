@@ -205,6 +205,7 @@ The full developer documentation is published at **[mysmb-ai-studio.github.io/my
 | **About json-render** | [docs site → json-render](https://mysmb-ai-studio.github.io/mysmb-marketplace/widgets/json-render) → [Vercel json-render](https://json-render.vercel.app/) |
 | **File-format reference** | [docs site → Reference](https://mysmb-ai-studio.github.io/mysmb-marketplace/reference/plugin-json) — `plugin.json`, `.mcp.json`, widget JSON, validator rules |
 | **Single-page authoring summary** | [`CREATING_PLUGINS.md`](CREATING_PLUGINS.md) — the same content condensed into one file for offline reading |
+| **Tile display standards** | [`TILE-DISPLAY-STANDARDS.md`](TILE-DISPLAY-STANDARDS.md) — dates, currency, status casing, headers, spacing, color/tone — one standard every widget must follow |
 | **OAuth gateway for hosted MCP servers** | [`myhub-mcp-servers` repo](https://github.com/mySMB-AI-Studio/myhub-mcp-servers) |
 | **MyHub consumer integration** | [MyHub repo](https://github.com/mySMB-AI-Studio/myHubV2), `packages/shared/src/plugins/` |
 
@@ -217,6 +218,8 @@ Every plugin in this marketplace follows three rules:
 1. **Any MCP transport is allowed.** `stdio`, `sse`, and streamable `http` are all supported. Pick whichever the upstream server ships with — stdio for local subprocesses, sse/http for remote services. The MyHub tenant runtime is a Linux container with outbound networking, so remote MCP servers work fine.
 2. **All credentials via environment variables.** No hardcoded secrets, no interactive prompts at runtime, no OS keyring access. MyHub's connection UI collects credentials, stores them in Key Vault, and injects them into the MCP client at session start — `env` for stdio, `headers` for sse/http. Claude Code users set the same variables in their shell. Every `${VAR}` placeholder must be documented in the plugin's README under a `## Configuration` heading — the validator enforces this.
 3. **Pure Node, no native binaries, no platform-specific code.** The same build artefact has to run on every tenant container and every developer machine.
+
+Every widget also follows **[`TILE-DISPLAY-STANDARDS.md`](TILE-DISPLAY-STANDARDS.md)** — dates, currency, status-badge casing, column headers, spacing, and color/tone conventions. Check a new or edited widget against it before shipping; a formatting inconsistency here is the same class of bug as a broken data binding.
 
 ### Server-distribution preference
 
