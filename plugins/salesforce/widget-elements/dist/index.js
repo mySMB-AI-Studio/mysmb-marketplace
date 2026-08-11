@@ -369,15 +369,6 @@ const deal_stage_tone = (args) => {
         return 'info';
     return 'muted';
 };
-const RANK_TONE_CYCLE = ['accent', 'info', 'success', 'warning', 'destructive', 'muted'];
-const category_rank_tone = (args) => {
-    const counts = Array.isArray(args.counts) ? args.counts : [];
-    const value = args.value;
-    const index = counts.findIndex((c) => c && c['value'] === value);
-    if (index < 0)
-        return 'muted';
-    return RANK_TONE_CYCLE[index % RANK_TONE_CYCLE.length];
-};
 const or_dash = (args) => {
     const v = args.value;
     if (v === null || v === undefined || v === '')
