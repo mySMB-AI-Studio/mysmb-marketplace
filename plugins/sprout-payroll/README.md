@@ -38,5 +38,6 @@ Set these when connecting the plugin in myHub (Settings → Plugins → Connecti
 |---|---|---|
 | `SPROUT_CLIENT_ID` | ✅ | Sprout API client id, issued when your API access is approved. |
 | `SPROUT_CLIENT_SECRET` | ✅ | Sprout API client secret. Exchanged server-side for a Bearer token. |
-| `SPROUT_SUBSCRIPTION_KEY` | — | Azure APIM subscription key (`Ocp-Apim-Subscription-Key`). Required in production, blank for sandbox. |
+| `SPROUT_SUBSCRIPTION_KEY` | — | Azure APIM subscription key (`Ocp-Apim-Subscription-Key`). Required in both sandbox and production. |
 | `SPROUT_TENANT_CODE` | — | Company/tenant code identifying which company the calls target. |
+| `SPROUT_ENVIRONMENT` | — | `sandbox` or `production` — the Sprout environment your credentials were issued for. Credentials only work on their own environment's gateway. Blank = platform default. |
