@@ -349,9 +349,28 @@ const state_summary: ComputedFunction = (args) => {
   return { subtitleText, insightText };
 };
 
+/**
+ * Map a Salesforce Opportunity StageName to a badge tone using keyword matching,
+ * since orgs can rename stages — exact-match would break on custom pipelines.
+ *
+ * Args: { value: string }
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_deal_stage_tone", "args": { "value": { "$item": "StageName" } } }
+ */
+const deal_stage_tone: ComputedFunction = (args) => {
+  const s = String(args.value ?? '').toLowerCase();
+  if (s.includes('won')) return 'success';
+  if (s.includes('lost')) return 'destructive';
+  if (s.includes('negotiation') || s.includes('proposal') || s.includes('price quote')) return 'warning';
+  if (s.includes('needs analysis') || s.includes('value') || s.includes('decision') || s.includes('perception')) return 'accent';
+  if (s.includes('qualification')) return 'info';
+  return 'muted';
+};
+
 const elements: PluginElementsModule = {
   slug: 'salesforce',
-  functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone },
+  functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone },
 };
 
 export default elements;
