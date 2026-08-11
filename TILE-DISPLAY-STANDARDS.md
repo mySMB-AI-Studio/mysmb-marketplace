@@ -72,7 +72,7 @@ A condensed one-page PDF version of this same content exists for sharing outside
 
 ## 6. Building tabular tiles (confirmed 2026-08-07)
 
-**For any multi-column, row-based tile (a deal list, a ticket list, anything that reads as a table), use the system `Table` component — never hand-roll it from `Row` (with a `template`) + `repeat`.**
+**For any multi-column, row-based tile (a deal list, a ticket list, anything that reads as a table), use the system `Table` component — never hand-roll it from `Row` (with a `template`) + `repeat` — unless the tile needs interactive column sorting, which `Table` doesn't support yet; see "Interactive column sorting" below for that case's own standard.**
 
 **Why this is a real bug, not just style:** a hand-rolled table's header row and each data row are *separate* CSS Grid containers. If any column width is `auto` (or otherwise content-dependent), each row computes its own column widths independently — so the header's short labels ("Stage", "Amount") and the data rows' wider content (a stage pill, a dollar amount) can end up with genuinely different column widths, even though every individual row looks fine on its own. The header and the data silently stop lining up. `Table` doesn't have this failure mode: header and rows are one component sharing one width state, so alignment is guaranteed by construction, and columns are user-resizable for free.
 
@@ -85,6 +85,18 @@ A condensed one-page PDF version of this same content exists for sharing outside
 **One migration done as a concrete example (2026-08-07):** HubSpot's Recent Contacts tile was rebuilt directly onto `Table` (previously hand-rolled `Row`+`repeat`) as part of the same round of fixes — the "touch it, fix it" policy actually applied, not just Deals Pipeline's "left as-is" counterexample.
 
 **Folded in (2026-08-07):** this rule now also lives in `myHubV2/.claude/skills/composing-widgets/SKILL.md`'s "Common gotchas" section (the actual authoritative "which component to use" doc — this section here remains the record of the finding) and in the plugin-scaffold template's copy of the same skill (`mysmb-marketplace/scripts/create-plugin/template/.claude/skills/composing-widgets/SKILL.md`), so new plugins inherit the rule from creation.
+
+### Interactive column sorting (confirmed 2026-08-10 — from a Stripe tiles demo, with a follow-up that it belongs in this doc)
+
+**When a tile needs interactive column sorting, hand-roll it instead of using `Table` — with fixed pixel column widths mandatory, not optional.** `Table`'s `TableColumn.header` is a plain string with no slot for a button or any custom content per column, and it has no `sortable`/`onSort`/header-click mechanism at all — there is currently no way to add a sort affordance to a `Table` column. Rather than block sortable tiles on unbuilt, unvalidated platform work (extending `Table` itself was considered and explicitly rejected for now — zero tiles have proven what that would look or behave like), this doc accepts hand-rolling as the standard path for this specific need, the same way `Table` is the standard for the non-sorting case above. The fixed-pixel-width rule from the alignment-bug fix above still applies here — it's what prevents the exact failure mode that motivated adopting `Table` in the first place, so a hand-rolled sortable table without it is still non-compliant, not a valid exception.
+
+**Standardize the affordance, not full per-column coverage.** A tile author picks which columns are meaningfully sortable — Stripe's own reference implementation (the one that prompted this section) doesn't sort every column either.
+
+**Standard interaction:** a small icon button sits immediately beside the sortable column's header label — matching the demoed Stripe placement, generalized to any column an author marks sortable (not restricted to one fixed column the way the current Salesforce/Stripe widgets do it). Unsorted sortable columns show a neutral `ArrowUpDown` icon; the active sort column shows a direction-specific `ArrowUp` (ascending) or `ArrowDown` (descending) icon instead. Clicking toggles between ascending and descending for that column — two states, not three; none of the existing shipped implementations return to an "unsorted" state once clicked, and no case has needed that yet.
+
+**Known inconsistency this replaces:** three independently-built patterns existed, matching none of each other. Shopify's Product Catalog: a row of buttons *above* the table, one per sortable column, resets to ascending on column switch. Salesforce (2 widgets) and Stripe (4 widgets): a single icon button beside one fixed column's header, cycling only that column — the same shape reinvented twice, independently, in two different connectors' widget-elements. MYOB built a fourth design (an arrow character appended into the header text) that was never actually wired into any shipped widget. None of these need retroactive migration to match the standard above — same opportunistic "touch it, fix it" policy as the rest of this doc — but new sortable tiles should follow the standard interaction, not add a fifth pattern.
+
+**Still needs doing:** fold this into `myHubV2/.claude/skills/composing-widgets/SKILL.md`'s "Common gotchas" section alongside the Table-vs-hand-rolled rule above, so new plugins inherit both halves of this decision together — held off for now, same reasoning as this doc's other "still needs folding in" notes.
 
 ## 7. Color / tone
 
@@ -128,8 +140,8 @@ This doc states the standard; it doesn't by itself make ~197 existing widgets co
 
 **Enforcement — make compliance structural, not memory-dependent:**
 
-- Add the mechanically-checkable rules to `scripts/validate.ts` (already run on every plugin PR) — at minimum, fail on `"gap": "xxs"` immediately; add currency-explicit and date-format-call checks as they become checkable.
-- Wire the same rules into `workspace-plugin-builder:plugin-reviewer`'s checklist, so a pre-PR review actively flags violations rather than relying on the author having read this file.
+- Add the mechanically-checkable rules to `scripts/validate.ts` (already run on every plugin PR) — at minimum, fail on `"gap": "xxs"` immediately; add currency-explicit and date-format-call checks as they become checkable. A hand-rolled sortable table using `auto`/`fr` column widths instead of fixed pixels is checkable the same way.
+- Wire the same rules into `workspace-plugin-builder:plugin-reviewer`'s checklist, so a pre-PR review actively flags violations rather than relying on the author having read this file — including the §6 decision test itself: does this tile need sorting? If yes, hand-rolled + fixed widths + the standard button convention; if no, `Table`.
 - Until enforcement lands, treat this doc as required reading before touching dates/currency/status/headers/spacing/color in any tile — but don't mistake "documented" for "enforced."
 
 ---
