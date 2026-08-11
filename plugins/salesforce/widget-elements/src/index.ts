@@ -368,27 +368,6 @@ const deal_stage_tone: ComputedFunction = (args) => {
   return 'muted';
 };
 
-const RANK_TONE_CYCLE = ['accent', 'info', 'success', 'warning', 'destructive', 'muted'] as const;
-
-/**
- * Map a ranked item to a tone by its position in a sorted counts array.
- * Cycles through accent → info → success → warning → destructive → muted.
- *
- * Args: { counts: Array<{ value: unknown }>, value: unknown }
- *   counts — the ordered rows array (e.g. /ui/categoryRows)
- *   value  — the current item's value field
- *
- * Spec example:
- *   { "$computed": "salesforce_category_rank_tone", "args": { "counts": { "$state": "/ui/categoryRows" }, "value": { "$item": "value" } } }
- */
-const category_rank_tone: ComputedFunction = (args) => {
-  const counts = Array.isArray(args.counts) ? (args.counts as Record<string, unknown>[]) : [];
-  const value = args.value;
-  const index = counts.findIndex((c) => c && c['value'] === value);
-  if (index < 0) return 'muted';
-  return RANK_TONE_CYCLE[index % RANK_TONE_CYCLE.length];
-};
-
 /**
  * Return the value as a string, or an em-dash if null / undefined / empty.
  * Use this instead of hiding cells with `visible` when you want "–" for missing data.
