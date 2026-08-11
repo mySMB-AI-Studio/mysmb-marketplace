@@ -14,13 +14,13 @@ A condensed one-page PDF version of this same content exists for sharing outside
 
 | Context | Format | `$computed` call |
 |---|---|---|
-| Default — list rows, detail views, everything human-facing | `05-Aug-26` | `format_date` — **new format option, doesn't exist yet** (see platform gap below) |
+| Default — list rows, detail views, everything human-facing | `05-Aug-26` | `{ "$computed": "format_date", "args": { "value": …, "format": "dd-mmm-yy" } }` (or `cellFormatters.dd_mmm_yy` in a `Table` column) |
 | Activity feed ("how long ago") | `3mo ago` | `relative_time` |
 | Machine-facing only | `2026-07-28` | `format_date` with `"format": "iso"` — never for a human-facing label |
 
 **Rule:** pick ONE per widget based on context above — never mix within a single widget for the same conceptual field (found happening in Cliniko's recent-patients tile: `created_at` shown as both "Jul 28, 2026" and "3mo ago" in the same tile).
 
-**Platform gap:** `format_date`'s existing variants (`iso`/`short`/`medium`/`long`) don't produce `dd-Mmm-yy` — needs a new format value added to the system `format_date` helper (`myHubV2/apps/web/src/features/widgets-system/system/functions.ts`) before widgets can actually use this as their default. Flagging as a follow-up engineering task, same as the spacing and color gaps below.
+**Implemented (2026-08-10, pending merge of myHubV2 PR #1245):** an earlier draft of this doc listed `dd-Mmm-yy` as a platform gap — `format_date`'s existing variants (`iso`/`short`/`medium`/`long`) didn't produce it. That option now exists (`myHubV2/apps/web/src/features/widgets-system/system/functions.ts`), plus a matching `cellFormatters.dd_mmm_yy` for `Table` columns. Until #1245 merges to `dev`, this exists on that branch only.
 
 **Retire:** `format_date_au` / `due_date_au` (`DD/MM/YYYY`) — confirmed unused by any shipped widget. Superseded by `dd-Mmm-yy` above, not worth reviving.
 
@@ -37,9 +37,11 @@ A condensed one-page PDF version of this same content exists for sharing outside
 
 **Rule:** never pass a raw connector enum straight to a `Badge`/table `variant: "badge"` cell. Every status must go through a label-normalizing `$computed` before display — the tone function alone (`xero_status`, `simpro_job_status_tone`, etc.) only controls color, not casing.
 
-**A fix already exists and isn't used:** `hubspot_ticket_priority_label` (`plugins/hubspot/widget-elements/src/index.ts`) does exactly this — Title-Cases HubSpot's raw `HIGH`/`MEDIUM`/`LOW`. The shipped widget (`hubspot-support-tickets.json`) only calls the *tone* function, never the *label* function, so tickets still render `HIGH` in production. This is the reference pattern every other connector should follow: a `<connector>_<field>_label` helper alongside every `<connector>_<field>_tone` helper.
+**Reference pattern:** a `<connector>_<field>_label` helper alongside every `<connector>_<field>_tone` helper. `hubspot_ticket_priority_label` (`plugins/hubspot/widget-elements/src/index.ts`) is the example this doc originally flagged as "exists but unused" — as of the Support Tickets tile rebuild, `hubspot-support-tickets.json` now calls both the label and tone functions, so this one's fixed, not just available.
 
-**Known violators to fix first:** Xero Projects (raw UPPERCASE), HubSpot ticket priority (raw UPPERCASE, fix exists unused), DocuSign (raw lowercase).
+**Also found and fixed (2026-08-10, pending merge of myHubV2 PR #1245):** the shared `Badge` component's `soft` variant combined with `muted` tone rendered essentially invisibly in both light and dark theme — a platform bug, not a tile mistake, discovered via this exact HubSpot ticket-priority case (a `muted` "Low" pill that should read clearly, matching WorkQ's own priority-pill contrast, but didn't). Root-caused and fixed in `myHubV2/apps/web/src/features/widgets-system/system/components.tsx` directly — no tile-level workaround needed, and every other tone/variant combination was left untouched.
+
+**Known violators as of 2026-08-07 — re-verify before treating as current, this list is a snapshot, not a standard:** Xero Projects (raw UPPERCASE), DocuSign (raw lowercase). HubSpot ticket priority was on this list originally; fixed in the Support Tickets tile rebuild, see above.
 
 ## 4. Column headers & field naming
 
@@ -54,6 +56,8 @@ A condensed one-page PDF version of this same content exists for sharing outside
 | When something is due | **Due Date** | ~~Due~~ |
 
 (Decision confirmed 2026-08-05: "Customer" universally, even for practice-management-flavored connectors like Xero Practice Manager, which currently says "Client.")
+
+**Platform bug, found and fixed (2026-08-10, pending merge of myHubV2 PR #1245):** the system `Table` component hardcoded `uppercase` on every column header via CSS, regardless of how the widget author cased `column.header` — the one place in the widget system that silently violated this section's own rule no matter what a tile author wrote. Removed; headers now render exactly as authored. Checked against every existing widget using `Table` before removing it — none relied on the forced transform.
 
 ## 5. Spacing
 
@@ -77,6 +81,8 @@ A condensed one-page PDF version of this same content exists for sharing outside
 **A real limitation to know about, not a reason to avoid `Table`:** its built-in cell formatters (`format`/`toneFormat`) only see one column's own value — they can't reference another field on the same row. A per-row value that depends on a *different* field (e.g. formatting `amount` using that row's own `deal_currency_code`) still needs custom handling — pre-compute a display-ready string before handing rows to `Table`, the same way you would outside it.
 
 **Not yet applied retroactively:** Deals Pipeline itself was left as-is (already built, tested, and working — reworking it into `Table` right after fixing its alignment bug risked unnecessary regression for no functional gain). New tabular tiles should use `Table` from the start; migrating existing hand-rolled ones is the same opportunistic "touch it, fix it" policy as §8's rollout plan, not a mandatory rewrite.
+
+**One migration done as a concrete example (2026-08-07):** HubSpot's Recent Contacts tile was rebuilt directly onto `Table` (previously hand-rolled `Row`+`repeat`) as part of the same round of fixes — the "touch it, fix it" policy actually applied, not just Deals Pipeline's "left as-is" counterexample.
 
 **Folded in (2026-08-07):** this rule now also lives in `myHubV2/.claude/skills/composing-widgets/SKILL.md`'s "Common gotchas" section (the actual authoritative "which component to use" doc — this section here remains the record of the finding) and in the plugin-scaffold template's copy of the same skill (`mysmb-marketplace/scripts/create-plugin/template/.claude/skills/composing-widgets/SKILL.md`), so new plugins inherit the rule from creation.
 
@@ -116,7 +122,7 @@ This doc states the standard; it doesn't by itself make ~197 existing widgets co
 
 **Sequencing — apply in this order, not all at once:**
 
-1. **Ship the platform gaps first.** The `dd-Mmm-yy` `format_date` variant, a real `xxs`/half-step `GAP_SIZE` value (or the 45-file mass-fix), and a decorative `Tone` value bound to `#34DFBA` are all real engineering work in myHubV2/`packages/widget-tokens`, not fixed by this document existing. Until they land, widgets attempting to comply will keep hand-rolling per-plugin workarounds (e.g. a plugin-local date-formatting helper duplicating what the system `format_date` should do) — file these three as tracked tickets (GitHub Projects board #2, per myHubV2's own workflow), not left as prose here.
+1. **Ship the platform gaps.** Status as of 2026-08-10: two of the three originally identified here are done — the `dd-Mmm-yy` `format_date` variant + `cellFormatters.dd_mmm_yy`, and decorative color (`brandColor`/`tone:"brand"` for a single connector accent, `chart-1..5` for categorical breakdowns) — both in myHubV2 PR #1245, pending merge. Still genuinely open: a real `xxs`/half-step `GAP_SIZE` value (or the 45-file mass-fix) in `packages/widget-tokens` — file as a tracked ticket (GitHub Projects board #2, per myHubV2's own workflow) if not already, not left as prose here.
 2. **Going forward, from now on: every new tile, and every existing tile touched for any reason** (a bug fix, a feature add, anything) **must comply with this standard as part of that touch.** Standard boy-scout-rule — no separate dedicated pass required to bring a tile you're already editing into line.
 3. **A full retrofit of untouched legacy tiles is a separate, deliberately scoped initiative** (e.g. prioritized by tile popularity/usage), tracked on its own — not required before this standard "counts," and not left permanently undone either. Rationale: ~197 widgets is a large surface for a small team to rewrite in one pass, it's cosmetic/consistency debt rather than a functional bug, and most of it is blocked on step 1 regardless of scope decisions. "Future tiles only, forever" would quietly guarantee the inconsistency never resolves for anything not touched again, which defeats the point of having a standard — so this needs to stay a real, planned initiative, just not an urgent-blocking one.
 
