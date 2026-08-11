@@ -1,6 +1,6 @@
 {
   "name": "sprout-hr-general",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Access Sprout HR General reference data and admin configuration — companies, departments, locations, clients, access levels (roles), notifications, and shared lookups.",
   "author": {
     "name": "mySMB",
@@ -17,7 +17,7 @@
   ],
   "connection": {
     "authType": "api_key",
-    "instructions": "Connect with your **Sprout HR API** credential pair — NOT the Payroll (PR) API pair. Sprout issues two separate credential pairs when granting API access: an **HR API** pair (long 64-character hex strings — used here and by the other Sprout HR-side plugins) and a **PR API** pair (short client id — used only by the Sprout Payroll plugin). Only the HR pair works here.\n\n1. Request API access from the **Sprout Developer Portal** (Getting Started → Authorization).\n2. From the credentials Sprout sends, copy the **HR API** Client ID and Client Secret below.\n3. Paste the **Subscription Key** (`Ocp-Apim-Subscription-Key`) — required for production access; it is shared across Sprout's HR and Payroll APIs.\n\nWe exchange your credentials for a short-lived token automatically — you never paste a bearer token.",
+    "instructions": "Connect with your **Sprout HR API** credential pair — NOT the Payroll (PR) API pair. Sprout issues two separate credential pairs when granting API access: an **HR API** pair (long 64-character hex strings — used here and by the other Sprout HR-side plugins) and a **PR API** pair (short client id — used only by the Sprout Payroll plugin). Only the HR pair works here.\n\n1. Request API access from the **Sprout Developer Portal** (Getting Started → Authorization).\n2. From the credentials Sprout sends, copy the **HR API** Client ID and Client Secret below.\n3. Paste the **Subscription Key** (`Ocp-Apim-Subscription-Key`) — required in both environments; it is shared across Sprout's HR and Payroll APIs.\n4. Set **Environment** to `sandbox` or `production` — whichever your credentials were issued for. Sprout credentials belong to exactly one environment: a sandbox subscription key is rejected by the production gateway (HTTP 401 \"invalid subscription key\") and vice versa. If Sprout pointed you at api-docs-**sandbox**.sprout.ph, your credentials are sandbox credentials.\n\nWe exchange your credentials for a short-lived token automatically — you never paste a bearer token.",
     "docUrl": "https://developers.sprout.ph/developers/getting-started",
     "fields": [
       {
@@ -42,7 +42,15 @@
         "type": "password",
         "required": false,
         "placeholder": "Ocp-Apim-Subscription-Key",
-        "helpText": "Required for production (shared across Sprout's HR and Payroll APIs). Leave blank only for Sprout's sandbox."
+        "helpText": "Required in both sandbox and production (shared across Sprout's HR and Payroll APIs)."
+      },
+      {
+        "name": "SPROUT_ENVIRONMENT",
+        "label": "Environment",
+        "type": "text",
+        "required": false,
+        "placeholder": "sandbox or production",
+        "helpText": "Which Sprout environment issued your credentials — type \"sandbox\" or \"production\". A sandbox subscription key is rejected by the production gateway (and vice versa). Leave blank to use the platform default."
       },
       {
         "name": "SPROUT_TENANT_CODE",
