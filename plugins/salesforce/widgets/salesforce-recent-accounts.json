@@ -113,8 +113,27 @@
         "visible": { "$state": "/_loading/salesforce.soql_query", "not": true }
       },
       "list": {
-        "type": "Stack", "props": { "gap": "sm" }, "children": ["row"],
-        "repeat": { "statePath": "/ui/sorted", "key": "Id" }
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "row"
+        ],
+        "repeat": {
+          "statePath": "/salesforce/soql_query/records",
+          "key": "Id"
+        }
+      },
+      "row": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "rowContent",
+          "rowDivider"
+        ]
       },
 
       "row": { "type": "Stack", "props": { "gap": "sm" }, "children": ["rowContent", "rowDivider"] },
