@@ -1,6 +1,29 @@
 /**
  * Map a HubSpot ticket's `hs_ticket_priority` value to a semantic badge tone.
- * "HIGH" → "destructive", "MEDIUM" → "warning", "LOW" (or anything else) → "neutral".
+ * Follows TILE-DISPLAY-STANDARDS.md §6's reference model (WorkQ's
+ * todo_priority_tone): destructive for the most severe/urgent, warning for
+ * elevated, muted for normal/default — deliberately NOT `success` for LOW,
+ * even though HubSpot's own dashboard shows a green dot there. `success`
+ * means done/paid/completed platform-wide; "low priority" is neither, and
+ * borrowing it here would misleadingly read as "resolved." (Considered and
+ * rejected matching HubSpot's own UI exactly — see §6 "Matching a
+ * connector's own source UI" for why platform consistency won here.)
+ *
+ * Must be a real `Tone` — this used to return "neutral" for LOW, which
+ * isn't a valid tone key, so the LOW badge silently rendered with no
+ * background/text color at all (not a wrong color — no color, no pill).
+ *
+ * `muted` itself is confirmed correct semantically (matches WorkQ's own
+ * `todo_priority_tone`, which also uses `muted` for low/normal priority).
+ * The shared widget-tiles `Badge` component's `soft` variant for `muted`
+ * used to render as effectively invisible in both light and dark mode
+ * (confirmed by direct visual check) — root-caused against WorkQ's own
+ * working priority pill and fixed directly in the shared `Badge` component
+ * (`myHubV2/apps/web/src/features/widgets-system/system/components.tsx`),
+ * not worked around here. This tile relies on that platform fix; until it's
+ * promoted through myHubV2's own release pipeline, the badge will render
+ * correctly in the harness/dev but not yet in a live tenant — acceptable
+ * for now since this tile isn't in active use yet.
  *
  * Args: { value: string }
  *
@@ -13,7 +36,34 @@ const ticket_priority_tone = (args) => {
         return 'destructive';
     if (v === 'MEDIUM')
         return 'warning';
-    return 'neutral';
+    return 'muted';
+};
+/**
+ * Title-cases a HubSpot ticket's raw `hs_ticket_priority` value for display
+ * ("LOW" → "Low", "URGENT" → "Urgent"), matching WorkQ's status_label /
+ * priority_label convention (TILE-DISPLAY-STANDARDS.md §3). Capitalizes
+ * every word, not just the first — HubSpot priority values are single
+ * words today, but this is held up as the reference `<connector>_<field>_label`
+ * pattern for other connectors' multi-word statuses to copy, so it needs to
+ * be genuinely correct Title Case, not a sentence-case shortcut that happens
+ * to look right only because this particular field has no multi-word values.
+ * Kept separate from `ticket_priority_tone`, which keeps matching against
+ * the raw uppercase value regardless of display casing.
+ *
+ * Args: { value: string }
+ *
+ * Spec example:
+ *   { "$computed": "hubspot_ticket_priority_label", "args": { "value": { "$item": "properties/hs_ticket_priority" } } }
+ */
+const ticket_priority_label = (args) => {
+    const v = String(args.value ?? '');
+    if (!v)
+        return v;
+    return v
+        .toLowerCase()
+        .split(' ')
+        .map((word) => (word ? word[0].toUpperCase() + word.slice(1) : word))
+        .join(' ');
 };
 // Standard HubSpot default Sales pipeline stage internal IDs → display label /
 // badge tone. A custom pipeline's stage IDs won't match this table — falls
@@ -29,11 +79,26 @@ const DEAL_STAGE_LABELS = {
     closedwon: 'Closed Won',
     closedlost: 'Closed Lost',
 };
+// `accent` used to be here for presentationscheduled/decisionmakerboughtin --
+// it's a near-invisible menu-hover gray in the real theme, not a display
+// color (same root cause as the Membership-by-State bar bug and the
+// Support Tickets priority-pill bug). Both stages now use `info`, matching
+// qualifiedtobuy -- all three represent "actively progressing, not yet at
+// contract stage", escalating to `warning` right before close.
+//
+// appointmentscheduled was `muted` until 2026-08-10 -- copied from
+// ticket_priority_tone's LOW-is-muted pattern, but that pattern fits a
+// "normal, nothing to report" default value, not the first stage of an
+// open deal (which is neither normal-and-ongoing nor nothing-to-report --
+// it's the literal start of the thing being tracked). Moved to `info` so
+// the whole open pipeline (this tile never shows closedwon/closedlost --
+// see the dealstage NEQ filters in hubspot-pipeline.json) reads as one
+// continuous "actively progressing" band, breaking only at contractsent.
 const DEAL_STAGE_TONES = {
-    appointmentscheduled: 'muted',
+    appointmentscheduled: 'info',
     qualifiedtobuy: 'info',
-    presentationscheduled: 'accent',
-    decisionmakerboughtin: 'accent',
+    presentationscheduled: 'info',
+    decisionmakerboughtin: 'info',
     contractsent: 'warning',
     closedwon: 'success',
     closedlost: 'destructive',
@@ -101,6 +166,82 @@ const TICKET_STAGE_LABELS = {
 const ticket_stage_label = (args) => {
     const v = String(args.value ?? '');
     return TICKET_STAGE_LABELS[v] ?? v;
+};
+/**
+ * A HubSpot ticket's `content` (description) property, or a fallback
+ * message when it's blank — most tickets created via forms/chat have one,
+ * but manually-created tickets often don't, and an empty expanded row reads
+ * as broken rather than "there's nothing more to show."
+ *
+ * Args: { value: string }
+ *
+ * Spec example:
+ *   { "$computed": "hubspot_ticket_content_or_fallback", "args": { "value": { "$item": "properties/content" } } }
+ */
+const ticket_content_or_fallback = (args) => {
+    const v = String(args.value ?? '').trim();
+    return v || 'No description provided.';
+};
+/**
+ * Resolves a record's `hubspot_owner_id` to a display name, given the full
+ * owners list from `list_owners`. Records only ever store the owner's
+ * internal ID, never a name, so this is always a lookup against that
+ * separately-fetched list (see `list_owners` in the HubSpot MCP server).
+ * Falls back to the owner's email if their name fields are blank, and to
+ * "Unassigned" if the record has no owner set OR the owners list hasn't
+ * resolved it yet (visibility conditions can't gate on a $computed result,
+ * so this always returns a real string rather than '' — a brief incorrect
+ * "Unassigned" during the one-time owners fetch self-corrects the moment it
+ * lands, which reads better than an empty line).
+ *
+ * Args: { ownerId: string, owners: HubSpotOwner[] }
+ *
+ * Spec example:
+ *   {
+ *     "$computed": "hubspot_ticket_owner_name",
+ *     "args": {
+ *       "ownerId": { "$item": "properties/hubspot_owner_id" },
+ *       "owners": { "$state": "/hubspot/list_owners/items" }
+ *     }
+ *   }
+ */
+const ticket_owner_name = (args) => {
+    const ownerId = String(args.ownerId ?? '');
+    if (!ownerId)
+        return 'Unassigned';
+    const owners = Array.isArray(args.owners) ? args.owners : [];
+    const owner = owners.find((o) => o && String(o.id) === ownerId);
+    if (!owner)
+        return 'Unassigned';
+    const name = [owner.firstName, owner.lastName].filter(Boolean).join(' ').trim();
+    return name || owner.email || 'Unassigned';
+};
+const MONTH_ABBR = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+/**
+ * Formats a HubSpot date/datetime property as `dd-Mmm-yy` (e.g. "05-Aug-26"),
+ * the standard date format agreed across all tiles. Returns '' for a
+ * missing/unparseable value rather than "Invalid Date".
+ *
+ * Args: { value: string }
+ *
+ * Spec example:
+ *   { "$computed": "hubspot_format_date", "args": { "value": { "$item": "properties/createdate" } } }
+ */
+const format_date = (args) => {
+    const raw = args.value;
+    if (!raw)
+        return '';
+    const ms = Date.parse(String(raw));
+    if (Number.isNaN(ms))
+        return '';
+    const d = new Date(ms);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = MONTH_ABBR[d.getMonth()];
+    const year = String(d.getFullYear()).slice(-2);
+    return `${day}-${month}-${year}`;
 };
 /**
  * Summarize the leading state(s) from a `count_objects_by_property` result as a
@@ -191,14 +332,17 @@ const remaining_members_note = (args) => {
     const remaining = count - shown;
     return remaining > 0 ? `+${remaining} more` : '';
 };
-// Fixed cycle of Badge/Dot tones. Used for rank-based (position-in-list)
-// coloring when the underlying values are portal-defined labels with no
-// standard vocabulary to look up by name (e.g. membership category names
-// vary far more across portals than something like AU state abbreviations
-// or HubSpot's own default deal-stage IDs) — so we color by the row's
-// position in the (already count-descending-sorted) list instead of trying
-// to match specific category names.
-const RANK_TONE_CYCLE = ['accent', 'info', 'success', 'warning', 'destructive', 'muted'];
+// Fixed cycle of Dot tones. Used for rank-based (position-in-list) coloring
+// when the underlying values are portal-defined labels with no standard
+// vocabulary to look up by name (e.g. membership category names vary far
+// more across portals than something like AU state abbreviations or
+// HubSpot's own default deal-stage IDs) — so we color by the row's position
+// in the (already count-descending-sorted) list instead of trying to match
+// specific category names. Uses the categorical `chart-1..5` tones, not
+// status tones like `warning`/`destructive` — a category ranked 4th or 5th
+// isn't an error or a caution, just less common (TILE-DISPLAY-STANDARDS.md,
+// "Decorative color").
+const RANK_TONE_CYCLE = ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5'];
 /**
  * Colors a `count_objects_by_property` row by its position in the list
  * (already sorted descending by count) rather than by matching its value
@@ -225,10 +369,42 @@ const category_rank_tone = (args) => {
         return 'muted';
     return RANK_TONE_CYCLE[index % RANK_TONE_CYCLE.length];
 };
+/**
+ * Adds a combined `properties.full_name` field to each HubSpot contact,
+ * for a `Table` column to bind to directly -- `Table`'s `field` is a single
+ * dotted path into the row object, it can't combine two fields into one
+ * cell the way a `$computed` prop binding can. Falls back to "(no name)"
+ * when both firstname and lastname are blank, rather than an empty cell
+ * that reads as a loading/data problem.
+ *
+ * Args: { items: HubSpotContactLike[] }
+ *
+ * Spec example:
+ *   {
+ *     "$computed": "hubspot_contacts_with_full_name",
+ *     "args": { "items": { "$state": "/hubspot/search_contacts/items" } }
+ *   }
+ */
+const contacts_with_full_name = (args) => {
+    const items = Array.isArray(args.items) ? args.items : [];
+    return items.map((item) => {
+        const props = item.properties ?? {};
+        const fullName = [props.firstname, props.lastname].filter(Boolean).join(' ').trim();
+        return {
+            ...item,
+            properties: { ...props, full_name: fullName || '(no name)' },
+        };
+    });
+};
 const elements = {
     slug: 'hubspot',
     functions: {
         ticket_priority_tone,
+        ticket_priority_label,
+        ticket_content_or_fallback,
+        ticket_owner_name,
+        format_date,
+        contacts_with_full_name,
         membership_state_insight,
         membership_growth_insight,
         remaining_members_note,
