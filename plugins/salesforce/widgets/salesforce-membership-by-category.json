@@ -40,16 +40,6 @@
                   }
                 }
               }
-            },
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/categoryTotal",
-                "value": {
-                  "$computed": "salesforce_state_total",
-                  "args": { "value": { "$state": "/salesforce/soql_query/records" } }
-                }
-              }
             }
           ]
         }
@@ -84,7 +74,10 @@
             "$computed": "fmt",
             "args": {
               "pattern": "{total} Active Members Across {n} Categories",
-              "total": { "$state": "/ui/categoryTotal" },
+              "total": {
+                "$computed": "sum",
+                "args": { "value": { "$state": "/salesforce/soql_query/records" }, "field": "cnt" }
+              },
               "n": {
                 "$computed": "count",
                 "args": { "value": { "$state": "/ui/categoryRows" } }
@@ -134,13 +127,16 @@
       "totalValue": {
         "type": "Stat",
         "props": {
-          "value": { "$state": "/ui/categoryTotal" },
+          "value": {
+            "$computed": "sum",
+            "args": { "value": { "$state": "/salesforce/soql_query/records" }, "field": "cnt" }
+          },
           "size": "lg"
         }
       },
       "totalCaption": {
         "type": "Caption",
-        "props": { "text": "active members" }
+        "props": { "text": "Active Members" }
       },
       "categoryDivider": {
         "type": "Divider",
