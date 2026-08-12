@@ -386,7 +386,7 @@ const case_priority_tone = (args) => {
     const v = String(args.value ?? '').toLowerCase();
     if (v === 'high') return 'destructive';
     if (v === 'medium') return 'warning';
-    if (v === 'low') return 'accent';
+    if (v === 'low') return 'success';
     return 'muted';
 };
 const elements = {
