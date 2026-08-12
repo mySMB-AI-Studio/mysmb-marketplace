@@ -1,0 +1,292 @@
+{
+  "id": "salesforce-events-at-risk",
+  "title": "Top 3 Events at Risk",
+  "description": "The 3 upcoming Salesforce Campaign events with the lowest registered attendance — surfaces which events need the most attention before they happen. Reads active/planned Campaigns of event types ordered by NumberOfContacts ascending.",
+  "category": "crm",
+  "tags": ["salesforce", "crm", "events", "campaigns", "attendance", "at-risk"],
+  "keywords": ["events", "at risk", "attendance", "campaigns", "low attendance", "engagement", "event management"],
+  "connectorsUsed": ["salesforce"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 7, "rowSpan": 4 },
+    "min": { "colSpan": 5, "rowSpan": 3 },
+    "max": { "colSpan": 10, "rowSpan": 8 }
+  },
+  "dataProvider": {
+    "mcp": "salesforce",
+    "tool": "soql_query",
+    "params": {
+      "query": "SELECT Id, Name, NumberOfContacts, StartDate, Type, Status FROM Campaign WHERE Type IN ('Conference', 'Event', 'Seminar', 'Public Speaking', 'Trade Show', 'Webinar') AND Status IN ('Active', 'Planned') AND StartDate >= TODAY ORDER BY NumberOfContacts ASC NULLS FIRST LIMIT 3"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body", "footer"],
+        "watch": {
+          "/salesforce/soql_query/records": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/r1",
+                "value": { "$computed": "identity", "args": { "value": { "$state": "/salesforce/soql_query/records/0" } } }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/r2",
+                "value": { "$computed": "identity", "args": { "value": { "$state": "/salesforce/soql_query/records/1" } } }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/r3",
+                "value": { "$computed": "identity", "args": { "value": { "$state": "/salesforce/soql_query/records/2" } } }
+              }
+            }
+          ]
+        }
+      },
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "AlertTriangle", "tone": "warning", "size": "sm" } },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": { "type": "Heading", "props": { "text": "Top 3 Events at Risk", "level": "h2" } },
+      "subtitle": { "type": "Eyebrow", "props": { "text": "Lowest Registered Attendance" } },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "boxRow"]
+      },
+      "loading": {
+        "type": "Row",
+        "props": { "template": "1fr 1fr 1fr", "gap": "md" },
+        "children": ["skBox1", "skBox2", "skBox3"],
+        "visible": { "$state": "/_loading/salesforce.soql_query" }
+      },
+      "skBox1": { "type": "Skeleton", "props": { "height": "9rem", "rounded": "lg" } },
+      "skBox2": { "type": "Skeleton", "props": { "height": "9rem", "rounded": "lg" } },
+      "skBox3": { "type": "Skeleton", "props": { "height": "9rem", "rounded": "lg" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No upcoming events found in Salesforce." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/salesforce/soql_query/records/0", "not": true }
+          ]
+        }
+      },
+      "boxRow": {
+        "type": "Row",
+        "props": { "template": "1fr 1fr 1fr", "gap": "md", "align": "stretch" },
+        "children": ["box1", "box2", "box3"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/salesforce/soql_query/records/0" }
+          ]
+        }
+      },
+
+      "box1": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["rank1Badge", "event1Name", "event1MetaRow", "event1DateRow", "event1AttendeeRow"]
+      },
+      "rank1Badge": { "type": "Badge", "props": { "text": "#1 At Risk", "tone": "destructive", "variant": "soft" } },
+      "event1Name": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/r1/Name" }, "size": "sm", "weight": "semibold", "truncate": true }
+      },
+      "event1MetaRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["event1TypeBadge", "event1StatusCaption"]
+      },
+      "event1TypeBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "salesforce_or_dash", "args": { "value": { "$state": "/ui/r1/Type" } } },
+          "variant": "outline",
+          "size": "sm"
+        }
+      },
+      "event1StatusCaption": {
+        "type": "Caption",
+        "props": { "text": { "$computed": "salesforce_or_dash", "args": { "value": { "$state": "/ui/r1/Status" } } }, "tone": "muted" }
+      },
+      "event1DateRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["event1DateIcon", "event1Date"]
+      },
+      "event1DateIcon": { "type": "Icon", "props": { "name": "Calendar", "size": "xs", "tone": "muted" } },
+      "event1Date": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "format_date", "args": { "value": { "$state": "/ui/r1/StartDate" } } },
+          "tone": "muted"
+        }
+      },
+      "event1AttendeeRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["event1AttendeeIcon", "event1AttendeeCount", "event1AttendeeLabel"]
+      },
+      "event1AttendeeIcon": { "type": "Icon", "props": { "name": "Users", "size": "xs", "tone": "destructive" } },
+      "event1AttendeeCount": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/r1/NumberOfContacts" }, "size": "sm", "weight": "semibold", "tone": "destructive" }
+      },
+      "event1AttendeeLabel": { "type": "Caption", "props": { "text": "attendees", "tone": "muted" } },
+
+      "box2": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["rank2Badge", "event2Name", "event2MetaRow", "event2DateRow", "event2AttendeeRow"],
+        "visible": { "$state": "/ui/r2" }
+      },
+      "rank2Badge": { "type": "Badge", "props": { "text": "#2 At Risk", "tone": "warning", "variant": "soft" } },
+      "event2Name": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/r2/Name" }, "size": "sm", "weight": "semibold", "truncate": true }
+      },
+      "event2MetaRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["event2TypeBadge", "event2StatusCaption"]
+      },
+      "event2TypeBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "salesforce_or_dash", "args": { "value": { "$state": "/ui/r2/Type" } } },
+          "variant": "outline",
+          "size": "sm"
+        }
+      },
+      "event2StatusCaption": {
+        "type": "Caption",
+        "props": { "text": { "$computed": "salesforce_or_dash", "args": { "value": { "$state": "/ui/r2/Status" } } }, "tone": "muted" }
+      },
+      "event2DateRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["event2DateIcon", "event2Date"]
+      },
+      "event2DateIcon": { "type": "Icon", "props": { "name": "Calendar", "size": "xs", "tone": "muted" } },
+      "event2Date": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "format_date", "args": { "value": { "$state": "/ui/r2/StartDate" } } },
+          "tone": "muted"
+        }
+      },
+      "event2AttendeeRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["event2AttendeeIcon", "event2AttendeeCount", "event2AttendeeLabel"]
+      },
+      "event2AttendeeIcon": { "type": "Icon", "props": { "name": "Users", "size": "xs", "tone": "warning" } },
+      "event2AttendeeCount": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/r2/NumberOfContacts" }, "size": "sm", "weight": "semibold", "tone": "warning" }
+      },
+      "event2AttendeeLabel": { "type": "Caption", "props": { "text": "attendees", "tone": "muted" } },
+
+      "box3": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["rank3Badge", "event3Name", "event3MetaRow", "event3DateRow", "event3AttendeeRow"],
+        "visible": { "$state": "/ui/r3" }
+      },
+      "rank3Badge": { "type": "Badge", "props": { "text": "#3 At Risk", "tone": "accent", "variant": "soft" } },
+      "event3Name": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/r3/Name" }, "size": "sm", "weight": "semibold", "truncate": true }
+      },
+      "event3MetaRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["event3TypeBadge", "event3StatusCaption"]
+      },
+      "event3TypeBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "salesforce_or_dash", "args": { "value": { "$state": "/ui/r3/Type" } } },
+          "variant": "outline",
+          "size": "sm"
+        }
+      },
+      "event3StatusCaption": {
+        "type": "Caption",
+        "props": { "text": { "$computed": "salesforce_or_dash", "args": { "value": { "$state": "/ui/r3/Status" } } }, "tone": "muted" }
+      },
+      "event3DateRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["event3DateIcon", "event3Date"]
+      },
+      "event3DateIcon": { "type": "Icon", "props": { "name": "Calendar", "size": "xs", "tone": "muted" } },
+      "event3Date": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "format_date", "args": { "value": { "$state": "/ui/r3/StartDate" } } },
+          "tone": "muted"
+        }
+      },
+      "event3AttendeeRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["event3AttendeeIcon", "event3AttendeeCount", "event3AttendeeLabel"]
+      },
+      "event3AttendeeIcon": { "type": "Icon", "props": { "name": "Users", "size": "xs", "tone": "accent" } },
+      "event3AttendeeCount": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/r3/NumberOfContacts" }, "size": "sm", "weight": "semibold", "tone": "accent" }
+      },
+      "event3AttendeeLabel": { "type": "Caption", "props": { "text": "attendees", "tone": "muted" } },
+
+      "footer": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["footerDivider", "footerRow"]
+      },
+      "footerDivider": { "type": "Divider", "props": {} },
+      "footerRow": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["footerLinkBtn"]
+      },
+      "footerLinkBtn": {
+        "type": "Button",
+        "props": { "label": "View all Campaigns in Salesforce", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "salesforce_list_url",
+                "args": { "object": "Campaign" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}
