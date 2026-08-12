@@ -401,9 +401,42 @@ const list_url: ComputedFunction = (args) => {
   return `${instanceUrl}/lightning/o/${object}/list?filterName=Recent`;
 };
 
+const STATE_ABBR_MAP: Record<string, string> = {
+  // US States
+  'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR',
+  'California': 'CA', 'Colorado': 'CO', 'Connecticut': 'CT', 'Delaware': 'DE',
+  'Florida': 'FL', 'Georgia': 'GA', 'Hawaii': 'HI', 'Idaho': 'ID',
+  'Illinois': 'IL', 'Indiana': 'IN', 'Iowa': 'IA', 'Kansas': 'KS',
+  'Kentucky': 'KY', 'Louisiana': 'LA', 'Maine': 'ME', 'Maryland': 'MD',
+  'Massachusetts': 'MA', 'Michigan': 'MI', 'Minnesota': 'MN', 'Mississippi': 'MS',
+  'Missouri': 'MO', 'Montana': 'MT', 'Nebraska': 'NE', 'Nevada': 'NV',
+  'New Hampshire': 'NH', 'New Jersey': 'NJ', 'New Mexico': 'NM', 'New York': 'NY',
+  'North Carolina': 'NC', 'North Dakota': 'ND', 'Ohio': 'OH', 'Oklahoma': 'OK',
+  'Oregon': 'OR', 'Pennsylvania': 'PA', 'Rhode Island': 'RI', 'South Carolina': 'SC',
+  'South Dakota': 'SD', 'Tennessee': 'TN', 'Texas': 'TX', 'Utah': 'UT',
+  'Vermont': 'VT', 'Virginia': 'VA', 'Washington': 'WA', 'West Virginia': 'WV',
+  'Wisconsin': 'WI', 'Wyoming': 'WY',
+  // US Territories
+  'District of Columbia': 'DC', 'Puerto Rico': 'PR', 'Guam': 'GU',
+  'American Samoa': 'AS', 'U.S. Virgin Islands': 'VI', 'Northern Mariana Islands': 'MP',
+  // Australian States & Territories
+  'New South Wales': 'NSW', 'Victoria': 'VIC', 'Queensland': 'QLD',
+  'Western Australia': 'WA', 'South Australia': 'SA', 'Tasmania': 'TAS',
+  'Australian Capital Territory': 'ACT', 'Northern Territory': 'NT',
+};
+
+const state_abbr: ComputedFunction = (args) => {
+  const raw = String(args.value ?? '').trim();
+  if (!raw) return raw;
+  if (STATE_ABBR_MAP[raw]) return STATE_ABBR_MAP[raw];
+  // Already an abbreviation (≤3 chars) — normalise to uppercase
+  if (raw.length <= 3) return raw.toUpperCase();
+  return raw;
+};
+
 const elements: PluginElementsModule = {
   slug: 'salesforce',
-  functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash, list_url },
+  functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash, list_url, state_abbr },
 };
 
 export default elements;
