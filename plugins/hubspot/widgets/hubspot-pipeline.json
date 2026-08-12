@@ -24,7 +24,7 @@
           ]
         }
       ],
-      "properties": ["dealname", "dealstage", "amount", "closedate"],
+      "properties": ["dealname", "dealstage", "amount", "closedate", "deal_currency_code"],
       "limit": 100
     }
   },
@@ -101,7 +101,7 @@
       },
       "tableHeaderRow": {
         "type": "Row",
-        "props": { "template": "2fr 1.2fr 1fr 0.9fr", "gap": "sm" },
+        "props": { "template": "minmax(0, 1fr) 150px 85px 85px", "gap": "sm" },
         "children": ["headerDeal", "headerStage", "headerCloseDate", "headerAmount"],
         "visible": {
           "$and": [
@@ -111,7 +111,7 @@
         }
       },
       "headerDeal": { "type": "Caption", "props": { "text": "Deal", "weight": "semibold" } },
-      "headerStage": { "type": "Caption", "props": { "text": "Stage", "weight": "semibold" } },
+      "headerStage": { "type": "Caption", "props": { "text": "Stage", "weight": "semibold", "align": "center" } },
       "headerCloseDate": { "type": "Caption", "props": { "text": "Close Date", "weight": "semibold" } },
       "headerAmount": { "type": "Caption", "props": { "text": "Amount", "weight": "semibold", "align": "right" } },
       "dealList": {
@@ -131,8 +131,8 @@
       },
       "dealRow": {
         "type": "Row",
-        "props": { "template": "2fr 1.2fr 1fr 0.9fr", "gap": "sm", "align": "center", "hover": true },
-        "children": ["dealName", "dealStage", "dealCloseDate", "dealAmount"]
+        "props": { "template": "minmax(0, 1fr) 150px 85px 85px", "gap": "sm", "align": "center", "hover": true },
+        "children": ["dealName", "dealStageCell", "dealCloseDate", "dealAmount"]
       },
       "dealName": {
         "type": "Text",
@@ -142,6 +142,11 @@
           "weight": "medium",
           "truncate": true
         }
+      },
+      "dealStageCell": {
+        "type": "Row",
+        "props": { "justify": "center" },
+        "children": ["dealStage"]
       },
       "dealStage": {
         "type": "Badge",
@@ -161,7 +166,7 @@
         "type": "Caption",
         "props": {
           "text": {
-            "$computed": "format_date",
+            "$computed": "hubspot_format_date",
             "args": { "value": { "$item": "properties/closedate" } }
           }
         }
@@ -171,7 +176,10 @@
         "props": {
           "text": {
             "$computed": "format_currency",
-            "args": { "value": { "$item": "properties/amount" } }
+            "args": {
+              "value": { "$item": "properties/amount" },
+              "currency": { "$item": "properties/deal_currency_code" }
+            }
           },
           "size": "sm",
           "weight": "semibold",

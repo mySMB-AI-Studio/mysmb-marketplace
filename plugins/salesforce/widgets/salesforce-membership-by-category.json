@@ -1,0 +1,212 @@
+{
+  "id": "salesforce-membership-by-category",
+  "title": "Membership by Category",
+  "description": "Total membership count with a breakdown by membership type/category (e.g. Full/Accredited, Student, Associate, Retired/Honorary), computed from Salesforce Contacts using the `Membership_Type__c` custom field. Assumes the connected org has a `Membership_Type__c` field on the Contact object — if the field doesn't exist the SOQL query will error; if it exists but is unpopulated, the tile shows an empty state. Categories are color-coded by rank (highest count first), not by matching specific category names, since membership-type labels vary across orgs. Best suited for association-management customers who track member type on the Contact record.",
+  "category": "crm",
+  "tags": ["salesforce", "membership", "contacts", "category", "association"],
+  "keywords": ["members by category", "membership breakdown", "membership type", "membership tier", "association", "statistics"],
+  "connectorsUsed": ["salesforce"],
+  "popularity": 35,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 3 },
+    "min": { "colSpan": 3, "rowSpan": 3 },
+    "max": { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "salesforce",
+    "tool": "soql_query",
+    "params": {
+      "query": "SELECT Membership_Type__c, COUNT(Id) cnt FROM Contact WHERE Membership_Type__c != null GROUP BY Membership_Type__c ORDER BY COUNT(Id) DESC"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"],
+        "watch": {
+          "/salesforce/soql_query/records": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/categoryRows",
+                "value": {
+                  "$computed": "salesforce_flatten_by_state",
+                  "args": {
+                    "value": { "$state": "/salesforce/soql_query/records" },
+                    "stateField": "Membership_Type__c"
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/categoryTotal",
+                "value": {
+                  "$computed": "salesforce_state_total",
+                  "args": { "value": { "$state": "/salesforce/soql_query/records" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "PieChart", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Membership by Category", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{total} Active Members Across {n} Categories",
+              "total": { "$state": "/ui/categoryTotal" },
+              "n": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/ui/categoryRows" } }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "totalStack", "categoryDivider", "categoryList"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/salesforce.soql_query" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No membership data found. Make sure a `Membership_Type__c` custom field exists on the Contact object in this Salesforce org and that Contacts have the field populated."
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/ui/categoryRows/0", "not": true }
+          ]
+        }
+      },
+      "totalStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["totalValue", "totalCaption"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/ui/categoryRows/0" }
+          ]
+        }
+      },
+      "totalValue": {
+        "type": "Stat",
+        "props": {
+          "value": { "$state": "/ui/categoryTotal" },
+          "size": "lg"
+        }
+      },
+      "totalCaption": {
+        "type": "Caption",
+        "props": { "text": "active members" }
+      },
+      "categoryDivider": {
+        "type": "Divider",
+        "props": {},
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/ui/categoryRows/0" }
+          ]
+        }
+      },
+      "categoryList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["categoryRow"],
+        "repeat": {
+          "statePath": "/ui/categoryRows",
+          "key": "id"
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/ui/categoryRows/0" }
+          ]
+        }
+      },
+      "categoryRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["categoryLeft", "categoryCount"]
+      },
+      "categoryLeft": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["categoryDot", "categoryLabel"]
+      },
+      "categoryDot": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$computed": "salesforce_category_rank_tone",
+            "args": {
+              "counts": { "$state": "/ui/categoryRows" },
+              "value": { "$item": "value" }
+            }
+          },
+          "size": "sm"
+        }
+      },
+      "categoryLabel": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "value" },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "categoryCount": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "count" },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      }
+    }
+  },
+  "status": "published"
+}

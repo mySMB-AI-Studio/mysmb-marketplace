@@ -47,18 +47,8 @@
       },
       "body": {
         "type": "Body",
-        "children": ["loading", "empty", "tableHeaderRow", "contactList"]
+        "children": ["empty", "table"]
       },
-      "loading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3", "sk4"],
-        "visible": { "$state": "/_loading/hubspot.search_contacts" }
-      },
-      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
       "empty": {
         "type": "Empty",
         "props": { "message": "No contacts found in HubSpot." },
@@ -69,78 +59,27 @@
           ]
         }
       },
-      "tableHeaderRow": {
-        "type": "Row",
-        "props": { "template": "1.3fr 1.5fr 1fr 0.9fr", "gap": "sm" },
-        "children": ["headerName", "headerEmail", "headerPhone", "headerCreated"],
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/hubspot.search_contacts", "not": true },
-            { "$state": "/hubspot/search_contacts/items/0" }
+      "table": {
+        "type": "Table",
+        "props": {
+          "loading": { "$state": "/_loading/hubspot.search_contacts" },
+          "skeletonRows": 6,
+          "rows": {
+            "$computed": "hubspot_contacts_with_full_name",
+            "args": { "items": { "$state": "/hubspot/search_contacts/items" } }
+          },
+          "columns": [
+            { "id": "name", "header": "Name", "field": "properties.full_name", "width": 120, "priority": 1 },
+            { "id": "email", "header": "Email", "field": "properties.email", "width": 150, "priority": 1 },
+            { "id": "phone", "header": "Phone", "field": "properties.phone", "width": 90, "priority": 2 },
+            { "id": "created", "header": "Created", "field": "properties.createdate", "width": 80, "priority": 2, "format": "dd_mmm_yy" }
           ]
-        }
-      },
-      "headerName": { "type": "Caption", "props": { "text": "Name", "weight": "semibold" } },
-      "headerEmail": { "type": "Caption", "props": { "text": "Email", "weight": "semibold" } },
-      "headerPhone": { "type": "Caption", "props": { "text": "Phone", "weight": "semibold" } },
-      "headerCreated": { "type": "Caption", "props": { "text": "Created", "weight": "semibold" } },
-      "contactList": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["contactRow"],
-        "repeat": {
-          "statePath": "/hubspot/search_contacts/items",
-          "key": "id"
         },
         "visible": {
-          "$and": [
-            { "$state": "/_loading/hubspot.search_contacts", "not": true },
+          "$or": [
+            { "$state": "/_loading/hubspot.search_contacts" },
             { "$state": "/hubspot/search_contacts/items/0" }
           ]
-        }
-      },
-      "contactRow": {
-        "type": "Row",
-        "props": { "template": "1.3fr 1.5fr 1fr 0.9fr", "gap": "sm", "align": "center", "hover": true },
-        "children": ["contactName", "contactEmail", "contactPhone", "contactCreated"]
-      },
-      "contactName": {
-        "type": "Text",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{first} {last}",
-              "first": { "$item": "properties/firstname" },
-              "last": { "$item": "properties/lastname" }
-            }
-          },
-          "size": "sm",
-          "weight": "medium",
-          "truncate": true
-        }
-      },
-      "contactEmail": {
-        "type": "Caption",
-        "props": {
-          "text": { "$item": "properties/email" },
-          "truncate": true
-        }
-      },
-      "contactPhone": {
-        "type": "Caption",
-        "props": {
-          "text": { "$item": "properties/phone" },
-          "truncate": true
-        }
-      },
-      "contactCreated": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "format_date",
-            "args": { "value": { "$item": "properties/createdate" } }
-          }
         }
       }
     }
