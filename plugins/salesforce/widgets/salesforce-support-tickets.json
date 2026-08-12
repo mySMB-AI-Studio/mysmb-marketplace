@@ -1,0 +1,199 @@
+{
+  "id": "salesforce-support-tickets",
+  "title": "Support Tickets",
+  "description": "Open Salesforce Cases in a list — subject, status, and colour-coded priority badge. Click a ticket to expand and see the case number and created date. Uses the standard Case object, no custom setup required.",
+  "category": "support",
+  "tags": ["salesforce", "crm", "cases", "support", "helpdesk", "tickets"],
+  "keywords": ["tickets", "support", "cases", "helpdesk", "open tickets", "priority", "queue"],
+  "connectorsUsed": ["salesforce"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 12, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "salesforce",
+    "tool": "soql_query",
+    "params": {
+      "query": "SELECT Id, CaseNumber, Subject, Status, Priority, CreatedDate FROM Case WHERE IsClosed = false ORDER BY CreatedDate DESC LIMIT 20"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"]
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "LifeBuoy", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Support Tickets", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} open cases",
+              "n": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/salesforce/soql_query/records" } }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "ticketList"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/salesforce.soql_query" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No open cases found in Salesforce." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/salesforce/soql_query/records/0", "not": true }
+          ]
+        }
+      },
+      "ticketList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["ticketRow"],
+        "repeat": {
+          "statePath": "/salesforce/soql_query/records",
+          "key": "Id"
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/salesforce/soql_query/records/0" }
+          ]
+        }
+      },
+      "ticketRow": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["ticketTopRow", "ticketDetail"]
+      },
+      "ticketTopRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true, "clickable": true },
+        "children": ["ticketLeft", "priorityBadge"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selectedCaseId",
+              "value": {
+                "$cond": { "$item": "Id", "eq": { "$state": "/ui/selectedCaseId" } },
+                "$then": "",
+                "$else": { "$item": "Id" }
+              }
+            }
+          }
+        }
+      },
+      "ticketLeft": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["ticketSubject", "ticketMeta"]
+      },
+      "ticketSubject": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "Subject" },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "ticketMeta": {
+        "type": "Caption",
+        "props": { "text": { "$item": "Status" }, "tone": "muted" }
+      },
+      "priorityBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "Priority" },
+          "tone": {
+            "$computed": "salesforce_case_priority_tone",
+            "args": { "value": { "$item": "Priority" } }
+          },
+          "variant": "soft"
+        }
+      },
+      "ticketDetail": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "visible": { "$item": "Id", "eq": { "$state": "/ui/selectedCaseId" } },
+        "children": ["ticketDetailId", "ticketDetailStatus", "ticketDetailCreated"]
+      },
+      "ticketDetailId": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Case #: {num}", "num": { "$item": "CaseNumber" } }
+          }
+        }
+      },
+      "ticketDetailStatus": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Status: {status}", "status": { "$item": "Status" } }
+          }
+        }
+      },
+      "ticketDetailCreated": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Created: {date}",
+              "date": { "$computed": "format_date", "args": { "value": { "$item": "CreatedDate" } } }
+            }
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}
