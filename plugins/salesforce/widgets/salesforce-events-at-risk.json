@@ -25,7 +25,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "body", "footer"],
+        "children": ["header", "headerDivider", "body"],
         "watch": {
           "/salesforce/soql_query/records": [
             {
@@ -58,7 +58,7 @@
         "props": { "gap": "sm", "align": "center" },
         "children": ["titleIcon", "titleStack"]
       },
-      "titleIcon": { "type": "Icon", "props": { "name": "AlertTriangle", "tone": "warning", "size": "sm" } },
+      "titleIcon": { "type": "Icon", "props": { "name": "AlertTriangle", "tone": "warning", "variant": "soft", "size": "sm" } },
       "titleStack": {
         "type": "Stack",
         "props": { "gap": "none" },
@@ -66,9 +66,10 @@
       },
       "title": { "type": "Heading", "props": { "text": "Top 3 Events at Risk", "level": "h2" } },
       "subtitle": { "type": "Eyebrow", "props": { "text": "Lowest Registered Attendance" } },
+      "headerDivider": { "type": "Divider", "props": {} },
       "body": {
         "type": "Body",
-        "props": {},
+        "props": { "padding": "md" },
         "children": ["loading", "empty", "boxRow"]
       },
       "loading": {
@@ -77,9 +78,9 @@
         "children": ["skBox1", "skBox2", "skBox3"],
         "visible": { "$state": "/_loading/salesforce.soql_query" }
       },
-      "skBox1": { "type": "Skeleton", "props": { "height": "9rem", "rounded": "lg" } },
-      "skBox2": { "type": "Skeleton", "props": { "height": "9rem", "rounded": "lg" } },
-      "skBox3": { "type": "Skeleton", "props": { "height": "9rem", "rounded": "lg" } },
+      "skBox1": { "type": "Skeleton", "props": { "height": "11rem", "rounded": "lg" } },
+      "skBox2": { "type": "Skeleton", "props": { "height": "11rem", "rounded": "lg" } },
+      "skBox3": { "type": "Skeleton", "props": { "height": "11rem", "rounded": "lg" } },
       "empty": {
         "type": "Empty",
         "props": { "message": "No upcoming events found in Salesforce." },
@@ -104,10 +105,10 @@
 
       "box1": {
         "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["rank1Badge", "event1Name", "event1MetaRow", "event1DateRow", "event1AttendeeRow"]
+        "props": { "gap": "sm", "padding": "md", "rounded": "lg", "tone": "destructive", "variant": "soft" },
+        "children": ["rank1Badge", "event1Name", "event1MetaRow", "event1DateRow", "event1Divider", "event1AttendeeStack"]
       },
-      "rank1Badge": { "type": "Badge", "props": { "text": "#1 At Risk", "tone": "destructive", "variant": "soft" } },
+      "rank1Badge": { "type": "Badge", "props": { "text": "#1 At Risk", "tone": "destructive", "variant": "solid" } },
       "event1Name": {
         "type": "Text",
         "props": { "text": { "$state": "/ui/r1/Name" }, "size": "sm", "weight": "semibold", "truncate": true }
@@ -142,25 +143,31 @@
           "tone": "muted"
         }
       },
-      "event1AttendeeRow": {
+      "event1Divider": { "type": "Divider", "props": {} },
+      "event1AttendeeStack": {
         "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["event1AttendeeIcon", "event1AttendeeCount", "event1AttendeeLabel"]
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["event1AttendeeIcon", "event1AttendeeTextStack"]
       },
-      "event1AttendeeIcon": { "type": "Icon", "props": { "name": "Users", "size": "xs", "tone": "destructive" } },
+      "event1AttendeeIcon": { "type": "Icon", "props": { "name": "Users", "size": "sm", "tone": "destructive" } },
+      "event1AttendeeTextStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["event1AttendeeCount", "event1AttendeeLabel"]
+      },
       "event1AttendeeCount": {
-        "type": "Text",
-        "props": { "text": { "$state": "/ui/r1/NumberOfContacts" }, "size": "sm", "weight": "semibold", "tone": "destructive" }
+        "type": "Stat",
+        "props": { "value": { "$state": "/ui/r1/NumberOfContacts" }, "size": "md", "tone": "destructive" }
       },
-      "event1AttendeeLabel": { "type": "Caption", "props": { "text": "attendees", "tone": "muted" } },
+      "event1AttendeeLabel": { "type": "Caption", "props": { "text": "attendees registered", "tone": "muted" } },
 
       "box2": {
         "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["rank2Badge", "event2Name", "event2MetaRow", "event2DateRow", "event2AttendeeRow"],
+        "props": { "gap": "sm", "padding": "md", "rounded": "lg", "tone": "warning", "variant": "soft" },
+        "children": ["rank2Badge", "event2Name", "event2MetaRow", "event2DateRow", "event2Divider", "event2AttendeeStack"],
         "visible": { "$state": "/ui/r2" }
       },
-      "rank2Badge": { "type": "Badge", "props": { "text": "#2 At Risk", "tone": "warning", "variant": "soft" } },
+      "rank2Badge": { "type": "Badge", "props": { "text": "#2 At Risk", "tone": "warning", "variant": "solid" } },
       "event2Name": {
         "type": "Text",
         "props": { "text": { "$state": "/ui/r2/Name" }, "size": "sm", "weight": "semibold", "truncate": true }
@@ -195,25 +202,31 @@
           "tone": "muted"
         }
       },
-      "event2AttendeeRow": {
+      "event2Divider": { "type": "Divider", "props": {} },
+      "event2AttendeeStack": {
         "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["event2AttendeeIcon", "event2AttendeeCount", "event2AttendeeLabel"]
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["event2AttendeeIcon", "event2AttendeeTextStack"]
       },
-      "event2AttendeeIcon": { "type": "Icon", "props": { "name": "Users", "size": "xs", "tone": "warning" } },
+      "event2AttendeeIcon": { "type": "Icon", "props": { "name": "Users", "size": "sm", "tone": "warning" } },
+      "event2AttendeeTextStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["event2AttendeeCount", "event2AttendeeLabel"]
+      },
       "event2AttendeeCount": {
-        "type": "Text",
-        "props": { "text": { "$state": "/ui/r2/NumberOfContacts" }, "size": "sm", "weight": "semibold", "tone": "warning" }
+        "type": "Stat",
+        "props": { "value": { "$state": "/ui/r2/NumberOfContacts" }, "size": "md", "tone": "warning" }
       },
-      "event2AttendeeLabel": { "type": "Caption", "props": { "text": "attendees", "tone": "muted" } },
+      "event2AttendeeLabel": { "type": "Caption", "props": { "text": "attendees registered", "tone": "muted" } },
 
       "box3": {
         "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["rank3Badge", "event3Name", "event3MetaRow", "event3DateRow", "event3AttendeeRow"],
+        "props": { "gap": "sm", "padding": "md", "rounded": "lg", "tone": "accent", "variant": "soft" },
+        "children": ["rank3Badge", "event3Name", "event3MetaRow", "event3DateRow", "event3Divider", "event3AttendeeStack"],
         "visible": { "$state": "/ui/r3" }
       },
-      "rank3Badge": { "type": "Badge", "props": { "text": "#3 At Risk", "tone": "accent", "variant": "soft" } },
+      "rank3Badge": { "type": "Badge", "props": { "text": "#3 At Risk", "tone": "accent", "variant": "solid" } },
       "event3Name": {
         "type": "Text",
         "props": { "text": { "$state": "/ui/r3/Name" }, "size": "sm", "weight": "semibold", "truncate": true }
@@ -248,44 +261,23 @@
           "tone": "muted"
         }
       },
-      "event3AttendeeRow": {
+      "event3Divider": { "type": "Divider", "props": {} },
+      "event3AttendeeStack": {
         "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["event3AttendeeIcon", "event3AttendeeCount", "event3AttendeeLabel"]
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["event3AttendeeIcon", "event3AttendeeTextStack"]
       },
-      "event3AttendeeIcon": { "type": "Icon", "props": { "name": "Users", "size": "xs", "tone": "accent" } },
-      "event3AttendeeCount": {
-        "type": "Text",
-        "props": { "text": { "$state": "/ui/r3/NumberOfContacts" }, "size": "sm", "weight": "semibold", "tone": "accent" }
-      },
-      "event3AttendeeLabel": { "type": "Caption", "props": { "text": "attendees", "tone": "muted" } },
-
-      "footer": {
+      "event3AttendeeIcon": { "type": "Icon", "props": { "name": "Users", "size": "sm", "tone": "accent" } },
+      "event3AttendeeTextStack": {
         "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["footerDivider", "footerRow"]
+        "props": { "gap": "none" },
+        "children": ["event3AttendeeCount", "event3AttendeeLabel"]
       },
-      "footerDivider": { "type": "Divider", "props": {} },
-      "footerRow": {
-        "type": "Row",
-        "props": { "justify": "end" },
-        "children": ["footerLinkBtn"]
+      "event3AttendeeCount": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/ui/r3/NumberOfContacts" }, "size": "md", "tone": "accent" }
       },
-      "footerLinkBtn": {
-        "type": "Button",
-        "props": { "label": "View all Campaigns in Salesforce", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
-        "on": {
-          "click": {
-            "action": "open_url",
-            "params": {
-              "url": {
-                "$computed": "salesforce_list_url",
-                "args": { "object": "Campaign" }
-              }
-            }
-          }
-        }
-      }
+      "event3AttendeeLabel": { "type": "Caption", "props": { "text": "attendees registered", "tone": "muted" } }
     }
   },
   "status": "published"
