@@ -18,15 +18,29 @@ export class Pipeline {
     ws;
     store;
     log;
+    /** In v2, the platform agent's principal id (resolved from the inbox) — used
+     *  to ignore the agent's OWN comments when scanning for approver commands. */
+    agentPrincipalId;
     constructor(cfg, ws, store, log = console.log) {
         this.cfg = cfg;
         this.ws = ws;
         this.store = store;
         this.log = log;
     }
+    get v2() {
+        return Boolean(this.cfg.agentKey);
+    }
     /** One full pass over the builder's queue. */
     async tick() {
-        const items = await this.ws.listAssigned(this.cfg.builderUserId);
+        let items;
+        if (this.v2) {
+            const inbox = await this.ws.agentInbox(this.cfg.agentKey);
+            this.agentPrincipalId = inbox.principalUserId;
+            items = inbox.items;
+        }
+        else {
+            items = await this.ws.listAssigned(this.cfg.builderUserId);
+        }
         for (const item of items) {
             try {
                 await this.processItem(item);
@@ -35,6 +49,22 @@ export class Pipeline {
                 this.log(`[${item.id}] tick error: ${err instanceof Error ? err.message : String(err)}`);
             }
         }
+    }
+    // ── Write surface (mode-aware: v2 acts AS the agent; v1 as the OAuth user) ──
+    writeComment(todoId, body, mentions = []) {
+        return this.v2
+            ? this.ws.agentComment(this.cfg.agentKey, todoId, body, mentions)
+            : this.ws.addComment(todoId, body, mentions);
+    }
+    writeLabels(todoId, labels) {
+        return this.v2
+            ? this.ws.agentUpdate(this.cfg.agentKey, todoId, { labels })
+            : this.ws.setLabels(todoId, labels);
+    }
+    writeStatus(todoId, status) {
+        return this.v2
+            ? this.ws.agentUpdate(this.cfg.agentKey, todoId, { status })
+            : this.ws.setStatus(todoId, status);
     }
     async processItem(item) {
         const stage = stageFromLabels(item.labels);
@@ -115,14 +145,14 @@ export class Pipeline {
     async intake(item, alreadyRejected) {
         if (!this.cfg.intakeAllowlistUserIds.includes(item.createdBy)) {
             if (!alreadyRejected) {
-                await this.ws.setLabels(item.id, withStageLabels(item.labels, null, { blocked: true }));
+                await this.writeLabels(item.id, withStageLabels(item.labels, null, { blocked: true }));
                 await this.say(item.id, 'This item was not created by a listed requester, so I will not act on it. ' +
                     'Ask a myConnect approver to re-file it.');
             }
             return;
         }
         this.store.update(item.id, { lastCommentIso: new Date().toISOString(), pendingNotes: [] });
-        await this.ws.setStatus(item.id, 'in_progress');
+        await this.writeStatus(item.id, 'in_progress');
         await this.setStage(item, 'planning', {});
         await this.say(item.id, 'Picked up — reading the request and attachments now. ' +
             'I will post an execution plan here for review.');
@@ -244,10 +274,10 @@ export class Pipeline {
     async newApproverCommands(item) {
         const st = this.store.item(item.id);
         const since = st.lastCommentIso ? Date.parse(st.lastCommentIso) : 0;
-        // Ignore the bridge's OWN comments — keyed on the authenticated identity
-        // (selfUserId), which in the v1 dry-run is the human OAuth login, not the
-        // service account the work is assigned to.
-        const selfId = this.cfg.selfUserId ?? this.cfg.builderUserId;
+        // Ignore the bridge's OWN comments. v2: authored by the agent principal
+        // (from the inbox). v1 dry-run: the human OAuth login (selfUserId), which
+        // differs from the service account the work is assigned to.
+        const selfId = this.v2 ? this.agentPrincipalId : (this.cfg.selfUserId ?? this.cfg.builderUserId);
         const comments = (await this.ws.listComments(item.id))
             .filter((c) => Date.parse(c.createdAt) > since)
             .filter((c) => c.authorId !== selfId)
@@ -275,9 +305,11 @@ export class Pipeline {
     }
     // ── Helpers ───────────────────────────────────────────────────────────────
     async setStage(item, stage, flags) {
-        const current = await this.ws.getItem(item.id);
-        const labels = withStageLabels(current.labels, stage, flags);
-        await this.ws.setLabels(item.id, labels);
+        // Merge from the labels in hand (from the inbox/list read this tick) — in
+        // v2 the admin may not be able to workq_get an item it isn't on, and the
+        // acting-as surface has no read-as-agent get.
+        const labels = withStageLabels(item.labels, stage, flags);
+        await this.writeLabels(item.id, labels);
         item.labels = labels;
     }
     async block(item, stage, reason) {
@@ -285,7 +317,10 @@ export class Pipeline {
         await this.say(item.id, `**Blocked at \`${stage}\`.**\n\n${clip(reason, 1500)}\n\nComment \`resume\` to retry after addressing this.`, this.cfg.approverUserIds);
     }
     say(todoId, body, mentions = []) {
-        return this.ws.addComment(todoId, `${SIGNATURE}\n\n${body}`, mentions);
+        // v2 comments are authored by the agent principal itself, so the signature
+        // prefix is redundant; keep it in v1 (comments post as the OAuth human).
+        const text = this.v2 ? body : `${SIGNATURE}\n\n${body}`;
+        return this.writeComment(todoId, text, mentions);
     }
 }
 function clip(text, max) {

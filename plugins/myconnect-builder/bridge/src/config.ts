@@ -10,15 +10,25 @@ const stageSchema = z.object({
 export const bridgeConfigSchema = z.object({
   /** External MCP resource URI of the target workspace, e.g. https://host/mcp */
   workspaceMcpUrl: z.string().url(),
-  /** users.id of the "myConnect Builder" account items are assigned to
-   *  (the poll target — what the PM assigns work to). */
-  builderUserId: z.string().uuid(),
   /**
-   * users.id the bridge is AUTHENTICATED as (its comment-author identity).
-   * In v1's dry-run the OAuth login is a real human (the service account has
-   * no Entra login), so this differs from builderUserId; the bridge uses it
-   * to ignore its OWN comments. Defaults to builderUserId (v2: the platform
-   * agent principal is both the assignee and the author).
+   * V2 mode (recommended): the KEY of the tenant-level platform agent this
+   * bridge operates (agent_definitions.key, e.g. 'myconnect-builder'). When
+   * set, the bridge authenticates as an ADMIN and acts AS the agent principal
+   * via the workq_agent_* MCP tools — comments/status are attributed to the
+   * agent, and it appears in the workspace Agents tab. Preferred over the v1
+   * service-account path below.
+   */
+  agentKey: z.string().optional(),
+  /**
+   * V1 mode (legacy dry-run): users.id of the "myConnect Builder" service
+   * account items are assigned to (the poll target). Required only when
+   * agentKey is NOT set.
+   */
+  builderUserId: z.string().uuid().optional(),
+  /**
+   * V1 only: users.id the bridge is authenticated as (its comment-author
+   * identity), used to ignore its own comments. Defaults to builderUserId.
+   * Ignored in v2 (the agent principal is resolved from the inbox).
    */
   selfUserId: z.string().uuid().optional(),
   /** Comment authors allowed to advance gates (approve plan / approve release). */
@@ -37,6 +47,8 @@ export const bridgeConfigSchema = z.object({
       deploying: stageSchema.default({ permissionMode: 'bypassPermissions', timeoutMinutes: 60 }),
     })
     .default({}),
+}).refine((c) => Boolean(c.agentKey) !== Boolean(c.builderUserId), {
+  message: 'set exactly one of agentKey (v2) or builderUserId (v1)',
 });
 
 export type BridgeConfig = z.infer<typeof bridgeConfigSchema>;

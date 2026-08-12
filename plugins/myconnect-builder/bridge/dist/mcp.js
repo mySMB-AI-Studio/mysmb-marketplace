@@ -70,6 +70,23 @@ export class WorkspaceClient {
         const items = await this.call('workq_list', { assignedTo: builderUserId });
         return items.filter((t) => t.status === 'not_started' || t.status === 'in_progress');
     }
+    // ── v2: operate a tenant-level platform agent (admin token) ───────────────
+    // These act AS the agent principal — comments/status are attributed to the
+    // agent, not the admin the bridge is authenticated as.
+    /** Open items assigned to the platform agent + the agent's principal id. */
+    async agentInbox(agentKey) {
+        const res = await this.call('workq_agent_inbox', { agentKey });
+        return {
+            principalUserId: res.agent.principalUserId,
+            items: res.items.map((i) => ({ ...i, assigneeIds: [] })),
+        };
+    }
+    async agentComment(agentKey, todoId, body, mentions = []) {
+        await this.call('workq_agent_comment', { agentKey, todoId, body, mentions });
+    }
+    async agentUpdate(agentKey, todoId, changes) {
+        await this.call('workq_agent_update', { agentKey, todoId, ...changes });
+    }
     getItem(todoId) {
         return this.call('workq_get', { todoId });
     }
