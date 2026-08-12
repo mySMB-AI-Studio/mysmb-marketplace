@@ -1,0 +1,286 @@
+{
+  "id": "consolidated-calendar-today",
+  "title": "Consolidated Calendar",
+  "description": "Today's events from Outlook, Google Calendar, and iCloud merged into one chronological agenda, each row tagged with its source.",
+  "category": "productivity",
+  "tags": ["calendar", "consolidated", "unified", "outlook", "google", "icloud", "agenda"],
+  "keywords": ["calendar", "today", "schedule", "meetings", "events", "all", "combined", "unified", "consolidated"],
+  "connectorsUsed": ["m365-calendar", "google-workspace-calendar", "icloud-calendar"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 8 },
+    "min": { "colSpan": 4, "rowSpan": 5 },
+    "max": { "colSpan": 12, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "mcp": "m365-calendar",
+    "tool": "list_events",
+    "params": {
+      "startDateTime": "$today",
+      "endDateTime": "$today_end",
+      "limit": 50
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["header", "body"],
+        "watch": {
+          "/m365-calendar/list_events": {
+            "action": "google-workspace-calendar.list_events",
+            "params": {
+              "calendarId": "primary",
+              "timeMin": "$today",
+              "timeMax": "$today_end",
+              "singleEvents": true,
+              "orderBy": "startTime",
+              "maxResults": 50
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "children": ["titleRow"],
+        "watch": {
+          "/m365-calendar/list_events": {
+            "action": "icloud-calendar.list_all_events",
+            "params": {
+              "start": "$today",
+              "end": "$today_end"
+            }
+          }
+        }
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "CalendarRange", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "count"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Consolidated Calendar", "level": "h2" }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} events today",
+              "n": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/ui/allEvents" } }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": ["bodyInner"]
+      },
+      "bodyInner": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["statsRow", "divider", "loading", "empty", "list"]
+      },
+      "statsRow": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "md" },
+        "children": ["statOutlook", "statGoogle", "statICloud"]
+      },
+      "statOutlook": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["statOutlookEyebrow", "statOutlookValue"],
+        "watch": {
+          "/m365-calendar/list_events": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/allEvents",
+              "value": {
+                "$computed": "consolidated-calendar_merge_events",
+                "args": {
+                  "outlook": { "$state": "/m365-calendar/list_events" },
+                  "google": { "$state": "/google-workspace-calendar/list_events" },
+                  "icloud": { "$state": "/icloud-calendar/list_all_events" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "statOutlookEyebrow": { "type": "Eyebrow", "props": { "text": "Outlook" } },
+      "statOutlookValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "consolidated-calendar_count_events",
+            "args": { "value": { "$state": "/m365-calendar/list_events" } }
+          },
+          "tone": "info"
+        }
+      },
+      "statGoogle": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["statGoogleEyebrow", "statGoogleValue"],
+        "watch": {
+          "/google-workspace-calendar/list_events": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/allEvents",
+              "value": {
+                "$computed": "consolidated-calendar_merge_events",
+                "args": {
+                  "outlook": { "$state": "/m365-calendar/list_events" },
+                  "google": { "$state": "/google-workspace-calendar/list_events" },
+                  "icloud": { "$state": "/icloud-calendar/list_all_events" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "statGoogleEyebrow": { "type": "Eyebrow", "props": { "text": "Google" } },
+      "statGoogleValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "consolidated-calendar_count_events",
+            "args": { "value": { "$state": "/google-workspace-calendar/list_events" } }
+          },
+          "tone": "success"
+        }
+      },
+      "statICloud": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["statICloudEyebrow", "statICloudValue"],
+        "watch": {
+          "/icloud-calendar/list_all_events": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/allEvents",
+              "value": {
+                "$computed": "consolidated-calendar_merge_events",
+                "args": {
+                  "outlook": { "$state": "/m365-calendar/list_events" },
+                  "google": { "$state": "/google-workspace-calendar/list_events" },
+                  "icloud": { "$state": "/icloud-calendar/list_all_events" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "statICloudEyebrow": { "type": "Eyebrow", "props": { "text": "iCloud" } },
+      "statICloudValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "consolidated-calendar_count_events",
+            "args": { "value": { "$state": "/icloud-calendar/list_all_events" } }
+          },
+          "tone": "accent"
+        }
+      },
+      "divider": { "type": "Divider" },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/m365-calendar.list_events" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "Nothing on any calendar today — enjoy the focus time." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/m365-calendar.list_events", "not": true },
+            { "$state": "/ui/allEvents/0", "not": true }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["row"],
+        "repeat": { "statePath": "/ui/allEvents", "key": "id" },
+        "visible": { "$state": "/_loading/m365-calendar.list_events", "not": true }
+      },
+      "row": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "hover": true, "template": "4.5rem 1fr auto" },
+        "children": ["timePill", "labels", "sourceBadge"]
+      },
+      "timePill": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$cond": { "$item": "allDay" },
+            "$then": "All day",
+            "$else": {
+              "$computed": "format_time",
+              "args": { "value": { "$item": "start" } }
+            }
+          },
+          "tone": "default",
+          "variant": "soft"
+        }
+      },
+      "labels": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["rowTitle", "rowSub"]
+      },
+      "rowTitle": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "title" },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "rowSub": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{loc}",
+              "loc": { "$item": "location" }
+            }
+          }
+        }
+      },
+      "sourceBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "sourceLabel" },
+          "tone": {
+            "$computed": "consolidated-calendar_source_tone",
+            "args": { "value": { "$item": "source" } }
+          },
+          "variant": "soft"
+        }
+      }
+    }
+  }
+}
