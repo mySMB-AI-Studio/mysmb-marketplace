@@ -383,9 +383,27 @@ const or_dash: ComputedFunction = (args) => {
   return String(v);
 };
 
+/**
+ * Build a Salesforce Lightning list-view URL for a given object.
+ * Requires the connected org's instance URL passed as `instanceUrl`.
+ * Returns null if instanceUrl is not provided (button becomes a no-op).
+ *
+ * Args: { object: string, instanceUrl?: string }
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_list_url", "args": { "object": "Campaign" } }
+ */
+const list_url: ComputedFunction = (args) => {
+  const object = String(args.object ?? '');
+  const instanceUrl = args.instanceUrl ? String(args.instanceUrl).replace(/\/$/, '') : null;
+  if (!object) return null;
+  if (!instanceUrl) return null;
+  return `${instanceUrl}/lightning/o/${object}/list?filterName=Recent`;
+};
+
 const elements: PluginElementsModule = {
   slug: 'salesforce',
-  functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash },
+  functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash, list_url },
 };
 
 export default elements;

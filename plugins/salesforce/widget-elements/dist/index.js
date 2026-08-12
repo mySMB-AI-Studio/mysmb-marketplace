@@ -375,8 +375,15 @@ const or_dash = (args) => {
         return '–';
     return String(v);
 };
+const list_url = (args) => {
+    const object = String(args.object ?? '');
+    const instanceUrl = args.instanceUrl ? String(args.instanceUrl).replace(/\/$/, '') : null;
+    if (!object) return null;
+    if (!instanceUrl) return null;
+    return `${instanceUrl}/lightning/o/${object}/list?filterName=Recent`;
+};
 const elements = {
     slug: 'salesforce',
-    functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash },
+    functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash, list_url },
 };
 export default elements;
