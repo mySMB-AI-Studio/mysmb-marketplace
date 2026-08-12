@@ -389,8 +389,20 @@ const case_priority_tone = (args) => {
     if (v === 'low') return 'success';
     return 'muted';
 };
+const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const format_date = (args) => {
+    const raw = args.value;
+    if (!raw) return '';
+    const ms = Date.parse(String(raw));
+    if (Number.isNaN(ms)) return '';
+    const d = new Date(ms);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = MONTH_ABBR[d.getMonth()];
+    const year = String(d.getFullYear()).slice(-2);
+    return `${day}-${month}-${year}`;
+};
 const elements = {
     slug: 'salesforce',
-    functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash, list_url, case_priority_tone },
+    functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash, list_url, case_priority_tone, format_date },
 };
 export default elements;
