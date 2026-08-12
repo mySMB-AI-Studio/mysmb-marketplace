@@ -1,0 +1,284 @@
+{
+  "id": "master-agent-chat",
+  "title": "Master Agent — Chat",
+  "description": "Chat with the Master Agent. Ask anything and it routes your question to the right Copilot Studio agent(s) in your tenant behind the scenes, then answers you directly. @mention an agent to target it.",
+  "category": "productivity",
+  "tags": ["copilot-studio", "copilot", "agents", "master-agent", "chat", "assistant"],
+  "keywords": ["chat", "master agent", "copilot", "assistant", "ask", "agents", "orchestrator"],
+  "connectorsUsed": ["copilot-studio"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 3 },
+    "min":       { "colSpan": 4, "rowSpan": 3 },
+    "max":       { "colSpan": 12, "rowSpan": 16 }
+  },
+  "dataProvider": {
+    "mcp": "copilot-studio",
+    "tool": "list_copilot_agents",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body", "suggestions", "composer"],
+        "watch": {
+          "/copilot-studio/ask_master_agent/history": [
+            { "action": "setState", "params": { "statePath": "/ui/pending", "value": "" } }
+          ],
+          "/ui/draft": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/mentions",
+                "value": {
+                  "$computed": "master-agent_mention_matches",
+                  "args": {
+                    "agents": { "$state": "/copilot-studio/list_copilot_agents/agents" },
+                    "draft": { "$state": "/ui/draft" }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleRow"] },
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "connBtn"]
+      },
+      "connBtn": {
+        "type": "Button",
+        "props": { "label": "Manage connections", "variant": "ghost", "size": "sm", "leadingIcon": "Plug" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$template": "https://make.powerapps.com/environments/${/copilot-studio/list_copilot_agents/agents/0/environmentId}/connections"
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Bot", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Master Agent", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Copilot Studio orchestrator" } },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["transcript", "pending", "loading", "empty"]
+      },
+
+      "transcript": {
+        "type": "Stack",
+        "props": { "gap": "md", "align": "start" },
+        "visible": { "$state": "/copilot-studio/ask_master_agent/history/0" },
+        "repeat": { "statePath": "/copilot-studio/ask_master_agent/history", "key": "id" },
+        "children": ["turnRow"]
+      },
+      "turnRow": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "start" },
+        "children": ["turnWho", "turnBubble"]
+      },
+      "turnWho": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$cond": { "$item": "role", "eq": "user" },
+            "$then": "You",
+            "$else": "Master Agent"
+          },
+          "tone": "muted"
+        }
+      },
+      "turnBubble": {
+        "type": "Section",
+        "props": {
+          "variant": {
+            "$cond": { "$item": "role", "eq": "assistant" },
+            "$then": "bordered",
+            "$else": "plain"
+          },
+          "inset": {
+            "$cond": { "$item": "role", "eq": "user" },
+            "$then": true,
+            "$else": false
+          }
+        },
+        "children": ["turnTextUser", "turnTextAssistant"]
+      },
+      "turnTextUser": {
+        "type": "Text",
+        "props": { "size": "sm" },
+        "visible": { "$item": "role", "eq": "user" },
+        "children": ["mentionRun", "restRun"]
+      },
+      "mentionRun": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "master-agent_mention_prefix",
+            "args": {
+              "text": { "$item": "content" },
+              "agents": { "$state": "/copilot-studio/list_copilot_agents/agents" }
+            }
+          },
+          "size": "sm",
+          "weight": "bold"
+        }
+      },
+      "restRun": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "master-agent_message_body",
+            "args": {
+              "text": { "$item": "content" },
+              "agents": { "$state": "/copilot-studio/list_copilot_agents/agents" }
+            }
+          },
+          "size": "sm"
+        }
+      },
+      "turnTextAssistant": {
+        "type": "Text",
+        "props": { "text": { "$item": "content" }, "size": "sm", "preserveLines": true },
+        "visible": { "$item": "role", "eq": "assistant" }
+      },
+
+      "pending": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "start" },
+        "visible": { "$state": "/ui/pending" },
+        "children": ["pendWho", "pendText"]
+      },
+      "pendWho": { "type": "Caption", "props": { "text": "You", "tone": "muted" } },
+      "pendText": { "type": "Text", "props": { "text": { "$state": "/ui/pending" }, "size": "sm", "preserveLines": true } },
+
+      "loading": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "visible": { "$state": "/ui/pending" },
+        "children": ["spinner", "loadingText"]
+      },
+      "spinner": { "type": "Spinner", "props": { "size": "sm" } },
+      "loadingText": { "type": "Caption", "props": { "text": "Master Agent is typing…", "tone": "muted" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "Ask the Master Agent anything — it routes to the right Copilot agent(s) behind the scenes. Tip: @mention an agent to target it."
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/copilot-studio.ask_master_agent", "not": true },
+            { "$state": "/copilot-studio/ask_master_agent/history/0", "not": true },
+            { "$state": "/ui/pending", "not": true }
+          ]
+        }
+      },
+
+      "suggestions": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "align": "start" },
+        "visible": { "$state": "/ui/mentions/0" },
+        "repeat": { "statePath": "/ui/mentions", "key": "id" },
+        "children": ["suggestionBtn"]
+      },
+      "suggestionBtn": {
+        "type": "Button",
+        "props": {
+          "label": { "$item": "name" },
+          "variant": "ghost",
+          "size": "sm",
+          "leadingIcon": "AtSign"
+        },
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/draft",
+                "value": {
+                  "$computed": "master-agent_apply_mention",
+                  "args": {
+                    "draft": { "$state": "/ui/draft" },
+                    "name": { "$item": "name" }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "composer": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["inputWrap", "sendBtn"]
+      },
+      "inputWrap": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["input"]
+      },
+      "input": {
+        "type": "TextInput",
+        "props": {
+          "value": { "$bindState": "/ui/draft" },
+          "placeholder": "Message the Master Agent…  (@mention an agent to target it)",
+          "size": "sm",
+          "debounce": 100
+        },
+        "on": {
+          "submit": [
+            { "action": "setState", "params": { "statePath": "/ui/pending", "value": { "$state": "/ui/draft" } } },
+            { "action": "setState", "params": { "statePath": "/ui/draft", "value": "" } },
+            {
+              "action": "copilot-studio.ask_master_agent",
+              "params": {
+                "message": { "$state": "/ui/pending" },
+                "history": { "$state": "/copilot-studio/ask_master_agent/history" },
+                "agent_conversations": { "$state": "/copilot-studio/ask_master_agent/agent_conversations" }
+              }
+            }
+          ]
+        }
+      },
+      "sendBtn": {
+        "type": "Button",
+        "props": { "label": "Send", "leadingIcon": "Send", "size": "sm", "variant": "primary" },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/pending", "value": { "$state": "/ui/draft" } } },
+            { "action": "setState", "params": { "statePath": "/ui/draft", "value": "" } },
+            {
+              "action": "copilot-studio.ask_master_agent",
+              "params": {
+                "message": { "$state": "/ui/pending" },
+                "history": { "$state": "/copilot-studio/ask_master_agent/history" },
+                "agent_conversations": { "$state": "/copilot-studio/ask_master_agent/agent_conversations" }
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "status": "published"
+}

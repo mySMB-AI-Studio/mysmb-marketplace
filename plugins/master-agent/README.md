@@ -28,12 +28,16 @@ The single Power Platform delegated permission both discovers the tenant's agent
 |---|---|
 | `list_copilot_agents` | Discover the Copilot Studio agents in the user's tenant. Returns each agent's `name`, `schemaName` (needed to talk to it), `description`, and `environmentId` / `environmentName`. Optional `environment_id` scopes the search to one environment. Cached ~10 minutes. |
 | `ask_copilot_agent` | Send a `message` to a specific agent (by `agent_schema_name` + `environment_id`) and return its reply plus a `conversationId`. Pass that `conversation_id` back on the next call to continue a multi-turn conversation. |
+| `ask_master_agent` | The Master Agent brain. Send a user `message`; it decides which agent(s) to consult (honouring `@mentions`), relays the question, and returns one synthesized `reply` plus the running `history` and `agent_conversations` to thread the next turn. **Requires `ANTHROPIC_API_KEY` on the server** (LLM routing + synthesis). |
 
 ## Widgets
 
 | Widget | Description |
 |---|---|
-| `master-agent-directory` | A dashboard tile listing the Copilot Studio agents available in your tenant — name, description, and environment — so you can see at a glance which specialists you can reach. |
+| `master-agent-chat` | A chat window — type a message and talk to the Master Agent, which routes to the right Copilot agent(s) behind the scenes and answers you directly. Multi-turn transcript. Backed by `ask_master_agent`. |
+| `master-agent-directory` | A dashboard tile listing the Copilot Studio agents available in your tenant — name, description, and environment — so you can see which specialists the Master Agent can reach. |
+
+> **Server prerequisite for the chat:** the `ask_master_agent` tool runs an LLM server-side (Anthropic), so the gateway deployment must have `ANTHROPIC_API_KEY` set. `list_copilot_agents` / `ask_copilot_agent` and the directory tile work without it.
 
 ## How it works
 
