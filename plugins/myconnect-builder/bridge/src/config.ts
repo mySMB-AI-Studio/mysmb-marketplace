@@ -10,8 +10,17 @@ const stageSchema = z.object({
 export const bridgeConfigSchema = z.object({
   /** External MCP resource URI of the target workspace, e.g. https://host/mcp */
   workspaceMcpUrl: z.string().url(),
-  /** users.id of the "myConnect Builder" account items are assigned to. */
+  /** users.id of the "myConnect Builder" account items are assigned to
+   *  (the poll target — what the PM assigns work to). */
   builderUserId: z.string().uuid(),
+  /**
+   * users.id the bridge is AUTHENTICATED as (its comment-author identity).
+   * In v1's dry-run the OAuth login is a real human (the service account has
+   * no Entra login), so this differs from builderUserId; the bridge uses it
+   * to ignore its OWN comments. Defaults to builderUserId (v2: the platform
+   * agent principal is both the assignee and the author).
+   */
+  selfUserId: z.string().uuid().optional(),
   /** Comment authors allowed to advance gates (approve plan / approve release). */
   approverUserIds: z.array(z.string().uuid()).min(1),
   /** Item creators the bridge accepts work from (prompt-injection boundary). */

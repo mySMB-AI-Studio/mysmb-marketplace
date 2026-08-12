@@ -244,9 +244,13 @@ export class Pipeline {
     async newApproverCommands(item) {
         const st = this.store.item(item.id);
         const since = st.lastCommentIso ? Date.parse(st.lastCommentIso) : 0;
+        // Ignore the bridge's OWN comments — keyed on the authenticated identity
+        // (selfUserId), which in the v1 dry-run is the human OAuth login, not the
+        // service account the work is assigned to.
+        const selfId = this.cfg.selfUserId ?? this.cfg.builderUserId;
         const comments = (await this.ws.listComments(item.id))
             .filter((c) => Date.parse(c.createdAt) > since)
-            .filter((c) => c.authorId !== this.cfg.builderUserId)
+            .filter((c) => c.authorId !== selfId)
             .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
         if (comments.length === 0)
             return [];
