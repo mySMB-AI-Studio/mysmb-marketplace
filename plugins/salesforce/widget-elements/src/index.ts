@@ -401,9 +401,17 @@ const list_url: ComputedFunction = (args) => {
   return `${instanceUrl}/lightning/o/${object}/list?filterName=Recent`;
 };
 
+const case_priority_tone: ComputedFunction = (args) => {
+  const v = String(args.value ?? '').toLowerCase();
+  if (v === 'high') return 'destructive';
+  if (v === 'medium') return 'warning';
+  if (v === 'low') return 'accent';
+  return 'muted';
+};
+
 const elements: PluginElementsModule = {
   slug: 'salesforce',
-  functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash, list_url },
+  functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash, list_url, case_priority_tone },
 };
 
 export default elements;
