@@ -98,6 +98,16 @@ A condensed one-page PDF version of this same content exists for sharing outside
 
 **Still needs doing:** fold this into `myHubV2/.claude/skills/composing-widgets/SKILL.md`'s "Common gotchas" section alongside the Table-vs-hand-rolled rule above, so new plugins inherit both halves of this decision together — held off for now, same reasoning as this doc's other "still needs folding in" notes.
 
+### A second, distinct alignment bug: header padding, not column width (found 2026-08-13)
+
+**A hand-rolled table's header row needs the same padding as its data rows, even when neither `hover` nor `selected` — the styling props that happen to carry that padding as a side effect — otherwise applies to the header.** `Row`'s `hover`/`selected` props apply `px-2 py-1.5` padding together with their highlight/selection background, as one bundled side effect, not two independent things. A header row that (correctly) skips `hover` therefore also loses that padding, shifting where its grid's content box starts relative to a sibling data row that has `hover: true` — every fixed-width column past the first ends up offset by a constant amount, **regardless of tile width**, since only the flexible (`1fr`) column absorbs resizing. This is a different failure mode from the column-width bug above (that one comes from `auto`/content-dependent widths computing independently per row; this one exists even with identical, fixed pixel widths on both rows) — a tile can be fully compliant with the fixed-pixel-width rule above and still misalign this way.
+
+**Found in:** HubSpot's and Salesforce's Deals Pipeline tiles (the same two tiles §"Building tabular tiles" already tracked for the column-width bug), plus — once audited for the same pattern — 4 Stripe widgets (`stripe-invoices`, `stripe-recent-payments`, `stripe-subscription-overview`, `stripe-customers`) and Talkdesk's QA scorecard (which used the unrelated `Grid` component for its header, itself incapable of carrying `hover`/`selected`/padding at all — converted to `Row` so it could take the fix below). 7 widgets total; Cliniko's and Dataverse's hand-rolled tables were audited and found *not* affected — they don't have a separate header row sharing a template with their data rows in the first place, so there's nothing for this bug to misalign.
+
+**Fix: a new `padded` prop on `Row`** — same `px-2 py-1.5` spacing as `hover`/`selected`, no background. Purely additive; every existing `hover`/`selected` usage is untouched. Give a header row `padded: true` (no `hover`) to match a sibling data row's `hover: true` spacing without adopting its highlight behavior.
+
+**Status: fixed, not yet merged.** `myHubV2` PR #1313 adds the `padded` prop; `mysmb-marketplace` PR #581 applies it to all 7 widgets above. Both open, pending review — verified in the tile harness against the real component (not a build artifact), light and dark mode, before opening either.
+
 ## 7. Color / tone
 
 **Status tones (`success` / `warning` / `destructive` / `info` / `muted`) are for real state only.** Before using one, ask: *does this color need to change based on live data?* If no, it's not a status — see "Decorative color" below.
