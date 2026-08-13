@@ -82,7 +82,7 @@ A condensed one-page PDF version of this same content exists for sharing outside
 
 **A real limitation to know about, not a reason to avoid `Table`:** its built-in cell formatters (`format`/`toneFormat`) only see one column's own value — they can't reference another field on the same row. A per-row value that depends on a *different* field (e.g. formatting `amount` using that row's own `deal_currency_code`) still needs custom handling — pre-compute a display-ready string before handing rows to `Table`, the same way you would outside it.
 
-**Not yet applied retroactively:** Deals Pipeline itself was left as-is (already built, tested, and working — reworking it into `Table` right after fixing its alignment bug risked unnecessary regression for no functional gain). New tabular tiles should use `Table` from the start; migrating existing hand-rolled ones is the same opportunistic "touch it, fix it" policy as §9's rollout plan, not a mandatory rewrite.
+**Not yet applied retroactively:** Deals Pipeline itself was left as-is (already built, tested, and working — reworking it into `Table` right after fixing its alignment bug risked unnecessary regression for no functional gain). New tabular tiles should use `Table` from the start; migrating existing hand-rolled ones is the same opportunistic "touch it, fix it" policy as §10's rollout plan, not a mandatory rewrite.
 
 **One migration done as a concrete example (2026-08-07):** HubSpot's Recent Contacts tile was rebuilt directly onto `Table` (previously hand-rolled `Row`+`repeat`) as part of the same round of fixes — the "touch it, fix it" policy actually applied, not just Deals Pipeline's "left as-is" counterexample.
 
@@ -142,7 +142,21 @@ This standard's tone rules will sometimes disagree with the exact colors a conne
 
 **Platform-adjacent fix, same audit (2026-08-12):** the local tile-harness never rendered this chip at all — the same class of fidelity gap as the earlier `--widget-brand` CSS variable issue (§7's Decorative color section). Fixed in `tile-harness` (PR #7, `fix/harness-connector-logos`): aliases `brand-mark.ts` live from MyHub and serves `/logos/*` from MyHub's real asset directory, so both shapes now render correctly there too — verified against Simpro's wordmark and Salesforce's square mark directly.
 
-## 9. Rollout & enforcement (confirmed 2026-08-06)
+## 9. Tile subtitle (Eyebrow)
+
+**Every tile places an `Eyebrow` directly below its `Heading`** — this is already universal across every shipped widget, but the convention had never been written down anywhere until now (confirmed absent from this doc when asked directly, 2026-08-13).
+
+**Content is use-case-specific — there's no fixed template.** Unlike headers, dates, or currency, there's no single right answer for what goes in the Eyebrow. A tile author picks whichever fits the tile's own use case: the connector/product context (`Dynamics 365 Sales`), a live record count (`4 open deals`), a time window (`Last 7 days`), an activity descriptor (`Recent calls`), or a combination joined with `·`. Don't force a tile's Eyebrow into a template lifted from a different tile if it doesn't fit what that tile is actually showing.
+
+**Casing: Sentence case, per `·`-separated segment** — capitalize only the first word of the string, and (if the Eyebrow has a `·`-joined second clause) only the first word of that clause too; everything else stays lowercase. A connector/brand/product name keeps its own natural capitalization wherever it appears (e.g. `Stripe`, `Dynamics 365`, `NetSuite ERP`) — that's normal proper-noun capitalization, not an exception to sentence case. Never Title Case throughout, never ALL CAPS.
+
+**Reference pattern, done consistently:** NetSuite's widgets get this right across the board — `NetSuite ERP · Current month`, `NetSuite ERP · Bank accounts`, `NetSuite ERP · Requires attention`, `NetSuite ERP · Rolling 90 days` — connector name capitalized (it's a proper noun), first word after `·` capitalized (start of that clause), everything else lowercase.
+
+**Known violators (found 2026-08-13, sampled from ~70 shipped Eyebrow strings):** plain Title Case throughout — `Bank Accounts`, `Gross Profit`, `Net Income`, `Total Employees`, `Total Expenses`, `Recent Donations`, `Recurring Gifts`, `Top 5 Agents`, `On Leave Today`, `Overdue Buckets`, `Revenue by Customer`, `Industry Benchmark`, `Lowest Registered Attendance`; a leading number that should leave the following word lowercase but doesn't — `3 Campaigns`, `3 Open`, `3 Pending`, `3 Recent` (contrast with the same file's own correct `4 products`); Title-Casing the second `·`-clause instead of just its first word — `Charitabl · Last 30 Days` (should be `Last 30 days`), `Charitabl · Curator`, `Charitabl · Featured`, `Charitabl · Featured Charity`; and one plain ALL CAPS, `SUMMARY`. Snapshot, not exhaustive — re-verify before treating as current.
+
+**Not yet enforced or retroactively fixed** — same rollout policy as everything else in this doc (see §10): new/touched tiles must comply going forward, a full retrofit of the violators above is a separate scoped initiative, not required before this section "counts."
+
+## 10. Rollout & enforcement (confirmed 2026-08-06)
 
 This doc states the standard; it doesn't by itself make ~197 existing widgets comply, and writing it down doesn't stop the next widget from making the same mistakes (the `xxs` bug above was re-introduced in brand-new code within the same session that documented it — the doc alone didn't prevent it).
 
