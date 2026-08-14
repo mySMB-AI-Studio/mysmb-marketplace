@@ -193,7 +193,7 @@
       "footer": {
         "type": "Stack",
         "props": { "gap": "xs" },
-        "children": ["insightRow", "growthText"],
+        "children": ["insightRow"],
         "visible": {
           "$and": [
             { "$state": "/_loading/salesforce.soql_query", "not": true },
@@ -208,32 +208,14 @@
       },
       "insightIcon": {
         "type": "Icon",
-        "props": { "name": "Lightbulb", "tone": "accent", "size": "sm" }
+        "props": { "name": "Zap", "tone": "accent", "size": "sm" }
       },
       "insightText": {
         "type": "Text",
         "props": {
-          "text": {
-            "$computed": "salesforce_membership_state_insight",
-            "args": {
-              "counts": { "$state": "/ui/stateRows" },
-              "total": { "$state": "/ui/stateTotal" }
-            }
-          },
+          "text": "Your top 2 states hold the largest share of membership — the strongest candidates for a flagship annual event. States with consistent but smaller representation may suit a regional chapter meetup.",
           "size": "sm",
           "weight": "semibold"
-        }
-      },
-      "growthText": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "salesforce_membership_growth_insight",
-            "args": {
-              "counts": { "$state": "/ui/stateRows" },
-              "total": { "$state": "/ui/stateTotal" }
-            }
-          }
         }
       }
     }
