@@ -76,7 +76,7 @@ without another prompt.
 - `share_file` — Create sharing link
 - `list_recent_files` — Recently accessed files
 
-### Teams (11 tools)
+### Teams (12 tools)
 - `list_teams` — List joined teams
 - `list_channels` — List team channels
 - `list_messages` — Read channel/chat messages
@@ -87,6 +87,12 @@ without another prompt.
   `relativeTime`, `unread`, `isFromMe`, `bucket`, `hasMention`, `mentionsMe`,
   `reactions`). Sorted unread-first, then newest-first. Optional `timeZone`
   (IANA name) for the recency-bucket day boundary.
+- `create_chat` — Create a new 1:1 or group chat. `memberUserIds` are
+  the Entra user IDs of the other members (the caller is added
+  automatically); optional `topic` applies to group chats only. A 1:1
+  with an existing chat partner returns that existing chat. Returns
+  `{ id, chatType, topic, webUrl }` — follow up with `send_message
+  { chatId }` to post the first message.
 - `mark_chat_read` — Mark a chat as read for the current user (mirrors
   what the Teams client does when a user opens a chat).
 - `mark_chat_unread` — Flip a chat back to unread (snooze flow).
