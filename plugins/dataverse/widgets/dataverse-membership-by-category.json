@@ -1,0 +1,207 @@
+{
+  "id": "dataverse-membership-by-category",
+  "title": "Membership by Category",
+  "description": "Total membership count with a breakdown by membership category (e.g. Full/Accredited, Student, Associate, Retired/Honorary), computed from Dataverse Contact records for association-management customers. Assumes membership category is stored in a `new_membershiptype` field on Contact -- a picklist or plain text field. If a customer's org names this field differently, this tile won't find any data (there's currently no way to override the field name per org). Categories are color-coded by rank (highest count first), not by matching specific category names, since membership-type labels vary far more across orgs than something like a state/territory list.",
+  "category": "crm",
+  "tags": ["dataverse", "dynamics-365", "membership", "association", "crm"],
+  "keywords": ["members by category", "membership breakdown", "membership type", "membership tier", "association", "statistics", "d365"],
+  "connectorsUsed": ["dataverse"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 3 },
+    "min": { "colSpan": 3, "rowSpan": 3 },
+    "max": { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "dataverse",
+    "tool": "count_records_by_field",
+    "params": {
+      "entity": "contact",
+      "field": "new_membershiptype"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["header", "body"]
+      },
+      "header": {
+        "type": "Header",
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "PieChart", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Membership by Category", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{total} active members across {n} categories",
+              "total": { "$state": "/dataverse/count_records_by_field/total" },
+              "n": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/dataverse/count_records_by_field/counts" } }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": ["loading", "empty", "totalStack", "misconfigured", "categoryDivider", "categoryList"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/dataverse.count_records_by_field" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No membership data found. Make sure Contact records exist on this Dataverse org with a `new_membershiptype` field set."
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dataverse.count_records_by_field", "not": true },
+            { "$state": "/dataverse/count_records_by_field/counts/0", "not": true }
+          ]
+        }
+      },
+      "totalStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["totalValue", "totalCaption"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dataverse.count_records_by_field", "not": true },
+            { "$state": "/dataverse/count_records_by_field/counts/0" }
+          ]
+        }
+      },
+      "totalValue": {
+        "type": "Stat",
+        "props": {
+          "value": { "$state": "/dataverse/count_records_by_field/total" },
+          "size": "lg"
+        }
+      },
+      "totalCaption": {
+        "type": "Caption",
+        "props": { "text": "active members" }
+      },
+      "misconfigured": {
+        "type": "Empty",
+        "props": {
+          "message": "Every member is showing under \"(not set)\" — this usually means the membership-category field on this Dataverse org isn't named exactly `new_membershiptype`. Rename the field (or add one named `new_membershiptype`) to see the real breakdown; check the exact logical name via describe_entity if unsure."
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dataverse.count_records_by_field", "not": true },
+            { "$state": "/dataverse/count_records_by_field/counts/0" },
+            { "$state": "/dataverse/count_records_by_field/counts/1", "not": true },
+            { "$state": "/dataverse/count_records_by_field/counts/0/value", "eq": "(not set)" }
+          ]
+        }
+      },
+      "categoryDivider": {
+        "type": "Divider",
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dataverse.count_records_by_field", "not": true },
+            { "$state": "/dataverse/count_records_by_field/counts/0" },
+            {
+              "$or": [
+                { "$state": "/dataverse/count_records_by_field/counts/1" },
+                { "$state": "/dataverse/count_records_by_field/counts/0/value", "eq": "(not set)", "not": true }
+              ]
+            }
+          ]
+        }
+      },
+      "categoryList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["categoryRow"],
+        "repeat": {
+          "statePath": "/dataverse/count_records_by_field/counts",
+          "key": "value"
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dataverse.count_records_by_field", "not": true },
+            { "$state": "/dataverse/count_records_by_field/counts/0" },
+            {
+              "$or": [
+                { "$state": "/dataverse/count_records_by_field/counts/1" },
+                { "$state": "/dataverse/count_records_by_field/counts/0/value", "eq": "(not set)", "not": true }
+              ]
+            }
+          ]
+        }
+      },
+      "categoryRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["categoryLeft", "categoryCount"]
+      },
+      "categoryLeft": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["categoryDot", "categoryLabel"]
+      },
+      "categoryDot": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$computed": "category_rank_tone",
+            "args": {
+              "counts": { "$state": "/dataverse/count_records_by_field/counts" },
+              "value": { "$item": "value" }
+            }
+          },
+          "size": "sm"
+        }
+      },
+      "categoryLabel": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "value" },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "categoryCount": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "count" },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      }
+    }
+  }
+}
