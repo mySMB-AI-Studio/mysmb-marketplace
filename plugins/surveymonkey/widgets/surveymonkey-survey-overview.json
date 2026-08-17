@@ -57,7 +57,7 @@
               "pattern": "{n} Surveys",
               "n": {
                 "$computed": "count",
-                "args": { "value": { "$state": "/surveymonkey/list_surveys/records" } }
+                "args": { "value": { "$state": "/surveymonkey/list_surveys/data" } }
               }
             }
           }
@@ -84,7 +84,7 @@
         "visible": {
           "$and": [
             { "$state": "/_loading/surveymonkey.list_surveys", "not": true },
-            { "$state": "/surveymonkey/list_surveys/records/0", "not": true }
+            { "$state": "/surveymonkey/list_surveys/data/0", "not": true }
           ]
         }
       },
@@ -93,13 +93,13 @@
         "props": { "gap": "xs" },
         "children": ["surveyRow"],
         "repeat": {
-          "statePath": "/surveymonkey/list_surveys/records",
+          "statePath": "/surveymonkey/list_surveys/data",
           "key": "id"
         },
         "visible": {
           "$and": [
             { "$state": "/_loading/surveymonkey.list_surveys", "not": true },
-            { "$state": "/surveymonkey/list_surveys/records/0" }
+            { "$state": "/surveymonkey/list_surveys/data/0" }
           ]
         }
       },

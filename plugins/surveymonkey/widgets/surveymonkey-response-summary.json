@@ -25,7 +25,7 @@
         "props": {},
         "children": ["header", "body"],
         "watch": {
-          "/surveymonkey/list_surveys/records": [
+          "/surveymonkey/list_surveys/data": [
             {
               "action": "setState",
               "params": {
@@ -33,7 +33,7 @@
                 "value": {
                   "$computed": "sum",
                   "args": {
-                    "value": { "$state": "/surveymonkey/list_surveys/records" },
+                    "value": { "$state": "/surveymonkey/list_surveys/data" },
                     "field": "response_count"
                   }
                 }
@@ -46,7 +46,7 @@
                 "value": {
                   "$computed": "top_n",
                   "args": {
-                    "value": { "$state": "/surveymonkey/list_surveys/records" },
+                    "value": { "$state": "/surveymonkey/list_surveys/data" },
                     "field": "response_count",
                     "n": 5
                   }
@@ -112,7 +112,7 @@
         "visible": {
           "$and": [
             { "$state": "/_loading/surveymonkey.list_surveys", "not": true },
-            { "$state": "/surveymonkey/list_surveys/records/0", "not": true }
+            { "$state": "/surveymonkey/list_surveys/data/0", "not": true }
           ]
         }
       },
@@ -125,7 +125,7 @@
         "visible": {
           "$and": [
             { "$state": "/_loading/surveymonkey.list_surveys", "not": true },
-            { "$state": "/surveymonkey/list_surveys/records/0" }
+            { "$state": "/surveymonkey/list_surveys/data/0" }
           ]
         }
       },
@@ -135,7 +135,7 @@
         "visible": {
           "$and": [
             { "$state": "/_loading/surveymonkey.list_surveys", "not": true },
-            { "$state": "/surveymonkey/list_surveys/records/0" }
+            { "$state": "/surveymonkey/list_surveys/data/0" }
           ]
         }
       },
@@ -145,7 +145,7 @@
         "visible": {
           "$and": [
             { "$state": "/_loading/surveymonkey.list_surveys", "not": true },
-            { "$state": "/surveymonkey/list_surveys/records/0" }
+            { "$state": "/surveymonkey/list_surveys/data/0" }
           ]
         }
       },
