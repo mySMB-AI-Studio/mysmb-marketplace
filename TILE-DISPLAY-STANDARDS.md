@@ -82,7 +82,7 @@ A condensed one-page PDF version of this same content exists for sharing outside
 
 **A real limitation to know about, not a reason to avoid `Table`:** its built-in cell formatters (`format`/`toneFormat`) only see one column's own value — they can't reference another field on the same row. A per-row value that depends on a *different* field (e.g. formatting `amount` using that row's own `deal_currency_code`) still needs custom handling — pre-compute a display-ready string before handing rows to `Table`, the same way you would outside it.
 
-**Not yet applied retroactively:** Deals Pipeline itself was left as-is (already built, tested, and working — reworking it into `Table` right after fixing its alignment bug risked unnecessary regression for no functional gain). New tabular tiles should use `Table` from the start; migrating existing hand-rolled ones is the same opportunistic "touch it, fix it" policy as §10's rollout plan, not a mandatory rewrite.
+**Not yet applied retroactively:** Deals Pipeline itself was left as-is (already built, tested, and working — reworking it into `Table` right after fixing its alignment bug risked unnecessary regression for no functional gain). New tabular tiles should use `Table` from the start; migrating existing hand-rolled ones is the same opportunistic "touch it, fix it" policy as §14's rollout plan, not a mandatory rewrite.
 
 **One migration done as a concrete example (2026-08-07):** HubSpot's Recent Contacts tile was rebuilt directly onto `Table` (previously hand-rolled `Row`+`repeat`) as part of the same round of fixes — the "touch it, fix it" policy actually applied, not just Deals Pipeline's "left as-is" counterexample.
 
@@ -164,9 +164,32 @@ This standard's tone rules will sometimes disagree with the exact colors a conne
 
 **Known violators (found 2026-08-13, sampled from ~70 shipped Eyebrow strings):** plain Title Case throughout — `Bank Accounts`, `Gross Profit`, `Net Income`, `Total Employees`, `Total Expenses`, `Recent Donations`, `Recurring Gifts`, `Top 5 Agents`, `On Leave Today`, `Overdue Buckets`, `Revenue by Customer`, `Industry Benchmark`, `Lowest Registered Attendance`; a leading number that should leave the following word lowercase but doesn't — `3 Campaigns`, `3 Open`, `3 Pending`, `3 Recent` (contrast with the same file's own correct `4 products`); Title-Casing the second `·`-clause instead of just its first word — `Charitabl · Last 30 Days` (should be `Last 30 days`), `Charitabl · Curator`, `Charitabl · Featured`, `Charitabl · Featured Charity`; and one plain ALL CAPS, `SUMMARY`. Snapshot, not exhaustive — re-verify before treating as current.
 
-**Not yet enforced or retroactively fixed** — same rollout policy as everything else in this doc (see §10): new/touched tiles must comply going forward, a full retrofit of the violators above is a separate scoped initiative, not required before this section "counts."
+**Not yet enforced or retroactively fixed** — same rollout policy as everything else in this doc (see §14): new/touched tiles must comply going forward, a full retrofit of the violators above is a separate scoped initiative, not required before this section "counts."
 
-## 10. Rollout & enforcement (confirmed 2026-08-06)
+## 11. Row limits & pagination (confirmed 2026-08-14)
+
+**A list/table tile shows a maximum of 20 rows at a time.** When more rows exist than that, a **"See more" button** at the bottom reveals the next 20, appended in place — the tile grows, or gains an internal scroll region — never an auto-load-on-scroll. Infinite scroll is explicitly out (DSM 2026-08-13): every reveal is a deliberate click, not a side effect of scroll position.
+
+**When rows are truncated, show a plain count** (e.g. "Showing 20 of 47") — text only, not a link or a drill-down destination.
+
+**Not yet built:** the widgets-system's `repeat` component currently only supports a flat display `limit` (a hard slice, no reveal-more behavior) — confirmed via `apps/web/src/features/widgets-system/system/components.tsx`. This section documents the target design; implementing "See more" is its own tracked task, same doc-first pattern as everything else in this file. Existing widgets keep using flat `limit` until it lands — this section doesn't retroactively obligate them to grow a "See more" button on their own.
+
+## 12. Foundational tile principles (confirmed 2026-08-14)
+
+Before a tile gets built, it should satisfy all four (DSM 2026-08-13):
+
+- **Useful** — answers a real, recurring question; not built just because the data happens to be available.
+- **Provides visibility** — surfaces something the user would otherwise have to dig for across systems/tabs.
+- **Solves a problem** — gives the user something they can act on: an informed, empirical decision grounded in real data, not decoration.
+- **Genuinely accessible** — reachable and usable by the people who actually need it (permissions, tenant fit), not built for a hypothetical audience.
+
+## 13. Data governance: velocity & veracity (confirmed 2026-08-14)
+
+**Velocity (freshness):** every tile discloses the time context of its data via the Eyebrow (§9) — a time window, "as of" framing, or similar — so a viewer knows how current the number is. No new UI needed; this rides the existing Eyebrow convention rather than inventing a separate freshness badge.
+
+**Veracity (reliability/completeness):** when a tile's data is partial, sampled, delayed, or bound by an upstream platform limit (e.g. a connector only exposing a rolling window of history), the tile discloses that limitation — via Eyebrow, an inline note, or empty/misconfigured-state copy — rather than presenting partial data silently as if it were complete. Raised at DSM re: MYOB reportedly previewing only ~3 months of data — **unconfirmed against MYOB's actual docs as of this writing** (no such limit found in `myhub-mcp-servers/src/integrations/myob`, so this is likely an MYOB platform/API constraint, not something mySMB imposes); the principle generalizes to any connector with a known native retrieval limit, once confirmed.
+
+## 14. Rollout & enforcement (confirmed 2026-08-06)
 
 This doc states the standard; it doesn't by itself make ~197 existing widgets comply, and writing it down doesn't stop the next widget from making the same mistakes (the `xxs` bug above was re-introduced in brand-new code within the same session that documented it — the doc alone didn't prevent it).
 
