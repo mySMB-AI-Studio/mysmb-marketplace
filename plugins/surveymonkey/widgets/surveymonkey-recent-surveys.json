@@ -8,7 +8,7 @@
   "connectorsUsed": ["surveymonkey"],
   "popularity": 60,
   "sizing": {
-    "preferred": { "colSpan": 4, "rowSpan": 5 },
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
     "min": { "colSpan": 3, "rowSpan": 4 },
     "max": { "colSpan": 8, "rowSpan": 10 }
   },
@@ -102,7 +102,7 @@
         "visible": {
           "$and": [
             { "$state": "/_loading/surveymonkey.list_surveys", "not": true },
-            { "$state": "/surveymonkey/list_surveys/data/0", "not": true }
+            { "$state": "/ui/recentSurveys/0", "not": true }
           ]
         }
       },
@@ -124,7 +124,17 @@
       "surveyRow": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true },
-        "children": ["surveyInfo", "surveyBadge"]
+        "children": ["surveyDot", "surveyInfo", "surveyBadge"]
+      },
+      "surveyDot": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$computed": "surveymonkey_recency_tone",
+            "args": { "value": { "$item": "date_modified" } }
+          },
+          "size": "sm"
+        }
       },
       "surveyInfo": {
         "type": "Stack",
@@ -144,10 +154,13 @@
         "type": "Caption",
         "props": {
           "text": {
-            "$computed": "surveymonkey_format_date",
+            "$computed": "relative_time",
             "args": { "value": { "$item": "date_modified" } }
           },
-          "tone": "muted"
+          "tone": {
+            "$computed": "surveymonkey_recency_tone",
+            "args": { "value": { "$item": "date_modified" } }
+          }
         }
       },
       "surveyBadge": {
@@ -160,7 +173,7 @@
               "n": { "$item": "response_count" }
             }
           },
-          "tone": "accent",
+          "tone": "info",
           "variant": "soft"
         }
       }
