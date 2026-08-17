@@ -72,9 +72,23 @@ const recency_tone: ComputedFunction = (args) => {
   return Date.now() - ms <= 48 * 60 * 60 * 1000 ? 'success' : 'muted';
 };
 
+/**
+ * Injects a 1-based rank field into each item of a sorted array.
+ * Use after top_n to add rank numbers for display.
+ *
+ * Args: { value: array }
+ *
+ * Spec example:
+ *   { "$computed": "surveymonkey_add_ranks", "args": { "value": { "$state": "/ui/topSurveys" } } }
+ */
+const add_ranks: ComputedFunction = (args) => {
+  const arr = Array.isArray(args.value) ? args.value : [];
+  return arr.map((item, i) => ({ ...(item as object), rank: i + 1 }));
+};
+
 const elements: PluginElementsModule = {
   slug: 'surveymonkey',
-  functions: { format_date, response_rate, survey_status_tone, recency_tone },
+  functions: { format_date, response_rate, survey_status_tone, recency_tone, add_ranks },
 };
 
 export default elements;
