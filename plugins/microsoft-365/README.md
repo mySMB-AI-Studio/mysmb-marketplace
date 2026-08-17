@@ -79,7 +79,10 @@ without another prompt.
 ### Teams (12 tools)
 - `list_teams` — List joined teams
 - `list_channels` — List team channels
-- `list_messages` — Read channel/chat messages
+- `list_messages` — Read channel/chat messages, enriched with `isFromMe`,
+  `isSystemEvent`, `senderName`, `text`, `relativeTime`, and `reactions`
+  (`[{ reactionType, glyph, displayName, count, reactedByMe, reactedBy }]`,
+  count-desc; `[]` when there are none)
 - `send_message` — Send to channel/chat
 - `reply_to_message` — Reply in a thread
 - `list_chats` — List 1:1, group, and meeting chats with display-ready
@@ -98,9 +101,12 @@ without another prompt.
 - `mark_chat_unread` — Flip a chat back to unread (snooze flow).
 - `mark_all_chats_read` — Clear unread on every recent chat in one call;
   returns `{ ok, marked, errors }` so partial success still wins.
-- `set_message_reaction` — Add an emoji reaction (`like` | `heart` |
-  `laugh` | `surprised` | `sad` | `angry`) to a chat message.
-- `unset_message_reaction` — Remove a previously-set reaction.
+- `set_message_reaction` — Add a reaction to a chat message. Accepts **any
+  Unicode emoji** (`👍`, `🎉`, `✅`, skin-tone/ZWJ/flag sequences) as well as
+  the legacy names `like` | `heart` | `laugh` | `surprised` | `sad` | `angry`.
+- `unset_message_reaction` — Remove a previously-set reaction. Send back the
+  `reactionType` exactly as it appears on the message (a legacy `like` renders
+  as 👍 but must be removed as `like`).
 
 ### People (4 tools)
 - `search_people` — Search by name or email
