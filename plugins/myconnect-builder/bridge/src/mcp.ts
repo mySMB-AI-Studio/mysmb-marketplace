@@ -103,6 +103,41 @@ export class WorkspaceClient {
     return items.filter((t) => t.status === 'not_started' || t.status === 'in_progress');
   }
 
+  // ── v2: operate a tenant-level platform agent (admin token) ───────────────
+  // These act AS the agent principal — comments/status are attributed to the
+  // agent, not the admin the bridge is authenticated as.
+
+  /** Open items assigned to the platform agent + the agent's principal id. */
+  async agentInbox(
+    agentKey: string,
+  ): Promise<{ principalUserId: string; items: WorkqItem[] }> {
+    const res = await this.call<{
+      agent: { principalUserId: string; name: string };
+      items: Array<Omit<WorkqItem, 'assigneeIds'>>;
+    }>('workq_agent_inbox', { agentKey });
+    return {
+      principalUserId: res.agent.principalUserId,
+      items: res.items.map((i) => ({ ...i, assigneeIds: [] })),
+    };
+  }
+
+  async agentComment(
+    agentKey: string,
+    todoId: string,
+    body: string,
+    mentions: string[] = [],
+  ): Promise<void> {
+    await this.call('workq_agent_comment', { agentKey, todoId, body, mentions });
+  }
+
+  async agentUpdate(
+    agentKey: string,
+    todoId: string,
+    changes: { status?: WorkqItem['status']; labels?: string[] },
+  ): Promise<void> {
+    await this.call('workq_agent_update', { agentKey, todoId, ...changes });
+  }
+
   getItem(todoId: string): Promise<WorkqItem> {
     return this.call<WorkqItem>('workq_get', { todoId });
   }
