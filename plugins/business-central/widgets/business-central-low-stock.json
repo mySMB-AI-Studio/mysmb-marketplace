@@ -1,0 +1,148 @@
+{
+  "id": "business-central-low-stock",
+  "title": "Low Stock",
+  "description": "Inventory items from Business Central with the lowest quantity on hand — out-of-stock items flagged first, low-stock items highlighted below a configurable threshold.",
+  "category": "inventory",
+  "tags": ["business-central", "dynamics-365", "inventory", "items", "stock", "operations"],
+  "keywords": ["stock", "inventory", "low stock", "out of stock", "items", "reorder", "warehouse", "on hand"],
+  "connectorsUsed": ["business-central"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 8 },
+    "min":       { "colSpan": 3, "rowSpan": 6 },
+    "max":       { "colSpan": 8, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "business-central",
+    "tool": "List_APIV2Items_PAG30008"
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "body"],
+        "watch": {
+          "/business-central/List_APIV2Items_PAG30008": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/stock",
+              "value": {
+                "$computed": "business-central_stock_view",
+                "args": {
+                  "value": { "$state": "/business-central/List_APIV2Items_PAG30008" },
+                  "currency": "AUD",
+                  "threshold": 10,
+                  "limit": 8
+                }
+              }
+            }
+          },
+          "/business-central/List_APIV2Items_PAG30008/value": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/stock",
+              "value": {
+                "$computed": "business-central_stock_view",
+                "args": {
+                  "value": { "$state": "/business-central/List_APIV2Items_PAG30008" },
+                  "currency": "AUD",
+                  "threshold": 10,
+                  "limit": 8
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "PackageSearch", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Low Stock", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Business Central" } },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "summary", "itemList"]
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/business-central.List_APIV2Items_PAG30008" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No inventory items found in Business Central." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/business-central.List_APIV2Items_PAG30008", "not": true },
+            { "$state": "/ui/stock" },
+            { "$state": "/ui/stock/items/0", "not": true }
+          ]
+        }
+      },
+
+      "summary": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} items below reorder threshold",
+              "n": { "$state": "/ui/stock/lowCount" }
+            }
+          }
+        },
+        "visible": { "$state": "/ui/stock/items/0" }
+      },
+
+      "itemList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["itemRow"],
+        "repeat": { "statePath": "/ui/stock/items", "key": "number" },
+        "visible": { "$state": "/ui/stock/items/0" }
+      },
+      "itemRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "hover": true },
+        "children": ["itemLeft", "qtyBadge", "itemPrice"]
+      },
+      "itemLeft": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["itemName", "itemNumber"]
+      },
+      "itemName": {
+        "type": "Text",
+        "props": { "text": { "$item": "displayName" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "itemNumber": {
+        "type": "Caption",
+        "props": { "text": { "$item": "number" }, "truncate": true }
+      },
+      "qtyBadge": {
+        "type": "Badge",
+        "props": { "text": { "$item": "qtyLabel" }, "tone": { "$item": "qtyTone" }, "variant": "soft" }
+      },
+      "itemPrice": {
+        "type": "Text",
+        "props": { "text": { "$item": "priceDisplay" }, "size": "sm", "weight": "semibold" }
+      }
+    }
+  }
+}

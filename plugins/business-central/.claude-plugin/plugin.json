@@ -1,0 +1,45 @@
+{
+  "name": "business-central",
+  "version": "0.1.0",
+  "description": "Microsoft Dynamics 365 Business Central via Microsoft's hosted MCP server. Direct HTTP connection, Entra ID OAuth — no gateway, no custom server.",
+  "author": { "name": "mySMB AI Studio" },
+  "homepage": "https://github.com/mySMB-AI-Studio/mysmb-marketplace/tree/main/plugins/business-central",
+  "license": "MIT",
+  "keywords": ["business-central", "dynamics-365", "erp", "accounting", "invoices", "inventory", "receivables", "microsoft", "oauth", "smb"],
+  "connection": {
+    "authType": "oauth_client",
+    "instructions": "If your workspace administrator has enabled the built-in Business Central app, just click Connect and sign in with your Microsoft account — no setup needed. Otherwise:\n\nMicrosoft Entra ID doesn't support automatic OAuth client registration, so connecting is a one-time, two-step setup (usually done by your Microsoft 365 admin):\n\n1. **Register an app in Microsoft Entra ID** (*Entra admin center → App registrations → New registration*). Under **Authentication**, add the redirect URI shown above (platform: *Web*).\n2. Under **API permissions**, add *Dynamics 365 Business Central → Delegated → Financials.ReadWrite.All* and grant admin consent.\n3. Copy the **Application (client) ID**, create a **client secret**, and paste both below.\n\nWhen you click Connect you'll sign in to Microsoft and authorise access. All Business Central operations run under your own user account and permissions, so audit trails show who did what.",
+    "docUrl": "https://learn.microsoft.com/en-us/dynamics365/business-central/dev-itpro/ai/use-mcp-server-non-microsoft",
+    "scopes": [
+      "https://api.businesscentral.dynamics.com/Financials.ReadWrite.All",
+      "offline_access",
+      "openid",
+      "profile"
+    ],
+    "serverClientEnv": {
+      "clientId": "BC_OAUTH_CLIENT_ID",
+      "clientSecret": "BC_OAUTH_CLIENT_SECRET"
+    },
+    "fields": [
+      {
+        "name": "OAUTH_CLIENT_ID",
+        "label": "Client ID",
+        "type": "text",
+        "required": true,
+        "role": "client_id",
+        "placeholder": "bbbbcccc-1111-dddd-2222-eeee3333ffff",
+        "helpText": "Application (client) ID of the Entra app registration."
+      },
+      {
+        "name": "OAUTH_CLIENT_SECRET",
+        "label": "Client Secret",
+        "type": "password",
+        "required": true,
+        "role": "client_secret",
+        "helpText": "A client secret created under the Entra app → Certificates & secrets. Stored encrypted, per user."
+      }
+    ]
+  },
+  "widgets": "widgets",
+  "widgetElements": "widget-elements/dist/index.js"
+}
