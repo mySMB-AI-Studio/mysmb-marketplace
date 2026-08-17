@@ -1,0 +1,157 @@
+{
+  "id": "business-central-unpaid-invoices",
+  "title": "Unpaid Invoices",
+  "description": "Posted, unpaid sales invoices from Business Central sorted by due date, with overdue badges that escalate on and after the due date.",
+  "category": "finance",
+  "tags": ["business-central", "dynamics-365", "invoices", "receivables", "finance"],
+  "keywords": ["invoices", "unpaid", "open", "overdue", "due", "ar", "receivables", "billing"],
+  "connectorsUsed": ["business-central"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 8 },
+    "min":       { "colSpan": 4, "rowSpan": 6 },
+    "max":       { "colSpan": 12, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "business-central",
+    "tool": "List_APIV2SalesInvoices_PAG30012"
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "body"],
+        "watch": {
+          "/business-central/List_APIV2SalesInvoices_PAG30012": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/inv",
+              "value": {
+                "$computed": "business-central_invoices_view",
+                "args": {
+                  "value": { "$state": "/business-central/List_APIV2SalesInvoices_PAG30012" },
+                  "currency": "AUD",
+                  "limit": 8
+                }
+              }
+            }
+          },
+          "/business-central/List_APIV2SalesInvoices_PAG30012/value": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/inv",
+              "value": {
+                "$computed": "business-central_invoices_view",
+                "args": {
+                  "value": { "$state": "/business-central/List_APIV2SalesInvoices_PAG30012" },
+                  "currency": "AUD",
+                  "limit": 8
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "ReceiptText", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Unpaid Invoices", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Business Central" } },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "summary", "invoiceList"]
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/business-central.List_APIV2SalesInvoices_PAG30012" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No unpaid invoices — all caught up." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/business-central.List_APIV2SalesInvoices_PAG30012", "not": true },
+            { "$state": "/ui/inv" },
+            { "$state": "/ui/inv/items/0", "not": true }
+          ]
+        }
+      },
+
+      "summary": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} open · {total} outstanding",
+              "n": { "$state": "/ui/inv/count" },
+              "total": { "$state": "/ui/inv/totalDisplay" }
+            }
+          }
+        },
+        "visible": { "$state": "/ui/inv/items/0" }
+      },
+
+      "invoiceList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["invoiceRow"],
+        "repeat": { "statePath": "/ui/inv/items", "key": "number" },
+        "visible": { "$state": "/ui/inv/items/0" }
+      },
+      "invoiceRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "hover": true },
+        "children": ["invoiceLeft", "dueBadge", "invoiceAmount"]
+      },
+      "invoiceLeft": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["invoiceCustomer", "invoiceMeta"]
+      },
+      "invoiceCustomer": {
+        "type": "Text",
+        "props": { "text": { "$item": "customerName" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "invoiceMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{no} · {date}",
+              "no": { "$item": "number" },
+              "date": { "$item": "invoiceDate" }
+            }
+          },
+          "truncate": true
+        }
+      },
+      "dueBadge": {
+        "type": "Badge",
+        "props": { "text": { "$item": "dueLabel" }, "tone": { "$item": "dueTone" }, "variant": "soft" }
+      },
+      "invoiceAmount": {
+        "type": "Text",
+        "props": { "text": { "$item": "amountDisplay" }, "size": "sm", "weight": "semibold" }
+      }
+    }
+  }
+}
