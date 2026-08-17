@@ -8,9 +8,9 @@
   "connectorsUsed": ["surveymonkey"],
   "popularity": 65,
   "sizing": {
-    "preferred": { "colSpan": 3, "rowSpan": 4 },
-    "min": { "colSpan": 2, "rowSpan": 3 },
-    "max": { "colSpan": 6, "rowSpan": 8 }
+    "preferred": { "colSpan": 4, "rowSpan": 7 },
+    "min": { "colSpan": 3, "rowSpan": 5 },
+    "max": { "colSpan": 6, "rowSpan": 10 }
   },
   "dataProvider": {
     "mcp": "surveymonkey",
@@ -44,11 +44,35 @@
               "params": {
                 "statePath": "/ui/topSurveys",
                 "value": {
-                  "$computed": "top_n",
+                  "$computed": "surveymonkey_add_ranks",
                   "args": {
-                    "value": { "$state": "/surveymonkey/list_surveys/data" },
-                    "field": "response_count",
-                    "n": 5
+                    "value": {
+                      "$computed": "top_n",
+                      "args": {
+                        "value": { "$state": "/surveymonkey/list_surveys/data" },
+                        "field": "response_count",
+                        "n": 5
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/maxResponses",
+                "value": {
+                  "$computed": "sum",
+                  "args": {
+                    "value": {
+                      "$computed": "filter_max_field",
+                      "args": {
+                        "value": { "$state": "/surveymonkey/list_surveys/data" },
+                        "field": "response_count"
+                      }
+                    },
+                    "field": "response_count"
                   }
                 }
               }
@@ -94,7 +118,7 @@
       "body": {
         "type": "Body",
         "props": {},
-        "children": ["loading", "empty", "totalStat", "totalCaption", "topDivider", "topList"]
+        "children": ["loading", "empty", "contentStack"]
       },
       "loading": {
         "type": "Stack",
@@ -102,10 +126,10 @@
         "children": ["sk1", "sk2", "sk3", "sk4"],
         "visible": { "$state": "/_loading/surveymonkey.list_surveys" }
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
-      "sk4": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk1": { "type": "Skeleton", "props": { "height": "3rem",   "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
       "empty": {
         "type": "Empty",
         "props": { "message": "No surveys found in SurveyMonkey." },
@@ -116,38 +140,33 @@
           ]
         }
       },
-      "totalStat": {
-        "type": "Stat",
-        "props": {
-          "value": { "$state": "/ui/totalResponses" },
-          "size": "lg"
-        },
+      "contentStack": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["statStack", "topDivider", "topList"],
         "visible": {
           "$and": [
             { "$state": "/_loading/surveymonkey.list_surveys", "not": true },
             { "$state": "/surveymonkey/list_surveys/data/0" }
           ]
         }
+      },
+      "statStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["totalStat", "totalCaption"]
+      },
+      "totalStat": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/ui/totalResponses" }, "size": "lg" }
       },
       "totalCaption": {
         "type": "Caption",
-        "props": { "text": "responses across all surveys" },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/surveymonkey.list_surveys", "not": true },
-            { "$state": "/surveymonkey/list_surveys/data/0" }
-          ]
-        }
+        "props": { "text": "responses across all surveys" }
       },
       "topDivider": {
         "type": "Divider",
-        "props": {},
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/surveymonkey.list_surveys", "not": true },
-            { "$state": "/surveymonkey/list_surveys/data/0" }
-          ]
-        }
+        "props": {}
       },
       "topList": {
         "type": "Stack",
@@ -156,34 +175,55 @@
         "repeat": {
           "statePath": "/ui/topSurveys",
           "key": "id"
-        },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/surveymonkey.list_surveys", "not": true },
-            { "$state": "/ui/topSurveys/0" }
-          ]
         }
       },
       "topRow": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center", "justify": "between" },
-        "children": ["topTitle", "topBadge"]
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["rankBadge", "topContent", "topCount"]
+      },
+      "rankBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "rank" },
+          "tone": "muted",
+          "variant": "soft"
+        }
+      },
+      "topContent": {
+        "type": "Stack",
+        "props": { "gap": "xxs", "grow": true },
+        "children": ["topTitle", "topBar"]
       },
       "topTitle": {
         "type": "Text",
         "props": {
           "text": { "$item": "title" },
           "size": "sm",
-          "truncate": true,
-          "grow": true
+          "weight": "semibold",
+          "truncate": true
         }
       },
-      "topBadge": {
-        "type": "Badge",
+      "topBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": {
+            "$computed": "pct",
+            "args": {
+              "part": { "$item": "response_count" },
+              "whole": { "$state": "/ui/maxResponses" }
+            }
+          },
+          "max": 100,
+          "tone": "accent"
+        }
+      },
+      "topCount": {
+        "type": "Text",
         "props": {
           "text": { "$item": "response_count" },
-          "tone": "accent",
-          "variant": "soft"
+          "size": "sm",
+          "tone": "muted"
         }
       }
     }
