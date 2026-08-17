@@ -49,8 +49,21 @@ const survey_status_tone = (args) => {
     if (v === 'draft') return 'warning';
     return 'muted';
 };
+const recency_tone = (args) => {
+    const raw = args.value;
+    if (!raw) return 'muted';
+    const ms = Date.parse(String(raw));
+    if (Number.isNaN(ms)) return 'muted';
+    return Date.now() - ms <= 48 * 60 * 60 * 1000 ? 'success' : 'muted';
+};
+
+const add_ranks = (args) => {
+    const arr = Array.isArray(args.value) ? args.value : [];
+    return arr.map((item, i) => ({ ...item, rank: i + 1 }));
+};
+
 const elements = {
     slug: 'surveymonkey',
-    functions: { format_date, response_rate, survey_status_tone },
+    functions: { format_date, response_rate, survey_status_tone, recency_tone, add_ranks },
 };
 export default elements;
