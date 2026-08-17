@@ -166,7 +166,7 @@ This standard's tone rules will sometimes disagree with the exact colors a conne
 
 **Not yet enforced or retroactively fixed** — same rollout policy as everything else in this doc (see §14): new/touched tiles must comply going forward, a full retrofit of the violators above is a separate scoped initiative, not required before this section "counts."
 
-## 11. Row limits & pagination (confirmed 2026-08-14)
+## 11. Row limits & pagination (confirmed 2026-08-17)
 
 **A list/table tile shows a maximum of 20 rows at a time.** When more rows exist than that, a **"See more" button** at the bottom reveals the next 20, appended in place — the tile grows, or gains an internal scroll region — never an auto-load-on-scroll. Infinite scroll is explicitly out (DSM 2026-08-13): every reveal is a deliberate click, not a side effect of scroll position.
 
@@ -174,7 +174,7 @@ This standard's tone rules will sometimes disagree with the exact colors a conne
 
 **Not yet built:** the widgets-system's `repeat` component currently only supports a flat display `limit` (a hard slice, no reveal-more behavior) — confirmed via `apps/web/src/features/widgets-system/system/components.tsx`. This section documents the target design; implementing "See more" is its own tracked task, same doc-first pattern as everything else in this file. Existing widgets keep using flat `limit` until it lands — this section doesn't retroactively obligate them to grow a "See more" button on their own.
 
-## 12. Foundational tile principles (confirmed 2026-08-14)
+## 12. Foundational tile principles (confirmed 2026-08-17)
 
 Before a tile gets built, it should satisfy all four (DSM 2026-08-13):
 
@@ -183,7 +183,7 @@ Before a tile gets built, it should satisfy all four (DSM 2026-08-13):
 - **Solves a problem** — gives the user something they can act on: an informed, empirical decision grounded in real data, not decoration.
 - **Genuinely accessible** — reachable and usable by the people who actually need it (permissions, tenant fit), not built for a hypothetical audience.
 
-## 13. Data governance: velocity & veracity (confirmed 2026-08-14)
+## 13. Data governance: velocity & veracity (confirmed 2026-08-17)
 
 **Velocity (freshness):** every tile discloses the time context of its data via the Eyebrow (§9) — a time window, "as of" framing, or similar — so a viewer knows how current the number is. No new UI needed; this rides the existing Eyebrow convention rather than inventing a separate freshness badge.
 
