@@ -1,43 +1,63 @@
 ---
 name: requesting-myconnect-changes
-description: How to file, track, and approve myConnect change requests through the myConnect Builder WorkQ pipeline. Use when someone asks how to request myConnect changes, check build status, or what the mcb labels and approval commands mean.
+description: How to request a myConnect change through the myConnect Builder agent — what the agent does, what the build runner does, and how to read progress on the item. Use when someone asks how to request myConnect changes or check where a request stands.
 ---
 
 # Requesting myConnect Changes
 
-myConnect change requests are WorkQ items assigned to **myConnect Builder**. The builder
-plans, implements, and deploys each request, reporting on the item itself. Humans stay in
-control at two gates: plan approval and release approval.
+myConnect change requests run through the **myConnect Builder** agent. Two parties
+do the work, and they split cleanly:
+
+- **myConnect Builder** (an agent in this workspace) works out *what* you want.
+  It asks the questions a developer would need answered, writes the brief onto
+  the WorkQ item, and hands off.
+- **The build runner** (Claude Code, working against the myConnect repository)
+  does *the building*: execution plan, code changes, deployment. It reports each
+  step as a comment on the same item, posting as myConnect Builder.
+
+The WorkQ item is the whole record — the conversation, the brief, and every
+build update live on it.
 
 ## Filing a request
 
 1. Create a WorkQ item from the **myConnect Change Request** template (or manually).
-2. Fill in Goal / Scope / Acceptance in the description.
-3. **Attach the change document** (Word, PDF, or Markdown) to the item.
+2. Describe what you want changed, in your own words. A rough description is fine
+   — the agent will ask about anything unclear.
+3. Attach the change document if you have one (Word, PDF, or Markdown).
 4. Assign the item to **myConnect Builder**.
 
-The builder acknowledges on the item, downloads the attachments, and produces an
-execution plan.
+Then talk to the agent on the item. It will ask about the outcome you want, which
+part of myConnect it touches, how you'd verify it worked, and anything that must
+not change. When the brief is settled it confirms with you and hands off.
 
-## Stages (shown as labels on the item)
+**The agent cannot see the myConnect codebase.** It won't tell you how something
+is currently implemented — it asks, or leaves that determination to the runner.
+Questions that need the code get answered once the runner picks the item up.
 
-| Label | Meaning |
+## Reading progress
+
+There are no stage labels to learn. Progress is comments on the item, in order:
+
+| You'll see | Meaning |
 |---|---|
-| `mcb:planning` | Builder is reading the request and writing the execution plan |
-| `mcb:plan-review` | Plan posted (comment + attachment) — waiting for `approve plan` |
-| `mcb:executing` | Approved plan being implemented, tested, and deployed to QA |
-| `mcb:qa-review` | QA build ready — verify it, then `approve release` |
-| `mcb:deploying` | Shipping to UAT, then Production |
-| `mcb:blocked` | Builder needs an answer — see its latest comment |
+| The agent's questions, then a confirmed brief | Intake — still being specified |
+| An execution plan comment | The runner picked it up and is starting |
+| Progress comments, then a QA/deployment comment | Code changes landing and shipping |
+| A completion summary | Request is delivered |
+| A question from the runner | It needs a decision only a person can make — answer on the item |
 
-Item status `done` + a completion summary comment means the request is fully shipped.
+Item status `done` plus a completion summary means the request is shipped.
 
-## Approval commands (post as a comment on the item)
+If nothing has appeared yet, the runner has not picked the item up. It polls on a
+schedule, so a newly handed-off request waits until the next run.
 
-- `approve plan` — accept the execution plan and start the build
-- `approve release` — after verifying QA, ship to UAT + Production
-- `request changes: <notes>` — return the plan or QA build with feedback
-- `hold` / `resume` — pause or resume the request
+## Two things worth knowing
 
-Only listed approvers can advance gates; other comments are treated as discussion and
-passed to the builder as context.
+**Handoff is explicit.** Nothing gets built until the agent marks the request
+ready, and it only does that once you've confirmed the brief. A half-specified
+request sits in conversation — it is never picked up by accident.
+
+**Deployment is not gated by an approval step.** Once handed off, the runner takes
+the request through to production on its own. If a change needs sign-off before it
+ships, say so in the request and the runner will come back and ask before
+deploying.
