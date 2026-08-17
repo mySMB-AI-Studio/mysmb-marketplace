@@ -1,0 +1,166 @@
+{
+  "id": "business-central-receivables-aging",
+  "title": "Receivables Aging",
+  "description": "Accounts receivable at a glance from Business Central — total AR, overdue amount and share, aging buckets, and the customers with the largest overdue balances.",
+  "category": "finance",
+  "tags": ["business-central", "dynamics-365", "receivables", "aging", "ar", "finance"],
+  "keywords": ["receivables", "aged", "aging", "ar", "overdue", "collections", "debtors", "credit control", "cash flow"],
+  "connectorsUsed": ["business-central"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 9 },
+    "min":       { "colSpan": 4, "rowSpan": 7 },
+    "max":       { "colSpan": 12, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "mcp": "business-central",
+    "tool": "List_APIV2AgedAR_PAG30031"
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "body"],
+        "watch": {
+          "/business-central/List_APIV2AgedAR_PAG30031": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/ar",
+              "value": {
+                "$computed": "business-central_ar_view",
+                "args": {
+                  "value": { "$state": "/business-central/List_APIV2AgedAR_PAG30031" },
+                  "currency": "AUD",
+                  "topLimit": 5
+                }
+              }
+            }
+          },
+          "/business-central/List_APIV2AgedAR_PAG30031/value": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/ar",
+              "value": {
+                "$computed": "business-central_ar_view",
+                "args": {
+                  "value": { "$state": "/business-central/List_APIV2AgedAR_PAG30031" },
+                  "currency": "AUD",
+                  "topLimit": 5
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "HandCoins", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Receivables Aging", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Business Central" } },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "content"]
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/business-central.List_APIV2AgedAR_PAG30031" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No receivables data in Business Central." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/business-central.List_APIV2AgedAR_PAG30031", "not": true },
+            { "$state": "/ui/ar" },
+            { "$state": "/ui/ar/hasData", "not": true }
+          ]
+        }
+      },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["statsRow", "div1", "buckets", "div2", "topHeader", "topTable", "topEmpty"],
+        "visible": { "$state": "/ui/ar/hasData" }
+      },
+
+      "statsRow": {
+        "type": "Row",
+        "props": { "gap": "lg", "align": "start" },
+        "children": ["statTotal", "statOverdue", "statPct"]
+      },
+      "statTotal": { "type": "Stack", "props": { "gap": "xs" }, "children": ["statTotalLbl", "statTotalVal"] },
+      "statTotalLbl": { "type": "Caption", "props": { "text": "Total AR" } },
+      "statTotalVal": { "type": "Stat", "props": { "value": { "$state": "/ui/ar/totalDisplay" }, "size": "sm" } },
+      "statOverdue": { "type": "Stack", "props": { "gap": "xs" }, "children": ["statOverdueLbl", "statOverdueVal"] },
+      "statOverdueLbl": { "type": "Caption", "props": { "text": "Overdue" } },
+      "statOverdueVal": { "type": "Stat", "props": { "value": { "$state": "/ui/ar/overdueDisplay" }, "size": "sm" } },
+      "statPct": { "type": "Stack", "props": { "gap": "xs" }, "children": ["statPctLbl", "statPctVal"] },
+      "statPctLbl": { "type": "Caption", "props": { "text": "Overdue %" } },
+      "statPctVal": { "type": "Stat", "props": { "value": { "$state": "/ui/ar/overduePct" }, "size": "sm" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "buckets": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["bucketRow"],
+        "repeat": { "statePath": "/ui/ar/buckets", "key": "key" }
+      },
+      "bucketRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["bucketLeft", "bucketAmount"]
+      },
+      "bucketLeft": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["bucketDot", "bucketLabel"]
+      },
+      "bucketDot": { "type": "Dot", "props": { "tone": { "$item": "tone" }, "size": "sm" } },
+      "bucketLabel": { "type": "Text", "props": { "text": { "$item": "label" }, "size": "sm" } },
+      "bucketAmount": {
+        "type": "Text",
+        "props": { "text": { "$item": "display" }, "size": "sm", "weight": "semibold" }
+      },
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "topHeader": { "type": "Eyebrow", "props": { "text": "Top Overdue Customers" } },
+      "topTable": {
+        "type": "Table",
+        "props": {
+          "rows": { "$state": "/ui/ar/top" },
+          "columns": [
+            { "id": "name", "header": "Customer", "field": "name", "priority": 1 },
+            { "id": "overdue", "header": "Overdue", "field": "overdueDisplay", "align": "right", "width": 110, "priority": 1 },
+            { "id": "balance", "header": "Balance", "field": "balanceDisplay", "align": "right", "width": 110, "priority": 2 }
+          ]
+        },
+        "visible": { "$state": "/ui/ar/top/0" }
+      },
+      "topEmpty": {
+        "type": "Caption",
+        "props": { "text": "No overdue balances." },
+        "visible": { "$state": "/ui/ar/top/0", "not": true }
+      }
+    }
+  }
+}
