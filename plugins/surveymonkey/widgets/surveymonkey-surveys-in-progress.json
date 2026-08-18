@@ -1,0 +1,172 @@
+{
+  "id": "surveymonkey-surveys-in-progress",
+  "title": "Surveys In Progress",
+  "description": "Open SurveyMonkey surveys currently collecting responses (at least one open collector).",
+  "category": "surveys",
+  "tags": ["surveymonkey", "surveys", "active", "collecting", "in-progress"],
+  "keywords": ["active surveys", "open surveys", "collecting", "in progress", "responses"],
+  "connectorsUsed": ["surveymonkey"],
+  "popularity": 62,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 6 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 6, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "surveymonkey",
+    "tool": "list_surveys_in_progress",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"],
+        "watch": {
+          "/surveymonkey/list_surveys_in_progress/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/activeCount",
+                "value": {
+                  "$computed": "count",
+                  "args": { "value": { "$state": "/surveymonkey/list_surveys_in_progress/data" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Play", "tone": "warning", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Surveys In Progress", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} Active",
+              "n": { "$state": "/ui/activeCount" }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "surveyList"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/surveymonkey.list_surveys_in_progress" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No surveys currently collecting responses." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/surveymonkey.list_surveys_in_progress", "not": true },
+            { "$state": "/surveymonkey/list_surveys_in_progress/data/0", "not": true }
+          ]
+        }
+      },
+      "surveyList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["surveyRow"],
+        "repeat": {
+          "statePath": "/surveymonkey/list_surveys_in_progress/data",
+          "key": "id"
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/surveymonkey.list_surveys_in_progress", "not": true },
+            { "$state": "/surveymonkey/list_surveys_in_progress/data/0" }
+          ]
+        }
+      },
+      "surveyRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true },
+        "children": ["surveyDot", "surveyInfo", "surveyCount"]
+      },
+      "surveyDot": {
+        "type": "Dot",
+        "props": { "tone": "warning", "size": "sm" }
+      },
+      "surveyInfo": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["surveyTitle", "surveyMeta"]
+      },
+      "surveyTitle": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "title" },
+          "size": "sm",
+          "weight": "semibold",
+          "truncate": true
+        }
+      },
+      "surveyMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Collecting · opened {time}",
+              "time": {
+                "$computed": "relative_time",
+                "args": { "value": { "$item": "collecting_since" } }
+              }
+            }
+          },
+          "tone": "warning"
+        }
+      },
+      "surveyCount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} so far",
+              "n": { "$item": "response_count" }
+            }
+          },
+          "size": "sm",
+          "tone": "muted"
+        }
+      }
+    }
+  },
+  "status": "published"
+}
