@@ -1,0 +1,104 @@
+{
+  "id": "dataverse-membership-by-category-demo",
+  "title": "Membership by Category",
+  "description": "Total membership count with a breakdown by membership category (e.g. Full/Accredited, Associate, Student, Retired/Honorary, Corporate), computed from Dataverse Contact records for association-management customers. Demo version with static data.",
+  "category": "crm",
+  "tags": ["dataverse", "dynamics-365", "membership", "association", "crm", "demo"],
+  "keywords": ["members by category", "membership breakdown", "membership type", "membership tier", "association", "statistics", "d365"],
+  "connectorsUsed": ["dataverse"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 3 },
+    "min": { "colSpan": 3, "rowSpan": 3 },
+    "max": { "colSpan": 8, "rowSpan": 10 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["header", "body"]
+      },
+      "header": {
+        "type": "Header",
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "PieChart", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Membership by Category", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": { "text": "404 active members across 5 categories" }
+      },
+      "body": {
+        "type": "Body",
+        "children": ["totalStack", "categoryDivider", "categoryList"]
+      },
+      "totalStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["totalValue", "totalCaption"]
+      },
+      "totalValue": {
+        "type": "Stat",
+        "props": { "value": 404, "size": "lg" }
+      },
+      "totalCaption": {
+        "type": "Caption",
+        "props": { "text": "active members" }
+      },
+      "categoryDivider": { "type": "Divider" },
+      "categoryList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["row1", "row2", "row3", "row4", "row5"]
+      },
+
+      "row1": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["row1Left", "row1Count"] },
+      "row1Left": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["row1Dot", "row1Label"] },
+      "row1Dot": { "type": "Dot", "props": { "tone": { "$computed": "category_rank_tone", "args": { "counts": [{ "value": "Full/Accredited", "count": 240 }, { "value": "Associate", "count": 85 }, { "value": "Student", "count": 52 }, { "value": "Retired/Honorary", "count": 18 }, { "value": "Corporate", "count": 9 }], "value": "Full/Accredited" } }, "size": "sm" } },
+      "row1Label": { "type": "Text", "props": { "text": "Full/Accredited", "size": "sm", "truncate": true } },
+      "row1Count": { "type": "Text", "props": { "text": 240, "size": "sm", "weight": "semibold" } },
+
+      "row2": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["row2Left", "row2Count"] },
+      "row2Left": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["row2Dot", "row2Label"] },
+      "row2Dot": { "type": "Dot", "props": { "tone": { "$computed": "category_rank_tone", "args": { "counts": [{ "value": "Full/Accredited", "count": 240 }, { "value": "Associate", "count": 85 }, { "value": "Student", "count": 52 }, { "value": "Retired/Honorary", "count": 18 }, { "value": "Corporate", "count": 9 }], "value": "Associate" } }, "size": "sm" } },
+      "row2Label": { "type": "Text", "props": { "text": "Associate", "size": "sm", "truncate": true } },
+      "row2Count": { "type": "Text", "props": { "text": 85, "size": "sm", "weight": "semibold" } },
+
+      "row3": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["row3Left", "row3Count"] },
+      "row3Left": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["row3Dot", "row3Label"] },
+      "row3Dot": { "type": "Dot", "props": { "tone": { "$computed": "category_rank_tone", "args": { "counts": [{ "value": "Full/Accredited", "count": 240 }, { "value": "Associate", "count": 85 }, { "value": "Student", "count": 52 }, { "value": "Retired/Honorary", "count": 18 }, { "value": "Corporate", "count": 9 }], "value": "Student" } }, "size": "sm" } },
+      "row3Label": { "type": "Text", "props": { "text": "Student", "size": "sm", "truncate": true } },
+      "row3Count": { "type": "Text", "props": { "text": 52, "size": "sm", "weight": "semibold" } },
+
+      "row4": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["row4Left", "row4Count"] },
+      "row4Left": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["row4Dot", "row4Label"] },
+      "row4Dot": { "type": "Dot", "props": { "tone": { "$computed": "category_rank_tone", "args": { "counts": [{ "value": "Full/Accredited", "count": 240 }, { "value": "Associate", "count": 85 }, { "value": "Student", "count": 52 }, { "value": "Retired/Honorary", "count": 18 }, { "value": "Corporate", "count": 9 }], "value": "Retired/Honorary" } }, "size": "sm" } },
+      "row4Label": { "type": "Text", "props": { "text": "Retired/Honorary", "size": "sm", "truncate": true } },
+      "row4Count": { "type": "Text", "props": { "text": 18, "size": "sm", "weight": "semibold" } },
+
+      "row5": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["row5Left", "row5Count"] },
+      "row5Left": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["row5Dot", "row5Label"] },
+      "row5Dot": { "type": "Dot", "props": { "tone": { "$computed": "category_rank_tone", "args": { "counts": [{ "value": "Full/Accredited", "count": 240 }, { "value": "Associate", "count": 85 }, { "value": "Student", "count": 52 }, { "value": "Retired/Honorary", "count": 18 }, { "value": "Corporate", "count": 9 }], "value": "Corporate" } }, "size": "sm" } },
+      "row5Label": { "type": "Text", "props": { "text": "Corporate", "size": "sm", "truncate": true } },
+      "row5Count": { "type": "Text", "props": { "text": 9, "size": "sm", "weight": "semibold" } }
+    }
+  },
+  "status": "published"
+}
