@@ -1,7 +1,7 @@
 {
   "id": "surveymonkey-survey-calendar",
   "title": "Survey Calendar",
-  "description": "Visual calendar of survey creation and modification activity, with a recent-activity feed below.",
+  "description": "Visual calendar of survey creation and modification activity.",
   "category": "surveys",
   "tags": ["surveymonkey", "surveys", "calendar", "activity", "timeline"],
   "keywords": ["survey calendar", "survey activity", "timeline", "created", "modified"],
@@ -35,19 +35,6 @@
                   "args": {
                     "value": { "$state": "/surveymonkey/list_surveys/data" },
                     "n": 200
-                  }
-                }
-              }
-            },
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/recentActivity",
-                "value": {
-                  "$computed": "surveymonkey_to_calendar_events",
-                  "args": {
-                    "value": { "$state": "/surveymonkey/list_surveys/data" },
-                    "n": 5
                   }
                 }
               }
@@ -90,17 +77,15 @@
       "body": {
         "type": "Body",
         "props": {},
-        "children": ["loading", "calendarSection", "divider", "activitySection"]
+        "children": ["loading", "calendarSection"]
       },
       "loading": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["skCal", "skA1", "skA2"],
+        "children": ["skCal"],
         "visible": { "$state": "/_loading/surveymonkey.list_surveys" }
       },
       "skCal": { "type": "Skeleton", "props": { "height": "10rem", "rounded": "md" } },
-      "skA1": { "type": "Skeleton", "props": { "height": "1.75rem", "rounded": "md" } },
-      "skA2": { "type": "Skeleton", "props": { "height": "1.75rem", "rounded": "md" } },
       "calendarSection": {
         "type": "Stack",
         "props": { "gap": "sm" },
@@ -123,67 +108,11 @@
       },
       "legendDot": {
         "type": "Dot",
-        "props": { "tone": "accent", "size": "sm" }
+        "props": { "tone": "info", "size": "sm" }
       },
       "legendLabel": {
         "type": "Caption",
         "props": { "text": "Days with survey activity", "tone": "muted" }
-      },
-      "divider": {
-        "type": "Divider",
-        "props": {},
-        "visible": { "$state": "/_loading/surveymonkey.list_surveys", "not": true }
-      },
-      "activitySection": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["activityHeading", "activityEmpty", "activityList"],
-        "visible": { "$state": "/_loading/surveymonkey.list_surveys", "not": true }
-      },
-      "activityHeading": {
-        "type": "Eyebrow",
-        "props": { "text": "Recent Activity" }
-      },
-      "activityEmpty": {
-        "type": "Empty",
-        "props": { "message": "No recent survey activity." },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/surveymonkey.list_surveys", "not": true },
-            { "$state": "/ui/recentActivity/0", "not": true }
-          ]
-        }
-      },
-      "activityList": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["activityRow"],
-        "repeat": {
-          "statePath": "/ui/recentActivity",
-          "key": "date"
-        },
-        "visible": { "$state": "/ui/recentActivity/0" }
-      },
-      "activityRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["activityDate", "activityLabel"]
-      },
-      "activityDate": {
-        "type": "Caption",
-        "props": {
-          "text": { "$item": "dateLabel" },
-          "tone": "muted",
-          "weight": "medium"
-        }
-      },
-      "activityLabel": {
-        "type": "Text",
-        "props": {
-          "text": { "$item": "label" },
-          "size": "sm",
-          "truncate": true
-        }
       }
     }
   },
