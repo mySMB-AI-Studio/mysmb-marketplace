@@ -1,74 +1,68 @@
 # myConnect Builder
 
-Turns myConnect change requests into a WorkQ-driven build pipeline. The project manager
-files a **myConnect Change Request** WorkQ item (template included), attaches the change
-document, and assigns it to the **myConnect Builder** account. A laptop-side daemon (the
-**bridge**, in [`bridge/`](bridge/)) picks the item up over the workspace's external MCP
-endpoint, drives Claude Code against the myConnect repository, and reports plans,
-progress, QA builds, and deployments back on the item. Humans approve at two gates:
-plan approval and release approval.
+Turns myConnect change requests into WorkQ-driven delivery, split across two parties:
 
-Design spec: myHubV2 `docs/superpowers/specs/2026-08-12-myconnect-builder-agent-design.md`.
+- **myConnect Builder** — a tenant-level **platform agent** installed into the
+  workspace by this plugin. It runs on the normal workspace agent runtime and does
+  intake only: understand the request, ask the clarifying questions a developer
+  would need answered, write the brief onto the item, hand off. It has **no access
+  to the myConnect codebase**.
+- **The build runner** — a Claude Code routine, on a schedule, working against the
+  myConnect repository. It polls the workspace's external MCP endpoint for items
+  the agent has marked ready, writes the execution plan, makes the code changes,
+  deploys, and posts every step back on the item **as the agent**.
+
+Design spec: myHubV2 `docs/superpowers/specs/2026-08-18-myconnect-builder-platform-agent.md`.
 
 ## What installs into the workspace
 
-- **WorkQ template** — "myConnect Change Request" (Goal/Scope/Acceptance scaffold, a
-  Request Title slot, and a principal slot for assigning the builder).
-- **Skill** — `requesting-myconnect-changes`: teaches the workspace AI to explain the
-  flow, the `mcb:*` stage labels, and the approval commands.
-- `agents/myconnect-builder.md` is a **dormant v2 blueprint** (deliberately not listed in
-  `content.agents`) — see the comment inside it.
+- **Platform agent** — `myConnect Builder` (`content/agents/…json`, authored in
+  [`agents/myconnect-builder.md`](agents/myconnect-builder.md)). `platform: true`
+  so it is ownerless and provisioned once for the whole tenant; `audience: users`
+  so an admin picks who may direct it.
+- **WorkQ template** — "myConnect Change Request" (Goal/Scope/Acceptance scaffold).
+- **Skill** — `requesting-myconnect-changes`: teaches the workspace AI how the flow
+  reads from a requester's point of view.
 
-No MCP server is installed in the tenant (`.mcp.json` is intentionally empty): the
-bridge is an MCP **client** of the workspace, not a server inside it.
+No MCP server is installed in the tenant (`.mcp.json` is intentionally empty) and
+there is **no daemon to run**. The runner is an MCP *client* of the workspace.
 
 ## Configuration
 
-This plugin has no tenant-side environment variables. All configuration lives in the
-bridge's local `bridge.config.json` (see `bridge/bridge.config.example.json`):
+None. This plugin has no tenant-side environment variables and no config file.
 
-| Field | Meaning |
-|---|---|
-| `workspaceMcpUrl` | The workspace's external MCP resource URI, e.g. `https://<host>/mcp` |
-| `builderUserId` | `users.id` of the myConnect Builder service account items are assigned to |
-| `approverUserIds` | Comment authors allowed to advance gates (`approve plan` / `approve release`) |
-| `intakeAllowlistUserIds` | Item **creators** the bridge accepts work from |
-| `repoPath` | Local myConnect repository path Claude Code runs in |
-| `pollSeconds` | Queue poll interval (default 45) |
-| `claudeBin` | Claude Code CLI binary (default `claude`) |
-| `oauthCallbackPort` | Localhost port for the one-time OAuth redirect (default 8976) |
-| `stages.*` | Per-stage Claude permission mode + timeout |
+## Handoff mechanics
 
-## Bridge setup (developer laptop)
+The two halves meet on one hidden field, `todos.agent_state` — a WorkQ handoff
+signal that is invisible in the UI and never set by a human:
 
-Prerequisites: Node 20+, Claude Code CLI installed and signed in, the myConnect repo
-cloned locally, and the tenant's MCP endpoint enabled (workspace admin →
-Integrations → MCP).
-
-```bash
-cd bridge
-npm install
-npm run build
-cp bridge.config.example.json bridge.config.json   # then fill it in
-node dist/index.js bridge.config.json
-```
-
-First run opens a browser for OAuth — **sign in as the myConnect Builder service
-account** and approve the `workq:read workq:write` scopes. Tokens persist to
-`.mcb-auth.json` (rotating refresh, 60-day idle window); no secrets ever live in this
-repository.
-
-## Pipeline
-
-| Stage label | Meaning | Exit |
+| `agent_state` | Set by | Meaning |
 |---|---|---|
-| `mcb:planning` | Reading request + attachments, writing the execution plan (plan-mode Claude run) | Plan posted (summary comment + `execution-plan.md` attachment) |
-| `mcb:plan-review` | Waiting on the PM | `approve plan` / `request changes: …` |
-| `mcb:executing` | Implementing, testing, deploying to QA | QA-ready comment |
-| `mcb:qa-review` | PM verifies QA | `approve release` / `request changes: …` |
-| `mcb:deploying` | UAT → verify → Production → verify | Completion summary, status `done` |
-| `mcb:blocked` / `mcb:hold` | Needs input / paused | approver comments `resume` |
+| *(null)* | — | Not part of a build pipeline |
+| `ready` | the agent | Brief confirmed — the runner may pick this up |
+| `working` | the runner | Claimed and executing |
+| `blocked` | the runner | Needs a decision only a person can make |
+| `done` | the runner | Runner finished its side |
 
-Security model: gate commands are honored only when the **comment author's user id** is
-in `approverUserIds`; items are only picked up when the **creator's user id** is in
-`intakeAllowlistUserIds`. Text from anyone else never reaches Claude Code.
+The agent sets it with `todo_update`; the runner reads and writes it with
+`workq_agent_inbox` / `workq_agent_update`. Because the gate is explicit, a request
+still being clarified is never picked up.
+
+## Setting up the build runner
+
+The runner authenticates to the workspace MCP endpoint as a human, but **authors
+as the agent** — comments read as myConnect Builder, not as whoever connected.
+That binding is chosen once, on the workspace's OAuth consent screen:
+
+1. Workspace admin → Integrations → MCP: make sure the endpoint is enabled.
+2. Add the workspace as a connector in Claude Code and start the OAuth flow.
+3. On the consent screen, grant `workq:read`, `workq:write`, and
+   **Act as a workspace agent**, then pick **myConnect Builder** under *Act as*.
+4. Create a Claude Code routine on a schedule whose prompt polls
+   `workq_agent_inbox` with `agentState: 'ready'`, does the work in the myConnect
+   repo, and reports back with `workq_agent_comment` / `workq_agent_update`.
+
+The grant is fire-scoped to that one agent: it cannot act as any other agent, and
+the binding survives token refresh. Requires the platform agent to be provisioned
+in the tenant first — an unprovisioned or admin-suspended agent does not appear in
+the picker.
