@@ -1,0 +1,270 @@
+{
+  "id": "dataverse-member-engagement",
+  "title": "Member Engagement",
+  "description": "Engagement breakdown of Contact records using a `new_engagementlevel` picklist or plain-text field on Contact. Shows the percentage of highly engaged members and a count per engagement tier (Engaged, Less Engaged, Does Not Engage). If a customer's org names this field differently, this tile won't find any data (there's currently no way to override the field name per org) -- check the exact logical name via describe_entity if unsure.",
+  "category": "crm",
+  "tags": ["dataverse", "dynamics-365", "membership", "engagement", "association", "crm"],
+  "keywords": ["engagement", "member engagement", "engaged", "less engaged", "active members", "participation", "d365"],
+  "connectorsUsed": ["dataverse"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 3, "rowSpan": 4 },
+    "min": { "colSpan": 2, "rowSpan": 3 },
+    "max": { "colSpan": 6, "rowSpan": 8 }
+  },
+  "dataProvider": {
+    "mcp": "dataverse",
+    "tool": "count_records_by_field",
+    "params": {
+      "entity": "contact",
+      "field": "new_engagementlevel"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["header", "body"]
+      },
+      "header": {
+        "type": "Header",
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Users", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Member Engagement", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{total} active members",
+              "total": { "$state": "/dataverse/count_records_by_field/total" }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": ["loading", "empty", "contentStack", "misconfigured"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/dataverse.count_records_by_field" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No engagement data found. Make sure Contact records exist on this Dataverse org with a `new_engagementlevel` field set."
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dataverse.count_records_by_field", "not": true },
+            { "$state": "/dataverse/count_records_by_field/counts/0", "not": true }
+          ]
+        }
+      },
+      "misconfigured": {
+        "type": "Empty",
+        "props": {
+          "message": "Every member is showing under \"(not set)\" -- this usually means the engagement-level field on this Dataverse org isn't named exactly `new_engagementlevel`. Rename the field (or add one named `new_engagementlevel`) to see the real breakdown; check the exact logical name via describe_entity if unsure."
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dataverse.count_records_by_field", "not": true },
+            { "$state": "/dataverse/count_records_by_field/counts/0" },
+            { "$state": "/dataverse/count_records_by_field/counts/1", "not": true },
+            { "$state": "/dataverse/count_records_by_field/counts/0/value", "eq": "(not set)" }
+          ]
+        }
+      },
+      "contentStack": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["pctStack", "engagementDivider", "engagementList"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dataverse.count_records_by_field", "not": true },
+            { "$state": "/dataverse/count_records_by_field/counts/0" },
+            {
+              "$or": [
+                { "$state": "/dataverse/count_records_by_field/counts/1" },
+                { "$state": "/dataverse/count_records_by_field/counts/0/value", "eq": "(not set)", "not": true }
+              ]
+            }
+          ]
+        }
+      },
+      "pctStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["pctValue", "pctCaption"]
+      },
+      "pctValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n}%",
+              "n": {
+                "$computed": "pct",
+                "args": {
+                  "part": {
+                    "$computed": "sum",
+                    "args": {
+                      "value": {
+                        "$computed": "filter_by",
+                        "args": {
+                          "value": { "$state": "/dataverse/count_records_by_field/counts" },
+                          "field": "value",
+                          "equals": "Engaged"
+                        }
+                      },
+                      "field": "count"
+                    }
+                  },
+                  "whole": { "$state": "/dataverse/count_records_by_field/total" }
+                }
+              }
+            }
+          },
+          "size": "lg"
+        }
+      },
+      "pctCaption": {
+        "type": "Caption",
+        "props": { "text": "of members are highly engaged" }
+      },
+      "engagementDivider": { "type": "Divider" },
+      "engagementList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["engagedRow", "lessEngagedRow", "noEngageRow"]
+      },
+      "engagedRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["engagedLeft", "engagedCount"]
+      },
+      "engagedLeft": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["engagedDot", "engagedLabel"]
+      },
+      "engagedDot": { "type": "Dot", "props": { "tone": "success", "size": "sm" } },
+      "engagedLabel": { "type": "Text", "props": { "text": "Engaged", "size": "sm" } },
+      "engagedCount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "sum",
+            "args": {
+              "value": {
+                "$computed": "filter_by",
+                "args": {
+                  "value": { "$state": "/dataverse/count_records_by_field/counts" },
+                  "field": "value",
+                  "equals": "Engaged"
+                }
+              },
+              "field": "count"
+            }
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "lessEngagedRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["lessEngagedLeft", "lessEngagedCount"]
+      },
+      "lessEngagedLeft": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["lessEngagedDot", "lessEngagedLabel"]
+      },
+      "lessEngagedDot": { "type": "Dot", "props": { "tone": "warning", "size": "sm" } },
+      "lessEngagedLabel": { "type": "Text", "props": { "text": "Less Engaged", "size": "sm" } },
+      "lessEngagedCount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "sum",
+            "args": {
+              "value": {
+                "$computed": "filter_by",
+                "args": {
+                  "value": { "$state": "/dataverse/count_records_by_field/counts" },
+                  "field": "value",
+                  "equals": "Less Engaged"
+                }
+              },
+              "field": "count"
+            }
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "noEngageRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["noEngageLeft", "noEngageCount"]
+      },
+      "noEngageLeft": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["noEngageDot", "noEngageLabel"]
+      },
+      "noEngageDot": { "type": "Dot", "props": { "tone": "muted", "size": "sm" } },
+      "noEngageLabel": { "type": "Text", "props": { "text": "Does Not Engage", "size": "sm" } },
+      "noEngageCount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "sum",
+            "args": {
+              "value": {
+                "$computed": "filter_by",
+                "args": {
+                  "value": { "$state": "/dataverse/count_records_by_field/counts" },
+                  "field": "value",
+                  "equals": "Does Not Engage"
+                }
+              },
+              "field": "count"
+            }
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      }
+    }
+  },
+  "status": "published"
+}

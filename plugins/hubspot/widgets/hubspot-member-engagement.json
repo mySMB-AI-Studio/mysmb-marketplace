@@ -1,0 +1,270 @@
+{
+  "id": "hubspot-member-engagement",
+  "title": "Member Engagement",
+  "description": "Engagement breakdown of members using an `engagement_level` property on a HubSpot custom object for association-management customers. Automatically finds the portal's custom object whose name/label matches \"member\" -- no manual configuration needed. Shows the percentage of highly engaged members and a count per engagement tier (Engaged, Less Engaged, Does Not Engage). Requires the connected portal to be on HubSpot Enterprise tier on at least one Hub, and that a member-named custom object with an `engagement_level` property has been created there.",
+  "category": "crm",
+  "tags": ["hubspot", "membership", "engagement", "custom-object", "association"],
+  "keywords": ["engagement", "member engagement", "engaged", "less engaged", "active members", "participation"],
+  "connectorsUsed": ["hubspot"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 3, "rowSpan": 4 },
+    "min": { "colSpan": 2, "rowSpan": 3 },
+    "max": { "colSpan": 6, "rowSpan": 8 }
+  },
+  "dataProvider": {
+    "mcp": "hubspot",
+    "tool": "count_objects_by_property",
+    "params": {
+      "objectTypeHint": "member",
+      "propertyName": "engagement_level"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["header", "body"]
+      },
+      "header": {
+        "type": "Header",
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Users", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Member Engagement", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{total} active members",
+              "total": { "$state": "/hubspot/count_objects_by_property/total" }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": ["loading", "empty", "contentStack", "misconfigured"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/hubspot.count_objects_by_property" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No engagement data found. Make sure a custom object with \"member\" in its name exists on this HubSpot portal with an `engagement_level` property (Enterprise tier required for custom objects), and that it has records."
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hubspot.count_objects_by_property", "not": true },
+            { "$state": "/hubspot/count_objects_by_property/counts/0", "not": true }
+          ]
+        }
+      },
+      "misconfigured": {
+        "type": "Empty",
+        "props": {
+          "message": "Every member is showing under \"(not set)\" -- this usually means the engagement-level property on this HubSpot portal isn't named exactly `engagement_level`. Rename the property (or add one named `engagement_level`) to see the real breakdown; check the exact internal name via list_properties if unsure."
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hubspot.count_objects_by_property", "not": true },
+            { "$state": "/hubspot/count_objects_by_property/counts/0" },
+            { "$state": "/hubspot/count_objects_by_property/counts/1", "not": true },
+            { "$state": "/hubspot/count_objects_by_property/counts/0/value", "eq": "(not set)" }
+          ]
+        }
+      },
+      "contentStack": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["pctStack", "engagementDivider", "engagementList"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hubspot.count_objects_by_property", "not": true },
+            { "$state": "/hubspot/count_objects_by_property/counts/0" },
+            {
+              "$or": [
+                { "$state": "/hubspot/count_objects_by_property/counts/1" },
+                { "$state": "/hubspot/count_objects_by_property/counts/0/value", "eq": "(not set)", "not": true }
+              ]
+            }
+          ]
+        }
+      },
+      "pctStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["pctValue", "pctCaption"]
+      },
+      "pctValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n}%",
+              "n": {
+                "$computed": "pct",
+                "args": {
+                  "part": {
+                    "$computed": "sum",
+                    "args": {
+                      "value": {
+                        "$computed": "filter_by",
+                        "args": {
+                          "value": { "$state": "/hubspot/count_objects_by_property/counts" },
+                          "field": "value",
+                          "equals": "Engaged"
+                        }
+                      },
+                      "field": "count"
+                    }
+                  },
+                  "whole": { "$state": "/hubspot/count_objects_by_property/total" }
+                }
+              }
+            }
+          },
+          "size": "lg"
+        }
+      },
+      "pctCaption": {
+        "type": "Caption",
+        "props": { "text": "of members are highly engaged" }
+      },
+      "engagementDivider": { "type": "Divider" },
+      "engagementList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["engagedRow", "lessEngagedRow", "noEngageRow"]
+      },
+      "engagedRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["engagedLeft", "engagedCount"]
+      },
+      "engagedLeft": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["engagedDot", "engagedLabel"]
+      },
+      "engagedDot": { "type": "Dot", "props": { "tone": "success", "size": "sm" } },
+      "engagedLabel": { "type": "Text", "props": { "text": "Engaged", "size": "sm" } },
+      "engagedCount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "sum",
+            "args": {
+              "value": {
+                "$computed": "filter_by",
+                "args": {
+                  "value": { "$state": "/hubspot/count_objects_by_property/counts" },
+                  "field": "value",
+                  "equals": "Engaged"
+                }
+              },
+              "field": "count"
+            }
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "lessEngagedRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["lessEngagedLeft", "lessEngagedCount"]
+      },
+      "lessEngagedLeft": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["lessEngagedDot", "lessEngagedLabel"]
+      },
+      "lessEngagedDot": { "type": "Dot", "props": { "tone": "warning", "size": "sm" } },
+      "lessEngagedLabel": { "type": "Text", "props": { "text": "Less Engaged", "size": "sm" } },
+      "lessEngagedCount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "sum",
+            "args": {
+              "value": {
+                "$computed": "filter_by",
+                "args": {
+                  "value": { "$state": "/hubspot/count_objects_by_property/counts" },
+                  "field": "value",
+                  "equals": "Less Engaged"
+                }
+              },
+              "field": "count"
+            }
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "noEngageRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["noEngageLeft", "noEngageCount"]
+      },
+      "noEngageLeft": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["noEngageDot", "noEngageLabel"]
+      },
+      "noEngageDot": { "type": "Dot", "props": { "tone": "muted", "size": "sm" } },
+      "noEngageLabel": { "type": "Text", "props": { "text": "Does Not Engage", "size": "sm" } },
+      "noEngageCount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "sum",
+            "args": {
+              "value": {
+                "$computed": "filter_by",
+                "args": {
+                  "value": { "$state": "/hubspot/count_objects_by_property/counts" },
+                  "field": "value",
+                  "equals": "Does Not Engage"
+                }
+              },
+              "field": "count"
+            }
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      }
+    }
+  },
+  "status": "published"
+}
