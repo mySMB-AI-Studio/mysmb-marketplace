@@ -1,0 +1,171 @@
+{
+  "id": "surveymonkey-surveys-completed",
+  "title": "Surveys Completed",
+  "description": "SurveyMonkey surveys that have finished collecting — at least one closed collector, no open collectors.",
+  "category": "surveys",
+  "tags": ["surveymonkey", "surveys", "closed", "completed", "finished"],
+  "keywords": ["completed surveys", "closed surveys", "finished collecting", "done"],
+  "connectorsUsed": ["surveymonkey"],
+  "popularity": 58,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 6 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 6, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "surveymonkey",
+    "tool": "list_closed_surveys",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"],
+        "watch": {
+          "/surveymonkey/list_closed_surveys/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/closedCount",
+                "value": {
+                  "$computed": "count",
+                  "args": { "value": { "$state": "/surveymonkey/list_closed_surveys/data" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "CheckCircle", "tone": "success", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Surveys Completed", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} Closed",
+              "n": { "$state": "/ui/closedCount" }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "surveyList"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/surveymonkey.list_closed_surveys" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No completed surveys in the past 90 days." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/surveymonkey.list_closed_surveys", "not": true },
+            { "$state": "/surveymonkey/list_closed_surveys/data/0", "not": true }
+          ]
+        }
+      },
+      "surveyList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["surveyRow"],
+        "repeat": {
+          "statePath": "/surveymonkey/list_closed_surveys/data",
+          "key": "id"
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/surveymonkey.list_closed_surveys", "not": true },
+            { "$state": "/surveymonkey/list_closed_surveys/data/0" }
+          ]
+        }
+      },
+      "surveyRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true },
+        "children": ["surveyDot", "surveyInfo", "surveyBadge"]
+      },
+      "surveyDot": {
+        "type": "Dot",
+        "props": { "tone": "success", "size": "sm" }
+      },
+      "surveyInfo": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["surveyTitle", "surveyMeta"]
+      },
+      "surveyTitle": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "title" },
+          "size": "sm",
+          "weight": "semibold",
+          "truncate": true
+        }
+      },
+      "surveyMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Closed {date}",
+              "date": {
+                "$computed": "surveymonkey_format_date",
+                "args": { "value": { "$item": "closed_date" } }
+              }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "surveyBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} total",
+              "n": { "$item": "response_count" }
+            }
+          },
+          "tone": "muted"
+        }
+      }
+    }
+  },
+  "status": "published"
+}
