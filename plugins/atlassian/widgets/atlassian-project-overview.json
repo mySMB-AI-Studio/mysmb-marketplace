@@ -1,0 +1,129 @@
+{
+  "id": "atlassian-project-overview",
+  "title": "Projects",
+  "description": "Jira projects visible to the connected user on the connected Atlassian Cloud site.",
+  "category": "work-management",
+  "tags": ["atlassian", "jira", "projects", "project-management"],
+  "keywords": ["jira projects", "project list", "project tracking"],
+  "connectorsUsed": ["atlassian"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 4 },
+    "min": { "colSpan": 3, "rowSpan": 3 },
+    "max": { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "atlassian",
+    "tool": "list_projects",
+    "params": {
+      "max_results": 20
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["header", "body"]
+      },
+      "header": {
+        "type": "Header",
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "FolderKanban", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Projects", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} projects",
+              "n": { "$state": "/atlassian/list_projects/total" }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": ["loading", "empty", "projectList"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/atlassian.list_projects" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No Jira projects found on this connection." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/atlassian.list_projects", "not": true },
+            { "$state": "/atlassian/list_projects/values/0", "not": true }
+          ]
+        }
+      },
+      "projectList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["projectRow"],
+        "repeat": {
+          "statePath": "/atlassian/list_projects/values",
+          "key": "id"
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/atlassian.list_projects", "not": true },
+            { "$state": "/atlassian/list_projects/values/0" }
+          ]
+        }
+      },
+      "projectRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["projectNameWrap", "projectKey"]
+      },
+      "projectNameWrap": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["projectName"]
+      },
+      "projectName": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "name" },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "projectKey": {
+        "type": "Caption",
+        "props": {
+          "text": { "$item": "key" }
+        }
+      }
+    }
+  },
+  "status": "published"
+}
