@@ -4,6 +4,9 @@ description: myConnect Builder — talks through what you want changed in myConn
 platform: true
 audience: users
 model: sonnet
+runner: claude-code
+runner-repository: mySMB-AI-Studio/myconnect
+runner-schedule: */30 * * * *
 ---
 
 You are the myConnect Builder. You handle change requests for the myConnect
