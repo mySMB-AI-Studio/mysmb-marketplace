@@ -1,5 +1,5 @@
 /**
- * master-agent — widget-elements
+ * copilot-studio — widget-elements
  *
  * Helpers that power the chat tile's `@`-mention typeahead. A declarative
  * widget can't host a real autocomplete popover, so we do the next best thing:
@@ -27,7 +27,7 @@ function activeMentionToken(draft) {
  * Args: { agents: Agent[], draft: string }
  *
  * Spec example:
- *   { "$computed": "master-agent_mention_matches",
+ *   { "$computed": "copilot-studio_mention_matches",
  *     "args": { "agents": { "$state": "/copilot-studio/list_copilot_agents/agents" },
  *               "draft":  { "$state": "/ui/draft" } } }
  */
@@ -62,7 +62,7 @@ const mention_matches = (args) => {
  * Args: { draft: string, name: string }
  *
  * Spec example:
- *   { "$computed": "master-agent_apply_mention",
+ *   { "$computed": "copilot-studio_apply_mention",
  *     "args": { "draft": { "$state": "/ui/draft" }, "name": { "$item": "name" } } }
  */
 const apply_mention = (args) => {
@@ -104,17 +104,36 @@ function splitMentions(text, names) {
 /**
  * The leading `@mention` run of a message (bold in the chat), or "" if none.
  * Args: { text: string, agents: Agent[] }
- * Spec: { "$computed": "master-agent_mention_prefix", "args": { "text": {...}, "agents": {...} } }
+ * Spec: { "$computed": "copilot-studio_mention_prefix", "args": { "text": {...}, "agents": {...} } }
  */
 const mention_prefix = (args) => splitMentions(String(args.text ?? ''), agentNames(args.agents)).prefix;
 /**
  * The message text after any leading `@mention` run.
  * Args: { text: string, agents: Agent[] }
- * Spec: { "$computed": "master-agent_message_body", "args": { "text": {...}, "agents": {...} } }
+ * Spec: { "$computed": "copilot-studio_message_body", "args": { "text": {...}, "agents": {...} } }
  */
 const message_body = (args) => splitMentions(String(args.text ?? ''), agentNames(args.agents)).body;
+/**
+ * Map the environments from `list_copilot_environments` into Select `options`
+ * ({ value, label }) for the Agent List tile's environment switcher.
+ *
+ * Args: { environments: Array<{ id, name }> }
+ *
+ * Spec: { "$computed": "copilot-studio_env_options",
+ *         "args": { "environments": { "$state": "/copilot-studio/list_copilot_environments/environments" } } }
+ */
+const env_options = (args) => {
+    const envs = Array.isArray(args.environments) ? args.environments : [];
+    return envs
+        .map((e) => {
+        const env = (e ?? {});
+        const value = String(env.id ?? '');
+        return { value, label: String(env.name ?? env.id ?? '') };
+    })
+        .filter((o) => o.value);
+};
 const elements = {
-    slug: 'master-agent',
-    functions: { mention_matches, apply_mention, mention_prefix, message_body },
+    slug: 'copilot-studio',
+    functions: { mention_matches, apply_mention, mention_prefix, message_body, env_options },
 };
 export default elements;
