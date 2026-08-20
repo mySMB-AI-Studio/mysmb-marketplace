@@ -1,7 +1,7 @@
 {
   "id": "atlassian-knowledge-base",
   "title": "Knowledge Base",
-  "description": "Recently updated Confluence pages across every space visible to the connected user. Uses CQL `type = page ORDER BY lastmodified DESC` -- a generic recency-based view, not a filtered FAQ list, since there's no per-tile configuration UI to let a customer specify which label/space marks their actual FAQ content. Shows Confluence's own pre-formatted relative-time string (`friendlyLastModified`) rather than re-deriving it from a raw timestamp, to avoid guessing at an unverified date format.",
+  "description": "Recently updated Confluence pages across every space visible to the connected user. Uses CQL `type = page ORDER BY lastmodified DESC` -- a generic recency-based view, not a filtered FAQ list, since there's no per-tile configuration UI to let a customer specify which label/space marks their actual FAQ content. Shows Confluence's own pre-formatted relative-time string (`friendlyLastModified`) rather than re-deriving it from a raw timestamp, to avoid guessing at an unverified date format. Clicking a row opens the real page in Confluence -- the full URL is `search_confluence`'s own top-level `_links.base` (e.g. `https://tenant.atlassian.net/wiki`) concatenated with each result's site-relative `url`, confirmed by inspecting the real live response rather than assumed.",
   "category": "work-management",
   "tags": ["atlassian", "confluence", "knowledge-base", "faq", "pages", "documentation"],
   "keywords": ["confluence pages", "knowledge base", "faq", "documentation", "wiki", "recent pages"],
@@ -104,8 +104,29 @@
         }
       },
       "pageRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "hover": true, "clickable": true },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "{base}{path}",
+                  "base": { "$state": "/atlassian/search_confluence/_links/base" },
+                  "path": { "$item": "url" }
+                }
+              },
+              "target": "_blank"
+            }
+          }
+        },
+        "children": ["pageContent"]
+      },
+      "pageContent": {
         "type": "Stack",
-        "props": { "gap": "none" },
+        "props": { "gap": "none", "grow": true },
         "children": ["pageTitle", "pageMeta"]
       },
       "pageTitle": {
