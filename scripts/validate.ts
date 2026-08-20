@@ -235,14 +235,18 @@ function validateWidgetElements(
 // packages/shared/src/plugins/authoring/validate.ts (see its parity map).
 // ──────────────────────────────────────────────────────────────────────────
 
-type ContentKind = "automation" | "workq_template" | "form_template" | "form";
+type ContentKind = "automation" | "workq_template" | "form_template" | "form" | "agent";
 
-/** plugin.json `content` section key → the `kind` its payloads must carry. */
+/** plugin.json `content` section key → the `kind` its payloads must carry.
+ *  Parity with myHubV2 packages/shared/src/plugins/authoring/validate.ts —
+ *  `agents` was missing here (added with the myconnect-builder 0.3.0 runner
+ *  hints), so agent payloads were never checked by this validator. */
 const CONTENT_SECTION_KINDS: Record<string, ContentKind> = {
   automations: "automation",
   workqTemplates: "workq_template",
   formTemplates: "form_template",
   forms: "form",
+  agents: "agent",
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
