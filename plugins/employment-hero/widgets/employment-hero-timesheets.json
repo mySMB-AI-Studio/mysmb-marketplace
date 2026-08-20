@@ -1,0 +1,159 @@
+﻿{
+  "id": "employment-hero-timesheets",
+  "title": "Timesheets to Approve",
+  "description": "Live list of pending timesheet entries awaiting approval from Employment Hero.",
+  "category": "hr",
+  "tags": ["employment-hero", "hr", "timesheets", "payroll", "approval"],
+  "keywords": ["timesheets", "approve", "hours", "payroll", "pending", "employment hero"],
+  "connectorsUsed": ["employment-hero"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 6 },
+    "min":       { "colSpan": 4, "rowSpan": 5 },
+    "max":       { "colSpan": 8, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "employment-hero",
+    "tool": "list_timesheets",
+    "params": {
+      "status": "pending",
+      "per_page": 25
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "divider", "loading", "empty", "scrollBody", "footer"]
+      },
+
+      "titleRow":   { "type": "Row",   "props": { "justify": "between", "align": "center" }, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row",   "props": { "gap": "sm", "align": "center" },          "children": ["titleIcon", "titleStack"] },
+      "titleIcon":  { "type": "Icon",  "props": { "name": "ClipboardList", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title":      { "type": "Heading", "props": { "text": "Timesheets to Approve", "level": "h2" } },
+      "eyebrow":    { "type": "Eyebrow", "props": { "text": "Employment Hero" } },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["s1", "s2", "s3", "s4"],
+        "visible": { "$state": "/_loading/employment-hero.list_timesheets" }
+      },
+      "s1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "s2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "s3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "s4": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No timesheets awaiting approval." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/employment-hero.list_timesheets", "not": true },
+            { "$state": "/employment-hero/list_timesheets/data/items/0", "not": true }
+          ]
+        }
+      },
+
+      "scrollBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["list"],
+        "visible": { "$state": "/_loading/employment-hero.list_timesheets", "not": true }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": {
+          "statePath": "/employment-hero/list_timesheets/data/items",
+          "key": "id"
+        }
+      },
+
+      "row": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["rowContent", "rowDivider"]
+      },
+      "rowContent": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["rowLeft", "rowRight"]
+      },
+      "rowLeft": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["rowName", "rowDate"]
+      },
+      "rowName": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "employee_name" },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "rowDate": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "date" },
+          "size": "xs",
+          "tone": "muted"
+        },
+        "visible": { "$item": "date" }
+      },
+      "rowRight": {
+        "type": "Stack",
+        "props": { "gap": "none", "align": "end" },
+        "children": ["rowHours", "rowStatus"]
+      },
+      "rowHours": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{s} â€“ {e}",
+              "s": { "$item": "start_time" },
+              "e": { "$item": "end_time" }
+            }
+          },
+          "size": "sm",
+          "weight": "bold"
+        }
+      },
+      "rowStatus": {
+        "type": "Text",
+        "props": { "text": "pending", "size": "xs", "tone": "warning" }
+      },
+      "rowDivider": { "type": "Divider", "props": {} },
+
+      "footer": {
+        "type": "Row",
+        "props": { "justify": "center" },
+        "children": ["footerText"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/employment-hero.list_timesheets", "not": true },
+            { "$state": "/employment-hero/list_timesheets/data/items/0" }
+          ]
+        }
+      },
+      "footerText": {
+        "type": "Caption",
+        "props": { "text": "Pending timesheets Â· Employment Hero" }
+      }
+
+    }
+  },
+  "status": "published"
+}

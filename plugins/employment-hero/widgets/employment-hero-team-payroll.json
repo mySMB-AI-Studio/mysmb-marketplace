@@ -1,0 +1,152 @@
+﻿{
+  "id": "employment-hero-team-payroll",
+  "title": "Active Team",
+  "description": "Live list of active employees with job title and employment type from Employment Hero.",
+  "category": "hr",
+  "tags": ["employment-hero", "hr", "payroll", "timesheets", "leave", "crew"],
+  "keywords": ["team", "payroll", "crew", "active", "employment type", "employment hero"],
+  "connectorsUsed": ["employment-hero"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 9 },
+    "min":       { "colSpan": 4, "rowSpan": 7 },
+    "max":       { "colSpan": 8, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "mcp": "employment-hero",
+    "tool": "list_employees",
+    "params": {
+      "status": "active",
+      "per_page": 50
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "divider", "loading", "empty", "scrollBody", "footer"]
+      },
+
+      "titleRow":   { "type": "Row",   "props": { "justify": "between", "align": "center" }, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row",   "props": { "gap": "sm", "align": "center" },          "children": ["titleIcon", "titleStack"] },
+      "titleIcon":  { "type": "Icon",  "props": { "name": "Users", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title":      { "type": "Heading", "props": { "text": "Active Team", "level": "h2" } },
+      "eyebrow":    { "type": "Eyebrow", "props": { "text": "Employment Hero" } },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["s1", "s2", "s3", "s4"],
+        "visible": { "$state": "/_loading/employment-hero.list_employees" }
+      },
+      "s1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "s2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "s3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "s4": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No active employees found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/employment-hero.list_employees", "not": true },
+            { "$state": "/employment-hero/list_employees/data/items/0", "not": true }
+          ]
+        }
+      },
+
+      "scrollBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["list"],
+        "visible": { "$state": "/_loading/employment-hero.list_employees", "not": true }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": {
+          "statePath": "/employment-hero/list_employees/data/items",
+          "key": "id"
+        }
+      },
+
+      "row": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["rowContent", "rowDivider"]
+      },
+      "rowContent": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "sm" },
+        "children": ["rowLeft", "rowBadge"]
+      },
+      "rowLeft": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["rowName", "rowTitle"]
+      },
+      "rowName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{f} {l}",
+              "f": { "$item": "first_name" },
+              "l": { "$item": "last_name" }
+            }
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "rowTitle": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "job_title" },
+          "size": "xs",
+          "tone": "muted",
+          "truncate": true
+        },
+        "visible": { "$item": "job_title" }
+      },
+      "rowBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "employment_type" },
+          "tone": "success",
+          "variant": "soft"
+        },
+        "visible": { "$item": "employment_type" }
+      },
+      "rowDivider": { "type": "Divider", "props": {} },
+
+      "footer": {
+        "type": "Row",
+        "props": { "justify": "center" },
+        "children": ["footerText"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/employment-hero.list_employees", "not": true },
+            { "$state": "/employment-hero/list_employees/data/items/0" }
+          ]
+        }
+      },
+      "footerText": {
+        "type": "Caption",
+        "props": { "text": "Active employees Â· Employment Hero" }
+      }
+
+    }
+  },
+  "status": "published"
+}

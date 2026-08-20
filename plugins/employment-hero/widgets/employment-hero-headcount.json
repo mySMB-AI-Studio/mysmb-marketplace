@@ -1,23 +1,23 @@
 ﻿{
-  "id": "employment-hero-leave-requests",
-  "title": "Pending Leave Requests",
-  "description": "Live list of pending employee leave requests from Employment Hero.",
+  "id": "employment-hero-headcount",
+  "title": "Active Employees",
+  "description": "Live list of active employees from Employment Hero.",
   "category": "hr",
-  "tags": ["employment-hero", "hr", "leave", "requests", "pending"],
-  "keywords": ["leave", "leave request", "pending", "time off", "absence", "hr", "employment hero"],
+  "tags": ["employment-hero", "hr", "headcount", "employees"],
+  "keywords": ["headcount", "employees", "active", "employment hero"],
   "connectorsUsed": ["employment-hero"],
   "popularity": 0,
   "sizing": {
     "preferred": { "colSpan": 5, "rowSpan": 7 },
     "min":       { "colSpan": 4, "rowSpan": 5 },
-    "max":       { "colSpan": 10, "rowSpan": 12 }
+    "max":       { "colSpan": 8, "rowSpan": 12 }
   },
   "dataProvider": {
     "mcp": "employment-hero",
-    "tool": "list_leave_requests",
+    "tool": "list_employees",
     "params": {
-      "status": "pending",
-      "per_page": 25
+      "status": "active",
+      "per_page": 50
     }
   },
   "spec": {
@@ -30,33 +30,12 @@
         "children": ["titleRow", "divider", "loading", "empty", "scrollBody", "footer"]
       },
 
-      "titleRow": {
-        "type": "Row",
-        "props": { "align": "center" },
-        "children": ["titleGroup"]
-      },
-      "titleGroup": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
-      },
-      "titleIcon": {
-        "type": "Icon",
-        "props": { "name": "CalendarOff", "tone": "accent", "size": "sm" }
-      },
-      "titleStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["title", "eyebrow"]
-      },
-      "title": {
-        "type": "Heading",
-        "props": { "text": "Pending Leave Requests", "level": "h2" }
-      },
-      "eyebrow": {
-        "type": "Eyebrow",
-        "props": { "text": "Employment Hero" }
-      },
+      "titleRow":   { "type": "Row",   "props": { "justify": "between", "align": "center" }, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row",   "props": { "gap": "sm", "align": "center" },          "children": ["titleIcon", "titleStack"] },
+      "titleIcon":  { "type": "Icon",  "props": { "name": "Hash", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title":      { "type": "Heading", "props": { "text": "Active Employees", "level": "h2" } },
+      "eyebrow":    { "type": "Eyebrow", "props": { "text": "Employment Hero" } },
 
       "divider": { "type": "Divider", "props": {} },
 
@@ -64,7 +43,7 @@
         "type": "Stack",
         "props": { "gap": "sm" },
         "children": ["s1", "s2", "s3", "s4"],
-        "visible": { "$state": "/_loading/employment-hero.list_leave_requests" }
+        "visible": { "$state": "/_loading/employment-hero.list_employees" }
       },
       "s1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
       "s2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
@@ -73,11 +52,11 @@
 
       "empty": {
         "type": "Empty",
-        "props": { "message": "No pending leave requests." },
+        "props": { "message": "No active employees found." },
         "visible": {
           "$and": [
-            { "$state": "/_loading/employment-hero.list_leave_requests", "not": true },
-            { "$state": "/employment-hero/list_leave_requests/data/items/0", "not": true }
+            { "$state": "/_loading/employment-hero.list_employees", "not": true },
+            { "$state": "/employment-hero/list_employees/data/items/0", "not": true }
           ]
         }
       },
@@ -86,7 +65,7 @@
         "type": "Body",
         "props": {},
         "children": ["list"],
-        "visible": { "$state": "/_loading/employment-hero.list_leave_requests", "not": true }
+        "visible": { "$state": "/_loading/employment-hero.list_employees", "not": true }
       },
 
       "list": {
@@ -94,7 +73,7 @@
         "props": { "gap": "xs" },
         "children": ["row"],
         "repeat": {
-          "statePath": "/employment-hero/list_leave_requests/data/items",
+          "statePath": "/employment-hero/list_employees/data/items",
           "key": "id"
         }
       },
@@ -112,40 +91,42 @@
       "rowLeft": {
         "type": "Stack",
         "props": { "gap": "none", "grow": true },
-        "children": ["rowName", "rowDates"]
+        "children": ["rowName", "rowTitle"]
       },
       "rowName": {
-        "type": "Text",
-        "props": {
-          "text": { "$item": "employee_name" },
-          "size": "sm",
-          "weight": "medium",
-          "truncate": true
-        }
-      },
-      "rowDates": {
         "type": "Text",
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{s} â†’ {e}",
-              "s": { "$item": "start_date" },
-              "e": { "$item": "end_date" }
+              "pattern": "{f} {l}",
+              "f": { "$item": "first_name" },
+              "l": { "$item": "last_name" }
             }
           },
-          "size": "xs",
-          "tone": "muted"
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
         }
+      },
+      "rowTitle": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "job_title" },
+          "size": "xs",
+          "tone": "muted",
+          "truncate": true
+        },
+        "visible": { "$item": "job_title" }
       },
       "rowBadge": {
         "type": "Badge",
         "props": {
-          "text": { "$item": "leave_type" },
+          "text": { "$item": "employment_type" },
           "tone": "accent",
           "variant": "soft"
         },
-        "visible": { "$item": "leave_type" }
+        "visible": { "$item": "employment_type" }
       },
       "rowDivider": { "type": "Divider", "props": {} },
 
@@ -155,14 +136,14 @@
         "children": ["footerText"],
         "visible": {
           "$and": [
-            { "$state": "/_loading/employment-hero.list_leave_requests", "not": true },
-            { "$state": "/employment-hero/list_leave_requests/data/items/0" }
+            { "$state": "/_loading/employment-hero.list_employees", "not": true },
+            { "$state": "/employment-hero/list_employees/data/items/0" }
           ]
         }
       },
       "footerText": {
         "type": "Caption",
-        "props": { "text": "Pending requests only Â· Employment Hero" }
+        "props": { "text": "Active employees Â· Employment Hero" }
       }
 
     }
