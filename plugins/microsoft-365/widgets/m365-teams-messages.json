@@ -1,26 +1,26 @@
 {
   "id": "m365-teams-messages",
-  "title": "Teams Messages",
-  "description": "Your most recent Microsoft Teams chat messages at a glance — who sent the last message, a preview, and when. Read-only.",
+  "title": "Recent Teams Messages",
+  "description": "Your recent Microsoft Teams messages in chronological order (newest first) — sender, preview, and time. Click a conversation to read it and reply.",
   "category": "productivity",
-  "tags": ["m365", "teams", "chats", "messages", "recent"],
-  "keywords": ["teams", "messages", "chats", "recent", "conversations", "microsoft"],
+  "tags": ["m365", "teams", "chats", "messages", "recent", "chronological"],
+  "keywords": ["teams", "messages", "chats", "recent", "conversations", "microsoft", "chronological"],
   "connectorsUsed": ["m365-teams"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 5 },
-    "min":       { "colSpan": 4, "rowSpan": 4 },
-    "max":       { "colSpan": 12, "rowSpan": 12 }
+    "preferred": { "colSpan": 6, "rowSpan": 7 },
+    "min": { "colSpan": 4, "rowSpan": 5 },
+    "max": { "colSpan": 12, "rowSpan": 12 }
   },
   "dataProvider": {
     "mcp": "m365-teams",
     "tool": "list_chats",
-    "params": { "limit": 20 }
+    "params": { "limit": 25, "sort": "recency" }
   },
   "spec": {
     "root": "card",
     "elements": {
-      "card": { "type": "Card", "children": ["header", "body"] },
+      "card": { "type": "Card", "children": ["header", "body", "drawer"] },
 
       "header": { "type": "Header", "children": ["titleRow"] },
       "titleRow": {
@@ -29,7 +29,7 @@
         "children": ["titleIcon", "title"]
       },
       "titleIcon": { "type": "Icon", "props": { "name": "MessagesSquare", "tone": "accent", "size": "sm" } },
-      "title": { "type": "Heading", "props": { "text": "Teams Messages", "level": "h2" } },
+      "title": { "type": "Heading", "props": { "text": "Recent Teams Messages", "level": "h2" } },
 
       "body": { "type": "Body", "children": ["loading", "empty", "list"] },
 
@@ -37,15 +37,22 @@
         "type": "Stack",
         "props": { "gap": "sm" },
         "visible": { "$state": "/_loading/m365-teams.list_chats" },
-        "children": ["sk1", "sk2", "sk3"]
+        "children": ["loadingHeader", "sk1", "sk2", "sk3"]
       },
+      "loadingHeader": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["loadingSpinner", "loadingLabel"]
+      },
+      "loadingSpinner": { "type": "Spinner", "props": { "size": "sm" } },
+      "loadingLabel": { "type": "Caption", "props": { "tone": "muted", "text": "Loading messages…" } },
       "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
       "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
       "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
 
       "empty": {
         "type": "Empty",
-        "props": { "icon": "Inbox", "title": "No recent messages", "message": "You have no recent Teams chat messages." },
+        "props": { "icon": "Inbox", "title": "No recent messages", "message": "You have no recent Teams messages." },
         "visible": {
           "$and": [
             { "$state": "/_loading/m365-teams.list_chats", "not": true },
@@ -58,13 +65,44 @@
         "type": "Stack",
         "props": { "gap": "xs" },
         "repeat": { "statePath": "/m365-teams/list_chats", "key": "id" },
-        "visible": { "$state": "/_loading/m365-teams.list_chats", "not": true },
-        "children": ["row"]
+        "children": ["row"],
+        "visible": { "$state": "/_loading/m365-teams.list_chats", "not": true }
       },
       "row": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center", "justify": "between" },
-        "children": ["rowLeft", "rowRight"]
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true, "clickable": true },
+        "children": ["rowLeft", "rowRight"],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/teamsActiveChatId",
+                "value": { "$computed": "identity", "args": { "value": { "$item": "id" } } }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/teamsActiveChatName",
+                "value": { "$computed": "identity", "args": { "value": { "$item": "displayName" } } }
+              }
+            },
+            {
+              "action": "m365-teams.list_messages",
+              "params": {
+                "chatId": { "$computed": "identity", "args": { "value": { "$item": "id" } } },
+                "limit": 15
+              }
+            },
+            {
+              "action": "m365-teams.mark_chat_read",
+              "params": {
+                "chatId": { "$computed": "identity", "args": { "value": { "$item": "id" } } }
+              }
+            }
+          ]
+        }
       },
       "rowLeft": {
         "type": "Row",
@@ -73,7 +111,10 @@
       },
       "unreadDot": {
         "type": "Dot",
-        "props": { "tone": "accent", "size": "sm" },
+        "props": {
+          "tone": { "$cond": { "$item": "mentionsMe", "eq": true }, "$then": "destructive", "$else": "accent" },
+          "size": "sm"
+        },
         "visible": { "$item": "unread", "eq": true }
       },
       "avatar": {
@@ -95,7 +136,12 @@
       "labels": {
         "type": "Stack",
         "props": { "gap": "xs", "grow": true },
-        "children": ["primaryLabel", "snippet"]
+        "children": ["topLine", "snippet"]
+      },
+      "topLine": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "baseline" },
+        "children": ["primaryLabel", "topicSuffix", "mentionPill"]
       },
       "primaryLabel": {
         "type": "Text",
@@ -109,6 +155,23 @@
             "$else": { "$item": "displayName" }
           }
         }
+      },
+      "topicSuffix": {
+        "type": "Text",
+        "props": {
+          "size": "xs",
+          "tone": "muted",
+          "truncate": true,
+          "text": { "$computed": "fmt", "args": { "pattern": "in {topic}", "topic": { "$item": "topic" } } }
+        },
+        "visible": {
+          "$and": [{ "$item": "senderName" }, { "$item": "topic" }]
+        }
+      },
+      "mentionPill": {
+        "type": "Badge",
+        "props": { "text": "@you", "tone": "destructive", "variant": "soft" },
+        "visible": { "$item": "mentionsMe", "eq": true }
       },
       "snippet": {
         "type": "Text",
@@ -126,12 +189,184 @@
       "rowRight": {
         "type": "Stack",
         "props": { "gap": "xs", "align": "end" },
-        "children": ["time"]
+        "children": ["time", "reactionSummary"]
       },
       "time": {
         "type": "Caption",
         "props": { "tone": "muted", "text": { "$item": "relativeTime" } },
         "visible": { "$item": "relativeTime" }
+      },
+      "reactionSummary": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": { "$computed": "fmt", "args": { "pattern": "♥ {count}", "count": { "$item": "reactions/0/count" } } }
+        },
+        "visible": { "$item": "reactions/0/count" }
+      },
+
+      "drawer": {
+        "type": "Overlay",
+        "props": { "maxWidth": "32rem" },
+        "children": ["drawerCard"],
+        "visible": { "$state": "/ui/teamsActiveChatId" },
+        "on": {
+          "backdropClick": [
+            { "action": "setState", "params": { "statePath": "/ui/teamsActiveChatId", "value": "" } },
+            { "action": "setState", "params": { "statePath": "/ui/teamsReplyText", "value": "" } },
+            { "action": "m365-teams.list_chats", "params": { "limit": 25, "sort": "recency" } }
+          ]
+        }
+      },
+      "drawerCard": {
+        "type": "Card",
+        "children": ["drawerHeader", "drawerBody", "drawerComposerArea"]
+      },
+      "drawerHeader": { "type": "Header", "children": ["drawerTitleRow"] },
+      "drawerTitleRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["drawerTitle", "drawerCloseBtn"]
+      },
+      "drawerTitle": {
+        "type": "Heading",
+        "props": { "text": { "$state": "/ui/teamsActiveChatName" }, "level": "h2" }
+      },
+      "drawerCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "tone": "muted", "ariaLabel": "Close" },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/teamsActiveChatId", "value": "" } },
+            { "action": "setState", "params": { "statePath": "/ui/teamsReplyText", "value": "" } },
+            { "action": "m365-teams.list_chats", "params": { "limit": 25, "sort": "recency" } }
+          ]
+        }
+      },
+      "drawerBody": {
+        "type": "Body",
+        "children": ["drawerLoading", "drawerEmpty", "drawerMessages"]
+      },
+      "drawerLoading": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["drawerLoadingSpinner", "drawerLoadingLabel"],
+        "visible": { "$state": "/_loading/m365-teams.list_messages" }
+      },
+      "drawerLoadingSpinner": { "type": "Spinner", "props": { "size": "sm" } },
+      "drawerLoadingLabel": { "type": "Caption", "props": { "tone": "muted", "text": "Loading conversation…" } },
+      "drawerEmpty": {
+        "type": "Empty",
+        "props": { "icon": "MessageCircle", "title": "No messages yet", "message": "Be the first to say something." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/m365-teams.list_messages", "not": true },
+            { "$state": "/m365-teams/list_messages/0", "not": true }
+          ]
+        }
+      },
+      "drawerMessages": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["messageRowOther", "messageRowMe"],
+        "repeat": { "statePath": "/m365-teams/list_messages", "key": "id" },
+        "visible": { "$state": "/_loading/m365-teams.list_messages", "not": true }
+      },
+      "messageRowOther": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "justify": "start" },
+        "children": ["msgAvatar", "msgBubbleOther"],
+        "visible": {
+          "$and": [
+            { "$item": "isFromMe", "eq": false },
+            { "$item": "isSystemEvent", "eq": false }
+          ]
+        }
+      },
+      "msgAvatar": {
+        "type": "Avatar",
+        "props": { "size": "sm", "initials": { "$computed": "initials", "args": { "value": { "$item": "senderName" } } } }
+      },
+      "msgBubbleOther": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["msgBubbleOtherHeader", "msgBubbleOtherText"]
+      },
+      "msgBubbleOtherHeader": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "baseline", "justify": "between" },
+        "children": ["msgBubbleOtherSender", "msgBubbleOtherTime"]
+      },
+      "msgBubbleOtherSender": {
+        "type": "Text",
+        "props": { "size": "sm", "weight": "semibold", "text": { "$item": "senderName" } }
+      },
+      "msgBubbleOtherTime": {
+        "type": "Caption",
+        "props": { "tone": "muted", "text": { "$item": "relativeTime" } }
+      },
+      "msgBubbleOtherText": {
+        "type": "Text",
+        "props": { "size": "sm", "preserveLines": true, "text": { "$item": "text" } }
+      },
+      "messageRowMe": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "justify": "end" },
+        "children": ["msgBubbleMe"],
+        "visible": { "$item": "isFromMe", "eq": true }
+      },
+      "msgBubbleMe": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["msgBubbleMeHeader", "msgBubbleMeText"]
+      },
+      "msgBubbleMeHeader": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "baseline", "justify": "end" },
+        "children": ["msgBubbleMeTime"]
+      },
+      "msgBubbleMeTime": {
+        "type": "Caption",
+        "props": { "tone": "accent", "text": { "$item": "relativeTime" } }
+      },
+      "msgBubbleMeText": {
+        "type": "Text",
+        "props": { "size": "sm", "preserveLines": true, "text": { "$item": "text" } }
+      },
+      "drawerComposerArea": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["drawerComposer", "drawerSendBtn"]
+      },
+      "drawerComposer": {
+        "type": "TextInput",
+        "props": { "value": { "$bindState": "/ui/teamsReplyText" }, "placeholder": "Type a reply…" }
+      },
+      "drawerSendBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Send",
+          "variant": "primary",
+          "size": "sm",
+          "leadingIcon": "Send",
+          "disabled": { "$cond": { "$state": "/ui/teamsReplyText" }, "$then": false, "$else": true }
+        },
+        "on": {
+          "click": [
+            {
+              "action": "m365-teams.send_message",
+              "params": {
+                "chatId": { "$state": "/ui/teamsActiveChatId" },
+                "content": { "$state": "/ui/teamsReplyText" }
+              }
+            },
+            { "action": "setState", "params": { "statePath": "/ui/teamsReplyText", "value": "" } },
+            {
+              "action": "m365-teams.list_messages",
+              "params": { "chatId": { "$state": "/ui/teamsActiveChatId" }, "limit": 15 }
+            }
+          ]
+        }
       }
     }
   },
