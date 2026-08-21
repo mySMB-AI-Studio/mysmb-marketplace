@@ -1,0 +1,130 @@
+{
+  "id": "employment-hero-pending-approvals",
+  "title": "Pending Approvals",
+  "description": "Summary count of pending leave requests, timesheets, and expense claims awaiting approval in Employment Hero.",
+  "category": "hr",
+  "tags": ["employment-hero", "hr", "approvals", "leave", "timesheets"],
+  "keywords": ["pending", "approvals", "leave", "timesheets", "expense", "review", "employment hero"],
+  "connectorsUsed": ["employment-hero"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 5 },
+    "min":       { "colSpan": 3, "rowSpan": 4 },
+    "max":       { "colSpan": 6, "rowSpan": 8 }
+  },
+  "dataProvider": {
+    "mcp": "employment-hero",
+    "tool": "get_pending_approvals_summary",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["loading", "empty", "content"]
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["s1", "s2", "s3"],
+        "visible": { "$state": "/_loading/employment-hero.get_pending_approvals_summary" }
+      },
+      "s1": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "s2": { "type": "Skeleton", "props": { "height": "3rem",   "rounded": "md" } },
+      "s3": { "type": "Skeleton", "props": { "height": "4rem",   "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No pending approvals." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/employment-hero.get_pending_approvals_summary", "not": true },
+            { "$state": "/employment-hero/get_pending_approvals_summary/total", "not": true }
+          ]
+        }
+      },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["eyebrow", "totalRow", "divider", "rows", "footerRow"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/employment-hero.get_pending_approvals_summary", "not": true },
+            { "$state": "/employment-hero/get_pending_approvals_summary/total" }
+          ]
+        }
+      },
+
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Pending Approvals" } },
+
+      "totalRow": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "sm" },
+        "children": ["totalNum", "needsReview"]
+      },
+      "totalNum": {
+        "type": "Heading",
+        "props": {
+          "text": { "$state": "/employment-hero/get_pending_approvals_summary/total" },
+          "level": "h1"
+        }
+      },
+      "needsReview": {
+        "type": "Text",
+        "props": { "text": "Needs review", "size": "sm", "tone": "warning", "weight": "medium" }
+      },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "rows": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["leaveRow", "timesheetRow", "expenseRow"]
+      },
+
+      "leaveRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["leaveLabel", "leaveCount"],
+        "visible": { "$state": "/employment-hero/get_pending_approvals_summary/leave_requests" }
+      },
+      "leaveLabel":  { "type": "Text", "props": { "text": "Leave requests", "size": "sm" } },
+      "leaveCount":  { "type": "Text", "props": { "text": { "$state": "/employment-hero/get_pending_approvals_summary/leave_requests" }, "size": "sm", "weight": "medium" } },
+
+      "timesheetRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["timesheetLabel", "timesheetCount"],
+        "visible": { "$state": "/employment-hero/get_pending_approvals_summary/timesheets" }
+      },
+      "timesheetLabel": { "type": "Text", "props": { "text": "Timesheets", "size": "sm" } },
+      "timesheetCount": { "type": "Text", "props": { "text": { "$state": "/employment-hero/get_pending_approvals_summary/timesheets" }, "size": "sm", "weight": "medium" } },
+
+      "expenseRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["expenseLabel", "expenseCount"],
+        "visible": { "$state": "/employment-hero/get_pending_approvals_summary/expense_claims" }
+      },
+      "expenseLabel": { "type": "Text", "props": { "text": "Expense claims", "size": "sm" } },
+      "expenseCount": { "type": "Text", "props": { "text": { "$state": "/employment-hero/get_pending_approvals_summary/expense_claims" }, "size": "sm", "weight": "medium" } },
+
+      "footerRow": {
+        "type": "Row",
+        "props": { "justify": "start" },
+        "children": ["reviewLink"]
+      },
+      "reviewLink": {
+        "type": "Text",
+        "props": { "text": "Review now →", "size": "sm", "tone": "accent", "weight": "medium" }
+      }
+
+    }
+  },
+  "status": "published"
+}
