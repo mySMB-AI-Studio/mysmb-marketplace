@@ -1,6 +1,6 @@
 {
   "id": "master-agent-chat",
-  "title": "Master Agent — Chat",
+  "title": "Master Agent",
   "description": "Chat with the Master Agent. Ask anything and it routes your question to the right Copilot Studio agent(s) in your tenant behind the scenes, then answers you directly. @mention an agent to target it.",
   "category": "productivity",
   "tags": ["copilot-studio", "copilot", "agents", "master-agent", "chat", "assistant"],
@@ -34,7 +34,7 @@
               "params": {
                 "statePath": "/ui/mentions",
                 "value": {
-                  "$computed": "master-agent_mention_matches",
+                  "$computed": "copilot-studio_mention_matches",
                   "args": {
                     "agents": { "$state": "/copilot-studio/list_copilot_agents/agents" },
                     "draft": { "$state": "/ui/draft" }
@@ -132,7 +132,7 @@
         "type": "Text",
         "props": {
           "text": {
-            "$computed": "master-agent_mention_prefix",
+            "$computed": "copilot-studio_mention_prefix",
             "args": {
               "text": { "$item": "content" },
               "agents": { "$state": "/copilot-studio/list_copilot_agents/agents" }
@@ -146,7 +146,7 @@
         "type": "Text",
         "props": {
           "text": {
-            "$computed": "master-agent_message_body",
+            "$computed": "copilot-studio_message_body",
             "args": {
               "text": { "$item": "content" },
               "agents": { "$state": "/copilot-studio/list_copilot_agents/agents" }
@@ -215,7 +215,7 @@
               "params": {
                 "statePath": "/ui/draft",
                 "value": {
-                  "$computed": "master-agent_apply_mention",
+                  "$computed": "copilot-studio_apply_mention",
                   "args": {
                     "draft": { "$state": "/ui/draft" },
                     "name": { "$item": "name" }

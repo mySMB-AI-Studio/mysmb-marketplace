@@ -1,6 +1,6 @@
 {
   "id": "master-agent-directory",
-  "title": "Master Agent — Copilot Agents",
+  "title": "Agent List",
   "description": "The Microsoft Copilot Studio agents available in your tenant — name, description, and environment. Your Master Agent can route questions to any of them.",
   "category": "productivity",
   "tags": ["copilot-studio", "copilot", "agents", "master-agent", "microsoft", "directory"],
@@ -20,7 +20,37 @@
   "spec": {
     "root": "card",
     "elements": {
-      "card": { "type": "Card", "props": {}, "children": ["header", "body"] },
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"],
+        "watch": {
+          "/copilot-studio/list_copilot_agents/count": [
+            { "action": "copilot-studio.list_copilot_environments", "params": {} }
+          ],
+          "/copilot-studio/list_copilot_environments/count": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/envOptions",
+                "value": {
+                  "$computed": "copilot-studio_env_options",
+                  "args": {
+                    "environments": { "$state": "/copilot-studio/list_copilot_environments/environments" }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedEnv",
+                "value": { "$state": "/copilot-studio/list_copilot_environments/activeEnvironmentId" }
+              }
+            }
+          ]
+        }
+      },
 
       "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
       "headerRow": {
@@ -35,7 +65,7 @@
       },
       "titleIcon": { "type": "Icon", "props": { "name": "Bot", "tone": "accent", "size": "sm" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "count"] },
-      "title": { "type": "Heading", "props": { "text": "Master Agent", "level": "h2" } },
+      "title": { "type": "Heading", "props": { "text": "Agent List", "level": "h2" } },
       "count": {
         "type": "Eyebrow",
         "props": {
@@ -49,18 +79,52 @@
         }
       },
       "refreshBtn": {
-        "type": "IconButton",
-        "props": { "icon": "RefreshCw", "tone": "muted", "size": "sm", "ariaLabel": "Refresh" },
+        "type": "Button",
+        "props": { "label": "Refresh", "variant": "ghost", "size": "sm", "leadingIcon": "RefreshCw" },
         "on": {
           "click": { "action": "copilot-studio.list_copilot_agents", "params": {} }
         }
       },
 
-      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "list"] },
-
-      "loading": {
+      "body": { "type": "Body", "props": {}, "children": ["bodyStack"] },
+      "bodyStack": {
         "type": "Stack",
         "props": { "gap": "sm" },
+        "children": ["envBar", "loading", "empty", "list"]
+      },
+
+      "envBar": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "visible": { "$state": "/ui/envOptions/0" },
+        "children": ["envLabel", "envSelect"]
+      },
+      "envLabel": { "type": "Caption", "props": { "text": "Environment", "tone": "muted" } },
+      "envSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/selectedEnv" },
+          "options": { "$state": "/ui/envOptions" },
+          "placeholder": "All environments",
+          "size": "sm"
+        },
+        "on": {
+          "change": [
+            {
+              "action": "copilot-studio.set_active_environment",
+              "params": { "environment_id": { "$state": "/ui/selectedEnv" } }
+            },
+            {
+              "action": "copilot-studio.list_copilot_agents",
+              "params": { "environment_id": { "$state": "/ui/selectedEnv" } }
+            }
+          ]
+        }
+      },
+
+      "loading": {
+        "type": "Section",
+        "props": { "inset": true },
         "visible": { "$state": "/_loading/copilot-studio.list_copilot_agents" },
         "children": ["sk1", "sk2", "sk3"]
       },

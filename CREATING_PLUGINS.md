@@ -307,7 +307,17 @@ Payments: `list_payments`, `record_payment`.
 
 **Agent rules**
 
-- Same frontmatter as skills (`name`, `description`).
+- Frontmatter is flat `key: value` lines (no nested YAML). Recognised keys:
+  `name`, `description`, `connectors` (comma list of MCP server names — a
+  ceiling, not a grant), `skills`, `model` (`haiku` | `sonnet` | `opus`),
+  `platform: true` (+ `audience: everyone | groups | users | admins`) for a
+  tenant-level ownerless agent, and — platform agents only — the external
+  build-runner hints `runner: claude-code`, `runner-repository: owner/repo`,
+  `runner-schedule: <cron>` that pre-fill the workspace's *Claude Code* setup
+  kit (see `plugins/myconnect-builder/README.md`). Unknown keys are ignored.
+- Agents ship as `content/agents/<originKey>.json` payloads generated from the
+  markdown; regenerate after editing (myHubV2
+  `scripts/regen-plugin-agent-payload.ts`).
 - Describe scope **and** anti‑scope. The "what you do NOT do" section is the load‑bearing one — it's what stops the model from confidently hallucinating capabilities.
 - List the tools the agent should reach for. The agent can technically call any MCP tool the tenant has installed, but the inventory shapes its defaults.
 
