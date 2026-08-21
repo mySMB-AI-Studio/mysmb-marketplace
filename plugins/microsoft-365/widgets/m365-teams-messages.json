@@ -1,0 +1,139 @@
+{
+  "id": "m365-teams-messages",
+  "title": "Teams Messages",
+  "description": "Your most recent Microsoft Teams chat messages at a glance — who sent the last message, a preview, and when. Read-only.",
+  "category": "productivity",
+  "tags": ["m365", "teams", "chats", "messages", "recent"],
+  "keywords": ["teams", "messages", "chats", "recent", "conversations", "microsoft"],
+  "connectorsUsed": ["m365-teams"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "min":       { "colSpan": 4, "rowSpan": 4 },
+    "max":       { "colSpan": 12, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "m365-teams",
+    "tool": "list_chats",
+    "params": { "limit": 20 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "children": ["header", "body"] },
+
+      "header": { "type": "Header", "children": ["titleRow"] },
+      "titleRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "title"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "MessagesSquare", "tone": "accent", "size": "sm" } },
+      "title": { "type": "Heading", "props": { "text": "Teams Messages", "level": "h2" } },
+
+      "body": { "type": "Body", "children": ["loading", "empty", "list"] },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$state": "/_loading/m365-teams.list_chats" },
+        "children": ["sk1", "sk2", "sk3"]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "icon": "Inbox", "title": "No recent messages", "message": "You have no recent Teams chat messages." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/m365-teams.list_chats", "not": true },
+            { "$state": "/m365-teams/list_chats/0", "not": true }
+          ]
+        }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "repeat": { "statePath": "/m365-teams/list_chats", "key": "id" },
+        "visible": { "$state": "/_loading/m365-teams.list_chats", "not": true },
+        "children": ["row"]
+      },
+      "row": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["rowLeft", "rowRight"]
+      },
+      "rowLeft": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "grow": true },
+        "children": ["unreadDot", "avatar", "labels"]
+      },
+      "unreadDot": {
+        "type": "Dot",
+        "props": { "tone": "accent", "size": "sm" },
+        "visible": { "$item": "unread", "eq": true }
+      },
+      "avatar": {
+        "type": "Avatar",
+        "props": {
+          "size": "sm",
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$cond": { "$item": "senderName" },
+                "$then": { "$item": "senderName" },
+                "$else": { "$item": "displayName" }
+              }
+            }
+          }
+        }
+      },
+      "labels": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["primaryLabel", "snippet"]
+      },
+      "primaryLabel": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "truncate": true,
+          "weight": { "$cond": { "$item": "unread", "eq": true }, "$then": "semibold", "$else": "medium" },
+          "text": {
+            "$cond": { "$item": "senderName" },
+            "$then": { "$item": "senderName" },
+            "$else": { "$item": "displayName" }
+          }
+        }
+      },
+      "snippet": {
+        "type": "Text",
+        "props": {
+          "size": "xs",
+          "tone": "muted",
+          "truncate": true,
+          "text": {
+            "$cond": { "$item": "snippet" },
+            "$then": { "$item": "snippet" },
+            "$else": { "$item": "snippetFallback" }
+          }
+        }
+      },
+      "rowRight": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["time"]
+      },
+      "time": {
+        "type": "Caption",
+        "props": { "tone": "muted", "text": { "$item": "relativeTime" } },
+        "visible": { "$item": "relativeTime" }
+      }
+    }
+  },
+  "status": "published"
+}
