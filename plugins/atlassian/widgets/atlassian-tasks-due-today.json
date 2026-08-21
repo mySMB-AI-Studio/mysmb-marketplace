@@ -1,0 +1,165 @@
+{
+  "id": "atlassian-tasks-due-today",
+  "title": "Tasks Due Today",
+  "description": "Issues assigned to the connected user that are due today or overdue, not yet done. Sorted by due date, earliest first. Uses JQL `assignee = currentUser() AND duedate <= endOfDay() AND statusCategory != Done` -- on a shared/admin connection this reflects whoever connected Jira, not necessarily the tenant as a whole.",
+  "category": "work-management",
+  "tags": ["atlassian", "jira", "tasks", "issues", "due-today", "project-management"],
+  "keywords": ["jira tasks", "due today", "overdue", "assigned to me", "my issues"],
+  "connectorsUsed": ["atlassian"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 5 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "atlassian",
+    "tool": "search_issues",
+    "params": {
+      "jql": "assignee = currentUser() AND duedate <= endOfDay() AND statusCategory != Done ORDER BY duedate ASC",
+      "max_results": 20,
+      "fields": ["summary", "duedate", "status"]
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["header", "body"]
+      },
+      "header": {
+        "type": "Header",
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "ListChecks", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Tasks Due Today", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} due today or overdue",
+              "n": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/atlassian/search_issues/issues" } }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": ["loading", "empty", "taskList"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/atlassian.search_issues" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "Nothing due today or overdue. Nice." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/atlassian.search_issues", "not": true },
+            { "$state": "/atlassian/search_issues/issues/0", "not": true }
+          ]
+        }
+      },
+      "taskList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["taskRow"],
+        "repeat": {
+          "statePath": "/atlassian/search_issues/issues",
+          "key": "id"
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/atlassian.search_issues", "not": true },
+            { "$state": "/atlassian/search_issues/issues/0" }
+          ]
+        }
+      },
+      "taskRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["taskLeft", "taskDue"]
+      },
+      "taskLeft": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "grow": true },
+        "children": ["taskDot", "taskStack"]
+      },
+      "taskDot": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$computed": "is_overdue",
+            "args": { "value": { "$item": "fields/duedate" } }
+          },
+          "size": "sm"
+        }
+      },
+      "taskStack": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["taskSummary", "taskMeta"]
+      },
+      "taskSummary": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "fields/summary" },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "taskMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{key} · {status}",
+              "key": { "$item": "key" },
+              "status": { "$item": "fields/status/name" }
+            }
+          }
+        }
+      },
+      "taskDue": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "format_date",
+            "args": { "value": { "$item": "fields/duedate" }, "format": "dd-mmm-yy" }
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}

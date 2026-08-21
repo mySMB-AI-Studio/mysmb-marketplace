@@ -1,0 +1,157 @@
+{
+  "id": "atlassian-knowledge-base",
+  "title": "Knowledge Base",
+  "description": "Recently updated Confluence pages across every space visible to the connected user. Uses CQL `type = page ORDER BY lastmodified DESC` -- a generic recency-based view, not a filtered FAQ list, since there's no per-tile configuration UI to let a customer specify which label/space marks their actual FAQ content. Shows Confluence's own pre-formatted relative-time string (`friendlyLastModified`) rather than re-deriving it from a raw timestamp, to avoid guessing at an unverified date format. Clicking a row opens the real page in Confluence -- the full URL is `search_confluence`'s own top-level `_links.base` (e.g. `https://tenant.atlassian.net/wiki`) concatenated with each result's site-relative `url`, confirmed by inspecting the real live response rather than assumed.",
+  "category": "work-management",
+  "tags": ["atlassian", "confluence", "knowledge-base", "faq", "pages", "documentation"],
+  "keywords": ["confluence pages", "knowledge base", "faq", "documentation", "wiki", "recent pages"],
+  "connectorsUsed": ["atlassian"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 5 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "atlassian",
+    "tool": "search_confluence",
+    "params": {
+      "cql": "type = page order by lastmodified desc",
+      "limit": 20
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["header", "body"]
+      },
+      "header": {
+        "type": "Header",
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "BookOpen", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Knowledge Base", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Confluence · {n} recently updated pages",
+              "n": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/atlassian/search_confluence/results" } }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": ["loading", "empty", "pageList"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/atlassian.search_confluence" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No Confluence pages found on this connection." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/atlassian.search_confluence", "not": true },
+            { "$state": "/atlassian/search_confluence/results/0", "not": true }
+          ]
+        }
+      },
+      "pageList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["pageRow"],
+        "repeat": {
+          "statePath": "/atlassian/search_confluence/results",
+          "key": "url"
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/atlassian.search_confluence", "not": true },
+            { "$state": "/atlassian/search_confluence/results/0" }
+          ]
+        }
+      },
+      "pageRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "hover": true, "clickable": true },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "{base}{path}",
+                  "base": { "$state": "/atlassian/search_confluence/_links/base" },
+                  "path": { "$item": "url" }
+                }
+              },
+              "target": "_blank"
+            }
+          }
+        },
+        "children": ["pageContent"]
+      },
+      "pageContent": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["pageTitle", "pageMeta"]
+      },
+      "pageTitle": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "title" },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "pageMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{space} · {when}",
+              "space": { "$item": "space/key" },
+              "when": { "$item": "friendlyLastModified" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}

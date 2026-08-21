@@ -1,0 +1,157 @@
+{
+  "id": "atlassian-service-desk-queue",
+  "title": "Service Desk Queue",
+  "description": "Open requests (tickets) in one Jira Service Management service desk, in the order JSM's own OPEN_REQUESTS filter returns them. Each row's tone reflects the most urgent SLA clock still running on that request -- breached wins outright regardless of time remaining, otherwise the clock closest to breaching does (destructive = breached, warning = under 15% of its goal duration remaining or under 1h when goalDuration is missing, muted = comfortable or no SLA clock running at all). Agent-facing only -- shows every request visible to the connected admin/agent account, not a per-customer 'my tickets' view, which would need a personal-connection rollout this plugin's other tiles don't use (deliberately deferred). **Known platform limitation: `service_desk_id` is genuinely site-specific and this widget cannot auto-resolve it.** A widget's `dataProvider` fires exactly one MCP tool call on mount -- it can't first call `list_service_desks` and feed a result into a second call, and there's no per-tenant widget-parameter configuration UI yet (the same class of gap already documented for this plugin's own Knowledge Base FAQ-label filter, and for HubSpot's custom-object property names). The `service_desk_id` shipped below is the connected sandbox's own 'Support' desk, used only to prove this tile end-to-end against real data -- call `list_service_desks` and edit this widget's `dataProvider.params.service_desk_id` before enabling it for any other tenant. Capped at 20 rows per TILE-DISPLAY-STANDARDS.md §11. Clicking a row opens the real ticket in Jira via the request's own `_links.agent` URL, confirmed against a real live response.",
+  "category": "work-management",
+  "tags": ["atlassian", "jira", "jsm", "service-management", "service-desk", "sla", "support", "queue", "tickets"],
+  "keywords": ["jira service management", "service desk", "sla", "support queue", "tickets", "customer requests", "breach"],
+  "connectorsUsed": ["atlassian"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 5 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "atlassian",
+    "tool": "list_service_desk_requests",
+    "params": {
+      "service_desk_id": "1",
+      "request_status": "OPEN_REQUESTS",
+      "limit": 20
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["header", "body"]
+      },
+      "header": {
+        "type": "Header",
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "LifeBuoy", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Service Desk Queue", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Service desk · {n} open requests (shared connection)",
+              "n": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/atlassian/list_service_desk_requests/values" } }
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": ["loading", "empty", "requestList"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/atlassian.list_service_desk_requests" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No open requests in this service desk." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/atlassian.list_service_desk_requests", "not": true },
+            { "$state": "/atlassian/list_service_desk_requests/values/0", "not": true }
+          ]
+        }
+      },
+      "requestList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["requestRow"],
+        "repeat": {
+          "statePath": "/atlassian/list_service_desk_requests/values",
+          "key": "issueKey"
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/atlassian.list_service_desk_requests", "not": true },
+            { "$state": "/atlassian/list_service_desk_requests/values/0" }
+          ]
+        }
+      },
+      "requestRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "hover": true, "clickable": true },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "identity",
+                "args": { "value": { "$item": "_links/agent" } }
+              },
+              "target": "_blank"
+            }
+          }
+        },
+        "children": ["requestActivity"]
+      },
+      "requestActivity": {
+        "type": "ActivityItem",
+        "props": {
+          "iconName": "LifeBuoy",
+          "tone": {
+            "$computed": "atlassian_sla_tone",
+            "args": { "values": { "$item": "sla/values" } }
+          },
+          "title": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{key} · {summary}",
+              "key": { "$item": "issueKey" },
+              "summary": { "$item": "summary" }
+            }
+          },
+          "subtitle": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{status} · {sla}",
+              "status": { "$item": "currentStatus/status" },
+              "sla": {
+                "$computed": "atlassian_sla_label",
+                "args": { "values": { "$item": "sla/values" } }
+              }
+            }
+          },
+          "timestamp": { "$item": "createdDate/friendly" }
+        }
+      }
+    }
+  },
+  "status": "published"
+}
