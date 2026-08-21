@@ -87,9 +87,28 @@ const flatten_leave_requests = (args) => {
     today.setHours(0, 0, 0, 0);
     const todayTs = today.getTime();
     return raw.map(item => {
-        const empName = typeof item.employee_name === 'string' && item.employee_name
+        // Try multiple EH field paths for employee name
+        const emp = item.employee;
+        const empName = (typeof item.employee_name === 'string' && item.employee_name)
             ? item.employee_name
-            : `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim();
+            : (typeof item.requester_name === 'string' && item.requester_name)
+                ? item.requester_name
+                : emp
+                    ? (typeof emp.name === 'string' && emp.name)
+                        ? emp.name
+                        : `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim()
+                    : `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim();
+        // Try multiple EH field paths for leave type
+        const lt = item.leave_type;
+        const leaveType = (typeof lt === 'string' && lt)
+            ? lt
+            : (lt && typeof lt === 'object' && typeof lt.name === 'string')
+                ? lt.name
+                : (typeof item.leave_type_name === 'string' && item.leave_type_name)
+                    ? item.leave_type_name
+                    : (typeof item.leave_type_id === 'string' && item.leave_type_id)
+                        ? item.leave_type_id
+                        : '';
         const { display: startDisplay, ts: startTs } = formatEhDate(item.start_date);
         const { display: endDisplay } = formatEhDate(item.end_date);
         const startDayTs = startTs > 0
@@ -113,7 +132,7 @@ const flatten_leave_requests = (args) => {
         return {
             id: String(item.id ?? ''),
             employee_name: empName,
-            leave_type: String(item.leave_type ?? ''),
+            leave_type: leaveType,
             date_range: dateRange,
             status_label: statusLabel,
             status_tone: statusTone,
