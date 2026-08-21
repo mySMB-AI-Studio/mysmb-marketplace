@@ -1,24 +1,21 @@
 {
   "id": "employment-hero-headcount",
   "title": "Active Employees",
-  "description": "Live list of active employees from Employment Hero.",
+  "description": "Live list of active employees with employment status and start date from Employment Hero.",
   "category": "hr",
   "tags": ["employment-hero", "hr", "headcount", "employees"],
   "keywords": ["headcount", "employees", "active", "employment hero"],
   "connectorsUsed": ["employment-hero"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 7 },
-    "min":       { "colSpan": 4, "rowSpan": 5 },
-    "max":       { "colSpan": 8, "rowSpan": 12 }
+    "preferred": { "colSpan": 6, "rowSpan": 8 },
+    "min":       { "colSpan": 5, "rowSpan": 6 },
+    "max":       { "colSpan": 10, "rowSpan": 14 }
   },
   "dataProvider": {
     "mcp": "employment-hero",
     "tool": "list_employees",
-    "params": {
-      "status": "active",
-      "per_page": 50
-    }
+    "params": { "status": "active", "per_page": 50 }
   },
   "spec": {
     "root": "card",
@@ -27,28 +24,48 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["titleRow", "divider", "loading", "empty", "scrollBody", "footer"]
+        "children": ["header", "body"],
+        "watch": {
+          "/employment-hero/list_employees/data/items": [
+            { "action": "setState", "params": { "statePath": "/ui/sortKey", "value": "full_name|asc" } },
+            { "action": "setState", "params": { "statePath": "/ui/employeeRows", "value": { "$computed": "employment-hero_flatten_employees", "args": { "value": { "$state": "/employment-hero/list_employees/data/items" }, "key": "full_name|asc" } } } }
+          ],
+          "/ui/sortKey": [
+            { "action": "setState", "params": { "statePath": "/ui/employeeRows", "value": { "$computed": "employment-hero_flatten_employees", "args": { "value": { "$state": "/employment-hero/list_employees/data/items" }, "key": { "$state": "/ui/sortKey" } } } } }
+          ]
+        }
       },
 
-      "titleRow":   { "type": "Row",   "props": { "justify": "between", "align": "center" }, "children": ["titleGroup"] },
-      "titleGroup": { "type": "Row",   "props": { "gap": "sm", "align": "center" },          "children": ["titleIcon", "titleStack"] },
-      "titleIcon":  { "type": "Icon",  "props": { "name": "Hash", "tone": "accent", "size": "sm" } },
+      "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
+      "headerRow": { "type": "Row", "props": { "align": "center", "template": "1fr auto" }, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "Users", "tone": "accent", "size": "sm" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title":      { "type": "Heading", "props": { "text": "Active Employees", "level": "h2" } },
-      "eyebrow":    { "type": "Eyebrow", "props": { "text": "Employment Hero" } },
+      "title": { "type": "Heading", "props": { "text": "Active Employees", "level": "h2" } },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Employment Hero · {n} active",
+              "n": { "$computed": "count", "args": { "value": { "$state": "/employment-hero/list_employees/data/items" } } }
+            }
+          }
+        }
+      },
 
-      "divider": { "type": "Divider", "props": {} },
+      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "listHeader", "list"] },
 
       "loading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["s1", "s2", "s3", "s4"],
+        "type": "Stack", "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
         "visible": { "$state": "/_loading/employment-hero.list_employees" }
       },
-      "s1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
-      "s2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
-      "s3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
-      "s4": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
 
       "empty": {
         "type": "Empty",
@@ -61,79 +78,10 @@
         }
       },
 
-      "scrollBody": {
-        "type": "Body",
-        "props": {},
-        "children": ["list"],
-        "visible": { "$state": "/_loading/employment-hero.list_employees", "not": true }
-      },
-
-      "list": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["row"],
-        "repeat": {
-          "statePath": "/employment-hero/list_employees/data/items",
-          "key": "id"
-        }
-      },
-
-      "row": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["rowContent", "rowDivider"]
-      },
-      "rowContent": {
+      "listHeader": {
         "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["rowLeft", "rowBadge"]
-      },
-      "rowLeft": {
-        "type": "Stack",
-        "props": { "gap": "none", "grow": true },
-        "children": ["rowName", "rowTitle"]
-      },
-      "rowName": {
-        "type": "Text",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{f} {l}",
-              "f": { "$item": "first_name" },
-              "l": { "$item": "last_name" }
-            }
-          },
-          "size": "sm",
-          "weight": "medium",
-          "truncate": true
-        }
-      },
-      "rowTitle": {
-        "type": "Text",
-        "props": {
-          "text": { "$item": "job_title" },
-          "size": "xs",
-          "tone": "muted",
-          "truncate": true
-        },
-        "visible": { "$item": "job_title" }
-      },
-      "rowBadge": {
-        "type": "Badge",
-        "props": {
-          "text": { "$item": "employment_type" },
-          "tone": "accent",
-          "variant": "soft"
-        },
-        "visible": { "$item": "employment_type" }
-      },
-      "rowDivider": { "type": "Divider", "props": {} },
-
-      "footer": {
-        "type": "Row",
-        "props": { "justify": "center" },
-        "children": ["footerText"],
+        "props": { "gap": "sm", "align": "center", "template": "minmax(0, 1fr) 7rem 7rem", "padded": true },
+        "children": ["hdrNameOuter", "hdrStatus", "hdrDateGroup"],
         "visible": {
           "$and": [
             { "$state": "/_loading/employment-hero.list_employees", "not": true },
@@ -141,10 +89,54 @@
           ]
         }
       },
-      "footerText": {
-        "type": "Caption",
-        "props": { "text": "Active employees Â· Employment Hero" }
-      }
+      "hdrNameOuter": { "type": "Stack", "props": { "align": "start" }, "children": ["hdrNameGroup"] },
+      "hdrNameGroup": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["hdrName", "sortNameBtn"] },
+      "hdrName": { "type": "Caption", "props": { "text": "Name" } },
+      "sortNameBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ArrowUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by name" },
+        "on": { "click": [{ "action": "setState", "params": { "statePath": "/ui/sortKey", "value": { "$computed": "employment-hero_set_sort_field", "args": { "current": { "$state": "/ui/sortKey" }, "field": "full_name" } } } }] }
+      },
+      "hdrStatus": { "type": "Caption", "props": { "text": "Status" } },
+      "hdrDateGroup": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["hdrDate", "sortDateBtn"] },
+      "hdrDate": { "type": "Caption", "props": { "text": "Start Date" } },
+      "sortDateBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ArrowUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by start date" },
+        "on": { "click": [{ "action": "setState", "params": { "statePath": "/ui/sortKey", "value": { "$computed": "employment-hero_set_sort_field", "args": { "current": { "$state": "/ui/sortKey" }, "field": "date_sort_key" } } } }] }
+      },
+
+      "list": {
+        "type": "Stack", "props": { "gap": "xs" },
+        "children": ["empRow"],
+        "repeat": { "statePath": "/ui/employeeRows", "key": "id" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/employment-hero.list_employees", "not": true },
+            { "$state": "/employment-hero/list_employees/data/items/0" }
+          ]
+        }
+      },
+
+      "empRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "hover": true, "template": "minmax(0, 1fr) 7rem 7rem" },
+        "children": ["empIdentity", "empStatusWrap", "empDate"]
+      },
+      "empIdentity": { "type": "Stack", "props": { "gap": "none" }, "children": ["empName", "empTitle"] },
+      "empName": { "type": "Text", "props": { "text": { "$item": "full_name" }, "size": "sm", "weight": "medium", "truncate": true } },
+      "empTitle": { "type": "Caption", "props": { "text": { "$item": "job_title" }, "truncate": true } },
+      "empStatusWrap": { "type": "Stack", "props": { "align": "start" }, "children": ["empStatus"] },
+      "empStatus": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "employment_type" },
+          "tone": { "$computed": "employment-hero_employment_type_tone", "args": { "type": { "$item": "employment_type" } } },
+          "variant": "soft"
+        },
+        "visible": { "$item": "employment_type" }
+      },
+      "empDate": { "type": "Caption", "props": { "text": { "$item": "start_date" } } }
 
     }
   },
