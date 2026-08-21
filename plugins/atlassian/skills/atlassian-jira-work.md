@@ -56,4 +56,4 @@ Jira's default field set on `search_issues`/`get_issue` already covers the commo
 
 ## Out of scope (for now)
 
-Jira Service Management (SLA tracking, agent/customer ticket queues) and Confluence (pages, spaces) are not covered by this connector yet — say so plainly if asked, don't attempt to fake it via plain Jira issue tools.
+Confluence (pages, spaces) is a separate skill/persona in this plugin, not covered here. Jira Service Management (service desks, queues, SLA tracking) IS covered by this connector, but not by this skill or by plain `search_issues`/JQL — see `atlassian-jsm-queues.md` for service-desk/queue/SLA query patterns instead of trying to fake JSM data out of plain Jira issue tools.
