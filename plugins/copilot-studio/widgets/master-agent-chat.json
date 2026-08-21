@@ -23,10 +23,34 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "body", "suggestions", "composer"],
+        "children": ["header", "envBar", "body", "suggestions", "composer"],
         "watch": {
           "/copilot-studio/ask_master_agent/history": [
             { "action": "setState", "params": { "statePath": "/ui/pending", "value": "" } }
+          ],
+          "/copilot-studio/list_copilot_agents/count": [
+            { "action": "copilot-studio.list_copilot_environments", "params": {} }
+          ],
+          "/copilot-studio/list_copilot_environments/count": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/envOptions",
+                "value": {
+                  "$computed": "copilot-studio_env_options",
+                  "args": {
+                    "environments": { "$state": "/copilot-studio/list_copilot_environments/environments" }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedEnv",
+                "value": { "$state": "/copilot-studio/list_copilot_environments/activeEnvironmentId" }
+              }
+            }
           ],
           "/ui/draft": [
             {
@@ -76,6 +100,31 @@
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
       "title": { "type": "Heading", "props": { "text": "Master Agent", "level": "h2" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Copilot Studio orchestrator" } },
+
+      "envBar": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "visible": { "$state": "/ui/envOptions/0" },
+        "children": ["envLabel", "envSelect"]
+      },
+      "envLabel": { "type": "Caption", "props": { "text": "Environment", "tone": "muted" } },
+      "envSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/selectedEnv" },
+          "options": { "$state": "/ui/envOptions" },
+          "placeholder": "All environments",
+          "size": "sm"
+        },
+        "on": {
+          "change": [
+            {
+              "action": "copilot-studio.list_copilot_agents",
+              "params": { "environment_id": { "$state": "/ui/selectedEnv" } }
+            }
+          ]
+        }
+      },
 
       "body": {
         "type": "Body",
@@ -254,7 +303,8 @@
               "params": {
                 "message": { "$state": "/ui/pending" },
                 "history": { "$state": "/copilot-studio/ask_master_agent/history" },
-                "agent_conversations": { "$state": "/copilot-studio/ask_master_agent/agent_conversations" }
+                "agent_conversations": { "$state": "/copilot-studio/ask_master_agent/agent_conversations" },
+                "environment_id": { "$state": "/ui/selectedEnv" }
               }
             }
           ]
@@ -272,7 +322,8 @@
               "params": {
                 "message": { "$state": "/ui/pending" },
                 "history": { "$state": "/copilot-studio/ask_master_agent/history" },
-                "agent_conversations": { "$state": "/copilot-studio/ask_master_agent/agent_conversations" }
+                "agent_conversations": { "$state": "/copilot-studio/ask_master_agent/agent_conversations" },
+                "environment_id": { "$state": "/ui/selectedEnv" }
               }
             }
           ]
