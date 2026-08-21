@@ -50,19 +50,47 @@ still being clarified is never picked up.
 
 ## Setting up the build runner
 
-The runner authenticates to the workspace MCP endpoint as a human, but **authors
+Everything the runner needs is generated in the workspace: as a tenant admin open
+**mySidekick → Agents → myConnect Builder → Claude Code**. The dialog has three
+parts (myHubV2 spec `2026-08-19-platform-agent-claude-code-runner.md`):
+
+1. **Setup kit** — the MCP endpoint URL, the scopes to grant (`workq:read`,
+   `workq:write`, `agent:impersonate` — the last shows on the consent screen as
+   *Act as a workspace agent*), the *Act as* name to pick (**myConnect Builder**),
+   a suggested routine name, the repository and schedule from this plugin's
+   `runner-*` frontmatter, and the runner prompt — each with a Copy button.
+   Create the routine at claude.ai/code/routines from it.
+2. **API trigger** — on the routine add *another trigger → API → Generate token*,
+   paste the `trig_…` id and the token here. The token is stored encrypted and
+   never shown again. With **Fire on handoff** on, the workspace fires the routine
+   the moment the agent marks an item ready (and again after `blocked → ready`),
+   naming the item in the run context so the runner skips the poll. **Test fire**
+   confirms the wiring and links the session.
+3. **Recent fires** — status, attempts, session link, last error.
+
+The runner authenticates to the workspace MCP endpoint as a human but **authors
 as the agent** — comments read as myConnect Builder, not as whoever connected.
-That binding is chosen once, on the workspace's OAuth consent screen:
+That binding is chosen once, on the OAuth consent screen (*Act as*); it is
+fire-scoped to that one agent and survives token refresh. Requires the platform
+agent to be provisioned in the tenant first — an unprovisioned or admin-suspended
+agent does not appear in the picker.
 
-1. Workspace admin → Integrations → MCP: make sure the endpoint is enabled.
-2. Add the workspace as a connector in Claude Code and start the OAuth flow.
-3. On the consent screen, grant `workq:read`, `workq:write`, and
-   **Act as a workspace agent**, then pick **myConnect Builder** under *Act as*.
-4. Create a Claude Code routine on a schedule whose prompt polls
-   `workq_agent_inbox` with `agentState: 'ready'`, does the work in the myConnect
-   repo, and reports back with `workq_agent_comment` / `workq_agent_update`.
+The schedule stays as a safety net: if a fire fails terminally (token rotated,
+routine paused) the workspace shows it on the agent card and the next scheduled
+run still picks the item up.
 
-The grant is fire-scoped to that one agent: it cannot act as any other agent, and
-the binding survives token refresh. Requires the platform agent to be provisioned
-in the tenant first — an unprovisioned or admin-suspended agent does not appear in
-the picker.
+### Frontmatter used by the setup kit
+
+```yaml
+runner: claude-code
+runner-repository: mySMB-AI-Studio/myconnect
+runner-schedule: */30 * * * *
+```
+
+Flat keys (the agent frontmatter parser is line-based). Regenerate the content
+payload after editing the agent markdown:
+
+```bash
+# from the myHubV2 repo root
+npx tsx scripts/regen-plugin-agent-payload.ts ../mysmb-marketplace/plugins/myconnect-builder myconnect-builder
+```
