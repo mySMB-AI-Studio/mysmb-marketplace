@@ -119,14 +119,17 @@
 
       "transcript": {
         "type": "Stack",
-        "props": { "gap": "md", "align": "start" },
+        "props": { "gap": "md", "align": "stretch" },
         "visible": { "$state": "/copilot-studio/ask_master_agent/history/0" },
         "repeat": { "statePath": "/copilot-studio/ask_master_agent/history", "key": "id" },
         "children": ["turnRow"]
       },
       "turnRow": {
         "type": "Stack",
-        "props": { "gap": "xxs", "align": "start" },
+        "props": {
+          "gap": "xxs",
+          "align": { "$cond": { "$item": "role", "eq": "user" }, "$then": "end", "$else": "start" }
+        },
         "children": ["turnWho", "turnBubble"]
       },
       "turnWho": {
@@ -144,14 +147,9 @@
         "type": "Section",
         "props": {
           "variant": {
-            "$cond": { "$item": "role", "eq": "assistant" },
-            "$then": "bordered",
-            "$else": "plain"
-          },
-          "inset": {
             "$cond": { "$item": "role", "eq": "user" },
-            "$then": true,
-            "$else": false
+            "$then": "muted",
+            "$else": "bordered"
           }
         },
         "children": ["turnTextUser", "turnTextAssistant"]
@@ -197,7 +195,7 @@
 
       "pending": {
         "type": "Stack",
-        "props": { "gap": "xxs", "align": "start" },
+        "props": { "gap": "xxs", "align": "end" },
         "visible": { "$state": "/ui/pending" },
         "children": ["pendWho", "pendText"]
       },
