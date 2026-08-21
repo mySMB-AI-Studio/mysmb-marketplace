@@ -8,8 +8,8 @@
   "connectorsUsed": ["copilot-studio"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 6, "rowSpan": 8 },
-    "min":       { "colSpan": 4, "rowSpan": 5 },
+    "preferred": { "colSpan": 5, "rowSpan": 4 },
+    "min":       { "colSpan": 4, "rowSpan": 3 },
     "max":       { "colSpan": 12, "rowSpan": 14 }
   },
   "dataProvider": {
@@ -56,7 +56,7 @@
       "headerRow": {
         "type": "Row",
         "props": { "justify": "between", "align": "center" },
-        "children": ["titleGroup", "refreshBtn"]
+        "children": ["titleGroup"]
       },
       "titleGroup": {
         "type": "Row",
@@ -78,14 +78,6 @@
           }
         }
       },
-      "refreshBtn": {
-        "type": "Button",
-        "props": { "label": "Refresh", "variant": "ghost", "size": "sm", "leadingIcon": "RefreshCw" },
-        "on": {
-          "click": { "action": "copilot-studio.list_copilot_agents", "params": {} }
-        }
-      },
-
       "body": { "type": "Body", "props": {}, "children": ["bodyStack"] },
       "bodyStack": {
         "type": "Stack",
@@ -110,10 +102,6 @@
         },
         "on": {
           "change": [
-            {
-              "action": "copilot-studio.set_active_environment",
-              "params": { "environment_id": { "$state": "/ui/selectedEnv" } }
-            },
             {
               "action": "copilot-studio.list_copilot_agents",
               "params": { "environment_id": { "$state": "/ui/selectedEnv" } }
