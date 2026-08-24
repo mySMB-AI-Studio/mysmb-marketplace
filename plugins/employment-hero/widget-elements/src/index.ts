@@ -236,44 +236,29 @@ const flatten_my_leave_requests: ComputedFunction = (args) => {
 };
 
 // ── flatten_compliance_at_risk ────────────────────────────────────────────────
-// Filters compliance items to only those due today or already overdue.
-// Sorts by due_date ascending (most urgent first).
-// Status: "Due Today" (warning) if due_date === today, "Expired" (destructive) if past.
-// Args: { value: raw items array }
+// The MCP server pre-filters to at-risk items only and sets status_label/
+// status_tone ("Overdue"/"Due Today") and status_tone. This function only
+// builds display_name and formats due_date — both unavailable server-side.
+// Args: { value: pre-filtered items array from list_compliance_documents }
 const flatten_compliance_at_risk: ComputedFunction = (args) => {
-  const raw = Array.isArray(args.value) ? [...(args.value as Record<string, unknown>[])] : [];
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayTs = today.getTime();
+  return raw.map(item => {
+    const certName = String(item.name ?? item.certification_name ?? item.document_name ?? item.title ?? '');
+    const empName = String(item.employee_name ?? '').trim();
+    const displayName = empName ? `${certName} — ${empName}` : certName;
 
-  return raw
-    .map(item => {
-      const itemName = String(
-        item.name ?? item.document_name ?? item.title ?? item.certification_name ?? ''
-      );
-      const emp = item.employee as Record<string, unknown> | null | undefined;
-      const entityName = String(
-        item.employee_name ?? item.entity_name ??
-        (emp ? (emp.name ?? `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim()) : '') ??
-        item.organisation_name ?? ''
-      ).trim();
-      const displayName = entityName ? `${itemName} — ${entityName}` : itemName;
+    const dueRaw = item.due_date ?? item.expiry_date ?? item.expires_at;
+    const { display: dueDisplay } = formatEhDate(dueRaw);
 
-      const dueRaw = item.due_date ?? item.expiry_date ?? item.expires_at;
-      const { display: dueDisplay, ts: dueTs } = formatEhDate(dueRaw);
-
-      return { item, displayName, dueDisplay, dueTs };
-    })
-    .filter(({ dueTs }) => dueTs > 0 && dueTs <= todayTs)
-    .sort((a, b) => a.dueTs - b.dueTs)
-    .map(({ item, displayName, dueDisplay, dueTs }) => ({
+    return {
       id:           String(item.id ?? ''),
       display_name: displayName,
       due_date:     dueDisplay,
-      status_label: dueTs === todayTs ? 'Due Today' : 'Expired',
-      status_tone:  dueTs === todayTs ? 'warning' : 'destructive',
-    }));
+      status_label: String(item.status_label ?? ''),
+      status_tone:  String(item.status_tone ?? ''),
+    };
+  });
 };
 
 // ── flatten_timesheets_to_approve ─────────────────────────────────────────────
