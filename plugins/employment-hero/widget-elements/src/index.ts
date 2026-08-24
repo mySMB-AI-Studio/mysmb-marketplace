@@ -153,6 +153,88 @@ const flatten_leave_requests: ComputedFunction = (args) => {
   });
 };
 
+// ── Shared leave-type resolver ────────────────────────────────────────────────
+function resolveEhLeaveType(item: Record<string, unknown>): string {
+  const lt = item.leave_type as Record<string, unknown> | string | null | undefined;
+  if (typeof lt === 'string' && lt) return lt;
+  if (lt && typeof lt === 'object' && typeof lt.name === 'string') return lt.name;
+  if (typeof item.leave_type_name === 'string' && item.leave_type_name) return item.leave_type_name;
+  if (typeof item.leave_type_id === 'string' && item.leave_type_id) return item.leave_type_id;
+  return '';
+}
+
+// ── flatten_upcoming_leave ────────────────────────────────────────────────────
+// Filters approved leave to start_date >= today, sorts ascending.
+// Always emits status_label "Approved" / status_tone "success".
+// Single-day leave shows one date; multi-day shows "dd-Mmm-yy → dd-Mmm-yy".
+// Args: { value: raw items array }
+const flatten_upcoming_leave: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? [...(args.value as Record<string, unknown>[])] : [];
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayTs = today.getTime();
+
+  return raw
+    .filter(item => {
+      const { ts } = formatEhDate(item.start_date);
+      return ts > 0 && ts >= todayTs;
+    })
+    .sort((a, b) => formatEhDate(a.start_date).ts - formatEhDate(b.start_date).ts)
+    .map(item => {
+      const { display: startDisplay } = formatEhDate(item.start_date);
+      const { display: endDisplay } = formatEhDate(item.end_date);
+      const dateRange = !endDisplay || startDisplay === endDisplay
+        ? startDisplay
+        : `${startDisplay} → ${endDisplay}`;
+      return {
+        id:           String(item.id ?? ''),
+        leave_type:   resolveEhLeaveType(item),
+        date_range:   dateRange,
+        status_label: 'Approved',
+        status_tone:  'success',
+      };
+    });
+};
+
+// ── flatten_my_leave_requests ─────────────────────────────────────────────────
+// Normalises the current user's leave requests into display-ready rows.
+// Maps EH status → Approved (success) / Declined (destructive) / Pending (muted).
+// Sorts by start_date descending (most recent first).
+// Args: { value: raw items array }
+const flatten_my_leave_requests: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? [...(args.value as Record<string, unknown>[])] : [];
+
+  return [...raw]
+    .sort((a, b) => formatEhDate(b.start_date).ts - formatEhDate(a.start_date).ts)
+    .map(item => {
+      const { display: startDisplay } = formatEhDate(item.start_date);
+      const { display: endDisplay } = formatEhDate(item.end_date);
+      const dateRange = !endDisplay || startDisplay === endDisplay
+        ? startDisplay
+        : `${startDisplay} → ${endDisplay}`;
+
+      const rawStatus = String(item.status ?? '').toLowerCase();
+      let statusLabel: string;
+      let statusTone: string;
+      if (rawStatus === 'approved') {
+        statusLabel = 'Approved'; statusTone = 'success';
+      } else if (rawStatus === 'declined' || rawStatus === 'rejected') {
+        statusLabel = 'Declined'; statusTone = 'destructive';
+      } else {
+        statusLabel = 'Pending'; statusTone = 'muted';
+      }
+
+      return {
+        id:           String(item.id ?? ''),
+        leave_type:   resolveEhLeaveType(item),
+        date_range:   dateRange,
+        status_label: statusLabel,
+        status_tone:  statusTone,
+      };
+    });
+};
+
 const elements: PluginElementsModule = {
   slug: 'employment-hero',
   functions: {
@@ -160,6 +242,8 @@ const elements: PluginElementsModule = {
     employment_type_tone,
     flatten_employees,
     flatten_leave_requests,
+    flatten_upcoming_leave,
+    flatten_my_leave_requests,
   },
 };
 

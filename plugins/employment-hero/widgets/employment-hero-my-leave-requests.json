@@ -1,0 +1,126 @@
+{
+  "id": "employment-hero-my-leave-requests",
+  "title": "My Leave Requests",
+  "description": "Status of leave requests you have submitted in Employment Hero.",
+  "category": "hr",
+  "tags": ["employment-hero", "hr", "leave", "approvals", "user"],
+  "keywords": ["leave request", "my requests", "approval status", "pending", "approved", "declined", "employment hero"],
+  "connectorsUsed": ["employment-hero"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 7 },
+    "min":       { "colSpan": 4, "rowSpan": 5 },
+    "max":       { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "employment-hero",
+    "tool": "list_leave_requests",
+    "params": { "per_page": 25 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body", "footer"],
+        "watch": {
+          "/employment-hero/list_leave_requests/data/items": [
+            { "action": "setState", "params": { "statePath": "/ui/myLeaveRows", "value": { "$computed": "employment-hero_flatten_my_leave_requests", "args": { "value": { "$state": "/employment-hero/list_leave_requests/data/items" } } } } }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
+      "headerRow": { "type": "Row", "props": { "align": "center", "template": "1fr auto" }, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "ClipboardList", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "My Leave Requests", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Employment Hero" } },
+
+      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "list"] },
+
+      "loading": {
+        "type": "Stack", "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/employment-hero.list_leave_requests" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No leave requests found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/employment-hero.list_leave_requests", "not": true },
+            { "$state": "/ui/myLeaveRows/0", "not": true }
+          ]
+        }
+      },
+
+      "list": {
+        "type": "Stack", "props": { "gap": "xs" },
+        "children": ["leaveRow"],
+        "repeat": { "statePath": "/ui/myLeaveRows", "key": "id" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/employment-hero.list_leave_requests", "not": true },
+            { "$state": "/ui/myLeaveRows/0" }
+          ]
+        }
+      },
+
+      "leaveRow": {
+        "type": "Stack", "props": { "gap": "xs" },
+        "children": ["leaveRowContent", "leaveRowDivider"]
+      },
+      "leaveRowContent": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center", "hover": true },
+        "children": ["leaveLeft", "leaveStatus"]
+      },
+      "leaveLeft": {
+        "type": "Stack", "props": { "gap": "none" },
+        "children": ["leaveType", "leaveDates"]
+      },
+      "leaveType": {
+        "type": "Text",
+        "props": { "text": { "$item": "leave_type" }, "size": "sm", "weight": "medium" }
+      },
+      "leaveDates": {
+        "type": "Caption",
+        "props": { "text": { "$item": "date_range" } }
+      },
+      "leaveStatus": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "status_label" },
+          "tone": { "$item": "status_tone" },
+          "variant": "soft"
+        }
+      },
+      "leaveRowDivider": { "type": "Divider", "props": {} },
+
+      "footer": {
+        "type": "Row", "props": { "justify": "center" },
+        "children": ["footerText"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/employment-hero.list_leave_requests", "not": true },
+            { "$state": "/ui/myLeaveRows/0" }
+          ]
+        }
+      },
+      "footerText": {
+        "type": "Caption",
+        "props": { "text": "Requests you've submitted · Employment Hero" }
+      }
+
+    }
+  },
+  "status": "published"
+}
