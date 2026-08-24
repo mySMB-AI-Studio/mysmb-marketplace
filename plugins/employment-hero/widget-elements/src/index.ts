@@ -187,12 +187,20 @@ const flatten_upcoming_leave: ComputedFunction = (args) => {
       const dateRange = !endDisplay || startDisplay === endDisplay
         ? startDisplay
         : `${startDisplay} → ${endDisplay}`;
+      const emp = item.employee as Record<string, unknown> | null | undefined;
+      const empName: string =
+        (typeof item.employee_name === 'string' && item.employee_name)
+          ? item.employee_name
+          : emp
+            ? `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim()
+            : `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim();
       return {
-        id:           String(item.id ?? ''),
-        leave_type:   resolveEhLeaveType(item),
-        date_range:   dateRange,
-        status_label: 'Approved',
-        status_tone:  'success',
+        id:            String(item.id ?? ''),
+        employee_name: empName,
+        leave_type:    resolveEhLeaveType(item),
+        date_range:    dateRange,
+        status_label:  'Approved',
+        status_tone:   'success',
       };
     });
 };
@@ -225,12 +233,20 @@ const flatten_my_leave_requests: ComputedFunction = (args) => {
         statusLabel = 'Pending'; statusTone = 'muted';
       }
 
+      const emp = item.employee as Record<string, unknown> | null | undefined;
+      const empName: string =
+        (typeof item.employee_name === 'string' && item.employee_name)
+          ? item.employee_name
+          : emp
+            ? `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim()
+            : `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim();
       return {
-        id:           String(item.id ?? ''),
-        leave_type:   resolveEhLeaveType(item),
-        date_range:   dateRange,
-        status_label: statusLabel,
-        status_tone:  statusTone,
+        id:            String(item.id ?? ''),
+        employee_name: empName,
+        leave_type:    resolveEhLeaveType(item),
+        date_range:    dateRange,
+        status_label:  statusLabel,
+        status_tone:   statusTone,
       };
     });
 };

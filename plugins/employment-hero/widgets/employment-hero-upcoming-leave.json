@@ -1,10 +1,10 @@
 {
-  "id": "employment-hero-leave-requests",
-  "title": "Pending Leave Requests",
-  "description": "Live list of pending employee leave requests from Employment Hero.",
+  "id": "employment-hero-upcoming-leave",
+  "title": "Upcoming Leave",
+  "description": "Your upcoming approved leave from Employment Hero.",
   "category": "hr",
-  "tags": ["employment-hero", "hr", "leave", "requests", "pending"],
-  "keywords": ["leave", "leave request", "pending", "time off", "absence", "hr", "employment hero"],
+  "tags": ["employment-hero", "hr", "leave", "upcoming", "user"],
+  "keywords": ["upcoming leave", "approved leave", "time off", "my leave", "employment hero"],
   "connectorsUsed": ["employment-hero"],
   "popularity": 0,
   "sizing": {
@@ -15,7 +15,7 @@
   "dataProvider": {
     "mcp": "employment-hero",
     "tool": "list_leave_requests",
-    "params": { "status": "pending", "per_page": 25 }
+    "params": { "status": "approved", "per_page": 25 }
   },
   "spec": {
     "root": "card",
@@ -27,7 +27,7 @@
         "children": ["header", "body", "footer"],
         "watch": {
           "/employment-hero/list_leave_requests/data/items": [
-            { "action": "setState", "params": { "statePath": "/ui/leaveRows", "value": { "$computed": "employment-hero_flatten_leave_requests", "args": { "value": { "$state": "/employment-hero/list_leave_requests/data/items" } } } } }
+            { "action": "setState", "params": { "statePath": "/ui/upcomingRows", "value": { "$computed": "employment-hero_flatten_upcoming_leave", "args": { "value": { "$state": "/employment-hero/list_leave_requests/data/items" } } } } }
           ]
         }
       },
@@ -35,30 +35,29 @@
       "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
       "headerRow": { "type": "Row", "props": { "align": "center", "template": "1fr auto" }, "children": ["titleGroup"] },
       "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["titleIcon", "titleStack"] },
-      "titleIcon": { "type": "Icon", "props": { "name": "CalendarOff", "tone": "accent", "size": "sm" } },
+      "titleIcon": { "type": "Icon", "props": { "name": "Palmtree", "tone": "accent", "size": "sm" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Pending Leave Requests", "level": "h2" } },
+      "title": { "type": "Heading", "props": { "text": "Upcoming Leave", "level": "h2" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Employment Hero" } },
 
       "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "list"] },
 
       "loading": {
         "type": "Stack", "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "children": ["sk1", "sk2", "sk3"],
         "visible": { "$state": "/_loading/employment-hero.list_leave_requests" }
       },
       "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
       "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
       "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
-      "sk4": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
 
       "empty": {
         "type": "Empty",
-        "props": { "message": "No pending leave requests." },
+        "props": { "message": "No upcoming leave." },
         "visible": {
           "$and": [
             { "$state": "/_loading/employment-hero.list_leave_requests", "not": true },
-            { "$state": "/employment-hero/list_leave_requests/data/items/0", "not": true }
+            { "$state": "/ui/upcomingRows/0", "not": true }
           ]
         }
       },
@@ -66,11 +65,11 @@
       "list": {
         "type": "Stack", "props": { "gap": "xs" },
         "children": ["leaveRow"],
-        "repeat": { "statePath": "/ui/leaveRows", "key": "id" },
+        "repeat": { "statePath": "/ui/upcomingRows", "key": "id" },
         "visible": {
           "$and": [
             { "$state": "/_loading/employment-hero.list_leave_requests", "not": true },
-            { "$state": "/employment-hero/list_leave_requests/data/items/0" }
+            { "$state": "/ui/upcomingRows/0" }
           ]
         }
       },
@@ -81,28 +80,24 @@
       },
       "leaveRowContent": {
         "type": "Row",
-        "props": { "justify": "between", "align": "start", "hover": true },
-        "children": ["leaveIdentity", "leaveRight"]
+        "props": { "justify": "between", "align": "center", "hover": true },
+        "children": ["leaveLeft", "leaveRight"]
       },
-      "leaveIdentity": {
+      "leaveLeft": {
         "type": "Stack", "props": { "gap": "none" },
-        "children": ["leaveName", "leaveType"]
+        "children": ["employeeName", "leaveType"]
       },
-      "leaveName": {
+      "employeeName": {
         "type": "Text",
         "props": { "text": { "$item": "employee_name" }, "size": "sm", "weight": "medium", "truncate": true }
       },
       "leaveType": {
         "type": "Caption",
-        "props": { "text": { "$item": "leave_type" }, "truncate": true }
+        "props": { "text": { "$item": "leave_type" } }
       },
       "leaveRight": {
         "type": "Stack", "props": { "gap": "none", "align": "end" },
-        "children": ["leaveStatusWrap", "leaveDates"]
-      },
-      "leaveStatusWrap": {
-        "type": "Stack", "props": { "align": "end" },
-        "children": ["leaveStatus"]
+        "children": ["leaveStatus", "leaveDates"]
       },
       "leaveStatus": {
         "type": "Badge",
@@ -124,13 +119,13 @@
         "visible": {
           "$and": [
             { "$state": "/_loading/employment-hero.list_leave_requests", "not": true },
-            { "$state": "/employment-hero/list_leave_requests/data/items/0" }
+            { "$state": "/ui/upcomingRows/0" }
           ]
         }
       },
       "footerText": {
         "type": "Caption",
-        "props": { "text": "Pending requests only · Employment Hero" }
+        "props": { "text": "Your upcoming leave · Employment Hero" }
       }
 
     }
