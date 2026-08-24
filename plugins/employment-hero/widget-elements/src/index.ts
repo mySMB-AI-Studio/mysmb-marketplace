@@ -192,15 +192,20 @@ const flatten_upcoming_leave: ComputedFunction = (args) => {
         (typeof item.employee_name === 'string' && item.employee_name)
           ? item.employee_name
           : emp
-            ? `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim()
+            ? (typeof emp.name === 'string' && emp.name ? emp.name : `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim())
             : `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim();
+
+      const rawStatus = String(item.status ?? '').toLowerCase();
+      const statusLabel = rawStatus === 'approved' ? 'Approved' : rawStatus === 'declined' || rawStatus === 'rejected' ? 'Declined' : 'Pending';
+      const statusTone  = rawStatus === 'approved' ? 'success'  : rawStatus === 'declined' || rawStatus === 'rejected' ? 'destructive' : 'muted';
+
       return {
         id:            String(item.id ?? ''),
         employee_name: empName,
         leave_type:    resolveEhLeaveType(item),
         date_range:    dateRange,
-        status_label:  'Approved',
-        status_tone:   'success',
+        status_label:  statusLabel,
+        status_tone:   statusTone,
       };
     });
 };
@@ -238,7 +243,7 @@ const flatten_my_leave_requests: ComputedFunction = (args) => {
         (typeof item.employee_name === 'string' && item.employee_name)
           ? item.employee_name
           : emp
-            ? `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim()
+            ? (typeof emp.name === 'string' && emp.name ? emp.name : `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim())
             : `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim();
       return {
         id:            String(item.id ?? ''),
