@@ -153,6 +153,167 @@ const flatten_leave_requests: ComputedFunction = (args) => {
   });
 };
 
+// ── Shared leave-type resolver ────────────────────────────────────────────────
+function resolveEhLeaveType(item: Record<string, unknown>): string {
+  const lt = item.leave_type as Record<string, unknown> | string | null | undefined;
+  if (typeof lt === 'string' && lt) return lt;
+  if (lt && typeof lt === 'object' && typeof lt.name === 'string') return lt.name;
+  if (typeof item.leave_type_name === 'string' && item.leave_type_name) return item.leave_type_name;
+  if (typeof item.leave_type_id === 'string' && item.leave_type_id) return item.leave_type_id;
+  return '';
+}
+
+// ── flatten_upcoming_leave ────────────────────────────────────────────────────
+// Filters approved leave to start_date >= today, sorts ascending.
+// Always emits status_label "Approved" / status_tone "success".
+// Single-day leave shows one date; multi-day shows "dd-Mmm-yy → dd-Mmm-yy".
+// Args: { value: raw items array }
+const flatten_upcoming_leave: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? [...(args.value as Record<string, unknown>[])] : [];
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayTs = today.getTime();
+
+  return raw
+    .filter(item => {
+      const { ts } = formatEhDate(item.start_date);
+      return ts > 0 && ts >= todayTs;
+    })
+    .sort((a, b) => formatEhDate(a.start_date).ts - formatEhDate(b.start_date).ts)
+    .map(item => {
+      const { display: startDisplay } = formatEhDate(item.start_date);
+      const { display: endDisplay } = formatEhDate(item.end_date);
+      const dateRange = !endDisplay || startDisplay === endDisplay
+        ? startDisplay
+        : `${startDisplay} → ${endDisplay}`;
+      return {
+        id:           String(item.id ?? ''),
+        leave_type:   resolveEhLeaveType(item),
+        date_range:   dateRange,
+        status_label: 'Approved',
+        status_tone:  'success',
+      };
+    });
+};
+
+// ── flatten_my_leave_requests ─────────────────────────────────────────────────
+// Normalises the current user's leave requests into display-ready rows.
+// Maps EH status → Approved (success) / Declined (destructive) / Pending (muted).
+// Sorts by start_date descending (most recent first).
+// Args: { value: raw items array }
+const flatten_my_leave_requests: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? [...(args.value as Record<string, unknown>[])] : [];
+
+  return [...raw]
+    .sort((a, b) => formatEhDate(b.start_date).ts - formatEhDate(a.start_date).ts)
+    .map(item => {
+      const { display: startDisplay } = formatEhDate(item.start_date);
+      const { display: endDisplay } = formatEhDate(item.end_date);
+      const dateRange = !endDisplay || startDisplay === endDisplay
+        ? startDisplay
+        : `${startDisplay} → ${endDisplay}`;
+
+      const rawStatus = String(item.status ?? '').toLowerCase();
+      let statusLabel: string;
+      let statusTone: string;
+      if (rawStatus === 'approved') {
+        statusLabel = 'Approved'; statusTone = 'success';
+      } else if (rawStatus === 'declined' || rawStatus === 'rejected') {
+        statusLabel = 'Declined'; statusTone = 'destructive';
+      } else {
+        statusLabel = 'Pending'; statusTone = 'muted';
+      }
+
+      return {
+        id:           String(item.id ?? ''),
+        leave_type:   resolveEhLeaveType(item),
+        date_range:   dateRange,
+        status_label: statusLabel,
+        status_tone:  statusTone,
+      };
+    });
+};
+
+// ── flatten_compliance_at_risk ────────────────────────────────────────────────
+// Filters compliance items to only those due today or already overdue.
+// Sorts by due_date ascending (most urgent first).
+// Status: "Due Today" (warning) if due_date === today, "Expired" (destructive) if past.
+// Args: { value: raw items array }
+const flatten_compliance_at_risk: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? [...(args.value as Record<string, unknown>[])] : [];
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayTs = today.getTime();
+
+  return raw
+    .map(item => {
+      const itemName = String(
+        item.name ?? item.document_name ?? item.title ?? item.certification_name ?? ''
+      );
+      const emp = item.employee as Record<string, unknown> | null | undefined;
+      const entityName = String(
+        item.employee_name ?? item.entity_name ??
+        (emp ? (emp.name ?? `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim()) : '') ??
+        item.organisation_name ?? ''
+      ).trim();
+      const displayName = entityName ? `${itemName} — ${entityName}` : itemName;
+
+      const dueRaw = item.due_date ?? item.expiry_date ?? item.expires_at;
+      const { display: dueDisplay, ts: dueTs } = formatEhDate(dueRaw);
+
+      return { item, displayName, dueDisplay, dueTs };
+    })
+    .filter(({ dueTs }) => dueTs > 0 && dueTs <= todayTs)
+    .sort((a, b) => a.dueTs - b.dueTs)
+    .map(({ item, displayName, dueDisplay, dueTs }) => ({
+      id:           String(item.id ?? ''),
+      display_name: displayName,
+      due_date:     dueDisplay,
+      status_label: dueTs === todayTs ? 'Due Today' : 'Expired',
+      status_tone:  dueTs === todayTs ? 'warning' : 'destructive',
+    }));
+};
+
+// ── flatten_timesheets_to_approve ─────────────────────────────────────────────
+// Normalises per-employee aggregated timesheet data into display-ready rows.
+// Status: "Overdue" (destructive) if end_date < today, "Pending" (muted) otherwise.
+// Args: { value: raw items array }
+const flatten_timesheets_to_approve: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? [...(args.value as Record<string, unknown>[])] : [];
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayTs = today.getTime();
+
+  return raw.map(item => {
+    const emp = item.employee as Record<string, unknown> | null | undefined;
+    const empName = String(
+      item.employee_name ?? emp?.name ??
+      `${emp?.first_name ?? ''} ${emp?.last_name ?? ''}`.trim() ?? ''
+    );
+
+    const totalHours = Number(item.total_hours ?? item.hours ?? 0);
+    const hoursDisplay = `${totalHours.toFixed(1)} hrs`;
+
+    const { display: startDisplay } = formatEhDate(item.start_date);
+    const { display: endDisplay, ts: endTs } = formatEhDate(item.end_date);
+    const payPeriod = !endDisplay || startDisplay === endDisplay
+      ? startDisplay
+      : `${startDisplay} → ${endDisplay}`;
+
+    return {
+      id:            String(item.id ?? ''),
+      employee_name: empName,
+      hours_display: hoursDisplay,
+      pay_period:    payPeriod,
+      status_label:  endTs > 0 && endTs < todayTs ? 'Overdue' : 'Pending',
+      status_tone:   endTs > 0 && endTs < todayTs ? 'destructive' : 'muted',
+    };
+  });
+};
+
 const elements: PluginElementsModule = {
   slug: 'employment-hero',
   functions: {
@@ -160,6 +321,10 @@ const elements: PluginElementsModule = {
     employment_type_tone,
     flatten_employees,
     flatten_leave_requests,
+    flatten_upcoming_leave,
+    flatten_my_leave_requests,
+    flatten_compliance_at_risk,
+    flatten_timesheets_to_approve,
   },
 };
 
