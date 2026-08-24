@@ -81,19 +81,23 @@
       "leaveRowContent": {
         "type": "Row",
         "props": { "justify": "between", "align": "center", "hover": true },
-        "children": ["leaveLeft", "leaveStatus"]
+        "children": ["leaveLeft", "leaveRight"]
       },
       "leaveLeft": {
         "type": "Stack", "props": { "gap": "none" },
-        "children": ["leaveType", "leaveDates"]
+        "children": ["employeeName", "leaveType"]
+      },
+      "employeeName": {
+        "type": "Text",
+        "props": { "text": { "$item": "employee_name" }, "size": "sm", "weight": "medium", "truncate": true }
       },
       "leaveType": {
-        "type": "Text",
-        "props": { "text": { "$item": "leave_type" }, "size": "sm", "weight": "medium" }
-      },
-      "leaveDates": {
         "type": "Caption",
-        "props": { "text": { "$item": "date_range" } }
+        "props": { "text": { "$item": "leave_type" } }
+      },
+      "leaveRight": {
+        "type": "Stack", "props": { "gap": "none", "align": "end" },
+        "children": ["leaveStatus", "leaveDates"]
       },
       "leaveStatus": {
         "type": "Badge",
@@ -102,6 +106,10 @@
           "tone": { "$item": "status_tone" },
           "variant": "soft"
         }
+      },
+      "leaveDates": {
+        "type": "Caption",
+        "props": { "text": { "$item": "date_range" } }
       },
       "leaveRowDivider": { "type": "Divider", "props": {} },
 

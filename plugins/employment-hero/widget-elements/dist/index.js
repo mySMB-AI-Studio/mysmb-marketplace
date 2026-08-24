@@ -174,8 +174,15 @@ const flatten_upcoming_leave = (args) => {
         const dateRange = !endDisplay || startDisplay === endDisplay
             ? startDisplay
             : `${startDisplay} → ${endDisplay}`;
+        const emp = item.employee;
+        const empName = (typeof item.employee_name === 'string' && item.employee_name)
+            ? item.employee_name
+            : emp
+                ? `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim()
+                : `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim();
         return {
             id: String(item.id ?? ''),
+            employee_name: empName,
             leave_type: resolveEhLeaveType(item),
             date_range: dateRange,
             status_label: 'Approved',
@@ -213,8 +220,15 @@ const flatten_my_leave_requests = (args) => {
             statusLabel = 'Pending';
             statusTone = 'muted';
         }
+        const emp = item.employee;
+        const empName = (typeof item.employee_name === 'string' && item.employee_name)
+            ? item.employee_name
+            : emp
+                ? `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim()
+                : `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim();
         return {
             id: String(item.id ?? ''),
+            employee_name: empName,
             leave_type: resolveEhLeaveType(item),
             date_range: dateRange,
             status_label: statusLabel,
