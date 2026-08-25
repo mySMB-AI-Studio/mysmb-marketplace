@@ -157,9 +157,14 @@ const flatten_leave_requests: ComputedFunction = (args) => {
 function resolveEhLeaveType(item: Record<string, unknown>): string {
   const lt = item.leave_type as Record<string, unknown> | string | null | undefined;
   if (typeof lt === 'string' && lt) return lt;
-  if (lt && typeof lt === 'object' && typeof lt.name === 'string') return lt.name;
+  if (lt && typeof lt === 'object') {
+    if (typeof lt.name === 'string' && lt.name) return lt.name;
+    if (typeof lt.title === 'string' && lt.title) return lt.title;
+    if (typeof lt.leave_type_name === 'string' && lt.leave_type_name) return lt.leave_type_name;
+    if (typeof lt.display_name === 'string' && lt.display_name) return lt.display_name;
+  }
   if (typeof item.leave_type_name === 'string' && item.leave_type_name) return item.leave_type_name;
-  if (typeof item.leave_type_id === 'string' && item.leave_type_id) return item.leave_type_id;
+  if (item.leave_type_id != null && item.leave_type_id !== '') return `Type #${item.leave_type_id}`;
   return '';
 }
 
@@ -252,13 +257,19 @@ const flatten_my_leave_requests: ComputedFunction = (args) => {
               : `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim()
             : `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim();
 
-      const { display: submittedDisplay } = formatEhDate(item.created_at ?? item.submitted_at);
+      const { display: submittedDisplay } = formatEhDate(
+        item.created_at ?? item.submitted_at ?? item.lodged_at ?? item.lodgement_date ?? item.date_lodged
+      );
       let submittedLabel = submittedDisplay ? `Submitted ${submittedDisplay}` : '';
       if (rawStatus === 'approved') {
-        const { display: actionDisplay } = formatEhDate(item.approved_at ?? item.reviewed_at);
+        const { display: actionDisplay } = formatEhDate(
+          item.approved_at ?? item.approved_date ?? item.reviewed_at ?? item.actioned_at
+        );
         if (actionDisplay) submittedLabel += ` · Approved ${actionDisplay}`;
       } else if (rawStatus === 'declined' || rawStatus === 'rejected') {
-        const { display: actionDisplay } = formatEhDate(item.declined_at ?? item.rejected_at ?? item.reviewed_at);
+        const { display: actionDisplay } = formatEhDate(
+          item.declined_at ?? item.declined_date ?? item.rejected_at ?? item.reviewed_at ?? item.actioned_at
+        );
         if (actionDisplay) submittedLabel += ` · Declined ${actionDisplay}`;
       }
 
