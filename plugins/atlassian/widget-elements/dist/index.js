@@ -112,11 +112,104 @@ const sla_label = (args) => {
     const ms = Number(cycle.remainingTime?.millis);
     return Number.isFinite(ms) ? formatMillis(ms) : 'No active SLA';
 };
+function normalizeCategory(v) {
+    return typeof v === 'string' ? v.trim().toUpperCase() : '';
+}
+// The "Time to resolution" clock specifically -- NOT first-response, NOT
+// close-after-resolution. Matched by name, case-insensitively, since
+// Atlassian returns it as a plain display string on `sla.values[].name`.
+function findResolutionCycle(request) {
+    const values = request?.sla?.values;
+    if (!Array.isArray(values))
+        return undefined;
+    const match = values.find((v) => v &&
+        typeof v === 'object' &&
+        typeof v.name === 'string' &&
+        v.name.trim().toLowerCase() === 'time to resolution');
+    return match?.ongoingCycle;
+}
+function classifyRequest(request) {
+    const cycle = findResolutionCycle(request);
+    if (cycle?.breached === true)
+        return 'alerts';
+    if (cycle && isAtRisk(cycle))
+        return 'behind';
+    const category = normalizeCategory(request?.currentStatus?.statusCategory);
+    if (category === 'NEW')
+        return 'new';
+    return 'in_progress';
+}
+const request_bucket = (args) => classifyRequest(args.request);
+/**
+ * Count how many requests in a list fall into one bucket. Used for the
+ * four stat-card counts and the header "breached" counter (bucket
+ * "alerts").
+ *
+ * Args: { values, bucket } -- `values` is the request array (e.g.
+ * `/atlassian/list_service_desk_requests/values`), `bucket` one of
+ * 'new' | 'in_progress' | 'behind' | 'alerts'.
+ *
+ * Spec example:
+ *   { "$computed": "atlassian_bucket_count", "args": { "values": { "$state": "..." }, "bucket": "alerts" } }
+ */
+const bucket_count = (args) => {
+    const values = Array.isArray(args.values) ? args.values : [];
+    const bucket = args.bucket;
+    return values.filter((v) => classifyRequest(v) === bucket).length;
+};
+/**
+ * Filter a request list down to the ones in one bucket. Used to pre-compute
+ * `/ui/filteredRequests` via a `watch`-driven `setState` (see this widget's
+ * `card.watch`), NOT via a per-row `visible` check on the repeated row --
+ * this renderer's `visible`/`$cond` condition grammar only recognizes
+ * `$state`/`$item`/`$index` as the primary operand key (confirmed live in
+ * the tile harness: a `$computed`-keyed condition, with or without a
+ * comparator, always evaluates as absent/falsy -- RULE 5.9 in
+ * `myHubV2/architecture/technical/mobile-widget-interpreter.md`). Filtering
+ * the array up front and pointing `repeat.statePath` at the result sidesteps
+ * that limitation entirely.
+ *
+ * Args: { values, bucket } -- same shape as `atlassian_bucket_count`.
+ *
+ * Spec example:
+ *   { "$computed": "atlassian_filter_by_bucket", "args": { "values": {...}, "bucket": {...} } }
+ */
+const filter_by_bucket = (args) => {
+    const values = Array.isArray(args.values) ? args.values : [];
+    const bucket = args.bucket;
+    return values.filter((v) => classifyRequest(v) === bucket);
+};
+/**
+ * Tone for a bucket-count-driven indicator (e.g. the header "breached"
+ * badge): 'destructive' when the count is > 0, 'muted' when it's 0.
+ * Exists as its own direct-return function -- NOT a `$cond` wrapping
+ * `atlassian_bucket_count` with a comparator -- for the same RULE 5.9
+ * reason documented on `atlassian_filter_by_bucket` above: `$cond`'s
+ * condition is evaluated through the identical `visible` grammar, so a
+ * `$computed`-keyed condition there is silently always-false too. A
+ * `$computed` used directly as a prop's VALUE (no comparator, no
+ * `$cond`) is unaffected -- that path just resolves and returns.
+ *
+ * Args: { values, bucket } -- same shape as `atlassian_bucket_count`.
+ *
+ * Spec example:
+ *   { "$computed": "atlassian_bucket_tone", "args": { "values": {...}, "bucket": "alerts" } }
+ */
+const bucket_tone = (args) => {
+    const values = Array.isArray(args.values) ? args.values : [];
+    const bucket = args.bucket;
+    const count = values.filter((v) => classifyRequest(v) === bucket).length;
+    return count > 0 ? 'destructive' : 'muted';
+};
 const elements = {
     slug: 'atlassian',
     functions: {
         sla_tone,
         sla_label,
+        request_bucket,
+        bucket_count,
+        filter_by_bucket,
+        bucket_tone,
     },
 };
 export default elements;

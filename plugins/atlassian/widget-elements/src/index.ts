@@ -155,11 +155,157 @@ const sla_label: ComputedFunction = (args) => {
   return Number.isFinite(ms) ? formatMillis(ms) : 'No active SLA';
 };
 
+/**
+ * Queue-bucket classification for the Service Desk Queue tile's redesign
+ * (Tile: Service Desk Queue - JSM - Service Management).
+ *
+ * Four buckets, all derived from the SAME `list_service_desk_requests`
+ * response already fetched by this widget's `dataProvider` -- no new tool
+ * call. A request's bucket is a pure function of two things already on
+ * every request: `currentStatus.statusCategory` and the "Time to
+ * resolution" SLA clock in `sla.values`.
+ *
+ * `statusCategory` casing: confirmed UPPERCASE ("NEW", "INDETERMINATE",
+ * "DONE") against Atlassian's own servicedeskapi request-object docs
+ * (`currentStatus: { status, statusCategory: "NEW", statusDate }`), and
+ * consistent with a real live sandbox sample that showed `"INDETERMINATE"`
+ * for a "Waiting for support" ticket. This is a different, flatter shape
+ * than the nested `fields.status.statusCategory.key` object Jira's own
+ * platform issue API uses (which IS lowercase) -- don't confuse the two.
+ * `normalizeCategory` upper-cases defensively regardless, so a
+ * differently-cased value from a future API revision degrades to
+ * "in_progress" instead of silently mis-bucketing.
+ *
+ * Priority order -- deliberately SLA-urgency-first, not status-first:
+ *   1. alerts      -- "Time to resolution" ongoingCycle.breached === true
+ *   2. behind      -- ongoingCycle exists, not breached, but at-risk
+ *                     (same 15%-of-goal / 1h-fallback threshold as
+ *                     atlassian_sla_tone's "warning", reused via isAtRisk)
+ *   3. new         -- statusCategory === "NEW"
+ *   4. in_progress -- everything else (typically "INDETERMINATE")
+ *
+ * Alerts/Behind are checked before New so an unactioned brand-new ticket
+ * that's already close to breaching its resolution clock surfaces under
+ * Behind/Alerts rather than hiding under New -- the whole point of a
+ * bucket board is to not bury an urgent ticket behind a status label.
+ * This also guarantees the Alerts bucket's count always equals the
+ * header's "breached" counter (both are exactly "breached === true" on
+ * the resolution clock, no status carve-out) -- intentional, not a bug.
+ *
+ * Spec example (single request -> bucket key):
+ *   { "$computed": "atlassian_request_bucket", "args": { "request": { "$item": "" } } }
+ */
+export type RequestBucket = 'new' | 'in_progress' | 'behind' | 'alerts';
+
+interface JsmRequest {
+  currentStatus?: { statusCategory?: string };
+  sla?: { values?: unknown[] };
+}
+
+function normalizeCategory(v: unknown): string {
+  return typeof v === 'string' ? v.trim().toUpperCase() : '';
+}
+
+// The "Time to resolution" clock specifically -- NOT first-response, NOT
+// close-after-resolution. Matched by name, case-insensitively, since
+// Atlassian returns it as a plain display string on `sla.values[].name`.
+function findResolutionCycle(request: unknown): SlaCycle | undefined {
+  const values = (request as JsmRequest | undefined)?.sla?.values;
+  if (!Array.isArray(values)) return undefined;
+  const match = values.find(
+    (v) =>
+      v &&
+      typeof v === 'object' &&
+      typeof (v as SlaValue).name === 'string' &&
+      (v as SlaValue).name!.trim().toLowerCase() === 'time to resolution',
+  ) as (SlaValue & { ongoingCycle?: SlaCycle }) | undefined;
+  return match?.ongoingCycle;
+}
+
+function classifyRequest(request: unknown): RequestBucket {
+  const cycle = findResolutionCycle(request);
+  if (cycle?.breached === true) return 'alerts';
+  if (cycle && isAtRisk(cycle)) return 'behind';
+  const category = normalizeCategory((request as JsmRequest | undefined)?.currentStatus?.statusCategory);
+  if (category === 'NEW') return 'new';
+  return 'in_progress';
+}
+
+const request_bucket: ComputedFunction = (args) => classifyRequest(args.request);
+
+/**
+ * Count how many requests in a list fall into one bucket. Used for the
+ * four stat-card counts and the header "breached" counter (bucket
+ * "alerts").
+ *
+ * Args: { values, bucket } -- `values` is the request array (e.g.
+ * `/atlassian/list_service_desk_requests/values`), `bucket` one of
+ * 'new' | 'in_progress' | 'behind' | 'alerts'.
+ *
+ * Spec example:
+ *   { "$computed": "atlassian_bucket_count", "args": { "values": { "$state": "..." }, "bucket": "alerts" } }
+ */
+const bucket_count: ComputedFunction = (args) => {
+  const values = Array.isArray(args.values) ? args.values : [];
+  const bucket = args.bucket;
+  return values.filter((v) => classifyRequest(v) === bucket).length;
+};
+
+/**
+ * Filter a request list down to the ones in one bucket. Used to pre-compute
+ * `/ui/filteredRequests` via a `watch`-driven `setState` (see this widget's
+ * `card.watch`), NOT via a per-row `visible` check on the repeated row --
+ * this renderer's `visible`/`$cond` condition grammar only recognizes
+ * `$state`/`$item`/`$index` as the primary operand key (confirmed live in
+ * the tile harness: a `$computed`-keyed condition, with or without a
+ * comparator, always evaluates as absent/falsy -- RULE 5.9 in
+ * `myHubV2/architecture/technical/mobile-widget-interpreter.md`). Filtering
+ * the array up front and pointing `repeat.statePath` at the result sidesteps
+ * that limitation entirely.
+ *
+ * Args: { values, bucket } -- same shape as `atlassian_bucket_count`.
+ *
+ * Spec example:
+ *   { "$computed": "atlassian_filter_by_bucket", "args": { "values": {...}, "bucket": {...} } }
+ */
+const filter_by_bucket: ComputedFunction = (args) => {
+  const values = Array.isArray(args.values) ? args.values : [];
+  const bucket = args.bucket;
+  return values.filter((v) => classifyRequest(v) === bucket);
+};
+
+/**
+ * Tone for a bucket-count-driven indicator (e.g. the header "breached"
+ * badge): 'destructive' when the count is > 0, 'muted' when it's 0.
+ * Exists as its own direct-return function -- NOT a `$cond` wrapping
+ * `atlassian_bucket_count` with a comparator -- for the same RULE 5.9
+ * reason documented on `atlassian_filter_by_bucket` above: `$cond`'s
+ * condition is evaluated through the identical `visible` grammar, so a
+ * `$computed`-keyed condition there is silently always-false too. A
+ * `$computed` used directly as a prop's VALUE (no comparator, no
+ * `$cond`) is unaffected -- that path just resolves and returns.
+ *
+ * Args: { values, bucket } -- same shape as `atlassian_bucket_count`.
+ *
+ * Spec example:
+ *   { "$computed": "atlassian_bucket_tone", "args": { "values": {...}, "bucket": "alerts" } }
+ */
+const bucket_tone: ComputedFunction = (args) => {
+  const values = Array.isArray(args.values) ? args.values : [];
+  const bucket = args.bucket;
+  const count = values.filter((v) => classifyRequest(v) === bucket).length;
+  return count > 0 ? 'destructive' : 'muted';
+};
+
 const elements: PluginElementsModule = {
   slug: 'atlassian',
   functions: {
     sla_tone,
     sla_label,
+    request_bucket,
+    bucket_count,
+    filter_by_bucket,
+    bucket_tone,
   },
 };
 
