@@ -52,7 +52,15 @@
       },
       "eyebrow": {
         "type": "Eyebrow",
-        "props": { "text": "Simpro" }
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Simpro · {n} invoices",
+              "n": { "$computed": "count", "args": { "value": { "$state": "/simpro/list_invoices/invoices" } } }
+            }
+          }
+        }
       },
 
       "colHeader": {

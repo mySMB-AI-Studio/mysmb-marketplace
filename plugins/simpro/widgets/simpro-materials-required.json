@@ -52,7 +52,15 @@
       },
       "eyebrow": {
         "type": "Eyebrow",
-        "props": { "text": "Simpro" }
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Simpro · {n} awaiting parts",
+              "n": { "$computed": "count", "args": { "value": { "$state": "/simpro/list_jobs/jobs" } } }
+            }
+          }
+        }
       },
 
       "sub": {
