@@ -27,7 +27,7 @@
         "children": ["header", "body", "footer"],
         "watch": {
           "/employment-hero/list_leave_requests/data/items": [
-            { "action": "setState", "params": { "statePath": "/ui/myLeaveRows", "value": { "$computed": "employment-hero_flatten_my_leave_requests", "args": { "value": { "$state": "/employment-hero/list_leave_requests/data/items" } } } } }
+            { "action": "setState", "params": { "statePath": "/ui/myLeaveRows", "value": { "$computed": "employment-hero_flatten_leave_requests", "args": { "value": { "$state": "/employment-hero/list_leave_requests/data/items" } } } } }
           ]
         }
       },
@@ -80,12 +80,15 @@
       },
       "leaveRowContent": {
         "type": "Row",
-        "props": { "justify": "between", "align": "center", "hover": true },
+        "props": { "justify": "between", "align": "start", "hover": true },
         "children": ["leaveLeft", "leaveRight"]
       },
       "leaveLeft": {
         "type": "Stack", "props": { "gap": "none" },
-        "children": ["employeeName", "leaveType"]
+        "children": ["requestorLabel", "employeeName", "leaveType"]
+      },
+      "requestorLabel": {
+        "type": "Eyebrow", "props": { "text": "Requestor" }
       },
       "employeeName": {
         "type": "Text",
