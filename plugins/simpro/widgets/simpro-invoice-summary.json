@@ -106,7 +106,22 @@
 
       "row": {
         "type": "Row",
-        "props": { "align": "start" },
+        "props": { "align": "start", "hover": true, "clickable": true },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "simpro_build_record_url",
+                "args": {
+                  "build_domain": { "$state": "/simpro/list_invoices/buildDomain" },
+                  "kind": "invoice",
+                  "id": { "$item": "ID" }
+                }
+              }
+            }
+          }
+        },
         "children": ["rowLeft", "rowRight"]
       },
       "rowLeft": {
