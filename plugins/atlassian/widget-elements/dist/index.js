@@ -201,6 +201,236 @@ const bucket_tone = (args) => {
     const count = values.filter((v) => classifyRequest(v) === bucket).length;
     return count > 0 ? 'destructive' : 'muted';
 };
+async function callAtlassianTool(tool, params) {
+    try {
+        const res = await fetch('/api/widgets-system/call-tool', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ mcp: 'atlassian', tool, params }),
+        });
+        if (!res.ok) {
+            const text = await res.text().catch(() => res.statusText);
+            return { ok: false, error: text || `HTTP ${res.status}` };
+        }
+        const body = (await res.json());
+        return { ok: true, data: body.data };
+    }
+    catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+}
+// search_issues's max_results cap is 100 (enforced server-side too) -- this
+// is also our N+1 ceiling: one search call + at most this many
+// `get_request_sla` calls. Deliberately conservative; a higher cap makes
+// every click slower without changing the metric's usefulness much.
+const DEFAULT_TICKET_CAP = 100;
+const MAX_TICKET_CAP = 100;
+/**
+ * Deliberately NOT `zod` here, even though it's on the widget-elements
+ * import allowlist. The compiled `dist/index.js` this file becomes is
+ * streamed to the browser completely VERBATIM -- no bundling, no import map
+ * (see myHubV2's `apps/web/src/app/api/widget-elements/file/route.ts`, a
+ * plain `fs.readFile` -> `Response`) -- and then loaded with a plain browser
+ * `import()`. Confirmed live in the tile harness: a bare `import ... from
+ * "zod"` throws `Failed to resolve module specifier "zod"` at module-
+ * evaluation time, and because ES module imports are all-or-nothing, that
+ * fails the ENTIRE module load -- every function this plugin already ships
+ * (`atlassian_bucket_count`, `atlassian_sla_tone`, etc.) silently stops
+ * resolving too, not just this new action. The same latent bug already
+ * exists independently in `xero-projects`'s committed `dist/index.js`
+ * (confirmed the same way) -- pre-existing, unrelated to this branch, out
+ * of scope to fix here, but real: the allowlist documents `zod` as
+ * permitted, but nothing in the runtime actually resolves it. Hand-rolled,
+ * dependency-free validation below instead.
+ *
+ * `project_key` is the JQL project key for this service desk (e.g. "SUP"),
+ * NOT the `service_desk_id` used elsewhere on this tile -- JQL's `project =`
+ * clause needs the project key/id, and there is no cheap way to resolve one
+ * from the other at click-time without an extra `list_service_desks`
+ * round-trip. Same "widget can't chain a lookup call" limitation already
+ * documented for `service_desk_id` on this tile -- passed as a hardcoded
+ * per-tenant action param instead, and must be updated together with
+ * `service_desk_id` when this widget is pointed at a different tenant.
+ * `max_checked` optionally overrides the resolved-ticket cap, clamped to
+ * [1, 100].
+ */
+const checkSlaParamsSchema = {
+    type: 'object',
+    properties: {
+        project_key: { type: 'string', minLength: 1 },
+        max_checked: { type: 'integer', minimum: 1, maximum: MAX_TICKET_CAP },
+    },
+    required: ['project_key'],
+};
+function parseCheckSlaParams(params) {
+    const projectKey = typeof params.project_key === 'string' ? params.project_key.trim() : '';
+    if (!projectKey)
+        return null;
+    const rawCap = Number(params.max_checked);
+    const cap = Number.isFinite(rawCap)
+        ? Math.min(MAX_TICKET_CAP, Math.max(1, Math.trunc(rawCap)))
+        : DEFAULT_TICKET_CAP;
+    return { projectKey, cap };
+}
+function findFirstResponseCycles(data) {
+    const values = data?.values;
+    if (!Array.isArray(values))
+        return null;
+    const match = values.find((v) => typeof v?.name === 'string' && v.name.trim().toLowerCase() === 'time to first response');
+    return Array.isArray(match?.completedCycles) ? match.completedCycles : null;
+}
+/**
+ * "Check SLA % this month" click handler. First-response SLA compliance over
+ * tickets RESOLVED in the current calendar month for one service desk's
+ * project: for each resolved ticket, look up its "Time to first response"
+ * SLA and check whether any `completedCycles` entry has `breached: true`.
+ * Percentage = (tickets with a non-breached first-response cycle) / (tickets
+ * with ANY completed first-response cycle) x 100 -- a ticket whose SLA has
+ * no completed first-response cycle at all (e.g. no SLA policy on that
+ * request type) is EXCLUDED from both numerator and denominator rather than
+ * guessed at, matching this connector's existing "exclude, don't guess"
+ * policy for missing SLA data.
+ *
+ * Cost control: `search_issues`'s JQL orders resolved tickets most-recent
+ * first and is capped (default 100, `search_issues`'s own server-side max).
+ * If more resolved tickets exist than the cap (`isLast === false` on the
+ * search response), the result discloses that plainly instead of silently
+ * presenting a partial number as complete -- e.g. "94% (last 100 resolved
+ * this month -- more exist)". Note: Jira's current search endpoint
+ * (`POST /rest/api/3/search/jql`) does not return a total match count
+ * (Atlassian dropped it deliberately when replacing the old endpoint), so
+ * this can say "more exist" but can't cheaply say exactly how many -- doing
+ * that would need a second, expensive full-count query, defeating the
+ * purpose of the cap.
+ *
+ * State written (all widget-local):
+ *   /ui/slaLoading    -- true while a run is in flight
+ *   /ui/slaRunToken   -- monotonic guard value; a click that starts after
+ *                        this one bumps it, so a lagging response from an
+ *                        earlier (superseded) click is dropped on arrival
+ *                        instead of overwriting a newer result
+ *   /ui/slaResult     -- null until a run completes; then the display
+ *                        string (percentage, "no resolved tickets", or an
+ *                        error message)
+ *
+ * Args: { project_key, max_checked? } -- see `checkSlaSchema` above.
+ *
+ * Spec example:
+ *   { "action": "atlassian_check_sla_this_month",
+ *     "params": { "project_key": "SUP" } }
+ */
+async function checkSlaThisMonth(params, ctx) {
+    const store = ctx.store;
+    if (!store)
+        return;
+    // Ignore a click while a run is already in flight -- the button is also
+    // disabled automatically during this (the renderer tracks any pending
+    // action-handler promise per action name), but a handler-level guard
+    // means this is correct even if something else re-fires the action.
+    if (store.get('/ui/slaLoading') === true)
+        return;
+    const parsed = parseCheckSlaParams(params);
+    if (!parsed) {
+        store.set('/ui/slaResult', 'Could not check SLA % (missing project key).');
+        return;
+    }
+    const { projectKey, cap } = parsed;
+    // Monotonic run token: bumped at the start of THIS run. Any await below
+    // checks it's still current before touching state, so a superseded run
+    // (the widget re-fired this action, or -- in a host that unmounts/reuses
+    // this store -- moved on) can't clobber a newer one's result.
+    const runToken = Date.now() + Math.random();
+    store.set('/ui/slaRunToken', runToken);
+    store.set('/ui/slaLoading', true);
+    store.set('/ui/slaResult', null);
+    const stale = () => store.get('/ui/slaRunToken') !== runToken;
+    try {
+        const jql = `project = ${projectKey} AND resolutiondate >= startOfMonth() AND resolutiondate <= now() ORDER BY resolutiondate DESC`;
+        const searchRes = await callAtlassianTool('search_issues', {
+            jql,
+            max_results: cap,
+            fields: ['summary'],
+        });
+        if (stale())
+            return;
+        if (!searchRes.ok) {
+            store.set('/ui/slaResult', `Could not check SLA % (${searchRes.error ?? 'search failed'}).`);
+            return;
+        }
+        const searchData = searchRes.data;
+        const issues = Array.isArray(searchData?.issues) ? searchData.issues : [];
+        const truncated = searchData?.isLast === false;
+        if (issues.length === 0) {
+            store.set('/ui/slaResult', 'No resolved tickets this month yet.');
+            return;
+        }
+        let eligible = 0;
+        let compliant = 0;
+        for (const issue of issues) {
+            if (stale())
+                return;
+            const key = issue.key;
+            if (typeof key !== 'string' || !key)
+                continue;
+            const slaRes = await callAtlassianTool('get_request_sla', { issue_id_or_key: key });
+            if (stale())
+                return;
+            if (!slaRes.ok)
+                continue; // best-effort: skip tickets whose SLA lookup itself fails
+            const cycles = findFirstResponseCycles(slaRes.data);
+            if (!cycles || cycles.length === 0)
+                continue; // no completed first-response cycle -> excluded, not guessed
+            eligible += 1;
+            if (!cycles.some((c) => c.breached === true))
+                compliant += 1;
+        }
+        if (stale())
+            return;
+        if (eligible === 0) {
+            store.set('/ui/slaResult', 'No first-response SLA data for tickets resolved this month.');
+            return;
+        }
+        const pct = Math.round((compliant / eligible) * 100);
+        const suffix = truncated
+            ? ` (last ${issues.length} resolved this month — more exist)`
+            : ` (${eligible} resolved this month)`;
+        store.set('/ui/slaResult', `${pct}%${suffix}`);
+    }
+    catch (err) {
+        if (!stale()) {
+            store.set('/ui/slaResult', 'Could not check SLA % this month.');
+        }
+    }
+    finally {
+        if (!stale())
+            store.set('/ui/slaLoading', false);
+    }
+}
+const check_sla_this_month = {
+    description: 'Compute first-response SLA compliance for tickets resolved this month in one JSM service desk\'s ' +
+        'project. On-demand only (never runs automatically) -- fetches via a JQL search plus one SLA lookup ' +
+        'per resolved ticket, capped at 100 tickets, most-recent first.',
+    schema: checkSlaParamsSchema,
+    handler: checkSlaThisMonth,
+};
+/**
+ * Button label for the "SLA % this month" action -- the computed result
+ * once a run has completed, or the initial call-to-action text before the
+ * first click. Kept as a direct-return `$computed` (no `$cond`) per this
+ * file's established RULE 5.9 workaround: a `$cond` keyed on anything other
+ * than `$state`/`$item`/`$index` silently evaluates as absent, but a
+ * `$computed` used directly as a prop's value is unaffected.
+ *
+ * Args: { result } -- `/ui/slaResult` (null/absent before the first click
+ * completes).
+ *
+ * Spec example:
+ *   { "$computed": "atlassian_sla_pct_label", "args": { "result": { "$state": "/ui/slaResult" } } }
+ */
+const sla_pct_label = (args) => {
+    const result = args.result;
+    return typeof result === 'string' && result.length > 0 ? result : 'Check SLA % this month';
+};
 const elements = {
     slug: 'atlassian',
     functions: {
@@ -210,6 +440,10 @@ const elements = {
         bucket_count,
         filter_by_bucket,
         bucket_tone,
+        sla_pct_label,
+    },
+    actions: {
+        check_sla_this_month,
     },
 };
 export default elements;
