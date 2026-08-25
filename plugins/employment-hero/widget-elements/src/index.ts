@@ -155,16 +155,14 @@ const flatten_leave_requests: ComputedFunction = (args) => {
 
 // ── Shared leave-type resolver ────────────────────────────────────────────────
 function resolveEhLeaveType(item: Record<string, unknown>): string {
+  if (typeof item.leave_category_name === 'string' && item.leave_category_name) return item.leave_category_name;
   const lt = item.leave_type as Record<string, unknown> | string | null | undefined;
   if (typeof lt === 'string' && lt) return lt;
   if (lt && typeof lt === 'object') {
     if (typeof lt.name === 'string' && lt.name) return lt.name;
     if (typeof lt.title === 'string' && lt.title) return lt.title;
-    if (typeof lt.leave_type_name === 'string' && lt.leave_type_name) return lt.leave_type_name;
-    if (typeof lt.display_name === 'string' && lt.display_name) return lt.display_name;
   }
   if (typeof item.leave_type_name === 'string' && item.leave_type_name) return item.leave_type_name;
-  if (item.leave_type_id != null && item.leave_type_id !== '') return `Type #${item.leave_type_id}`;
   return '';
 }
 

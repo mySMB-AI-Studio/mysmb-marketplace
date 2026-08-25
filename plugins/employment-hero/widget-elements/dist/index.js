@@ -141,6 +141,8 @@ const flatten_leave_requests = (args) => {
 };
 // ── Shared leave-type resolver ────────────────────────────────────────────────
 function resolveEhLeaveType(item) {
+    if (typeof item.leave_category_name === 'string' && item.leave_category_name)
+        return item.leave_category_name;
     const lt = item.leave_type;
     if (typeof lt === 'string' && lt)
         return lt;
@@ -149,15 +151,9 @@ function resolveEhLeaveType(item) {
             return lt.name;
         if (typeof lt.title === 'string' && lt.title)
             return lt.title;
-        if (typeof lt.leave_type_name === 'string' && lt.leave_type_name)
-            return lt.leave_type_name;
-        if (typeof lt.display_name === 'string' && lt.display_name)
-            return lt.display_name;
     }
     if (typeof item.leave_type_name === 'string' && item.leave_type_name)
         return item.leave_type_name;
-    if (item.leave_type_id != null && item.leave_type_id !== '')
-        return `Type #${item.leave_type_id}`;
     return '';
 }
 // ── flatten_upcoming_leave ────────────────────────────────────────────────────
