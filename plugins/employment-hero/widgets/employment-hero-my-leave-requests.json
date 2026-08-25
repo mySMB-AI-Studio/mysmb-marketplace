@@ -47,9 +47,9 @@
         "children": ["sk1", "sk2", "sk3"],
         "visible": { "$state": "/_loading/employment-hero.list_leave_requests" }
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk1": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
 
       "empty": {
         "type": "Empty",
@@ -80,24 +80,24 @@
       },
       "leaveRowContent": {
         "type": "Row",
-        "props": { "justify": "between", "align": "center", "hover": true },
-        "children": ["leaveLeft", "leaveRight"]
+        "props": { "justify": "between", "align": "start", "hover": true },
+        "children": ["leaveLeft", "leaveStatus"]
       },
       "leaveLeft": {
         "type": "Stack", "props": { "gap": "none" },
-        "children": ["employeeName", "leaveType"]
+        "children": ["leaveTypeName", "leaveDates", "submittedLabel"]
       },
-      "employeeName": {
+      "leaveTypeName": {
         "type": "Text",
-        "props": { "text": { "$item": "employee_name" }, "size": "sm", "weight": "medium", "truncate": true }
+        "props": { "text": { "$item": "leave_type" }, "size": "sm", "weight": "semibold", "truncate": true }
       },
-      "leaveType": {
+      "leaveDates": {
         "type": "Caption",
-        "props": { "text": { "$item": "leave_type" } }
+        "props": { "text": { "$item": "date_range" } }
       },
-      "leaveRight": {
-        "type": "Stack", "props": { "gap": "none", "align": "end" },
-        "children": ["leaveStatus", "leaveDates"]
+      "submittedLabel": {
+        "type": "Caption",
+        "props": { "text": { "$item": "submitted_label" } }
       },
       "leaveStatus": {
         "type": "Badge",
@@ -106,10 +106,6 @@
           "tone": { "$item": "status_tone" },
           "variant": "soft"
         }
-      },
-      "leaveDates": {
-        "type": "Caption",
-        "props": { "text": { "$item": "date_range" } }
       },
       "leaveRowDivider": { "type": "Divider", "props": {} },
 

@@ -251,13 +251,25 @@ const flatten_my_leave_requests: ComputedFunction = (args) => {
               ? emp.name
               : `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim()
             : `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim();
+
+      const { display: submittedDisplay } = formatEhDate(item.created_at ?? item.submitted_at);
+      let submittedLabel = submittedDisplay ? `Submitted ${submittedDisplay}` : '';
+      if (rawStatus === 'approved') {
+        const { display: actionDisplay } = formatEhDate(item.approved_at ?? item.reviewed_at);
+        if (actionDisplay) submittedLabel += ` · Approved ${actionDisplay}`;
+      } else if (rawStatus === 'declined' || rawStatus === 'rejected') {
+        const { display: actionDisplay } = formatEhDate(item.declined_at ?? item.rejected_at ?? item.reviewed_at);
+        if (actionDisplay) submittedLabel += ` · Declined ${actionDisplay}`;
+      }
+
       return {
-        id:            String(item.id ?? ''),
-        employee_name: empName,
-        leave_type:    resolveEhLeaveType(item),
-        date_range:    dateRange,
-        status_label:  statusLabel,
-        status_tone:   statusTone,
+        id:              String(item.id ?? ''),
+        employee_name:   empName,
+        leave_type:      resolveEhLeaveType(item),
+        date_range:      dateRange,
+        status_label:    statusLabel,
+        status_tone:     statusTone,
+        submitted_label: submittedLabel,
       };
     });
 };
