@@ -53,7 +53,7 @@
 
       "empty": {
         "type": "Empty",
-        "props": { "message": "No pending leave requests." },
+        "props": { "message": "No leave requests found." },
         "visible": {
           "$and": [
             { "$state": "/_loading/employment-hero.get_leave_approvals_queue", "not": true },
@@ -80,8 +80,20 @@
       },
       "approvalRowContent": {
         "type": "Row",
-        "props": { "justify": "between", "align": "start", "hover": true },
-        "children": ["approvalLeft", "approvalStatus"]
+        "props": { "justify": "between", "align": "start", "hover": true, "clickable": true },
+        "children": ["approvalLeft", "approvalStatus"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "identity",
+                "args": { "value": { "$item": "review_url" } }
+              },
+              "target": "_blank"
+            }
+          }
+        }
       },
       "approvalLeft": {
         "type": "Stack", "props": { "gap": "none" },
@@ -99,21 +111,10 @@
         "props": { "text": { "$item": "date_leave_line" } }
       },
       "reviewLink": {
-        "type": "Button",
+        "type": "Caption",
         "props": {
-          "label": "Review in Employment Hero →",
-          "variant": "ghost",
-          "size": "xs",
+          "text": "Review in Employment Hero →",
           "tone": "accent"
-        },
-        "on": {
-          "click": {
-            "action": "open_url",
-            "params": {
-              "url": { "$item": "review_url" },
-              "target": "_blank"
-            }
-          }
         }
       },
       "approvalStatus": {
