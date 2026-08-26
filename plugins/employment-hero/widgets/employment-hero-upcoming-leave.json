@@ -63,7 +63,7 @@
       },
 
       "list": {
-        "type": "Stack", "props": { "gap": "sm" },
+        "type": "Stack", "props": { "gap": "xs" },
         "children": ["leaveItem"],
         "repeat": { "statePath": "/ui/upcomingRows", "key": "id" },
         "visible": {
@@ -75,12 +75,12 @@
       },
 
       "leaveItem": {
-        "type": "Stack", "props": { "gap": "none" },
-        "children": ["dateHeader", "employeeRow"]
+        "type": "Stack", "props": { "gap": "xs" },
+        "children": ["dateHeader", "employeeRow", "itemDivider"]
       },
       "dateHeader": {
         "type": "Text",
-        "props": { "text": { "$item": "date_header" }, "size": "xs", "weight": "semibold", "tone": "accent" }
+        "props": { "text": { "$item": "date_header" }, "size": "xs", "weight": "semibold", "tone": "success" }
       },
       "employeeRow": {
         "type": "Row",
@@ -95,6 +95,7 @@
         "type": "Caption",
         "props": { "text": { "$item": "leave_type" } }
       },
+      "itemDivider": { "type": "Divider", "props": {} },
 
       "footer": {
         "type": "Row", "props": { "justify": "center" },
