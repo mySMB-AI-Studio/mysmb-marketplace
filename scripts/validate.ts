@@ -18,6 +18,10 @@
  *      matches the section it is listed under), and every automation
  *      dependency resolves to a content entity bundled in the same plugin.
  *      Plugins without a content section are unaffected.
+ *   7. If plugin.json declares `briefingEmailSources` (mySidekick briefing
+ *      mailboxes), every listed file exists, parses, matches the email-source
+ *      schema, belongs to this plugin, names only a server this plugin declares
+ *      in .mcp.json, and uses an https compose template with known placeholders.
  *
  * Exits 1 on any failure.
  */
@@ -342,6 +346,234 @@ function validateContent(pluginDirName: string, content: unknown) {
   }
 }
 
+
+// ── Briefing email sources ────────────────────────────────────────────────────
+//
+// A plugin that exposes a mailbox to the mySidekick morning briefing declares
+// `briefingEmailSources` in plugin.json, pointing at JSON files that describe
+// which MCP tool to call and how to project its rows.
+//
+// This is a higher-stakes contract than a widget: at runtime the briefing
+// invokes the named server with the user's live mail credential. So the file is
+// checked here, in CI, rather than being discovered as a silently missing
+// mailbox at 8am. The authoritative schema lives in myHubV2
+// (packages/shared/src/briefing-sources/email-source-schema.ts); this mirrors
+// its structural rules so the marketplace can be validated standalone.
+
+const EMAIL_MESSAGE_FIELDS = new Set([
+  "id",
+  "fromName",
+  "fromAddress",
+  "subject",
+  "snippet",
+  "receivedAt",
+  "isUnread",
+]);
+const REQUIRED_EMAIL_FIELDS = ["id", "fromAddress", "receivedAt"];
+const EMAIL_TRANSFORMS = new Set([
+  "mailbox-name",
+  "mailbox-address",
+  "unix-ms-to-iso",
+  "iso-date",
+  "boolean-not",
+]);
+const COMPOSE_PLACEHOLDERS = new Set(["to", "subject", "body", "accountAddress"]);
+const DOT_PATH_RE = /^[a-zA-Z0-9_$-]+(\.[a-zA-Z0-9_$-]+)*$/;
+
+
+// ── Connection identity probes ────────────────────────────────────────────────
+//
+// `connectionIdentity` tells the workspace how to VERIFY which account a
+// connection belongs to, by calling the provider's own profile endpoint with
+// the freshly-issued access token. It is what lets a mail-read account be
+// matched to the corresponding mail-write account so a draft lands in the right
+// mailbox. Same discipline as everything else here: https only, fixed field
+// names, no expression language — and the server must belong to this plugin.
+
+function validateConnectionIdentity(
+  pluginDirName: string,
+  declared: unknown,
+  ownedServers: Set<string>,
+) {
+  const where = `plugins/${pluginDirName}`;
+  if (!isRecord(declared)) {
+    fail(`${where}: plugin.json connectionIdentity must be an object keyed by MCP server name`);
+    return;
+  }
+  for (const [serverName, spec] of Object.entries(declared)) {
+    if (!ownedServers.has(serverName)) {
+      fail(
+        `${where}: connectionIdentity names MCP server "${serverName}", which this plugin does not declare in .mcp.json`,
+      );
+      continue;
+    }
+    if (!isRecord(spec)) {
+      fail(`${where}: connectionIdentity["${serverName}"] must be an object`);
+      continue;
+    }
+    if (typeof spec.profileUrl !== "string" || !spec.profileUrl.startsWith("https://")) {
+      fail(`${where}: connectionIdentity["${serverName}"].profileUrl must be an https URL`);
+    } else if (/@/.test(spec.profileUrl.split("?")[0] ?? "")) {
+      fail(`${where}: connectionIdentity["${serverName}"].profileUrl must not embed credentials`);
+    }
+    if (typeof spec.issuer !== "string" || !spec.issuer) {
+      fail(`${where}: connectionIdentity["${serverName}"].issuer is required`);
+    }
+    if (typeof spec.subjectPath !== "string" || !DOT_PATH_RE.test(spec.subjectPath)) {
+      fail(`${where}: connectionIdentity["${serverName}"].subjectPath must be a dot-path`);
+    }
+    if (spec.emailPath !== undefined && (typeof spec.emailPath !== "string" || !DOT_PATH_RE.test(spec.emailPath))) {
+      fail(`${where}: connectionIdentity["${serverName}"].emailPath must be a dot-path`);
+    }
+  }
+}
+
+function validateBriefingEmailSources(
+  pluginDirName: string,
+  declared: unknown,
+  ownedServers: Set<string>,
+) {
+  const where = `plugins/${pluginDirName}`;
+  if (!Array.isArray(declared)) {
+    fail(`${where}: plugin.json briefingEmailSources must be an array of paths`);
+    return;
+  }
+
+  const pluginDir = join(repoRoot, "plugins", pluginDirName);
+
+  for (const entry of declared) {
+    if (typeof entry !== "string") {
+      fail(`${where}: briefingEmailSources has a non-string entry`);
+      continue;
+    }
+    // Path containment: a declared path must not escape the plugin directory,
+    // or one plugin could serve another's source file and borrow its credential.
+    const filePath = resolve(pluginDir, entry);
+    if (filePath !== pluginDir && !filePath.startsWith(pluginDir + "/")) {
+      fail(`${where}: briefingEmailSources entry "${entry}" escapes the plugin directory`);
+      continue;
+    }
+    if (!existsSync(filePath) || !statSync(filePath).isFile()) {
+      fail(`${where}: briefingEmailSources entry "${entry}" is missing`);
+      continue;
+    }
+    const src = readJson<Record<string, unknown>>(filePath);
+    if (src === null) continue; // readJson already reported the parse failure
+    if (!isRecord(src)) {
+      fail(`${where}: ${entry} must be a JSON object`);
+      continue;
+    }
+
+    if (src.canonical !== "email/Message") {
+      fail(`${where}: ${entry} canonical must be "email/Message"`);
+    }
+    if (src.plugin !== pluginDirName) {
+      fail(`${where}: ${entry} declares plugin "${String(src.plugin)}", expected "${pluginDirName}"`);
+    }
+    if (typeof src.id !== "string" || !src.id.startsWith(`${pluginDirName}/`)) {
+      fail(`${where}: ${entry} id "${String(src.id)}" must start with "${pluginDirName}/"`);
+    }
+
+    const provider = src.provider;
+    if (!isRecord(provider) || typeof provider.key !== "string" || typeof provider.label !== "string") {
+      fail(`${where}: ${entry} provider must be { key, label }`);
+    }
+
+    const source = src.source;
+    if (!isRecord(source) || typeof source.mcpServer !== "string" || typeof source.tool !== "string") {
+      fail(`${where}: ${entry} source must be { mcpServer, tool }`);
+    } else {
+      if (!ownedServers.has(source.mcpServer)) {
+        fail(
+          `${where}: ${entry} names MCP server "${source.mcpServer}", which this plugin does not declare in .mcp.json`,
+        );
+      }
+      if (source.itemsPath !== undefined && (typeof source.itemsPath !== "string" || !DOT_PATH_RE.test(source.itemsPath))) {
+        fail(`${where}: ${entry} source.itemsPath must be a dot-path`);
+      }
+    }
+
+    const projection = src.fieldProjection;
+    if (!Array.isArray(projection) || projection.length === 0) {
+      fail(`${where}: ${entry} fieldProjection must be a non-empty array`);
+    } else {
+      const produced = new Set<string>();
+      for (const rule of projection) {
+        if (!isRecord(rule) || typeof rule.out !== "string" || !EMAIL_MESSAGE_FIELDS.has(rule.out)) {
+          fail(`${where}: ${entry} fieldProjection has a rule with an unknown "out" field`);
+          continue;
+        }
+        if (produced.has(rule.out)) {
+          fail(`${where}: ${entry} fieldProjection produces "${rule.out}" more than once`);
+        }
+        produced.add(rule.out);
+        const hasIn = rule.in !== undefined;
+        const hasValue = rule.value !== undefined;
+        if (hasIn === hasValue) {
+          fail(`${where}: ${entry} projection for "${rule.out}" needs exactly one of "in" or "value"`);
+        }
+        if (hasIn && (typeof rule.in !== "string" || !DOT_PATH_RE.test(rule.in))) {
+          fail(`${where}: ${entry} projection for "${rule.out}" has an invalid dot-path`);
+        }
+        if (rule.transform !== undefined && (typeof rule.transform !== "string" || !EMAIL_TRANSFORMS.has(rule.transform))) {
+          fail(`${where}: ${entry} projection for "${rule.out}" has unknown transform "${String(rule.transform)}"`);
+        }
+        if (hasValue && rule.transform !== undefined) {
+          fail(`${where}: ${entry} projection for "${rule.out}" cannot combine "value" with "transform"`);
+        }
+      }
+      for (const required of REQUIRED_EMAIL_FIELDS) {
+        if (!produced.has(required)) {
+          fail(`${where}: ${entry} fieldProjection is missing required output "${required}"`);
+        }
+      }
+    }
+
+    const compose = src.compose;
+    if (!isRecord(compose)) {
+      fail(`${where}: ${entry} compose must be an object`);
+    } else if (compose.mode === "createDraft") {
+      // A createDraft source names a SECOND server (usually a write server, a
+      // separate OAuth grant) — it must be owned by this plugin too, or a
+      // manifest could point draft creation at a sibling plugin's connection.
+      if (typeof compose.mcpServer !== "string" || !ownedServers.has(compose.mcpServer)) {
+        fail(
+          `${where}: ${entry} compose.mcpServer "${String(compose.mcpServer)}" is not declared by this plugin in .mcp.json`,
+        );
+      }
+      if (typeof compose.newTool !== "string" || !compose.newTool) {
+        fail(`${where}: ${entry} compose.newTool is required for mode "createDraft"`);
+      }
+      if (compose.replyTool !== undefined && typeof compose.replyTool !== "string") {
+        fail(`${where}: ${entry} compose.replyTool must be a string when present`);
+      }
+      if (compose.resultUrlPath !== undefined && (typeof compose.resultUrlPath !== "string" || !DOT_PATH_RE.test(compose.resultUrlPath))) {
+        fail(`${where}: ${entry} compose.resultUrlPath must be a dot-path`);
+      }
+      if (compose.urlTemplate !== undefined) {
+        fail(`${where}: ${entry} compose.urlTemplate is not valid in mode "createDraft"`);
+      }
+    } else if (compose.mode !== "deeplink" || typeof compose.urlTemplate !== "string") {
+      fail(`${where}: ${entry} compose.mode must be "deeplink" or "createDraft"`);
+    } else {
+      const template = compose.urlTemplate;
+      if (!template.startsWith("https://")) {
+        fail(`${where}: ${entry} compose.urlTemplate must be https://`);
+      }
+      if (/@/.test(template.split("?")[0] ?? "")) {
+        fail(`${where}: ${entry} compose.urlTemplate must not embed credentials in its origin`);
+      }
+      for (const match of template.matchAll(/\{([a-zA-Z0-9_]+)\}/g)) {
+        if (!COMPOSE_PLACEHOLDERS.has(match[1])) {
+          fail(
+            `${where}: ${entry} compose.urlTemplate uses unknown placeholder "{${match[1]}}" (allowed: ${[...COMPOSE_PLACEHOLDERS].join(", ")})`,
+          );
+        }
+      }
+    }
+  }
+}
+
 function validatePlugin(pluginDirName: string, expectedName: string) {
   const pluginDir = join(repoRoot, "plugins", pluginDirName);
   if (!existsSync(pluginDir) || !statSync(pluginDir).isDirectory()) {
@@ -367,6 +599,8 @@ function validatePlugin(pluginDirName: string, expectedName: string) {
     widgetElements?: string;
     widgets?: string;
     content?: unknown;
+    briefingEmailSources?: unknown;
+    connectionIdentity?: unknown;
   }>(manifestPath);
   if (manifest && manifest.name && manifest.name !== expectedName) {
     fail(
@@ -394,6 +628,24 @@ function validatePlugin(pluginDirName: string, expectedName: string) {
   if (!mcp || !mcp.mcpServers) {
     fail(`plugins/${pluginDirName}: .mcp.json has no mcpServers`);
     return;
+  }
+
+  // Briefing email sources are validated here, AFTER .mcp.json has parsed,
+  // because the ownership rule needs the server list: a source may only name a
+  // server its OWN plugin declares.
+  if (manifest?.briefingEmailSources !== undefined) {
+    validateBriefingEmailSources(
+      pluginDirName,
+      manifest.briefingEmailSources,
+      new Set(Object.keys(mcp.mcpServers)),
+    );
+  }
+  if (manifest?.connectionIdentity !== undefined) {
+    validateConnectionIdentity(
+      pluginDirName,
+      manifest.connectionIdentity,
+      new Set(Object.keys(mcp.mcpServers)),
+    );
   }
 
   const readme = readFileSync(readmePath, "utf8");
