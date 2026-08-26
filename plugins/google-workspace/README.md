@@ -123,6 +123,23 @@ The plugin ships a small `widget-elements` module (compiled to `widget-elements/
 | `google_workspace_mime_tone` | Maps a Drive MIME type to a badge tone |
 | `google_workspace_sender_name` | Extracts a display name from a Gmail `From` header string |
 
+## Briefing email source
+
+`briefing-sources/email.json` (declared as `briefingEmailSources` in
+`.claude-plugin/plugin.json`) lets the mySidekick morning briefing read this
+plugin's mailbox alongside every other connected email account.
+
+It maps `google-workspace-gmail/list_messages` onto the canonical
+`email/Message` contract: Gmail returns `{ messages: [...] }` (hence
+`itemsPath`), a raw RFC-5322 `From` header (split by the `mailbox-name` /
+`mailbox-address` transforms), and `internalDate` as epoch milliseconds **in a
+string** (`unix-ms-to-iso`).
+
+The file is inert unless declared, and `scripts/validate.ts` enforces that it
+names only a server this plugin owns and uses an https compose template with
+known placeholders. Schema:
+`myHubV2/packages/shared/src/briefing-sources/email-source-schema.ts`.
+
 ## See also
 
 - [Gmail API reference](https://developers.google.com/gmail/api/reference/rest)
