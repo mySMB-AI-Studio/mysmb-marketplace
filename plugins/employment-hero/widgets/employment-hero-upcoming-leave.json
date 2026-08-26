@@ -1,10 +1,10 @@
 {
   "id": "employment-hero-upcoming-leave",
-  "title": "Upcoming Leave",
-  "description": "Your upcoming approved leave from Employment Hero.",
+  "title": "Direct Reports' Upcoming Leave",
+  "description": "Approved upcoming leave for your direct reports, grouped by date.",
   "category": "hr",
-  "tags": ["employment-hero", "hr", "leave", "upcoming", "user"],
-  "keywords": ["upcoming leave", "approved leave", "time off", "my leave", "employment hero"],
+  "tags": ["employment-hero", "hr", "leave", "upcoming", "manager", "direct-reports"],
+  "keywords": ["direct reports", "upcoming leave", "approved leave", "team leave", "manager", "employment hero"],
   "connectorsUsed": ["employment-hero"],
   "popularity": 0,
   "sizing": {
@@ -14,8 +14,8 @@
   },
   "dataProvider": {
     "mcp": "employment-hero",
-    "tool": "list_leave_requests",
-    "params": { "status": "approved", "per_page": 25 }
+    "tool": "get_direct_reports_upcoming_leave",
+    "params": {}
   },
   "spec": {
     "root": "card",
@@ -26,8 +26,8 @@
         "props": {},
         "children": ["header", "body", "footer"],
         "watch": {
-          "/employment-hero/list_leave_requests/data/items": [
-            { "action": "setState", "params": { "statePath": "/ui/upcomingRows", "value": { "$computed": "employment-hero_flatten_upcoming_leave", "args": { "value": { "$state": "/employment-hero/list_leave_requests/data/items" } } } } }
+          "/employment-hero/get_direct_reports_upcoming_leave/data/items": [
+            { "action": "setState", "params": { "statePath": "/ui/upcomingRows", "value": { "$computed": "employment-hero_flatten_direct_reports_upcoming_leave", "args": { "value": { "$state": "/employment-hero/get_direct_reports_upcoming_leave/data/items" } } } } }
           ]
         }
       },
@@ -35,9 +35,9 @@
       "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
       "headerRow": { "type": "Row", "props": { "align": "center", "template": "1fr auto" }, "children": ["titleGroup"] },
       "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["titleIcon", "titleStack"] },
-      "titleIcon": { "type": "Icon", "props": { "name": "Palmtree", "tone": "accent", "size": "sm" } },
+      "titleIcon": { "type": "Icon", "props": { "name": "CalendarDays", "tone": "accent", "size": "sm" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Upcoming Leave", "level": "h2" } },
+      "title": { "type": "Heading", "props": { "text": "Direct Reports' Upcoming Leave", "level": "h2" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Employment Hero" } },
 
       "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "list"] },
@@ -45,7 +45,7 @@
       "loading": {
         "type": "Stack", "props": { "gap": "sm" },
         "children": ["sk1", "sk2", "sk3"],
-        "visible": { "$state": "/_loading/employment-hero.list_leave_requests" }
+        "visible": { "$state": "/_loading/employment-hero.get_direct_reports_upcoming_leave" }
       },
       "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
       "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
@@ -53,42 +53,39 @@
 
       "empty": {
         "type": "Empty",
-        "props": { "message": "No upcoming leave." },
+        "props": { "message": "No upcoming leave for your direct reports." },
         "visible": {
           "$and": [
-            { "$state": "/_loading/employment-hero.list_leave_requests", "not": true },
+            { "$state": "/_loading/employment-hero.get_direct_reports_upcoming_leave", "not": true },
             { "$state": "/ui/upcomingRows/0", "not": true }
           ]
         }
       },
 
       "list": {
-        "type": "Stack", "props": { "gap": "xs" },
-        "children": ["leaveRow"],
+        "type": "Stack", "props": { "gap": "sm" },
+        "children": ["leaveItem"],
         "repeat": { "statePath": "/ui/upcomingRows", "key": "id" },
         "visible": {
           "$and": [
-            { "$state": "/_loading/employment-hero.list_leave_requests", "not": true },
+            { "$state": "/_loading/employment-hero.get_direct_reports_upcoming_leave", "not": true },
             { "$state": "/ui/upcomingRows/0" }
           ]
         }
       },
 
-      "leaveRow": {
-        "type": "Stack", "props": { "gap": "xs" },
-        "children": ["leaveRowContent", "leaveRowDivider"]
-      },
-      "leaveRowContent": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "start", "hover": true },
-        "children": ["leaveLeft", "leaveRight"]
-      },
-      "leaveLeft": {
+      "leaveItem": {
         "type": "Stack", "props": { "gap": "none" },
-        "children": ["requestorLabel", "employeeName", "leaveType"]
+        "children": ["dateHeader", "employeeRow"]
       },
-      "requestorLabel": {
-        "type": "Eyebrow", "props": { "text": "Requestor" }
+      "dateHeader": {
+        "type": "Text",
+        "props": { "text": { "$item": "date_header" }, "size": "xs", "weight": "semibold", "tone": "accent" }
+      },
+      "employeeRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["employeeName", "leaveType"]
       },
       "employeeName": {
         "type": "Text",
@@ -98,37 +95,20 @@
         "type": "Caption",
         "props": { "text": { "$item": "leave_type" } }
       },
-      "leaveRight": {
-        "type": "Stack", "props": { "gap": "none", "align": "end" },
-        "children": ["leaveStatus", "leaveDates"]
-      },
-      "leaveStatus": {
-        "type": "Badge",
-        "props": {
-          "text": { "$item": "status_label" },
-          "tone": { "$item": "status_tone" },
-          "variant": "soft"
-        }
-      },
-      "leaveDates": {
-        "type": "Caption",
-        "props": { "text": { "$item": "date_range" } }
-      },
-      "leaveRowDivider": { "type": "Divider", "props": {} },
 
       "footer": {
         "type": "Row", "props": { "justify": "center" },
         "children": ["footerText"],
         "visible": {
           "$and": [
-            { "$state": "/_loading/employment-hero.list_leave_requests", "not": true },
+            { "$state": "/_loading/employment-hero.get_direct_reports_upcoming_leave", "not": true },
             { "$state": "/ui/upcomingRows/0" }
           ]
         }
       },
       "footerText": {
         "type": "Caption",
-        "props": { "text": "Your upcoming leave · Employment Hero" }
+        "props": { "text": "Direct reports only · Employment Hero" }
       }
 
     }

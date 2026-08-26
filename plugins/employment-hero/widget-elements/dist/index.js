@@ -98,16 +98,16 @@ const flatten_leave_requests = (args) => {
                         ? emp.name
                         : `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim()
                     : `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim();
-        // Try multiple EH field paths for leave type
+        // Try multiple EH field paths for leave type (leave_category_name first, matching server-side resolveLeaveType)
         const lt = item.leave_type;
-        const leaveType = (typeof lt === 'string' && lt)
-            ? lt
-            : (lt && typeof lt === 'object' && typeof lt.name === 'string')
-                ? lt.name
-                : (typeof item.leave_type_name === 'string' && item.leave_type_name)
-                    ? item.leave_type_name
-                    : (typeof item.leave_type_id === 'string' && item.leave_type_id)
-                        ? item.leave_type_id
+        const leaveType = (typeof item.leave_category_name === 'string' && item.leave_category_name)
+            ? item.leave_category_name
+            : (typeof lt === 'string' && lt)
+                ? lt
+                : (lt && typeof lt === 'object' && typeof lt.name === 'string')
+                    ? lt.name
+                    : (typeof item.leave_type_name === 'string' && item.leave_type_name)
+                        ? item.leave_type_name
                         : '';
         const { display: startDisplay, ts: startTs } = formatEhDate(item.start_date);
         const { display: endDisplay } = formatEhDate(item.end_date);
@@ -134,6 +134,8 @@ const flatten_leave_requests = (args) => {
             employee_name: empName,
             leave_type: leaveType,
             date_range: dateRange,
+            date_leave_line: [dateRange, leaveType].filter(Boolean).join(' · '),
+            review_url: String(item.review_url ?? ''),
             status_label: statusLabel,
             status_tone: statusTone,
         };
@@ -349,6 +351,53 @@ const flatten_my_upcoming_leave = (args) => {
         };
     });
 };
+// ── flatten_direct_reports_upcoming_leave ─────────────────────────────────────
+// Formats approved upcoming leave for the connected manager's direct reports.
+// date_header uses uppercase months (dd-MMM-yy) with day-of-week for single days.
+// Args: { value: raw items array from get_direct_reports_upcoming_leave }
+const DAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS_UPPER = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+function formatEhDateUpper(raw) {
+    const s = String(raw ?? '');
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m)
+        return { display: '', ts: 0, dow: '' };
+    const day = parseInt(m[3], 10);
+    const mon = parseInt(m[2], 10) - 1;
+    const year = parseInt(m[1], 10);
+    const d = new Date(year, mon, day);
+    return {
+        display: `${String(day).padStart(2, '0')}-${MONTHS_UPPER[mon] ?? m[2]}-${String(year).slice(-2)}`,
+        ts: d.getTime(),
+        dow: (DAYS_SHORT[d.getDay()] ?? '').toUpperCase(),
+    };
+}
+const flatten_direct_reports_upcoming_leave = (args) => {
+    const raw = Array.isArray(args.value) ? [...args.value] : [];
+    return raw.map(item => {
+        const { display: startDisplay, dow } = formatEhDateUpper(item.start_date);
+        const { display: endDisplay } = formatEhDateUpper(item.end_date);
+        let dateHeader;
+        if (!endDisplay || startDisplay === endDisplay) {
+            dateHeader = dow ? `${startDisplay} (${dow})` : startDisplay;
+        }
+        else {
+            dateHeader = `${startDisplay} → ${endDisplay}`;
+        }
+        const emp = item.employee;
+        const empName = (typeof item.employee_name === 'string' && item.employee_name)
+            ? item.employee_name
+            : emp
+                ? `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim()
+                : `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim();
+        return {
+            id: String(item.id ?? ''),
+            date_header: dateHeader,
+            employee_name: empName,
+            leave_type: resolveEhLeaveType(item),
+        };
+    });
+};
 const elements = {
     slug: 'employment-hero',
     functions: {
@@ -361,6 +410,7 @@ const elements = {
         flatten_my_upcoming_leave,
         flatten_compliance_at_risk,
         flatten_timesheets_to_approve,
+        flatten_direct_reports_upcoming_leave,
     },
 };
 export default elements;
