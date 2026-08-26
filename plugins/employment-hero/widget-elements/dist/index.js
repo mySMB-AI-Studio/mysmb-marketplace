@@ -114,9 +114,18 @@ const flatten_leave_requests = (args) => {
         const startDayTs = startTs > 0
             ? new Date(new Date(startTs).setHours(0, 0, 0, 0))
             : null;
+        const rawStatus = String(item.status ?? '').toLowerCase();
         let statusLabel;
         let statusTone;
-        if (startDayTs && startDayTs.getTime() < todayTs) {
+        if (rawStatus === 'approved') {
+            statusLabel = 'Approved';
+            statusTone = 'success';
+        }
+        else if (rawStatus === 'declined' || rawStatus === 'rejected') {
+            statusLabel = 'Declined';
+            statusTone = 'destructive';
+        }
+        else if (startDayTs && startDayTs.getTime() < todayTs) {
             statusLabel = 'Overdue';
             statusTone = 'destructive';
         }

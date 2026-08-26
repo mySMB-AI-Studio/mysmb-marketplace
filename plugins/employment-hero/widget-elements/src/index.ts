@@ -127,17 +127,19 @@ const flatten_leave_requests: ComputedFunction = (args) => {
       ? new Date(new Date(startTs).setHours(0, 0, 0, 0))
       : null;
 
+    const rawStatus = String(item.status ?? '').toLowerCase();
     let statusLabel: string;
     let statusTone: string;
-    if (startDayTs && startDayTs.getTime() < todayTs) {
-      statusLabel = 'Overdue';
-      statusTone = 'destructive';
+    if (rawStatus === 'approved') {
+      statusLabel = 'Approved'; statusTone = 'success';
+    } else if (rawStatus === 'declined' || rawStatus === 'rejected') {
+      statusLabel = 'Declined'; statusTone = 'destructive';
+    } else if (startDayTs && startDayTs.getTime() < todayTs) {
+      statusLabel = 'Overdue'; statusTone = 'destructive';
     } else if (startDayTs && startDayTs.getTime() === todayTs) {
-      statusLabel = 'Starts Today';
-      statusTone = 'warning';
+      statusLabel = 'Starts Today'; statusTone = 'warning';
     } else {
-      statusLabel = 'Pending';
-      statusTone = 'muted';
+      statusLabel = 'Pending'; statusTone = 'muted';
     }
 
     const dateRange = [startDisplay, endDisplay].filter(Boolean).join(' → ');
