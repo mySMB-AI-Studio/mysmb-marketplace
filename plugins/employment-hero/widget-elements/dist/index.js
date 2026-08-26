@@ -316,6 +316,39 @@ const flatten_timesheets_to_approve = (args) => {
         };
     });
 };
+// ── flatten_my_upcoming_leave ─────────────────────────────────────────────────
+// Filters the current user's approved leave to start_date >= today, sorts
+// ascending, and computes a "In X Days" / "Tomorrow" / "Today" countdown.
+// Args: { value: raw items array }
+const flatten_my_upcoming_leave = (args) => {
+    const raw = Array.isArray(args.value) ? [...args.value] : [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTs = today.getTime();
+    return raw
+        .filter(item => {
+        const { ts } = formatEhDate(item.start_date);
+        return ts > 0 && ts >= todayTs;
+    })
+        .sort((a, b) => formatEhDate(a.start_date).ts - formatEhDate(b.start_date).ts)
+        .map(item => {
+        const { display: startDisplay, ts: startTs } = formatEhDate(item.start_date);
+        const { display: endDisplay } = formatEhDate(item.end_date);
+        const dateRange = !endDisplay || startDisplay === endDisplay
+            ? startDisplay
+            : `${startDisplay} → ${endDisplay}`;
+        const daysUntil = Math.round((startTs - todayTs) / 86400000);
+        const daysLabel = daysUntil === 0 ? 'Today'
+            : daysUntil === 1 ? 'Tomorrow'
+                : `In ${daysUntil} Days`;
+        return {
+            id: String(item.id ?? ''),
+            leave_type: resolveEhLeaveType(item),
+            date_range: dateRange,
+            days_label: daysLabel,
+        };
+    });
+};
 const elements = {
     slug: 'employment-hero',
     functions: {
@@ -325,6 +358,7 @@ const elements = {
         flatten_leave_requests,
         flatten_upcoming_leave,
         flatten_my_leave_requests,
+        flatten_my_upcoming_leave,
         flatten_compliance_at_risk,
         flatten_timesheets_to_approve,
     },

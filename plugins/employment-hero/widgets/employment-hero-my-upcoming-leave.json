@@ -27,7 +27,7 @@
         "children": ["header", "body", "footer"],
         "watch": {
           "/employment-hero/list_leave_requests/data/items": [
-            { "action": "setState", "params": { "statePath": "/ui/upcomingRows", "value": { "$computed": "employment-hero_flatten_upcoming_leave", "args": { "value": { "$state": "/employment-hero/list_leave_requests/data/items" } } } } }
+            { "action": "setState", "params": { "statePath": "/ui/myUpcomingRows", "value": { "$computed": "employment-hero_flatten_my_upcoming_leave", "args": { "value": { "$state": "/employment-hero/list_leave_requests/data/items" } } } } }
           ]
         }
       },
@@ -35,7 +35,7 @@
       "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
       "headerRow": { "type": "Row", "props": { "align": "center", "template": "1fr auto" }, "children": ["titleGroup"] },
       "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["titleIcon", "titleStack"] },
-      "titleIcon": { "type": "Icon", "props": { "name": "Palmtree", "tone": "accent", "size": "sm" } },
+      "titleIcon": { "type": "Icon", "props": { "name": "Flag", "tone": "destructive", "size": "sm" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
       "title": { "type": "Heading", "props": { "text": "My Upcoming Leave", "level": "h2" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Employment Hero" } },
@@ -57,7 +57,7 @@
         "visible": {
           "$and": [
             { "$state": "/_loading/employment-hero.list_leave_requests", "not": true },
-            { "$state": "/ui/upcomingRows/0", "not": true }
+            { "$state": "/ui/myUpcomingRows/0", "not": true }
           ]
         }
       },
@@ -65,11 +65,11 @@
       "list": {
         "type": "Stack", "props": { "gap": "xs" },
         "children": ["leaveRow"],
-        "repeat": { "statePath": "/ui/upcomingRows", "key": "id" },
+        "repeat": { "statePath": "/ui/myUpcomingRows", "key": "id" },
         "visible": {
           "$and": [
             { "$state": "/_loading/employment-hero.list_leave_requests", "not": true },
-            { "$state": "/ui/upcomingRows/0" }
+            { "$state": "/ui/myUpcomingRows/0" }
           ]
         }
       },
@@ -81,35 +81,23 @@
       "leaveRowContent": {
         "type": "Row",
         "props": { "justify": "between", "align": "center", "hover": true },
-        "children": ["leaveLeft", "leaveRight"]
+        "children": ["leaveLeft", "daysLabel"]
       },
       "leaveLeft": {
         "type": "Stack", "props": { "gap": "none" },
-        "children": ["employeeName", "leaveType"]
+        "children": ["leaveTypeName", "leaveDates"]
       },
-      "employeeName": {
+      "leaveTypeName": {
         "type": "Text",
-        "props": { "text": { "$item": "employee_name" }, "size": "sm", "weight": "medium", "truncate": true }
-      },
-      "leaveType": {
-        "type": "Caption",
-        "props": { "text": { "$item": "leave_type" } }
-      },
-      "leaveRight": {
-        "type": "Stack", "props": { "gap": "none", "align": "end" },
-        "children": ["leaveStatus", "leaveDates"]
-      },
-      "leaveStatus": {
-        "type": "Badge",
-        "props": {
-          "text": { "$item": "status_label" },
-          "tone": { "$item": "status_tone" },
-          "variant": "soft"
-        }
+        "props": { "text": { "$item": "leave_type" }, "size": "sm", "weight": "semibold", "truncate": true }
       },
       "leaveDates": {
         "type": "Caption",
-        "props": { "text": { "$item": "date_range" } }
+        "props": { "text": { "$item": "date_range" }, "tone": "accent" }
+      },
+      "daysLabel": {
+        "type": "Caption",
+        "props": { "text": { "$item": "days_label" } }
       },
       "leaveRowDivider": { "type": "Divider", "props": {} },
 
@@ -119,7 +107,7 @@
         "visible": {
           "$and": [
             { "$state": "/_loading/employment-hero.list_leave_requests", "not": true },
-            { "$state": "/ui/upcomingRows/0" }
+            { "$state": "/ui/myUpcomingRows/0" }
           ]
         }
       },
