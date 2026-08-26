@@ -1,0 +1,60 @@
+{
+  "id": "microsoft-365/outlook-inbox",
+  "plugin": "microsoft-365",
+  "canonical": "email/Message",
+  "provider": {
+    "key": "outlook",
+    "label": "Outlook"
+  },
+  "source": {
+    "mcpServer": "m365-mail-read",
+    "tool": "list_emails",
+    "params": {
+      "folder": "inbox",
+      "limit": 10,
+      "unreadOnly": true
+    }
+  },
+  "unreadFilter": {
+    "in": "isRead",
+    "equals": false
+  },
+  "fieldProjection": [
+    {
+      "out": "id",
+      "in": "id"
+    },
+    {
+      "out": "fromName",
+      "in": "from.emailAddress.name"
+    },
+    {
+      "out": "fromAddress",
+      "in": "from.emailAddress.address"
+    },
+    {
+      "out": "subject",
+      "in": "subject"
+    },
+    {
+      "out": "snippet",
+      "in": "bodyPreview"
+    },
+    {
+      "out": "receivedAt",
+      "in": "receivedDateTime",
+      "transform": "iso-date"
+    },
+    {
+      "out": "isUnread",
+      "value": true
+    }
+  ],
+  "compose": {
+    "mode": "createDraft",
+    "mcpServer": "m365-mail-send",
+    "newTool": "create_draft_email",
+    "replyTool": "create_reply_draft",
+    "resultUrlPath": "webLink"
+  }
+}

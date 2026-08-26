@@ -113,3 +113,20 @@ without another prompt.
 - `get_profile` — Get user profile
 - `get_manager` — Get user's manager
 - `get_direct_reports` — Get direct reports
+
+## Briefing email source
+
+`briefing-sources/email.json` (declared as `briefingEmailSources` in
+`.claude-plugin/plugin.json`) lets the mySidekick morning briefing read this
+mailbox alongside every other connected email account.
+
+It maps `m365-mail-read/list_emails` onto the canonical `email/Message`
+contract. It passes `unreadOnly: true` so Graph filters server-side — otherwise
+`limit: 10` returns "the unread subset of the ten newest", which on a busy
+morning is routinely empty. `unreadFilter` repeats the check client-side as
+defence in depth.
+
+The file is inert unless declared, and `scripts/validate.ts` enforces that it
+names only a server this plugin owns and uses an https compose template with
+known placeholders. Schema:
+`myHubV2/packages/shared/src/briefing-sources/email-source-schema.ts`.
