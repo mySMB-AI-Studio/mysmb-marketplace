@@ -30,6 +30,15 @@ Each service requires the following Google OAuth 2.0 scopes:
 | Google Chat (messages) | `https://www.googleapis.com/auth/chat.messages` | Read, send, update, and delete messages |
 | Google Chat (members) | `https://www.googleapis.com/auth/chat.memberships.readonly` | List space members (`list_members` tool) |
 | People (Contacts) | `https://www.googleapis.com/auth/contacts.readonly` | Read-only contact and profile access |
+| Identity | `openid` | Identifies the connected account so two Google mailboxes can be told apart |
+| Identity | `email` | Supplies the account's address, so it is labelled with a real address rather than "Connected account" |
+
+> **Consent screen:** `openid` and `email` are OIDC **identity** scopes, not data
+> scopes — they widen no access to Gmail, Drive, Calendar, Chat, or Contacts.
+> They are requested by the shared authorization flow, so the consent screen
+> changes for **all** google-workspace servers on the next connect, not just
+> Gmail. Without `email` the workspace has no address for the account and every
+> Gmail card and draft reads "Connected account".
 
 > **Note:** Google OAuth 2.0 access tokens expire after approximately one hour.
 > Re-generate and re-paste the token when you see `401 Unauthorized` errors.

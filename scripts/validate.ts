@@ -381,52 +381,6 @@ const COMPOSE_PLACEHOLDERS = new Set(["to", "subject", "body", "accountAddress"]
 const DOT_PATH_RE = /^[a-zA-Z0-9_$-]+(\.[a-zA-Z0-9_$-]+)*$/;
 
 
-// ── Connection identity probes ────────────────────────────────────────────────
-//
-// `connectionIdentity` tells the workspace how to VERIFY which account a
-// connection belongs to, by calling the provider's own profile endpoint with
-// the freshly-issued access token. It is what lets a mail-read account be
-// matched to the corresponding mail-write account so a draft lands in the right
-// mailbox. Same discipline as everything else here: https only, fixed field
-// names, no expression language — and the server must belong to this plugin.
-
-function validateConnectionIdentity(
-  pluginDirName: string,
-  declared: unknown,
-  ownedServers: Set<string>,
-) {
-  const where = `plugins/${pluginDirName}`;
-  if (!isRecord(declared)) {
-    fail(`${where}: plugin.json connectionIdentity must be an object keyed by MCP server name`);
-    return;
-  }
-  for (const [serverName, spec] of Object.entries(declared)) {
-    if (!ownedServers.has(serverName)) {
-      fail(
-        `${where}: connectionIdentity names MCP server "${serverName}", which this plugin does not declare in .mcp.json`,
-      );
-      continue;
-    }
-    if (!isRecord(spec)) {
-      fail(`${where}: connectionIdentity["${serverName}"] must be an object`);
-      continue;
-    }
-    if (typeof spec.profileUrl !== "string" || !spec.profileUrl.startsWith("https://")) {
-      fail(`${where}: connectionIdentity["${serverName}"].profileUrl must be an https URL`);
-    } else if (/@/.test(spec.profileUrl.split("?")[0] ?? "")) {
-      fail(`${where}: connectionIdentity["${serverName}"].profileUrl must not embed credentials`);
-    }
-    if (typeof spec.issuer !== "string" || !spec.issuer) {
-      fail(`${where}: connectionIdentity["${serverName}"].issuer is required`);
-    }
-    if (typeof spec.subjectPath !== "string" || !DOT_PATH_RE.test(spec.subjectPath)) {
-      fail(`${where}: connectionIdentity["${serverName}"].subjectPath must be a dot-path`);
-    }
-    if (spec.emailPath !== undefined && (typeof spec.emailPath !== "string" || !DOT_PATH_RE.test(spec.emailPath))) {
-      fail(`${where}: connectionIdentity["${serverName}"].emailPath must be a dot-path`);
-    }
-  }
-}
 
 function validateBriefingEmailSources(
   pluginDirName: string,
@@ -600,7 +554,6 @@ function validatePlugin(pluginDirName: string, expectedName: string) {
     widgets?: string;
     content?: unknown;
     briefingEmailSources?: unknown;
-    connectionIdentity?: unknown;
   }>(manifestPath);
   if (manifest && manifest.name && manifest.name !== expectedName) {
     fail(
@@ -637,13 +590,6 @@ function validatePlugin(pluginDirName: string, expectedName: string) {
     validateBriefingEmailSources(
       pluginDirName,
       manifest.briefingEmailSources,
-      new Set(Object.keys(mcp.mcpServers)),
-    );
-  }
-  if (manifest?.connectionIdentity !== undefined) {
-    validateConnectionIdentity(
-      pluginDirName,
-      manifest.connectionIdentity,
       new Set(Object.keys(mcp.mcpServers)),
     );
   }
