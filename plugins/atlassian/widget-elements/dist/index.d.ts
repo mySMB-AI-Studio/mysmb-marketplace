@@ -39,6 +39,6 @@ import type { PluginElementsModule } from './types';
  * Spec example (single request -> bucket key):
  *   { "$computed": "atlassian_request_bucket", "args": { "request": { "$item": "" } } }
  */
-export type RequestBucket = 'new' | 'in_progress' | 'behind' | 'alerts';
+export type RequestBucket = 'new' | 'in_progress' | 'behind' | 'alerts' | 'done';
 declare const elements: PluginElementsModule;
 export default elements;

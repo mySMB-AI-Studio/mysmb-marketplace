@@ -128,17 +128,42 @@ function findResolutionCycle(request) {
         v.name.trim().toLowerCase() === 'time to resolution');
     return match?.ongoingCycle;
 }
+// Real, confirmed-live gotcha: `list_service_desk_requests`'s own
+// `request_status: "OPEN_REQUESTS"` server-side filter does NOT reliably
+// exclude requests whose Jira status has moved to a DONE-category status
+// (e.g. "Resolved") -- confirmed by resolving a real sandbox ticket and
+// seeing it still come back in an OPEN_REQUESTS-filtered response. Rather
+// than trust that param alone, classify DONE-category requests explicitly
+// and exclude them from every bucket, checked BEFORE the SLA-urgency
+// checks below (a resolved ticket's SLA data shouldn't matter either way).
 function classifyRequest(request) {
+    const category = normalizeCategory(request?.currentStatus?.statusCategory);
+    if (category === 'DONE')
+        return 'done';
     const cycle = findResolutionCycle(request);
     if (cycle?.breached === true)
         return 'alerts';
     if (cycle && isAtRisk(cycle))
         return 'behind';
-    const category = normalizeCategory(request?.currentStatus?.statusCategory);
     if (category === 'NEW')
         return 'new';
     return 'in_progress';
 }
+/**
+ * Count requests that are genuinely still active (excludes 'done' --
+ * see the `classifyRequest` note above about `OPEN_REQUESTS` unreliably
+ * including resolved/closed requests). Used for the header's "N open
+ * requests" eyebrow instead of a raw `count` over the full response.
+ *
+ * Args: { values } -- the request array.
+ *
+ * Spec example:
+ *   { "$computed": "atlassian_active_request_count", "args": { "values": { "$state": "..." } } }
+ */
+const active_request_count = (args) => {
+    const values = Array.isArray(args.values) ? args.values : [];
+    return values.filter((v) => classifyRequest(v) !== 'done').length;
+};
 const request_bucket = (args) => classifyRequest(args.request);
 /**
  * Count how many requests in a list fall into one bucket. Used for the
@@ -303,6 +328,22 @@ function findFirstResponseCycles(data) {
  * that would need a second, expensive full-count query, defeating the
  * purpose of the cap.
  *
+ * KNOWN LIMITATION, confirmed live: this query relies on Jira's real
+ * `resolutiondate` field, which is only populated when a workflow
+ * transition actually sets a Resolution (not just a status whose NAME
+ * looks like "Resolved"). Confirmed on the sandbox: a ticket manually
+ * moved to a "Resolved"-named, DONE-category status still had
+ * `resolution: null` / `resolutiondate: null` on the underlying Jira
+ * issue, because that transition's screen has no Resolution field --
+ * so this query correctly finds zero matches for it, even though the
+ * ticket visually looks resolved. This is a real per-customer workflow-
+ * configuration gap (same class as the "New" bucket limitation
+ * documented on the Service Desk Queue widget), not a bug in this query
+ * -- `resolutiondate` IS the correct, standard Jira signal for "when was
+ * this actually resolved." Left as-is deliberately rather than falling
+ * back to a looser signal like `updated`, which would conflate "resolved"
+ * with "edited for any reason."
+ *
  * State written (all widget-local):
  *   /ui/slaLoading    -- true while a run is in flight
  *   /ui/slaRunToken   -- monotonic guard value; a click that starts after
@@ -440,6 +481,7 @@ const elements = {
         bucket_count,
         filter_by_bucket,
         bucket_tone,
+        active_request_count,
         sla_pct_label,
     },
     actions: {
