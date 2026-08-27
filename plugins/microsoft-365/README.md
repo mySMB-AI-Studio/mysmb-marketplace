@@ -130,3 +130,41 @@ The file is inert unless declared, and `scripts/validate.ts` enforces that it
 names only a server this plugin owns and uses an https compose template with
 known placeholders. Schema:
 `myHubV2/packages/shared/src/briefing-sources/email-source-schema.ts`.
+
+## OAuth redirect URIs — register these before a server can be connected
+
+**Every MCP server in this plugin has its OWN callback URL**, because the gateway
+builds it as `${BASE_URL}${serverPath}/callback`. Each one must be listed in the
+provider's app registration or the connect flow dies with
+`redirect_uri_mismatch` / `Invalid Redirect URI` — and it dies at the moment a
+user first clicks Connect, which can be months after the server shipped.
+
+**Adding a server to `.mcp.json` therefore requires registering two more URIs.**
+There is no way to discover the omission from CI: the code, the manifest and the
+validator are all perfectly happy, and only a human clicking Connect finds out.
+
+There are exactly **two gateway hosts**, not one per environment:
+
+| Tenants in | Reach the gateway at | Why |
+|---|---|---|
+| QA (Azure `staging`) | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io` | tenant sets `MCP_SERVERS_BASE_URL`, which rewrites the host in this file |
+| UAT and Production | `https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io` | no `MCP_SERVERS_BASE_URL` set, so the URL below is used verbatim |
+
+So each server needs **both** rows below registered against the Entra app registration.
+
+| Server | Redirect URIs (register both) |
+|---|---|
+| `m365-mail-read` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/m365-mail-read/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/m365-mail-read/callback` |
+| `m365-mail-send` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/m365-mail-send/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/m365-mail-send/callback` |
+| `m365-calendar` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/m365-calendar/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/m365-calendar/callback` |
+| `m365-files` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/m365-files/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/m365-files/callback` |
+| `m365-teams` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/m365-teams/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/m365-teams/callback` |
+| `m365-people` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/m365-people/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/m365-people/callback` |
+
+> Register these under the Entra app registration whose id is `ENTRA_CLIENT_ID`
+> on the gateway (Azure Portal → App registrations → Authentication → Web →
+> Redirect URIs). All six servers share one app registration, differing only by
+> requested scopes.
+>
+> `m365-mail-send` is only reached when a user creates a draft, so an unregistered
+> URI there stays invisible until someone clicks "Open draft".

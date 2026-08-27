@@ -44,6 +44,46 @@ Each service requires the following Google OAuth 2.0 scopes:
 > Re-generate and re-paste the token when you see `401 Unauthorized` errors.
 > If only some services fail with `403`, check that the token was minted with **all** scopes above — a partial-scope token causes silent failures on the missing services.
 
+## OAuth redirect URIs — register these before a server can be connected
+
+**Every MCP server in this plugin has its OWN callback URL**, because the gateway
+builds it as `${BASE_URL}${serverPath}/callback`. Each one must be listed in the
+provider's app registration or the connect flow dies with
+`redirect_uri_mismatch` / `Invalid Redirect URI` — and it dies at the moment a
+user first clicks Connect, which can be months after the server shipped.
+
+**Adding a server to `.mcp.json` therefore requires registering two more URIs.**
+There is no way to discover the omission from CI: the code, the manifest and the
+validator are all perfectly happy, and only a human clicking Connect finds out.
+
+There are exactly **two gateway hosts**, not one per environment:
+
+| Tenants in | Reach the gateway at | Why |
+|---|---|---|
+| QA (Azure `staging`) | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io` | tenant sets `MCP_SERVERS_BASE_URL`, which rewrites the host in this file |
+| UAT and Production | `https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io` | no `MCP_SERVERS_BASE_URL` set, so the URL below is used verbatim |
+
+So each server needs **both** rows below registered against the Google OAuth client.
+
+| Server | Redirect URIs (register both) |
+|---|---|
+| `google-workspace-gmail` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/google-workspace-gmail/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/google-workspace-gmail/callback` |
+| `google-workspace-gmail-write` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/google-workspace-gmail-write/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/google-workspace-gmail-write/callback` |
+| `google-workspace-calendar` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/google-workspace-calendar/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/google-workspace-calendar/callback` |
+| `google-workspace-drive` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/google-workspace-drive/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/google-workspace-drive/callback` |
+| `google-workspace-chat` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/google-workspace-chat/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/google-workspace-chat/callback` |
+| `google-workspace-people` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/google-workspace-people/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/google-workspace-people/callback` |
+
+> **Both hosts share ONE Google OAuth client**, so all twelve URIs above belong in
+> the same **Authorized redirect URIs** list (Google Cloud Console → APIs &
+> Services → Credentials → the OAuth 2.0 Client whose id is `GOOGLE_CLIENT_ID`
+> on the gateway). Changes take a minute or two to apply.
+>
+> Known gap: `google-workspace-gmail-write` shipped in August 2026 and its URIs
+> were not registered at the time, so the first attempt to connect it returned
+> `Error 400: redirect_uri_mismatch`. Nothing else surfaced it, because no other
+> feature touches that server.
+
 ### How to obtain an access token
 
 #### Option A — Google OAuth 2.0 Playground (quickest for testing)
