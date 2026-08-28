@@ -439,8 +439,12 @@ const flatten_timesheet_daily_summary = (args) => {
         }
     }
     const sortedDates = Array.from(groups.keys()).sort();
-    const { display: startDisplay } = formatEhDate(minDate);
-    const { display: endDisplay } = formatEhDate(maxDate);
+    // Derive period_range from server-provided _period_start/_period_end so it
+    // always matches the API window, even if EH leaks entries outside it.
+    const pStart = String(raw[0]?._period_start ?? minDate);
+    const pEnd = String(raw[0]?._period_end ?? maxDate);
+    const { display: startDisplay } = formatEhDate(pStart);
+    const { display: endDisplay } = formatEhDate(pEnd);
     const periodRange = startDisplay === endDisplay ? startDisplay : `${startDisplay} → ${endDisplay}`;
     const totalRounded = Math.round(totalHours * 10) / 10;
     const totalHoursDisplay = `${totalRounded} hrs`;
@@ -470,20 +474,13 @@ const flatten_team_timesheet_entries = (args) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayTs = today.getTime();
-    // Compute period range from all entries
-    let minDate = '', maxDate = '';
-    for (const item of raw) {
-        const d = String(item.date ?? '');
-        if (!d)
-            continue;
-        if (!minDate || d < minDate)
-            minDate = d;
-        if (!maxDate || d > maxDate)
-            maxDate = d;
-    }
-    const { display: startDisplay } = formatEhDate(minDate);
-    const { display: endDisplay } = formatEhDate(maxDate);
-    const periodRange = startDisplay === endDisplay ? startDisplay : `${startDisplay} → ${endDisplay}`;
+    // Derive period_range from server-provided _period_start/_period_end so it
+    // always matches the API window, even if EH leaks entries outside it.
+    const pStart = String(raw[0]?._period_start ?? '');
+    const pEnd = String(raw[0]?._period_end ?? '');
+    const { display: psDisplay } = formatEhDate(pStart);
+    const { display: peDisplay } = formatEhDate(pEnd);
+    const periodRange = psDisplay === peDisplay ? psDisplay : `${psDisplay} → ${peDisplay}`;
     const groups = new Map();
     for (const item of raw) {
         const empId = String(item.employee_id ?? item.id ?? '');
@@ -512,6 +509,11 @@ const flatten_team_timesheet_entries = (args) => {
     const rows = Array.from(groups.entries()).map(([empId, g]) => {
         const hrs = Math.round(g.hours * 10) / 10;
         const allApproved = g.statuses.every(s => s === 'approved');
+        // Composite status precedence (employee-level, not entry-level):
+        //   Overdue  — any pending entry whose date is before today
+        //   Approved — every entry is approved
+        //   Pending  — otherwise (mix of pending/approved, all in the future)
+        // Stat counts (stat_pending/approved/overdue) reflect employees, not raw entries.
         const isOverdue = !allApproved && g.statuses.some((s, i) => {
             const { ts } = formatEhDate(g.dates[i]);
             return (s === 'pending' || s === '') && ts > 0 && ts < todayTs;
