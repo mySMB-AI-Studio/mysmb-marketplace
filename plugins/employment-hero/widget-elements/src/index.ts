@@ -201,17 +201,13 @@ const flatten_upcoming_leave: ComputedFunction = (args) => {
         (typeof item.employee_name === 'string' && item.employee_name)
           ? item.employee_name
           : emp
-            ? (typeof emp.name === 'string' && emp.name)
-              ? emp.name
-              : `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim()
+            ? (typeof emp.name === 'string' && emp.name ? emp.name : `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim())
             : `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim();
+
       const rawStatus = String(item.status ?? '').toLowerCase();
-      const statusLabel = rawStatus === 'approved' ? 'Approved'
-        : rawStatus === 'declined' || rawStatus === 'rejected' ? 'Declined'
-        : 'Pending';
-      const statusTone = rawStatus === 'approved' ? 'success'
-        : rawStatus === 'declined' || rawStatus === 'rejected' ? 'destructive'
-        : 'muted';
+      const statusLabel = rawStatus === 'approved' ? 'Approved' : rawStatus === 'declined' || rawStatus === 'rejected' ? 'Declined' : 'Pending';
+      const statusTone  = rawStatus === 'approved' ? 'success'  : rawStatus === 'declined' || rawStatus === 'rejected' ? 'destructive' : 'muted';
+
       return {
         id:            String(item.id ?? ''),
         employee_name: empName,
@@ -256,9 +252,7 @@ const flatten_my_leave_requests: ComputedFunction = (args) => {
         (typeof item.employee_name === 'string' && item.employee_name)
           ? item.employee_name
           : emp
-            ? (typeof emp.name === 'string' && emp.name)
-              ? emp.name
-              : `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim()
+            ? (typeof emp.name === 'string' && emp.name ? emp.name : `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim())
             : `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim();
 
       const { display: submittedDisplay } = formatEhDate(
