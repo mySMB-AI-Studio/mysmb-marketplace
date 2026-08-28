@@ -200,6 +200,7 @@ export type RequestBucket = 'new' | 'in_progress' | 'behind' | 'alerts' | 'done'
 interface JsmRequest {
   currentStatus?: { statusCategory?: string };
   sla?: { values?: unknown[] };
+  unassigned?: boolean;
 }
 
 function normalizeCategory(v: unknown): string {
@@ -230,13 +231,23 @@ function findResolutionCycle(request: unknown): SlaCycle | undefined {
 // than trust that param alone, classify DONE-category requests explicitly
 // and exclude them from every bucket, checked BEFORE the SLA-urgency
 // checks below (a resolved ticket's SLA data shouldn't matter either way).
+//
+// New vs In Progress, per stakeholder direction (not `statusCategory ===
+// "NEW"` -- confirmed structurally unreachable on this workflow, see the
+// widget's own description): New = genuinely UNASSIGNED (the `unassigned`
+// field from `list_service_desk_requests`, only present when the tool was
+// called with `project_key`); In Progress = assigned. `unassigned` may be
+// `undefined` if the tile's dataProvider omits `project_key` -- treated as
+// "not new" (falls through to in_progress) rather than crashing, so this
+// stays backward compatible with the param being optional server-side.
 function classifyRequest(request: unknown): RequestBucket {
-  const category = normalizeCategory((request as JsmRequest | undefined)?.currentStatus?.statusCategory);
+  const req = request as JsmRequest | undefined;
+  const category = normalizeCategory(req?.currentStatus?.statusCategory);
   if (category === 'DONE') return 'done';
   const cycle = findResolutionCycle(request);
   if (cycle?.breached === true) return 'alerts';
   if (cycle && isAtRisk(cycle)) return 'behind';
-  if (category === 'NEW') return 'new';
+  if (req?.unassigned === true) return 'new';
   return 'in_progress';
 }
 
