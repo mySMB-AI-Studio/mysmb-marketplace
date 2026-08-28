@@ -80,24 +80,12 @@
       },
       "approvalRowContent": {
         "type": "Row",
-        "props": { "justify": "between", "align": "start", "hover": true, "clickable": true },
-        "children": ["approvalLeft", "approvalStatus"],
-        "on": {
-          "click": {
-            "action": "open_url",
-            "params": {
-              "url": {
-                "$computed": "identity",
-                "args": { "value": { "$item": "review_url" } }
-              },
-              "target": "_blank"
-            }
-          }
-        }
+        "props": { "justify": "between", "align": "start" },
+        "children": ["approvalLeft", "approvalStatus"]
       },
       "approvalLeft": {
         "type": "Stack", "props": { "gap": "none" },
-        "children": ["requestorLabel", "employeeName", "dateLeaveLine", "reviewLink"]
+        "children": ["requestorLabel", "employeeName", "dateLeaveLine", "reviewRow"]
       },
       "requestorLabel": {
         "type": "Eyebrow", "props": { "text": "Requestor" }
@@ -110,12 +98,24 @@
         "type": "Caption",
         "props": { "text": { "$item": "date_leave_line" } }
       },
-      "reviewLink": {
-        "type": "Caption",
-        "props": {
-          "text": "Review in Employment Hero →",
-          "tone": "accent"
+      "reviewRow": {
+        "type": "Row",
+        "props": { "align": "center", "clickable": true },
+        "children": ["reviewCaption"],
+        "visible": { "$item": "show_review_link" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": { "$computed": "identity", "args": { "value": { "$item": "review_url" } } },
+              "target": "_blank"
+            }
+          }
         }
+      },
+      "reviewCaption": {
+        "type": "Caption",
+        "props": { "text": "Review in Employment Hero →", "tone": "accent" }
       },
       "approvalStatus": {
         "type": "Badge",

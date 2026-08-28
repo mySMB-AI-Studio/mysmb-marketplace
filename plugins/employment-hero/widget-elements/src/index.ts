@@ -144,15 +144,17 @@ const flatten_leave_requests: ComputedFunction = (args) => {
 
     const dateRange = [startDisplay, endDisplay].filter(Boolean).join(' → ');
 
+    const reviewUrl = String(item.review_url ?? '');
     return {
-      id:             String(item.id ?? ''),
-      employee_name:  empName,
-      leave_type:     leaveType,
-      date_range:     dateRange,
-      date_leave_line: [dateRange, leaveType].filter(Boolean).join(' · '),
-      review_url:     String(item.review_url ?? ''),
-      status_label:   statusLabel,
-      status_tone:    statusTone,
+      id:               String(item.id ?? ''),
+      employee_name:    empName,
+      leave_type:       leaveType,
+      date_range:       dateRange,
+      date_leave_line:  [dateRange, leaveType].filter(Boolean).join(' · '),
+      review_url:       reviewUrl,
+      show_review_link: reviewUrl ? 'true' : '',
+      status_label:     statusLabel,
+      status_tone:      statusTone,
     };
   });
 };
@@ -575,7 +577,7 @@ const flatten_team_timesheet_entries: ComputedFunction = (args) => {
       hours_this_week:  `${hrs} hrs this week`,
       status_label:     statusLabel,
       status_tone:      statusTone,
-      show_review_link: isOverdue ? 'true' : '',
+      show_review_link: isOverdue && !!g.review_url ? 'true' : '',
       review_url:       g.review_url,
       period_range:     '',
       stat_pending:     '',
