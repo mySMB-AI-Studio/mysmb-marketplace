@@ -1,7 +1,7 @@
 {
   "id": "employment-hero-team-timesheet-entries",
   "title": "Team Timesheet This Week",
-  "description": "All timesheet entries for the current work week across your organisation, with employee name, date, hours, and approval status.",
+  "description": "All timesheet entries for the current work week across your organisation, grouped by employee with total hours and approval status.",
   "category": "hr",
   "tags": ["employment-hero", "hr", "timesheets", "team", "weekly", "manager"],
   "keywords": ["team timesheet", "hours", "this week", "entries", "work hours", "employment hero"],
@@ -24,7 +24,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "body", "footer"],
+        "children": ["header", "body"],
         "watch": {
           "/employment-hero/get_timesheets_this_week/data/items": [
             { "action": "setState", "params": { "statePath": "/ui/entryRows", "value": { "$computed": "employment-hero_flatten_team_timesheet_entries", "args": { "value": { "$state": "/employment-hero/get_timesheets_this_week/data/items" } } } } }
@@ -40,7 +40,7 @@
       "title": { "type": "Heading", "props": { "text": "Team Timesheet This Week", "level": "h2" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Employment Hero" } },
 
-      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "list"] },
+      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "contentArea"] },
 
       "loading": {
         "type": "Stack", "props": { "gap": "sm" },
@@ -62,10 +62,9 @@
         }
       },
 
-      "list": {
-        "type": "Stack", "props": { "gap": "xs" },
-        "children": ["entryRow"],
-        "repeat": { "statePath": "/ui/entryRows", "key": "id" },
+      "contentArea": {
+        "type": "Stack", "props": { "gap": "md" },
+        "children": ["periodText", "statsRow", "list"],
         "visible": {
           "$and": [
             { "$state": "/_loading/employment-hero.get_timesheets_this_week", "not": true },
@@ -74,39 +73,76 @@
         }
       },
 
+      "periodText": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/ui/entryRows/0/period_range" } }
+      },
+
+      "statsRow": {
+        "type": "Row", "props": { "gap": "sm", "template": "1fr 1fr 1fr" },
+        "children": ["statPending", "statApproved", "statOverdue"]
+      },
+
+      "statPending": { "type": "Section", "props": { "variant": "muted" }, "children": ["statPendingInner"] },
+      "statPendingInner": { "type": "Stack", "props": { "gap": "none" }, "children": ["statPendingLabel", "statPendingCount"] },
+      "statPendingLabel": { "type": "Eyebrow", "props": { "text": "PENDING" } },
+      "statPendingCount": { "type": "Heading", "props": { "text": { "$state": "/ui/entryRows/0/stat_pending" }, "level": "h2" } },
+
+      "statApproved": { "type": "Section", "props": { "variant": "muted" }, "children": ["statApprovedInner"] },
+      "statApprovedInner": { "type": "Stack", "props": { "gap": "none" }, "children": ["statApprovedLabel", "statApprovedCount"] },
+      "statApprovedLabel": { "type": "Eyebrow", "props": { "text": "APPROVED" } },
+      "statApprovedCount": { "type": "Heading", "props": { "text": { "$state": "/ui/entryRows/0/stat_approved" }, "level": "h2", "tone": "success" } },
+
+      "statOverdue": { "type": "Section", "props": { "variant": "muted" }, "children": ["statOverdueInner"] },
+      "statOverdueInner": { "type": "Stack", "props": { "gap": "none" }, "children": ["statOverdueLabel", "statOverdueCount"] },
+      "statOverdueLabel": { "type": "Eyebrow", "props": { "text": "OVERDUE" } },
+      "statOverdueCount": { "type": "Heading", "props": { "text": { "$state": "/ui/entryRows/0/stat_overdue" }, "level": "h2", "tone": "destructive" } },
+
+      "list": {
+        "type": "Stack", "props": { "gap": "xs" },
+        "children": ["entryRow"],
+        "repeat": { "statePath": "/ui/entryRows", "key": "id" }
+      },
+
       "entryRow": {
         "type": "Stack", "props": { "gap": "xs" },
-        "children": ["entryRowContent", "entryDivider"]
+        "children": ["entryContent", "entryDivider"]
       },
-      "entryRowContent": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["entryLeft", "entryRight"]
+      "entryContent": {
+        "type": "Row", "props": { "justify": "between", "align": "start" },
+        "children": ["entryLeft", "statusBadge"]
       },
       "entryLeft": {
         "type": "Stack", "props": { "gap": "none" },
-        "children": ["employeeName", "dateCaption"]
+        "children": ["requestorLabel", "employeeName", "hoursCaption", "reviewRow"]
       },
+      "requestorLabel": { "type": "Eyebrow", "props": { "text": "REQUESTOR" } },
       "employeeName": {
         "type": "Text",
         "props": { "text": { "$item": "employee_name" }, "size": "sm", "weight": "semibold", "truncate": true }
       },
-      "dateCaption": {
+      "hoursCaption": {
         "type": "Caption",
-        "props": { "text": { "$item": "date_caption" } }
+        "props": { "text": { "$item": "hours_this_week" } }
       },
-      "entryRight": {
+      "reviewRow": {
         "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["hoursBadge", "statusBadge"]
-      },
-      "hoursBadge": {
-        "type": "Badge",
-        "props": {
-          "text": { "$item": "hours_display" },
-          "tone": "default",
-          "variant": "soft"
+        "props": { "align": "center", "clickable": true },
+        "children": ["reviewCaption"],
+        "visible": { "$item": "show_review_link" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": { "$computed": "identity", "args": { "value": { "$item": "review_url" } } },
+              "target": "_blank"
+            }
+          }
         }
+      },
+      "reviewCaption": {
+        "type": "Caption",
+        "props": { "text": "Review in Employment Hero →", "tone": "accent" }
       },
       "statusBadge": {
         "type": "Badge",
@@ -116,22 +152,7 @@
           "variant": "soft"
         }
       },
-      "entryDivider": { "type": "Divider", "props": {} },
-
-      "footer": {
-        "type": "Row", "props": { "justify": "center" },
-        "children": ["footerText"],
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/employment-hero.get_timesheets_this_week", "not": true },
-            { "$state": "/ui/entryRows/0" }
-          ]
-        }
-      },
-      "footerText": {
-        "type": "Caption",
-        "props": { "text": "All entries this week · Employment Hero" }
-      }
+      "entryDivider": { "type": "Divider", "props": {} }
 
     }
   },

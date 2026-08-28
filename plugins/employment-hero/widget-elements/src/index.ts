@@ -494,38 +494,101 @@ const flatten_timesheet_daily_summary: ComputedFunction = (args) => {
 };
 
 // ── flatten_team_timesheet_entries ────────────────────────────────────────────
-// Normalises per-entry timesheet rows for the team view: employee name, date,
-// hours, and status badge. Sorted by date asc then employee name asc.
+// Groups this-week timesheet entries by employee, sums hours, computes composite
+// status (Overdue if any pending entry's date < today, Approved if all approved,
+// else Pending). Index-0 row carries period_range and stat counts for the header.
 // Args: { value: raw items from get_timesheets_this_week }
 const flatten_team_timesheet_entries: ComputedFunction = (args) => {
   const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  if (raw.length === 0) return [];
 
-  return [...raw]
-    .sort((a, b) => {
-      const da = String(a.date ?? '');
-      const db = String(b.date ?? '');
-      if (da !== db) return da.localeCompare(db);
-      return String(a.employee_name ?? '').localeCompare(String(b.employee_name ?? ''));
-    })
-    .map(item => {
-      const { display: dateCaption } = formatEhDate(item.date);
-      const hrs = Math.round(Number(item.hours ?? 0) * 10) / 10;
-      const rawStatus = String(item.status ?? '').toLowerCase();
-      const statusLabel = rawStatus === 'approved' ? 'Approved'
-        : rawStatus === 'declined' || rawStatus === 'rejected' ? 'Declined'
-        : 'Pending';
-      const statusTone = rawStatus === 'approved' ? 'success'
-        : rawStatus === 'declined' || rawStatus === 'rejected' ? 'destructive'
-        : 'muted';
-      return {
-        id:            String(item.id ?? ''),
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayTs = today.getTime();
+
+  // Compute period range from all entries
+  let minDate = '', maxDate = '';
+  for (const item of raw) {
+    const d = String(item.date ?? '');
+    if (!d) continue;
+    if (!minDate || d < minDate) minDate = d;
+    if (!maxDate || d > maxDate) maxDate = d;
+  }
+  const { display: startDisplay } = formatEhDate(minDate);
+  const { display: endDisplay } = formatEhDate(maxDate);
+  const periodRange = startDisplay === endDisplay ? startDisplay : `${startDisplay} → ${endDisplay}`;
+
+  // Group by employee_id
+  type EmpGroup = { employee_name: string; hours: number; statuses: string[]; dates: string[]; review_url: string };
+  const groups = new Map<string, EmpGroup>();
+
+  for (const item of raw) {
+    const empId = String(item.employee_id ?? item.id ?? '');
+    if (!empId) continue;
+    const hrs = Number(item.hours ?? 0);
+    const rawStatus = String(item.status ?? '').toLowerCase();
+    const date = String(item.date ?? '');
+    const existing = groups.get(empId);
+    if (existing) {
+      existing.hours += hrs;
+      existing.statuses.push(rawStatus);
+      existing.dates.push(date);
+    } else {
+      groups.set(empId, {
         employee_name: String(item.employee_name ?? '').trim(),
-        date_caption:  dateCaption,
-        hours_display: `${hrs} hrs`,
-        status_label:  statusLabel,
-        status_tone:   statusTone,
-      };
+        hours: hrs,
+        statuses: [rawStatus],
+        dates: [date],
+        review_url: String(item.review_url ?? ''),
+      });
+    }
+  }
+
+  let pendingCount = 0, approvedCount = 0, overdueCount = 0;
+
+  const rows = Array.from(groups.entries()).map(([empId, g]) => {
+    const hrs = Math.round(g.hours * 10) / 10;
+
+    const allApproved = g.statuses.every(s => s === 'approved');
+    const isOverdue = !allApproved && g.statuses.some((s, i) => {
+      const { ts } = formatEhDate(g.dates[i]);
+      return (s === 'pending' || s === '') && ts > 0 && ts < todayTs;
     });
+
+    let statusLabel: string, statusTone: string;
+    if (isOverdue) {
+      statusLabel = 'Overdue'; statusTone = 'destructive'; overdueCount++;
+    } else if (allApproved) {
+      statusLabel = 'Approved'; statusTone = 'success'; approvedCount++;
+    } else {
+      statusLabel = 'Pending'; statusTone = 'muted'; pendingCount++;
+    }
+
+    return {
+      id:               empId,
+      employee_name:    g.employee_name,
+      hours_this_week:  `${hrs} hrs this week`,
+      status_label:     statusLabel,
+      status_tone:      statusTone,
+      show_review_link: isOverdue ? 'true' : '',
+      review_url:       g.review_url,
+      period_range:     '',
+      stat_pending:     '',
+      stat_approved:    '',
+      stat_overdue:     '',
+    };
+  });
+
+  rows.sort((a, b) => a.employee_name.localeCompare(b.employee_name));
+
+  if (rows.length > 0) {
+    rows[0].period_range  = periodRange;
+    rows[0].stat_pending  = String(pendingCount);
+    rows[0].stat_approved = String(approvedCount);
+    rows[0].stat_overdue  = String(overdueCount);
+  }
+
+  return rows;
 };
 
 const elements: PluginElementsModule = {
