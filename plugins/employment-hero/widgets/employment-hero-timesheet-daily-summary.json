@@ -1,6 +1,6 @@
 {
   "id": "employment-hero-timesheet-daily-summary",
-  "title": "Timesheet This Week",
+  "title": "My Timesheet This Week",
   "description": "Your organisation's timesheet entries for the current work week, grouped by day with total hours.",
   "category": "hr",
   "tags": ["employment-hero", "hr", "timesheets", "weekly", "hours"],
@@ -24,7 +24,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "body", "footer"],
+        "children": ["header", "body"],
         "watch": {
           "/employment-hero/get_timesheets_this_week/data/items": [
             { "action": "setState", "params": { "statePath": "/ui/dailyRows", "value": { "$computed": "employment-hero_flatten_timesheet_daily_summary", "args": { "value": { "$state": "/employment-hero/get_timesheets_this_week/data/items" } } } } }
@@ -33,30 +33,21 @@
       },
 
       "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
-      "headerRow": { "type": "Row", "props": { "align": "center", "template": "1fr auto" }, "children": ["titleGroup", "totalBadge"] },
+      "headerRow": { "type": "Row", "props": { "align": "center", "template": "1fr auto" }, "children": ["titleGroup"] },
       "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["titleIcon", "titleStack"] },
       "titleIcon": { "type": "Icon", "props": { "name": "Clock", "tone": "accent", "size": "sm" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Timesheet This Week", "level": "h2" } },
+      "title": { "type": "Heading", "props": { "text": "My Timesheet This Week", "level": "h2" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Employment Hero" } },
-      "totalBadge": {
-        "type": "Badge",
-        "props": {
-          "text": { "$state": "/ui/dailyRows/0/total_hours_display" },
-          "tone": "accent",
-          "variant": "soft"
-        },
-        "visible": { "$state": "/ui/dailyRows/0" }
-      },
 
-      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "list"] },
+      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "contentStack"] },
 
       "loading": {
         "type": "Stack", "props": { "gap": "sm" },
         "children": ["sk1", "sk2", "sk3"],
         "visible": { "$state": "/_loading/employment-hero.get_timesheets_this_week" }
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk1": { "type": "Skeleton", "props": { "height": "5rem", "rounded": "md" } },
       "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
       "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
 
@@ -71,16 +62,45 @@
         }
       },
 
-      "list": {
-        "type": "Stack", "props": { "gap": "xs" },
-        "children": ["dayRow"],
-        "repeat": { "statePath": "/ui/dailyRows", "key": "id" },
+      "contentStack": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["summaryBox", "list"],
         "visible": {
           "$and": [
             { "$state": "/_loading/employment-hero.get_timesheets_this_week", "not": true },
             { "$state": "/ui/dailyRows/0" }
           ]
         }
+      },
+
+      "summaryBox": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["summaryInner"]
+      },
+      "summaryInner": {
+        "type": "Stack",
+        "props": { "gap": "none", "align": "center" },
+        "children": ["totalLabel", "totalHoursHeading", "periodRangeCaption"]
+      },
+      "totalLabel": {
+        "type": "Eyebrow",
+        "props": { "text": "TOTAL HOURS", "align": "center" }
+      },
+      "totalHoursHeading": {
+        "type": "Heading",
+        "props": { "text": { "$state": "/ui/dailyRows/0/total_hours_display" }, "level": "h1", "align": "center", "tone": "success" }
+      },
+      "periodRangeCaption": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/ui/dailyRows/0/period_range" }, "align": "center" }
+      },
+
+      "list": {
+        "type": "Stack", "props": { "gap": "xs" },
+        "children": ["dayRow"],
+        "repeat": { "statePath": "/ui/dailyRows", "key": "id" }
       },
 
       "dayRow": {
@@ -90,7 +110,7 @@
       "dayRowContent": {
         "type": "Row",
         "props": { "justify": "between", "align": "center" },
-        "children": ["dayLeft", "dayHoursBadge"]
+        "children": ["dayLeft", "dayHoursText"]
       },
       "dayLeft": {
         "type": "Stack", "props": { "gap": "none" },
@@ -104,30 +124,11 @@
         "type": "Caption",
         "props": { "text": { "$item": "entry_count_label" } }
       },
-      "dayHoursBadge": {
-        "type": "Badge",
-        "props": {
-          "text": { "$item": "hours_display" },
-          "tone": "default",
-          "variant": "soft"
-        }
+      "dayHoursText": {
+        "type": "Text",
+        "props": { "text": { "$item": "hours_display" }, "size": "sm", "tone": "muted" }
       },
-      "dayDivider": { "type": "Divider", "props": {} },
-
-      "footer": {
-        "type": "Row", "props": { "justify": "center" },
-        "children": ["footerText"],
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/employment-hero.get_timesheets_this_week", "not": true },
-            { "$state": "/ui/dailyRows/0" }
-          ]
-        }
-      },
-      "footerText": {
-        "type": "Caption",
-        "props": { "text": { "$state": "/ui/dailyRows/0/period_range" } }
-      }
+      "dayDivider": { "type": "Divider", "props": {} }
 
     }
   },
