@@ -407,6 +407,91 @@ const flatten_direct_reports_upcoming_leave = (args) => {
         };
     });
 };
+// ── flatten_timesheet_daily_summary ──────────────────────────────────────────
+// Groups this-week timesheet entries by date, sums hours per day.
+// Index-0 item carries period_range and total_hours_display for the header badge.
+// Args: { value: raw items from get_timesheets_this_week }
+const flatten_timesheet_daily_summary = (args) => {
+    const raw = Array.isArray(args.value) ? args.value : [];
+    if (raw.length === 0)
+        return [];
+    const groups = new Map();
+    let totalHours = 0;
+    let minDate = '';
+    let maxDate = '';
+    for (const item of raw) {
+        const date = String(item.date ?? '');
+        if (!date)
+            continue;
+        const hrs = Number(item.hours ?? 0);
+        totalHours += hrs;
+        if (!minDate || date < minDate)
+            minDate = date;
+        if (!maxDate || date > maxDate)
+            maxDate = date;
+        const existing = groups.get(date);
+        if (existing) {
+            existing.hours += hrs;
+            existing.count += 1;
+        }
+        else {
+            groups.set(date, { hours: hrs, count: 1 });
+        }
+    }
+    const sortedDates = Array.from(groups.keys()).sort();
+    const { display: startDisplay } = formatEhDate(minDate);
+    const { display: endDisplay } = formatEhDate(maxDate);
+    const periodRange = startDisplay === endDisplay ? startDisplay : `${startDisplay} → ${endDisplay}`;
+    const totalRounded = Math.round(totalHours * 10) / 10;
+    const totalHoursDisplay = `${totalRounded} hrs`;
+    return sortedDates.map((date, i) => {
+        const g = groups.get(date);
+        const { display: dateHeader } = formatEhDate(date);
+        const dayHrs = Math.round(g.hours * 10) / 10;
+        return {
+            id: date,
+            date_header: dateHeader,
+            hours_display: `${dayHrs} hrs`,
+            entry_count_label: g.count === 1 ? '1 entry' : `${g.count} entries`,
+            period_range: i === 0 ? periodRange : '',
+            total_hours_display: i === 0 ? totalHoursDisplay : '',
+        };
+    });
+};
+// ── flatten_team_timesheet_entries ────────────────────────────────────────────
+// Normalises per-entry timesheet rows for the team view: employee name, date,
+// hours, and status badge. Sorted by date asc then employee name asc.
+// Args: { value: raw items from get_timesheets_this_week }
+const flatten_team_timesheet_entries = (args) => {
+    const raw = Array.isArray(args.value) ? args.value : [];
+    return [...raw]
+        .sort((a, b) => {
+        const da = String(a.date ?? '');
+        const db = String(b.date ?? '');
+        if (da !== db)
+            return da.localeCompare(db);
+        return String(a.employee_name ?? '').localeCompare(String(b.employee_name ?? ''));
+    })
+        .map(item => {
+        const { display: dateCaption } = formatEhDate(item.date);
+        const hrs = Math.round(Number(item.hours ?? 0) * 10) / 10;
+        const rawStatus = String(item.status ?? '').toLowerCase();
+        const statusLabel = rawStatus === 'approved' ? 'Approved'
+            : rawStatus === 'declined' || rawStatus === 'rejected' ? 'Declined'
+                : 'Pending';
+        const statusTone = rawStatus === 'approved' ? 'success'
+            : rawStatus === 'declined' || rawStatus === 'rejected' ? 'destructive'
+                : 'muted';
+        return {
+            id: String(item.id ?? ''),
+            employee_name: String(item.employee_name ?? '').trim(),
+            date_caption: dateCaption,
+            hours_display: `${hrs} hrs`,
+            status_label: statusLabel,
+            status_tone: statusTone,
+        };
+    });
+};
 const elements = {
     slug: 'employment-hero',
     functions: {
@@ -420,6 +505,8 @@ const elements = {
         flatten_compliance_at_risk,
         flatten_timesheets_to_approve,
         flatten_direct_reports_upcoming_leave,
+        flatten_timesheet_daily_summary,
+        flatten_team_timesheet_entries,
     },
 };
 export default elements;
