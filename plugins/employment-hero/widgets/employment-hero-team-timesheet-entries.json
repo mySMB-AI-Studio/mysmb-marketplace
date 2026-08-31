@@ -27,7 +27,10 @@
         "children": ["header", "body"],
         "watch": {
           "/employment-hero/get_timesheets_this_week/data/items": [
-            { "action": "setState", "params": { "statePath": "/ui/entryRows", "value": { "$computed": "employment-hero_flatten_team_timesheet_entries", "args": { "value": { "$state": "/employment-hero/get_timesheets_this_week/data/items" } } } } }
+            { "action": "setState", "params": { "statePath": "/ui/entryRows", "value": { "$computed": "employment-hero_flatten_team_timesheet_entries", "args": { "value": { "$state": "/employment-hero/get_timesheets_this_week/data/items" }, "filter": { "$state": "/ui/statusFilter" } } } } }
+          ],
+          "/ui/statusFilter": [
+            { "action": "setState", "params": { "statePath": "/ui/entryRows", "value": { "$computed": "employment-hero_flatten_team_timesheet_entries", "args": { "value": { "$state": "/employment-hero/get_timesheets_this_week/data/items" }, "filter": { "$state": "/ui/statusFilter" } } } } }
           ]
         }
       },
@@ -64,7 +67,7 @@
 
       "contentArea": {
         "type": "Stack", "props": { "gap": "md" },
-        "children": ["periodText", "statsRow", "list"],
+        "children": ["periodText", "statsRow", "filterControlRow", "list"],
         "visible": {
           "$and": [
             { "$state": "/_loading/employment-hero.get_timesheets_this_week", "not": true },
@@ -83,20 +86,47 @@
         "children": ["statPending", "statApproved", "statOverdue"]
       },
 
-      "statPending": { "type": "Section", "props": { "variant": "muted" }, "children": ["statPendingInner"] },
-      "statPendingInner": { "type": "Stack", "props": { "gap": "none" }, "children": ["statPendingLabel", "statPendingCount"] },
+      "statPending": {
+        "type": "Section", "props": { "variant": "muted", "clickable": true },
+        "children": ["statPendingInner"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/statusFilter", "value": { "$computed": "employment-hero_toggle_status_filter", "args": { "current": { "$state": "/ui/statusFilter" }, "value": "Pending" } } } } }
+      },
+      "statPendingInner": { "type": "Stack", "props": { "gap": "none" }, "children": ["statPendingLabel", "statPendingCount", "statPendingActive"] },
       "statPendingLabel": { "type": "Eyebrow", "props": { "text": "PENDING" } },
       "statPendingCount": { "type": "Heading", "props": { "text": { "$state": "/ui/entryRows/0/stat_pending" }, "level": "h2" } },
+      "statPendingActive": { "type": "Caption", "props": { "text": "● Active", "tone": "accent" }, "visible": { "$state": "/ui/entryRows/0/filter_pending_active" } },
 
-      "statApproved": { "type": "Section", "props": { "variant": "muted" }, "children": ["statApprovedInner"] },
-      "statApprovedInner": { "type": "Stack", "props": { "gap": "none" }, "children": ["statApprovedLabel", "statApprovedCount"] },
+      "statApproved": {
+        "type": "Section", "props": { "variant": "muted", "clickable": true },
+        "children": ["statApprovedInner"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/statusFilter", "value": { "$computed": "employment-hero_toggle_status_filter", "args": { "current": { "$state": "/ui/statusFilter" }, "value": "Approved" } } } } }
+      },
+      "statApprovedInner": { "type": "Stack", "props": { "gap": "none" }, "children": ["statApprovedLabel", "statApprovedCount", "statApprovedActive"] },
       "statApprovedLabel": { "type": "Eyebrow", "props": { "text": "APPROVED" } },
       "statApprovedCount": { "type": "Heading", "props": { "text": { "$state": "/ui/entryRows/0/stat_approved" }, "level": "h2", "tone": "success" } },
+      "statApprovedActive": { "type": "Caption", "props": { "text": "● Active", "tone": "accent" }, "visible": { "$state": "/ui/entryRows/0/filter_approved_active" } },
 
-      "statOverdue": { "type": "Section", "props": { "variant": "muted" }, "children": ["statOverdueInner"] },
-      "statOverdueInner": { "type": "Stack", "props": { "gap": "none" }, "children": ["statOverdueLabel", "statOverdueCount"] },
+      "statOverdue": {
+        "type": "Section", "props": { "variant": "muted", "clickable": true },
+        "children": ["statOverdueInner"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/statusFilter", "value": { "$computed": "employment-hero_toggle_status_filter", "args": { "current": { "$state": "/ui/statusFilter" }, "value": "Overdue" } } } } }
+      },
+      "statOverdueInner": { "type": "Stack", "props": { "gap": "none" }, "children": ["statOverdueLabel", "statOverdueCount", "statOverdueActive"] },
       "statOverdueLabel": { "type": "Eyebrow", "props": { "text": "OVERDUE" } },
       "statOverdueCount": { "type": "Heading", "props": { "text": { "$state": "/ui/entryRows/0/stat_overdue" }, "level": "h2", "tone": "destructive" } },
+      "statOverdueActive": { "type": "Caption", "props": { "text": "● Active", "tone": "accent" }, "visible": { "$state": "/ui/entryRows/0/filter_overdue_active" } },
+
+      "filterControlRow": {
+        "type": "Row", "props": { "justify": "end", "align": "center", "gap": "xs" },
+        "children": ["filterActiveLabel", "clearFilterBtn"],
+        "visible": { "$state": "/ui/statusFilter" }
+      },
+      "filterActiveLabel": { "type": "Caption", "props": { "text": "Filtered by status", "tone": "muted" } },
+      "clearFilterBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "tone": "muted", "size": "sm", "ariaLabel": "Clear filter" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/statusFilter", "value": "" } } }
+      },
 
       "list": {
         "type": "Stack", "props": { "gap": "xs" },
