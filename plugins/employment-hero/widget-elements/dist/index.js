@@ -464,15 +464,24 @@ const flatten_timesheet_daily_summary = (args) => {
         };
     });
 };
+// ── toggle_status_filter ──────────────────────────────────────────────────────
+// Toggles the active status filter. Clicking the same value clears it (shows all).
+// Args: { current: string, value: string }
+const toggle_status_filter = (args) => {
+    const current = String(args.current ?? '');
+    const value = String(args.value ?? '');
+    return current === value ? '' : value;
+};
 // ── flatten_team_timesheet_entries ────────────────────────────────────────────
 // Groups this-week timesheet entries by employee, sums hours, computes composite
 // status (Overdue if any pending entry's date < today, Approved if all approved,
-// else Pending). Index-0 row carries period_range and stat counts for the header.
-// Args: { value: raw items from get_timesheets_this_week }
+// else Pending). Index-0 row carries period_range, stat counts, and filter_*_active flags.
+// Args: { value: raw items from get_timesheets_this_week, filter?: "Pending"|"Approved"|"Overdue"|"" }
 const flatten_team_timesheet_entries = (args) => {
     const raw = Array.isArray(args.value) ? args.value : [];
     if (raw.length === 0)
         return [];
+    const statusFilter = String(args.filter ?? '');
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayTs = today.getTime();
@@ -508,14 +517,9 @@ const flatten_team_timesheet_entries = (args) => {
         }
     }
     let pendingCount = 0, approvedCount = 0, overdueCount = 0;
-    const rows = Array.from(groups.entries()).map(([empId, g]) => {
+    const allRows = Array.from(groups.entries()).map(([empId, g]) => {
         const hrs = Math.round(g.hours * 10) / 10;
         const allApproved = g.statuses.every(s => s === 'approved');
-        // Composite status precedence (employee-level, not entry-level):
-        //   Overdue  — any pending entry whose date is before today
-        //   Approved — every entry is approved
-        //   Pending  — otherwise (mix of pending/approved, all in the future)
-        // Stat counts (stat_pending/approved/overdue) reflect employees, not raw entries.
         const isOverdue = !allApproved && g.statuses.some((s, i) => {
             const { ts } = formatEhDate(g.dates[i]);
             return (s === 'pending' || s === '') && ts > 0 && ts < todayTs;
@@ -548,14 +552,25 @@ const flatten_team_timesheet_entries = (args) => {
             stat_pending: '',
             stat_approved: '',
             stat_overdue: '',
+            filter_pending_active: '',
+            filter_approved_active: '',
+            filter_overdue_active: '',
         };
     });
-    rows.sort((a, b) => a.employee_name.localeCompare(b.employee_name));
-    if (rows.length > 0) {
-        rows[0].period_range = periodRange;
-        rows[0].stat_pending = String(pendingCount);
-        rows[0].stat_approved = String(approvedCount);
-        rows[0].stat_overdue = String(overdueCount);
+    allRows.sort((a, b) => a.employee_name.localeCompare(b.employee_name));
+    // Apply filter — always preserve stats on index 0 of the returned array
+    const rows = statusFilter
+        ? allRows.filter(r => r.status_label === statusFilter)
+        : allRows;
+    const target = rows.length > 0 ? rows[0] : allRows[0];
+    if (target) {
+        target.period_range = periodRange;
+        target.stat_pending = String(pendingCount);
+        target.stat_approved = String(approvedCount);
+        target.stat_overdue = String(overdueCount);
+        target.filter_pending_active = statusFilter === 'Pending' ? 'true' : '';
+        target.filter_approved_active = statusFilter === 'Approved' ? 'true' : '';
+        target.filter_overdue_active = statusFilter === 'Overdue' ? 'true' : '';
     }
     return rows;
 };
@@ -564,6 +579,7 @@ const elements = {
     functions: {
         set_sort_field,
         employment_type_tone,
+        toggle_status_filter,
         flatten_employees,
         flatten_leave_requests,
         flatten_upcoming_leave,
