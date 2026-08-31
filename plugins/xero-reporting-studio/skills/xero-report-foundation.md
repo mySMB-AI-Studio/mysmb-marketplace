@@ -8,7 +8,7 @@ Load this skill with the specific report skill.
 
 Confirm the Xero organisation, period or as-at date, accounting basis, and presentation currency. Do not ask for an output format: every report is a single self-contained HTML document saved through `artifact_save` with a `.html` filename.
 
-Use the connected Xero tools for live data. Never invent, estimate, silently substitute, or reuse illustrative workbook values. Mark unavailable figures N/A  not in source and include a Sources & limitations section naming tool calls, report dates, basis, currency, missing inputs, and assumptions explicitly approved by the user.
+Use the connected Xero tools for live data. Never invent, estimate, silently substitute, or reuse illustrative workbook values. Mark unavailable figures N/A - not in source and include a Sources & limitations section naming tool calls, report dates, basis, currency, missing inputs, and assumptions explicitly approved by the user.
 
 Before saving, perform every tie-out required by the report skill. Show a compact Validation section with each equation and Pass/Fail. If a material check fails, explain the discrepancy prominently.
 
