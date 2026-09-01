@@ -130,6 +130,79 @@ function _fmtShort(iso) {
     const d = new Date(ms);
     return `${MONTH_ABBR[d.getMonth()]} ${d.getDate()}`;
 }
+/**
+ * Flattens the list_surveys_in_progress data array into display rows.
+ * Row 0 carries aggregate stats (stat_active, stat_total_responses, stat_avg_completion).
+ * Handles optional collector fields: collector_name (audience), max_responses (goal),
+ * close_date (closes date) — all gracefully empty when not yet provided by the MCP tool.
+ * Status (On Track / Behind Pace) is derived only when close_date + max_responses are present.
+ *
+ * Args: { value: array }
+ */
+const flatten_surveys_in_progress = (args) => {
+    const raw = Array.isArray(args.value) ? args.value : [];
+    if (raw.length === 0)
+        return [];
+    let totalResponses = 0;
+    let totalPct = 0;
+    let pctCount = 0;
+    const rows = raw.map((s) => {
+        const rc = Number(s.response_count ?? 0);
+        const goal = Number(s.max_responses ?? s.response_limit ?? 0);
+        totalResponses += rc;
+        const responsesLabel = goal > 0 ? `${rc} / ${goal}` : String(rc);
+        const rawClose = String(s.close_date ?? s.collector_close_date ?? '');
+        let closesLabel = '';
+        if (rawClose) {
+            const ms = Date.parse(rawClose);
+            if (!Number.isNaN(ms)) {
+                const d = new Date(ms);
+                closesLabel = `${MONTH_ABBR[d.getMonth()]} ${d.getDate()}`;
+            }
+        }
+        if (goal > 0) {
+            totalPct += Math.round((rc / goal) * 100);
+            pctCount++;
+        }
+        let statusLabel = '';
+        let statusTone = 'muted';
+        if (rawClose && goal > 0) {
+            const closeMs = Date.parse(rawClose);
+            const sinceMs = Date.parse(String(s.collecting_since ?? s.date_created ?? ''));
+            if (!Number.isNaN(closeMs) && !Number.isNaN(sinceMs) && closeMs > sinceMs) {
+                const totalSpan = closeMs - sinceMs;
+                const elapsed = Date.now() - sinceMs;
+                const expectedPct = (elapsed / totalSpan) * 100;
+                const actualPct = (rc / goal) * 100;
+                if (actualPct >= expectedPct * 0.8) {
+                    statusLabel = 'On Track';
+                    statusTone = 'success';
+                }
+                else {
+                    statusLabel = 'Behind Pace';
+                    statusTone = 'warning';
+                }
+            }
+        }
+        return {
+            id: String(s.id ?? ''),
+            title: String(s.title ?? ''),
+            audience: String(s.collector_name ?? ''),
+            responses_label: responsesLabel,
+            closes_label: closesLabel,
+            status_label: statusLabel,
+            status_tone: statusTone,
+            stat_active: '',
+            stat_total_responses: '',
+            stat_avg_completion: '',
+        };
+    });
+    const avgComp = pctCount > 0 ? `${Math.round(totalPct / pctCount)}%` : '--';
+    rows[0].stat_active = String(raw.length);
+    rows[0].stat_total_responses = String(totalResponses);
+    rows[0].stat_avg_completion = avgComp;
+    return rows;
+};
 const elements = {
     slug: 'surveymonkey',
     functions: {
@@ -140,6 +213,7 @@ const elements = {
         add_ranks,
         current_month_label,
         to_calendar_events,
+        flatten_surveys_in_progress,
     },
 };
 export default elements;
