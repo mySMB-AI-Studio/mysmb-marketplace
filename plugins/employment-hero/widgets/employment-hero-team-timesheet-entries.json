@@ -27,10 +27,32 @@
         "children": ["header", "body"],
         "watch": {
           "/employment-hero/get_timesheets_this_week/data/items": [
-            { "action": "setState", "params": { "statePath": "/ui/entryRows", "value": { "$computed": "employment-hero_flatten_team_timesheet_entries", "args": { "value": { "$state": "/employment-hero/get_timesheets_this_week/data/items" }, "filter": { "$state": "/ui/statusFilter" } } } } }
-          ],
-          "/ui/statusFilter": [
-            { "action": "setState", "params": { "statePath": "/ui/entryRows", "value": { "$computed": "employment-hero_flatten_team_timesheet_entries", "args": { "value": { "$state": "/employment-hero/get_timesheets_this_week/data/items" }, "filter": { "$state": "/ui/statusFilter" } } } } }
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/allRows",
+                "value": {
+                  "$computed": "employment-hero_flatten_team_timesheet_entries",
+                  "args": {
+                    "value": { "$state": "/employment-hero/get_timesheets_this_week/data/items" },
+                    "filter": ""
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/entryRows",
+                "value": {
+                  "$computed": "employment-hero_flatten_team_timesheet_entries",
+                  "args": {
+                    "value": { "$state": "/employment-hero/get_timesheets_this_week/data/items" },
+                    "filter": ""
+                  }
+                }
+              }
+            }
           ]
         }
       },
@@ -60,25 +82,25 @@
         "visible": {
           "$and": [
             { "$state": "/_loading/employment-hero.get_timesheets_this_week", "not": true },
-            { "$state": "/ui/entryRows/0", "not": true }
+            { "$state": "/employment-hero/get_timesheets_this_week/data/items/0", "not": true }
           ]
         }
       },
 
       "contentArea": {
         "type": "Stack", "props": { "gap": "md" },
-        "children": ["periodText", "statsRow", "filterControlRow", "list"],
+        "children": ["periodText", "statsRow", "filterControlRow", "filteredEmpty", "list"],
         "visible": {
           "$and": [
             { "$state": "/_loading/employment-hero.get_timesheets_this_week", "not": true },
-            { "$state": "/ui/entryRows/0" }
+            { "$state": "/employment-hero/get_timesheets_this_week/data/items/0" }
           ]
         }
       },
 
       "periodText": {
         "type": "Caption",
-        "props": { "text": { "$state": "/ui/entryRows/0/period_range" } }
+        "props": { "text": { "$state": "/ui/allRows/0/period_range" } }
       },
 
       "statsRow": {
@@ -86,46 +108,116 @@
         "children": ["statPending", "statApproved", "statOverdue"]
       },
 
-      "statPending": {
-        "type": "Section", "props": { "variant": "muted", "clickable": true },
+      "statPending": { "type": "Section", "props": { "variant": "muted" }, "children": ["statPendingClickable"] },
+      "statPendingClickable": {
+        "type": "Row", "props": { "clickable": true },
         "children": ["statPendingInner"],
-        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/statusFilter", "value": { "$computed": "employment-hero_toggle_status_filter", "args": { "current": { "$state": "/ui/statusFilter" }, "value": "Pending" } } } } }
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/statusFilter", "value": "Pending" } },
+            { "action": "setState", "params": {
+              "statePath": "/ui/entryRows",
+              "value": {
+                "$computed": "employment-hero_flatten_team_timesheet_entries",
+                "args": {
+                  "value": { "$state": "/employment-hero/get_timesheets_this_week/data/items" },
+                  "filter": "Pending"
+                }
+              }
+            }}
+          ]
+        }
       },
       "statPendingInner": { "type": "Stack", "props": { "gap": "none" }, "children": ["statPendingLabel", "statPendingCount", "statPendingActive"] },
       "statPendingLabel": { "type": "Eyebrow", "props": { "text": "PENDING" } },
-      "statPendingCount": { "type": "Heading", "props": { "text": { "$state": "/ui/entryRows/0/stat_pending" }, "level": "h2" } },
-      "statPendingActive": { "type": "Caption", "props": { "text": "● Active", "tone": "accent" }, "visible": { "$state": "/ui/entryRows/0/filter_pending_active" } },
+      "statPendingCount": { "type": "Heading", "props": { "text": { "$state": "/ui/allRows/0/stat_pending" }, "level": "h2" } },
+      "statPendingActive": { "type": "Caption", "props": { "text": "● Active", "tone": "accent" }, "visible": { "$state": "/ui/statusFilter", "eq": "Pending" } },
 
-      "statApproved": {
-        "type": "Section", "props": { "variant": "muted", "clickable": true },
+      "statApproved": { "type": "Section", "props": { "variant": "muted" }, "children": ["statApprovedClickable"] },
+      "statApprovedClickable": {
+        "type": "Row", "props": { "clickable": true },
         "children": ["statApprovedInner"],
-        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/statusFilter", "value": { "$computed": "employment-hero_toggle_status_filter", "args": { "current": { "$state": "/ui/statusFilter" }, "value": "Approved" } } } } }
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/statusFilter", "value": "Approved" } },
+            { "action": "setState", "params": {
+              "statePath": "/ui/entryRows",
+              "value": {
+                "$computed": "employment-hero_flatten_team_timesheet_entries",
+                "args": {
+                  "value": { "$state": "/employment-hero/get_timesheets_this_week/data/items" },
+                  "filter": "Approved"
+                }
+              }
+            }}
+          ]
+        }
       },
       "statApprovedInner": { "type": "Stack", "props": { "gap": "none" }, "children": ["statApprovedLabel", "statApprovedCount", "statApprovedActive"] },
       "statApprovedLabel": { "type": "Eyebrow", "props": { "text": "APPROVED" } },
-      "statApprovedCount": { "type": "Heading", "props": { "text": { "$state": "/ui/entryRows/0/stat_approved" }, "level": "h2", "tone": "success" } },
-      "statApprovedActive": { "type": "Caption", "props": { "text": "● Active", "tone": "accent" }, "visible": { "$state": "/ui/entryRows/0/filter_approved_active" } },
+      "statApprovedCount": { "type": "Heading", "props": { "text": { "$state": "/ui/allRows/0/stat_approved" }, "level": "h2", "tone": "success" } },
+      "statApprovedActive": { "type": "Caption", "props": { "text": "● Active", "tone": "accent" }, "visible": { "$state": "/ui/statusFilter", "eq": "Approved" } },
 
-      "statOverdue": {
-        "type": "Section", "props": { "variant": "muted", "clickable": true },
+      "statOverdue": { "type": "Section", "props": { "variant": "muted" }, "children": ["statOverdueClickable"] },
+      "statOverdueClickable": {
+        "type": "Row", "props": { "clickable": true },
         "children": ["statOverdueInner"],
-        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/statusFilter", "value": { "$computed": "employment-hero_toggle_status_filter", "args": { "current": { "$state": "/ui/statusFilter" }, "value": "Overdue" } } } } }
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/statusFilter", "value": "Overdue" } },
+            { "action": "setState", "params": {
+              "statePath": "/ui/entryRows",
+              "value": {
+                "$computed": "employment-hero_flatten_team_timesheet_entries",
+                "args": {
+                  "value": { "$state": "/employment-hero/get_timesheets_this_week/data/items" },
+                  "filter": "Overdue"
+                }
+              }
+            }}
+          ]
+        }
       },
       "statOverdueInner": { "type": "Stack", "props": { "gap": "none" }, "children": ["statOverdueLabel", "statOverdueCount", "statOverdueActive"] },
       "statOverdueLabel": { "type": "Eyebrow", "props": { "text": "OVERDUE" } },
-      "statOverdueCount": { "type": "Heading", "props": { "text": { "$state": "/ui/entryRows/0/stat_overdue" }, "level": "h2", "tone": "destructive" } },
-      "statOverdueActive": { "type": "Caption", "props": { "text": "● Active", "tone": "accent" }, "visible": { "$state": "/ui/entryRows/0/filter_overdue_active" } },
+      "statOverdueCount": { "type": "Heading", "props": { "text": { "$state": "/ui/allRows/0/stat_overdue" }, "level": "h2", "tone": "destructive" } },
+      "statOverdueActive": { "type": "Caption", "props": { "text": "● Active", "tone": "accent" }, "visible": { "$state": "/ui/statusFilter", "eq": "Overdue" } },
 
       "filterControlRow": {
         "type": "Row", "props": { "justify": "end", "align": "center", "gap": "xs" },
         "children": ["filterActiveLabel", "clearFilterBtn"],
-        "visible": { "$state": "/ui/statusFilter" }
+        "visible": { "$state": "/ui/statusFilter", "neq": "" }
       },
       "filterActiveLabel": { "type": "Caption", "props": { "text": "Filtered by status", "tone": "muted" } },
       "clearFilterBtn": {
         "type": "IconButton",
         "props": { "icon": "X", "tone": "muted", "size": "sm", "ariaLabel": "Clear filter" },
-        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/statusFilter", "value": "" } } }
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/statusFilter", "value": "" } },
+            { "action": "setState", "params": {
+              "statePath": "/ui/entryRows",
+              "value": {
+                "$computed": "employment-hero_flatten_team_timesheet_entries",
+                "args": {
+                  "value": { "$state": "/employment-hero/get_timesheets_this_week/data/items" },
+                  "filter": ""
+                }
+              }
+            }}
+          ]
+        }
+      },
+
+      "filteredEmpty": {
+        "type": "Empty",
+        "props": { "message": "No employees match this filter." },
+        "visible": {
+          "$and": [
+            { "$state": "/ui/statusFilter" },
+            { "$state": "/ui/entryRows/0", "not": true }
+          ]
+        }
       },
 
       "list": {

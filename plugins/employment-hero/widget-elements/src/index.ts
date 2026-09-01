@@ -512,6 +512,8 @@ const toggle_status_filter: ComputedFunction = (args) => {
 // Groups this-week timesheet entries by employee, sums hours, computes composite
 // status (Overdue if any pending entry's date < today, Approved if all approved,
 // else Pending). Index-0 row carries period_range, stat counts, and filter_*_active flags.
+// When a filter matches 0 employees a sentinel row is returned so stats and the
+// clear-filter button remain visible (sentinel has is_sentinel:'true', entryRow hides it).
 // Args: { value: raw items from get_timesheets_this_week, filter?: "Pending"|"Approved"|"Overdue"|"" }
 const flatten_team_timesheet_entries: ComputedFunction = (args) => {
   const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
@@ -589,28 +591,20 @@ const flatten_team_timesheet_entries: ComputedFunction = (args) => {
       stat_pending:     '',
       stat_approved:    '',
       stat_overdue:     '',
-      filter_pending_active:  '',
-      filter_approved_active: '',
-      filter_overdue_active:  '',
     };
   });
 
   allRows.sort((a, b) => a.employee_name.localeCompare(b.employee_name));
 
-  // Apply filter — always preserve stats on index 0 of the returned array
   const rows = statusFilter
     ? allRows.filter(r => r.status_label === statusFilter)
     : allRows;
 
-  const target = rows.length > 0 ? rows[0] : allRows[0];
-  if (target) {
-    target.period_range           = periodRange;
-    target.stat_pending           = String(pendingCount);
-    target.stat_approved          = String(approvedCount);
-    target.stat_overdue           = String(overdueCount);
-    target.filter_pending_active  = statusFilter === 'Pending'  ? 'true' : '';
-    target.filter_approved_active = statusFilter === 'Approved' ? 'true' : '';
-    target.filter_overdue_active  = statusFilter === 'Overdue'  ? 'true' : '';
+  if (rows.length > 0) {
+    rows[0].period_range           = periodRange;
+    rows[0].stat_pending           = String(pendingCount);
+    rows[0].stat_approved          = String(approvedCount);
+    rows[0].stat_overdue           = String(overdueCount);
   }
 
   return rows;
