@@ -1,0 +1,297 @@
+{
+  "id": "atlassian-open-service-requests",
+  "title": "Open Service Requests",
+  "description": "Tile: Open Service Requests - Jira. Jira issues assigned to the connected user OR unassigned, excluding done/closed statuses, sorted by priority (highest first) -- an agent/admin 'my queue' view on this plugin's usual shared-connection model, same as this plugin's Tasks Due Today tile (not the deferred customer-facing 'my tickets' view described at the top of this plugin's README). Uses Jira Cloud Platform's plain `search_issues` (JQL), NOT the JSM-specific `list_service_desk_requests` this plugin's Service Desk Queue tile uses -- this tile works against any Jira project (JSM-backed or classic), since the fields it needs (summary, reporter, assignee, priority, status) are standard platform issue fields, not JSM request fields. JQL: `(assignee = currentUser() OR assignee is EMPTY) AND statusCategory != Done ORDER BY priority DESC` -- `statusCategory != Done` covers both 'done' and 'closed'-named statuses on an unmodified Jira workflow (a status named 'Closed' is normally itself category Done); a site with a genuinely different scheme may need this JQL adjusted per tenant, same as this plugin's other hardcoded-per-tenant JQL fragments. To scope this tile to one project (e.g. matching one JSM service desk), add `AND project = <KEY>` to the JQL. Each row's dot reflects priority via `atlassian_priority_tone` (destructive = Highest, warning = High, muted = Medium/Low/Lowest -- the same three-tone restraint model as WorkQ's own `todo_priority_tone`, per TILE-DISPLAY-STANDARDS.md §7). Clicking a row opens an overlay with the issue's title, reporter, assignee, priority, and status, plus an 'Open in Jira' button. That button's link is built by `atlassian_issue_url`, which needs this widget's own Jira site's browsable base URL -- `search_issues`'s response has no ready-made browsable link (only an API URL), and there's no way to chain a `list_sites` lookup into this tile's single dataProvider call. The `site_url` literal below (`https://mysmb-sandbox.atlassian.net`) is this sandbox's own site, used only to prove the tile end-to-end -- call `list_sites` and replace every `atlassian_issue_url` call's `site_url` arg before enabling this tile for a different tenant, the same known-limitation pattern already documented for `service_desk_id`/`project_key` on the Service Desk Queue tile above.",
+  "category": "work-management",
+  "tags": ["atlassian", "jira", "service-management", "issues", "queue", "priority", "tickets"],
+  "keywords": ["jira open service requests", "my queue", "assigned to me", "unassigned", "priority", "reporter", "service requests", "support tickets"],
+  "connectorsUsed": ["atlassian"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 8 },
+    "min": { "colSpan": 4, "rowSpan": 6 },
+    "max": { "colSpan": 8, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "atlassian",
+    "tool": "search_issues",
+    "params": {
+      "jql": "(assignee = currentUser() OR assignee is EMPTY) AND statusCategory != Done ORDER BY priority DESC",
+      "max_results": 20,
+      "fields": ["summary", "priority", "status", "reporter", "assignee"]
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body", "overlay"]
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["headerRow"]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "justify": "between" },
+        "children": ["titleGroup", "countBadge"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "LifeBuoy", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Open Service Requests", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": { "text": "Jira Service Management · Assigned to me or unassigned" }
+      },
+      "countBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} open",
+              "n": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/atlassian/search_issues/issues" } }
+              }
+            }
+          },
+          "tone": "muted",
+          "variant": "soft"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "requestList"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/atlassian.search_issues" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No open requests assigned to you or unassigned." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/atlassian.search_issues", "not": true },
+            { "$state": "/atlassian/search_issues/issues/0", "not": true }
+          ]
+        }
+      },
+      "requestList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["requestRow"],
+        "repeat": { "statePath": "/atlassian/search_issues/issues", "key": "id" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/atlassian.search_issues", "not": true },
+            { "$state": "/atlassian/search_issues/issues/0" }
+          ]
+        }
+      },
+      "requestRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "hover": true, "clickable": true },
+        "children": ["requestDot", "requestStack"],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/key",
+                "value": { "$computed": "identity", "args": { "value": { "$item": "key" } } }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/summary",
+                "value": { "$computed": "identity", "args": { "value": { "$item": "fields/summary" } } }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/reporter",
+                "value": {
+                  "$computed": "atlassian_display_name",
+                  "args": { "person": { "$item": "fields/reporter" } }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/assignee",
+                "value": {
+                  "$computed": "atlassian_display_name",
+                  "args": { "person": { "$item": "fields/assignee" } }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/priorityLabel",
+                "value": {
+                  "$computed": "atlassian_priority_label",
+                  "args": { "value": { "$item": "fields/priority/name" } }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/priorityTone",
+                "value": {
+                  "$computed": "atlassian_priority_tone",
+                  "args": { "value": { "$item": "fields/priority/name" } }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/status",
+                "value": { "$computed": "identity", "args": { "value": { "$item": "fields/status/name" } } }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/issueUrl",
+                "value": {
+                  "$computed": "atlassian_issue_url",
+                  "args": {
+                    "key": { "$item": "key" },
+                    "site_url": "https://mysmb-sandbox.atlassian.net"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "requestDot": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$computed": "atlassian_priority_tone",
+            "args": { "value": { "$item": "fields/priority/name" } }
+          },
+          "size": "sm"
+        }
+      },
+      "requestStack": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["requestKey", "requestSummary"]
+      },
+      "requestKey": {
+        "type": "Caption",
+        "props": { "text": { "$item": "key" } }
+      },
+      "requestSummary": {
+        "type": "Text",
+        "props": { "text": { "$item": "fields/summary" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "overlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "visible": { "$state": "/ui/sel/key" },
+        "on": {
+          "backdropClick": { "action": "setState", "params": { "statePath": "/ui/sel/key", "value": "" } }
+        },
+        "children": ["ovStack"]
+      },
+      "ovStack": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["ovHeader", "ovDivider", "ovStatus", "ovReporter", "ovAssignee", "ovPriority", "ovDivider2", "ovActions"]
+      },
+      "ovHeader": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start", "gap": "sm" },
+        "children": ["ovTitleStack", "ovClose"]
+      },
+      "ovTitleStack": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["ovTitle", "ovSubtitle"]
+      },
+      "ovTitle": {
+        "type": "Heading",
+        "props": { "text": { "$state": "/ui/sel/summary" }, "level": "h3", "wrap": true }
+      },
+      "ovSubtitle": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/ui/sel/key" } }
+      },
+      "ovClose": {
+        "type": "OverlayClose",
+        "props": { "ariaLabel": "Close request details" },
+        "on": {
+          "click": { "action": "setState", "params": { "statePath": "/ui/sel/key", "value": "" } }
+        }
+      },
+      "ovDivider": { "type": "Divider", "props": {} },
+      "ovStatus": {
+        "type": "KeyValue",
+        "props": { "label": "Status", "value": { "$state": "/ui/sel/status" } }
+      },
+      "ovReporter": {
+        "type": "KeyValue",
+        "props": { "label": "Reporter", "value": { "$state": "/ui/sel/reporter" } }
+      },
+      "ovAssignee": {
+        "type": "KeyValue",
+        "props": { "label": "Assignee", "value": { "$state": "/ui/sel/assignee" } }
+      },
+      "ovPriority": {
+        "type": "KeyValue",
+        "props": { "label": "Priority", "value": { "$state": "/ui/sel/priorityLabel" } }
+      },
+      "ovDivider2": { "type": "Divider", "props": {} },
+      "ovActions": {
+        "type": "Row",
+        "props": { "justify": "end", "align": "center", "gap": "sm" },
+        "children": ["ovOpenBtn"]
+      },
+      "ovOpenBtn": {
+        "type": "Button",
+        "props": { "label": "Open in Jira", "variant": "primary", "size": "sm", "leadingIcon": "ExternalLink" },
+        "visible": { "$state": "/ui/sel/issueUrl", "neq": "" },
+        "on": {
+          "click": { "action": "open_url", "params": { "url": { "$state": "/ui/sel/issueUrl" }, "target": "_blank" } }
+        }
+      }
+    }
+  },
+  "status": "published"
+}

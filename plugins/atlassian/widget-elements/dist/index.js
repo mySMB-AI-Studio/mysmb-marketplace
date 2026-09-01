@@ -482,6 +482,90 @@ const sla_pct_label = (args) => {
     const result = args.result;
     return typeof result === 'string' && result.length > 0 ? result : 'Check SLA % this month';
 };
+function normalizePriorityName(v) {
+    return typeof v === 'string' ? v.trim().toLowerCase() : '';
+}
+/**
+ * Args: { value } -- a Jira issue's `fields.priority.name` (may be
+ * undefined -- some issue types/screens have no priority field at all).
+ *
+ * Spec example:
+ *   { "$computed": "atlassian_priority_tone", "args": { "value": { "$item": "fields/priority/name" } } }
+ */
+const priority_tone = (args) => {
+    const name = normalizePriorityName(args.value);
+    if (name === 'highest')
+        return 'destructive';
+    if (name === 'high')
+        return 'warning';
+    return 'muted'; // medium / low / lowest / unset
+};
+/**
+ * Display label for a Jira issue's priority. Jira's own `name` is already
+ * Title Case on the default scheme ("Highest", "High", ...), but this still
+ * goes through a dedicated `$computed` rather than a raw pass-through --
+ * per TILE-DISPLAY-STANDARDS.md §3, no connector enum reaches a badge/label
+ * without a normalizing helper, and this is the one place to fix casing if
+ * a customized site's priority scheme ever isn't Title Case. Falls back to
+ * "No priority" when the field is absent (undefined/null/empty), rather
+ * than rendering a blank label.
+ *
+ * Args: { value } -- a Jira issue's `fields.priority.name`.
+ *
+ * Spec example:
+ *   { "$computed": "atlassian_priority_label", "args": { "value": { "$item": "fields/priority/name" } } }
+ */
+const priority_label = (args) => {
+    const raw = typeof args.value === 'string' ? args.value.trim() : '';
+    if (!raw)
+        return 'No priority';
+    return raw.replace(/\S+/g, (word) => word[0].toUpperCase() + word.slice(1).toLowerCase());
+};
+/**
+ * Display name for a Jira `fields.assignee`/`fields.reporter` person object
+ * -- `null` for an unassigned issue's `assignee` is a normal, common case
+ * (not a data error), so this returns "Unassigned" rather than a blank
+ * value or crashing on `null.displayName`. `reporter` is effectively never
+ * null on a real Jira issue, but the same fallback covers it defensively
+ * without needing a second, near-identical helper.
+ *
+ * Args: { person } -- a Jira person object (or null/undefined).
+ *
+ * Spec example:
+ *   { "$computed": "atlassian_display_name", "args": { "person": { "$item": "fields/assignee" } } }
+ */
+const display_name = (args) => {
+    const person = args.person;
+    return person?.displayName?.trim() || 'Unassigned';
+};
+/**
+ * Browsable Jira issue URL, for the Open Service Requests tile's detail
+ * overlay "Open in Jira" button. `search_issues`'s response has no
+ * ready-made browsable link (its `self` field is the API URL,
+ * `https://api.atlassian.com/ex/jira/{cloudId}/...` -- not the customer's
+ * `*.atlassian.net` site domain), and there's no way to resolve the site
+ * domain from within this same tool call. Same class of limitation as this
+ * plugin's `service_desk_id`/`project_key` params on the Service Desk Queue
+ * tile: a widget's `dataProvider` fires exactly one MCP tool call on mount,
+ * so it can't chain a `list_sites` lookup first. `site_url` is therefore a
+ * hardcoded, per-tenant literal in this widget's spec (this sandbox's own
+ * site) -- call `list_sites` and update every `atlassian_issue_url` call's
+ * `site_url` arg before enabling this tile for a different tenant.
+ *
+ * Args: { key, site_url } -- the issue key (e.g. "MBR-58") and the site's
+ * base URL (e.g. "https://mysmb-sandbox.atlassian.net", no trailing slash
+ * required -- one is stripped if present).
+ *
+ * Spec example:
+ *   { "$computed": "atlassian_issue_url", "args": { "key": { "$item": "key" }, "site_url": "https://mysmb-sandbox.atlassian.net" } }
+ */
+const issue_url = (args) => {
+    const key = typeof args.key === 'string' ? args.key.trim() : '';
+    const siteUrl = typeof args.site_url === 'string' ? args.site_url.trim().replace(/\/+$/, '') : '';
+    if (!key || !siteUrl)
+        return '';
+    return `${siteUrl}/browse/${encodeURIComponent(key)}`;
+};
 const elements = {
     slug: 'atlassian',
     functions: {
@@ -493,6 +577,10 @@ const elements = {
         bucket_tone,
         active_request_count,
         sla_pct_label,
+        priority_tone,
+        priority_label,
+        display_name,
+        issue_url,
     },
     actions: {
         check_sla_this_month,
