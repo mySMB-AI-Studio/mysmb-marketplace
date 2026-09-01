@@ -591,6 +591,9 @@ const flatten_team_timesheet_entries: ComputedFunction = (args) => {
       stat_pending:     '',
       stat_approved:    '',
       stat_overdue:     '',
+      filter_pending_active:  '',
+      filter_approved_active: '',
+      filter_overdue_active:  '',
     };
   });
 
