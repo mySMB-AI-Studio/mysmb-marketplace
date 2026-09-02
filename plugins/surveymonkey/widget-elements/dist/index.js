@@ -387,7 +387,7 @@ const flatten_upcoming_calendar = (args) => {
             });
         }
         if (!Number.isNaN(modifiedMs) &&
-            Math.abs(modifiedMs - (Number.isNaN(createdMs) ? 0 : createdMs)) > 60_000) {
+            Math.abs(modifiedMs - (Number.isNaN(createdMs) ? 0 : createdMs)) > 60000) {
             events.push({
                 id: `${id}-close`,
                 _sort: modifiedMs,
