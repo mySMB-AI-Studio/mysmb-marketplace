@@ -1,7 +1,7 @@
 {
   "id": "atlassian-open-service-requests",
   "title": "Open Service Requests",
-  "description": "Tile: Open Service Requests - Jira. Jira issues assigned to the connected user OR unassigned, excluding done/closed statuses, sorted by priority (highest first) -- an agent/admin 'my queue' view on this plugin's usual shared-connection model, same as this plugin's Tasks Due Today tile (not the deferred customer-facing 'my tickets' view described at the top of this plugin's README). Uses Jira Cloud Platform's plain `search_issues` (JQL), NOT the JSM-specific `list_service_desk_requests` this plugin's Service Desk Queue tile uses -- this tile works against any Jira project (JSM-backed or classic), since the fields it needs (summary, reporter, assignee, priority, status) are standard platform issue fields, not JSM request fields. JQL: `(assignee = currentUser() OR assignee is EMPTY) AND statusCategory != Done ORDER BY priority DESC` -- `statusCategory != Done` covers both 'done' and 'closed'-named statuses on an unmodified Jira workflow (a status named 'Closed' is normally itself category Done); a site with a genuinely different scheme may need this JQL adjusted per tenant, same as this plugin's other hardcoded-per-tenant JQL fragments. To scope this tile to one project (e.g. matching one JSM service desk), add `AND project = <KEY>` to the JQL. Each row's dot reflects priority via `atlassian_priority_tone` (destructive = Highest, warning = High, muted = Medium/Low/Lowest -- the same three-tone restraint model as WorkQ's own `todo_priority_tone`, per TILE-DISPLAY-STANDARDS.md §7). Clicking a row opens an overlay with the issue's title, reporter, assignee, priority, and status, plus an 'Open in Jira' button. That button's link is built by `atlassian_issue_url`, which needs this widget's own Jira site's browsable base URL -- `search_issues`'s response has no ready-made browsable link (only an API URL), and there's no way to chain a `list_sites` lookup into this tile's single dataProvider call. The `site_url` literal below (`https://mysmb-sandbox.atlassian.net`) is this sandbox's own site, used only to prove the tile end-to-end -- call `list_sites` and replace every `atlassian_issue_url` call's `site_url` arg before enabling this tile for a different tenant, the same known-limitation pattern already documented for `service_desk_id`/`project_key` on the Service Desk Queue tile above.",
+  "description": "Tile: Open Service Requests - Jira. Jira issues assigned to the connected user OR unassigned, excluding done/closed statuses, sorted by priority (highest first) -- an agent/admin 'my queue' view on this plugin's usual shared-connection model, same as this plugin's Tasks Due Today tile (not the deferred customer-facing 'my tickets' view described at the top of this plugin's README). Uses Jira Cloud Platform's plain `search_issues` (JQL), NOT the JSM-specific `list_service_desk_requests` this plugin's Service Desk Queue tile uses -- this tile works against any Jira project (JSM-backed or classic), since the fields it needs (summary, reporter, assignee, priority, status) are standard platform issue fields, not JSM request fields. JQL: `(assignee = currentUser() OR assignee is EMPTY) AND statusCategory != Done ORDER BY priority DESC` -- `statusCategory != Done` covers both 'done' and 'closed'-named statuses on an unmodified Jira workflow (a status named 'Closed' is normally itself category Done); a site with a genuinely different scheme may need this JQL adjusted per tenant, same as this plugin's other hardcoded-per-tenant JQL fragments. To scope this tile to one project (e.g. matching one JSM service desk), add `AND project = <KEY>` to the JQL. Each row's dot reflects priority via `atlassian_priority_tone` (destructive = Highest, warning = High, muted = Medium/Low/Lowest -- the same three-tone restraint model as WorkQ's own `todo_priority_tone`, per TILE-DISPLAY-STANDARDS.md §7). Clicking a row opens an overlay with the issue's title, reporter, assignee, priority, and status, plus an 'Open Jira' button and a 'Search {key} once there' hint. That button deliberately does NOT deep-link to the specific issue -- `search_issues`'s response has no ready-made browsable link (only an API URL), a widget's `dataProvider` can't chain a `list_sites` lookup to resolve the real site domain, and a per-tenant hardcoded `site_url` (this tile's original approach) would be correct for one sandbox and silently wrong for every other tenant it ships to, with no way to catch the mistake before a user hit a dead/mismatched site. `atlassian_issue_url` therefore always returns the fixed, tenant-agnostic `https://home.atlassian.com` -- correct for anyone, at the cost of one manual search step using the key already shown in the overlay. Same underlying platform gap as `service_desk_id`/`project_key` on the Service Desk Queue tile above; revisit if the MCP server ever resolves and returns the real site domain server-side instead.",
   "category": "work-management",
   "tags": ["atlassian", "jira", "service-management", "issues", "queue", "priority", "tickets"],
   "keywords": ["jira open service requests", "my queue", "assigned to me", "unassigned", "priority", "reporter", "service requests", "support tickets"],
@@ -186,13 +186,7 @@
               "action": "setState",
               "params": {
                 "statePath": "/ui/sel/issueUrl",
-                "value": {
-                  "$computed": "atlassian_issue_url",
-                  "args": {
-                    "key": { "$item": "key" },
-                    "site_url": "https://mysmb-sandbox.atlassian.net"
-                  }
-                }
+                "value": { "$computed": "atlassian_issue_url", "args": {} }
               }
             }
           ]
@@ -280,13 +274,22 @@
       "ovDivider2": { "type": "Divider", "props": {} },
       "ovActions": {
         "type": "Row",
-        "props": { "justify": "end", "align": "center", "gap": "sm" },
-        "children": ["ovOpenBtn"]
+        "props": { "justify": "between", "align": "center", "gap": "sm" },
+        "children": ["ovHint", "ovOpenBtn"]
+      },
+      "ovHint": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Search {key} once there", "key": { "$state": "/ui/sel/key" } }
+          },
+          "tone": "muted"
+        }
       },
       "ovOpenBtn": {
         "type": "Button",
-        "props": { "label": "Open in Jira", "variant": "primary", "size": "sm", "leadingIcon": "ExternalLink" },
-        "visible": { "$state": "/ui/sel/issueUrl", "neq": "" },
+        "props": { "label": "Open Jira", "variant": "primary", "size": "sm", "leadingIcon": "ExternalLink" },
         "on": {
           "click": { "action": "open_url", "params": { "url": { "$state": "/ui/sel/issueUrl" }, "target": "_blank" } }
         }
