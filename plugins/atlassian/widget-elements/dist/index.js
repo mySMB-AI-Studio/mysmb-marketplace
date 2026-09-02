@@ -539,33 +539,36 @@ const display_name = (args) => {
     return person?.displayName?.trim() || 'Unassigned';
 };
 /**
- * Browsable Jira issue URL, for the Open Service Requests tile's detail
- * overlay "Open in Jira" button. `search_issues`'s response has no
- * ready-made browsable link (its `self` field is the API URL,
- * `https://api.atlassian.com/ex/jira/{cloudId}/...` -- not the customer's
- * `*.atlassian.net` site domain), and there's no way to resolve the site
- * domain from within this same tool call. Same class of limitation as this
- * plugin's `service_desk_id`/`project_key` params on the Service Desk Queue
- * tile: a widget's `dataProvider` fires exactly one MCP tool call on mount,
- * so it can't chain a `list_sites` lookup first. `site_url` is therefore a
- * hardcoded, per-tenant literal in this widget's spec (this sandbox's own
- * site) -- call `list_sites` and update every `atlassian_issue_url` call's
- * `site_url` arg before enabling this tile for a different tenant.
+ * "Open in Jira" destination for the Open Service Requests tile's detail
+ * overlay. Originally built a per-tenant deep link
+ * (`{site_url}/browse/{key}`), since `search_issues`'s response has no
+ * ready-made browsable link (its `self` field is an API URL, not the
+ * customer's `*.atlassian.net` site domain) and a widget's `dataProvider`
+ * fires exactly one MCP tool call on mount, so it can't chain a
+ * `list_sites` lookup first to resolve the real domain. That meant
+ * `site_url` was a hardcoded literal pointed at one sandbox -- correct only
+ * for that one tenant, silently WRONG for every other tenant this tile
+ * ships to, with no way to catch the mistake before a user hit a dead/
+ * mismatched site. Deliberately downgraded to a fixed, tenant-agnostic
+ * link instead: always correct, at the cost of one extra manual step.
  *
- * Args: { key, site_url } -- the issue key (e.g. "MBR-58") and the site's
- * base URL (e.g. "https://mysmb-sandbox.atlassian.net", no trailing slash
- * required -- one is stripped if present).
+ * Points at `https://home.atlassian.com` -- Atlassian's real cross-site
+ * entry point, works for any logged-in user regardless of which site
+ * they're on. The overlay already shows the issue key in its subtitle
+ * (`ovSubtitle` / `/ui/sel/key`), so the user has what they need to jump
+ * straight to the ticket via Jira's own global search (the key is
+ * recognized directly, no manual lookup needed).
+ *
+ * Revisit if/when a server-side fix lands (the MCP server resolving and
+ * returning the real site domain as part of `search_issues`'s response,
+ * rather than a widget trying to chain a second call) -- see
+ * `list_sites`/`service_desk_id` discussion on the Service Desk Queue tile
+ * for the same underlying platform gap.
  *
  * Spec example:
- *   { "$computed": "atlassian_issue_url", "args": { "key": { "$item": "key" }, "site_url": "https://mysmb-sandbox.atlassian.net" } }
+ *   { "$computed": "atlassian_issue_url", "args": {} }
  */
-const issue_url = (args) => {
-    const key = typeof args.key === 'string' ? args.key.trim() : '';
-    const siteUrl = typeof args.site_url === 'string' ? args.site_url.trim().replace(/\/+$/, '') : '';
-    if (!key || !siteUrl)
-        return '';
-    return `${siteUrl}/browse/${encodeURIComponent(key)}`;
-};
+const issue_url = () => 'https://home.atlassian.com';
 /**
  * Per-agent workload breakdown for the Jira Workload tile (WorkQ ticket:
  * "Tile: Jira Workload" -- same data points as Jira's own native Workload
