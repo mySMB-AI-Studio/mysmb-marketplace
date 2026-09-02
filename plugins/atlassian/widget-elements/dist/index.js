@@ -566,6 +566,124 @@ const issue_url = (args) => {
         return '';
     return `${siteUrl}/browse/${encodeURIComponent(key)}`;
 };
+/**
+ * Per-agent workload breakdown for the Jira Workload tile (WorkQ ticket:
+ * "Tile: Jira Workload" -- same data points as Jira's own native Workload
+ * report: Agent, Work Items In Progress). Jira's Workload report is itself
+ * scoped to one project (not site-wide), so this tile's `dataProvider`
+ * always passes an explicit `project_key` in its JQL -- same "must be
+ * passed explicitly, no auto-resolution" limitation already documented for
+ * `service_desk_id`/`project_key` on this plugin's Service Desk Queue tile
+ * and the "SLA % this month" action above.
+ *
+ * Takes the raw `issues` array from `search_issues` (called with
+ * `fields: ["assignee"]`, JQL `project = <key> AND statusCategory =
+ * "In Progress"`) and groups by `fields.assignee.accountId`, counting one
+ * "work item in progress" per issue. Two exclusions, both per the ticket's
+ * explicit ask to count only human agents:
+ *
+ * 1. Unassigned issues (`fields.assignee` is `null`) -- confirmed real and
+ *    common on a live sandbox response, not an edge case. Excluded
+ *    entirely: an unassigned item doesn't belong to anyone's workload.
+ * 2. Non-human assignees, filtered via `accountType !== "atlassian"`.
+ *    Confirmed against Atlassian's own Jira Cloud Platform REST API v3
+ *    User resource docs: `accountType` is one of `"atlassian"` (a real,
+ *    licensed human user -- what this tile wants), `"app"` (a Connect/
+ *    Forge app or automation-installed account), or `"customer"` (a
+ *    JSM-only customer account, not a work-assigning agent). Only
+ *    `"atlassian"` passes the filter.
+ *
+ * **UNTESTED against a live non-"atlassian" example -- flagged deliberately,
+ * not glossed over.** The sandbox used to build this tile has an
+ * "Automatic" account that appears cosmetically in Jira's assignee-picker
+ * dropdown but could not actually be assigned through that UI (selecting it
+ * silently reverted to Unassigned), so there was no way to produce a real
+ * issue assigned to a non-human account to confirm this filter's `!==
+ * "atlassian"` branch against live data -- only the "real human, accountType
+ * `atlassian`" path (Sean Baker / Jeric Ballesteros on KAN-1..3) was
+ * confirmed live. The filter itself is built straight from Atlassian's
+ * documented enum, not guessed. One more reason for caution, surfaced by a
+ * 2019 Atlassian Developer Community report (`accountType` returning
+ * `"atlassian"` for some app/addon accounts instead of the documented
+ * `"app"`, tracked as ACJIRA-1903) -- unconfirmed whether that bug is still
+ * live today, but it means this filter could in principle under-exclude a
+ * misreported bot account on some sites. Re-verify against a real non-human
+ * assignee before treating the exclusion path as proven, not just
+ * documented.
+ *
+ * Sorted most-work-items-first (descending count) -- surfaces whoever's
+ * busiest, matching the ticket's implicit intent -- and capped at 20 rows
+ * per `TILE-DISPLAY-STANDARDS.md` §11 (won't realistically be hit for one
+ * project's agent roster, but kept consistent with the standard anyway).
+ *
+ * Args: { issues, site_url, project_key } -- `issues` is the `search_issues`
+ * response's `issues` array (e.g. `/atlassian/search_issues/issues`).
+ * `site_url`/`project_key` are plain literal strings (not API-derived) used
+ * to build each row's click-through `searchUrl` -- see `buildAgentSearchUrl`.
+ *
+ * Spec example:
+ *   { "$computed": "atlassian_workload_by_agent",
+ *     "args": {
+ *       "issues": { "$state": "/atlassian/search_issues/issues" },
+ *       "site_url": "https://mysmb.atlassian.net",
+ *       "project_key": "KAN"
+ *     } }
+ */
+const WORKLOAD_ROW_CAP = 20;
+/**
+ * Row click-through target: Jira Cloud's standard issue-navigator URL
+ * (`https://<site>/issues/?jql=...`), pre-filtered to that agent's own
+ * in-progress work in this project. Built here (not at click time) since
+ * a `Table`'s `rowAction.fromRow` can only pull an already-resolved field
+ * off the row -- it can't run a `$computed` itself, so the full URL has to
+ * already exist on each row by the time the table renders.
+ *
+ * `siteUrl`/`projectKey` are plain args (not derived from the API
+ * response) -- same "must be passed explicitly, hardcoded to the sandbox
+ * until configured per tenant" limitation already accepted for this
+ * widget's own `project_key` and every other `service_desk_id`/
+ * `project_key` param elsewhere in this connector.
+ */
+function buildAgentSearchUrl(siteUrl, projectKey, accountId) {
+    if (!siteUrl || !projectKey || !accountId)
+        return '';
+    const jql = `assignee = "${accountId}" AND project = ${projectKey} AND statusCategory = "In Progress"`;
+    return `${siteUrl.replace(/\/+$/, '')}/issues/?jql=${encodeURIComponent(jql)}`;
+}
+const workload_by_agent = (args) => {
+    const issues = Array.isArray(args.issues) ? args.issues : [];
+    const siteUrl = typeof args.site_url === 'string' ? args.site_url : '';
+    const projectKey = typeof args.project_key === 'string' ? args.project_key : '';
+    const byAccount = new Map();
+    for (const raw of issues) {
+        const assignee = raw?.fields?.assignee;
+        if (!assignee || typeof assignee !== 'object')
+            continue; // unassigned -- excluded, not counted
+        if (assignee.accountType !== 'atlassian')
+            continue; // non-human (app/customer/other) -- excluded
+        const accountId = typeof assignee.accountId === 'string' ? assignee.accountId.trim() : '';
+        if (!accountId)
+            continue; // can't group without a stable key
+        const displayName = typeof assignee.displayName === 'string' && assignee.displayName.trim()
+            ? assignee.displayName.trim()
+            : 'Unknown agent';
+        const existing = byAccount.get(accountId);
+        if (existing) {
+            existing.count += 1;
+        }
+        else {
+            byAccount.set(accountId, {
+                accountId,
+                displayName,
+                count: 1,
+                searchUrl: buildAgentSearchUrl(siteUrl, projectKey, accountId),
+            });
+        }
+    }
+    return Array.from(byAccount.values())
+        .sort((a, b) => b.count - a.count)
+        .slice(0, WORKLOAD_ROW_CAP);
+};
 const elements = {
     slug: 'atlassian',
     functions: {
@@ -581,6 +699,7 @@ const elements = {
         priority_label,
         display_name,
         issue_url,
+        workload_by_agent,
     },
     actions: {
         check_sla_this_month,
