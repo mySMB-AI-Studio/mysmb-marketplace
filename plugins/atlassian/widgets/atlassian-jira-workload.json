@@ -1,0 +1,168 @@
+{
+  "id": "atlassian-jira-workload",
+  "title": "Jira Workload",
+  "description": "Tile: Jira Workload. Same data points as Jira's own native Workload report -- Agent, Work Items In Progress -- for one Jira project, scoped via an explicit `project_key` the same way Jira's own Workload report itself is a per-project report, not a site-wide one. The originating ticket said 'Action: No Actions', but a follow-up request added row click-through: clicking an agent opens Jira's own issue navigator (`https://<site>/issues/?jql=...`) pre-filtered to that agent's own in-progress work in this project (`assignee = \"<accountId>\" AND project = <project_key> AND statusCategory = \"In Progress\"`). The full URL is pre-built per row inside `atlassian_workload_by_agent` itself (as a `searchUrl` field), not computed at click time -- a `Table`'s `rowAction.fromRow` can only pull an already-resolved field off the row, it can't invoke a `$computed` itself. `site_url`/`project_key` are both plain literal args passed into that function (hardcoded to the sandbox, `https://mysmb.atlassian.net` / `KAN`) -- same per-tenant-manual-edit limitation already accepted for `service_desk_id`/`project_key` everywhere else in this connector; there's no cheap way to resolve a browsable site URL from within a single dataProvider call. Built entirely on the existing `search_issues` tool (JQL `project = <project_key> AND statusCategory = \"In Progress\"`, `fields: [\"assignee\"]`, `max_results: 100`) -- no new server-side tool needed. `atlassian_workload_by_agent` (this plugin's widget-elements) groups the returned issues by `fields.assignee.accountId`, counting one work item per issue, and returns them sorted most-work-items-first. Two exclusions, both per the ticket's explicit ask for 'only human user accounts': issues with a `null` assignee (unassigned -- doesn't belong to anyone's workload) are dropped entirely, and any assignee whose `accountType` isn't `\"atlassian\"` (Atlassian's own Jira Cloud Platform REST API v3 User resource docs: `\"atlassian\"` = real human user, `\"app\"` = Connect/Forge/automation account, `\"customer\"` = JSM-only customer account) is excluded as a non-human 'inbuilt agent'. **Honesty note, not a hedge to gloss over:** the exclusion path itself (`accountType !== \"atlassian\"`) is UNTESTED against a live example -- this sandbox has an 'Automatic' account that appears in Jira's assignee-picker UI but could not actually be assigned to a real issue through that UI (selecting it silently reverted to Unassigned), so there was no way to produce a real non-\"atlassian\"-accountType assignee to confirm this filter against. Only the human-agent path (accountType `\"atlassian\"`) was confirmed live. See `atlassian_workload_by_agent`'s own JSDoc in `widget-elements/src/index.ts` for the full reasoning, including a 2019 Atlassian Developer Community report of `accountType` sometimes misreporting app accounts as `\"atlassian\"` (unconfirmed whether still current). Capped at 20 rows per `TILE-DISPLAY-STANDARDS.md` §11 (irrelevant in practice for a single project's human-agent roster, kept for consistency). `search_issues` defaults to 50 results, capped at 100 max, paginated via `nextPageToken` -- a widget's `dataProvider` fires exactly one call, so this tile requests the max (`max_results: 100`) and checks the response's `isLast` flag: when `false`, more In-Progress issues exist beyond the 100 fetched, and the tile discloses that plainly (per §13's data-governance veracity principle, the same honesty pattern as the SLA%-this-month action's own truncation disclosure) rather than presenting a partial per-agent count as complete.",
+  "category": "work-management",
+  "tags": ["atlassian", "jira", "workload", "agents", "in-progress", "project-management", "capacity"],
+  "keywords": ["jira workload", "workload report", "agent workload", "in progress", "work items", "capacity", "team load", "assignee"],
+  "connectorsUsed": ["atlassian"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 6 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "atlassian",
+    "tool": "search_issues",
+    "params": {
+      "jql": "project = KAN AND statusCategory = \"In Progress\"",
+      "fields": ["assignee"],
+      "max_results": 100
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"],
+        "watch": {
+          "/atlassian/search_issues/issues": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/workload",
+              "value": {
+                "$computed": "atlassian_workload_by_agent",
+                "args": {
+                  "issues": { "$state": "/atlassian/search_issues/issues" },
+                  "site_url": "https://mysmb.atlassian.net",
+                  "project_key": "KAN"
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["headerRow"]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "justify": "between" },
+        "children": ["titleGroup", "countBadge"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Users", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Jira Workload", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": { "text": "Jira · KAN project · In progress" }
+      },
+      "countBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} agents",
+              "n": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/ui/workload" } }
+              }
+            }
+          },
+          "tone": "muted",
+          "variant": "soft"
+        },
+        "visible": { "$state": "/ui/workload/0" }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "content"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/atlassian.search_issues" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No in-progress work items assigned to a human agent on this project." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/atlassian.search_issues", "not": true },
+            { "$state": "/ui/workload/0", "not": true }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["workloadTable", "truncatedNote"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/atlassian.search_issues", "not": true },
+            { "$state": "/ui/workload/0" }
+          ]
+        }
+      },
+      "workloadTable": {
+        "type": "Table",
+        "props": {
+          "rows": { "$state": "/ui/workload" },
+          "emptyMessage": "No in-progress work items assigned to a human agent on this project.",
+          "rowAction": {
+            "action": "open_url",
+            "params": { "target": "_blank" },
+            "fromRow": { "url": "searchUrl" }
+          },
+          "columns": [
+            { "id": "agent", "header": "Agent", "field": "displayName", "priority": 1 },
+            {
+              "id": "count",
+              "header": "Work Items In Progress",
+              "field": "count",
+              "align": "right",
+              "width": 160,
+              "priority": 1
+            }
+          ]
+        }
+      },
+      "truncatedNote": {
+        "type": "Caption",
+        "props": {
+          "text": "100+ issues found — showing a partial count (more exist beyond the first 100 fetched).",
+          "tone": "warning"
+        },
+        "visible": { "$state": "/atlassian/search_issues/isLast", "eq": false }
+      }
+    }
+  },
+  "status": "published"
+}

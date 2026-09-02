@@ -554,6 +554,9 @@ const flatten_team_timesheet_entries = (args) => {
             stat_pending: '',
             stat_approved: '',
             stat_overdue: '',
+            filter_pending_active: '',
+            filter_approved_active: '',
+            filter_overdue_active: '',
         };
     });
     allRows.sort((a, b) => a.employee_name.localeCompare(b.employee_name));
