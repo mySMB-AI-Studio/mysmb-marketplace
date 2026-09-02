@@ -40,5 +40,11 @@ import type { PluginElementsModule } from './types';
  *   { "$computed": "atlassian_request_bucket", "args": { "request": { "$item": "" } } }
  */
 export type RequestBucket = 'new' | 'in_progress' | 'behind' | 'alerts' | 'done';
+export interface WorkloadRow {
+    accountId: string;
+    displayName: string;
+    count: number;
+    searchUrl: string;
+}
 declare const elements: PluginElementsModule;
 export default elements;
