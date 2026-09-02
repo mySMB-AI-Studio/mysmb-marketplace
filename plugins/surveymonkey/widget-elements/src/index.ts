@@ -294,6 +294,9 @@ const flatten_surveys_in_progress: ComputedFunction = (args) => {
       }
     }
 
+    const progressPct = goal > 0 ? Math.min(100, Math.round((rc / goal) * 100)) : 0;
+    const progressTone = statusTone !== 'muted' ? statusTone : 'success';
+
     return {
       id:                   String(s.id ?? ''),
       title:                String(s.title ?? ''),
@@ -302,6 +305,9 @@ const flatten_surveys_in_progress: ComputedFunction = (args) => {
       closes_label:         closesLabel,
       status_label:         statusLabel,
       status_tone:          statusTone,
+      progress_pct:         progressPct,
+      progress_tone:        progressTone,
+      has_progress:         goal > 0,
       stat_active:          '',
       stat_total_responses: '',
       stat_avg_completion:  '',
