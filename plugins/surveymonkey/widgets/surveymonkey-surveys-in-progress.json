@@ -14,26 +14,25 @@
   },
   "dataProvider": {
     "mcp": "surveymonkey",
-    "tool": "list_surveys_in_progress",
-    "params": {}
+    "tool": "list_surveys",
+    "params": { "per_page": 50, "sort_by": "date_modified", "sort_order": "DESC" }
   },
   "spec": {
     "root": "card",
     "elements": {
-
       "card": {
         "type": "Card",
         "props": {},
         "children": ["header", "body"],
         "watch": {
-          "/surveymonkey/list_surveys_in_progress/data": [
+          "/surveymonkey/list_surveys/data": [
             {
               "action": "setState",
               "params": {
                 "statePath": "/ui/rows",
                 "value": {
                   "$computed": "surveymonkey_flatten_surveys_in_progress",
-                  "args": { "value": { "$state": "/surveymonkey/list_surveys_in_progress/data" } }
+                  "args": { "value": { "$state": "/surveymonkey/list_surveys/data" } }
                 }
               }
             }
@@ -41,16 +40,9 @@
         }
       },
 
-      "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
-      "headerRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "start" },
-        "children": ["titleIcon", "titleStack"]
-      },
-      "titleIcon": { "type": "Icon", "props": { "name": "BarChart2", "tone": "accent", "size": "sm" } },
+      "header": { "type": "Header", "props": {}, "children": ["titleStack"] },
       "titleStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
+        "type": "Stack", "props": { "gap": "none" },
         "children": ["title", "eyebrow"]
       },
       "title": { "type": "Heading", "props": { "text": "Surveys in Progress", "level": "h2" } },
@@ -61,7 +53,7 @@
       "loading": {
         "type": "Stack", "props": { "gap": "sm" },
         "children": ["sk1", "sk2", "sk3"],
-        "visible": { "$state": "/_loading/surveymonkey.list_surveys_in_progress" }
+        "visible": { "$state": "/_loading/surveymonkey.list_surveys" }
       },
       "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
       "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
@@ -72,82 +64,67 @@
         "props": { "message": "No surveys currently collecting responses." },
         "visible": {
           "$and": [
-            { "$state": "/_loading/surveymonkey.list_surveys_in_progress", "not": true },
-            { "$state": "/surveymonkey/list_surveys_in_progress/data/0", "not": true }
+            { "$state": "/_loading/surveymonkey.list_surveys", "not": true },
+            { "$state": "/surveymonkey/list_surveys/data/0", "not": true }
           ]
         }
       },
 
       "contentArea": {
         "type": "Stack", "props": { "gap": "md" },
-        "children": ["statsRow", "tableArea"],
+        "children": ["statsRow", "surveyList"],
         "visible": {
           "$and": [
-            { "$state": "/_loading/surveymonkey.list_surveys_in_progress", "not": true },
-            { "$state": "/surveymonkey/list_surveys_in_progress/data/0" }
+            { "$state": "/_loading/surveymonkey.list_surveys", "not": true },
+            { "$state": "/surveymonkey/list_surveys/data/0" }
           ]
         }
       },
 
       "statsRow": {
         "type": "Row", "props": { "gap": "sm", "template": "1fr 1fr 1fr" },
-        "children": ["statActive", "statTotal", "statAvg"]
+        "children": ["statActiveWrap", "statTotalWrap", "statAvgWrap"]
       },
-
-      "statActive": { "type": "Section", "props": { "variant": "muted" }, "children": ["statActiveInner"] },
-      "statActiveInner": { "type": "Stack", "props": { "gap": "none" }, "children": ["statActiveCount", "statActiveLabel"] },
+      "statActiveWrap": { "type": "Stack", "props": { "gap": "none" }, "children": ["statActive"] },
+      "statActive": {
+        "type": "Section", "props": { "variant": "muted", "padding": "sm" },
+        "children": ["statActiveCount", "statActiveLabel"]
+      },
       "statActiveCount": { "type": "Heading", "props": { "text": { "$state": "/ui/rows/0/stat_active" }, "level": "h2", "tone": "accent" } },
       "statActiveLabel": { "type": "Caption", "props": { "text": "Active Surveys" } },
 
-      "statTotal": { "type": "Section", "props": { "variant": "muted" }, "children": ["statTotalInner"] },
-      "statTotalInner": { "type": "Stack", "props": { "gap": "none" }, "children": ["statTotalCount", "statTotalLabel"] },
+      "statTotalWrap": { "type": "Stack", "props": { "gap": "none" }, "children": ["statTotal"] },
+      "statTotal": {
+        "type": "Section", "props": { "variant": "muted", "padding": "sm" },
+        "children": ["statTotalCount", "statTotalLabel"]
+      },
       "statTotalCount": { "type": "Heading", "props": { "text": { "$state": "/ui/rows/0/stat_total_responses" }, "level": "h2" } },
       "statTotalLabel": { "type": "Caption", "props": { "text": "Total Responses" } },
 
-      "statAvg": { "type": "Section", "props": { "variant": "muted" }, "children": ["statAvgInner"] },
-      "statAvgInner": { "type": "Stack", "props": { "gap": "none" }, "children": ["statAvgCount", "statAvgLabel"] },
-      "statAvgCount": { "type": "Heading", "props": { "text": { "$state": "/ui/rows/0/stat_avg_completion" }, "level": "h2", "tone": "success" } },
+      "statAvgWrap": { "type": "Stack", "props": { "gap": "none" }, "children": ["statAvg"] },
+      "statAvg": {
+        "type": "Section", "props": { "variant": "muted", "padding": "sm" },
+        "children": ["statAvgCount", "statAvgLabel"]
+      },
+      "statAvgCount": { "type": "Heading", "props": { "text": { "$state": "/ui/rows/0/stat_avg_completion" }, "level": "h2" } },
       "statAvgLabel": { "type": "Caption", "props": { "text": "Avg Completion" } },
 
-      "tableArea": {
-        "type": "Stack", "props": { "gap": "xs" },
-        "children": ["columnHeader", "surveyList"]
-      },
-
-      "columnHeader": {
-        "type": "Row", "props": { "justify": "between", "align": "center" },
-        "children": ["colSurvey", "colRightHeaders"]
-      },
-      "colSurvey": { "type": "Eyebrow", "props": { "text": "SURVEY" } },
-      "colRightHeaders": {
-        "type": "Row", "props": { "template": "6rem 4rem 6.5rem", "gap": "none" },
-        "children": ["colResponses", "colCloses", "colStatus"]
-      },
-      "colResponses": { "type": "Eyebrow", "props": { "text": "RESPONSES" } },
-      "colCloses":    { "type": "Eyebrow", "props": { "text": "CLOSES" } },
-      "colStatus":    { "type": "Eyebrow", "props": { "text": "STATUS" } },
-
       "surveyList": {
-        "type": "Stack", "props": { "gap": "xs" },
+        "type": "Stack", "props": { "gap": "sm" },
         "children": ["surveyRow"],
         "repeat": { "statePath": "/ui/rows", "key": "id" }
       },
 
       "surveyRow": {
         "type": "Stack", "props": { "gap": "xs" },
-        "children": ["surveyRowContent", "surveyDivider"]
+        "children": ["surveyTopRow", "surveyProgress", "surveyMetaRow", "surveyDivider"]
       },
-      "surveyRowContent": {
+      "surveyTopRow": {
         "type": "Row", "props": { "justify": "between", "align": "center" },
-        "children": ["surveyRowLeft", "surveyRowRight"]
+        "children": ["surveyInfo", "surveyStatusBadge"]
       },
-      "surveyRowLeft": {
-        "type": "Row", "props": { "gap": "sm", "align": "center", "grow": true },
-        "children": ["surveyDot", "surveyInfo"]
-      },
-      "surveyDot": { "type": "Dot", "props": { "tone": "warning" } },
       "surveyInfo": {
-        "type": "Stack", "props": { "gap": "none" },
+        "type": "Stack", "props": { "gap": "none", "grow": true },
         "children": ["surveyTitle", "surveyAudience"]
       },
       "surveyTitle": {
@@ -159,25 +136,30 @@
         "props": { "text": { "$item": "audience" }, "tone": "muted" },
         "visible": { "$item": "audience" }
       },
-      "surveyRowRight": {
-        "type": "Row", "props": { "template": "6rem 4rem 6.5rem", "align": "center", "gap": "none" },
-        "children": ["responsesText", "closesText", "statusBadge"]
-      },
-      "responsesText": {
-        "type": "Text",
-        "props": { "text": { "$item": "responses_label" }, "size": "sm", "tone": "muted" }
-      },
-      "closesText": {
-        "type": "Caption",
-        "props": { "text": { "$item": "closes_label" }, "tone": "muted" }
-      },
-      "statusBadge": {
+      "surveyStatusBadge": {
         "type": "Badge",
         "props": { "text": { "$item": "status_label" }, "tone": { "$item": "status_tone" }, "variant": "soft" },
         "visible": { "$item": "status_label" }
       },
+      "surveyProgress": {
+        "type": "ProgressBar",
+        "props": { "value": { "$item": "progress_pct" }, "tone": { "$item": "progress_tone" } },
+        "visible": { "$item": "has_progress" }
+      },
+      "surveyMetaRow": {
+        "type": "Row", "props": { "justify": "between" },
+        "children": ["surveyResponses", "surveyCloses"]
+      },
+      "surveyResponses": {
+        "type": "Caption",
+        "props": { "text": { "$item": "responses_label" }, "tone": "muted" }
+      },
+      "surveyCloses": {
+        "type": "Caption",
+        "props": { "text": { "$item": "closes_label" }, "tone": "muted" },
+        "visible": { "$item": "closes_label" }
+      },
       "surveyDivider": { "type": "Divider", "props": {} }
-
     }
   },
   "status": "published"

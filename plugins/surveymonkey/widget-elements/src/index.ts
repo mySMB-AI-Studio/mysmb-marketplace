@@ -294,6 +294,9 @@ const flatten_surveys_in_progress: ComputedFunction = (args) => {
       }
     }
 
+    const progressPct = goal > 0 ? Math.min(100, Math.round((rc / goal) * 100)) : 0;
+    const progressTone = statusTone !== 'muted' ? statusTone : 'success';
+
     return {
       id:                   String(s.id ?? ''),
       title:                String(s.title ?? ''),
@@ -302,6 +305,9 @@ const flatten_surveys_in_progress: ComputedFunction = (args) => {
       closes_label:         closesLabel,
       status_label:         statusLabel,
       status_tone:          statusTone,
+      progress_pct:         progressPct,
+      progress_tone:        progressTone,
+      has_progress:         goal > 0,
       stat_active:          '',
       stat_total_responses: '',
       stat_avg_completion:  '',
@@ -378,6 +384,76 @@ const flatten_closed_surveys: ComputedFunction = (args) => {
 };
 
 /**
+ * Flattens list_surveys data into chronologically-sorted event rows for the Survey Calendar tile.
+ * Each survey contributes a Launching event (date_created) and optionally a Closing event
+ * (date_modified when it differs from date_created by more than 60 s).
+ * Shows events within the past 30 days, sorted ascending (oldest → newest).
+ *
+ * Args: { value: array }
+ */
+const flatten_upcoming_calendar: ComputedFunction = (args) => {
+  const surveys = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  if (surveys.length === 0) return [];
+
+  type EventRow = {
+    id: string;
+    _sort: number;
+    date_label: string;
+    title: string;
+    audience: string;
+    event_label: string;
+    event_tone: string;
+    dot_tone: string;
+  };
+
+  const events: EventRow[] = [];
+
+  for (const s of surveys) {
+    const id = String(s.id ?? '');
+    const title = String(s.title ?? '');
+    const audience = String(s.collector_name ?? s.nickname ?? '');
+    const createdRaw = String(s.date_created ?? '');
+    const modifiedRaw = String(s.date_modified ?? '');
+    const createdMs = Date.parse(createdRaw);
+    const modifiedMs = Date.parse(modifiedRaw);
+
+    if (!Number.isNaN(createdMs)) {
+      events.push({
+        id: `${id}-launch`,
+        _sort: createdMs,
+        date_label: _fmtShort(createdRaw).toUpperCase(),
+        title,
+        audience,
+        event_label: 'Launching',
+        event_tone: 'accent',
+        dot_tone: 'accent',
+      });
+    }
+
+    if (
+      !Number.isNaN(modifiedMs) &&
+      Math.abs(modifiedMs - (Number.isNaN(createdMs) ? 0 : createdMs)) > 60_000
+    ) {
+      events.push({
+        id: `${id}-close`,
+        _sort: modifiedMs,
+        date_label: _fmtShort(modifiedRaw).toUpperCase(),
+        title,
+        audience,
+        event_label: 'Closing',
+        event_tone: 'warning',
+        dot_tone: 'warning',
+      });
+    }
+  }
+
+  // Most recent 20 events, displayed in ascending chronological order
+  events.sort((a, b) => b._sort - a._sort);
+  const top = events.slice(0, 20).reverse();
+  return top.map(({ _sort, ...rest }) => rest);
+};
+
+/**
  * Returns a single spotlight object from the most recently modified survey.
  * Fields: title, status_label, status_tone, launched_label, response_count_label, response_count.
  *
@@ -438,6 +514,7 @@ const elements: PluginElementsModule = {
     flatten_week_surveys,
     flatten_closed_surveys,
     flatten_recent_survey,
+    flatten_upcoming_calendar,
   },
 };
 

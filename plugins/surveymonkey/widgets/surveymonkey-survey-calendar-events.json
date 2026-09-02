@@ -1,0 +1,139 @@
+{
+  "id": "surveymonkey-survey-calendar-events",
+  "title": "Survey Calendar",
+  "description": "Chronological event list of recent survey launches and closings.",
+  "category": "surveys",
+  "tags": ["surveymonkey", "surveys", "calendar", "events", "launching", "closing"],
+  "keywords": ["survey calendar", "events", "launching", "closing", "schedule"],
+  "connectorsUsed": ["surveymonkey"],
+  "popularity": 60,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 8 },
+    "min": { "colSpan": 3, "rowSpan": 5 },
+    "max": { "colSpan": 6, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "surveymonkey",
+    "tool": "list_surveys",
+    "params": { "per_page": 100, "sort_by": "date_modified", "sort_order": "DESC" }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"],
+        "watch": {
+          "/surveymonkey/list_surveys/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/events",
+                "value": {
+                  "$computed": "surveymonkey_flatten_upcoming_calendar",
+                  "args": {
+                    "value": { "$state": "/surveymonkey/list_surveys/data" }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleRow"] },
+      "titleRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["titleStack"]
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": { "type": "Heading", "props": { "text": "Survey Calendar", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "SurveyMonkey" } },
+
+      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "content"] },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/surveymonkey.list_surveys" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No survey events found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/surveymonkey.list_surveys", "not": true },
+            { "$state": "/ui/events/0", "not": true }
+          ]
+        }
+      },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["eventList"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/surveymonkey.list_surveys", "not": true },
+            { "$state": "/ui/events/0" }
+          ]
+        }
+      },
+
+      "eventList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["eventRow"],
+        "repeat": { "statePath": "/ui/events", "key": "id" }
+      },
+
+      "eventRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["eventDot", "eventDetails"]
+      },
+      "eventDot": {
+        "type": "Dot",
+        "props": { "tone": { "$item": "dot_tone" } }
+      },
+      "eventDetails": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["eventDateLabel", "eventTitle", "eventAudience", "eventBadge"]
+      },
+      "eventDateLabel": {
+        "type": "Eyebrow",
+        "props": { "text": { "$item": "date_label" }, "tone": "muted" }
+      },
+      "eventTitle": {
+        "type": "Text",
+        "props": { "text": { "$item": "title" }, "size": "sm", "weight": "semibold" }
+      },
+      "eventAudience": {
+        "type": "Caption",
+        "props": { "text": { "$item": "audience" }, "tone": "muted" },
+        "visible": { "$item": "audience" }
+      },
+      "eventBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "event_label" },
+          "tone": { "$item": "event_tone" },
+          "variant": "soft"
+        }
+      }
+    }
+  },
+  "status": "published"
+}
