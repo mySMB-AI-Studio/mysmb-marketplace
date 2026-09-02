@@ -131,6 +131,97 @@ function _fmtShort(iso) {
     return `${MONTH_ABBR[d.getMonth()]} ${d.getDate()}`;
 }
 /**
+ * Returns the current week Mon–Sun as a label, e.g. "Sep 1 – Sep 7, 2026".
+ * Used as the This Week's Surveys tile eyebrow.
+ *
+ * Args: {}
+ */
+const current_week_label = () => {
+    const now = new Date();
+    const dow = now.getDay();
+    const diffToMon = dow === 0 ? -6 : 1 - dow;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diffToMon);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const fmt = (d) => d.toLocaleString('en-AU', { month: 'short', day: 'numeric' }).toUpperCase();
+    return `${fmt(monday)} – ${fmt(sunday)}, ${sunday.getFullYear()}`;
+};
+/**
+ * Transforms a survey list into a week summary object for the This Week's Surveys tile.
+ * Returns: { days[7], stat_launching, stat_closing, stat_responses, event_rows[], has_events }.
+ * "Launching" = date_created falls in current Mon–Sun.
+ * "Closing"   = date_modified falls in current Mon–Sun but NOT created this week.
+ *
+ * Args: { value: array }
+ */
+const flatten_week_surveys = (args) => {
+    const surveys = Array.isArray(args.value) ? args.value : [];
+    const now = new Date();
+    const dow = now.getDay();
+    const diffToMon = dow === 0 ? -6 : 1 - dow;
+    const monday = new Date(now);
+    monday.setHours(0, 0, 0, 0);
+    monday.setDate(now.getDate() + diffToMon);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+    const monMs = monday.getTime();
+    const sunMs = sunday.getTime();
+    const DAY_ABBRS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+    const days = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        return {
+            key: DAY_ABBRS[i],
+            abbr: DAY_ABBRS[i],
+            num: String(d.getDate()),
+            is_today: d.toDateString() === now.toDateString(),
+            has_event: false,
+        };
+    });
+    const eventRows = [];
+    let statLaunching = 0;
+    let statClosing = 0;
+    let statResponses = 0;
+    for (const s of surveys) {
+        const id = String(s.id ?? '');
+        const title = String(s.title ?? '');
+        const dateCreated = String(s.date_created ?? '');
+        const dateModified = String(s.date_modified ?? '');
+        const responseCount = Number(s.response_count ?? 0);
+        const createdMs = Date.parse(dateCreated);
+        const modifiedMs = Date.parse(dateModified);
+        const createdInWeek = !Number.isNaN(createdMs) && createdMs >= monMs && createdMs <= sunMs;
+        const modifiedInWeek = !Number.isNaN(modifiedMs) && modifiedMs >= monMs && modifiedMs <= sunMs;
+        if (createdInWeek) {
+            statLaunching++;
+            statResponses += responseCount;
+            const dayIdx = (new Date(createdMs).getDay() + 6) % 7;
+            if (dayIdx < 7)
+                days[dayIdx].has_event = true;
+            eventRows.push({ id: `${id}-launch`, title, date_label: _fmtShort(dateCreated), event_label: 'Launching', event_tone: 'success' });
+        }
+        else if (modifiedInWeek) {
+            statClosing++;
+            statResponses += responseCount;
+            const dayIdx = (new Date(modifiedMs).getDay() + 6) % 7;
+            if (dayIdx < 7)
+                days[dayIdx].has_event = true;
+            eventRows.push({ id: `${id}-modified`, title, date_label: _fmtShort(dateModified), event_label: 'Closing', event_tone: 'warning' });
+        }
+    }
+    eventRows.sort((a, b) => (a.event_label === b.event_label ? 0 : a.event_label === 'Launching' ? -1 : 1));
+    return {
+        days,
+        stat_launching: String(statLaunching),
+        stat_closing: String(statClosing),
+        stat_responses: statResponses.toLocaleString(),
+        event_rows: eventRows,
+        has_events: eventRows.length > 0,
+    };
+};
+/**
  * Flattens the list_surveys_in_progress data array into display rows.
  * Row 0 carries aggregate stats (stat_active, stat_total_responses, stat_avg_completion).
  * Handles optional collector fields: collector_name (audience), max_responses (goal),
@@ -203,6 +294,110 @@ const flatten_surveys_in_progress = (args) => {
     rows[0].stat_avg_completion = avgComp;
     return rows;
 };
+/**
+ * Flattens the list_closed_surveys data array into display rows for the Surveys Completed tile.
+ * Row[0] carries aggregate stats: stat_quarter_count, stat_total_responses, stat_avg_rate.
+ *
+ * Args: { value: array }
+ */
+const flatten_closed_surveys = (args) => {
+    const raw = Array.isArray(args.value) ? args.value : [];
+    if (raw.length === 0)
+        return [];
+    const now = new Date();
+    const qStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+    const qStartMs = qStart.getTime();
+    let totalResponses = 0;
+    let totalRate = 0;
+    let rateCount = 0;
+    let quarterCount = 0;
+    const rows = raw.map((s) => {
+        const rc = Number(s.response_count ?? 0);
+        const sent = Number(s.recipient_count ?? 0);
+        totalResponses += rc;
+        const closedDateRaw = String(s.date_modified ?? s.closed_date ?? '');
+        const closedMs = Date.parse(closedDateRaw);
+        if (!Number.isNaN(closedMs) && closedMs >= qStartMs)
+            quarterCount++;
+        let ratePct = 0;
+        let rateLabel = '';
+        let rateTone = 'muted';
+        if (sent > 0) {
+            ratePct = Math.round((rc / sent) * 100);
+            rateLabel = `${ratePct}%`;
+            rateTone = ratePct >= 60 ? 'success' : ratePct >= 30 ? 'warning' : 'danger';
+            totalRate += ratePct;
+            rateCount++;
+        }
+        return {
+            id: String(s.id ?? ''),
+            title: String(s.title ?? ''),
+            audience: String(s.collector_name ?? ''),
+            responses_label: rc.toLocaleString(),
+            closed_label: closedDateRaw ? _fmtShort(closedDateRaw) : '',
+            rate_label: rateLabel,
+            rate_tone: rateTone,
+            stat_quarter_count: '',
+            stat_total_responses: '',
+            stat_avg_rate: '',
+        };
+    });
+    const avgRate = rateCount > 0 ? `${Math.round(totalRate / rateCount)}%` : '--';
+    rows[0].stat_quarter_count = String(quarterCount);
+    rows[0].stat_total_responses = totalResponses.toLocaleString();
+    rows[0].stat_avg_rate = avgRate;
+    return rows;
+};
+/**
+ * Returns a single spotlight object from the most recently modified survey.
+ * Fields: title, status_label, status_tone, launched_label, response_count_label, response_count.
+ *
+ * Args: { value: array }
+ */
+const flatten_recent_survey = (args) => {
+    const raw = Array.isArray(args.value) ? args.value : [];
+    if (raw.length === 0)
+        return {};
+    const sorted = [...raw].sort((a, b) => {
+        const aMs = Date.parse(String(a.date_modified ?? ''));
+        const bMs = Date.parse(String(b.date_modified ?? ''));
+        return (Number.isNaN(bMs) ? 0 : bMs) - (Number.isNaN(aMs) ? 0 : aMs);
+    });
+    const s = sorted[0];
+    const status = String(s.status ?? '').toLowerCase();
+    let statusLabel = 'Unknown';
+    let statusTone = 'muted';
+    if (status === 'open') {
+        statusLabel = 'Live';
+        statusTone = 'accent';
+    }
+    if (status === 'closed') {
+        statusLabel = 'Closed';
+        statusTone = 'muted';
+    }
+    if (status === 'draft') {
+        statusLabel = 'Draft';
+        statusTone = 'warning';
+    }
+    const dateCreated = String(s.date_created ?? '');
+    let launchedLabel = '';
+    if (dateCreated) {
+        const ms = Date.parse(dateCreated);
+        if (!Number.isNaN(ms)) {
+            const d = new Date(ms);
+            const month = d.toLocaleString('en-AU', { month: 'long' });
+            launchedLabel = `Launched ${month} ${d.getDate()}, ${d.getFullYear()}`;
+        }
+    }
+    const rc = Number(s.response_count ?? 0);
+    return {
+        title: String(s.title ?? ''),
+        status_label: statusLabel,
+        status_tone: statusTone,
+        launched_label: launchedLabel,
+        response_count_label: rc.toLocaleString(),
+    };
+};
 const elements = {
     slug: 'surveymonkey',
     functions: {
@@ -214,6 +409,10 @@ const elements = {
         current_month_label,
         to_calendar_events,
         flatten_surveys_in_progress,
+        current_week_label,
+        flatten_week_surveys,
+        flatten_closed_surveys,
+        flatten_recent_survey,
     },
 };
 export default elements;
