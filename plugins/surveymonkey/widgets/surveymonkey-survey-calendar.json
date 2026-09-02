@@ -109,7 +109,7 @@
       },
       "todaySection": {
         "type": "Section",
-        "props": { "variant": "accent", "padding": "xs", "align": "center" },
+        "props": { "variant": "muted", "padding": "xs", "align": "center" },
         "children": ["dayAbbrToday", "dayNumToday", "eventDotToday"],
         "visible": { "$item": "is_today" }
       },
@@ -121,11 +121,11 @@
       },
       "dayAbbrToday": {
         "type": "Caption",
-        "props": { "text": { "$item": "abbr" }, "tone": "accent", "weight": "semibold" }
+        "props": { "text": { "$item": "abbr" }, "tone": "muted" }
       },
       "dayNumToday": {
         "type": "Text",
-        "props": { "text": { "$item": "num" }, "size": "sm", "tone": "accent", "weight": "bold" }
+        "props": { "text": { "$item": "num" }, "size": "sm", "tone": "default" }
       },
       "eventDotToday": {
         "type": "Dot",
@@ -148,11 +148,16 @@
       "statsRow": {
         "type": "Row",
         "props": { "gap": "sm", "template": "1fr 1fr 1fr" },
-        "children": ["statLaunching", "statClosing", "statResponses"]
+        "children": ["statLaunchingWrap", "statClosingWrap", "statResponsesWrap"]
+      },
+      "statLaunchingWrap": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["statLaunching"]
       },
       "statLaunching": {
         "type": "Section",
-        "props": { "variant": "muted", "padding": "sm", "align": "center" },
+        "props": { "variant": "muted", "padding": "xs", "align": "center" },
         "children": ["statLaunchingNum", "statLaunchingLabel"]
       },
       "statLaunchingNum": {
@@ -163,9 +168,14 @@
         "type": "Caption",
         "props": { "text": "Launching", "tone": "muted" }
       },
+      "statClosingWrap": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["statClosing"]
+      },
       "statClosing": {
         "type": "Section",
-        "props": { "variant": "muted", "padding": "sm", "align": "center" },
+        "props": { "variant": "muted", "padding": "xs", "align": "center" },
         "children": ["statClosingNum", "statClosingLabel"]
       },
       "statClosingNum": {
@@ -176,18 +186,23 @@
         "type": "Caption",
         "props": { "text": "Closing", "tone": "muted" }
       },
+      "statResponsesWrap": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["statResponses"]
+      },
       "statResponses": {
         "type": "Section",
-        "props": { "variant": "accent", "padding": "sm", "align": "center" },
+        "props": { "variant": "muted", "padding": "xs", "align": "center" },
         "children": ["statResponsesNum", "statResponsesLabel"]
       },
       "statResponsesNum": {
         "type": "Heading",
-        "props": { "text": { "$state": "/ui/week/stat_responses" }, "level": "h3", "tone": "accent" }
+        "props": { "text": { "$state": "/ui/week/stat_responses" }, "level": "h3" }
       },
       "statResponsesLabel": {
         "type": "Caption",
-        "props": { "text": "Responses", "tone": "accent" }
+        "props": { "text": "Responses", "tone": "muted" }
       },
       "eventList": {
         "type": "Stack",
