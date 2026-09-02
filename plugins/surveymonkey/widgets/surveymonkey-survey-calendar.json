@@ -1,10 +1,10 @@
 {
   "id": "surveymonkey-survey-calendar",
-  "title": "Survey Calendar",
-  "description": "Visual calendar of survey creation and modification activity.",
+  "title": "This Week's Surveys",
+  "description": "7-day activity strip showing survey launches and closings for the current week.",
   "category": "surveys",
-  "tags": ["surveymonkey", "surveys", "calendar", "activity", "timeline"],
-  "keywords": ["survey calendar", "survey activity", "timeline", "created", "modified"],
+  "tags": ["surveymonkey", "surveys", "calendar", "activity", "week"],
+  "keywords": ["survey calendar", "this week", "launching", "closing", "responses"],
   "connectorsUsed": ["surveymonkey"],
   "popularity": 55,
   "sizing": {
@@ -29,12 +29,11 @@
             {
               "action": "setState",
               "params": {
-                "statePath": "/ui/calendarEvents",
+                "statePath": "/ui/week",
                 "value": {
-                  "$computed": "surveymonkey_to_calendar_events",
+                  "$computed": "surveymonkey_flatten_week_surveys",
                   "args": {
-                    "value": { "$state": "/surveymonkey/list_surveys/data" },
-                    "n": 200
+                    "value": { "$state": "/surveymonkey/list_surveys/data" }
                   }
                 }
               }
@@ -59,17 +58,17 @@
       "titleStack": {
         "type": "Stack",
         "props": { "gap": "none" },
-        "children": ["title", "subtitle"]
+        "children": ["title", "weekEyebrow"]
       },
       "title": {
         "type": "Heading",
-        "props": { "text": "Survey Calendar", "level": "h2" }
+        "props": { "text": "This Week's Surveys", "level": "h2" }
       },
-      "subtitle": {
+      "weekEyebrow": {
         "type": "Eyebrow",
         "props": {
           "text": {
-            "$computed": "surveymonkey_current_month_label",
+            "$computed": "surveymonkey_current_week_label",
             "args": {}
           }
         }
@@ -77,42 +76,164 @@
       "body": {
         "type": "Body",
         "props": {},
-        "children": ["loading", "calendarSection"]
+        "children": ["loading", "content"]
       },
       "loading": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["skCal"],
+        "children": ["skStrip", "skStats", "skList"],
         "visible": { "$state": "/_loading/surveymonkey.list_surveys" }
       },
-      "skCal": { "type": "Skeleton", "props": { "height": "10rem", "rounded": "md" } },
-      "calendarSection": {
+      "skStrip": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "skStats": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "skList": { "type": "Skeleton", "props": { "height": "6rem", "rounded": "md" } },
+      "content": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["calendar", "legend"],
+        "children": ["dayStrip", "statsRow", "eventList", "noEventsCaption"],
         "visible": { "$state": "/_loading/surveymonkey.list_surveys", "not": true }
       },
-      "calendar": {
-        "type": "Calendar",
-        "props": {
-          "events": { "$state": "/ui/calendarEvents" },
-          "dateField": "date",
-          "titleField": "label",
-          "emptyMessage": "No survey activity this month."
+      "dayStrip": {
+        "type": "Row",
+        "props": { "gap": "xs", "template": "1fr 1fr 1fr 1fr 1fr 1fr 1fr" },
+        "children": ["dayCell"],
+        "repeat": {
+          "statePath": "/ui/week/days",
+          "key": "key"
         }
       },
-      "legend": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["legendDot", "legendLabel"]
+      "dayCell": {
+        "type": "Stack",
+        "props": { "gap": "none", "align": "center" },
+        "children": ["todaySection", "normalSection"]
       },
-      "legendDot": {
-        "type": "Dot",
-        "props": { "tone": "info", "size": "sm" }
+      "todaySection": {
+        "type": "Section",
+        "props": { "variant": "accent", "padding": "xs", "align": "center" },
+        "children": ["dayAbbrToday", "dayNumToday", "eventDotToday"],
+        "visible": { "$item": "is_today" }
       },
-      "legendLabel": {
+      "normalSection": {
+        "type": "Section",
+        "props": { "variant": "muted", "padding": "xs", "align": "center" },
+        "children": ["dayAbbrNormal", "dayNumNormal", "eventDotNormal"],
+        "visible": { "$item": "is_today", "not": true }
+      },
+      "dayAbbrToday": {
         "type": "Caption",
-        "props": { "text": "Days with survey activity", "tone": "muted" }
+        "props": { "text": { "$item": "abbr" }, "tone": "accent", "weight": "semibold" }
+      },
+      "dayNumToday": {
+        "type": "Text",
+        "props": { "text": { "$item": "num" }, "size": "sm", "tone": "accent", "weight": "bold" }
+      },
+      "eventDotToday": {
+        "type": "Dot",
+        "props": { "tone": "warning", "size": "xs" },
+        "visible": { "$item": "has_event" }
+      },
+      "dayAbbrNormal": {
+        "type": "Caption",
+        "props": { "text": { "$item": "abbr" }, "tone": "muted" }
+      },
+      "dayNumNormal": {
+        "type": "Text",
+        "props": { "text": { "$item": "num" }, "size": "sm", "tone": "default" }
+      },
+      "eventDotNormal": {
+        "type": "Dot",
+        "props": { "tone": "warning", "size": "xs" },
+        "visible": { "$item": "has_event" }
+      },
+      "statsRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "template": "1fr 1fr 1fr" },
+        "children": ["statLaunching", "statClosing", "statResponses"]
+      },
+      "statLaunching": {
+        "type": "Section",
+        "props": { "variant": "muted", "padding": "sm", "align": "center" },
+        "children": ["statLaunchingNum", "statLaunchingLabel"]
+      },
+      "statLaunchingNum": {
+        "type": "Heading",
+        "props": { "text": { "$state": "/ui/week/stat_launching" }, "level": "h3" }
+      },
+      "statLaunchingLabel": {
+        "type": "Caption",
+        "props": { "text": "Launching", "tone": "muted" }
+      },
+      "statClosing": {
+        "type": "Section",
+        "props": { "variant": "muted", "padding": "sm", "align": "center" },
+        "children": ["statClosingNum", "statClosingLabel"]
+      },
+      "statClosingNum": {
+        "type": "Heading",
+        "props": { "text": { "$state": "/ui/week/stat_closing" }, "level": "h3" }
+      },
+      "statClosingLabel": {
+        "type": "Caption",
+        "props": { "text": "Closing", "tone": "muted" }
+      },
+      "statResponses": {
+        "type": "Section",
+        "props": { "variant": "accent", "padding": "sm", "align": "center" },
+        "children": ["statResponsesNum", "statResponsesLabel"]
+      },
+      "statResponsesNum": {
+        "type": "Heading",
+        "props": { "text": { "$state": "/ui/week/stat_responses" }, "level": "h3", "tone": "accent" }
+      },
+      "statResponsesLabel": {
+        "type": "Caption",
+        "props": { "text": "Responses", "tone": "accent" }
+      },
+      "eventList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["eventRow"],
+        "repeat": {
+          "statePath": "/ui/week/event_rows",
+          "key": "id"
+        },
+        "visible": { "$state": "/ui/week/has_events" }
+      },
+      "eventRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["eventInfo", "eventBadge"]
+      },
+      "eventInfo": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["eventTitle", "eventDateLabel"]
+      },
+      "eventTitle": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "title" },
+          "size": "sm",
+          "weight": "semibold",
+          "truncate": true
+        }
+      },
+      "eventDateLabel": {
+        "type": "Caption",
+        "props": { "text": { "$item": "date_label" }, "tone": "muted" }
+      },
+      "eventBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "event_label" },
+          "tone": { "$item": "event_tone" },
+          "variant": "soft"
+        }
+      },
+      "noEventsCaption": {
+        "type": "Empty",
+        "props": { "message": "No survey activity this week." },
+        "visible": { "$state": "/ui/week/has_events", "not": true }
       }
     }
   },
