@@ -1,0 +1,269 @@
+{
+  "id": "salesforce-member-engagement",
+  "title": "Member Engagement",
+  "description": "Engagement breakdown of active members using the `Engagement_Level__c` custom field on Contact. Shows the percentage of highly engaged members and a count per engagement tier. Requires `Engagement_Level__c` to be populated with values: Engaged, Less Engaged, Does Not Engage.",
+  "category": "crm",
+  "tags": ["salesforce", "membership", "engagement", "contacts", "association"],
+  "keywords": ["engagement", "member engagement", "engaged", "less engaged", "active members", "participation"],
+  "connectorsUsed": ["salesforce"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 3, "rowSpan": 4 },
+    "min":       { "colSpan": 2, "rowSpan": 3 },
+    "max":       { "colSpan": 6, "rowSpan": 8 }
+  },
+  "dataProvider": {
+    "mcp": "salesforce",
+    "tool": "soql_query",
+    "params": {
+      "query": "SELECT Engagement_Level__c, COUNT(Id) cnt FROM Contact WHERE Membership_Type__c != null GROUP BY Engagement_Level__c"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"]
+      },
+
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Users", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Member Engagement", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{total} Active Members",
+              "total": {
+                "$computed": "sum",
+                "args": { "value": { "$state": "/salesforce/soql_query/records" }, "field": "cnt" }
+              }
+            }
+          }
+        }
+      },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "contentStack"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/salesforce.soql_query" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3rem",   "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No engagement data found. Make sure an `Engagement_Level__c` custom field exists on the Contact object and is populated for members." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/salesforce/soql_query/records/0", "not": true }
+          ]
+        }
+      },
+
+      "contentStack": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["pctStack", "engagementDivider", "engagementList"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/salesforce/soql_query/records/0" }
+          ]
+        }
+      },
+
+      "pctStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["pctValue", "pctCaption"]
+      },
+      "pctValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n}%",
+              "n": {
+                "$computed": "pct",
+                "args": {
+                  "part": {
+                    "$computed": "sum",
+                    "args": {
+                      "value": {
+                        "$computed": "filter_by",
+                        "args": {
+                          "value": { "$state": "/salesforce/soql_query/records" },
+                          "field": "Engagement_Level__c",
+                          "equals": "Engaged"
+                        }
+                      },
+                      "field": "cnt"
+                    }
+                  },
+                  "whole": {
+                    "$computed": "sum",
+                    "args": { "value": { "$state": "/salesforce/soql_query/records" }, "field": "cnt" }
+                  }
+                }
+              }
+            }
+          },
+          "size": "lg"
+        }
+      },
+      "pctCaption": {
+        "type": "Caption",
+        "props": { "text": "of members are highly engaged" }
+      },
+
+      "engagementDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+
+      "engagementList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["engagedRow", "lessEngagedRow", "noEngageRow"]
+      },
+
+      "engagedRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["engagedLeft", "engagedCount"]
+      },
+      "engagedLeft": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["engagedDot", "engagedLabel"]
+      },
+      "engagedDot":   { "type": "Dot",  "props": { "tone": "success", "size": "sm" } },
+      "engagedLabel": { "type": "Text", "props": { "text": "Engaged", "size": "sm" } },
+      "engagedCount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "sum",
+            "args": {
+              "value": {
+                "$computed": "filter_by",
+                "args": {
+                  "value": { "$state": "/salesforce/soql_query/records" },
+                  "field": "Engagement_Level__c",
+                  "equals": "Engaged"
+                }
+              },
+              "field": "cnt"
+            }
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+
+      "lessEngagedRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["lessEngagedLeft", "lessEngagedCount"]
+      },
+      "lessEngagedLeft": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["lessEngagedDot", "lessEngagedLabel"]
+      },
+      "lessEngagedDot":   { "type": "Dot",  "props": { "tone": "warning", "size": "sm" } },
+      "lessEngagedLabel": { "type": "Text", "props": { "text": "Less Engaged", "size": "sm" } },
+      "lessEngagedCount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "sum",
+            "args": {
+              "value": {
+                "$computed": "filter_by",
+                "args": {
+                  "value": { "$state": "/salesforce/soql_query/records" },
+                  "field": "Engagement_Level__c",
+                  "equals": "Less Engaged"
+                }
+              },
+              "field": "cnt"
+            }
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+
+      "noEngageRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["noEngageLeft", "noEngageCount"]
+      },
+      "noEngageLeft": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["noEngageDot", "noEngageLabel"]
+      },
+      "noEngageDot":   { "type": "Dot",  "props": { "tone": "muted", "size": "sm" } },
+      "noEngageLabel": { "type": "Text", "props": { "text": "Does Not Engage", "size": "sm" } },
+      "noEngageCount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "sum",
+            "args": {
+              "value": {
+                "$computed": "filter_by",
+                "args": {
+                  "value": { "$state": "/salesforce/soql_query/records" },
+                  "field": "Engagement_Level__c",
+                  "equals": "Does Not Engage"
+                }
+              },
+              "field": "cnt"
+            }
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      }
+    }
+  },
+  "status": "published"
+}
