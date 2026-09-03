@@ -7,4 +7,4 @@ Render statement status/context, GST, PAYG withholding, PAYG instalment, and net
 Validate net GST = 1A  1B, withholding relationships where applicable, and statement totals against the GST account movement for the same period. State that this is a reporting reproduction, not tax advice.
 ## Interactivity
 
-Declare a `period` enum input (statement periods the tool supports). Basis follows the statement rules — do not expose it as a control. All tables sortable client-side.
+Declare date inputs for the statement tool's real date/period parameters (discovered at generation), driven by a client-side preset picker per the foundation mapping law. All tables sortable client-side.

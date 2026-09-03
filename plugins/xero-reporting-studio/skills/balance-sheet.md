@@ -7,4 +7,4 @@ Present bank accounts, current and non-current assets, total assets, current and
 Validate Total Assets = Total Liabilities + Equity, Total Bank equals bank-account rows, and each section total equals its rows.
 ## Interactivity
 
-Declare `as_at_date` (date, default "today") and `comparison` (enum: none, prior_period, prior_year) inputs; comparison re-queries with the offset date. Sections collapse/expand client-side.
+Declare `as_at_date` (date, default "today") mapped 1:1 to the tool's date parameter. Comparison columns only through parameters the tool actually exposes (e.g. `periods`, `timeframe`), each as its own declared input with a client-side preset picker. Sections collapse/expand client-side.

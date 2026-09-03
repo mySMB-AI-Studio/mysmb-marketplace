@@ -7,4 +7,4 @@ Show bills KPIs for Draft, Awaiting approval, Awaiting payment, and Overdue; a m
 Validate overdue is a subset of awaiting payment and all displayed totals tie to available bill data.
 ## Interactivity
 
-Declare a `period` enum input. Add a client-side supplier filter box and sortable tables; recompute visible totals over the filtered view, labelled as filtered.
+Period controls follow the foundation date-input pattern. Supplier filter box and sortable tables client-side; recompute visible totals over the filtered view, labelled as filtered.
