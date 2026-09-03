@@ -7,4 +7,4 @@ Create a responsive two-column dashboard with bank account cards; invoices owed 
 Validate receivables and payables totals against ageing buckets, cash difference = cash in  cash out, and net profit = income  expenses.
 ## Interactivity
 
-Declare `organisation` (when several are connected) and `period` enum inputs. Section switching is client-side tabs.
+Declare `organisation` (when several are connected) plus date inputs matching each tool's real date parameters, driven by one client-side preset picker. Section switching is client-side tabs.

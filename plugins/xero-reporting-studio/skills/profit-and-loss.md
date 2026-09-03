@@ -7,4 +7,4 @@ Present Trading Income, Cost of Sales, Gross Profit, Other Income, Operating Exp
 Validate Gross Profit = Trading Income - Cost of Sales, Net Profit = Gross Profit + Other Income - Operating Expenses, and every section total equals its account rows.
 ## Interactivity
 
-Declare `period` (enum presets), `comparison` (enum: none, prior_period, prior_year) and, where the tool supports it, `basis` (enum: accrual, cash) inputs; period/comparison/basis changes re-query. Account sections expand/collapse client-side; the comparison column renders only when hydrated.
+Declare `from_date` and `to_date` (date) inputs mapped 1:1 to the tool's from/to date parameters, driven by a client-side preset picker (this month, last month, this quarter, YTD → the picker computes the two dates and calls getData with the declared names). Comparison or basis controls only through parameters the tool actually exposes (e.g. `periods`, `timeframe`, `paymentsOnly`), each as its own declared input. Account sections expand/collapse client-side.

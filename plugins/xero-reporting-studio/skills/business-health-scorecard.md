@@ -7,4 +7,4 @@ Show overall score and achieved-target count, pinned KPI cards, insight commenta
 Validate score = achieved targets / applicable targets, recompute every status from actual versus target direction, and display each ratio formula.
 ## Interactivity
 
-Declare a `period` enum input. Metric drill-downs are client-side tabs over already-hydrated data — no extra bindings.
+Period controls follow the foundation date-input pattern (client-side preset picker filling declared date inputs). Metric drill-downs are client-side tabs — no extra bindings.
