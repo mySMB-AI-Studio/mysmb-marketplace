@@ -7,4 +7,4 @@ Show cash balance and monthly trend, cash in versus cash out, net cash flow, rec
 Validate cash balance equals bank accounts, ageing segments equal their totals, and cash in/out reconciles to available bank-summary data. Flag that the source workbooks live widget set was only partially captured.
 ## Interactivity
 
-Declare `as_at_date` (date, default "today"). Add a client-side bank-account filter; recompute displayed totals in JavaScript over the filtered accounts, labelled as filtered.
+Declare `as_at_date` (date, default "today") mapped 1:1 to the tool's date parameter. Bank-account filter is client-side; recompute displayed totals over the filtered accounts, labelled as filtered.

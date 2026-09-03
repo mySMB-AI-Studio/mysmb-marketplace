@@ -7,4 +7,4 @@ Present Cash Received and Cash Spent by category, Net Cash Flows, and optional i
 Validate net cash movement = cash received - cash spent and closing balance = opening balance + net movement whenever balances are available. Flag that the workbook's exact Xero column layout was not live-verified.
 ## Interactivity
 
-Declare a `period` enum input controlling the months window. Month columns sort client-side.
+Declare date/period inputs matching the tool's real parameters (months window via the tool's own periods parameter when available), preset picker client-side. Month columns sort client-side.

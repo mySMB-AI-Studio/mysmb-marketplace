@@ -7,4 +7,4 @@ Show KPI cards for Draft, Awaiting approval, Awaiting payment, and Overdue; mone
 Validate KPI amounts against available invoice detail, Due  Overdue for each customer, and top-customer totals  total receivables.
 ## Interactivity
 
-Declare a `period` enum input. Add a client-side customer filter box and sortable tables; recompute visible totals over the filtered view, labelled as filtered.
+Period controls follow the foundation date-input pattern. Customer filter box and sortable tables client-side; recompute visible totals over the filtered view, labelled as filtered.

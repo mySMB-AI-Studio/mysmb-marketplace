@@ -7,4 +7,4 @@ Confirm as-at date and ageing by due date or invoice date. Show customer rows ac
 Validate every row total, grand total, and that percentage shares sum to 100% subject to rounding.
 ## Interactivity
 
-Declare `as_at_date` (date, default "today") and `ageing_basis` (enum: due_date, invoice_date) inputs that re-query the binding. Add a client-side customer filter box and sortable bucket columns; recompute totals and percentage rows in JavaScript over the filtered view, labelled as filtered.
+Declare `as_at_date` (date, default "today") mapped 1:1 to the tool's report-date parameter. Expose an ageing-basis control only if the tool takes it as a parameter; otherwise omit it. Customer filter box and sortable bucket columns are client-side; recompute totals and percentage rows in JavaScript over the filtered view, labelled as filtered.

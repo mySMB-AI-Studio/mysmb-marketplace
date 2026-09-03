@@ -7,4 +7,4 @@ Confirm as-at date, ageing basis, and optional grouping. Show supplier rows acro
 Validate every row total, grand total, and percentage shares.
 ## Interactivity
 
-Declare `as_at_date` (date, default "today") and `ageing_basis` (enum: due_date, invoice_date) inputs that re-query the binding. Add a client-side supplier filter box and sortable bucket columns; recompute totals and percentage rows in JavaScript over the filtered view, labelled as filtered.
+Declare `as_at_date` (date, default "today") mapped 1:1 to the tool's report-date parameter. Expose an ageing-basis control only if the tool takes it as a parameter; otherwise omit it. Supplier filter box and sortable bucket columns are client-side; recompute totals and percentage rows in JavaScript over the filtered view, labelled as filtered.
