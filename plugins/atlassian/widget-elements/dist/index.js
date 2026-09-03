@@ -639,7 +639,13 @@ const WORKLOAD_ROW_CAP = 20;
  * in-progress work in this project. Built here (not at click time) since
  * a `Table`'s `rowAction.fromRow` can only pull an already-resolved field
  * off the row -- it can't run a `$computed` itself, so the full URL has to
- * already exist on each row by the time the table renders.
+ * already exist on each row by the time the table renders. The redesigned
+ * (non-`Table`) row layout below keeps this same pre-built-URL approach --
+ * its `on.click` reads `searchUrl` off the row via `{"$item": "searchUrl"}`
+ * wrapped in the `identity` computed helper (a bare `$item` inside an
+ * action param resolves to a state PATH, not its value -- the same gotcha
+ * already documented and worked around on this plugin's Service Desk Queue
+ * tile's `requestRow`).
  *
  * `siteUrl`/`projectKey` are plain args (not derived from the API
  * response) -- same "must be passed explicitly, hardcoded to the sandbox
@@ -652,6 +658,72 @@ function buildAgentSearchUrl(siteUrl, projectKey, accountId) {
         return '';
     const jql = `assignee = "${accountId}" AND project = ${projectKey} AND statusCategory = "In Progress"`;
     return `${siteUrl.replace(/\/+$/, '')}/issues/?jql=${encodeURIComponent(jql)}`;
+}
+/**
+ * Status classification for the redesigned Jira Workload tile's per-agent
+ * row (Talkdesk/XPM-style card list, replacing the earlier flat `Table`).
+ * Thresholds and tone mapping are both explicit, confirmed decisions with
+ * the tile's owner, not a guess:
+ *
+ *   count === 0  -> "Available" / muted      (has capacity -- deliberately
+ *                   NOT `warning`, unlike the Xero Practice Manager demo
+ *                   tile this redesign takes its visual cue from: "has
+ *                   capacity" isn't a bad state worth flagging the way an
+ *                   overloaded agent is)
+ *   1 <= count <= 4 -> "On track" / success   (comfortably working through
+ *                   a normal load)
+ *   count >= 5   -> "Overloaded" / destructive
+ *
+ * Per TILE-DISPLAY-STANDARDS.md §7's restraint principle (map a connector's
+ * real states into the small destructive/warning/muted/success/info
+ * vocabulary using judgment, don't invent a tone per state) -- `warning` is
+ * deliberately unused here; this is a 3-state field, not a 4-state one.
+ */
+const WORKLOAD_ON_TRACK_MAX = 4;
+function workloadStatusFor(count) {
+    if (count <= 0)
+        return { label: 'Available', tone: 'muted' };
+    if (count <= WORKLOAD_ON_TRACK_MAX)
+        return { label: 'On track', tone: 'success' };
+    return { label: 'Overloaded', tone: 'destructive' };
+}
+/**
+ * Workload bar fill: `count` scaled so 5 in-progress items reads as a full
+ * (100%) bar, capped there rather than continuing to grow past it -- an
+ * agent with 11 items should read as "maxed out," not visually distinct
+ * from one with 6, since both are already well past a sustainable load.
+ */
+const WORKLOAD_BAR_SCALE = 5;
+function workloadLoadPercent(count) {
+    return Math.min(100, (count / WORKLOAD_BAR_SCALE) * 100);
+}
+/**
+ * Avatar initials derived from `displayName` -- first letter of the first
+ * word + first letter of the last word (e.g. "Sean Baker" -> "SB"),
+ * uppercased. A single-word name (rare but possible -- a mononym, or the
+ * "Unknown agent" fallback below) takes its own first two letters instead
+ * ("Cher" -> "CH", "Unknown agent" still resolves to "UA" since it's two
+ * words). Falls back to "?" only for a genuinely empty name, which
+ * shouldn't happen since `displayName` itself already has a fallback.
+ */
+function initialsFor(displayName) {
+    const words = displayName.trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0)
+        return '?';
+    if (words.length === 1)
+        return words[0].slice(0, 2).toUpperCase();
+    return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+}
+/**
+ * The redesigned row's second line, in place of the XPM demo's "role" text
+ * ("Senior Accountant · 4 jobs today"). Jira's `search_issues` assignee
+ * data has no job-title/role concept at all -- `fields.assignee` is just
+ * `{ accountId, displayName, accountType }` -- so rather than invent one,
+ * this shows only the honest count phrase, singular/plural-aware ("1 work
+ * item in progress" / "2 work items in progress").
+ */
+function countLabelFor(count) {
+    return `${count} work item${count === 1 ? '' : 's'} in progress`;
 }
 const workload_by_agent = (args) => {
     const issues = Array.isArray(args.issues) ? args.issues : [];
@@ -683,7 +755,22 @@ const workload_by_agent = (args) => {
             });
         }
     }
+    // Status/tone/bar/initials/count-label are all derived from the FINAL
+    // per-agent count, so they're computed here in a second pass -- not
+    // inside the accumulation loop above, where `count` is still climbing
+    // one issue at a time.
     return Array.from(byAccount.values())
+        .map((row) => {
+        const status = workloadStatusFor(row.count);
+        return {
+            ...row,
+            statusLabel: status.label,
+            statusTone: status.tone,
+            loadPercent: workloadLoadPercent(row.count),
+            initials: initialsFor(row.displayName),
+            countLabel: countLabelFor(row.count),
+        };
+    })
         .sort((a, b) => b.count - a.count)
         .slice(0, WORKLOAD_ROW_CAP);
 };
