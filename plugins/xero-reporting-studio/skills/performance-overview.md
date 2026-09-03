@@ -7,4 +7,4 @@ Build cards for net profit, income, expenses, net and gross margin, operating-ex
 Validate widget totals against monthly series, margins against their formulas, debtor/creditor day formulas, and every current/prior delta.
 ## Interactivity
 
-Declare `period` and `comparison` (enum: none, prior_period, prior_year) inputs; comparison re-queries. Metric groups are client-side tabs.
+Period and comparison controls follow the foundation date-input pattern, mapped only onto parameters the tool exposes. Metric groups are client-side tabs.
