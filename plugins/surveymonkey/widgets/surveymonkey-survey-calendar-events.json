@@ -8,9 +8,9 @@
   "connectorsUsed": ["surveymonkey"],
   "popularity": 60,
   "sizing": {
-    "preferred": { "colSpan": 4, "rowSpan": 8 },
-    "min": { "colSpan": 3, "rowSpan": 5 },
-    "max": { "colSpan": 6, "rowSpan": 12 }
+    "preferred": { "colSpan": 4, "rowSpan": 10 },
+    "min": { "colSpan": 3, "rowSpan": 6 },
+    "max": { "colSpan": 6, "rowSpan": 14 }
   },
   "dataProvider": {
     "mcp": "surveymonkey",
@@ -42,12 +42,7 @@
         }
       },
 
-      "header": { "type": "Header", "props": {}, "children": ["titleRow"] },
-      "titleRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center", "justify": "between" },
-        "children": ["titleStack"]
-      },
+      "header": { "type": "Header", "props": {}, "children": ["titleStack"] },
       "titleStack": {
         "type": "Stack",
         "props": { "gap": "none" },
@@ -93,7 +88,7 @@
 
       "eventList": {
         "type": "Stack",
-        "props": { "gap": "sm" },
+        "props": { "gap": "md" },
         "children": ["eventRow"],
         "repeat": { "statePath": "/ui/events", "key": "id" }
       },
@@ -105,12 +100,12 @@
       },
       "eventDot": {
         "type": "Dot",
-        "props": { "tone": { "$item": "dot_tone" } }
+        "props": { "tone": { "$item": "dot_tone" }, "size": "sm" }
       },
       "eventDetails": {
         "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["eventDateLabel", "eventTitle", "eventAudience", "eventBadge"]
+        "props": { "gap": "xs" },
+        "children": ["eventDateLabel", "eventTitle", "eventAudience", "eventBadgeWrap"]
       },
       "eventDateLabel": {
         "type": "Eyebrow",
@@ -118,12 +113,17 @@
       },
       "eventTitle": {
         "type": "Text",
-        "props": { "text": { "$item": "title" }, "size": "sm", "weight": "semibold" }
+        "props": { "text": { "$item": "title" }, "size": "sm", "weight": "bold" }
       },
       "eventAudience": {
         "type": "Caption",
         "props": { "text": { "$item": "audience" }, "tone": "muted" },
         "visible": { "$item": "audience" }
+      },
+      "eventBadgeWrap": {
+        "type": "Row",
+        "props": { "gap": "none" },
+        "children": ["eventBadge"]
       },
       "eventBadge": {
         "type": "Badge",
