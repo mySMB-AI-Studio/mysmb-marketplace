@@ -370,6 +370,7 @@ const flatten_upcoming_calendar = (args) => {
         const id = String(s.id ?? '');
         const title = String(s.title ?? '');
         const audience = String(s.collector_name ?? s.nickname ?? '');
+        const status = String(s.status ?? '').toLowerCase();
         const createdRaw = String(s.date_created ?? '');
         const modifiedRaw = String(s.date_modified ?? '');
         const createdMs = Date.parse(createdRaw);
@@ -381,12 +382,13 @@ const flatten_upcoming_calendar = (args) => {
                 date_label: _fmtShort(createdRaw).toUpperCase(),
                 title,
                 audience,
-                event_label: 'Launching',
+                event_label: 'Launched',
                 event_tone: 'accent',
                 dot_tone: 'accent',
             });
         }
-        if (!Number.isNaN(modifiedMs) &&
+        if (status === 'closed' &&
+            !Number.isNaN(modifiedMs) &&
             Math.abs(modifiedMs - (Number.isNaN(createdMs) ? 0 : createdMs)) > 60000) {
             events.push({
                 id: `${id}-close`,
@@ -394,9 +396,9 @@ const flatten_upcoming_calendar = (args) => {
                 date_label: _fmtShort(modifiedRaw).toUpperCase(),
                 title,
                 audience,
-                event_label: 'Closing',
-                event_tone: 'warning',
-                dot_tone: 'warning',
+                event_label: 'Closed',
+                event_tone: 'muted',
+                dot_tone: 'muted',
             });
         }
     }
