@@ -306,7 +306,8 @@ const flatten_surveys_in_progress = (args) => {
  * Args: { value: array }
  */
 const flatten_closed_surveys = (args) => {
-    const raw = Array.isArray(args.value) ? args.value : [];
+    const allSurveys = Array.isArray(args.value) ? args.value : [];
+    const raw = allSurveys.filter(s => String(s.status ?? '').toLowerCase() === 'closed');
     if (raw.length === 0)
         return [];
     const now = new Date();
@@ -319,6 +320,7 @@ const flatten_closed_surveys = (args) => {
     const rows = raw.map((s) => {
         const rc = Number(s.response_count ?? 0);
         const sent = Number(s.recipient_count ?? 0);
+        const audience = String(s.collector_name ?? '');
         totalResponses += rc;
         const closedDateRaw = String(s.date_modified ?? s.closed_date ?? '');
         const closedMs = Date.parse(closedDateRaw);
@@ -334,14 +336,17 @@ const flatten_closed_surveys = (args) => {
             totalRate += ratePct;
             rateCount++;
         }
+        const metaLabel = audience
+            ? `${audience} · ${rc.toLocaleString()} responses`
+            : `${rc.toLocaleString()} responses`;
         return {
             id: String(s.id ?? ''),
             title: String(s.title ?? ''),
-            audience: String(s.collector_name ?? ''),
-            responses_label: rc.toLocaleString(),
+            meta_label: metaLabel,
             closed_label: closedDateRaw ? _fmtShort(closedDateRaw) : '',
             rate_label: rateLabel,
             rate_tone: rateTone,
+            has_rate: sent > 0,
             stat_quarter_count: '',
             stat_total_responses: '',
             stat_avg_rate: '',
