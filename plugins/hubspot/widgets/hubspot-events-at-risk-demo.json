@@ -1,0 +1,143 @@
+{
+  "id": "hubspot-events-at-risk-demo",
+  "title": "Top 3 Events at Risk",
+  "description": "The 3 upcoming events with the lowest registered attendance — surfaces which events need the most attention before they happen. Demo version with static data (the connected HubSpot Enterprise dev account needed to exercise the live `hubspot-events-at-risk` tile against a real Events custom object is currently expired).",
+  "category": "crm",
+  "tags": ["hubspot", "crm", "events", "custom-object", "attendance", "at-risk", "demo"],
+  "keywords": ["events", "at risk", "attendance", "low attendance", "engagement", "event management", "custom object", "demo"],
+  "connectorsUsed": ["hubspot"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 7, "rowSpan": 4 },
+    "min": { "colSpan": 5, "rowSpan": 3 },
+    "max": { "colSpan": 10, "rowSpan": 8 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["header", "headerDivider", "body"] },
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "AlertTriangle", "tone": "warning", "variant": "soft", "size": "sm" } },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": { "type": "Heading", "props": { "text": "Top 3 Events at Risk", "level": "h2" } },
+      "subtitle": { "type": "Eyebrow", "props": { "text": "Lowest registered attendance" } },
+      "headerDivider": { "type": "Divider", "props": {} },
+      "body": {
+        "type": "Body",
+        "props": { "padding": "md" },
+        "children": ["boxRow"]
+      },
+      "boxRow": {
+        "type": "Row",
+        "props": { "template": "1fr 1fr 1fr", "gap": "md", "align": "stretch" },
+        "children": ["box1", "box2", "box3"]
+      },
+
+      "box1": {
+        "type": "Stack",
+        "props": { "gap": "sm", "padding": "md", "rounded": "lg", "tone": "destructive", "variant": "soft" },
+        "children": ["rank1Badge", "event1Name", "event1LocationRow", "event1Divider", "event1AttendeeStack"]
+      },
+      "rank1Badge": { "type": "Badge", "props": { "text": "#1 At Risk", "tone": "destructive", "variant": "solid" } },
+      "event1Name": {
+        "type": "Text",
+        "props": { "text": "Emerging Practitioners Workshop", "size": "sm", "weight": "semibold", "truncate": true }
+      },
+      "event1LocationRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["event1LocationIcon", "event1Location"]
+      },
+      "event1LocationIcon": { "type": "Icon", "props": { "name": "MapPin", "size": "xs", "tone": "muted" } },
+      "event1Location": { "type": "Caption", "props": { "text": "Brisbane", "tone": "muted" } },
+      "event1Divider": { "type": "Divider", "props": {} },
+      "event1AttendeeStack": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["event1AttendeeIcon", "event1AttendeeTextStack"]
+      },
+      "event1AttendeeIcon": { "type": "Icon", "props": { "name": "Users", "size": "sm", "tone": "destructive" } },
+      "event1AttendeeTextStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["event1AttendeeCount", "event1AttendeeLabel"]
+      },
+      "event1AttendeeCount": { "type": "Stat", "props": { "value": 22, "size": "md", "tone": "destructive" } },
+      "event1AttendeeLabel": { "type": "Caption", "props": { "text": "attendees registered", "tone": "muted" } },
+
+      "box2": {
+        "type": "Stack",
+        "props": { "gap": "sm", "padding": "md", "rounded": "lg", "tone": "warning", "variant": "soft" },
+        "children": ["rank2Badge", "event2Name", "event2LocationRow", "event2Divider", "event2AttendeeStack"]
+      },
+      "rank2Badge": { "type": "Badge", "props": { "text": "#2 At Risk", "tone": "warning", "variant": "solid" } },
+      "event2Name": {
+        "type": "Text",
+        "props": { "text": "Melbourne Regional Meetup", "size": "sm", "weight": "semibold", "truncate": true }
+      },
+      "event2LocationRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["event2LocationIcon", "event2Location"]
+      },
+      "event2LocationIcon": { "type": "Icon", "props": { "name": "MapPin", "size": "xs", "tone": "muted" } },
+      "event2Location": { "type": "Caption", "props": { "text": "Melbourne", "tone": "muted" } },
+      "event2Divider": { "type": "Divider", "props": {} },
+      "event2AttendeeStack": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["event2AttendeeIcon", "event2AttendeeTextStack"]
+      },
+      "event2AttendeeIcon": { "type": "Icon", "props": { "name": "Users", "size": "sm", "tone": "warning" } },
+      "event2AttendeeTextStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["event2AttendeeCount", "event2AttendeeLabel"]
+      },
+      "event2AttendeeCount": { "type": "Stat", "props": { "value": 58, "size": "md", "tone": "warning" } },
+      "event2AttendeeLabel": { "type": "Caption", "props": { "text": "attendees registered", "tone": "muted" } },
+
+      "box3": {
+        "type": "Stack",
+        "props": { "gap": "sm", "padding": "md", "rounded": "lg", "tone": "muted", "variant": "soft" },
+        "children": ["rank3Badge", "event3Name", "event3LocationRow", "event3Divider", "event3AttendeeStack"]
+      },
+      "rank3Badge": { "type": "Badge", "props": { "text": "#3 At Risk", "tone": "muted", "variant": "solid" } },
+      "event3Name": {
+        "type": "Text",
+        "props": { "text": "Sydney Chapter Networking Night", "size": "sm", "weight": "semibold", "truncate": true }
+      },
+      "event3LocationRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["event3LocationIcon", "event3Location"]
+      },
+      "event3LocationIcon": { "type": "Icon", "props": { "name": "MapPin", "size": "xs", "tone": "muted" } },
+      "event3Location": { "type": "Caption", "props": { "text": "Sydney", "tone": "muted" } },
+      "event3Divider": { "type": "Divider", "props": {} },
+      "event3AttendeeStack": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["event3AttendeeIcon", "event3AttendeeTextStack"]
+      },
+      "event3AttendeeIcon": { "type": "Icon", "props": { "name": "Users", "size": "sm", "tone": "muted" } },
+      "event3AttendeeTextStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["event3AttendeeCount", "event3AttendeeLabel"]
+      },
+      "event3AttendeeCount": { "type": "Stat", "props": { "value": 142, "size": "md", "tone": "muted" } },
+      "event3AttendeeLabel": { "type": "Caption", "props": { "text": "attendees registered", "tone": "muted" } }
+    }
+  },
+  "status": "published"
+}
