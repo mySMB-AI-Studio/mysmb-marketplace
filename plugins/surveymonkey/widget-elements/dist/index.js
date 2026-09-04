@@ -316,7 +316,7 @@ const flatten_closed_surveys = (args) => {
     const hasStatus = allSurveys.some(s => typeof s.status === 'string');
     const raw = hasStatus
         ? allSurveys.filter(s => String(s.status ?? '').toLowerCase() === 'closed')
-        : [];
+        : allSurveys;
     if (raw.length === 0)
         return [];
     const now = new Date();
@@ -389,13 +389,16 @@ const flatten_upcoming_calendar = (args) => {
         const modifiedRaw = String(s.date_modified ?? '');
         const createdMs = Date.parse(createdRaw);
         const modifiedMs = Date.parse(modifiedRaw);
-        if (!Number.isNaN(createdMs)) {
+        // Use date_created for launch; fall back to date_modified if date_created absent
+        const launchRaw = !Number.isNaN(createdMs) ? createdRaw : modifiedRaw;
+        const launchMs = !Number.isNaN(createdMs) ? createdMs : modifiedMs;
+        if (!Number.isNaN(launchMs)) {
             events.push({
-                id: `${id}-launch`,
-                _sort: createdMs,
-                date_label: _fmtShort(createdRaw).toUpperCase(),
-                title,
-                audience,
+                id: id + '-launch',
+                _sort: launchMs,
+                date_label: _fmtShort(launchRaw).toUpperCase(),
+                title: title,
+                audience: audience,
                 event_label: 'Launched',
                 event_tone: 'accent',
                 dot_tone: 'accent',
@@ -405,11 +408,11 @@ const flatten_upcoming_calendar = (args) => {
             !Number.isNaN(modifiedMs) &&
             Math.abs(modifiedMs - (Number.isNaN(createdMs) ? 0 : createdMs)) > 60000) {
             events.push({
-                id: `${id}-close`,
+                id: id + '-close',
                 _sort: modifiedMs,
                 date_label: _fmtShort(modifiedRaw).toUpperCase(),
-                title,
-                audience,
+                title: title,
+                audience: audience,
                 event_label: 'Closed',
                 event_tone: 'muted',
                 dot_tone: 'muted',
@@ -419,7 +422,17 @@ const flatten_upcoming_calendar = (args) => {
     // Most recent 20 events, displayed in ascending chronological order
     events.sort((a, b) => b._sort - a._sort);
     const top = events.slice(0, 20).reverse();
-    return top.map(({ _sort, ...rest }) => rest);
+    return top.map(function (e) {
+        return {
+            id: e.id,
+            date_label: e.date_label,
+            title: e.title,
+            audience: e.audience,
+            event_label: e.event_label,
+            event_tone: e.event_tone,
+            dot_tone: e.dot_tone,
+        };
+    });
 };
 /**
  * Returns a single spotlight object from the most recently modified survey.
