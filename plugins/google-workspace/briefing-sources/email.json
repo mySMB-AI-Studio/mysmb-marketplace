@@ -1,0 +1,60 @@
+{
+  "id": "google-workspace/gmail-inbox",
+  "plugin": "google-workspace",
+  "canonical": "email/Message",
+  "provider": {
+    "key": "gmail",
+    "label": "Gmail"
+  },
+  "source": {
+    "mcpServer": "google-workspace-gmail",
+    "tool": "list_messages",
+    "params": {
+      "labelIds": [
+        "INBOX",
+        "UNREAD"
+      ],
+      "maxResults": 10
+    },
+    "itemsPath": "messages"
+  },
+  "unreadFilter": null,
+  "fieldProjection": [
+    {
+      "out": "id",
+      "in": "id"
+    },
+    {
+      "out": "fromName",
+      "in": "from",
+      "transform": "mailbox-name"
+    },
+    {
+      "out": "fromAddress",
+      "in": "from",
+      "transform": "mailbox-address"
+    },
+    {
+      "out": "subject",
+      "in": "subject"
+    },
+    {
+      "out": "snippet",
+      "in": "snippet"
+    },
+    {
+      "out": "receivedAt",
+      "in": "internalDate",
+      "transform": "unix-ms-to-iso"
+    },
+    {
+      "out": "isUnread",
+      "value": true
+    }
+  ],
+  "compose": {
+    "mode": "createDraft",
+    "mcpServer": "google-workspace-gmail-write",
+    "newTool": "create_draft"
+  }
+}
