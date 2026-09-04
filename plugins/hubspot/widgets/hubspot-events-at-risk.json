@@ -1,0 +1,238 @@
+{
+  "id": "hubspot-events-at-risk",
+  "title": "Top 3 Events at Risk",
+  "description": "The 3 upcoming events with the lowest registered attendance — surfaces which events need the most attention before they happen. Reads a HubSpot custom object (e.g. an \"Events\" object for association-management customers), sorted by attendee count ascending. Requires HubSpot Enterprise tier (custom objects don't exist below it) and a portal-side Events object with `attendee_count` and `location` properties — see this plugin's README, \"Setting up your Events object\". Unlike the Salesforce version of this tile, this doesn't filter to future-dated events only: HubSpot's Search API expects epoch-millisecond values for date-typed property filters, which isn't practical to express as a static widget param, so this shows the 3 lowest-attendance records currently in the Events object as-is — keep that object limited to upcoming/tracked events for the tile to stay meaningful.",
+  "category": "crm",
+  "tags": ["hubspot", "crm", "events", "custom-object", "attendance", "at-risk"],
+  "keywords": ["events", "at risk", "attendance", "low attendance", "engagement", "event management", "custom object"],
+  "connectorsUsed": ["hubspot"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 7, "rowSpan": 4 },
+    "min": { "colSpan": 5, "rowSpan": 3 },
+    "max": { "colSpan": 10, "rowSpan": 8 }
+  },
+  "dataProvider": {
+    "mcp": "hubspot",
+    "tool": "search_custom_objects",
+    "params": {
+      "objectTypeHint": "event",
+      "properties": ["name", "attendee_count", "location"],
+      "sorts": ["attendee_count ASC"],
+      "limit": 3
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "headerDivider", "body"],
+        "watch": {
+          "/hubspot/search_custom_objects/items": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/r1",
+                "value": { "$computed": "identity", "args": { "value": { "$state": "/hubspot/search_custom_objects/items/0" } } }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/r2",
+                "value": { "$computed": "identity", "args": { "value": { "$state": "/hubspot/search_custom_objects/items/1" } } }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/r3",
+                "value": { "$computed": "identity", "args": { "value": { "$state": "/hubspot/search_custom_objects/items/2" } } }
+              }
+            }
+          ]
+        }
+      },
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "AlertTriangle", "tone": "warning", "variant": "soft", "size": "sm" } },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": { "type": "Heading", "props": { "text": "Top 3 Events at Risk", "level": "h2" } },
+      "subtitle": { "type": "Eyebrow", "props": { "text": "Lowest registered attendance" } },
+      "headerDivider": { "type": "Divider", "props": {} },
+      "body": {
+        "type": "Body",
+        "props": { "padding": "md" },
+        "children": ["loading", "empty", "boxRow"]
+      },
+      "loading": {
+        "type": "Row",
+        "props": { "template": "1fr 1fr 1fr", "gap": "md" },
+        "children": ["skBox1", "skBox2", "skBox3"],
+        "visible": { "$state": "/_loading/hubspot.search_custom_objects" }
+      },
+      "skBox1": { "type": "Skeleton", "props": { "height": "9rem", "rounded": "lg" } },
+      "skBox2": { "type": "Skeleton", "props": { "height": "9rem", "rounded": "lg" } },
+      "skBox3": { "type": "Skeleton", "props": { "height": "9rem", "rounded": "lg" } },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No event data found. Make sure this HubSpot portal (Enterprise tier) has a custom object with \"event\" in its name, an `attendee_count` number property, and at least one record."
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hubspot.search_custom_objects", "not": true },
+            { "$state": "/hubspot/search_custom_objects/items/0", "not": true }
+          ]
+        }
+      },
+      "boxRow": {
+        "type": "Row",
+        "props": { "template": "1fr 1fr 1fr", "gap": "md", "align": "stretch" },
+        "children": ["box1", "box2", "box3"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hubspot.search_custom_objects", "not": true },
+            { "$state": "/hubspot/search_custom_objects/items/0" }
+          ]
+        }
+      },
+
+      "box1": {
+        "type": "Stack",
+        "props": { "gap": "sm", "padding": "md", "rounded": "lg", "tone": "destructive", "variant": "soft" },
+        "children": ["rank1Badge", "event1Name", "event1LocationRow", "event1Divider", "event1AttendeeStack"]
+      },
+      "rank1Badge": { "type": "Badge", "props": { "text": "#1 At Risk", "tone": "destructive", "variant": "solid" } },
+      "event1Name": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/r1/properties/name" }, "size": "sm", "weight": "semibold", "truncate": true }
+      },
+      "event1LocationRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["event1LocationIcon", "event1Location"]
+      },
+      "event1LocationIcon": { "type": "Icon", "props": { "name": "MapPin", "size": "xs", "tone": "muted" } },
+      "event1Location": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "hubspot_or_dash", "args": { "value": { "$state": "/ui/r1/properties/location" } } },
+          "tone": "muted"
+        }
+      },
+      "event1Divider": { "type": "Divider", "props": {} },
+      "event1AttendeeStack": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["event1AttendeeIcon", "event1AttendeeTextStack"]
+      },
+      "event1AttendeeIcon": { "type": "Icon", "props": { "name": "Users", "size": "sm", "tone": "destructive" } },
+      "event1AttendeeTextStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["event1AttendeeCount", "event1AttendeeLabel"]
+      },
+      "event1AttendeeCount": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/ui/r1/properties/attendee_count" }, "size": "md", "tone": "destructive" }
+      },
+      "event1AttendeeLabel": { "type": "Caption", "props": { "text": "attendees registered", "tone": "muted" } },
+
+      "box2": {
+        "type": "Stack",
+        "props": { "gap": "sm", "padding": "md", "rounded": "lg", "tone": "warning", "variant": "soft" },
+        "children": ["rank2Badge", "event2Name", "event2LocationRow", "event2Divider", "event2AttendeeStack"],
+        "visible": { "$state": "/ui/r2" }
+      },
+      "rank2Badge": { "type": "Badge", "props": { "text": "#2 At Risk", "tone": "warning", "variant": "solid" } },
+      "event2Name": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/r2/properties/name" }, "size": "sm", "weight": "semibold", "truncate": true }
+      },
+      "event2LocationRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["event2LocationIcon", "event2Location"]
+      },
+      "event2LocationIcon": { "type": "Icon", "props": { "name": "MapPin", "size": "xs", "tone": "muted" } },
+      "event2Location": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "hubspot_or_dash", "args": { "value": { "$state": "/ui/r2/properties/location" } } },
+          "tone": "muted"
+        }
+      },
+      "event2Divider": { "type": "Divider", "props": {} },
+      "event2AttendeeStack": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["event2AttendeeIcon", "event2AttendeeTextStack"]
+      },
+      "event2AttendeeIcon": { "type": "Icon", "props": { "name": "Users", "size": "sm", "tone": "warning" } },
+      "event2AttendeeTextStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["event2AttendeeCount", "event2AttendeeLabel"]
+      },
+      "event2AttendeeCount": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/ui/r2/properties/attendee_count" }, "size": "md", "tone": "warning" }
+      },
+      "event2AttendeeLabel": { "type": "Caption", "props": { "text": "attendees registered", "tone": "muted" } },
+
+      "box3": {
+        "type": "Stack",
+        "props": { "gap": "sm", "padding": "md", "rounded": "lg", "tone": "muted", "variant": "soft" },
+        "children": ["rank3Badge", "event3Name", "event3LocationRow", "event3Divider", "event3AttendeeStack"],
+        "visible": { "$state": "/ui/r3" }
+      },
+      "rank3Badge": { "type": "Badge", "props": { "text": "#3 At Risk", "tone": "muted", "variant": "solid" } },
+      "event3Name": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/r3/properties/name" }, "size": "sm", "weight": "semibold", "truncate": true }
+      },
+      "event3LocationRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["event3LocationIcon", "event3Location"]
+      },
+      "event3LocationIcon": { "type": "Icon", "props": { "name": "MapPin", "size": "xs", "tone": "muted" } },
+      "event3Location": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "hubspot_or_dash", "args": { "value": { "$state": "/ui/r3/properties/location" } } },
+          "tone": "muted"
+        }
+      },
+      "event3Divider": { "type": "Divider", "props": {} },
+      "event3AttendeeStack": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["event3AttendeeIcon", "event3AttendeeTextStack"]
+      },
+      "event3AttendeeIcon": { "type": "Icon", "props": { "name": "Users", "size": "sm", "tone": "muted" } },
+      "event3AttendeeTextStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["event3AttendeeCount", "event3AttendeeLabel"]
+      },
+      "event3AttendeeCount": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/ui/r3/properties/attendee_count" }, "size": "md", "tone": "muted" }
+      },
+      "event3AttendeeLabel": { "type": "Caption", "props": { "text": "attendees registered", "tone": "muted" } }
+    }
+  },
+  "status": "published"
+}
