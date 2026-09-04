@@ -231,7 +231,8 @@ const flatten_week_surveys = (args) => {
  * Args: { value: array }
  */
 const flatten_surveys_in_progress = (args) => {
-    const raw = Array.isArray(args.value) ? args.value : [];
+    const allSurveys = Array.isArray(args.value) ? args.value : [];
+    const raw = allSurveys.filter(s => String(s.status ?? '').toLowerCase() === 'open');
     if (raw.length === 0)
         return [];
     let totalResponses = 0;
@@ -241,14 +242,16 @@ const flatten_surveys_in_progress = (args) => {
         const rc = Number(s.response_count ?? 0);
         const goal = Number(s.max_responses ?? s.response_limit ?? 0);
         totalResponses += rc;
-        const responsesLabel = goal > 0 ? `${rc} / ${goal}` : String(rc);
+        const responsesLabel = goal > 0
+            ? `${rc.toLocaleString()} / ${goal.toLocaleString()} responses`
+            : `${rc.toLocaleString()} responses`;
         const rawClose = String(s.close_date ?? s.collector_close_date ?? '');
         let closesLabel = '';
         if (rawClose) {
             const ms = Date.parse(rawClose);
             if (!Number.isNaN(ms)) {
                 const d = new Date(ms);
-                closesLabel = `${MONTH_ABBR[d.getMonth()]} ${d.getDate()}`;
+                closesLabel = `Closes ${MONTH_ABBR[d.getMonth()]} ${d.getDate()}`;
             }
         }
         if (goal > 0) {
@@ -295,7 +298,7 @@ const flatten_surveys_in_progress = (args) => {
     });
     const avgComp = pctCount > 0 ? `${Math.round(totalPct / pctCount)}%` : '--';
     rows[0].stat_active = String(raw.length);
-    rows[0].stat_total_responses = String(totalResponses);
+    rows[0].stat_total_responses = totalResponses.toLocaleString();
     rows[0].stat_avg_completion = avgComp;
     return rows;
 };
