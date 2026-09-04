@@ -246,7 +246,10 @@ const flatten_week_surveys: ComputedFunction = (args) => {
  */
 const flatten_surveys_in_progress: ComputedFunction = (args) => {
   const allSurveys = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
-  const raw = allSurveys.filter(s => String((s as Record<string, unknown>).status ?? '').toLowerCase() === 'open');
+  const hasStatus = allSurveys.some(s => typeof (s as Record<string, unknown>).status === 'string');
+  const raw = hasStatus
+    ? allSurveys.filter(s => String((s as Record<string, unknown>).status ?? '').toLowerCase() === 'open')
+    : allSurveys;
   if (raw.length === 0) return [];
 
   let totalResponses = 0;
@@ -333,7 +336,10 @@ const flatten_surveys_in_progress: ComputedFunction = (args) => {
  */
 const flatten_closed_surveys: ComputedFunction = (args) => {
   const allSurveys = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
-  const raw = allSurveys.filter(s => String((s as Record<string, unknown>).status ?? '').toLowerCase() === 'closed');
+  const hasStatus = allSurveys.some(s => typeof (s as Record<string, unknown>).status === 'string');
+  const raw = hasStatus
+    ? allSurveys.filter(s => String((s as Record<string, unknown>).status ?? '').toLowerCase() === 'closed')
+    : [];
   if (raw.length === 0) return [];
 
   const now = new Date();

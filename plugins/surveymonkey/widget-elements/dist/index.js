@@ -232,7 +232,10 @@ const flatten_week_surveys = (args) => {
  */
 const flatten_surveys_in_progress = (args) => {
     const allSurveys = Array.isArray(args.value) ? args.value : [];
-    const raw = allSurveys.filter(s => String(s.status ?? '').toLowerCase() === 'open');
+    const hasStatus = allSurveys.some(s => typeof s.status === 'string');
+    const raw = hasStatus
+        ? allSurveys.filter(s => String(s.status ?? '').toLowerCase() === 'open')
+        : allSurveys;
     if (raw.length === 0)
         return [];
     let totalResponses = 0;
@@ -310,7 +313,10 @@ const flatten_surveys_in_progress = (args) => {
  */
 const flatten_closed_surveys = (args) => {
     const allSurveys = Array.isArray(args.value) ? args.value : [];
-    const raw = allSurveys.filter(s => String(s.status ?? '').toLowerCase() === 'closed');
+    const hasStatus = allSurveys.some(s => typeof s.status === 'string');
+    const raw = hasStatus
+        ? allSurveys.filter(s => String(s.status ?? '').toLowerCase() === 'closed')
+        : [];
     if (raw.length === 0)
         return [];
     const now = new Date();
