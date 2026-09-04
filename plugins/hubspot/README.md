@@ -64,7 +64,7 @@ Pagination is HubSpot's native `after`/`limit` cursor (never page numbers) — `
 
 **No delete tools exist.** Deleting records is not supported via this connector — use the HubSpot UI.
 
-**Out of scope for this build:** Marketing Events and campaign-analytics endpoints (Marketing-Hub-gated, secondary to the contacts/companies/deals/tickets/Members use cases this connector targets). Tracked as backlog, not silently dropped.
+**Out of scope for this build:** Marketing Events and campaign-analytics endpoints (Marketing-Hub-gated, secondary to the contacts/companies/deals/tickets/Members use cases this connector targets). Tracked as backlog, not silently dropped. The Top 3 Events at Risk widget (below) does **not** use these endpoints — it reads event data from a custom object instead, the same pattern as the Members tiles.
 
 ## Destructive operations
 
@@ -82,10 +82,21 @@ Confirm before calling — these mutate CRM records:
 - **Membership by State** (`hubspot-membership-by-state`) — count-and-percentage breakdown of a custom object's records by a state/territory property, with a per-state progress bar, a data-driven insight callout naming the top state(s), and a second callout naming the least-represented state(s) as an outreach opportunity (only shown once there are 3+ distinct states). Click a state row to drill down into up to 25 member names for that state (a `search_custom_objects` call scoped by the clicked state, with a "+N more" note if it has more); a footer link opens the full list directly in HubSpot. Uses `objectTypeHint: "member"` — automatically finds the portal's custom object whose name/label matches "member", no manual configuration needed (MyHub's dashboard has no per-tile parameter-configuration UI today, so this couldn't rely on an exact `objectTypeId` — see `count_objects_by_property` above). Requires HubSpot Enterprise tier. The `propertyName` (`"state"`) is still a fixed assumption — if a portal names its state/territory property differently, this tile won't find data, and there's currently no way to override that per portal.
 
 - **Membership by Category** (`hubspot-membership-by-category`) — total active-member count plus a breakdown by membership type/category (e.g. Full/Accredited, Student, Associate, Retired/Honorary). Categories are color-coded by rank (highest count first), not by matching specific category names, since membership-type labels vary far more across portals than a state/territory list would. Same `objectTypeHint: "member"` auto-discovery as Membership by State; the `propertyName` (`"membership_type"`) is a fixed assumption with the same per-portal limitation.
+- **Top 3 Events at Risk** (`hubspot-events-at-risk`) — the 3 events with the lowest registered attendance, ranked in destructive/warning/muted-toned boxes with event name, location, and attendee count. Uses `objectTypeHint: "event"` auto-discovery, same pattern as the Members tiles — see "Setting up your Events object" below. Doesn't filter to future-dated events (see that section for why); keep the portal's Events object limited to events you actually want surfaced. A static-data demo variant (`hubspot-events-at-risk-demo`) ships alongside it for previewing the layout without a connected Events object — same pattern as `hubspot-member-engagement-demo`.
 
 Note: an earlier standalone "Members" list widget (browsing all member names, unfiltered) was retired in favor of the click-to-drill-down flow on Membership by State, which covers the same need (seeing member names) scoped to a specific state, plus the "Open in HubSpot" link for browsing everyone.
 
-## Setting up your Members object (required for the membership tiles)
+## Setting up your Events object (required for the Top 3 Events at Risk tile)
+
+Like the membership tiles, this widget has no per-tile configuration UI, so it depends on exact property names on the connected HubSpot portal:
+
+1. **HubSpot Enterprise tier** on at least one Hub — same custom-object requirement as the Members tiles.
+2. **A custom object with "event" in its name or label** (e.g. "Events", "Event Registrations") — auto-discovered by name match.
+3. **A property internally named exactly `attendee_count`** (number) — the registered-attendance figure the tile ranks by. Records missing this property sort as if it were blank/lowest, which will misleadingly show them as most "at risk."
+4. **A property internally named exactly `location`** (text) — shown per event; renders as "–" if blank, not required to be set.
+5. The object's primary display property (`name`) is used as the event's title, same convention as the Members object.
+
+**Known limitation:** this tile doesn't filter to upcoming events only. HubSpot's Search API expects date-typed property filters as epoch-millisecond numbers, which isn't practical to express as a static widget param (unlike the `$today_date`-style calendar-date macros used elsewhere, which emit `YYYY-MM-DD` strings for endpoints that accept them — HubSpot's custom-object search isn't one of those). Until that's solved, this tile simply shows the 3 lowest-attendance records currently in the Events object — keep it scoped to events you want tracked (e.g. remove/archive past ones) rather than a full historical log.
 
 The Membership by State and Membership by Category tiles only show real data if the connected HubSpot portal has a custom object set up with a specific shape — there's no per-tile configuration UI in MyHub today (see `objectTypeHint` above), so exact property names matter. Before enabling either tile for a customer, confirm their portal has:
 

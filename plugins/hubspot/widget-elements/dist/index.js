@@ -396,6 +396,26 @@ const contacts_with_full_name = (args) => {
         };
     });
 };
+/**
+ * Return the value as a string, or an em-dash if null / undefined / empty.
+ * Use this instead of hiding an element with `visible` when a missing field
+ * should still render a placeholder rather than an empty gap (e.g. a custom
+ * object's freeform `location` property, which portals may leave blank).
+ * Mirrors Salesforce's `salesforce_or_dash` — a candidate to promote to a
+ * system-level helper if a third connector ends up needing the same thing.
+ *
+ * Args: { value: unknown }
+ *
+ * Spec example:
+ *   { "$computed": "hubspot_or_dash", "args": { "value": { "$item": "properties/location" } } }
+ */
+const or_dash = (args) => {
+    const v = args.value;
+    if (v === null || v === undefined)
+        return '–';
+    const s = String(v).trim();
+    return s === '' ? '–' : s;
+};
 const elements = {
     slug: 'hubspot',
     functions: {
@@ -412,6 +432,7 @@ const elements = {
         deal_stage_tone,
         ticket_stage_label,
         category_rank_tone,
+        or_dash,
     },
 };
 export default elements;
