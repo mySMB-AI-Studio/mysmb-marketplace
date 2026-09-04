@@ -1,7 +1,7 @@
 {
   "id": "atlassian-jira-workload",
   "title": "Jira Workload",
-  "description": "Tile: Jira Workload. Same data points as Jira's own native Workload report -- Agent, Work Items In Progress -- for one Jira project, scoped via an explicit `project_key` the same way Jira's own Workload report itself is a per-project report, not a site-wide one. The originating ticket said 'Action: No Actions', but a follow-up request added row click-through: clicking an agent opens Jira's own issue navigator (`https://<site>/issues/?jql=...`) pre-filtered to that agent's own in-progress work in this project (`assignee = \"<accountId>\" AND project = <project_key> AND statusCategory = \"In Progress\"`). The full URL is pre-built per row inside `atlassian_workload_by_agent` itself (as a `searchUrl` field), not computed at click time -- a `Table`'s `rowAction.fromRow` can only pull an already-resolved field off the row, it can't invoke a `$computed` itself. `site_url`/`project_key` are both plain literal args passed into that function (hardcoded to the sandbox, `https://mysmb.atlassian.net` / `KAN`) -- same per-tenant-manual-edit limitation already accepted for `service_desk_id`/`project_key` everywhere else in this connector; there's no cheap way to resolve a browsable site URL from within a single dataProvider call. Built entirely on the existing `search_issues` tool (JQL `project = <project_key> AND statusCategory = \"In Progress\"`, `fields: [\"assignee\"]`, `max_results: 100`) -- no new server-side tool needed. `atlassian_workload_by_agent` (this plugin's widget-elements) groups the returned issues by `fields.assignee.accountId`, counting one work item per issue, and returns them sorted most-work-items-first. Two exclusions, both per the ticket's explicit ask for 'only human user accounts': issues with a `null` assignee (unassigned -- doesn't belong to anyone's workload) are dropped entirely, and any assignee whose `accountType` isn't `\"atlassian\"` (Atlassian's own Jira Cloud Platform REST API v3 User resource docs: `\"atlassian\"` = real human user, `\"app\"` = Connect/Forge/automation account, `\"customer\"` = JSM-only customer account) is excluded as a non-human 'inbuilt agent'. **Honesty note, not a hedge to gloss over:** the exclusion path itself (`accountType !== \"atlassian\"`) is UNTESTED against a live example -- this sandbox has an 'Automatic' account that appears in Jira's assignee-picker UI but could not actually be assigned to a real issue through that UI (selecting it silently reverted to Unassigned), so there was no way to produce a real non-\"atlassian\"-accountType assignee to confirm this filter against. Only the human-agent path (accountType `\"atlassian\"`) was confirmed live. See `atlassian_workload_by_agent`'s own JSDoc in `widget-elements/src/index.ts` for the full reasoning, including a 2019 Atlassian Developer Community report of `accountType` sometimes misreporting app accounts as `\"atlassian\"` (unconfirmed whether still current). Capped at 20 rows per `TILE-DISPLAY-STANDARDS.md` §11 (irrelevant in practice for a single project's human-agent roster, kept for consistency). `search_issues` defaults to 50 results, capped at 100 max, paginated via `nextPageToken` -- a widget's `dataProvider` fires exactly one call, so this tile requests the max (`max_results: 100`) and checks the response's `isLast` flag: when `false`, more In-Progress issues exist beyond the 100 fetched, and the tile discloses that plainly (per §13's data-governance veracity principle, the same honesty pattern as the SLA%-this-month action's own truncation disclosure) rather than presenting a partial per-agent count as complete.",
+  "description": "Tile: Jira Workload. Same data points as Jira's own native Workload report -- Agent, Work Items In Progress -- for one Jira project, scoped via an explicit `project_key` the same way Jira's own Workload report itself is a per-project report, not a site-wide one. **Redesigned (per the tile owner's explicit request) from a flat two-column `Table` into a per-agent card list, visually modeled on `xero-practice-manager`'s `xero-pm-team-schedule-demo` (\"Team Schedule (Demo)\") tile** -- initials avatar, name + status line, a colored `ProgressBar`, and a status `Badge` per row, separated by `Divider`s -- but wired to this connector's own real, live `search_issues` data, not hardcoded demo values. That XPM tile is 100% static (no `dataProvider`) and its per-row layout is a plugin-scoped composite component (`xero-practice-manager/StaffRow`) -- neither is reachable or appropriate here (plugin-elements are scoped per-plugin, and this redesign deliberately avoids adding a new composite of its own), so the row is instead hand-rolled directly in this widget's spec from system components (`Avatar`, `Row`, `Stack`, `Badge`, `ProgressBar`, `Divider`, `Text`) via a `repeat` over `/ui/workload` -- consistent with `TILE-DISPLAY-STANDARDS.md` §6's guidance that a per-record card row (not tabular, multi-column data) is exactly the hand-roll case `Table` isn't meant for. **Status thresholds and tone mapping (confirmed decisions, not a guess), based on the same in-progress `count` this tile already computes:** 0 -> \"Available\" (`muted`), 1-4 -> \"On track\" (`success`), 5+ -> \"Overloaded\" (`destructive`). `warning` is deliberately unused -- per §7's restraint principle, this is a 3-state field. `muted` for \"Available\" is a deliberate departure from the XPM demo tile's own choice of `warning`/amber for the same concept: having spare capacity isn't a bad state worth flagging, unlike an agent already overloaded. **Workload bar:** `count` scaled so 5 in-progress items reads as a full (100%) bar, capped there (`Math.min(100, (count / 5) * 100)`) -- an agent with 11 items reads the same \"maxed out\" as one with 6, both already past a sustainable load. **Second line, in place of the XPM demo's per-person \"role\" (e.g. \"Senior Accountant\"):** Jira's `search_issues` assignee data (`{ accountId, displayName, accountType }`) has no job-title/role concept at all, and none of this connector's other tools resolve one either -- rather than fabricate a role, this line shows only the honest, singular/plural-aware count phrase (\"1 work item in progress\" / \"4 work items in progress\"). **Avatar initials** are derived client-side from `displayName` -- first letter of the first word + first letter of the last word, uppercased (e.g. \"Sean Baker\" -> \"SB\"); a single-word name takes its own first two letters instead. **Divider trade-off, disclosed rather than hidden:** the widgets-system's `repeat` has no `$last`/`$index` construct to conditionally skip a trailing separator (confirmed absent from `apps/web/src/features/widgets-system/system/components.tsx`), so each row's `Divider` is part of its own repeated template -- meaning the final row also gets a trailing divider before the truncation note / card edge, unlike the XPM demo's hand-placed dividers which stop after the second-to-last row. A cosmetic, accepted trade-off, not an oversight. Row click-through is preserved exactly as before, just moved off `Table`'s `rowAction.fromRow` onto the repeated `Row`'s own `on.click` (`open_url`, wrapped through the `identity` computed helper on `{\"$item\": \"searchUrl\"}` -- a bare `$item` inside an action param resolves to a state PATH, not its value, the same gotcha already documented and worked around on this plugin's Service Desk Queue tile's `requestRow`): clicking an agent still opens Jira's own issue navigator (`https://<site>/issues/?jql=...`) pre-filtered to that agent's own in-progress work in this project (`assignee = \"<accountId>\" AND project = <project_key> AND statusCategory = \"In Progress\"`). The full URL is still pre-built per row inside `atlassian_workload_by_agent` itself (as a `searchUrl` field), not computed at click time. `site_url`/`project_key` are both plain literal args passed into that function (hardcoded to the sandbox, `https://mysmb.atlassian.net` / `KAN`) -- same per-tenant-manual-edit limitation already accepted for `service_desk_id`/`project_key` everywhere else in this connector; there's no cheap way to resolve a browsable site URL from within a single dataProvider call. Built entirely on the existing `search_issues` tool (JQL `project = <project_key> AND statusCategory = \"In Progress\"`, `fields: [\"assignee\"]`, `max_results: 100`) -- no new server-side tool needed. `atlassian_workload_by_agent` (this plugin's widget-elements) groups the returned issues by `fields.assignee.accountId`, counting one work item per issue, and returns them sorted most-work-items-first, each row now also carrying `statusLabel`/`statusTone`/`loadPercent`/`initials`/`countLabel` alongside the original `accountId`/`displayName`/`count`/`searchUrl`. Two exclusions, both per the ticket's explicit ask for 'only human user accounts': issues with a `null` assignee (unassigned -- doesn't belong to anyone's workload) are dropped entirely, and any assignee whose `accountType` isn't `\"atlassian\"` (Atlassian's own Jira Cloud Platform REST API v3 User resource docs: `\"atlassian\"` = real human user, `\"app\"` = Connect/Forge/automation account, `\"customer\"` = JSM-only customer account) is excluded as a non-human 'inbuilt agent'. **Honesty note, not a hedge to gloss over:** the exclusion path itself (`accountType !== \"atlassian\"`) is UNTESTED against a live example -- this sandbox has an 'Automatic' account that appears in Jira's assignee-picker UI but could not actually be assigned to a real issue through that UI (selecting it silently reverted to Unassigned), so there was no way to produce a real non-\"atlassian\"-accountType assignee to confirm this filter against. Only the human-agent path (accountType `\"atlassian\"`) was confirmed live. See `atlassian_workload_by_agent`'s own JSDoc in `widget-elements/src/index.ts` for the full reasoning, including a 2019 Atlassian Developer Community report of `accountType` sometimes misreporting app accounts as `\"atlassian\"` (unconfirmed whether still current). Capped at 20 rows per `TILE-DISPLAY-STANDARDS.md` §11 (irrelevant in practice for a single project's human-agent roster, kept for consistency). `search_issues` defaults to 50 results, capped at 100 max, paginated via `nextPageToken` -- a widget's `dataProvider` fires exactly one call, so this tile requests the max (`max_results: 100`) and checks the response's `isLast` flag: when `false`, more In-Progress issues exist beyond the 100 fetched, and the tile discloses that plainly (per §13's data-governance veracity principle, the same honesty pattern as the SLA%-this-month action's own truncation disclosure) rather than presenting a partial per-agent count as complete.",
   "category": "work-management",
   "tags": ["atlassian", "jira", "workload", "agents", "in-progress", "project-management", "capacity"],
   "keywords": ["jira workload", "workload report", "agent workload", "in progress", "work items", "capacity", "team load", "assignee"],
@@ -123,7 +123,7 @@
       "content": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["workloadTable", "truncatedNote"],
+        "children": ["workloadList", "truncatedNote"],
         "visible": {
           "$and": [
             { "$state": "/_loading/atlassian.search_issues", "not": true },
@@ -131,28 +131,95 @@
           ]
         }
       },
-      "workloadTable": {
-        "type": "Table",
-        "props": {
-          "rows": { "$state": "/ui/workload" },
-          "emptyMessage": "No in-progress work items assigned to a human agent on this project.",
-          "rowAction": {
-            "action": "open_url",
-            "params": { "target": "_blank" },
-            "fromRow": { "url": "searchUrl" }
-          },
-          "columns": [
-            { "id": "agent", "header": "Agent", "field": "displayName", "priority": 1 },
-            {
-              "id": "count",
-              "header": "Work Items In Progress",
-              "field": "count",
-              "align": "right",
-              "width": 160,
-              "priority": 1
-            }
-          ]
+      "workloadList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["agentRow", "agentDivider"],
+        "repeat": {
+          "statePath": "/ui/workload",
+          "key": "accountId"
         }
+      },
+      "agentRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "hover": true, "clickable": true },
+        "children": ["agentRowContent"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "identity",
+                "args": { "value": { "$item": "searchUrl" } }
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "agentRowContent": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["agentTopRow", "agentBarRow"]
+      },
+      "agentTopRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["agentAvatar", "agentNameStack", "agentStatusBadge"]
+      },
+      "agentAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": { "$item": "initials" },
+          "tone": { "$item": "statusTone" },
+          "size": "md"
+        }
+      },
+      "agentNameStack": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["agentName", "agentCountLabel"]
+      },
+      "agentName": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "displayName" },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "agentCountLabel": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "countLabel" },
+          "size": "xs",
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+      "agentStatusBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "statusLabel" },
+          "tone": { "$item": "statusTone" },
+          "variant": "soft"
+        }
+      },
+      "agentBarRow": {
+        "type": "Row",
+        "props": {},
+        "children": ["agentBar"]
+      },
+      "agentBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": { "$item": "loadPercent" },
+          "tone": { "$item": "statusTone" }
+        }
+      },
+      "agentDivider": {
+        "type": "Divider"
       },
       "truncatedNote": {
         "type": "Caption",

@@ -40,11 +40,23 @@ import type { PluginElementsModule } from './types';
  *   { "$computed": "atlassian_request_bucket", "args": { "request": { "$item": "" } } }
  */
 export type RequestBucket = 'new' | 'in_progress' | 'behind' | 'alerts' | 'done';
+export type WorkloadStatusLabel = 'Available' | 'On track' | 'Overloaded';
+export type WorkloadStatusTone = 'muted' | 'success' | 'destructive';
 export interface WorkloadRow {
     accountId: string;
     displayName: string;
     count: number;
     searchUrl: string;
+    /** "Available" (0) / "On track" (1-4) / "Overloaded" (5+) -- see `workloadStatusFor`. */
+    statusLabel: WorkloadStatusLabel;
+    /** Tone paired with `statusLabel`, per TILE-DISPLAY-STANDARDS.md's status-tone model. */
+    statusTone: WorkloadStatusTone;
+    /** 0-100, `count` scaled so 5 items = a full bar. See `workloadLoadPercent`. */
+    loadPercent: number;
+    /** 1-2 uppercase letters derived from `displayName` for the row's avatar. */
+    initials: string;
+    /** Honest count phrase ("2 work items in progress") -- see the "no fake role" note below. */
+    countLabel: string;
 }
 declare const elements: PluginElementsModule;
 export default elements;
