@@ -15,7 +15,7 @@
   "dataProvider": {
     "mcp": "surveymonkey",
     "tool": "list_surveys",
-    "params": { "per_page": 100, "sort_by": "date_modified", "sort_order": "DESC" }
+    "params": { "per_page": 100, "sort_by": "date_modified", "sort_order": "DESC", "include": "status" }
   },
   "spec": {
     "root": "card",
@@ -42,7 +42,8 @@
 
       "header": { "type": "Header", "props": {}, "children": ["titleStack"] },
       "titleStack": {
-        "type": "Stack", "props": { "gap": "none" },
+        "type": "Stack",
+        "props": { "gap": "none" },
         "children": ["title", "eyebrow"]
       },
       "title": { "type": "Heading", "props": { "text": "Surveys in Progress", "level": "h2" } },
@@ -51,7 +52,8 @@
       "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "contentArea"] },
 
       "loading": {
-        "type": "Stack", "props": { "gap": "sm" },
+        "type": "Stack",
+        "props": { "gap": "sm" },
         "children": ["sk1", "sk2", "sk3"],
         "visible": { "$state": "/_loading/surveymonkey.list_surveys" }
       },
@@ -65,66 +67,84 @@
         "visible": {
           "$and": [
             { "$state": "/_loading/surveymonkey.list_surveys", "not": true },
-            { "$state": "/surveymonkey/list_surveys/data/0", "not": true }
+            { "$state": "/ui/rows/0", "not": true }
           ]
         }
       },
 
       "contentArea": {
-        "type": "Stack", "props": { "gap": "md" },
+        "type": "Stack",
+        "props": { "gap": "md" },
         "children": ["statsRow", "surveyList"],
         "visible": {
           "$and": [
             { "$state": "/_loading/surveymonkey.list_surveys", "not": true },
-            { "$state": "/surveymonkey/list_surveys/data/0" }
+            { "$state": "/ui/rows/0" }
           ]
         }
       },
 
       "statsRow": {
-        "type": "Row", "props": { "gap": "sm", "template": "1fr 1fr 1fr" },
+        "type": "Row",
+        "props": { "gap": "sm", "template": "1fr 1fr 1fr" },
         "children": ["statActiveWrap", "statTotalWrap", "statAvgWrap"]
       },
       "statActiveWrap": { "type": "Stack", "props": { "gap": "none" }, "children": ["statActive"] },
       "statActive": {
-        "type": "Section", "props": { "variant": "muted", "padding": "sm" },
+        "type": "Section",
+        "props": { "variant": "muted", "padding": "sm" },
         "children": ["statActiveCount", "statActiveLabel"]
       },
-      "statActiveCount": { "type": "Heading", "props": { "text": { "$state": "/ui/rows/0/stat_active" }, "level": "h2", "tone": "accent" } },
+      "statActiveCount": {
+        "type": "Heading",
+        "props": { "text": { "$state": "/ui/rows/0/stat_active" }, "level": "h2", "tone": "accent" }
+      },
       "statActiveLabel": { "type": "Caption", "props": { "text": "Active Surveys" } },
 
       "statTotalWrap": { "type": "Stack", "props": { "gap": "none" }, "children": ["statTotal"] },
       "statTotal": {
-        "type": "Section", "props": { "variant": "muted", "padding": "sm" },
+        "type": "Section",
+        "props": { "variant": "muted", "padding": "sm" },
         "children": ["statTotalCount", "statTotalLabel"]
       },
-      "statTotalCount": { "type": "Heading", "props": { "text": { "$state": "/ui/rows/0/stat_total_responses" }, "level": "h2" } },
+      "statTotalCount": {
+        "type": "Heading",
+        "props": { "text": { "$state": "/ui/rows/0/stat_total_responses" }, "level": "h2" }
+      },
       "statTotalLabel": { "type": "Caption", "props": { "text": "Total Responses" } },
 
       "statAvgWrap": { "type": "Stack", "props": { "gap": "none" }, "children": ["statAvg"] },
       "statAvg": {
-        "type": "Section", "props": { "variant": "muted", "padding": "sm" },
+        "type": "Section",
+        "props": { "variant": "muted", "padding": "sm" },
         "children": ["statAvgCount", "statAvgLabel"]
       },
-      "statAvgCount": { "type": "Heading", "props": { "text": { "$state": "/ui/rows/0/stat_avg_completion" }, "level": "h2" } },
+      "statAvgCount": {
+        "type": "Heading",
+        "props": { "text": { "$state": "/ui/rows/0/stat_avg_completion" }, "level": "h2" }
+      },
       "statAvgLabel": { "type": "Caption", "props": { "text": "Avg Completion" } },
 
       "surveyList": {
-        "type": "Stack", "props": { "gap": "sm" },
+        "type": "Stack",
+        "props": { "gap": "sm" },
         "children": ["surveyRow"],
         "repeat": { "statePath": "/ui/rows", "key": "id" }
       },
 
       "surveyRow": {
-        "type": "Stack", "props": { "gap": "xs" },
+        "type": "Stack",
+        "props": { "gap": "xs" },
         "children": ["surveyTopRow", "surveyProgress", "surveyMetaRow", "surveyDivider"]
       },
       "surveyTopRow": {
-        "type": "Row", "props": { "justify": "between", "align": "center" },
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
         "children": ["surveyInfo", "surveyStatusBadge"]
       },
       "surveyInfo": {
-        "type": "Stack", "props": { "gap": "none", "grow": true },
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
         "children": ["surveyTitle", "surveyAudience"]
       },
       "surveyTitle": {
@@ -147,7 +167,8 @@
         "visible": { "$item": "has_progress" }
       },
       "surveyMetaRow": {
-        "type": "Row", "props": { "justify": "between" },
+        "type": "Row",
+        "props": { "justify": "between" },
         "children": ["surveyResponses", "surveyCloses"]
       },
       "surveyResponses": {

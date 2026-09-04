@@ -245,7 +245,11 @@ const flatten_week_surveys: ComputedFunction = (args) => {
  * Args: { value: array }
  */
 const flatten_surveys_in_progress: ComputedFunction = (args) => {
-  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  const allSurveys = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  const hasStatus = allSurveys.some(s => typeof (s as Record<string, unknown>).status === 'string');
+  const raw = hasStatus
+    ? allSurveys.filter(s => String((s as Record<string, unknown>).status ?? '').toLowerCase() === 'open')
+    : allSurveys;
   if (raw.length === 0) return [];
 
   let totalResponses = 0;
@@ -257,7 +261,9 @@ const flatten_surveys_in_progress: ComputedFunction = (args) => {
     const goal = Number(s.max_responses ?? s.response_limit ?? 0);
     totalResponses += rc;
 
-    const responsesLabel = goal > 0 ? `${rc} / ${goal}` : String(rc);
+    const responsesLabel = goal > 0
+      ? `${rc.toLocaleString()} / ${goal.toLocaleString()} responses`
+      : `${rc.toLocaleString()} responses`;
 
     const rawClose = String(s.close_date ?? s.collector_close_date ?? '');
     let closesLabel = '';
@@ -265,7 +271,7 @@ const flatten_surveys_in_progress: ComputedFunction = (args) => {
       const ms = Date.parse(rawClose);
       if (!Number.isNaN(ms)) {
         const d = new Date(ms);
-        closesLabel = `${MONTH_ABBR[d.getMonth()]} ${d.getDate()}`;
+        closesLabel = `Closes ${MONTH_ABBR[d.getMonth()]} ${d.getDate()}`;
       }
     }
 
@@ -316,7 +322,7 @@ const flatten_surveys_in_progress: ComputedFunction = (args) => {
 
   const avgComp = pctCount > 0 ? `${Math.round(totalPct / pctCount)}%` : '--';
   rows[0].stat_active          = String(raw.length);
-  rows[0].stat_total_responses = String(totalResponses);
+  rows[0].stat_total_responses = totalResponses.toLocaleString();
   rows[0].stat_avg_completion  = avgComp;
 
   return rows;
@@ -329,7 +335,11 @@ const flatten_surveys_in_progress: ComputedFunction = (args) => {
  * Args: { value: array }
  */
 const flatten_closed_surveys: ComputedFunction = (args) => {
-  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  const allSurveys = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  const hasStatus = allSurveys.some(s => typeof (s as Record<string, unknown>).status === 'string');
+  const raw = hasStatus
+    ? allSurveys.filter(s => String((s as Record<string, unknown>).status ?? '').toLowerCase() === 'closed')
+    : [];
   if (raw.length === 0) return [];
 
   const now = new Date();
@@ -344,6 +354,7 @@ const flatten_closed_surveys: ComputedFunction = (args) => {
   const rows = raw.map((s) => {
     const rc = Number(s.response_count ?? 0);
     const sent = Number(s.recipient_count ?? 0);
+    const audience = String(s.collector_name ?? '');
     totalResponses += rc;
 
     const closedDateRaw = String(s.date_modified ?? s.closed_date ?? '');
@@ -361,17 +372,21 @@ const flatten_closed_surveys: ComputedFunction = (args) => {
       rateCount++;
     }
 
+    const metaLabel = audience
+      ? `${audience} · ${rc.toLocaleString()} responses`
+      : `${rc.toLocaleString()} responses`;
+
     return {
-      id: String(s.id ?? ''),
-      title: String(s.title ?? ''),
-      audience: String(s.collector_name ?? ''),
-      responses_label: rc.toLocaleString(),
-      closed_label: closedDateRaw ? _fmtShort(closedDateRaw) : '',
-      rate_label: rateLabel,
-      rate_tone: rateTone,
-      stat_quarter_count: '',
+      id:                   String(s.id ?? ''),
+      title:                String(s.title ?? ''),
+      meta_label:           metaLabel,
+      closed_label:         closedDateRaw ? _fmtShort(closedDateRaw) : '',
+      rate_label:           rateLabel,
+      rate_tone:            rateTone,
+      has_rate:             sent > 0,
+      stat_quarter_count:   '',
       stat_total_responses: '',
-      stat_avg_rate: '',
+      stat_avg_rate:        '',
     };
   });
 
@@ -412,6 +427,7 @@ const flatten_upcoming_calendar: ComputedFunction = (args) => {
     const id = String(s.id ?? '');
     const title = String(s.title ?? '');
     const audience = String(s.collector_name ?? s.nickname ?? '');
+    const status = String(s.status ?? '').toLowerCase();
     const createdRaw = String(s.date_created ?? '');
     const modifiedRaw = String(s.date_modified ?? '');
     const createdMs = Date.parse(createdRaw);
@@ -424,13 +440,14 @@ const flatten_upcoming_calendar: ComputedFunction = (args) => {
         date_label: _fmtShort(createdRaw).toUpperCase(),
         title,
         audience,
-        event_label: 'Launching',
+        event_label: 'Launched',
         event_tone: 'accent',
         dot_tone: 'accent',
       });
     }
 
     if (
+      status === 'closed' &&
       !Number.isNaN(modifiedMs) &&
       Math.abs(modifiedMs - (Number.isNaN(createdMs) ? 0 : createdMs)) > 60000
     ) {
@@ -440,9 +457,9 @@ const flatten_upcoming_calendar: ComputedFunction = (args) => {
         date_label: _fmtShort(modifiedRaw).toUpperCase(),
         title,
         audience,
-        event_label: 'Closing',
-        event_tone: 'warning',
-        dot_tone: 'warning',
+        event_label: 'Closed',
+        event_tone: 'muted',
+        dot_tone: 'muted',
       });
     }
   }
