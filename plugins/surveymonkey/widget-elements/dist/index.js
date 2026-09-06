@@ -399,9 +399,9 @@ const flatten_upcoming_calendar = (args) => {
                 date_label: _fmtShort(launchRaw).toUpperCase(),
                 title: title,
                 audience: audience,
-                event_label: 'Launched',
-                event_tone: 'accent',
-                dot_tone: 'accent',
+                event_label: 'Launching',
+                event_tone: 'info',
+                dot_tone: 'info',
             });
         }
         if (status === 'closed' &&
@@ -413,9 +413,9 @@ const flatten_upcoming_calendar = (args) => {
                 date_label: _fmtShort(modifiedRaw).toUpperCase(),
                 title: title,
                 audience: audience,
-                event_label: 'Closed',
-                event_tone: 'muted',
-                dot_tone: 'muted',
+                event_label: 'Closing',
+                event_tone: 'warning',
+                dot_tone: 'warning',
             });
         }
     }
