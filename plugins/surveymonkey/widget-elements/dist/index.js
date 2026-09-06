@@ -316,7 +316,7 @@ const flatten_closed_surveys = (args) => {
     const hasStatus = allSurveys.some(s => typeof s.status === 'string');
     const raw = hasStatus
         ? allSurveys.filter(s => String(s.status ?? '').toLowerCase() === 'closed')
-        : allSurveys;
+        : [];
     if (raw.length === 0)
         return [];
     const now = new Date();
