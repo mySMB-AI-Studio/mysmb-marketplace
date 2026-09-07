@@ -344,13 +344,10 @@ const flatten_closed_surveys: ComputedFunction = (args) => {
   const qStartMs = qStart.getTime();
 
   let totalResponses = 0;
-  let totalRate = 0;
-  let rateCount = 0;
   let quarterCount = 0;
 
   const rows = raw.map((s) => {
     const rc = Number(s.response_count ?? 0);
-    const sent = Number(s.recipient_count ?? 0);
     const audience = String(s.collector_name ?? '');
     totalResponses += rc;
 
@@ -358,39 +355,25 @@ const flatten_closed_surveys: ComputedFunction = (args) => {
     const closedMs = Date.parse(closedDateRaw);
     if (!Number.isNaN(closedMs) && closedMs >= qStartMs) quarterCount++;
 
-    let ratePct = 0;
-    let rateLabel = '';
-    let rateTone = 'muted';
-    if (sent > 0) {
-      ratePct = Math.round((rc / sent) * 100);
-      rateLabel = `${ratePct}%`;
-      rateTone = ratePct >= 60 ? 'success' : ratePct >= 30 ? 'warning' : 'danger';
-      totalRate += ratePct;
-      rateCount++;
-    }
-
     const metaLabel = audience
       ? `${audience} · ${rc.toLocaleString()} responses`
       : `${rc.toLocaleString()} responses`;
 
     return {
-      id:                   String(s.id ?? ''),
-      title:                String(s.title ?? ''),
-      meta_label:           metaLabel,
-      closed_label:         closedDateRaw ? _fmtShort(closedDateRaw) : '',
-      rate_label:           rateLabel,
-      rate_tone:            rateTone,
-      has_rate:             sent > 0,
-      stat_quarter_count:   '',
-      stat_total_responses: '',
-      stat_avg_rate:        '',
+      id:                    String(s.id ?? ''),
+      title:                 String(s.title ?? ''),
+      meta_label:            metaLabel,
+      closed_label:          closedDateRaw ? _fmtShort(closedDateRaw) : '',
+      stat_quarter_count:    '',
+      stat_total_responses:  '',
+      stat_avg_responses:    '',
     };
   });
 
-  const avgRate = rateCount > 0 ? `${Math.round(totalRate / rateCount)}%` : '--';
+  const avgResponses = Math.round(totalResponses / raw.length).toLocaleString();
   rows[0].stat_quarter_count   = String(quarterCount);
   rows[0].stat_total_responses = totalResponses.toLocaleString();
-  rows[0].stat_avg_rate        = avgRate;
+  rows[0].stat_avg_responses   = avgResponses;
 
   return rows;
 };
