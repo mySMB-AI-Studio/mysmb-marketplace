@@ -339,7 +339,7 @@ const flatten_closed_surveys: ComputedFunction = (args) => {
   const hasStatus = allSurveys.some(s => typeof (s as Record<string, unknown>).status === 'string');
   const raw = hasStatus
     ? allSurveys.filter(s => String((s as Record<string, unknown>).status ?? '').toLowerCase() === 'closed')
-    : allSurveys;
+    : [];
   if (raw.length === 0) return [];
 
   const now = new Date();
