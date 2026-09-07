@@ -1,0 +1,99 @@
+{
+  "id": "geotab-fuel-efficiency-demo",
+  "title": "Fuel & Efficiency",
+  "description": "Month-to-date fuel spend and fleet L/100km efficiency, with a per-vehicle breakdown and fill-exception flags. Demo version with static data.",
+  "category": "fleet-management",
+  "tags": ["geotab", "fleet", "fuel", "efficiency", "demo"],
+  "keywords": ["fuel", "efficiency", "l100km", "fill exceptions", "vehicles", "cost"],
+  "connectorsUsed": ["geotab"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 6 },
+    "min":       { "colSpan": 4, "rowSpan": 8 },
+    "max":       { "colSpan": 10, "rowSpan": 14 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "statRow", "sparkRow", "div1", "vehiclesLabel", "vehicleRows", "noteSection"]
+      },
+
+      "headerRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "Fuel", "tone": "muted", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Fuel & Efficiency", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Month to date · card matched" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "statRow": { "type": "Row", "props": { "gap": "lg", "align": "start" }, "children": ["statFuel", "statAvg"] },
+      "statFuel": {
+        "type": "Stat",
+        "props": {
+          "label": "Fuel MTD",
+          "value": { "$computed": "format_currency", "args": { "value": 4182, "currency": "AUD" } }
+        }
+      },
+      "statAvg": { "type": "Stat", "props": { "label": "Fleet avg", "value": "12.8 L/100km" } },
+
+      "sparkRow": { "type": "Row", "props": {}, "children": ["fuelSpark"] },
+      "fuelSpark": { "type": "Sparkline", "props": { "values": [13.4, 13.6, 13.1, 12.9, 13.2, 12.5, 12.8], "tone": "muted", "height": 48, "fill": true } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "vehiclesLabel": { "type": "Eyebrow", "props": { "text": "L/100km by vehicle" } },
+      "vehicleRows": { "type": "Stack", "props": { "gap": "sm" }, "children": ["v1", "v2", "v3", "v4", "v5"] },
+
+      "v1": { "type": "Stack", "props": { "gap": "xs" }, "children": ["v1Row", "v1BarRow"] },
+      "v1Row": { "type": "Row", "props": { "justify": "between" }, "children": ["v1Label", "v1Val"] },
+      "v1Label": { "type": "Text", "props": { "text": "TRK-01", "size": "sm" } },
+      "v1Val": { "type": "Text", "props": { "text": "17.9", "size": "sm", "weight": "medium" } },
+      "v1BarRow": { "type": "Row", "props": {}, "children": ["v1Bar"] },
+      "v1Bar": { "type": "ProgressBar", "props": { "value": 100, "tone": { "$computed": "geotab_efficiency_tone", "args": { "value": 17.9 } } } },
+
+      "v2": { "type": "Stack", "props": { "gap": "xs" }, "children": ["v2Row", "v2BarRow"] },
+      "v2Row": { "type": "Row", "props": { "justify": "between" }, "children": ["v2Label", "v2Val"] },
+      "v2Label": { "type": "Text", "props": { "text": "UTE-02", "size": "sm" } },
+      "v2Val": { "type": "Text", "props": { "text": "14.8", "size": "sm", "weight": "medium" } },
+      "v2BarRow": { "type": "Row", "props": {}, "children": ["v2Bar"] },
+      "v2Bar": { "type": "ProgressBar", "props": { "value": 83, "tone": { "$computed": "geotab_efficiency_tone", "args": { "value": 14.8 } } } },
+
+      "v3": { "type": "Stack", "props": { "gap": "xs" }, "children": ["v3Row", "v3BarRow"] },
+      "v3Row": { "type": "Row", "props": { "justify": "between" }, "children": ["v3Label", "v3Val"] },
+      "v3Label": { "type": "Text", "props": { "text": "VAN-06", "size": "sm" } },
+      "v3Val": { "type": "Text", "props": { "text": "13.2", "size": "sm", "weight": "medium" } },
+      "v3BarRow": { "type": "Row", "props": {}, "children": ["v3Bar"] },
+      "v3Bar": { "type": "ProgressBar", "props": { "value": 74, "tone": { "$computed": "geotab_efficiency_tone", "args": { "value": 13.2 } } } },
+
+      "v4": { "type": "Stack", "props": { "gap": "xs" }, "children": ["v4Row", "v4BarRow"] },
+      "v4Row": { "type": "Row", "props": { "justify": "between" }, "children": ["v4Label", "v4Val"] },
+      "v4Label": { "type": "Text", "props": { "text": "VAN-01", "size": "sm" } },
+      "v4Val": { "type": "Text", "props": { "text": "11.1", "size": "sm", "weight": "medium" } },
+      "v4BarRow": { "type": "Row", "props": {}, "children": ["v4Bar"] },
+      "v4Bar": { "type": "ProgressBar", "props": { "value": 62, "tone": { "$computed": "geotab_efficiency_tone", "args": { "value": 11.1 } } } },
+
+      "v5": { "type": "Stack", "props": { "gap": "xs" }, "children": ["v5Row", "v5BarRow"] },
+      "v5Row": { "type": "Row", "props": { "justify": "between" }, "children": ["v5Label", "v5Val"] },
+      "v5Label": { "type": "Text", "props": { "text": "VAN-03", "size": "sm" } },
+      "v5Val": { "type": "Text", "props": { "text": "10.2", "size": "sm", "weight": "medium" } },
+      "v5BarRow": { "type": "Row", "props": {}, "children": ["v5Bar"] },
+      "v5Bar": { "type": "ProgressBar", "props": { "value": 57, "tone": { "$computed": "geotab_efficiency_tone", "args": { "value": 10.2 } } } },
+
+      "noteSection": { "type": "Section", "props": { "variant": "muted" }, "children": ["noteCaption"] },
+      "noteCaption": {
+        "type": "Caption",
+        "props": {
+          "text": "2 exceptions — one fill of 82 L on a 70 L tank (14 Aug), one fill at 19:40 with the vehicle 6 km from the servo.",
+          "tone": "warning"
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}
