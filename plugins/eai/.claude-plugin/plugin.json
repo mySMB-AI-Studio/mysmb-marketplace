@@ -1,0 +1,39 @@
+{
+  "name": "eai",
+  "version": "0.1.0",
+  "description": "Enterprise AI platform tenant resources — discover Object Types, then list, query, create, update, delete and run actions on records. Connects with an app identity (no user sign-in).",
+  "author": { "name": "mySMB AI Studio" },
+  "homepage": "https://github.com/mySMB-AI-Studio/mysmb-marketplace/tree/main/plugins/eai",
+  "license": "MIT",
+  "category": "Platform",
+  "keywords": ["eai", "enterprise ai", "resources", "object types", "records", "platform"],
+  "connection": {
+    "authType": "api_key",
+    "instructions": "Connect with an **app identity** issued by the Enterprise AI platform team — no user sign-in is involved.\n\n1. Ask the EAI platform owner for a client id and client secret that is allowed to access your tenant's resources.\n2. Copy your **EAI tenant id** (shown in the EAI admin console, or via `eai whoami`).\n3. Paste all three below.",
+    "fields": [
+      {
+        "name": "EAI_CLIENT_ID",
+        "label": "EAI client id",
+        "type": "text",
+        "required": true,
+        "placeholder": "00000000-0000-0000-0000-000000000000",
+        "helpText": "Entra CIAM application (client) id issued for this connection."
+      },
+      {
+        "name": "EAI_CLIENT_SECRET",
+        "label": "EAI client secret",
+        "type": "password",
+        "required": true,
+        "helpText": "The client secret for the application above."
+      },
+      {
+        "name": "EAI_TENANT_ID",
+        "label": "EAI tenant id",
+        "type": "text",
+        "required": true,
+        "placeholder": "cb9b0f73-408c-8076-5372-aa318c0f3e76",
+        "helpText": "The EAI tenant whose resources this connection reads and writes."
+      }
+    ]
+  }
+}
