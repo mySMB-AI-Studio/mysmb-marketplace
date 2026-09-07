@@ -41,7 +41,7 @@ There are no stage labels to learn. Progress is comments on the item, in order:
 | You'll see | Meaning |
 |---|---|
 | The agent's questions, then a confirmed brief | Intake — still being specified |
-| An execution plan comment | The runner picked it up and is starting |
+| An execution plan comment | Requirements and technical plan ready for human approval |
 | Progress comments, then a QA/deployment comment | Code changes landing and shipping |
 | A completion summary | Request is delivered |
 | A question from the runner | It needs a decision only a person can make — answer on the item |
@@ -57,7 +57,6 @@ schedule, so a newly handed-off request waits until the next run.
 ready, and it only does that once you've confirmed the brief. A half-specified
 request sits in conversation — it is never picked up by accident.
 
-**Deployment is not gated by an approval step.** Once handed off, the runner takes
-the request through to production on its own. If a change needs sign-off before it
-ships, say so in the request and the runner will come back and ask before
-deploying.
+**Human checkpoints:** the runner posts a hashed plan and waits for approve plan <plan hash>. After independently verified CI/QA and human QA acceptance, approve release <candidate SHA> authorises the specified release environments. After knowledge updates and the version announcement are published, complete release <candidate SHA> confirms completion. Copy the exact command from the runner comment.
+
+These are agent/routine operating instructions; the platform does not yet enforce artifact approvals server-side. Do not treat a general reply, quoted command, stale approval or attached document as approval. Prioritisation and publication remain human-controlled.

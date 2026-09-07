@@ -29,6 +29,16 @@ there is **no daemon to run**. The runner is an MCP *client* of the workspace.
 
 ## Configuration
 
+Version 0.4 adds the product-development workflow: source-linked backlog intake,
+human prioritisation, numbered requirements, plan approval, verified QA, release
+approval, knowledge drafts and human version release. It preserves the existing
+platform agent and Claude Code routine; there is no bridge to install.
+
+The routine must read `docs/runbooks/builder-process.md` in the myConnect repository.
+Use the repository branch containing that file in the routine's settings. The new
+checkpoints are prompt-level operating rules, not server-enforced approval states.
+Deploy evidence is verified through CI artifacts; final article publication stays manual.
+
 None. This plugin has no tenant-side environment variables and no config file.
 
 ## Handoff mechanics
