@@ -22,11 +22,22 @@
  *      mailboxes), every listed file exists, parses, matches the email-source
  *      schema, belongs to this plugin, names only a server this plugin declares
  *      in .mcp.json, and uses an https compose template with known placeholders.
+ *   8. Every widget JSON under a plugin's widgets/ dir is checked for
+ *      TILE-DISPLAY-STANDARDS.md §5's "xxs" gap bug (not a real value, silently
+ *      renders as zero gap). Mirrors exactly that one rule from the doc — see
+ *      the doc's own §14 for why only this rule is mechanically enforced here.
+ *      Forward-only (§14's rollout policy): files listed in
+ *      scripts/xxs-baseline.json are pre-existing, known violators from the
+ *      2026-08-05 audit and are grandfathered — editing this validator does
+ *      NOT retroactively fail them. Only a NEW "xxs" usage (a new widget, or
+ *      an existing widget not already on the baseline) fails. Retrofitting the
+ *      baseline is the separate, deliberately-scoped initiative §14 describes —
+ *      remove a file from the baseline once it's actually fixed.
  *
  * Exits 1 on any failure.
  */
 import { readFileSync, existsSync, statSync, readdirSync } from "node:fs";
-import { join, resolve, dirname } from "node:path";
+import { join, resolve, dirname, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -34,6 +45,12 @@ const repoRoot = resolve(__dirname, "..");
 
 const errors: string[] = [];
 const fail = (msg: string) => errors.push(msg);
+
+const XXS_BASELINE: Set<string> = new Set(
+  (JSON.parse(readFileSync(join(__dirname, "xxs-baseline.json"), "utf8")) as string[]).map((p) =>
+    p.split("/").join(sep),
+  ),
+);
 
 const RESERVED_VARS = new Set(["CLAUDE_PLUGIN_ROOT"]);
 
@@ -179,6 +196,46 @@ function validateActionSchemas(pluginDirName: string, filePath: string, src: str
   }
 }
 
+/**
+ * TILE-DISPLAY-STANDARDS.md §5: "xxs" is not a real gap value — it silently
+ * renders as zero gap, identical to "none". Mirrors exactly one rule from that
+ * doc; if §5 is ever resolved by promoting "xxs" to a real GAP_SIZE value
+ * instead of mass-fixing existing widgets, update this check in the same PR.
+ */
+function findXxsGaps(value: unknown, path: string, out: string[]) {
+  if (Array.isArray(value)) {
+    value.forEach((v, i) => findXxsGaps(v, `${path}[${i}]`, out));
+  } else if (isRecord(value)) {
+    for (const [key, v] of Object.entries(value)) {
+      if (key === "gap" && v === "xxs") out.push(path || "(root)");
+      else findXxsGaps(v, path ? `${path}.${key}` : key, out);
+    }
+  }
+}
+
+function validateTileDisplayStandards(pluginDirName: string, fileName: string, filePath: string) {
+  // Parse locally (not the shared readJson helper) and skip silently on
+  // failure — a malformed widget JSON is a pre-existing, unrelated bug this
+  // check shouldn't newly start failing PRs over; it's a separate finding.
+  let widget: unknown;
+  try {
+    widget = JSON.parse(readFileSync(filePath, "utf8"));
+  } catch {
+    return;
+  }
+  const hits: string[] = [];
+  findXxsGaps(widget, "", hits);
+  if (hits.length === 0) return;
+
+  if (XXS_BASELINE.has(relative(repoRoot, filePath))) return; // pre-existing, grandfathered — see §14 rollout note above
+
+  for (const hit of hits) {
+    fail(
+      `plugins/${pluginDirName}: widgets/${fileName} uses "gap": "xxs" at ${hit} — not a real value (TILE-DISPLAY-STANDARDS.md §5), silently renders as zero gap; use "xs" or "none"`,
+    );
+  }
+}
+
 function validateWidgetElements(
   pluginDirName: string,
   manifest: { widgetElements?: string; widgets?: string },
@@ -224,6 +281,9 @@ function validateWidgetElements(
         fail(
           `plugins/${pluginDirName}: widgets directory "${declaredW}" must contain at least one *.json file`,
         );
+      }
+      for (const fileName of jsonFiles) {
+        validateTileDisplayStandards(pluginDirName, fileName, join(dirPath, fileName));
       }
     }
   }
