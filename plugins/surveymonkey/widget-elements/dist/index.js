@@ -232,9 +232,9 @@ const flatten_week_surveys = (args) => {
  */
 const flatten_surveys_in_progress = (args) => {
     const allSurveys = Array.isArray(args.value) ? args.value : [];
-    const hasStatus = allSurveys.some(s => typeof s.status === 'string');
-    const raw = hasStatus
-        ? allSurveys.filter(s => String(s.status ?? '').toLowerCase() === 'open')
+    const hasState = allSurveys.some(s => typeof s.survey_state === 'string');
+    const raw = hasState
+        ? allSurveys.filter(s => String(s.survey_state ?? '').toUpperCase() === 'OPEN')
         : allSurveys;
     if (raw.length === 0)
         return [];
@@ -313,10 +313,7 @@ const flatten_surveys_in_progress = (args) => {
  */
 const flatten_closed_surveys = (args) => {
     const allSurveys = Array.isArray(args.value) ? args.value : [];
-    const hasStatus = allSurveys.some(s => typeof s.status === 'string');
-    const raw = hasStatus
-        ? allSurveys.filter(s => String(s.status ?? '').toLowerCase() === 'closed')
-        : [];
+    const raw = allSurveys.filter(s => String(s.survey_state ?? '').toUpperCase() === 'CLOSED');
     if (raw.length === 0)
         return [];
     const now = new Date();
@@ -384,7 +381,7 @@ const flatten_upcoming_calendar = (args) => {
         const id = String(s.id ?? '');
         const title = String(s.title ?? '');
         const audience = String(s.collector_name ?? s.nickname ?? '');
-        const status = String(s.status ?? '').toLowerCase();
+        const surveyState = String(s.survey_state ?? '').toUpperCase();
         const createdRaw = String(s.date_created ?? '');
         const modifiedRaw = String(s.date_modified ?? '');
         const createdMs = Date.parse(createdRaw);
@@ -399,12 +396,12 @@ const flatten_upcoming_calendar = (args) => {
                 date_label: _fmtShort(launchRaw).toUpperCase(),
                 title: title,
                 audience: audience,
-                event_label: 'Launched',
-                event_tone: 'accent',
-                dot_tone: 'accent',
+                event_label: 'Launching',
+                event_tone: 'info',
+                dot_tone: 'info',
             });
         }
-        if (status === 'closed' &&
+        if (surveyState === 'CLOSED' &&
             !Number.isNaN(modifiedMs) &&
             Math.abs(modifiedMs - (Number.isNaN(createdMs) ? 0 : createdMs)) > 60000) {
             events.push({
@@ -413,9 +410,9 @@ const flatten_upcoming_calendar = (args) => {
                 date_label: _fmtShort(modifiedRaw).toUpperCase(),
                 title: title,
                 audience: audience,
-                event_label: 'Closed',
-                event_tone: 'muted',
-                dot_tone: 'muted',
+                event_label: 'Closing',
+                event_tone: 'warning',
+                dot_tone: 'warning',
             });
         }
     }
@@ -450,18 +447,18 @@ const flatten_recent_survey = (args) => {
         return (Number.isNaN(bMs) ? 0 : bMs) - (Number.isNaN(aMs) ? 0 : aMs);
     });
     const s = sorted[0];
-    const status = String(s.status ?? '').toLowerCase();
+    const surveyState = String(s.survey_state ?? '').toUpperCase();
     let statusLabel = 'Unknown';
     let statusTone = 'muted';
-    if (status === 'open') {
+    if (surveyState === 'OPEN') {
         statusLabel = 'Live';
         statusTone = 'accent';
     }
-    if (status === 'closed') {
+    if (surveyState === 'CLOSED') {
         statusLabel = 'Closed';
         statusTone = 'muted';
     }
-    if (status === 'draft') {
+    if (surveyState === 'DRAFT') {
         statusLabel = 'Draft';
         statusTone = 'warning';
     }
