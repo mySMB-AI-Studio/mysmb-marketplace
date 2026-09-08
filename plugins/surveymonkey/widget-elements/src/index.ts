@@ -329,10 +329,9 @@ const flatten_surveys_in_progress: ComputedFunction = (args) => {
     };
   });
 
-  const avgComp = pctCount > 0 ? `${Math.round(totalPct / pctCount)}%` : '--';
   rows[0].stat_active          = String(raw.length);
   rows[0].stat_total_responses = totalResponses.toLocaleString();
-  rows[0].stat_avg_completion  = avgComp;
+  rows[0].stat_avg_completion  = Math.round(totalResponses / raw.length).toLocaleString();
 
   return rows;
 };
