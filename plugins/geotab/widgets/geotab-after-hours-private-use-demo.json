@@ -1,0 +1,112 @@
+{
+  "id": "geotab-after-hours-private-use-demo",
+  "title": "After-Hours & Private Use",
+  "description": "FBT-year-to-date private and after-hours vehicle use against the ATO logbook method, with a per-vehicle breakdown. Demo version with static data.",
+  "category": "fleet-management",
+  "tags": ["geotab", "fleet", "fbt", "compliance", "logbook", "demo"],
+  "keywords": ["private use", "after hours", "fbt", "logbook", "ato", "vehicles"],
+  "connectorsUsed": ["geotab"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 8, "rowSpan": 6 },
+    "min":       { "colSpan": 4, "rowSpan": 8 },
+    "max":       { "colSpan": 10, "rowSpan": 14 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "statRow", "div1", "coverageLabel", "coverageBarRow", "coverageCaption", "div2", "pillRow", "div3", "vehiclesLabel", "vehicleRows", "noteSection", "footerDiv", "footerRow"]
+      },
+
+      "headerRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "Clock", "tone": "muted", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "After-Hours & Private Use", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "FBT year to date · ATO logbook" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "statRow": { "type": "Row", "props": { "gap": "lg", "align": "start" }, "children": ["statKm", "statTrips"] },
+      "statKm": { "type": "Stat", "props": { "label": "Private km", "value": "412" } },
+      "statTrips": { "type": "Stat", "props": { "label": "After-hours trips", "value": "23" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "coverageLabel": { "type": "Row", "props": { "justify": "between" }, "children": ["coverageLabelText", "coverageValueText"] },
+      "coverageLabelText": { "type": "Text", "props": { "text": "12-week logbook coverage", "size": "sm" } },
+      "coverageValueText": { "type": "Text", "props": { "text": "8.2 of 12 weeks", "size": "sm", "weight": "medium" } },
+      "coverageBarRow": { "type": "Row", "props": {}, "children": ["coverageBar"] },
+      "coverageBar": { "type": "ProgressBar", "props": { "value": 68, "tone": "info" } },
+      "coverageCaption": { "type": "Caption", "props": { "text": "68% through the required 12-week sample period" } },
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "pillRow": { "type": "Row", "props": { "gap": "sm" }, "children": ["pillBusiness", "pillPrivate", "pillUnclassified"] },
+      "pillBusiness": { "type": "Badge", "props": { "text": "Business 94%", "tone": "muted" } },
+      "pillPrivate": { "type": "Badge", "props": { "text": "Private 6%", "tone": "info" } },
+      "pillUnclassified": { "type": "Badge", "props": { "text": "Unclassified 17 trips", "tone": "warning" } },
+
+      "div3": { "type": "Divider", "props": {} },
+
+      "vehiclesLabel": { "type": "Eyebrow", "props": { "text": "Private km by vehicle" } },
+      "vehicleRows": { "type": "Stack", "props": { "gap": "sm" }, "children": ["v1", "v2", "v3", "v4"] },
+
+      "v1": { "type": "Stack", "props": { "gap": "xs" }, "children": ["v1Row", "v1BarRow"] },
+      "v1Row": { "type": "Row", "props": { "justify": "between" }, "children": ["v1Label", "v1Val"] },
+      "v1Label": { "type": "Text", "props": { "text": "UTE-05", "size": "sm" } },
+      "v1Val": { "type": "Text", "props": { "text": "168 km", "size": "sm", "weight": "medium" } },
+      "v1BarRow": { "type": "Row", "props": {}, "children": ["v1Bar"] },
+      "v1Bar": { "type": "ProgressBar", "props": { "value": 100, "tone": { "$computed": "geotab_private_km_tone", "args": { "value": 168 } } } },
+
+      "v2": { "type": "Stack", "props": { "gap": "xs" }, "children": ["v2Row", "v2BarRow"] },
+      "v2Row": { "type": "Row", "props": { "justify": "between" }, "children": ["v2Label", "v2Val"] },
+      "v2Label": { "type": "Text", "props": { "text": "VAN-06", "size": "sm" } },
+      "v2Val": { "type": "Text", "props": { "text": "118 km", "size": "sm", "weight": "medium" } },
+      "v2BarRow": { "type": "Row", "props": {}, "children": ["v2Bar"] },
+      "v2Bar": { "type": "ProgressBar", "props": { "value": 70, "tone": { "$computed": "geotab_private_km_tone", "args": { "value": 118 } } } },
+
+      "v3": { "type": "Stack", "props": { "gap": "xs" }, "children": ["v3Row", "v3BarRow"] },
+      "v3Row": { "type": "Row", "props": { "justify": "between" }, "children": ["v3Label", "v3Val"] },
+      "v3Label": { "type": "Text", "props": { "text": "UTE-02", "size": "sm" } },
+      "v3Val": { "type": "Text", "props": { "text": "79 km", "size": "sm", "weight": "medium" } },
+      "v3BarRow": { "type": "Row", "props": {}, "children": ["v3Bar"] },
+      "v3Bar": { "type": "ProgressBar", "props": { "value": 47, "tone": { "$computed": "geotab_private_km_tone", "args": { "value": 79 } } } },
+
+      "v4": { "type": "Stack", "props": { "gap": "xs" }, "children": ["v4Row", "v4BarRow"] },
+      "v4Row": { "type": "Row", "props": { "justify": "between" }, "children": ["v4Label", "v4Val"] },
+      "v4Label": { "type": "Text", "props": { "text": "VAN-01", "size": "sm" } },
+      "v4Val": { "type": "Text", "props": { "text": "47 km", "size": "sm", "weight": "medium" } },
+      "v4BarRow": { "type": "Row", "props": {}, "children": ["v4Bar"] },
+      "v4Bar": { "type": "ProgressBar", "props": { "value": 28, "tone": { "$computed": "geotab_private_km_tone", "args": { "value": 47 } } } },
+
+      "noteSection": { "type": "Section", "props": { "variant": "muted" }, "children": ["noteCaption"] },
+      "noteCaption": { "type": "Caption", "props": { "text": "UTE-05 private use is trending past minor-and-infrequent — the tool-of-trade exemption may not hold. Position stays with the accountant.", "tone": "warning" } },
+
+      "footerDiv": { "type": "Divider", "props": {} },
+      "footerRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["footerLeft", "footerButton"] },
+      "footerLeft": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["footerBadge", "footerUpdated"] },
+      "footerBadge": { "type": "Badge", "props": { "text": "WorkQ · Review", "tone": "muted" } },
+      "footerUpdated": { "type": "Caption", "props": { "text": "Updated 1h ago" } },
+      "footerButton": {
+        "type": "Button",
+        "props": { "label": "Send to WorkQ", "variant": "outline", "size": "sm" },
+        "on": {
+          "click": {
+            "action": "open_todo_modal",
+            "params": {
+              "title": "Review UTE-05 private-use trend",
+              "description": "UTE-05 private km is trending past minor-and-infrequent for the FBT tool-of-trade exemption — confirm classification with the accountant."
+            }
+          }
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}

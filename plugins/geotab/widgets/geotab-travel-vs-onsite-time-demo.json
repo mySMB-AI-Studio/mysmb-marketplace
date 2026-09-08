@@ -1,0 +1,110 @@
+{
+  "id": "geotab-travel-vs-onsite-time-demo",
+  "title": "Travel vs On-Site Time",
+  "description": "Today's on-site vs travel vs idle time across the field team, with a per-technician productive ratio. Demo version with static, fictional sample names.",
+  "category": "fleet-management",
+  "tags": ["geotab", "fleet", "field-service", "productivity", "demo"],
+  "keywords": ["travel time", "on site", "idle", "productive ratio", "field techs", "vehicles"],
+  "connectorsUsed": ["geotab"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 8, "rowSpan": 6 },
+    "min":       { "colSpan": 4, "rowSpan": 8 },
+    "max":       { "colSpan": 10, "rowSpan": 14 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "statBlock", "div1", "pillRow", "div2", "techLabel", "techRows", "noteSection", "footerDiv", "footerRow"]
+      },
+
+      "headerRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "BarChart2", "tone": "muted", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Travel vs On-Site Time", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Today · 8 field techs" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "statBlock": { "type": "Stack", "props": { "gap": "xs" }, "children": ["statOnSite", "statCaption"] },
+      "statOnSite": { "type": "Stat", "props": { "label": "On site", "value": "41.5h" } },
+      "statCaption": { "type": "Caption", "props": { "text": "12.2h in the van · 77% productive" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "pillRow": { "type": "Row", "props": { "gap": "sm" }, "children": ["pillOnSite", "pillTravel", "pillIdle"] },
+      "pillOnSite": { "type": "Badge", "props": { "text": "On site 41.5h", "tone": "muted", "variant": "solid" } },
+      "pillTravel": { "type": "Badge", "props": { "text": "Travel 12.2h", "tone": "muted" } },
+      "pillIdle": { "type": "Badge", "props": { "text": "Idle >20m 3.1h", "tone": "warning" } },
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "techLabel": { "type": "Eyebrow", "props": { "text": "Productive ratio by tech" } },
+      "techRows": { "type": "Stack", "props": { "gap": "sm" }, "children": ["t1", "t2", "t3", "t4", "t5"] },
+
+      "t1": { "type": "Stack", "props": { "gap": "xs" }, "children": ["t1Row", "t1BarRow"] },
+      "t1Row": { "type": "Row", "props": { "justify": "between" }, "children": ["t1Label", "t1Val"] },
+      "t1Label": { "type": "Text", "props": { "text": "A. Rivera", "size": "sm" } },
+      "t1Val": { "type": "Text", "props": { "text": "88%", "size": "sm", "weight": "medium" } },
+      "t1BarRow": { "type": "Row", "props": {}, "children": ["t1Bar"] },
+      "t1Bar": { "type": "ProgressBar", "props": { "value": 88, "tone": { "$computed": "geotab_productivity_tone", "args": { "value": 88 } } } },
+
+      "t2": { "type": "Stack", "props": { "gap": "xs" }, "children": ["t2Row", "t2BarRow"] },
+      "t2Row": { "type": "Row", "props": { "justify": "between" }, "children": ["t2Label", "t2Val"] },
+      "t2Label": { "type": "Text", "props": { "text": "K. Chen", "size": "sm" } },
+      "t2Val": { "type": "Text", "props": { "text": "84%", "size": "sm", "weight": "medium" } },
+      "t2BarRow": { "type": "Row", "props": {}, "children": ["t2Bar"] },
+      "t2Bar": { "type": "ProgressBar", "props": { "value": 84, "tone": { "$computed": "geotab_productivity_tone", "args": { "value": 84 } } } },
+
+      "t3": { "type": "Stack", "props": { "gap": "xs" }, "children": ["t3Row", "t3BarRow"] },
+      "t3Row": { "type": "Row", "props": { "justify": "between" }, "children": ["t3Label", "t3Val"] },
+      "t3Label": { "type": "Text", "props": { "text": "M. Novak", "size": "sm" } },
+      "t3Val": { "type": "Text", "props": { "text": "79%", "size": "sm", "weight": "medium" } },
+      "t3BarRow": { "type": "Row", "props": {}, "children": ["t3Bar"] },
+      "t3Bar": { "type": "ProgressBar", "props": { "value": 79, "tone": { "$computed": "geotab_productivity_tone", "args": { "value": 79 } } } },
+
+      "t4": { "type": "Stack", "props": { "gap": "xs" }, "children": ["t4Row", "t4BarRow"] },
+      "t4Row": { "type": "Row", "props": { "justify": "between" }, "children": ["t4Label", "t4Val"] },
+      "t4Label": { "type": "Text", "props": { "text": "D. Whitfield", "size": "sm" } },
+      "t4Val": { "type": "Text", "props": { "text": "68%", "size": "sm", "weight": "medium" } },
+      "t4BarRow": { "type": "Row", "props": {}, "children": ["t4Bar"] },
+      "t4Bar": { "type": "ProgressBar", "props": { "value": 68, "tone": { "$computed": "geotab_productivity_tone", "args": { "value": 68 } } } },
+
+      "t5": { "type": "Stack", "props": { "gap": "xs" }, "children": ["t5Row", "t5BarRow"] },
+      "t5Row": { "type": "Row", "props": { "justify": "between" }, "children": ["t5Label", "t5Val"] },
+      "t5Label": { "type": "Text", "props": { "text": "S. Park", "size": "sm" } },
+      "t5Val": { "type": "Text", "props": { "text": "61%", "size": "sm", "weight": "medium" } },
+      "t5BarRow": { "type": "Row", "props": {}, "children": ["t5Bar"] },
+      "t5Bar": { "type": "ProgressBar", "props": { "value": 61, "tone": { "$computed": "geotab_productivity_tone", "args": { "value": 61 } } } },
+
+      "noteSection": { "type": "Section", "props": { "variant": "muted" }, "children": ["noteCaption"] },
+      "noteCaption": { "type": "Caption", "props": { "text": "S. Park covered four suburbs today against D. Whitfield's two — a routing question, not a performance one." } },
+
+      "footerDiv": { "type": "Divider", "props": {} },
+      "footerRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["footerLeft", "footerButton"] },
+      "footerLeft": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["footerBadge", "footerUpdated"] },
+      "footerBadge": { "type": "Badge", "props": { "text": "WorkQ · Auto", "tone": "muted" } },
+      "footerUpdated": { "type": "Caption", "props": { "text": "Updated 3m ago" } },
+      "footerButton": {
+        "type": "Button",
+        "props": { "label": "Send to WorkQ", "variant": "outline", "size": "sm" },
+        "on": {
+          "click": {
+            "action": "open_todo_modal",
+            "params": {
+              "title": "Review routing — S. Park vs D. Whitfield",
+              "description": "S. Park covered four suburbs today against D. Whitfield's two. Likely a routing/coverage question, not a performance issue — worth a quick look."
+            }
+          }
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}
