@@ -1,0 +1,102 @@
+{
+  "id": "geotab-vehicles-on-site-now-demo",
+  "title": "Vehicles On Site Now",
+  "description": "Live geofence positions — which vehicles are on a client site, in transit, or unaccounted for right now, with dwell time per geofence. Demo version with static data.",
+  "category": "fleet-management",
+  "tags": ["geotab", "fleet", "geofence", "live-tracking", "demo"],
+  "keywords": ["geofence", "on site", "dwell time", "vehicle location", "live"],
+  "connectorsUsed": ["geotab"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 6 },
+    "min":       { "colSpan": 4, "rowSpan": 8 },
+    "max":       { "colSpan": 10, "rowSpan": 14 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "statRow", "div1", "pillRow", "div2", "geofenceLabel", "geofenceRows"]
+      },
+
+      "headerRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "Truck", "tone": "muted", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Vehicles On Site Now", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Live geofence positions" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "statRow": { "type": "Stack", "props": { "gap": "xs" }, "children": ["statOnSite"] },
+      "statOnSite": { "type": "Stat", "props": { "label": "On a client site", "value": "7 of 11" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "pillRow": { "type": "Row", "props": { "gap": "sm" }, "children": ["pillOnSite", "pillTransit", "pillUnaccounted"] },
+      "pillOnSite": { "type": "Badge", "props": { "text": "On site 7", "tone": "muted", "variant": "solid" } },
+      "pillTransit": { "type": "Badge", "props": { "text": "In transit 3", "tone": "muted" } },
+      "pillUnaccounted": { "type": "Badge", "props": { "text": "Unaccounted 1", "tone": "warning" } },
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "geofenceLabel": { "type": "Eyebrow", "props": { "text": "Dwell time by geofence" } },
+      "geofenceRows": { "type": "Stack", "props": { "gap": "sm" }, "children": ["g1", "g2", "g3", "g4", "g5"] },
+
+      "g1": { "type": "Stack", "props": { "gap": "xs" }, "children": ["g1Row", "g1BarRow"] },
+      "g1Row": { "type": "Row", "props": { "justify": "between" }, "children": ["g1Label", "g1Val"] },
+      "g1Label": { "type": "Text", "props": { "text": "Wentworth Pt Lot 4", "size": "sm" } },
+      "g1Val": {
+        "type": "Text",
+        "props": { "text": { "$computed": "geotab_format_duration_hm", "args": { "minutes": 250 } }, "size": "sm", "weight": "medium" }
+      },
+      "g1BarRow": { "type": "Row", "props": {}, "children": ["g1Bar"] },
+      "g1Bar": { "type": "ProgressBar", "props": { "value": 100, "tone": { "$computed": "geotab_geofence_status_tone", "args": { "label": "Wentworth Pt Lot 4" } } } },
+
+      "g2": { "type": "Stack", "props": { "gap": "xs" }, "children": ["g2Row", "g2BarRow"] },
+      "g2Row": { "type": "Row", "props": { "justify": "between" }, "children": ["g2Label", "g2Val"] },
+      "g2Label": { "type": "Text", "props": { "text": "Rouse Hill Plaza", "size": "sm" } },
+      "g2Val": {
+        "type": "Text",
+        "props": { "text": { "$computed": "geotab_format_duration_hm", "args": { "minutes": 182 } }, "size": "sm", "weight": "medium" }
+      },
+      "g2BarRow": { "type": "Row", "props": {}, "children": ["g2Bar"] },
+      "g2Bar": { "type": "ProgressBar", "props": { "value": 73, "tone": { "$computed": "geotab_geofence_status_tone", "args": { "label": "Rouse Hill Plaza" } } } },
+
+      "g3": { "type": "Stack", "props": { "gap": "xs" }, "children": ["g3Row", "g3BarRow"] },
+      "g3Row": { "type": "Row", "props": { "justify": "between" }, "children": ["g3Label", "g3Val"] },
+      "g3Label": { "type": "Text", "props": { "text": "Norwest Fitout", "size": "sm" } },
+      "g3Val": {
+        "type": "Text",
+        "props": { "text": { "$computed": "geotab_format_duration_hm", "args": { "minutes": 129 } }, "size": "sm", "weight": "medium" }
+      },
+      "g3BarRow": { "type": "Row", "props": {}, "children": ["g3Bar"] },
+      "g3Bar": { "type": "ProgressBar", "props": { "value": 52, "tone": { "$computed": "geotab_geofence_status_tone", "args": { "label": "Norwest Fitout" } } } },
+
+      "g4": { "type": "Stack", "props": { "gap": "xs" }, "children": ["g4Row", "g4BarRow"] },
+      "g4Row": { "type": "Row", "props": { "justify": "between" }, "children": ["g4Label", "g4Val"] },
+      "g4Label": { "type": "Text", "props": { "text": "Blacktown Depot", "size": "sm" } },
+      "g4Val": {
+        "type": "Text",
+        "props": { "text": { "$computed": "geotab_format_duration_hm", "args": { "minutes": 78 } }, "size": "sm", "weight": "medium" }
+      },
+      "g4BarRow": { "type": "Row", "props": {}, "children": ["g4Bar"] },
+      "g4Bar": { "type": "ProgressBar", "props": { "value": 31, "tone": { "$computed": "geotab_geofence_status_tone", "args": { "label": "Blacktown Depot" } } } },
+
+      "g5": { "type": "Stack", "props": { "gap": "xs" }, "children": ["g5Row", "g5BarRow"] },
+      "g5Row": { "type": "Row", "props": { "justify": "between" }, "children": ["g5Label", "g5Val"] },
+      "g5Label": { "type": "Text", "props": { "text": "Unmapped · Prospect", "size": "sm" } },
+      "g5Val": {
+        "type": "Text",
+        "props": { "text": { "$computed": "geotab_format_duration_hm", "args": { "minutes": 54 } }, "size": "sm", "weight": "medium" }
+      },
+      "g5BarRow": { "type": "Row", "props": {}, "children": ["g5Bar"] },
+      "g5Bar": { "type": "ProgressBar", "props": { "value": 22, "tone": { "$computed": "geotab_geofence_status_tone", "args": { "label": "Unmapped · Prospect" } } } }
+
+    }
+  },
+  "status": "published"
+}
