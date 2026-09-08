@@ -522,6 +522,23 @@ const priority_label = (args) => {
     return raw.replace(/\S+/g, (word) => word[0].toUpperCase() + word.slice(1).toLowerCase());
 };
 /**
+ * Display label for a Jira issue's resolution. `fields.resolution` is `null`
+ * on any issue that hasn't been resolved yet -- expected to be most rows on
+ * the Tasks Assigned tile, since that tile's own JQL already excludes
+ * Done-category work. Falls back to "Unresolved" rather than a blank label,
+ * mirroring `atlassian_priority_label`'s "No priority" fallback above.
+ *
+ * Args: { value } -- a Jira issue's `fields.resolution.name` (may be
+ * undefined/null).
+ *
+ * Spec example:
+ *   { "$computed": "atlassian_resolution_label", "args": { "value": { "$item": "fields/resolution/name" } } }
+ */
+const resolution_label = (args) => {
+    const raw = typeof args.value === 'string' ? args.value.trim() : '';
+    return raw || 'Unresolved';
+};
+/**
  * Display name for a Jira `fields.assignee`/`fields.reporter` person object
  * -- `null` for an unassigned issue's `assignee` is a normal, common case
  * (not a data error), so this returns "Unassigned" rather than a blank
@@ -787,6 +804,7 @@ const elements = {
         sla_pct_label,
         priority_tone,
         priority_label,
+        resolution_label,
         display_name,
         issue_url,
         workload_by_agent,

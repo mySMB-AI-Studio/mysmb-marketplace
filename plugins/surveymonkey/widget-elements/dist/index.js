@@ -306,10 +306,9 @@ const flatten_surveys_in_progress = (args) => {
             stat_avg_completion: '',
         };
     });
-    const avgComp = pctCount > 0 ? `${Math.round(totalPct / pctCount)}%` : '--';
     rows[0].stat_active = String(raw.length);
     rows[0].stat_total_responses = totalResponses.toLocaleString();
-    rows[0].stat_avg_completion = avgComp;
+    rows[0].stat_avg_completion = Math.round(totalResponses / raw.length).toLocaleString();
     return rows;
 };
 /**
@@ -472,6 +471,32 @@ const flatten_recent_survey = (args) => {
         response_count_label: rc.toLocaleString(),
     };
 };
+/**
+ * Computes summary stats for the Survey Overview tile.
+ * Returns: total_label, total_responses, avg_responses, in_progress_legend,
+ *          completed_legend, upcoming_legend, bar_template (CSS fr units for segmented bar).
+ *
+ * Args: { value: array }
+ */
+const flatten_survey_overview = (args) => {
+    const surveys = Array.isArray(args.value) ? args.value : [];
+    const total = surveys.length;
+    if (total === 0)
+        return {};
+    const open = surveys.filter(s => String(s.survey_state ?? '').toUpperCase() === 'OPEN').length;
+    const closed = surveys.filter(s => String(s.survey_state ?? '').toUpperCase() === 'CLOSED').length;
+    const draft = surveys.filter(s => String(s.survey_state ?? '').toUpperCase() === 'DRAFT').length;
+    const totalResponses = surveys.reduce((sum, s) => sum + Number(s.response_count ?? 0), 0);
+    return {
+        total_label: String(total),
+        total_responses: totalResponses.toLocaleString(),
+        avg_responses: Math.round(totalResponses / total).toLocaleString(),
+        in_progress_legend: `In Progress · ${open}`,
+        completed_legend: `Completed · ${closed}`,
+        upcoming_legend: `Upcoming · ${draft}`,
+        bar_template: `${open || 0.01}fr ${closed || 0.01}fr ${draft || 0.01}fr`,
+    };
+};
 const elements = {
     slug: 'surveymonkey',
     functions: {
@@ -488,6 +513,7 @@ const elements = {
         flatten_closed_surveys,
         flatten_recent_survey,
         flatten_upcoming_calendar,
+        flatten_survey_overview,
     },
 };
 export default elements;
