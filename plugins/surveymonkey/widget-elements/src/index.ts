@@ -252,6 +252,9 @@ const flatten_surveys_in_progress: ComputedFunction = (args) => {
     : allSurveys;
   if (raw.length === 0) return [];
 
+  // For surveys without a goal, use the max response_count in the set as the denominator
+  const maxRc = raw.reduce((m, s) => Math.max(m, Number(s.response_count ?? 0)), 0);
+
   let totalResponses = 0;
   let totalPct = 0;
   let pctCount = 0;
@@ -260,6 +263,9 @@ const flatten_surveys_in_progress: ComputedFunction = (args) => {
     const rc = Number(s.response_count ?? 0);
     const goal = Number(s.max_responses ?? s.response_limit ?? 0);
     totalResponses += rc;
+
+    const rawName = String(s.collector_name ?? '');
+    const audience = /^(web link|email invitation|email|target audience)\s*\d*$/i.test(rawName.trim()) ? '' : rawName;
 
     const responsesLabel = goal > 0
       ? `${rc.toLocaleString()} / ${goal.toLocaleString()} responses`
@@ -273,11 +279,6 @@ const flatten_surveys_in_progress: ComputedFunction = (args) => {
         const d = new Date(ms);
         closesLabel = `Closes ${MONTH_ABBR[d.getMonth()]} ${d.getDate()}`;
       }
-    }
-
-    if (goal > 0) {
-      totalPct += Math.round((rc / goal) * 100);
-      pctCount++;
     }
 
     let statusLabel = '';
@@ -300,20 +301,28 @@ const flatten_surveys_in_progress: ComputedFunction = (args) => {
       }
     }
 
-    const progressPct = goal > 0 ? Math.min(100, Math.round((rc / goal) * 100)) : 0;
+    // With a goal: show actual progress. Without: show relative to max in set.
+    const progressPct = goal > 0
+      ? Math.min(100, Math.round((rc / goal) * 100))
+      : maxRc > 0 ? Math.round((rc / maxRc) * 100) : 0;
     const progressTone = statusTone !== 'muted' ? statusTone : 'success';
+
+    if (goal > 0) {
+      totalPct += Math.round((rc / goal) * 100);
+      pctCount++;
+    }
 
     return {
       id:                   String(s.id ?? ''),
       title:                String(s.title ?? ''),
-      audience:             String(s.collector_name ?? ''),
+      audience:             audience,
       responses_label:      responsesLabel,
       closes_label:         closesLabel,
       status_label:         statusLabel,
       status_tone:          statusTone,
       progress_pct:         progressPct,
       progress_tone:        progressTone,
-      has_progress:         goal > 0,
+      has_progress:         true,
       stat_active:          '',
       stat_total_responses: '',
       stat_avg_completion:  '',
