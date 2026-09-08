@@ -587,6 +587,116 @@ const display_name = (args) => {
  */
 const issue_url = () => 'https://home.atlassian.com';
 /**
+ * Tone for a Jira issue's status, keyed off `fields.status.statusCategory.key`
+ * rather than the free-text status name (a site can rename "Open" to
+ * anything; the three category keys -- new/indeterminate/done -- are stable
+ * across every Jira site). Built for the Incidents Open tile, whose rows are
+ * already pre-filtered to `statusCategory != Done`, so in practice only
+ * `new`/`indeterminate` ever render here -- `done` is kept for completeness
+ * (defensive, in case a caller ever removes that filter) rather than left to
+ * fall through to the `muted` default.
+ *
+ * Deliberately diverges from TILE-DISPLAY-STANDARDS.md §7's default
+ * progression-field rule (which would make every open stage `info`): an
+ * incident that hasn't been triaged yet (`new`) is shown as `warning`, since
+ * an untouched incident is worse than one already being worked
+ * (`indeterminate`, `info`) -- a deliberate, disclosed decision for this
+ * incident-specific tile, not a general status-tone rule.
+ *
+ * Args: { value } -- a Jira issue's `fields.status.statusCategory.key`.
+ *
+ * Spec example:
+ *   { "$computed": "atlassian_status_tone", "args": { "value": { "$item": "fields/status/statusCategory/key" } } }
+ */
+const status_tone = (args) => {
+    const key = typeof args.value === 'string' ? args.value.trim().toLowerCase() : '';
+    if (key === 'new')
+        return 'warning';
+    if (key === 'indeterminate')
+        return 'info';
+    if (key === 'done')
+        return 'success';
+    return 'muted';
+};
+/**
+ * Severity score for a Jira issue's priority, used only by `sort_issues`
+ * below -- higher score = more urgent. Unlike `priority_tone`'s 3-tier
+ * display palette, sorting needs every distinct priority level ordered
+ * relative to each other (Highest..Lowest), not collapsed into a shared
+ * tone bucket.
+ */
+function prioritySeverity(name) {
+    const v = typeof name === 'string' ? name.trim().toLowerCase() : '';
+    if (v === 'highest')
+        return 5;
+    if (v === 'high')
+        return 4;
+    if (v === 'medium')
+        return 3;
+    if (v === 'low')
+        return 2;
+    if (v === 'lowest')
+        return 1;
+    return 0; // no priority set
+}
+/**
+ * Sort an array of Jira issues (as returned by `search_issues`) by a packed
+ * "field|dir" key string -- direct port of Stripe's `sort_by_key` (see
+ * `plugins/stripe/widget-elements/src/index.ts`) adapted for issue objects,
+ * where the two sortable fields (`priority`, `created`) each need their own
+ * value-extraction logic rather than a generic `obj[field]` lookup: priority
+ * sorts by severity rank (`prioritySeverity`, since Jira's raw priority
+ * *name* has no numeric order of its own), created sorts by parsed
+ * timestamp. Both resolve to a plain number, so one comparator handles both
+ * -- `desc` always means "most" first (highest severity, or newest date),
+ * matching this tile's default ("priority|desc" = highest priority first).
+ *
+ * Args: { value: unknown[], key: string } -- `value` is the issues array,
+ * `key` is "priority|desc" / "priority|asc" / "created|desc" / "created|asc".
+ *
+ * Spec example:
+ *   { "$computed": "atlassian_sort_issues", "args": { "value": { "$state": "/atlassian/search_issues/issues" }, "key": { "$state": "/ui/sortKey" } } }
+ */
+const sort_issues = (args) => {
+    const arr = Array.isArray(args.value) ? [...args.value] : [];
+    const keyStr = String(args.key ?? 'priority|desc');
+    const [field, dir] = keyStr.split('|');
+    const valueOf = (issue) => {
+        if (field === 'created') {
+            const parsed = issue.fields?.created ? Date.parse(issue.fields.created) : NaN;
+            return Number.isFinite(parsed) ? parsed : 0;
+        }
+        return prioritySeverity(issue.fields?.priority?.name);
+    };
+    return arr.sort((a, b) => {
+        const diff = valueOf(b) - valueOf(a); // "most" first by default
+        return dir === 'asc' ? -diff : diff;
+    });
+};
+/**
+ * Set the active sort field for the Incidents Open tile's "Sort by" control.
+ * Direct port of Stripe's `set_sort_field` (same file reference as
+ * `sort_issues` above) -- clicking the already-active field's button toggles
+ * its direction (asc <-> desc); clicking a different field switches to it at
+ * `desc` (matching this tile's own default direction, "most urgent"/"newest"
+ * first, rather than resetting to `asc` the way Stripe's version does for
+ * its own "name" default).
+ *
+ * Args: { current: string, field: string } -- `current` is the packed
+ * "field|dir" state string, `field` is the clicked button's target field.
+ *
+ * Spec example:
+ *   { "$computed": "atlassian_set_sort_field", "args": { "current": { "$state": "/ui/sortKey" }, "field": "priority" } }
+ */
+const set_sort_field = (args) => {
+    const current = String(args.current ?? '');
+    const field = String(args.field ?? '');
+    const [currentField, currentDir] = current.split('|');
+    if (currentField === field)
+        return `${field}|${currentDir === 'asc' ? 'desc' : 'asc'}`;
+    return `${field}|desc`;
+};
+/**
  * Per-agent workload breakdown for the Jira Workload tile (WorkQ ticket:
  * "Tile: Jira Workload" -- same data points as Jira's own native Workload
  * report: Agent, Work Items In Progress). Jira's Workload report is itself
@@ -807,6 +917,9 @@ const elements = {
         resolution_label,
         display_name,
         issue_url,
+        status_tone,
+        sort_issues,
+        set_sort_field,
         workload_by_agent,
     },
     actions: {

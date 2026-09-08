@@ -1,0 +1,328 @@
+{
+  "id": "atlassian-incidents-open",
+  "title": "Incidents Open",
+  "description": "Open incidents across all of Jira, site-wide (not scoped to one project). Shows Work Item, Space, Assignee, Priority, and Status per row, sortable by Priority (default) or Created.",
+  "category": "work-management",
+  "tags": ["atlassian", "jira", "incidents", "open", "priority", "status", "triage", "project-management"],
+  "keywords": ["jira incidents", "open incidents", "incident tracker", "priority sort", "created sort", "work items", "assignee", "status", "space"],
+  "connectorsUsed": ["atlassian"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 8 },
+    "min": { "colSpan": 5, "rowSpan": 6 },
+    "max": { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "atlassian",
+    "tool": "search_issues",
+    "params": {
+      "jql": "issuetype = \"[System] Incident\" AND statusCategory != Done ORDER BY priority DESC",
+      "max_results": 20,
+      "fields": ["summary", "project", "assignee", "priority", "status", "created"]
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"],
+        "watch": {
+          "/atlassian/search_issues/issues": [
+            {
+              "action": "setState",
+              "params": { "statePath": "/ui/sortKey", "value": "priority|desc" }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sorted",
+                "value": {
+                  "$computed": "atlassian_sort_issues",
+                  "args": {
+                    "value": { "$state": "/atlassian/search_issues/issues" },
+                    "key": "priority|desc"
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/sortKey": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sorted",
+                "value": {
+                  "$computed": "atlassian_sort_issues",
+                  "args": {
+                    "value": { "$state": "/atlassian/search_issues/issues" },
+                    "key": { "$state": "/ui/sortKey" }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["headerRow"]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "justify": "between" },
+        "children": ["titleGroup", "countBadge"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "AlertTriangle", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Incidents Open", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": { "text": "Jira · Open incidents, all projects" }
+      },
+      "countBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} open",
+              "n": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/atlassian/search_issues/issues" } }
+              }
+            }
+          },
+          "tone": "muted",
+          "variant": "soft"
+        },
+        "visible": { "$state": "/atlassian/search_issues/issues/0" }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "content"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/atlassian.search_issues" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No open incidents across any Jira project." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/atlassian.search_issues", "not": true },
+            { "$state": "/atlassian/search_issues/issues/0", "not": true }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sortRow", "columnHeaders", "list"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/atlassian.search_issues", "not": true },
+            { "$state": "/atlassian/search_issues/issues/0" }
+          ]
+        }
+      },
+      "sortRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "justify": "end" },
+        "children": ["sortLabel", "sortPriorityBtn", "sortCreatedBtn"]
+      },
+      "sortLabel": {
+        "type": "Caption",
+        "props": { "text": "Sort by", "tone": "muted" }
+      },
+      "sortPriorityBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Priority",
+          "leadingIcon": "ArrowUpDown",
+          "variant": "ghost",
+          "size": "sm",
+          "ariaLabel": "Sort by priority"
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "atlassian_set_sort_field",
+                "args": { "current": { "$state": "/ui/sortKey" }, "field": "priority" }
+              }
+            }
+          }
+        }
+      },
+      "sortCreatedBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Created",
+          "leadingIcon": "ArrowUpDown",
+          "variant": "ghost",
+          "size": "sm",
+          "ariaLabel": "Sort by date created"
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "atlassian_set_sort_field",
+                "args": { "current": { "$state": "/ui/sortKey" }, "field": "created" }
+              }
+            }
+          }
+        }
+      },
+      "columnHeaders": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "template": "minmax(0, 1fr) 6rem 7.5rem 5.5rem 6.5rem",
+          "padded": true
+        },
+        "children": ["headerWorkItem", "headerSpace", "headerAssignee", "headerPriority", "headerStatus"]
+      },
+      "headerWorkItem": { "type": "Eyebrow", "props": { "text": "Work Item" } },
+      "headerSpace": { "type": "Eyebrow", "props": { "text": "Space" } },
+      "headerAssignee": { "type": "Eyebrow", "props": { "text": "Assignee" } },
+      "headerPriority": {
+        "type": "Row",
+        "props": { "justify": "center" },
+        "children": ["headerPriorityLabel"]
+      },
+      "headerPriorityLabel": { "type": "Eyebrow", "props": { "text": "Priority" } },
+      "headerStatus": {
+        "type": "Row",
+        "props": { "justify": "center" },
+        "children": ["headerStatusLabel"]
+      },
+      "headerStatusLabel": { "type": "Eyebrow", "props": { "text": "Status" } },
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": { "statePath": "/ui/sorted", "key": "id" }
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true,
+          "template": "minmax(0, 1fr) 6rem 7.5rem 5.5rem 6.5rem"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": { "$computed": "atlassian_issue_url", "args": {} },
+              "target": "_blank"
+            }
+          }
+        },
+        "children": ["workItemStack", "spaceText", "assigneeText", "priorityCell", "statusCell"]
+      },
+      "workItemStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["workItemKey", "workItemSummary"]
+      },
+      "workItemKey": {
+        "type": "Caption",
+        "props": { "text": { "$item": "key" } }
+      },
+      "workItemSummary": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "fields/summary" },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "spaceText": {
+        "type": "Caption",
+        "props": { "text": { "$item": "fields/project/name" }, "truncate": true }
+      },
+      "assigneeText": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "atlassian_display_name",
+            "args": { "person": { "$item": "fields/assignee" } }
+          },
+          "truncate": true
+        }
+      },
+      "priorityCell": {
+        "type": "Row",
+        "props": { "justify": "center" },
+        "children": ["priorityBadge"]
+      },
+      "priorityBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "atlassian_priority_label",
+            "args": { "value": { "$item": "fields/priority/name" } }
+          },
+          "tone": {
+            "$computed": "atlassian_priority_tone",
+            "args": { "value": { "$item": "fields/priority/name" } }
+          },
+          "variant": "soft"
+        }
+      },
+      "statusCell": {
+        "type": "Row",
+        "props": { "justify": "center" },
+        "children": ["statusBadge"]
+      },
+      "statusBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "fields/status/name" },
+          "tone": {
+            "$computed": "atlassian_status_tone",
+            "args": { "value": { "$item": "fields/status/statusCategory/key" } }
+          },
+          "variant": "soft"
+        }
+      }
+    }
+  },
+  "status": "draft"
+}
