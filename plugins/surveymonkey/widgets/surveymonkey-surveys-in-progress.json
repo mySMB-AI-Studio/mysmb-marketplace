@@ -14,8 +14,8 @@
   },
   "dataProvider": {
     "mcp": "surveymonkey",
-    "tool": "list_surveys",
-    "params": { "per_page": 100, "sort_by": "date_modified", "sort_order": "DESC", "include": "response_count,date_created,date_modified" }
+    "tool": "list_surveys_in_progress",
+    "params": { "days_modified": 60, "max_surveys": 100 }
   },
   "spec": {
     "root": "card",
@@ -25,14 +25,14 @@
         "props": {},
         "children": ["header", "body"],
         "watch": {
-          "/surveymonkey/list_surveys/data": [
+          "/surveymonkey/list_surveys_in_progress/data": [
             {
               "action": "setState",
               "params": {
                 "statePath": "/ui/rows",
                 "value": {
                   "$computed": "surveymonkey_flatten_surveys_in_progress",
-                  "args": { "value": { "$state": "/surveymonkey/list_surveys/data" } }
+                  "args": { "value": { "$state": "/surveymonkey/list_surveys_in_progress/data" } }
                 }
               }
             }
@@ -55,7 +55,7 @@
         "type": "Stack",
         "props": { "gap": "sm" },
         "children": ["sk1", "sk2", "sk3"],
-        "visible": { "$state": "/_loading/surveymonkey.list_surveys" }
+        "visible": { "$state": "/_loading/surveymonkey.list_surveys_in_progress" }
       },
       "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
       "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
@@ -66,7 +66,7 @@
         "props": { "message": "No surveys currently collecting responses." },
         "visible": {
           "$and": [
-            { "$state": "/_loading/surveymonkey.list_surveys", "not": true },
+            { "$state": "/_loading/surveymonkey.list_surveys_in_progress", "not": true },
             { "$state": "/ui/rows/0", "not": true }
           ]
         }
@@ -78,7 +78,7 @@
         "children": ["statsRow", "surveyList"],
         "visible": {
           "$and": [
-            { "$state": "/_loading/surveymonkey.list_surveys", "not": true },
+            { "$state": "/_loading/surveymonkey.list_surveys_in_progress", "not": true },
             { "$state": "/ui/rows/0" }
           ]
         }
@@ -135,7 +135,7 @@
       "surveyRow": {
         "type": "Stack",
         "props": { "gap": "xs" },
-        "children": ["surveyTopRow", "surveyProgress", "surveyMetaRow", "surveyDivider"]
+        "children": ["surveyTopRow", "surveyProgressRow", "surveyMetaRow", "surveyDivider"]
       },
       "surveyTopRow": {
         "type": "Row",
@@ -161,10 +161,15 @@
         "props": { "text": { "$item": "status_label" }, "tone": { "$item": "status_tone" }, "variant": "soft" },
         "visible": { "$item": "status_label" }
       },
+      "surveyProgressRow": {
+        "type": "Row",
+        "props": {},
+        "children": ["surveyProgress"],
+        "visible": { "$item": "has_progress" }
+      },
       "surveyProgress": {
         "type": "ProgressBar",
-        "props": { "value": { "$item": "progress_pct" }, "tone": { "$item": "progress_tone" } },
-        "visible": { "$item": "has_progress" }
+        "props": { "value": { "$item": "progress_pct" }, "tone": { "$item": "progress_tone" } }
       },
       "surveyMetaRow": {
         "type": "Row",
