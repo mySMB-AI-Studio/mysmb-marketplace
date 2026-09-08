@@ -1,0 +1,379 @@
+{
+  "id": "atlassian-tasks-assigned",
+  "title": "Tasks Assigned",
+  "description": "Tile: Tasks Assigned - Jira (WorkQ ask: 'a simple list of tasks/work that is assigned to you in Jira'). JQL `assignee = currentUser() AND statusCategory != Done ORDER BY priority DESC` -- assigned-to-me only (unlike this plugin's Open Service Requests tile, which deliberately also includes unassigned work), excluding Done/closed-category statuses, highest priority first. On a shared/admin connection this reflects whoever connected Jira, not necessarily the tenant as a whole -- same caveat as Tasks Due Today. Each row shows the work item's key + title (Work) and its reporter (via `atlassian_display_name`, falling back to 'Unassigned' if somehow reporter-less) directly in the list per the ticket's explicit ask, plus a priority dot (`atlassian_priority_tone`). Clicking a row opens an overlay with the full popup detail set requested: Assignee, Reporter, Priority, Status, Resolution, Created, Updated, and the Project (space) it belongs to, plus an 'Open Jira' link -- mirroring Open Service Requests' exact click-through mechanics (state captured via `$computed`-wrapped `$item` values, since a bare `$item` inside an action param resolves to a state path, not its value). Created/Updated are formatted at click time via `format_date` (`dd-mmm-yy` per TILE-DISPLAY-STANDARDS.md #1). **Known gap, carried over from Open Service Requests/Service Desk Queue, not new to this tile:** `atlassian_issue_url` returns a fixed, tenant-agnostic `https://home.atlassian.com` (no dataProvider-chaining support to resolve a real per-tenant site domain), so the overlay's hint tells the viewer to search the issue key once there rather than deep-linking -- the same honest trade-off already accepted on this plugin's other tiles. The Project field is shown as plain text (name + key), not a second fabricated link, for the same reason. The Resolution field (`fields/resolution/name`, null on any still-open issue -- expected to be most rows here, since Done-category work is excluded) goes through a new `atlassian_resolution_label` helper added alongside this tile, mirroring `atlassian_priority_label`'s 'No priority' fallback, so it reads 'Unresolved' rather than blank. Confirmed live in the tile harness against real sandbox data (KAN-1 'Task 1', KAN-3 'Subtask 2.1', both reported by Sean Baker) -- list, sort order, and all 8 popup fields render correctly. The overlay's 'Open Jira' button could not be click-tested in the harness itself -- the harness deliberately doesn't wire MyHub's system-level actions (`open_url` included; see `tile-harness/harness/src/system.tsx`), only MCP-tool actions, so this is a harness gap affecting every tile using `open_url` (including the already-published Open Service Requests/Service Desk Queue tiles), not something specific to this one. Built entirely on the existing `search_issues` tool -- no new server-side MCP tool needed.",
+  "category": "work-management",
+  "tags": ["atlassian", "jira", "tasks", "issues", "assigned", "priority", "project-management"],
+  "keywords": ["jira tasks assigned", "my tasks", "assigned to me", "priority sort", "work items", "reporter"],
+  "connectorsUsed": ["atlassian"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 6 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "atlassian",
+    "tool": "search_issues",
+    "params": {
+      "jql": "assignee = currentUser() AND statusCategory != Done ORDER BY priority DESC",
+      "max_results": 20,
+      "fields": ["summary", "reporter", "assignee", "priority", "status", "resolution", "created", "updated", "project"]
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body", "overlay"]
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["headerRow"]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "justify": "between" },
+        "children": ["titleGroup", "countBadge"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "ClipboardCheck", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Tasks Assigned", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": { "text": "Jira · Assigned to me, sorted by priority" }
+      },
+      "countBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} assigned",
+              "n": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/atlassian/search_issues/issues" } }
+              }
+            }
+          },
+          "tone": "muted",
+          "variant": "soft"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "taskList"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/atlassian.search_issues" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No open tasks assigned to you." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/atlassian.search_issues", "not": true },
+            { "$state": "/atlassian/search_issues/issues/0", "not": true }
+          ]
+        }
+      },
+      "taskList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["taskRow"],
+        "repeat": { "statePath": "/atlassian/search_issues/issues", "key": "id" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/atlassian.search_issues", "not": true },
+            { "$state": "/atlassian/search_issues/issues/0" }
+          ]
+        }
+      },
+      "taskRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "hover": true, "clickable": true },
+        "children": ["taskDot", "taskStack"],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/key",
+                "value": { "$computed": "identity", "args": { "value": { "$item": "key" } } }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/summary",
+                "value": { "$computed": "identity", "args": { "value": { "$item": "fields/summary" } } }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/status",
+                "value": { "$computed": "identity", "args": { "value": { "$item": "fields/status/name" } } }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/reporter",
+                "value": {
+                  "$computed": "atlassian_display_name",
+                  "args": { "person": { "$item": "fields/reporter" } }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/assignee",
+                "value": {
+                  "$computed": "atlassian_display_name",
+                  "args": { "person": { "$item": "fields/assignee" } }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/priorityLabel",
+                "value": {
+                  "$computed": "atlassian_priority_label",
+                  "args": { "value": { "$item": "fields/priority/name" } }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/resolution",
+                "value": {
+                  "$computed": "atlassian_resolution_label",
+                  "args": { "value": { "$item": "fields/resolution/name" } }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/created",
+                "value": {
+                  "$computed": "format_date",
+                  "args": { "value": { "$item": "fields/created" }, "format": "dd-mmm-yy" }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/updated",
+                "value": {
+                  "$computed": "format_date",
+                  "args": { "value": { "$item": "fields/updated" }, "format": "dd-mmm-yy" }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/project",
+                "value": {
+                  "$computed": "fmt",
+                  "args": {
+                    "pattern": "{name} ({key})",
+                    "name": { "$item": "fields/project/name" },
+                    "key": { "$item": "fields/project/key" }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sel/issueUrl",
+                "value": { "$computed": "atlassian_issue_url", "args": {} }
+              }
+            }
+          ]
+        }
+      },
+      "taskDot": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$computed": "atlassian_priority_tone",
+            "args": { "value": { "$item": "fields/priority/name" } }
+          },
+          "size": "sm"
+        }
+      },
+      "taskStack": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["taskKey", "taskSummary", "taskReporter"]
+      },
+      "taskKey": {
+        "type": "Caption",
+        "props": { "text": { "$item": "key" } }
+      },
+      "taskSummary": {
+        "type": "Text",
+        "props": { "text": { "$item": "fields/summary" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "taskReporter": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Reported by {reporter}",
+              "reporter": {
+                "$computed": "atlassian_display_name",
+                "args": { "person": { "$item": "fields/reporter" } }
+              }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "overlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "visible": { "$state": "/ui/sel/key" },
+        "on": {
+          "backdropClick": { "action": "setState", "params": { "statePath": "/ui/sel/key", "value": "" } }
+        },
+        "children": ["ovStack"]
+      },
+      "ovStack": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": [
+          "ovHeader",
+          "ovDivider",
+          "ovStatus",
+          "ovReporter",
+          "ovAssignee",
+          "ovPriority",
+          "ovResolution",
+          "ovCreated",
+          "ovUpdated",
+          "ovProject",
+          "ovDivider2",
+          "ovActions"
+        ]
+      },
+      "ovHeader": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start", "gap": "sm" },
+        "children": ["ovTitleStack", "ovClose"]
+      },
+      "ovTitleStack": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["ovTitle", "ovSubtitle"]
+      },
+      "ovTitle": {
+        "type": "Heading",
+        "props": { "text": { "$state": "/ui/sel/summary" }, "level": "h3", "wrap": true }
+      },
+      "ovSubtitle": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/ui/sel/key" } }
+      },
+      "ovClose": {
+        "type": "OverlayClose",
+        "props": { "ariaLabel": "Close task details" },
+        "on": {
+          "click": { "action": "setState", "params": { "statePath": "/ui/sel/key", "value": "" } }
+        }
+      },
+      "ovDivider": { "type": "Divider", "props": {} },
+      "ovStatus": {
+        "type": "KeyValue",
+        "props": { "label": "Status", "value": { "$state": "/ui/sel/status" } }
+      },
+      "ovReporter": {
+        "type": "KeyValue",
+        "props": { "label": "Reporter", "value": { "$state": "/ui/sel/reporter" } }
+      },
+      "ovAssignee": {
+        "type": "KeyValue",
+        "props": { "label": "Assignee", "value": { "$state": "/ui/sel/assignee" } }
+      },
+      "ovPriority": {
+        "type": "KeyValue",
+        "props": { "label": "Priority", "value": { "$state": "/ui/sel/priorityLabel" } }
+      },
+      "ovResolution": {
+        "type": "KeyValue",
+        "props": { "label": "Resolution", "value": { "$state": "/ui/sel/resolution" } }
+      },
+      "ovCreated": {
+        "type": "KeyValue",
+        "props": { "label": "Created", "value": { "$state": "/ui/sel/created" } }
+      },
+      "ovUpdated": {
+        "type": "KeyValue",
+        "props": { "label": "Updated", "value": { "$state": "/ui/sel/updated" } }
+      },
+      "ovProject": {
+        "type": "KeyValue",
+        "props": { "label": "Project", "value": { "$state": "/ui/sel/project" } }
+      },
+      "ovDivider2": { "type": "Divider", "props": {} },
+      "ovActions": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center", "gap": "sm" },
+        "children": ["ovHint", "ovOpenBtn"]
+      },
+      "ovHint": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Search {key} once there", "key": { "$state": "/ui/sel/key" } }
+          },
+          "tone": "muted"
+        }
+      },
+      "ovOpenBtn": {
+        "type": "Button",
+        "props": { "label": "Open Jira", "variant": "primary", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": { "action": "open_url", "params": { "url": { "$state": "/ui/sel/issueUrl" }, "target": "_blank" } }
+        }
+      }
+    }
+  },
+  "status": "published"
+}
