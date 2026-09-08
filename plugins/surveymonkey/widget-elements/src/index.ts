@@ -518,6 +518,34 @@ const flatten_recent_survey: ComputedFunction = (args) => {
   };
 };
 
+/**
+ * Computes summary stats for the Survey Overview tile.
+ * Returns: total_label, total_responses, avg_responses, in_progress_legend,
+ *          completed_legend, upcoming_legend, bar_template (CSS fr units for segmented bar).
+ *
+ * Args: { value: array }
+ */
+const flatten_survey_overview: ComputedFunction = (args) => {
+  const surveys = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  const total = surveys.length;
+  if (total === 0) return {};
+
+  const open   = surveys.filter(s => String((s as Record<string, unknown>).survey_state ?? '').toUpperCase() === 'OPEN').length;
+  const closed = surveys.filter(s => String((s as Record<string, unknown>).survey_state ?? '').toUpperCase() === 'CLOSED').length;
+  const draft  = surveys.filter(s => String((s as Record<string, unknown>).survey_state ?? '').toUpperCase() === 'DRAFT').length;
+  const totalResponses = surveys.reduce((sum, s) => sum + Number((s as Record<string, unknown>).response_count ?? 0), 0);
+
+  return {
+    total_label:        String(total),
+    total_responses:    totalResponses.toLocaleString(),
+    avg_responses:      Math.round(totalResponses / total).toLocaleString(),
+    in_progress_legend: `In Progress · ${open}`,
+    completed_legend:   `Completed · ${closed}`,
+    upcoming_legend:    `Upcoming · ${draft}`,
+    bar_template:       `${open || 0.01}fr ${closed || 0.01}fr ${draft || 0.01}fr`,
+  };
+};
+
 const elements: PluginElementsModule = {
   slug: 'surveymonkey',
   functions: {
@@ -534,6 +562,7 @@ const elements: PluginElementsModule = {
     flatten_closed_surveys,
     flatten_recent_survey,
     flatten_upcoming_calendar,
+    flatten_survey_overview,
   },
 };
 
