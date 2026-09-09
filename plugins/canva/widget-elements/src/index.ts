@@ -585,6 +585,24 @@ const design_open_url: ComputedFunction = (args) => {
   return design?.urls?.view_url ?? design?.urls?.edit_url ?? '';
 };
 
+/**
+ * Format a Canva design's `page_count` as "1 page" / "N pages", correctly
+ * pluralized. Fills the trailing-badge slot a reference mockup expected to
+ * show a publish/share status — which `list_designs` has no field for —
+ * with a real field instead of a fabricated one. Falls back to "1 page"
+ * when the value is missing, since every Canva design has at least one page.
+ *
+ * Args: { value: number }
+ *
+ * Spec example:
+ *   { "$computed": "canva_page_count_label", "args": { "value": { "$item": "page_count" } } }
+ */
+const page_count_label: ComputedFunction = (args) => {
+  const raw = args.value;
+  const count = typeof raw === 'number' && Number.isFinite(raw) && raw > 0 ? raw : 1;
+  return `${count} page${count === 1 ? '' : 's'}`;
+};
+
 const elements: PluginElementsModule = {
   slug: 'canva',
   functions: {
@@ -610,6 +628,7 @@ const elements: PluginElementsModule = {
     infer_content_tag,
     design_subtitle,
     design_open_url,
+    page_count_label,
   },
 };
 
