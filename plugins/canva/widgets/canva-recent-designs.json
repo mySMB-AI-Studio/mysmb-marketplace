@@ -1,0 +1,100 @@
+{
+  "id": "canva-recent-designs",
+  "title": "Recent Designs",
+  "description": "The connected user's most recently updated Canva designs — title, design type, and last-updated time.",
+  "category": "design",
+  "tags": ["canva", "design", "recent", "activity"],
+  "keywords": ["canva", "designs", "recent", "activity", "updated"],
+  "connectorsUsed": ["canva"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 6 },
+    "min": { "colSpan": 4, "rowSpan": 5 },
+    "max": { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "canva",
+    "tool": "list_designs",
+    "params": {
+      "sort_by": "modified_descending",
+      "limit": 8
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["headerRow", "div0", "loadingBody", "list", "emptyState"] },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Image", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Recent Designs", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Canva · Recently updated" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "loadingBody": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/canva.list_designs" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "repeat": { "statePath": "/canva/list_designs/items", "key": "id" },
+        "children": ["row"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/canva.list_designs", "not": true },
+            { "$state": "/canva/list_designs/items/0" }
+          ]
+        }
+      },
+
+      "row": {
+        "type": "ActivityItem",
+        "props": {
+          "title": { "$item": "title" },
+          "subtitle": {
+            "$computed": "canva_design_type_label",
+            "args": { "value": { "$item": "design_types" } }
+          },
+          "timestamp": {
+            "$computed": "canva_relative_time",
+            "args": { "value": { "$item": "updated_at" } }
+          },
+          "initials": {
+            "$computed": "initials",
+            "args": { "value": { "$item": "title" } }
+          }
+        }
+      },
+
+      "emptyState": {
+        "type": "Empty",
+        "props": { "message": "No designs found in Canva." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/canva.list_designs", "not": true },
+            { "$state": "/canva/list_designs/items/0", "not": true }
+          ]
+        }
+      }
+    }
+  },
+  "status": "published"
+}
