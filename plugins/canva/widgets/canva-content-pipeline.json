@@ -1,0 +1,263 @@
+{
+  "id": "canva-content-pipeline",
+  "title": "Content Pipeline",
+  "description": "Tile: Content Pipeline - Canva. Shows how much content is moving through one Canva folder broken into four inferred stages -- Draft, In Review, Ready to Post, Posted -- plus a per-design list. Canva's Connect API has no content-calendar/status field at all, and a tile's dataProvider can only fire one MCP call on mount, so every stage is INFERRED from two real signals every design object actually has (created_at/updated_at), not read from any Canva field. The tile no longer shows an on-card disclaimer banner about this, NOR the Eyebrow subtitle that repeated the same caveat (both removed at the user's request, 2026-09-09) -- the inferred-not-live-schedule-data caveat now lives only in this description, not in front of the end viewer. Removing the Eyebrow is a deliberate deviation from TILE-DISPLAY-STANDARDS.md §9's every-tile-gets-an-Eyebrow-below-its-Heading rule -- flagged, not silently dropped. Classification (see canva_pipeline_stage in this plugin's widget-elements for the exact thresholds): a design barely touched since creation (<1hr edit span) is Draft; one edited within the last 2 days is In Review; one with real edit history that's gone quiet for 2-14 days is Ready To Post; one untouched for 14+ days is assumed Posted/live. Each row's dimensions come from Canva's own thumbnail width/height (a preview raster, CONFIRMED via a live harness call against a real account on 2026-09-09 to NOT be the design's true canvas size -- e.g. a real response returned 596x335, not a round canvas preset) and its content-category tag (e.g. 'social') is a best-effort keyword match against the design's title, omitted rather than guessed when nothing matches. dataProvider's folder_id is 'root' (Canva's real top-level Projects folder, confirmed live) -- FULL PIPELINE VERIFIED LIVE against a real connected account on 2026-09-09 (dataProvider + all 10 canva_* widget-elements functions run end-to-end with no errors). Original design intent was a folder_id pointing at a DEDICATED 'Content Pipeline' project folder, the same 'must be passed explicitly, per-tenant' pattern already established for project_key/service_desk_id on this connector's Atlassian sibling plugin -- but no such folder exists in the account this was verified against, so 'root' is used as a working stand-in so the tile is genuinely live-testable now, not a placeholder. Swap folder_id to a real dedicated folder's ID once the team creates one (and re-verify -- a dedicated folder likely has a different mix of edit histories than root's QA-test designs). KNOWN DATA ARTIFACT, not a bug: every design in the account this was verified against classifies as Draft (7/7, 100%) -- each was edited only briefly within ~25 minutes of creation and never touched again, which correctly falls under the <1hr-edit-span rule. Expect a flat single-bucket chart until real, varied edit histories exist.",
+  "category": "marketing",
+  "tags": ["canva", "design", "content", "pipeline", "marketing", "editorial", "social"],
+  "keywords": ["content pipeline", "content calendar", "design status", "draft", "in review", "ready to post", "posted", "social media content"],
+  "connectorsUsed": ["canva"],
+  "popularity": 0,
+  "status": "draft",
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 9 },
+    "min": { "colSpan": 4, "rowSpan": 7 },
+    "max": { "colSpan": 9, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "mcp": "canva",
+    "tool": "list_folder_items",
+    "params": {
+      "folder_id": "root",
+      "item_types": ["design"],
+      "sort_by": "modified_descending",
+      "limit": 50
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"]
+      },
+
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["headerRow"]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "justify": "between" },
+        "children": ["titleGroup", "countBadge"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "FolderKanban", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Content Pipeline", "level": "h2" }
+      },
+      "countBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} designs",
+              "n": {
+                "$computed": "canva_active_design_count",
+                "args": { "items": { "$state": "/canva/list_folder_items/items" } }
+              }
+            }
+          },
+          "tone": "muted",
+          "variant": "soft"
+        },
+        "visible": { "$state": "/canva/list_folder_items/items/0" }
+      },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "content"]
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/canva.list_folder_items" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No designs found in the Content Pipeline folder." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/canva.list_folder_items", "not": true },
+            { "$state": "/canva/list_folder_items/items/0", "not": true }
+          ]
+        }
+      },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["bucketStack", "listDivider", "designList"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/canva.list_folder_items", "not": true },
+            { "$state": "/canva/list_folder_items/items/0" }
+          ]
+        }
+      },
+
+      "bucketStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["bucketDraft", "bucketInReview", "bucketReady", "bucketPosted"]
+      },
+
+      "bucketDraft": { "type": "Stack", "props": { "gap": "xs" }, "children": ["bucketDraftRow", "bucketDraftBarRow"] },
+      "bucketDraftRow": { "type": "Row", "props": { "justify": "between" }, "children": ["bucketDraftLabel", "bucketDraftVal"] },
+      "bucketDraftLabel": { "type": "Text", "props": { "text": "Draft", "size": "sm" } },
+      "bucketDraftVal": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "canva_stage_count", "args": { "items": { "$state": "/canva/list_folder_items/items" }, "stage": "draft" } },
+          "size": "sm", "weight": "medium"
+        }
+      },
+      "bucketDraftBarRow": { "type": "Row", "props": {}, "children": ["bucketDraftBar"] },
+      "bucketDraftBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": { "$computed": "canva_stage_pct", "args": { "items": { "$state": "/canva/list_folder_items/items" }, "stage": "draft" } },
+          "tone": "info"
+        }
+      },
+
+      "bucketInReview": { "type": "Stack", "props": { "gap": "xs" }, "children": ["bucketInReviewRow", "bucketInReviewBarRow"] },
+      "bucketInReviewRow": { "type": "Row", "props": { "justify": "between" }, "children": ["bucketInReviewLabel", "bucketInReviewVal"] },
+      "bucketInReviewLabel": { "type": "Text", "props": { "text": "In review", "size": "sm" } },
+      "bucketInReviewVal": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "canva_stage_count", "args": { "items": { "$state": "/canva/list_folder_items/items" }, "stage": "in_review" } },
+          "size": "sm", "weight": "medium"
+        }
+      },
+      "bucketInReviewBarRow": { "type": "Row", "props": {}, "children": ["bucketInReviewBar"] },
+      "bucketInReviewBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": { "$computed": "canva_stage_pct", "args": { "items": { "$state": "/canva/list_folder_items/items" }, "stage": "in_review" } },
+          "tone": "info"
+        }
+      },
+
+      "bucketReady": { "type": "Stack", "props": { "gap": "xs" }, "children": ["bucketReadyRow", "bucketReadyBarRow"] },
+      "bucketReadyRow": { "type": "Row", "props": { "justify": "between" }, "children": ["bucketReadyLabel", "bucketReadyVal"] },
+      "bucketReadyLabel": { "type": "Text", "props": { "text": "Ready to post", "size": "sm" } },
+      "bucketReadyVal": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "canva_stage_count", "args": { "items": { "$state": "/canva/list_folder_items/items" }, "stage": "ready" } },
+          "size": "sm", "weight": "medium"
+        }
+      },
+      "bucketReadyBarRow": { "type": "Row", "props": {}, "children": ["bucketReadyBar"] },
+      "bucketReadyBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": { "$computed": "canva_stage_pct", "args": { "items": { "$state": "/canva/list_folder_items/items" }, "stage": "ready" } },
+          "tone": "info"
+        }
+      },
+
+      "bucketPosted": { "type": "Stack", "props": { "gap": "xs" }, "children": ["bucketPostedRow", "bucketPostedBarRow"] },
+      "bucketPostedRow": { "type": "Row", "props": { "justify": "between" }, "children": ["bucketPostedLabel", "bucketPostedVal"] },
+      "bucketPostedLabel": { "type": "Text", "props": { "text": "Posted", "size": "sm", "weight": "medium" } },
+      "bucketPostedVal": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "canva_stage_count", "args": { "items": { "$state": "/canva/list_folder_items/items" }, "stage": "posted" } },
+          "size": "sm", "weight": "medium"
+        }
+      },
+      "bucketPostedBarRow": { "type": "Row", "props": {}, "children": ["bucketPostedBar"] },
+      "bucketPostedBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": { "$computed": "canva_stage_pct", "args": { "items": { "$state": "/canva/list_folder_items/items" }, "stage": "posted" } },
+          "tone": "success"
+        }
+      },
+
+      "listDivider": { "type": "Divider", "props": {} },
+
+      "designList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["designRow"],
+        "repeat": { "statePath": "/canva/list_folder_items/items", "key": "design/id" },
+        "limit": 20
+      },
+      "designRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true, "clickable": true },
+        "children": ["designStack", "designStageBadge"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": { "$computed": "canva_design_open_url", "args": { "design": { "$item": "design" } } },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "designStack": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["designTitle", "designSubtitle"]
+      },
+      "designTitle": {
+        "type": "Text",
+        "props": { "text": { "$item": "design/title" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "designSubtitle": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "canva_design_subtitle", "args": { "design": { "$item": "design" } } },
+          "tone": "muted"
+        }
+      },
+      "designStageBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "canva_pipeline_stage_label",
+            "args": {
+              "value": { "$computed": "canva_pipeline_stage", "args": { "design": { "$item": "design" } } }
+            }
+          },
+          "tone": {
+            "$computed": "canva_pipeline_stage_tone",
+            "args": {
+              "value": { "$computed": "canva_pipeline_stage", "args": { "design": { "$item": "design" } } }
+            }
+          },
+          "variant": "soft"
+        }
+      }
+    }
+  }
+}
