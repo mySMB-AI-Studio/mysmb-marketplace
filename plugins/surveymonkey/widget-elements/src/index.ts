@@ -268,8 +268,8 @@ const flatten_surveys_in_progress: ComputedFunction = (args) => {
     const audience = /^(web link|email invitation|email|target audience)\s*\d*$/i.test(rawName.trim()) ? '' : rawName;
 
     const responsesLabel = goal > 0
-      ? `${rc.toLocaleString()} / ${goal.toLocaleString()} responses`
-      : `${rc.toLocaleString()} responses`;
+      ? `${rc.toLocaleString()} / ${goal.toLocaleString()} response${goal === 1 ? '' : 's'}`
+      : `${rc.toLocaleString()} response${rc === 1 ? '' : 's'}`;
 
     const rawClose = String(s.close_date ?? s.collector_close_date ?? '');
     let closesLabel = '';
