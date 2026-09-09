@@ -1,0 +1,124 @@
+{
+  "id": "asana-projects",
+  "title": "Projects",
+  "description": "Active Asana projects in your workspace.",
+  "category": "projects",
+  "tags": ["asana", "projects", "workspace"],
+  "keywords": ["asana projects", "workspace projects", "project list"],
+  "connectorsUsed": ["asana"],
+  "popularity": 60,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 5 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "asana",
+    "tool": "list_projects",
+    "params": { "limit": 50 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"],
+        "watch": {
+          "/asana/list_projects/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "asana_flatten_projects",
+                  "args": { "value": { "$state": "/asana/list_projects/data" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleStack"] },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": { "type": "Heading", "props": { "text": "Projects", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Asana" } },
+
+      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "contentArea"] },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/asana.list_projects" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No projects found in your workspace." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/asana.list_projects", "not": true },
+            { "$state": "/ui/rows/0", "not": true }
+          ]
+        }
+      },
+
+      "contentArea": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["statTotalWrap", "projectList"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/asana.list_projects", "not": true },
+            { "$state": "/ui/rows/0" }
+          ]
+        }
+      },
+
+      "statTotalWrap": { "type": "Stack", "props": { "gap": "none" }, "children": ["statTotalCard"] },
+      "statTotalCard": {
+        "type": "Section",
+        "props": { "variant": "muted", "padding": "sm" },
+        "children": ["statTotalNum", "statTotalLabel"]
+      },
+      "statTotalNum": {
+        "type": "Heading",
+        "props": { "text": { "$state": "/ui/rows/0/stat_total" }, "level": "h2" }
+      },
+      "statTotalLabel": { "type": "Caption", "props": { "text": "Total Projects" } },
+
+      "projectList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["projectRow"],
+        "repeat": { "statePath": "/ui/rows", "key": "id" }
+      },
+
+      "projectRow": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["projectRowContent", "projectDivider"]
+      },
+      "projectRowContent": {
+        "type": "Row",
+        "props": { "align": "center" },
+        "children": ["projectName"]
+      },
+      "projectName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "semibold", "truncate": true }
+      },
+      "projectDivider": { "type": "Divider", "props": {} }
+    }
+  },
+  "status": "published"
+}
