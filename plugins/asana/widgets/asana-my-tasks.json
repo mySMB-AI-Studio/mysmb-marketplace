@@ -1,16 +1,16 @@
 {
   "id": "asana-my-tasks",
   "title": "My Tasks",
-  "description": "Tasks assigned to the current user in Asana, with due dates and project labels.",
+  "description": "Tasks assigned to you in Asana with due date labels and a due-today summary.",
   "category": "tasks",
-  "tags": ["asana", "tasks", "my tasks", "due dates"],
-  "keywords": ["asana tasks", "my tasks", "due dates", "overdue", "assigned tasks"],
+  "tags": ["asana", "tasks", "my tasks", "due dates", "overdue"],
+  "keywords": ["asana tasks", "my tasks", "due today", "overdue", "assigned tasks"],
   "connectorsUsed": ["asana"],
   "popularity": 70,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 6 },
-    "min": { "colSpan": 4, "rowSpan": 5 },
-    "max": { "colSpan": 8, "rowSpan": 10 }
+    "preferred": { "colSpan": 4, "rowSpan": 6 },
+    "min": { "colSpan": 3, "rowSpan": 5 },
+    "max": { "colSpan": 8, "rowSpan": 12 }
   },
   "dataProvider": {
     "mcp": "asana",
@@ -74,8 +74,8 @@
 
       "contentArea": {
         "type": "Stack",
-        "props": { "gap": "md" },
-        "children": ["statsRow", "taskList"],
+        "props": { "gap": "sm" },
+        "children": ["taskList", "taskFooter"],
         "visible": {
           "$and": [
             { "$state": "/_loading/asana.list_tasks", "not": true },
@@ -84,64 +84,21 @@
         }
       },
 
-      "statsRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "template": "1fr 1fr 1fr" },
-        "children": ["statTotalWrap", "statOverdueWrap", "statDueTodayWrap"]
-      },
-
-      "statTotalWrap": { "type": "Stack", "props": { "gap": "none" }, "children": ["statTotal"] },
-      "statTotal": {
-        "type": "Section",
-        "props": { "variant": "muted", "padding": "sm" },
-        "children": ["statTotalNum", "statTotalLabel"]
-      },
-      "statTotalNum": {
-        "type": "Heading",
-        "props": { "text": { "$state": "/ui/rows/0/stat_total" }, "level": "h2" }
-      },
-      "statTotalLabel": { "type": "Caption", "props": { "text": "Total Tasks" } },
-
-      "statOverdueWrap": { "type": "Stack", "props": { "gap": "none" }, "children": ["statOverdue"] },
-      "statOverdue": {
-        "type": "Section",
-        "props": { "variant": "muted", "padding": "sm" },
-        "children": ["statOverdueNum", "statOverdueLabel"]
-      },
-      "statOverdueNum": {
-        "type": "Heading",
-        "props": { "text": { "$state": "/ui/rows/0/stat_overdue" }, "level": "h2", "tone": "danger" }
-      },
-      "statOverdueLabel": { "type": "Caption", "props": { "text": "Overdue" } },
-
-      "statDueTodayWrap": { "type": "Stack", "props": { "gap": "none" }, "children": ["statDueToday"] },
-      "statDueToday": {
-        "type": "Section",
-        "props": { "variant": "muted", "padding": "sm" },
-        "children": ["statDueTodayNum", "statDueTodayLabel"]
-      },
-      "statDueTodayNum": {
-        "type": "Heading",
-        "props": { "text": { "$state": "/ui/rows/0/stat_due_today" }, "level": "h2", "tone": "warning" }
-      },
-      "statDueTodayLabel": { "type": "Caption", "props": { "text": "Due Today" } },
-
       "taskList": {
         "type": "Stack",
-        "props": { "gap": "xs" },
+        "props": { "gap": "sm" },
         "children": ["taskRow"],
         "repeat": { "statePath": "/ui/rows", "key": "id" }
       },
 
       "taskRow": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["taskRowContent", "taskDivider"]
-      },
-      "taskRowContent": {
         "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["taskInfo", "taskDueBadge"]
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["taskCircle", "taskInfo", "taskDueBadge"]
+      },
+      "taskCircle": {
+        "type": "Icon",
+        "props": { "name": "Circle", "tone": { "$item": "circle_tone" }, "size": "sm" }
       },
       "taskInfo": {
         "type": "Stack",
@@ -163,9 +120,15 @@
           "text": { "$item": "due_label" },
           "tone": { "$item": "due_tone" },
           "variant": "soft"
-        }
+        },
+        "visible": { "$item": "due_label" }
       },
-      "taskDivider": { "type": "Divider", "props": {} }
+
+      "taskFooter": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/ui/rows/0/footer_label" }, "tone": "muted" },
+        "visible": { "$state": "/ui/rows/0/footer_label" }
+      }
     }
   },
   "status": "published"
