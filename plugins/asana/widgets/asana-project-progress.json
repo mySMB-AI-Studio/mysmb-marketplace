@@ -40,14 +40,8 @@
         }
       },
 
-      "header": { "type": "Header", "props": {}, "children": ["titleStack"] },
-      "titleStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["title", "eyebrow"]
-      },
+      "header": { "type": "Header", "props": {}, "children": ["title"] },
       "title": { "type": "Heading", "props": { "text": "Project Progress", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Asana" } },
 
       "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "contentArea"] },
 
@@ -74,8 +68,8 @@
 
       "contentArea": {
         "type": "Stack",
-        "props": { "gap": "lg", "pt": "lg" },
-        "children": ["projectList", "projectFooterWrap"],
+        "props": { "gap": "lg" },
+        "children": ["dotEyebrow", "projectList", "projectFooter"],
         "visible": {
           "$and": [
             { "$state": "/_loading/asana.list_projects", "not": true },
@@ -83,6 +77,14 @@
           ]
         }
       },
+
+      "dotEyebrow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["eyebrowDot", "eyebrow"]
+      },
+      "eyebrowDot": { "type": "Dot", "props": { "tone": "success", "size": "sm" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Asana" } },
 
       "projectList": {
         "type": "Stack",
@@ -120,15 +122,10 @@
         "props": { "value": { "$item": "pct" }, "tone": { "$item": "tone" } }
       },
 
-      "projectFooterWrap": {
-        "type": "Stack",
-        "props": { "pt": "lg" },
-        "children": ["projectFooter"],
-        "visible": { "$state": "/ui/rows/0/footer_label" }
-      },
       "projectFooter": {
         "type": "Caption",
-        "props": { "text": { "$state": "/ui/rows/0/footer_label" }, "tone": "muted" }
+        "props": { "text": { "$state": "/ui/rows/0/footer_label" }, "tone": "muted" },
+        "visible": { "$state": "/ui/rows/0/footer_label" }
       }
     }
   },
