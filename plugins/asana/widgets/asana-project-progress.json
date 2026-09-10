@@ -1,10 +1,10 @@
 {
   "id": "asana-project-progress",
   "title": "Project Progress",
-  "description": "Task completion progress for your active Asana projects.",
+  "description": "Task completion progress for your active Asana projects with at-risk and behind counts.",
   "category": "projects",
-  "tags": ["asana", "projects", "progress", "completion"],
-  "keywords": ["asana projects", "project progress", "task completion", "active projects"],
+  "tags": ["asana", "projects", "progress", "completion", "at risk"],
+  "keywords": ["asana projects", "project progress", "task completion", "at risk", "behind"],
   "connectorsUsed": ["asana"],
   "popularity": 65,
   "sizing": {
@@ -20,10 +20,11 @@
   "spec": {
     "root": "card",
     "elements": {
+
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "body"],
+        "children": ["headerRow", "div0", "loading", "empty", "kpiGrid", "div1", "projectList", "projectFooter"],
         "watch": {
           "/asana/list_projects/data": [
             {
@@ -40,16 +41,22 @@
         }
       },
 
-      "header": { "type": "Header", "props": {}, "children": ["titleStack"] },
-      "titleStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["title", "eyebrow"]
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
       },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "TrendingUp", "tone": "success", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
       "title": { "type": "Heading", "props": { "text": "Project Progress", "level": "h2" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Asana" } },
 
-      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "contentArea"] },
+      "div0": { "type": "Divider", "props": {} },
 
       "loading": {
         "type": "Stack",
@@ -72,10 +79,36 @@
         }
       },
 
-      "contentArea": {
-        "type": "Stack",
-        "props": { "gap": "sm", "pt": "sm" },
-        "children": ["projectList", "projectFooter"],
+      "kpiGrid": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["tileActive", "tileAtRisk", "tileBehind"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/asana.list_projects", "not": true },
+            { "$state": "/ui/rows/0" }
+          ]
+        }
+      },
+
+      "tileActive": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackActive"] },
+      "stackActive": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valActive", "lblActive"] },
+      "valActive": { "type": "Stat", "props": { "value": { "$state": "/ui/rows/0/stat_active" }, "size": "md" } },
+      "lblActive": { "type": "Caption", "props": { "text": "Active", "tone": "muted" } },
+
+      "tileAtRisk": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackAtRisk"] },
+      "stackAtRisk": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valAtRisk", "lblAtRisk"] },
+      "valAtRisk": { "type": "Stat", "props": { "value": { "$state": "/ui/rows/0/stat_at_risk" }, "size": "md" } },
+      "lblAtRisk": { "type": "Caption", "props": { "text": "At Risk", "tone": "warning" } },
+
+      "tileBehind": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackBehind"] },
+      "stackBehind": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valBehind", "lblBehind"] },
+      "valBehind": { "type": "Stat", "props": { "value": { "$state": "/ui/rows/0/stat_behind" }, "size": "md" } },
+      "lblBehind": { "type": "Caption", "props": { "text": "Behind", "tone": "destructive" } },
+
+      "div1": {
+        "type": "Divider",
+        "props": {},
         "visible": {
           "$and": [
             { "$state": "/_loading/asana.list_projects", "not": true },
@@ -86,16 +119,23 @@
 
       "projectList": {
         "type": "Stack",
-        "props": { "gap": "sm" },
+        "props": { "gap": "md" },
         "children": ["projectRow"],
-        "repeat": { "statePath": "/ui/rows", "key": "id" }
+        "repeat": { "statePath": "/ui/rows", "key": "id" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/asana.list_projects", "not": true },
+            { "$state": "/ui/rows/0" }
+          ]
+        }
       },
 
       "projectRow": {
         "type": "Stack",
         "props": { "gap": "xs" },
-        "children": ["projectHeader", "projectBar"]
+        "children": ["projectHeader", "projectBarRow"]
       },
+      "projectBarRow": { "type": "Row", "props": {}, "children": ["projectBar"] },
       "projectHeader": {
         "type": "Row",
         "props": { "justify": "between", "align": "center" },
@@ -124,6 +164,7 @@
         "props": { "text": { "$state": "/ui/rows/0/footer_label" }, "tone": "muted" },
         "visible": { "$state": "/ui/rows/0/footer_label" }
       }
+
     }
   },
   "status": "published"

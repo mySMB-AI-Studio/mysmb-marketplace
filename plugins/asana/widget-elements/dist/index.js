@@ -141,21 +141,27 @@ const flatten_project_progress = (args) => {
     const raw = Array.isArray(args.value) ? args.value : [];
     if (raw.length === 0)
         return [];
+    let atRisk = 0;
+    let behind = 0;
     const rows = raw.map((proj) => {
         const id = String(proj.gid ?? proj.id ?? '');
         const name = String(proj.name ?? '');
         const taskCounts = proj.task_counts;
-        const total = taskCounts ? Number(taskCounts.num_tasks ?? 0) : 0;
-        const completed = taskCounts ? Number(taskCounts.num_completed_tasks ?? 0) : 0;
-        const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+        const numTasks = taskCounts ? Number(taskCounts.num_tasks ?? 0) : 0;
+        const numCompleted = taskCounts ? Number(taskCounts.num_completed_tasks ?? 0) : 0;
+        const pct = numTasks > 0 ? Math.round((numCompleted / numTasks) * 100) : 0;
         let tone = 'muted';
         let pctLabel = '—';
-        if (total > 0) {
+        if (numTasks > 0) {
             pctLabel = `${pct}%`;
-            if (pct < 40)
+            if (pct < 40) {
                 tone = 'destructive';
-            else if (pct < 70)
+                behind++;
+            }
+            else if (pct < 70) {
                 tone = 'warning';
+                atRisk++;
+            }
         }
         return {
             id,
@@ -163,11 +169,63 @@ const flatten_project_progress = (args) => {
             pct,
             pct_label: pctLabel,
             tone,
+            stat_active: '',
+            stat_at_risk: '',
+            stat_behind: '',
             footer_label: '',
         };
     });
     const total = raw.length;
+    rows[0].stat_active = String(total);
+    rows[0].stat_at_risk = String(atRisk);
+    rows[0].stat_behind = String(behind);
     rows[0].footer_label = `${total} active project${total === 1 ? '' : 's'}`;
+    return rows;
+};
+/**
+ * Flattens a get_team_workload response into display rows for the Team Workload tile.
+ * Expects data already sorted descending by task_count from the MCP tool.
+ *
+ * Row 0 carries footer_label: "N active tasks across team".
+ * Each row has: id, display_name ("F. Lastname"), initials ("AC"), task_count,
+ * task_label ("N task(s)"), pct (0–100 relative to max), footer_label.
+ *
+ * Args: { value: array }
+ */
+const flatten_team_workload = (args) => {
+    const raw = Array.isArray(args.value) ? args.value : [];
+    if (raw.length === 0)
+        return [];
+    // already sorted desc by task_count from the MCP tool
+    const maxCount = Number(raw[0].task_count ?? 0);
+    const rows = raw.map((member) => {
+        const m = member;
+        const id = String(m.user_gid ?? '');
+        const fullName = String(m.name ?? '');
+        const taskCount = Number(m.task_count ?? 0);
+        // "F. Lastname" format
+        const parts = fullName.trim().split(/\s+/);
+        const displayName = parts.length >= 2
+            ? `${parts[0][0]}. ${parts[parts.length - 1]}`
+            : fullName;
+        // "AC" initials
+        const initials = parts.length >= 2
+            ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+            : fullName.slice(0, 2).toUpperCase();
+        const pct = maxCount > 0 ? Math.round((taskCount / maxCount) * 100) : 0;
+        const taskLabel = `${taskCount} task${taskCount === 1 ? '' : 's'}`;
+        return {
+            id,
+            display_name: displayName,
+            initials,
+            task_count: taskCount,
+            task_label: taskLabel,
+            pct,
+            footer_label: '',
+        };
+    });
+    const totalTasks = raw.reduce((sum, m) => sum + Number(m.task_count ?? 0), 0);
+    rows[0].footer_label = `${totalTasks} active task${totalTasks === 1 ? '' : 's'} across team`;
     return rows;
 };
 const elements = {
@@ -177,6 +235,7 @@ const elements = {
         flatten_my_tasks,
         flatten_projects,
         flatten_project_progress,
+        flatten_team_workload,
     },
 };
 export default elements;
