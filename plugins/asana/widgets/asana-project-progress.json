@@ -75,7 +75,7 @@
       "contentArea": {
         "type": "Stack",
         "props": { "gap": "lg", "pt": "sm" },
-        "children": ["projectList", "projectFooter"],
+        "children": ["projectList", "projectFooterWrap"],
         "visible": {
           "$and": [
             { "$state": "/_loading/asana.list_projects", "not": true },
@@ -120,10 +120,15 @@
         "props": { "value": { "$item": "pct" }, "tone": { "$item": "tone" } }
       },
 
+      "projectFooterWrap": {
+        "type": "Stack",
+        "props": { "pt": "lg" },
+        "children": ["projectFooter"],
+        "visible": { "$state": "/ui/rows/0/footer_label" }
+      },
       "projectFooter": {
         "type": "Caption",
-        "props": { "text": { "$state": "/ui/rows/0/footer_label" }, "tone": "muted" },
-        "visible": { "$state": "/ui/rows/0/footer_label" }
+        "props": { "text": { "$state": "/ui/rows/0/footer_label" }, "tone": "muted" }
       }
     }
   },
