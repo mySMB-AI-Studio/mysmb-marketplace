@@ -1,0 +1,139 @@
+{
+  "id": "asana-team-workload",
+  "title": "Team Workload",
+  "description": "Active task counts per team member in your Asana workspace, sorted by workload.",
+  "category": "tasks",
+  "tags": ["asana", "team", "workload", "tasks", "assignee"],
+  "keywords": ["team workload", "asana team", "task distribution", "active tasks"],
+  "connectorsUsed": ["asana"],
+  "popularity": 60,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 6 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 8, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "asana",
+    "tool": "get_team_workload",
+    "params": { "member_limit": 10 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "loading", "empty", "memberList", "memberFooter"],
+        "watch": {
+          "/asana/get_team_workload/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "asana_flatten_team_workload",
+                  "args": { "value": { "$state": "/asana/get_team_workload/data" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "UsersRound", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Team Workload", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Asana" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/asana.get_team_workload" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No team members found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/asana.get_team_workload", "not": true },
+            { "$state": "/ui/rows/0", "not": true }
+          ]
+        }
+      },
+
+      "memberList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["memberRow"],
+        "repeat": { "statePath": "/ui/rows", "key": "id" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/asana.get_team_workload", "not": true },
+            { "$state": "/ui/rows/0" }
+          ]
+        }
+      },
+
+      "memberRow": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["memberTopRow", "memberBarRow"]
+      },
+      "memberTopRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["memberAvatar", "memberName", "memberTaskCount"]
+      },
+      "memberAvatar": {
+        "type": "Avatar",
+        "props": { "initials": { "$item": "initials" }, "size": "sm" }
+      },
+      "memberName": {
+        "type": "Text",
+        "props": { "text": { "$item": "display_name" }, "size": "sm", "weight": "semibold", "grow": true }
+      },
+      "memberTaskCount": {
+        "type": "Text",
+        "props": { "text": { "$item": "task_label" }, "size": "sm", "tone": "muted" }
+      },
+      "memberBarRow": {
+        "type": "Row",
+        "props": {},
+        "children": ["memberBar"]
+      },
+      "memberBar": {
+        "type": "ProgressBar",
+        "props": { "value": { "$item": "pct" }, "tone": "success" }
+      },
+
+      "memberFooter": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/ui/rows/0/footer_label" }, "tone": "muted" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/asana.get_team_workload", "not": true },
+            { "$state": "/ui/rows/0/footer_label" }
+          ]
+        }
+      }
+    }
+  },
+  "status": "published"
+}

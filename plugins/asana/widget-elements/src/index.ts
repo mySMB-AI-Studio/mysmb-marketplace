@@ -194,6 +194,60 @@ const flatten_project_progress: ComputedFunction = (args) => {
   return rows;
 };
 
+/**
+ * Flattens a get_team_workload response into display rows for the Team Workload tile.
+ * Expects data already sorted descending by task_count from the MCP tool.
+ *
+ * Row 0 carries footer_label: "N active tasks across team".
+ * Each row has: id, display_name ("F. Lastname"), initials ("AC"), task_count,
+ * task_label ("N task(s)"), pct (0–100 relative to max), footer_label.
+ *
+ * Args: { value: array }
+ */
+const flatten_team_workload: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  if (raw.length === 0) return [];
+
+  // already sorted desc by task_count from the MCP tool
+  const maxCount = Number((raw[0] as Record<string, unknown>).task_count ?? 0);
+
+  const rows = raw.map((member) => {
+    const m = member as Record<string, unknown>;
+    const id = String(m.user_gid ?? '');
+    const fullName = String(m.name ?? '');
+    const taskCount = Number(m.task_count ?? 0);
+
+    // "F. Lastname" format
+    const parts = fullName.trim().split(/\s+/);
+    const displayName = parts.length >= 2
+      ? `${parts[0][0]}. ${parts[parts.length - 1]}`
+      : fullName;
+
+    // "AC" initials
+    const initials = parts.length >= 2
+      ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+      : fullName.slice(0, 2).toUpperCase();
+
+    const pct = maxCount > 0 ? Math.round((taskCount / maxCount) * 100) : 0;
+    const taskLabel = `${taskCount} task${taskCount === 1 ? '' : 's'}`;
+
+    return {
+      id,
+      display_name: displayName,
+      initials,
+      task_count: taskCount,
+      task_label: taskLabel,
+      pct,
+      footer_label: '',
+    };
+  });
+
+  const totalTasks = raw.reduce((sum, m) => sum + Number((m as Record<string, unknown>).task_count ?? 0), 0);
+  rows[0].footer_label = `${totalTasks} active task${totalTasks === 1 ? '' : 's'} across team`;
+
+  return rows;
+};
+
 const elements: PluginElementsModule = {
   slug: 'asana',
   functions: {
@@ -201,6 +255,7 @@ const elements: PluginElementsModule = {
     flatten_my_tasks,
     flatten_projects,
     flatten_project_progress,
+    flatten_team_workload,
   },
 };
 
