@@ -1,0 +1,130 @@
+{
+  "id": "asana-project-progress",
+  "title": "Project Progress",
+  "description": "Task completion progress for your active Asana projects.",
+  "category": "projects",
+  "tags": ["asana", "projects", "progress", "completion"],
+  "keywords": ["asana projects", "project progress", "task completion", "active projects"],
+  "connectorsUsed": ["asana"],
+  "popularity": 65,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 6 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 8, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "asana",
+    "tool": "list_projects",
+    "params": { "archived": false, "limit": 10 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"],
+        "watch": {
+          "/asana/list_projects/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "asana_flatten_project_progress",
+                  "args": { "value": { "$state": "/asana/list_projects/data" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleStack"] },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": { "type": "Heading", "props": { "text": "Project Progress", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Asana" } },
+
+      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "contentArea"] },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/asana.list_projects" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No active projects found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/asana.list_projects", "not": true },
+            { "$state": "/ui/rows/0", "not": true }
+          ]
+        }
+      },
+
+      "contentArea": {
+        "type": "Stack",
+        "props": { "gap": "sm", "pt": "sm" },
+        "children": ["projectList", "projectFooter"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/asana.list_projects", "not": true },
+            { "$state": "/ui/rows/0" }
+          ]
+        }
+      },
+
+      "projectList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["projectRow"],
+        "repeat": { "statePath": "/ui/rows", "key": "id" }
+      },
+
+      "projectRow": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["projectHeader", "projectBar"]
+      },
+      "projectHeader": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["projectName", "projectPct"]
+      },
+      "projectName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "semibold" }
+      },
+      "projectPct": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "pct_label" },
+          "size": "sm",
+          "weight": "semibold",
+          "tone": { "$item": "tone" }
+        }
+      },
+      "projectBar": {
+        "type": "ProgressBar",
+        "props": { "value": { "$item": "pct" }, "tone": { "$item": "tone" } }
+      },
+
+      "projectFooter": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/ui/rows/0/footer_label" }, "tone": "muted" },
+        "visible": { "$state": "/ui/rows/0/footer_label" }
+      }
+    }
+  },
+  "status": "published"
+}
