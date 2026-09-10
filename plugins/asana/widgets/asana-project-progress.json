@@ -1,10 +1,10 @@
 {
   "id": "asana-project-progress",
   "title": "Project Progress",
-  "description": "Task completion progress for your active Asana projects.",
+  "description": "Task completion progress for your active Asana projects with at-risk and behind counts.",
   "category": "projects",
-  "tags": ["asana", "projects", "progress", "completion"],
-  "keywords": ["asana projects", "project progress", "task completion", "active projects"],
+  "tags": ["asana", "projects", "progress", "completion", "at risk"],
+  "keywords": ["asana projects", "project progress", "task completion", "at risk", "behind"],
   "connectorsUsed": ["asana"],
   "popularity": 65,
   "sizing": {
@@ -40,8 +40,14 @@
         }
       },
 
-      "header": { "type": "Header", "props": {}, "children": ["title"] },
+      "header": { "type": "Header", "props": {}, "children": ["titleStack"] },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
       "title": { "type": "Heading", "props": { "text": "Project Progress", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Asana" } },
 
       "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "contentArea"] },
 
@@ -68,8 +74,8 @@
 
       "contentArea": {
         "type": "Stack",
-        "props": { "gap": "lg" },
-        "children": ["dotEyebrow", "projectList", "projectFooter"],
+        "props": { "gap": "md" },
+        "children": ["statsSection", "projectList", "projectFooter"],
         "visible": {
           "$and": [
             { "$state": "/_loading/asana.list_projects", "not": true },
@@ -78,13 +84,58 @@
         }
       },
 
-      "dotEyebrow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["eyebrowDot", "eyebrow"]
+      "statsSection": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["statsRow"]
       },
-      "eyebrowDot": { "type": "Dot", "props": { "tone": "success", "size": "sm" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Asana" } },
+      "statsRow": {
+        "type": "Row",
+        "props": { "gap": "md" },
+        "children": ["statActiveCol", "statAtRiskCol", "statBehindCol"]
+      },
+
+      "statActiveCol": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["statActiveNum", "statActiveLabel"]
+      },
+      "statActiveNum": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/ui/rows/0/stat_active" }, "size": "md" }
+      },
+      "statActiveLabel": {
+        "type": "Caption",
+        "props": { "text": "Active", "tone": "muted" }
+      },
+
+      "statAtRiskCol": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["statAtRiskNum", "statAtRiskLabel"]
+      },
+      "statAtRiskNum": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/ui/rows/0/stat_at_risk" }, "size": "md" }
+      },
+      "statAtRiskLabel": {
+        "type": "Caption",
+        "props": { "text": "At Risk", "tone": "warning" }
+      },
+
+      "statBehindCol": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["statBehindNum", "statBehindLabel"]
+      },
+      "statBehindNum": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/ui/rows/0/stat_behind" }, "size": "md" }
+      },
+      "statBehindLabel": {
+        "type": "Caption",
+        "props": { "text": "Behind", "tone": "destructive" }
+      },
 
       "projectList": {
         "type": "Stack",

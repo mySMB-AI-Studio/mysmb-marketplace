@@ -141,21 +141,27 @@ const flatten_project_progress = (args) => {
     const raw = Array.isArray(args.value) ? args.value : [];
     if (raw.length === 0)
         return [];
+    let atRisk = 0;
+    let behind = 0;
     const rows = raw.map((proj) => {
         const id = String(proj.gid ?? proj.id ?? '');
         const name = String(proj.name ?? '');
         const taskCounts = proj.task_counts;
-        const total = taskCounts ? Number(taskCounts.num_tasks ?? 0) : 0;
-        const completed = taskCounts ? Number(taskCounts.num_completed_tasks ?? 0) : 0;
-        const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+        const numTasks = taskCounts ? Number(taskCounts.num_tasks ?? 0) : 0;
+        const numCompleted = taskCounts ? Number(taskCounts.num_completed_tasks ?? 0) : 0;
+        const pct = numTasks > 0 ? Math.round((numCompleted / numTasks) * 100) : 0;
         let tone = 'muted';
         let pctLabel = '—';
-        if (total > 0) {
+        if (numTasks > 0) {
             pctLabel = `${pct}%`;
-            if (pct < 40)
+            if (pct < 40) {
                 tone = 'destructive';
-            else if (pct < 70)
+                behind++;
+            }
+            else if (pct < 70) {
                 tone = 'warning';
+                atRisk++;
+            }
         }
         return {
             id,
@@ -163,10 +169,16 @@ const flatten_project_progress = (args) => {
             pct,
             pct_label: pctLabel,
             tone,
+            stat_active: '',
+            stat_at_risk: '',
+            stat_behind: '',
             footer_label: '',
         };
     });
     const total = raw.length;
+    rows[0].stat_active = String(total);
+    rows[0].stat_at_risk = String(atRisk);
+    rows[0].stat_behind = String(behind);
     rows[0].footer_label = `${total} active project${total === 1 ? '' : 's'}`;
     return rows;
 };
