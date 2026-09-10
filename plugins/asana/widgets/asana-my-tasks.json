@@ -86,16 +86,22 @@
 
       "taskList": {
         "type": "Stack",
-        "props": { "gap": "sm" },
+        "props": { "gap": "xs" },
         "children": ["taskRow"],
         "repeat": { "statePath": "/ui/rows", "key": "id" }
       },
 
       "taskRow": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["taskRowContent", "taskDivider"]
+      },
+      "taskRowContent": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center" },
         "children": ["taskCircle", "taskInfo", "taskDueBadge"]
       },
+      "taskDivider": { "type": "Divider", "props": {} },
       "taskCircle": {
         "type": "Icon",
         "props": { "name": "Circle", "tone": { "$item": "circle_tone" }, "size": "sm" }
