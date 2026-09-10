@@ -195,65 +195,55 @@ const flatten_project_progress: ComputedFunction = (args) => {
 };
 
 /**
- * Flattens a list_tasks response into display rows for the Overdue Tasks tile.
- * Filters to tasks with a due_on date strictly before today, sorted by days
- * overdue descending (longest first).
+ * Flattens a get_team_workload response into display rows for the Team Workload tile.
+ * Expects data already sorted descending by task_count from the MCP tool.
  *
- * Row 0 carries aggregate stat fields: stat_overdue, stat_projects, stat_longest.
- * Each row has: id, title, project_label, overdue_label ("Xd overdue"), days_overdue.
+ * Row 0 carries footer_label: "N active tasks across team".
+ * Each row has: id, display_name ("F. Lastname"), initials ("AC"), task_count,
+ * task_label ("N task(s)"), pct (0–100 relative to max), footer_label.
  *
  * Args: { value: array }
  */
-const flatten_overdue_tasks: ComputedFunction = (args) => {
+const flatten_team_workload: ComputedFunction = (args) => {
   const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
   if (raw.length === 0) return [];
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const todayMs = Date.parse(todayStr);
+  // already sorted desc by task_count from the MCP tool
+  const maxCount = Number((raw[0] as Record<string, unknown>).task_count ?? 0);
 
-  const overdueItems: Array<{ task: Record<string, unknown>; daysOverdue: number; projectLabel: string }> = [];
+  const rows = raw.map((member) => {
+    const m = member as Record<string, unknown>;
+    const id = String(m.user_gid ?? '');
+    const fullName = String(m.name ?? '');
+    const taskCount = Number(m.task_count ?? 0);
 
-  for (const task of raw) {
-    const dueOn = task.due_on ? String(task.due_on) : null;
-    if (!dueOn) continue;
-    const dueMs = Date.parse(dueOn);
-    if (Number.isNaN(dueMs) || dueMs >= todayMs) continue;
-    const daysOverdue = Math.round((todayMs - dueMs) / 86400000);
+    // "F. Lastname" format
+    const parts = fullName.trim().split(/\s+/);
+    const displayName = parts.length >= 2
+      ? `${parts[0][0]}. ${parts[parts.length - 1]}`
+      : fullName;
 
-    const memberships = Array.isArray(task.memberships) ? (task.memberships as Record<string, unknown>[]) : [];
-    const projects = Array.isArray(task.projects) ? (task.projects as Record<string, unknown>[]) : [];
-    let projectLabel = '';
-    if (memberships.length > 0) {
-      const proj = memberships[0].project as Record<string, unknown> | undefined;
-      if (proj) projectLabel = String(proj.name ?? '');
-    } else if (projects.length > 0) {
-      projectLabel = String((projects[0] as Record<string, unknown>).name ?? '');
-    }
+    // "AC" initials
+    const initials = parts.length >= 2
+      ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+      : fullName.slice(0, 2).toUpperCase();
 
-    overdueItems.push({ task, daysOverdue, projectLabel });
-  }
+    const pct = maxCount > 0 ? Math.round((taskCount / maxCount) * 100) : 0;
+    const taskLabel = `${taskCount} task${taskCount === 1 ? '' : 's'}`;
 
-  if (overdueItems.length === 0) return [];
+    return {
+      id,
+      display_name: displayName,
+      initials,
+      task_count: taskCount,
+      task_label: taskLabel,
+      pct,
+      footer_label: '',
+    };
+  });
 
-  overdueItems.sort((a, b) => b.daysOverdue - a.daysOverdue);
-
-  const uniqueProjects = new Set(overdueItems.map(i => i.projectLabel).filter(Boolean));
-  const longestDays = overdueItems[0].daysOverdue;
-
-  const rows = overdueItems.map((item) => ({
-    id: String(item.task.gid ?? item.task.id ?? ''),
-    title: String(item.task.name ?? ''),
-    project_label: item.projectLabel,
-    overdue_label: `${item.daysOverdue}d overdue`,
-    days_overdue: item.daysOverdue,
-    stat_overdue: '',
-    stat_projects: '',
-    stat_longest: '',
-  }));
-
-  rows[0].stat_overdue = String(overdueItems.length);
-  rows[0].stat_projects = String(uniqueProjects.size);
-  rows[0].stat_longest = `${longestDays}d`;
+  const totalTasks = raw.reduce((sum, m) => sum + Number((m as Record<string, unknown>).task_count ?? 0), 0);
+  rows[0].footer_label = `${totalTasks} active task${totalTasks === 1 ? '' : 's'} across team`;
 
   return rows;
 };
@@ -265,7 +255,7 @@ const elements: PluginElementsModule = {
     flatten_my_tasks,
     flatten_projects,
     flatten_project_progress,
-    flatten_overdue_tasks,
+    flatten_team_workload,
   },
 };
 
