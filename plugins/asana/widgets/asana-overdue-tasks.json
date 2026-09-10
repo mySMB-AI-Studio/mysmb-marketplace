@@ -1,0 +1,164 @@
+{
+  "id": "asana-overdue-tasks",
+  "title": "Overdue Tasks",
+  "description": "Tasks assigned to you in Asana that are past their due date, with per-task overdue badges and summary stats.",
+  "category": "tasks",
+  "tags": ["asana", "tasks", "overdue", "due dates", "at risk"],
+  "keywords": ["asana overdue", "overdue tasks", "past due", "late tasks", "asana"],
+  "connectorsUsed": ["asana"],
+  "popularity": 65,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 6 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 8, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "asana",
+    "tool": "list_tasks",
+    "params": { "assignee": "me", "completed_since": "now", "limit": 50 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "loading", "empty", "kpiGrid", "div1", "taskList"],
+        "watch": {
+          "/asana/list_tasks/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "asana_flatten_overdue_tasks",
+                  "args": { "value": { "$state": "/asana/list_tasks/data" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "TriangleAlert", "tone": "destructive", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Overdue Tasks", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Asana" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/asana.list_tasks" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No overdue tasks. You're all caught up!" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/asana.list_tasks", "not": true },
+            { "$state": "/ui/rows/0", "not": true }
+          ]
+        }
+      },
+
+      "kpiGrid": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["tileOverdue", "tileProjects", "tileLongest"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/asana.list_tasks", "not": true },
+            { "$state": "/ui/rows/0" }
+          ]
+        }
+      },
+
+      "tileOverdue": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackOverdue"] },
+      "stackOverdue": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valOverdue", "lblOverdue"] },
+      "valOverdue": { "type": "Stat", "props": { "value": { "$state": "/ui/rows/0/stat_overdue" }, "size": "md" } },
+      "lblOverdue": { "type": "Caption", "props": { "text": "Overdue", "tone": "destructive" } },
+
+      "tileProjects": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackProjects"] },
+      "stackProjects": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valProjects", "lblProjects"] },
+      "valProjects": { "type": "Stat", "props": { "value": { "$state": "/ui/rows/0/stat_projects" }, "size": "md" } },
+      "lblProjects": { "type": "Caption", "props": { "text": "Projects", "tone": "muted" } },
+
+      "tileLongest": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackLongest"] },
+      "stackLongest": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valLongest", "lblLongest"] },
+      "valLongest": { "type": "Stat", "props": { "value": { "$state": "/ui/rows/0/stat_longest" }, "size": "md" } },
+      "lblLongest": { "type": "Caption", "props": { "text": "Longest", "tone": "destructive" } },
+
+      "div1": {
+        "type": "Divider",
+        "props": {},
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/asana.list_tasks", "not": true },
+            { "$state": "/ui/rows/0" }
+          ]
+        }
+      },
+
+      "taskList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["taskRow"],
+        "repeat": { "statePath": "/ui/rows", "key": "id" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/asana.list_tasks", "not": true },
+            { "$state": "/ui/rows/0" }
+          ]
+        }
+      },
+
+      "taskRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["taskInfo", "taskOverdueBadge"]
+      },
+      "taskInfo": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["taskTitle", "taskProject"]
+      },
+      "taskTitle": {
+        "type": "Text",
+        "props": { "text": { "$item": "title" }, "size": "sm", "weight": "semibold", "truncate": true }
+      },
+      "taskProject": {
+        "type": "Caption",
+        "props": { "text": { "$item": "project_label" }, "tone": "muted", "truncate": true },
+        "visible": { "$item": "project_label" }
+      },
+      "taskOverdueBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "overdue_label" },
+          "tone": "destructive",
+          "variant": "soft"
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}
