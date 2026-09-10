@@ -140,12 +140,58 @@ const flatten_projects: ComputedFunction = (args) => {
   return rows;
 };
 
+/**
+ * Flattens a list_projects response into display rows for the Project Progress tile.
+ * Calculates task completion percentage from task_counts opt_fields.
+ * tone: "destructive" (<40%), "warning" (40–69%), "muted" (≥70% or no tasks).
+ * Row 0 carries footer_label: "N active projects".
+ *
+ * Args: { value: array }
+ */
+const flatten_project_progress: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  if (raw.length === 0) return [];
+
+  const rows = raw.map((proj) => {
+    const id = String(proj.gid ?? proj.id ?? '');
+    const name = String(proj.name ?? '');
+
+    const taskCounts = proj.task_counts as Record<string, unknown> | null | undefined;
+    const total = taskCounts ? Number(taskCounts.num_tasks ?? 0) : 0;
+    const completed = taskCounts ? Number(taskCounts.num_completed_tasks ?? 0) : 0;
+    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    let tone = 'muted';
+    let pctLabel = '—';
+    if (total > 0) {
+      pctLabel = `${pct}%`;
+      if (pct < 40) tone = 'destructive';
+      else if (pct < 70) tone = 'warning';
+    }
+
+    return {
+      id,
+      name,
+      pct,
+      pct_label: pctLabel,
+      tone,
+      footer_label: '',
+    };
+  });
+
+  const total = raw.length;
+  rows[0].footer_label = `${total} active project${total === 1 ? '' : 's'}`;
+
+  return rows;
+};
+
 const elements: PluginElementsModule = {
   slug: 'asana',
   functions: {
     format_date,
     flatten_my_tasks,
     flatten_projects,
+    flatten_project_progress,
   },
 };
 
