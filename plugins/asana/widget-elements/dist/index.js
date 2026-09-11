@@ -303,7 +303,7 @@ const flatten_my_tasks_tabs = (args) => {
         }
         let dueLabel = '';
         let dueTone = 'muted';
-        let circleTone = 'muted';
+        let circleTone = isCompleted ? 'success' : 'info';
         let sortMs = isCompleted ? -1 : Infinity;
         if (dueOn) {
             const dueMs = Date.parse(dueOn);
@@ -325,7 +325,7 @@ const flatten_my_tasks_tabs = (args) => {
                     else {
                         dueLabel = formatted;
                         dueTone = 'muted';
-                        circleTone = 'success';
+                        circleTone = 'info';
                     }
                 }
                 else {
