@@ -1,0 +1,163 @@
+{
+  "id": "dext-client-health",
+  "title": "Client Health",
+  "description": "All Dext Precision clients with health score and alert level badge. High-alert clients shown in red, medium in amber, low in green.",
+  "category": "clients",
+  "tags": ["dext", "clients", "health score", "alert level", "practice"],
+  "keywords": ["dext clients", "health score", "alert level", "practice health", "data health"],
+  "connectorsUsed": ["dext"],
+  "popularity": 70,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 7 },
+    "min": { "colSpan": 3, "rowSpan": 5 },
+    "max": { "colSpan": 8, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "dext",
+    "tool": "list_clients",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "kpiRow", "div1", "loading", "empty", "clientList", "clientFooter"],
+        "watch": {
+          "/dext/list_clients/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "dext_flatten_client_health",
+                  "args": { "value": { "$state": "/dext/list_clients/data" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "ShieldCheck", "tone": "success", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Client Health", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Dext" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "kpiRow": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["tileTotal", "tilePlaceholder1", "tilePlaceholder2"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dext.list_clients", "not": true },
+            { "$state": "/ui/rows/0" }
+          ]
+        }
+      },
+      "tileTotal": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackTotal"] },
+      "stackTotal": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valTotal", "lblTotal"] },
+      "valTotal": { "type": "Stat", "props": { "value": { "$state": "/ui/rows/0/stat_total" }, "size": "md" } },
+      "lblTotal": { "type": "Caption", "props": { "text": "Total Clients", "tone": "muted" } },
+
+      "tilePlaceholder1": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackP1"] },
+      "stackP1": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valP1", "lblP1"] },
+      "valP1": { "type": "Stat", "props": { "value": " ", "size": "md" } },
+      "lblP1": { "type": "Caption", "props": { "text": " ", "tone": "muted" } },
+
+      "tilePlaceholder2": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackP2"] },
+      "stackP2": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valP2", "lblP2"] },
+      "valP2": { "type": "Stat", "props": { "value": " ", "size": "md" } },
+      "lblP2": { "type": "Caption", "props": { "text": " ", "tone": "muted" } },
+
+      "div1": {
+        "type": "Divider",
+        "props": {},
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dext.list_clients", "not": true },
+            { "$state": "/ui/rows/0" }
+          ]
+        }
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/dext.list_clients" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No clients found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dext.list_clients", "not": true },
+            { "$state": "/ui/rows/0", "not": true }
+          ]
+        }
+      },
+
+      "clientList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["clientRow"],
+        "repeat": { "statePath": "/ui/rows", "key": "id" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dext.list_clients", "not": true },
+            { "$state": "/ui/rows/0" }
+          ]
+        }
+      },
+
+      "clientRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["clientName", "healthScore", "alertBadge"]
+      },
+      "clientName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "semibold", "grow": true, "truncate": true }
+      },
+      "healthScore": {
+        "type": "Text",
+        "props": { "text": { "$item": "health_score" }, "size": "sm", "tone": "muted" }
+      },
+      "alertBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "badge_label" },
+          "tone": { "$item": "alert_tone" },
+          "variant": "soft"
+        }
+      },
+
+      "clientFooter": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/ui/rows/0/footer_label" }, "tone": "muted" },
+        "visible": { "$state": "/ui/rows/0/footer_label" }
+      }
+
+    }
+  },
+  "status": "published"
+}
