@@ -228,6 +228,79 @@ const flatten_team_workload = (args) => {
     rows[0].footer_label = `${totalTasks} active task${totalTasks === 1 ? '' : 's'} across team`;
     return rows;
 };
+const flatten_my_tasks_tabs = (args) => {
+    const raw = Array.isArray(args.value) ? args.value : [];
+    if (raw.length === 0)
+        return { upcoming: [], overdue: [], completed: [] };
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayMs = Date.parse(todayStr);
+    const upcoming = [];
+    const overdue = [];
+    const completed = [];
+    for (const task of raw) {
+        const id = String(task.gid ?? task.id ?? '');
+        const title = String(task.name ?? '');
+        const dueOn = task.due_on ? String(task.due_on) : null;
+        const isCompleted = Boolean(task.completed);
+        const memberships = Array.isArray(task.memberships) ? task.memberships : [];
+        const projects = Array.isArray(task.projects) ? task.projects : [];
+        let projectLabel = '';
+        if (memberships.length > 0) {
+            const proj = memberships[0].project;
+            if (proj)
+                projectLabel = String(proj.name ?? '');
+        }
+        else if (projects.length > 0) {
+            projectLabel = String(projects[0].name ?? '');
+        }
+        let dueLabel = '';
+        let dueTone = 'muted';
+        let circleTone = 'muted';
+        let sortMs = isCompleted ? -1 : Infinity;
+        if (dueOn) {
+            const dueMs = Date.parse(dueOn);
+            if (!Number.isNaN(dueMs)) {
+                sortMs = dueMs;
+                const d = new Date(dueMs);
+                const formatted = `${String(d.getDate()).padStart(2, '0')}-${MONTH_ABBR[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
+                if (!isCompleted) {
+                    if (dueMs < todayMs) {
+                        dueLabel = formatted;
+                        dueTone = 'destructive';
+                        circleTone = 'destructive';
+                    }
+                    else if (dueOn === todayStr) {
+                        dueLabel = 'Due Today';
+                        dueTone = 'warning';
+                        circleTone = 'warning';
+                    }
+                    else {
+                        dueLabel = formatted;
+                        dueTone = 'muted';
+                        circleTone = 'success';
+                    }
+                }
+                else {
+                    dueLabel = formatted;
+                }
+            }
+        }
+        const row = { id, title, due_label: dueLabel, project_label: projectLabel, due_tone: dueTone, circle_tone: circleTone, _sort: sortMs };
+        if (isCompleted) {
+            completed.push(row);
+        }
+        else if (dueOn && !Number.isNaN(Date.parse(dueOn)) && Date.parse(dueOn) < todayMs) {
+            overdue.push(row);
+        }
+        else {
+            upcoming.push(row);
+        }
+    }
+    upcoming.sort((a, b) => a._sort - b._sort);
+    overdue.sort((a, b) => a._sort - b._sort);
+    const clean = (rows) => rows.map(({ _sort: _s, ...r }) => r);
+    return { upcoming: clean(upcoming), overdue: clean(overdue), completed: clean(completed) };
+};
 const elements = {
     slug: 'asana',
     functions: {
@@ -236,6 +309,7 @@ const elements = {
         flatten_projects,
         flatten_project_progress,
         flatten_team_workload,
+        flatten_my_tasks_tabs,
     },
 };
 export default elements;
