@@ -83,12 +83,22 @@
       "tabUpcomingOn": {
         "type": "Button",
         "props": { "label": "Upcoming", "variant": "primary", "size": "sm" },
-        "visible": { "$state": "/ui/tab/upcoming" }
+        "visible": {
+          "$and": [
+            { "$state": "/ui/tab/overdue", "not": true },
+            { "$state": "/ui/tab/completed", "not": true }
+          ]
+        }
       },
       "tabUpcomingOff": {
         "type": "Button",
         "props": { "label": "Upcoming", "variant": "ghost", "size": "sm" },
-        "visible": { "$state": "/ui/tab/upcoming", "not": true },
+        "visible": {
+          "$or": [
+            { "$state": "/ui/tab/overdue" },
+            { "$state": "/ui/tab/completed" }
+          ]
+        },
         "on": {
           "click": [
             { "action": "setState", "params": { "statePath": "/ui/tab/upcoming", "value": true } },
@@ -136,7 +146,12 @@
         "type": "Stack",
         "props": { "gap": "sm" },
         "children": ["upcomingEmpty", "upcomingList"],
-        "visible": { "$state": "/ui/tab/upcoming" }
+        "visible": {
+          "$and": [
+            { "$state": "/ui/tab/overdue", "not": true },
+            { "$state": "/ui/tab/completed", "not": true }
+          ]
+        }
       },
       "upcomingEmpty": {
         "type": "Empty",
