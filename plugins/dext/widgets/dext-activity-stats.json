@@ -1,0 +1,127 @@
+{
+  "id": "dext-activity-stats",
+  "title": "Activity Stats",
+  "description": "Practice-wide summary across all Dext Precision clients: total clients monitored, average health score, and count by alert level (high, medium, low).",
+  "category": "analytics",
+  "tags": ["dext", "activity", "stats", "health score", "alert level", "summary"],
+  "keywords": ["dext stats", "client summary", "health score average", "alert counts", "practice overview"],
+  "connectorsUsed": ["dext"],
+  "popularity": 65,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 5 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 8, "rowSpan": 8 }
+  },
+  "dataProvider": {
+    "mcp": "dext",
+    "tool": "list_clients",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "loading", "empty", "kpiGrid", "activityFooter"],
+        "watch": {
+          "/dext/list_clients/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/summary",
+                "value": {
+                  "$computed": "dext_flatten_activity_summary",
+                  "args": { "value": { "$state": "/dext/list_clients/data" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "BarChart2", "tone": "info", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Activity Stats", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Dext" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2"],
+        "visible": { "$state": "/_loading/dext.list_clients" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No client data available." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dext.list_clients", "not": true },
+            { "$state": "/ui/summary/0", "not": true }
+          ]
+        }
+      },
+
+      "kpiGrid": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["tileTotal", "tileAvgHealth", "tileHighAlert", "tileMediumAlert", "tileLowAlert"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dext.list_clients", "not": true },
+            { "$state": "/ui/summary/0" }
+          ]
+        }
+      },
+
+      "tileTotal": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackTotal"] },
+      "stackTotal": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valTotal", "lblTotal"] },
+      "valTotal": { "type": "Stat", "props": { "value": { "$state": "/ui/summary/0/stat_total" }, "size": "md" } },
+      "lblTotal": { "type": "Caption", "props": { "text": "Total Clients", "tone": "muted" } },
+
+      "tileAvgHealth": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackAvgHealth"] },
+      "stackAvgHealth": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valAvgHealth", "lblAvgHealth"] },
+      "valAvgHealth": { "type": "Stat", "props": { "value": { "$state": "/ui/summary/0/stat_avg_health" }, "size": "md" } },
+      "lblAvgHealth": { "type": "Caption", "props": { "text": "Avg Health Score", "tone": "muted" } },
+
+      "tileHighAlert": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackHighAlert"] },
+      "stackHighAlert": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valHighAlert", "lblHighAlert"] },
+      "valHighAlert": { "type": "Stat", "props": { "value": { "$state": "/ui/summary/0/stat_high_alert" }, "size": "md", "tone": "destructive" } },
+      "lblHighAlert": { "type": "Caption", "props": { "text": "High Alert", "tone": "destructive" } },
+
+      "tileMediumAlert": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackMediumAlert"] },
+      "stackMediumAlert": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valMediumAlert", "lblMediumAlert"] },
+      "valMediumAlert": { "type": "Stat", "props": { "value": { "$state": "/ui/summary/0/stat_medium_alert" }, "size": "md", "tone": "warning" } },
+      "lblMediumAlert": { "type": "Caption", "props": { "text": "Medium Alert", "tone": "warning" } },
+
+      "tileLowAlert": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackLowAlert"] },
+      "stackLowAlert": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valLowAlert", "lblLowAlert"] },
+      "valLowAlert": { "type": "Stat", "props": { "value": { "$state": "/ui/summary/0/stat_low_alert" }, "size": "md", "tone": "success" } },
+      "lblLowAlert": { "type": "Caption", "props": { "text": "Low Alert", "tone": "success" } },
+
+      "activityFooter": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/ui/summary/0/footer_label" }, "tone": "muted" },
+        "visible": { "$state": "/ui/summary/0/footer_label" }
+      }
+
+    }
+  },
+  "status": "published"
+}
