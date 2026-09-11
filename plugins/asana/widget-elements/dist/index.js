@@ -228,6 +228,54 @@ const flatten_team_workload = (args) => {
     rows[0].footer_label = `${totalTasks} active task${totalTasks === 1 ? '' : 's'} across team`;
     return rows;
 };
+const flatten_overdue_tasks = (args) => {
+    const raw = Array.isArray(args.value) ? args.value : [];
+    if (raw.length === 0)
+        return [];
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayMs = Date.parse(todayStr);
+    const overdueItems = [];
+    for (const task of raw) {
+        const dueOn = task.due_on ? String(task.due_on) : null;
+        if (!dueOn)
+            continue;
+        const dueMs = Date.parse(dueOn);
+        if (Number.isNaN(dueMs) || dueMs >= todayMs)
+            continue;
+        const daysOverdue = Math.round((todayMs - dueMs) / 86400000);
+        const memberships = Array.isArray(task.memberships) ? task.memberships : [];
+        const projects = Array.isArray(task.projects) ? task.projects : [];
+        let projectLabel = '';
+        if (memberships.length > 0) {
+            const proj = memberships[0].project;
+            if (proj)
+                projectLabel = String(proj.name ?? '');
+        }
+        else if (projects.length > 0) {
+            projectLabel = String(projects[0].name ?? '');
+        }
+        overdueItems.push({ task, daysOverdue, projectLabel });
+    }
+    if (overdueItems.length === 0)
+        return [];
+    overdueItems.sort((a, b) => b.daysOverdue - a.daysOverdue);
+    const uniqueProjects = new Set(overdueItems.map(i => i.projectLabel).filter(Boolean));
+    const longestDays = overdueItems[0].daysOverdue;
+    const rows = overdueItems.map((item) => ({
+        id: String(item.task.gid ?? item.task.id ?? ''),
+        title: String(item.task.name ?? ''),
+        project_label: item.projectLabel,
+        overdue_label: `${item.daysOverdue}d overdue`,
+        days_overdue: item.daysOverdue,
+        stat_overdue: '',
+        stat_projects: '',
+        stat_longest: '',
+    }));
+    rows[0].stat_overdue = String(overdueItems.length);
+    rows[0].stat_projects = String(uniqueProjects.size);
+    rows[0].stat_longest = `${longestDays}d`;
+    return rows;
+};
 const flatten_my_tasks_tabs = (args) => {
     const raw = Array.isArray(args.value) ? args.value : [];
     if (raw.length === 0)
@@ -308,6 +356,7 @@ const elements = {
         flatten_my_tasks,
         flatten_projects,
         flatten_project_progress,
+        flatten_overdue_tasks,
         flatten_team_workload,
         flatten_my_tasks_tabs,
     },
