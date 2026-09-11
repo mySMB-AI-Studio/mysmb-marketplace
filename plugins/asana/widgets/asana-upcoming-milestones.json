@@ -1,0 +1,131 @@
+{
+  "id": "asana-upcoming-milestones",
+  "title": "Upcoming Milestones",
+  "description": "Upcoming Asana milestones across your active projects, sorted by due date.",
+  "category": "tasks",
+  "tags": ["asana", "milestones", "upcoming", "due dates", "projects"],
+  "keywords": ["asana milestones", "upcoming milestones", "project milestones", "deadlines"],
+  "connectorsUsed": ["asana"],
+  "popularity": 60,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 6 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 8, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "asana",
+    "tool": "list_milestones",
+    "params": { "limit": 20 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "loading", "empty", "milestoneList", "milestoneFooter"],
+        "watch": {
+          "/asana/list_milestones/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "asana_flatten_upcoming_milestones",
+                  "args": { "value": { "$state": "/asana/list_milestones/data" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Flag", "tone": "success", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Upcoming Milestones", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Asana" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/asana.list_milestones" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No upcoming milestones." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/asana.list_milestones", "not": true },
+            { "$state": "/ui/rows/0", "not": true }
+          ]
+        }
+      },
+
+      "milestoneList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["milestoneRow"],
+        "repeat": { "statePath": "/ui/rows", "key": "id" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/asana.list_milestones", "not": true },
+            { "$state": "/ui/rows/0" }
+          ]
+        }
+      },
+
+      "milestoneRow": {
+        "type": "Row",
+        "props": { "gap": "md", "align": "center" },
+        "children": ["milestoneDateBadge", "milestoneInfo"]
+      },
+      "milestoneDateBadge": {
+        "type": "Badge",
+        "props": { "text": { "$item": "due_label" }, "tone": "success", "variant": "soft" }
+      },
+      "milestoneInfo": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["milestoneName", "milestoneProject"]
+      },
+      "milestoneName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "semibold", "truncate": true }
+      },
+      "milestoneProject": {
+        "type": "Caption",
+        "props": { "text": { "$item": "project_label" }, "tone": "muted", "truncate": true },
+        "visible": { "$item": "project_label" }
+      },
+
+      "milestoneFooter": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/ui/rows/0/footer_label" }, "tone": "muted" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/asana.list_milestones", "not": true },
+            { "$state": "/ui/rows/0/footer_label" }
+          ]
+        }
+      }
+    }
+  },
+  "status": "published"
+}
