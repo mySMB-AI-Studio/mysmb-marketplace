@@ -301,6 +301,42 @@ const flatten_my_tasks_tabs = (args) => {
     const clean = (rows) => rows.map(({ _sort: _s, ...r }) => r);
     return { upcoming: clean(upcoming), overdue: clean(overdue), completed: clean(completed) };
 };
+/**
+ * Flattens a list_milestones response into display rows for the Upcoming Milestones tile.
+ * Milestones are already sorted ascending by due_on from the MCP tool.
+ *
+ * Row 0 carries footer_label: "N milestone(s) this month" or "N upcoming milestone(s)".
+ * Each row has: id, name, project_label, due_label (dd-Mmm-yy), footer_label.
+ *
+ * Args: { value: array }
+ */
+const flatten_upcoming_milestones = (args) => {
+    const raw = Array.isArray(args.value) ? args.value : [];
+    if (raw.length === 0)
+        return [];
+    const thisMonth = new Date().toISOString().slice(0, 7); // "2026-09"
+    let thisMonthCount = 0;
+    const rows = raw.map((m) => {
+        const id = String(m.gid ?? '');
+        const name = String(m.name ?? '');
+        const projectLabel = String(m.project_name ?? '');
+        const dueOn = m.due_on ? String(m.due_on) : '';
+        let dueLabel = '';
+        if (dueOn) {
+            const d = new Date(Date.parse(dueOn));
+            if (!Number.isNaN(d.getTime())) {
+                dueLabel = `${String(d.getDate()).padStart(2, '0')}-${MONTH_ABBR[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
+            }
+            if (dueOn.startsWith(thisMonth))
+                thisMonthCount++;
+        }
+        return { id, name, project_label: projectLabel, due_label: dueLabel, footer_label: '' };
+    });
+    rows[0].footer_label = thisMonthCount > 0
+        ? `${thisMonthCount} milestone${thisMonthCount === 1 ? '' : 's'} this month`
+        : `${raw.length} upcoming milestone${raw.length === 1 ? '' : 's'}`;
+    return rows;
+};
 const elements = {
     slug: 'asana',
     functions: {
@@ -310,6 +346,7 @@ const elements = {
         flatten_project_progress,
         flatten_team_workload,
         flatten_my_tasks_tabs,
+        flatten_upcoming_milestones,
     },
 };
 export default elements;
