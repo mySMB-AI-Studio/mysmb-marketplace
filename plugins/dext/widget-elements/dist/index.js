@@ -22,11 +22,13 @@ const flatten_client_health = (args) => {
     if (raw.length === 0)
         return [];
     const toneMap = {
+        error: 'destructive',
         high: 'destructive',
         medium: 'warning',
         low: 'success',
     };
     const labelMap = {
+        error: 'Error',
         high: 'High',
         medium: 'Medium',
         low: 'Low',
@@ -86,7 +88,7 @@ const flatten_activity_summary = (args) => {
         if (!Number.isNaN(score))
             totalHealth += score;
         const level = String(client.alertLevel ?? '').toLowerCase();
-        if (level === 'high')
+        if (level === 'error' || level === 'high')
             highAlert++;
         else if (level === 'medium')
             mediumAlert++;

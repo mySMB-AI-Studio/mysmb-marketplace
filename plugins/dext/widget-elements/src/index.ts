@@ -24,11 +24,13 @@ const flatten_client_health: ComputedFunction = (args) => {
   if (raw.length === 0) return [];
 
   const toneMap: Record<string, string> = {
+    error:  'destructive',
     high:   'destructive',
     medium: 'warning',
     low:    'success',
   };
   const labelMap: Record<string, string> = {
+    error:  'Error',
     high:   'High',
     medium: 'Medium',
     low:    'Low',
@@ -94,9 +96,9 @@ const flatten_activity_summary: ComputedFunction = (args) => {
     if (!Number.isNaN(score)) totalHealth += score;
 
     const level = String(client.alertLevel ?? '').toLowerCase();
-    if (level === 'high')        highAlert++;
-    else if (level === 'medium') mediumAlert++;
-    else if (level === 'low')    lowAlert++;
+    if (level === 'error' || level === 'high') highAlert++;
+    else if (level === 'medium')               mediumAlert++;
+    else if (level === 'low')                  lowAlert++;
   }
 
   const total    = raw.length;
