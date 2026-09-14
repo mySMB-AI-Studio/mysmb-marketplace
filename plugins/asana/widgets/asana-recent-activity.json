@@ -82,7 +82,7 @@
       "activityList": {
         "type": "Stack",
         "props": { "gap": "xs", "pt": "sm" },
-        "children": ["activityRow"],
+        "children": ["activityRowLink"],
         "repeat": { "statePath": "/ui/rows", "key": "id" },
         "visible": {
           "$and": [
@@ -90,6 +90,21 @@
             { "$state": "/ui/rows/0" }
           ]
         }
+      },
+
+      "activityRowLink": {
+        "type": "Row",
+        "props": { "gap": "none", "hover": true, "clickable": true },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": { "$computed": "identity", "args": { "value": { "$item": "url" } } },
+              "target": "_blank"
+            }
+          }
+        },
+        "children": ["activityRow"]
       },
 
       "activityRow": {

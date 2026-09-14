@@ -409,7 +409,15 @@ const flatten_milestones: ComputedFunction = (args) => {
  * Row 0 carries footer_label: "N recent items".
  * Each row has: id, title (`Completed "X"` / `Updated "X"`), subtitle
  * (project label or ''), activity_at (ISO timestamp used for sort +
- * relative_time), icon_name, tone.
+ * relative_time), icon_name, tone, url (task deep link, '' if not
+ * derivable).
+ *
+ * `url` prefers the task's own `permalink_url` (a real API field, same as
+ * `flatten_projects` trusts for projects); if list_tasks doesn't return it
+ * for this task, falls back to the client-built legacy deep link
+ * `https://app.asana.com/0/{project_gid}/{gid}` the same way
+ * `flatten_milestones` does above -- NOT sandbox-confirmed by actually
+ * clicking it, same caveat as that fallback.
  *
  * Args: { value: array } -- list_tasks' `data` array, called with
  * completed_since far enough in the past to include completed tasks too
@@ -432,12 +440,21 @@ const flatten_recent_activity: ComputedFunction = (args) => {
     const memberships = Array.isArray(task.memberships) ? (task.memberships as Record<string, unknown>[]) : [];
     const projects = Array.isArray(task.projects) ? (task.projects as Record<string, unknown>[]) : [];
     let projectLabel = '';
+    let projectGid = '';
     if (memberships.length > 0) {
       const proj = memberships[0].project as Record<string, unknown> | undefined;
-      if (proj) projectLabel = String(proj.name ?? '');
+      if (proj) {
+        projectLabel = String(proj.name ?? '');
+        projectGid = String(proj.gid ?? '');
+      }
     } else if (projects.length > 0) {
-      projectLabel = String((projects[0] as Record<string, unknown>).name ?? '');
+      const proj = projects[0] as Record<string, unknown>;
+      projectLabel = String(proj.name ?? '');
+      projectGid = String(proj.gid ?? '');
     }
+
+    const permalinkUrl = task.permalink_url ? String(task.permalink_url) : '';
+    const url = permalinkUrl || (id && projectGid ? `https://app.asana.com/0/${projectGid}/${id}` : '');
 
     return {
       id,
@@ -446,6 +463,7 @@ const flatten_recent_activity: ComputedFunction = (args) => {
       activity_at: activityAt,
       icon_name: isCompleted ? 'CheckCircle2' : 'Pencil',
       tone: isCompleted ? 'success' : 'muted',
+      url,
       footer_label: '',
     };
   });
