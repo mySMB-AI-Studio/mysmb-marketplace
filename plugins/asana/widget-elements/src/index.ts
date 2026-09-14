@@ -388,6 +388,77 @@ const flatten_milestones: ComputedFunction = (args) => {
   return rows;
 };
 
+/**
+ * Flattens a list_tasks response (assignee=me) into rows for the Recent
+ * Activity tile.
+ *
+ * Approximation, not a true activity feed: the Asana MCP gateway has no
+ * stories/events tool (no per-task comments, status-column moves, or
+ * "added N tasks" grouping) as of 2026-09-14 -- only list_tasks, get_task,
+ * list_projects, get_project, list_sections, list_users, get_team_workload,
+ * list_milestones, plus the write tools. This derives "activity" purely from
+ * two task fields that ARE real: `completed`/`completed_at` (a genuine event)
+ * and `modified_at` (a genuine but vaguer "something changed" signal -- it
+ * can't distinguish a comment from a title edit from a due-date change).
+ * Every row is implicitly the current user's own task (assignee=me), so
+ * there's no cross-teammate attribution to show -- the leading icon encodes
+ * the action type (completed vs. updated) instead of a per-person avatar.
+ * The tile's footer discloses this scope/limitation per TILE-DISPLAY-
+ * STANDARDS.md §13 rather than presenting it as a full team activity feed.
+ *
+ * Row 0 carries footer_label: "N recent items".
+ * Each row has: id, title (`Completed "X"` / `Updated "X"`), subtitle
+ * (project label or ''), activity_at (ISO timestamp used for sort +
+ * relative_time), icon_name, tone.
+ *
+ * Args: { value: array } -- list_tasks' `data` array, called with
+ * completed_since far enough in the past to include completed tasks too
+ * (see asana-my-tasks' tabs redesign for the same technique).
+ */
+const flatten_recent_activity: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  if (raw.length === 0) return [];
+
+  const rows = raw.map((task) => {
+    const id = String(task.gid ?? task.id ?? '');
+    const title = String(task.name ?? '');
+    const isCompleted = Boolean(task.completed);
+    const completedAt = task.completed_at ? String(task.completed_at) : null;
+    const modifiedAt = task.modified_at ? String(task.modified_at) : null;
+    const createdAt = task.created_at ? String(task.created_at) : null;
+
+    const activityAt = (isCompleted && completedAt) ? completedAt : (modifiedAt ?? createdAt ?? '');
+
+    const memberships = Array.isArray(task.memberships) ? (task.memberships as Record<string, unknown>[]) : [];
+    const projects = Array.isArray(task.projects) ? (task.projects as Record<string, unknown>[]) : [];
+    let projectLabel = '';
+    if (memberships.length > 0) {
+      const proj = memberships[0].project as Record<string, unknown> | undefined;
+      if (proj) projectLabel = String(proj.name ?? '');
+    } else if (projects.length > 0) {
+      projectLabel = String((projects[0] as Record<string, unknown>).name ?? '');
+    }
+
+    return {
+      id,
+      title: isCompleted ? `Completed "${title}"` : `Updated "${title}"`,
+      subtitle: projectLabel,
+      activity_at: activityAt,
+      icon_name: isCompleted ? 'CheckCircle2' : 'Pencil',
+      tone: isCompleted ? 'success' : 'muted',
+      footer_label: '',
+    };
+  });
+
+  rows.sort((a, b) => (Date.parse(b.activity_at) || 0) - (Date.parse(a.activity_at) || 0));
+
+  const top = rows.slice(0, 20);
+  const total = top.length;
+  if (total > 0) top[0].footer_label = `${total} recent item${total === 1 ? '' : 's'}`;
+
+  return top;
+};
+
 const elements: PluginElementsModule = {
   slug: 'asana',
   functions: {
@@ -398,6 +469,7 @@ const elements: PluginElementsModule = {
     flatten_team_workload,
     flatten_my_tasks_tabs,
     flatten_milestones,
+    flatten_recent_activity,
   },
 };
 

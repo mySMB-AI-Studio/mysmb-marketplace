@@ -32,8 +32,13 @@ This plugin uses OAuth. No environment variables or manual credentials are requi
 
 ## Widgets
 
-- **My Tasks** (`asana-my-tasks`) — tasks assigned to the current user with due dates, project labels, and overdue indicators
+- **My Tasks** (`asana-my-tasks`) — tasks assigned to the current user, in Upcoming / Overdue / Completed tabs
+- **Overdue Tasks** (`asana-overdue-tasks`) — tasks assigned to you that are past their due date, with summary stats
 - **Projects** (`asana-projects`) — active Asana projects in your workspace
+- **Project Progress** (`asana-project-progress`) — task completion progress for your active projects
+- **Team Workload** (`asana-team-workload`) — active task counts per team member, sorted by workload
+- **Upcoming Milestones** (`asana-upcoming-milestones`) — incomplete milestones due today or later, across your active projects
+- **Recent Activity** (`asana-recent-activity`) — recent completions and edits on tasks assigned to you. Approximation: the gateway has no stories/events tool, so comments and status-column moves aren't shown, and it's scoped to your own tasks, not the whole team
 
 ## See also
 
