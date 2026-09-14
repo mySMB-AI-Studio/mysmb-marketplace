@@ -301,6 +301,65 @@ const flatten_my_tasks_tabs = (args) => {
     const clean = (rows) => rows.map(({ _sort: _s, ...r }) => r);
     return { upcoming: clean(upcoming), overdue: clean(overdue), completed: clean(completed) };
 };
+/**
+ * Flattens a list_milestones response into display rows for the Upcoming
+ * Milestones tile. `list_milestones` is server-side pre-filtered to
+ * incomplete milestones due today or later, sorted by due date ascending --
+ * so unlike `flatten_my_tasks`/`flatten_my_tasks_tabs` above, there is no
+ * overdue/destructive case to handle here, only "due today" vs "due later".
+ *
+ * Row 0 carries footer_label: "N upcoming milestones".
+ * Each row has: id, name, due_label (dd-Mmm-yy or "Due Today"),
+ * due_tone ("warning" if due today, "brand" [mint] otherwise), project_label, url.
+ *
+ * `url` is built client-side from `project_gid` + `gid` as
+ * `https://app.asana.com/0/{project_gid}/{gid}` -- Asana's long-standing
+ * "legacy" task deep-link format (project id then task id). `list_milestones`
+ * doesn't request the real `permalink_url` field the way this plugin's
+ * `flatten_projects` does (that would need a `myhub-mcp-servers` change,
+ * a different repo), so this is a manually-constructed link based on
+ * Asana's known URL convention, NOT sandbox-confirmed by actually clicking
+ * it -- unlike `flatten_projects`' `permalink_url`, which IS a real API
+ * value. Flag for live click-through verification.
+ *
+ * Args: { value: array } -- `list_milestones`'s `data` array.
+ */
+const flatten_milestones = (args) => {
+    const raw = Array.isArray(args.value) ? args.value : [];
+    if (raw.length === 0)
+        return [];
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const rows = raw.map((m) => {
+        const id = String(m.gid ?? '');
+        const name = String(m.name ?? '');
+        const projectLabel = String(m.project_name ?? '');
+        const projectGid = String(m.project_gid ?? '');
+        const url = id && projectGid ? `https://app.asana.com/0/${projectGid}/${id}` : '';
+        const dueOn = m.due_on ? String(m.due_on) : null;
+        // 'brand' (mint) is the calm default per the mockup Neil supplied 2026-09-14
+        // -- only "due today" escalates to 'warning'. Deliberately not 'muted':
+        // a date isn't a "nothing to report" field the way an untouched status is.
+        let dueLabel = '';
+        let dueTone = 'brand';
+        if (dueOn) {
+            if (dueOn === todayStr) {
+                dueLabel = 'Due Today';
+                dueTone = 'warning';
+            }
+            else {
+                const ms = Date.parse(dueOn);
+                if (!Number.isNaN(ms)) {
+                    const d = new Date(ms);
+                    dueLabel = `${String(d.getDate()).padStart(2, '0')}-${MONTH_ABBR[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
+                }
+            }
+        }
+        return { id, name, due_label: dueLabel, due_tone: dueTone, project_label: projectLabel, url, footer_label: '' };
+    });
+    const total = raw.length;
+    rows[0].footer_label = `${total} upcoming milestone${total === 1 ? '' : 's'}`;
+    return rows;
+};
 const elements = {
     slug: 'asana',
     functions: {
@@ -310,6 +369,7 @@ const elements = {
         flatten_project_progress,
         flatten_team_workload,
         flatten_my_tasks_tabs,
+        flatten_milestones,
     },
 };
 export default elements;
