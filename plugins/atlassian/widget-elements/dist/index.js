@@ -539,6 +539,69 @@ const resolution_label = (args) => {
     return raw || 'Unresolved';
 };
 /**
+ * Display label for a Confluence space's `type` field (Confluence Cloud REST
+ * API v2 `GET /wiki/api/v2/spaces`). Title-Cased rather than passed through
+ * raw, per TILE-DISPLAY-STANDARDS.md §3/§4 -- no connector enum reaches a
+ * badge/label without a normalizing helper.
+ *
+ * Deliberately a generic word-capitalize (matches `priority_label`'s approach
+ * above), NOT a fixed `global`/`personal` two-value map -- confirmed live
+ * 2026-09-14 against a real tenant that `type` is NOT limited to those two
+ * values as Atlassian's own docs' "e.g. global" phrasing implied: a real
+ * space came back `type: "onboarding"` (template-driven, not a documented
+ * enum). The generic approach rendered it correctly as "Onboarding" with no
+ * fix needed -- a hardcoded two-value map would have silently shown the raw
+ * lowercase string instead for this and any other undocumented value.
+ *
+ * Args: { value } -- a Confluence space's `type` field.
+ *
+ * Spec example:
+ *   { "$computed": "atlassian_space_type_label", "args": { "value": { "$item": "type" } } }
+ */
+function titleCaseWord(raw) {
+    return raw.replace(/\S+/g, (word) => word[0].toUpperCase() + word.slice(1).toLowerCase());
+}
+const space_type_label = (args) => {
+    const raw = typeof args.value === 'string' ? args.value.trim() : '';
+    if (!raw)
+        return 'Unknown';
+    return titleCaseWord(raw);
+};
+// `chart-1`..`chart-5` -- categorical, non-status colors (TILE-DISPLAY-
+// STANDARDS.md §7 "Decorative (non-status) color": a Confluence space's
+// `type` isn't a state that changes (nothing is "wrong" about a personal
+// space), so it must NOT borrow a status tone (destructive/warning/success)
+// -- that's reserved for real state per the same section's restraint
+// principle. `type` is an open-ended, connector-defined category (confirmed
+// live 2026-09-14: not just `global`/`personal`, a real space came back
+// `type: "onboarding"`), so each distinct value gets a stable color from the
+// categorical palette instead of a fixed handful of named cases.
+const CHART_TONES = ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5'];
+// Deterministic (same string -> same tone every render/reload), not
+// insertion-order-based -- API result order isn't guaranteed stable across
+// calls, so an order-based assignment could flip which color a given type
+// gets between loads.
+function hashString(s) {
+    let h = 0;
+    for (let i = 0; i < s.length; i++)
+        h = (h * 31 + s.charCodeAt(i)) | 0;
+    return Math.abs(h);
+}
+/**
+ * Categorical color for a Confluence space's `type` field -- see the
+ * `CHART_TONES` comment above for why this is `chart-1..5` rather than a
+ * status tone. Args: { value } -- a Confluence space's `type` field.
+ *
+ * Spec example:
+ *   { "$computed": "atlassian_space_type_tone", "args": { "value": { "$item": "type" } } }
+ */
+const space_type_tone = (args) => {
+    const raw = typeof args.value === 'string' ? args.value.trim().toLowerCase() : '';
+    if (!raw)
+        return 'muted';
+    return CHART_TONES[hashString(raw) % CHART_TONES.length];
+};
+/**
  * Display name for a Jira `fields.assignee`/`fields.reporter` person object
  * -- `null` for an unassigned issue's `assignee` is a normal, common case
  * (not a data error), so this returns "Unassigned" rather than a blank
@@ -921,6 +984,8 @@ const elements = {
         sort_issues,
         set_sort_field,
         workload_by_agent,
+        space_type_label,
+        space_type_tone,
     },
     actions: {
         check_sla_this_month,
