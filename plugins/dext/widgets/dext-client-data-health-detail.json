@@ -1,0 +1,180 @@
+{
+  "id": "dext-client-data-health-detail",
+  "title": "Client Data Health Detail",
+  "description": "Detailed data health snapshot for a single Dext client — GST method, current BAS period, debtor balance, bank reconciliation, and ATO connection status.",
+  "category": "clients",
+  "tags": ["dext", "client", "health", "vat", "bas", "debtor", "bank", "ato"],
+  "keywords": ["dext client detail", "data health", "gst method", "bas period", "debtor balance", "ato status", "bank reconciliation"],
+  "connectorsUsed": ["dext"],
+  "popularity": 65,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 8 },
+    "min": { "colSpan": 3, "rowSpan": 6 },
+    "max": { "colSpan": 6, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "dext",
+    "tool": "list_clients",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "loading", "clientSection"],
+        "watch": {
+          "/dext/list_clients/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/clientId",
+                "value": { "$computed": "identity", "args": { "value": { "$state": "/dext/list_clients/data/0/id" } } }
+              }
+            }
+          ],
+          "/ui/clientId": [
+            {
+              "action": "dext.get_client",
+              "params": { "clientId": { "$state": "/ui/clientId" } }
+            }
+          ],
+          "/dext/get_client": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "dext_flatten_client_detail_rows",
+                  "args": { "client": { "$state": "/dext/get_client" } }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/healthTone",
+                "value": {
+                  "$computed": "dext_compute_health_tone",
+                  "args": { "score": { "$state": "/dext/get_client/healthScore" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "ClipboardList", "tone": "warning", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title":   { "type": "Heading", "props": { "text": "Client Data Health Detail", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow",  "props": { "text": "Dext" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk0", "sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/ui/rows", "not": true }
+      },
+      "sk0": { "type": "Skeleton", "props": { "height": "3rem",   "rounded": "md" } },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "clientSection": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["clientHeader", "div1", "rowList"],
+        "visible": { "$state": "/ui/rows" }
+      },
+
+      "clientHeader": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "sm" },
+        "children": ["clientInfo", "scoreBadge"]
+      },
+      "clientInfo": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["clientName", "clientAbn"]
+      },
+      "clientName": {
+        "type": "Text",
+        "props": { "text": { "$state": "/dext/get_client/name" }, "size": "sm", "weight": "semibold", "truncate": true }
+      },
+      "clientAbn": {
+        "type": "Caption",
+        "props": {
+          "text": { "$template": "ABN ${/dext/get_client/companyNumber}" },
+          "tone": "muted"
+        },
+        "visible": { "$state": "/dext/get_client/companyNumber" }
+      },
+      "scoreBadge": {
+        "type": "Badge",
+        "props": {
+          "label":   { "$template": "${/dext/get_client/healthScore}" },
+          "variant": "solid",
+          "tone":    { "$state": "/ui/healthTone" }
+        }
+      },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "rowList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["detailRow"],
+        "repeat": { "statePath": "/ui/rows", "key": "id" }
+      },
+
+      "detailRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["rowCircle", "rowInfo", "rowBadge"]
+      },
+      "rowCircle": {
+        "type": "Icon",
+        "props": { "name": "Circle", "tone": { "$item": "dot_tone" }, "size": "sm" }
+      },
+      "rowInfo": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["rowLabel", "rowSubLabel"]
+      },
+      "rowLabel": {
+        "type": "Text",
+        "props": { "text": { "$item": "label" }, "size": "sm", "weight": "semibold" }
+      },
+      "rowSubLabel": {
+        "type": "Caption",
+        "props": { "text": { "$item": "sub_label" }, "tone": "muted" },
+        "visible": { "$item": "sub_label" }
+      },
+      "rowBadge": {
+        "type": "Badge",
+        "props": {
+          "label":   { "$item": "badge_label" },
+          "tone":    { "$item": "badge_tone" },
+          "variant": "soft"
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}

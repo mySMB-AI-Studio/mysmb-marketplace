@@ -36,6 +36,14 @@ const flatten_client_health: ComputedFunction = (args) => {
     low:    'Low',
   };
 
+  let highAlert = 0, medAlert = 0, lowAlert = 0;
+  for (const c of raw) {
+    const lvl = String(c.alertLevel ?? '').toLowerCase();
+    if (lvl === 'error' || lvl === 'high') highAlert++;
+    else if (lvl === 'medium') medAlert++;
+    else if (lvl === 'low') lowAlert++;
+  }
+
   const rows = raw.map((client) => {
     const id          = String(client.id          ?? '');
     const name        = String(client.name        ?? '');
@@ -47,18 +55,22 @@ const flatten_client_health: ComputedFunction = (args) => {
     return {
       id,
       name,
-      health_score: healthScore,
-      alert_level:  alertLevel,
-      alert_tone:   alertTone,
-      badge_label:  badgeLabel,
-      stat_total:   '',
-      footer_label: '',
+      health_score:     healthScore,
+      alert_level:      alertLevel,
+      alert_tone:       alertTone,
+      badge_label:      badgeLabel,
+      stat_total:       '',
+      stat_high_alert:  '',
+      stat_low_alert:   '',
+      footer_label:     '',
     };
   });
 
   const total = raw.length;
-  rows[0].stat_total   = String(total);
-  rows[0].footer_label = `${total} client${total === 1 ? '' : 's'} monitored`;
+  rows[0].stat_total      = String(total);
+  rows[0].stat_high_alert = String(highAlert);
+  rows[0].stat_low_alert  = String(lowAlert);
+  rows[0].footer_label    = `${total} client${total === 1 ? '' : 's'} monitored`;
 
   return rows;
 };
@@ -146,7 +158,11 @@ const flatten_portfolio_health: ComputedFunction = (args) => {
     if (alertLevel === 'error' || alertLevel === 'high') circleTone = 'destructive';
     else if (alertLevel === 'medium') circleTone = 'warning';
 
-    const row: Record<string, unknown> = { id, name, provider_label: providerLabel, score_label: scoreLabel, circle_tone: circleTone };
+    let scoreTone = 'success';
+    if (healthScore < 40) scoreTone = 'destructive';
+    else if (healthScore < 70) scoreTone = 'warning';
+
+    const row: Record<string, unknown> = { id, name, provider_label: providerLabel, score_label: scoreLabel, circle_tone: circleTone, score_tone: scoreTone };
 
     all.push(row);
     if (alertLevel === 'low') healthy.push(row);
@@ -156,12 +172,217 @@ const flatten_portfolio_health: ComputedFunction = (args) => {
   return { all, needs_review, healthy };
 };
 
+/**
+ * Transforms the `get_client` response into display rows for the Client Data Health Detail tile.
+ *
+ * Each row:
+ *   id          — unique key
+ *   label       — row heading (e.g. "GST method")
+ *   sub_label   — secondary line (e.g. "Cash basis")
+ *   badge_label — right-side value chip (e.g. "Quarterly")
+ *   badge_tone  — Badge tone: "default" | "warning" | "destructive" | "success"
+ *   dot_tone    — Icon/Circle tone: "muted" | "warning" | "destructive" | "success"
+ *
+ * Args: { client: object }
+ */
+const flatten_client_detail_rows: ComputedFunction = (args) => {
+  const client = args.client as Record<string, unknown>;
+  if (!client || typeof client !== 'object' || Array.isArray(client)) return [];
+
+  const vatDetails  = (client.vatDetails        ?? {}) as Record<string, unknown>;
+  const metrics     = (client.metrics            ?? {}) as Record<string, unknown>;
+  const bankRec     = (client.bankReconciliation ?? {}) as Record<string, unknown>;
+
+  const rows: Record<string, unknown>[] = [];
+
+  // GST method
+  const vatScheme = String(vatDetails.scheme          ?? '').trim();
+  const vatCycle  = String(vatDetails.reportingCycle  ?? '').trim();
+  rows.push({
+    id: 'gst_method',
+    label: 'GST method',
+    sub_label: vatScheme || '—',
+    badge_label: vatCycle || '—',
+    badge_tone: 'default',
+    dot_tone: 'muted',
+  });
+
+  // Current BAS period
+  const periodStart = String(vatDetails.periodStart ?? '').trim();
+  const periodEnd   = String(vatDetails.periodEnd   ?? '').trim();
+  const periodLabel = periodStart && periodEnd ? `${periodStart}–${periodEnd}` : (periodStart || periodEnd || '—');
+  const yearEnd     = String(client.yearEnd ?? '').trim();
+  rows.push({
+    id: 'bas_period',
+    label: 'Current BAS period',
+    sub_label: yearEnd ? `Year end ${yearEnd}` : '—',
+    badge_label: periodLabel,
+    badge_tone: 'default',
+    dot_tone: 'muted',
+  });
+
+  // Debtor balance
+  const debtorBalance  = Number(metrics.debtorBalance ?? 0);
+  const avgDebtorDays  = Number(metrics.avgDebtorDays ?? 0);
+  const balanceLabel   = debtorBalance
+    ? `A$${debtorBalance.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : '—';
+  rows.push({
+    id: 'debtor_balance',
+    label: 'Debtor balance',
+    sub_label: avgDebtorDays ? `Avg. ${avgDebtorDays} days outstanding` : '—',
+    badge_label: balanceLabel,
+    badge_tone: 'default',
+    dot_tone: 'muted',
+  });
+
+  // Bank reconciliation
+  const bankAccounts  = bankRec.bankAccounts;
+  const manualFeeds   = bankRec.manualFeeds;
+  const accountCount  = Array.isArray(bankAccounts) ? bankAccounts.length : (typeof bankAccounts === 'number' ? bankAccounts : 0);
+  const feedCount     = Array.isArray(manualFeeds)  ? manualFeeds.length  : (typeof manualFeeds  === 'number' ? manualFeeds  : 0);
+  rows.push({
+    id: 'bank_rec',
+    label: 'Bank reconciliation',
+    sub_label: feedCount     ? `${feedCount} manual feed${feedCount !== 1 ? 's' : ''}`         : '—',
+    badge_label: accountCount ? `${accountCount} account${accountCount !== 1 ? 's' : ''}` : '—',
+    badge_tone: 'default',
+    dot_tone: 'muted',
+  });
+
+  // ATO status (mapped from hmrcStatus)
+  const hmrcStatus   = String(client.hmrcStatus ?? '').trim();
+  const oneDayImpact = Number(metrics.oneDayImpact ?? 0);
+  const normalized   = hmrcStatus.toLowerCase();
+  let badgeTone = 'default';
+  let dotTone   = 'muted';
+  if (normalized === 'not connected' || normalized === 'disconnected') {
+    badgeTone = 'warning';
+    dotTone   = 'warning';
+  } else if (normalized === 'connected') {
+    badgeTone = 'success';
+    dotTone   = 'success';
+  } else if (normalized === 'error' || normalized === 'failed') {
+    badgeTone = 'destructive';
+    dotTone   = 'destructive';
+  }
+  rows.push({
+    id: 'ato_status',
+    label: 'ATO status',
+    sub_label: oneDayImpact ? `One-day impact A$${oneDayImpact.toFixed(2)}` : '—',
+    badge_label: hmrcStatus || '—',
+    badge_tone: badgeTone,
+    dot_tone: dotTone,
+  });
+
+  return rows;
+};
+
+/**
+ * Transforms the `get_client_activity_stats` response into row arrays for the
+ * Client Activity Stats tile. Returns one array per tab: annual, quarterly, monthly.
+ *
+ * Each row:
+ *   id          — unique key ("turnover" | "sales" | "bills" | "bank_transactions")
+ *   label       — row heading
+ *   sub_label   — change indicator or "This period"
+ *   badge_label — formatted value (currency or count)
+ *   badge_tone  — "default"
+ *   dot_tone    — "success" | "destructive" | "muted" (driven by YoY/MoM change on turnover)
+ *
+ * Args: { stats: object }
+ */
+const flatten_activity_stats_rows: ComputedFunction = (args) => {
+  const stats = args.stats as Record<string, unknown>;
+  if (!stats || typeof stats !== 'object' || Array.isArray(stats)) {
+    return { annual: [], quarterly: [], monthly: [] };
+  }
+
+  function fmtAmount(n: number): string {
+    return `A$${Math.abs(n).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
+  function buildRows(
+    period: Record<string, unknown>,
+    changeValue: number | null,
+    changeLabel: string,
+  ): Record<string, unknown>[] {
+    const counts   = (period.counts ?? {}) as Record<string, unknown>;
+    const turnover = Number(period.turnover ?? 0);
+
+    let dotTone     = 'muted';
+    let turnoverSub = 'This period';
+    let turnoverBadgeTone = 'default';
+    if (changeValue !== null && changeValue !== 0) {
+      const sign  = changeValue > 0 ? '+' : '−';
+      turnoverSub = `${sign}${fmtAmount(changeValue)} ${changeLabel}`;
+      dotTone     = changeValue > 0 ? 'success' : 'destructive';
+      turnoverBadgeTone = changeValue > 0 ? 'success' : 'destructive';
+    }
+
+    return [
+      {
+        id: 'turnover',
+        label: 'Turnover',
+        sub_label: turnoverSub,
+        badge_label: turnover ? fmtAmount(turnover) : '—',
+        badge_tone: turnoverBadgeTone,
+        dot_tone: dotTone,
+      },
+      {
+        id: 'sales',
+        label: 'Sales invoices',
+        sub_label: 'This period',
+        badge_label: String(Number(counts.sales ?? 0)),
+        badge_tone: 'default',
+        dot_tone: 'muted',
+      },
+      {
+        id: 'bills',
+        label: 'Bills',
+        sub_label: 'This period',
+        badge_label: String(Number(counts.bills ?? 0)),
+        badge_tone: 'default',
+        dot_tone: 'muted',
+      },
+      {
+        id: 'bank_transactions',
+        label: 'Bank transactions',
+        sub_label: 'This period',
+        badge_label: String(Number(counts.bankTransactions ?? 0)),
+        badge_tone: 'default',
+        dot_tone: 'muted',
+      },
+    ];
+  }
+
+  const annual    = (stats.annual            ?? {}) as Record<string, unknown>;
+  const quarterly = (stats.quarterlyAverage  ?? {}) as Record<string, unknown>;
+  const monthly   = (stats.monthlyAverage    ?? {}) as Record<string, unknown>;
+
+  return {
+    annual:    buildRows(annual,    annual.yearOverYearChange    != null ? Number(annual.yearOverYearChange)    : null, 'YoY'),
+    quarterly: buildRows(quarterly, quarterly.yearOverYearChange != null ? Number(quarterly.yearOverYearChange) : null, 'YoY'),
+    monthly:   buildRows(monthly,   monthly.monthOverMonthChange != null ? Number(monthly.monthOverMonthChange) : null, 'MoM'),
+  };
+};
+
+const compute_health_tone: ComputedFunction = (args) => {
+  const score = Number(args.score ?? 0);
+  if (score >= 70) return 'success';
+  if (score >= 40) return 'warning';
+  return 'destructive';
+};
+
 const elements: PluginElementsModule = {
   slug: 'dext',
   functions: {
     flatten_client_health,
     flatten_activity_summary,
     flatten_portfolio_health,
+    flatten_client_detail_rows,
+    flatten_activity_stats_rows,
+    compute_health_tone,
   },
 };
 
