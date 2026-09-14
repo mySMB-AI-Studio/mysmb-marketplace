@@ -61,7 +61,7 @@
       "kpiRow": {
         "type": "Grid",
         "props": { "cols": 3, "gap": "sm" },
-        "children": ["tileTotal", "tilePlaceholder1", "tilePlaceholder2"],
+        "children": ["tileTotal", "tileHighCount", "tileLowCount"],
         "visible": {
           "$and": [
             { "$state": "/_loading/dext.list_clients", "not": true },
@@ -70,19 +70,22 @@
         }
       },
       "tileTotal": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackTotal"] },
-      "stackTotal": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valTotal", "lblTotal"] },
+      "stackTotal": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["iconTotal", "valTotal", "lblTotal"] },
+      "iconTotal": { "type": "Icon", "props": { "name": "Users", "tone": "info", "size": "sm" } },
       "valTotal": { "type": "Stat", "props": { "value": { "$state": "/ui/rows/0/stat_total" }, "size": "md" } },
       "lblTotal": { "type": "Caption", "props": { "text": "Total Clients", "tone": "muted" } },
 
-      "tilePlaceholder1": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackP1"] },
-      "stackP1": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valP1", "lblP1"] },
-      "valP1": { "type": "Stat", "props": { "value": " ", "size": "md" } },
-      "lblP1": { "type": "Caption", "props": { "text": " ", "tone": "muted" } },
+      "tileHighCount": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackHighCount"] },
+      "stackHighCount": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["iconHighCount", "valHighCount", "lblHighCount"] },
+      "iconHighCount": { "type": "Icon", "props": { "name": "AlertTriangle", "tone": "destructive", "size": "sm" } },
+      "valHighCount": { "type": "Stat", "props": { "value": { "$state": "/ui/rows/0/stat_high_alert" }, "size": "md", "tone": "destructive" } },
+      "lblHighCount": { "type": "Caption", "props": { "text": "High Alert", "tone": "destructive" } },
 
-      "tilePlaceholder2": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackP2"] },
-      "stackP2": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valP2", "lblP2"] },
-      "valP2": { "type": "Stat", "props": { "value": " ", "size": "md" } },
-      "lblP2": { "type": "Caption", "props": { "text": " ", "tone": "muted" } },
+      "tileLowCount": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackLowCount"] },
+      "stackLowCount": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["iconLowCount", "valLowCount", "lblLowCount"] },
+      "iconLowCount": { "type": "Icon", "props": { "name": "CheckCircle2", "tone": "success", "size": "sm" } },
+      "valLowCount": { "type": "Stat", "props": { "value": { "$state": "/ui/rows/0/stat_low_alert" }, "size": "md", "tone": "success" } },
+      "lblLowCount": { "type": "Caption", "props": { "text": "Low Alert", "tone": "success" } },
 
       "div1": {
         "type": "Divider",
@@ -145,7 +148,7 @@
       "alertBadge": {
         "type": "Badge",
         "props": {
-          "text": { "$item": "badge_label" },
+          "label": { "$item": "badge_label" },
           "tone": { "$item": "alert_tone" },
           "variant": "soft"
         }

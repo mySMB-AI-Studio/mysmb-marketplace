@@ -248,6 +248,60 @@ const flatten_team_workload: ComputedFunction = (args) => {
   return rows;
 };
 
+const flatten_overdue_tasks: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  if (raw.length === 0) return [];
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayMs = Date.parse(todayStr);
+
+  const overdueItems: Array<{ task: Record<string, unknown>; daysOverdue: number; projectLabel: string }> = [];
+
+  for (const task of raw) {
+    const dueOn = task.due_on ? String(task.due_on) : null;
+    if (!dueOn) continue;
+    const dueMs = Date.parse(dueOn);
+    if (Number.isNaN(dueMs) || dueMs >= todayMs) continue;
+    const daysOverdue = Math.round((todayMs - dueMs) / 86400000);
+
+    const memberships = Array.isArray(task.memberships) ? (task.memberships as Record<string, unknown>[]) : [];
+    const projects    = Array.isArray(task.projects)    ? (task.projects    as Record<string, unknown>[]) : [];
+    let projectLabel = '';
+    if (memberships.length > 0) {
+      const proj = memberships[0].project as Record<string, unknown> | undefined;
+      if (proj) projectLabel = String(proj.name ?? '');
+    } else if (projects.length > 0) {
+      projectLabel = String((projects[0] as Record<string, unknown>).name ?? '');
+    }
+
+    overdueItems.push({ task, daysOverdue, projectLabel });
+  }
+
+  if (overdueItems.length === 0) return [];
+
+  overdueItems.sort((a, b) => b.daysOverdue - a.daysOverdue);
+
+  const uniqueProjects = new Set(overdueItems.map(i => i.projectLabel).filter(Boolean));
+  const longestDays = overdueItems[0].daysOverdue;
+
+  const rows = overdueItems.map((item) => ({
+    id: String(item.task.gid ?? item.task.id ?? ''),
+    title: String(item.task.name ?? ''),
+    project_label: item.projectLabel,
+    overdue_label: `${item.daysOverdue}d overdue`,
+    days_overdue: item.daysOverdue,
+    stat_overdue: '',
+    stat_projects: '',
+    stat_longest: '',
+  }));
+
+  rows[0].stat_overdue = String(overdueItems.length);
+  rows[0].stat_projects = String(uniqueProjects.size);
+  rows[0].stat_longest = `${longestDays}d`;
+
+  return rows;
+};
+
 const flatten_my_tasks_tabs: ComputedFunction = (args) => {
   const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
   if (raw.length === 0) return { upcoming: [], overdue: [], completed: [] };
@@ -324,6 +378,159 @@ const flatten_my_tasks_tabs: ComputedFunction = (args) => {
   return { upcoming: clean(upcoming), overdue: clean(overdue), completed: clean(completed) };
 };
 
+/**
+ * Flattens a list_milestones response into display rows for the Upcoming
+ * Milestones tile. `list_milestones` is server-side pre-filtered to
+ * incomplete milestones due today or later, sorted by due date ascending --
+ * so unlike `flatten_my_tasks`/`flatten_my_tasks_tabs` above, there is no
+ * overdue/destructive case to handle here, only "due today" vs "due later".
+ *
+ * Row 0 carries footer_label: "N upcoming milestones".
+ * Each row has: id, name, due_label (dd-Mmm-yy or "Due Today"),
+ * due_tone ("warning" if due today, "brand" [mint] otherwise), project_label, url.
+ *
+ * `url` is built client-side from `project_gid` + `gid` as
+ * `https://app.asana.com/0/{project_gid}/{gid}` -- Asana's long-standing
+ * "legacy" task deep-link format (project id then task id). `list_milestones`
+ * doesn't request the real `permalink_url` field the way this plugin's
+ * `flatten_projects` does (that would need a `myhub-mcp-servers` change,
+ * a different repo), so this is a manually-constructed link based on
+ * Asana's known URL convention, NOT sandbox-confirmed by actually clicking
+ * it -- unlike `flatten_projects`' `permalink_url`, which IS a real API
+ * value. Flag for live click-through verification.
+ *
+ * Args: { value: array } -- `list_milestones`'s `data` array.
+ */
+const flatten_milestones: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  if (raw.length === 0) return [];
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const rows = raw.map((m) => {
+    const id = String(m.gid ?? '');
+    const name = String(m.name ?? '');
+    const projectLabel = String(m.project_name ?? '');
+    const projectGid = String(m.project_gid ?? '');
+    const url = id && projectGid ? `https://app.asana.com/0/${projectGid}/${id}` : '';
+    const dueOn = m.due_on ? String(m.due_on) : null;
+
+    // 'brand' (mint) is the calm default per the mockup Neil supplied 2026-09-14
+    // -- only "due today" escalates to 'warning'. Deliberately not 'muted':
+    // a date isn't a "nothing to report" field the way an untouched status is.
+    let dueLabel = '';
+    let dueTone = 'brand';
+    if (dueOn) {
+      if (dueOn === todayStr) {
+        dueLabel = 'Due Today';
+        dueTone = 'warning';
+      } else {
+        const ms = Date.parse(dueOn);
+        if (!Number.isNaN(ms)) {
+          const d = new Date(ms);
+          dueLabel = `${String(d.getDate()).padStart(2, '0')}-${MONTH_ABBR[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
+        }
+      }
+    }
+
+    return { id, name, due_label: dueLabel, due_tone: dueTone, project_label: projectLabel, url, footer_label: '' };
+  });
+
+  const total = raw.length;
+  rows[0].footer_label = `${total} upcoming milestone${total === 1 ? '' : 's'}`;
+
+  return rows;
+};
+
+/**
+ * Flattens a list_tasks response (assignee=me) into rows for the Recent
+ * Activity tile.
+ *
+ * Approximation, not a true activity feed: the Asana MCP gateway has no
+ * stories/events tool (no per-task comments, status-column moves, or
+ * "added N tasks" grouping) as of 2026-09-14 -- only list_tasks, get_task,
+ * list_projects, get_project, list_sections, list_users, get_team_workload,
+ * list_milestones, plus the write tools. This derives "activity" purely from
+ * two task fields that ARE real: `completed`/`completed_at` (a genuine event)
+ * and `modified_at` (a genuine but vaguer "something changed" signal -- it
+ * can't distinguish a comment from a title edit from a due-date change).
+ * Every row is implicitly the current user's own task (assignee=me), so
+ * there's no cross-teammate attribution to show -- the leading icon encodes
+ * the action type (completed vs. updated) instead of a per-person avatar.
+ * The tile's footer discloses this scope/limitation per TILE-DISPLAY-
+ * STANDARDS.md §13 rather than presenting it as a full team activity feed.
+ *
+ * Row 0 carries footer_label: "N recent items".
+ * Each row has: id, title (`Completed "X"` / `Updated "X"`), subtitle
+ * (project label or ''), activity_at (ISO timestamp used for sort +
+ * relative_time), icon_name, tone, url (task deep link, '' if not
+ * derivable).
+ *
+ * `url` prefers the task's own `permalink_url` (a real API field, same as
+ * `flatten_projects` trusts for projects); if list_tasks doesn't return it
+ * for this task, falls back to the client-built legacy deep link
+ * `https://app.asana.com/0/{project_gid}/{gid}` the same way
+ * `flatten_milestones` does above -- NOT sandbox-confirmed by actually
+ * clicking it, same caveat as that fallback.
+ *
+ * Args: { value: array } -- list_tasks' `data` array, called with
+ * completed_since far enough in the past to include completed tasks too
+ * (see asana-my-tasks' tabs redesign for the same technique).
+ */
+const flatten_recent_activity: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  if (raw.length === 0) return [];
+
+  const rows = raw.map((task) => {
+    const id = String(task.gid ?? task.id ?? '');
+    const title = String(task.name ?? '');
+    const isCompleted = Boolean(task.completed);
+    const completedAt = task.completed_at ? String(task.completed_at) : null;
+    const modifiedAt = task.modified_at ? String(task.modified_at) : null;
+    const createdAt = task.created_at ? String(task.created_at) : null;
+
+    const activityAt = (isCompleted && completedAt) ? completedAt : (modifiedAt ?? createdAt ?? '');
+
+    const memberships = Array.isArray(task.memberships) ? (task.memberships as Record<string, unknown>[]) : [];
+    const projects = Array.isArray(task.projects) ? (task.projects as Record<string, unknown>[]) : [];
+    let projectLabel = '';
+    let projectGid = '';
+    if (memberships.length > 0) {
+      const proj = memberships[0].project as Record<string, unknown> | undefined;
+      if (proj) {
+        projectLabel = String(proj.name ?? '');
+        projectGid = String(proj.gid ?? '');
+      }
+    } else if (projects.length > 0) {
+      const proj = projects[0] as Record<string, unknown>;
+      projectLabel = String(proj.name ?? '');
+      projectGid = String(proj.gid ?? '');
+    }
+
+    const permalinkUrl = task.permalink_url ? String(task.permalink_url) : '';
+    const url = permalinkUrl || (id && projectGid ? `https://app.asana.com/0/${projectGid}/${id}` : '');
+
+    return {
+      id,
+      title: isCompleted ? `Completed "${title}"` : `Updated "${title}"`,
+      subtitle: projectLabel,
+      activity_at: activityAt,
+      icon_name: isCompleted ? 'CheckCircle2' : 'Pencil',
+      tone: isCompleted ? 'success' : 'muted',
+      url,
+      footer_label: '',
+    };
+  });
+
+  rows.sort((a, b) => (Date.parse(b.activity_at) || 0) - (Date.parse(a.activity_at) || 0));
+
+  const top = rows.slice(0, 20);
+  const total = top.length;
+  if (total > 0) top[0].footer_label = `${total} recent item${total === 1 ? '' : 's'}`;
+
+  return top;
+};
+
 const elements: PluginElementsModule = {
   slug: 'asana',
   functions: {
@@ -331,8 +538,11 @@ const elements: PluginElementsModule = {
     flatten_my_tasks,
     flatten_projects,
     flatten_project_progress,
+    flatten_overdue_tasks,
     flatten_team_workload,
     flatten_my_tasks_tabs,
+    flatten_milestones,
+    flatten_recent_activity,
   },
 };
 

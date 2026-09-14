@@ -1,0 +1,158 @@
+{
+  "id": "asana-upcoming-milestones",
+  "title": "Upcoming Milestones",
+  "description": "Upcoming milestones (incomplete, due today or later) across your active Asana projects, sorted by due date. Uses list_milestones, which auto-resolves your workspace and scans up to 20 active projects server-side — no workspace_gid needed. Live-verified 2026-09-14 against a real connected account. Click a row to open that milestone in Asana; a footer button opens Asana itself in a new tab (there's no single cross-project \"milestones\" page in Asana to deep-link to instead). Row links are built client-side as https://app.asana.com/0/{project_gid}/{gid} — Asana's long-standing task deep-link convention — since list_milestones doesn't request the real permalink_url field the way this plugin's Projects tile does; NOT yet confirmed by actually clicking one against a live account.",
+  "category": "projects",
+  "tags": ["asana", "milestones", "projects", "deadlines"],
+  "keywords": ["asana milestones", "upcoming milestones", "deadlines", "project milestones"],
+  "connectorsUsed": ["asana"],
+  "popularity": 0,
+  "brandColor": "#34DFBA",
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 5 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "asana",
+    "tool": "list_milestones",
+    "params": { "limit": 20 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body", "footerDivider", "footerRow"],
+        "watch": {
+          "/asana/list_milestones/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "asana_flatten_milestones",
+                  "args": { "value": { "$state": "/asana/list_milestones/data" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleStack"] },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": { "type": "Heading", "props": { "text": "Upcoming Milestones", "level": "h2" } },
+      "eyebrow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["eyebrowDot", "eyebrowText"]
+      },
+      "eyebrowDot": { "type": "Dot", "props": { "tone": "brand", "size": "xs" } },
+      "eyebrowText": {
+        "type": "Caption",
+        "props": { "text": "ASANA" }
+      },
+
+      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "list", "footerLabel"] },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/asana.list_milestones" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No upcoming milestones across your active projects." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/asana.list_milestones", "not": true },
+            { "$state": "/ui/rows/0", "not": true }
+          ]
+        }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["row"],
+        "repeat": { "statePath": "/ui/rows", "key": "id" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/asana.list_milestones", "not": true },
+            { "$state": "/ui/rows/0" }
+          ]
+        }
+      },
+
+      "row": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "hover": true, "clickable": true },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": { "$computed": "identity", "args": { "value": { "$item": "url" } } },
+              "target": "_blank"
+            }
+          }
+        },
+        "children": ["rowDueBadge", "rowRight"]
+      },
+      "rowDueBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "due_label" },
+          "tone": { "$item": "due_tone" }
+        }
+      },
+      "rowRight": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["rowName", "rowProject"]
+      },
+      "rowName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "semibold", "truncate": true }
+      },
+      "rowProject": {
+        "type": "Caption",
+        "props": { "text": { "$item": "project_label" } }
+      },
+
+      "footerLabel": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/ui/rows/0/footer_label" } },
+        "visible": { "$state": "/ui/rows/0" }
+      },
+
+      "footerDivider": { "type": "Divider", "props": {} },
+      "footerRow": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["openInAsanaBtn"]
+      },
+      "openInAsanaBtn": {
+        "type": "Button",
+        "props": { "label": "Open Asana", "variant": "primary", "tone": "brand", "size": "sm" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": "https://app.asana.com/", "target": "_blank" }
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}
