@@ -1,0 +1,196 @@
+{
+  "id": "atlassian-confluence-spaces",
+  "title": "Confluence Spaces",
+  "description": "Confluence spaces visible to the connected user — name and a color-coded type pill. Click a row to open that space in Confluence. The existing Knowledge Base tile only searches page content; this lists which spaces actually exist. Uses `list_confluence_spaces` (GET /wiki/api/v2/spaces). Click-through concatenates the response's top-level `_links.base` with each space's own `_links.webui` — confirmed live 2026-09-14 against a real tenant (`_links.base` = `https://mysmb.atlassian.net/wiki`, a space's `_links.webui` = `/spaces/PM`). `type` is an open-ended, connector-defined category, not a fixed enum — a real space returned `type: \"onboarding\"`, not just `global`/`personal` — so each distinct value gets a stable, deterministic categorical color (`chart-1..5`, TILE-DISPLAY-STANDARDS.md §7) rather than a status tone, since a space's type isn't a state that changes.",
+  "category": "work-management",
+  "tags": ["atlassian", "confluence", "spaces", "knowledge-base", "wiki", "documentation"],
+  "keywords": ["confluence spaces", "wiki", "spaces", "knowledge base", "documentation", "directory"],
+  "connectorsUsed": ["atlassian"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 5 },
+    "min":       { "colSpan": 3, "rowSpan": 4 },
+    "max":       { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "atlassian",
+    "tool": "list_confluence_spaces",
+    "params": { "limit": 25 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "divider", "loading", "empty", "scrollBody", "footerDivider", "footerRow"]
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Layers", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Confluence Spaces", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Confluence · {n} spaces",
+              "n": { "$computed": "count", "args": { "value": { "$state": "/atlassian/list_confluence_spaces/results" } } }
+            }
+          }
+        }
+      },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["s1", "s2", "s3", "s4"],
+        "visible": { "$state": "/_loading/atlassian.list_confluence_spaces" }
+      },
+      "s1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "s2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "s3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "s4": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No Confluence spaces found on this connection." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/atlassian.list_confluence_spaces", "not": true },
+            { "$state": "/atlassian/list_confluence_spaces/results/0", "not": true }
+          ]
+        }
+      },
+
+      "scrollBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["list"],
+        "visible": { "$state": "/_loading/atlassian.list_confluence_spaces", "not": true }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["row"],
+        "repeat": {
+          "statePath": "/atlassian/list_confluence_spaces/results",
+          "key": "id"
+        }
+      },
+
+      "row": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "hover": true, "clickable": true },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "{base}{path}",
+                  "base": { "$state": "/atlassian/list_confluence_spaces/_links/base" },
+                  "path": { "$item": "_links/webui" }
+                }
+              },
+              "target": "_blank"
+            }
+          }
+        },
+        "children": ["rowLeft", "rowRight"]
+      },
+      "rowLeft": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "grow": true },
+        "children": ["rowAvatar", "rowName"]
+      },
+      "rowAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": { "value": { "$item": "name" } }
+          },
+          "size": "md"
+        }
+      },
+      "rowName": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "name" },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+
+      "rowRight": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "atlassian_space_type_label",
+            "args": { "value": { "$item": "type" } }
+          },
+          "tone": {
+            "$computed": "atlassian_space_type_tone",
+            "args": { "value": { "$item": "type" } }
+          }
+        }
+      },
+
+      "footerDivider": { "type": "Divider", "props": {} },
+      "footerRow": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["openInConfluenceBtn"]
+      },
+      "openInConfluenceBtn": {
+        "type": "Button",
+        "props": { "label": "Open in Confluence", "variant": "secondary", "size": "sm" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "{base}/spaces",
+                  "base": { "$state": "/atlassian/list_confluence_spaces/_links/base" }
+                }
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}
