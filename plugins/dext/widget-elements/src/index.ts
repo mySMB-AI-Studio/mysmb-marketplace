@@ -116,11 +116,52 @@ const flatten_activity_summary: ComputedFunction = (args) => {
   ];
 };
 
+/**
+ * Splits the list_clients response into All / Needs Review / Healthy tabs
+ * for the Client Portfolio Health tile.
+ *
+ * Buckets: healthy = alertLevel "low"; needs_review = everything else.
+ * Each row: id, name, provider_label (providerName), score_label (healthScore),
+ * circle_tone ("success" | "warning" | "destructive").
+ *
+ * Args: { value: array }
+ */
+const flatten_portfolio_health: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  if (raw.length === 0) return { all: [], needs_review: [], healthy: [] };
+
+  const all: Record<string, unknown>[] = [];
+  const needs_review: Record<string, unknown>[] = [];
+  const healthy: Record<string, unknown>[] = [];
+
+  for (const client of raw) {
+    const id            = String(client.id            ?? '');
+    const name          = String(client.name          ?? '');
+    const providerLabel = String(client.providerName  ?? '');
+    const healthScore   = Number(client.healthScore   ?? 0);
+    const alertLevel    = String(client.alertLevel    ?? '').toLowerCase();
+    const scoreLabel    = String(healthScore);
+
+    let circleTone = 'success';
+    if (alertLevel === 'error' || alertLevel === 'high') circleTone = 'destructive';
+    else if (alertLevel === 'medium') circleTone = 'warning';
+
+    const row: Record<string, unknown> = { id, name, provider_label: providerLabel, score_label: scoreLabel, circle_tone: circleTone };
+
+    all.push(row);
+    if (alertLevel === 'low') healthy.push(row);
+    else needs_review.push(row);
+  }
+
+  return { all, needs_review, healthy };
+};
+
 const elements: PluginElementsModule = {
   slug: 'dext',
   functions: {
     flatten_client_health,
     flatten_activity_summary,
+    flatten_portfolio_health,
   },
 };
 

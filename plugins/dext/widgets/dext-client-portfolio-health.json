@@ -1,0 +1,225 @@
+{
+  "id": "dext-client-portfolio-health",
+  "title": "Client Portfolio Health",
+  "description": "All Dext clients split into Needs Review and Healthy tabs, with health score and provider per row.",
+  "category": "clients",
+  "tags": ["dext", "clients", "health score", "portfolio", "practice"],
+  "keywords": ["dext portfolio", "client health", "needs review", "healthy clients", "practice overview"],
+  "connectorsUsed": ["dext"],
+  "popularity": 72,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 7 },
+    "min": { "colSpan": 3, "rowSpan": 5 },
+    "max": { "colSpan": 8, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "dext",
+    "tool": "list_clients",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "loading", "tabRow", "allContent", "needsReviewContent", "healthyContent"],
+        "watch": {
+          "/dext/list_clients/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/data",
+                "value": {
+                  "$computed": "dext_flatten_portfolio_health",
+                  "args": { "value": { "$state": "/dext/list_clients/data" } }
+                }
+              }
+            },
+            { "action": "setState", "params": { "statePath": "/ui/tab/all",          "value": true  } },
+            { "action": "setState", "params": { "statePath": "/ui/tab/needs_review", "value": false } },
+            { "action": "setState", "params": { "statePath": "/ui/tab/healthy",      "value": false } }
+          ]
+        }
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "LayoutDashboard", "tone": "info", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title":   { "type": "Heading", "props": { "text": "Client Portfolio Health", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Dext" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/dext.list_clients" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "tabRow": {
+        "type": "Row",
+        "props": { "gap": "xs" },
+        "children": ["tabAllOn", "tabAllOff", "tabNeedsReviewOn", "tabNeedsReviewOff", "tabHealthyOn", "tabHealthyOff"],
+        "visible": { "$state": "/_loading/dext.list_clients", "not": true }
+      },
+
+      "tabAllOn": {
+        "type": "Button",
+        "props": { "label": "All", "variant": "primary", "size": "sm" },
+        "visible": { "$state": "/ui/tab/all" }
+      },
+      "tabAllOff": {
+        "type": "Button",
+        "props": { "label": "All", "variant": "ghost", "size": "sm" },
+        "visible": { "$state": "/ui/tab/all", "not": true },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/tab/all",          "value": true  } },
+            { "action": "setState", "params": { "statePath": "/ui/tab/needs_review", "value": false } },
+            { "action": "setState", "params": { "statePath": "/ui/tab/healthy",      "value": false } }
+          ]
+        }
+      },
+
+      "tabNeedsReviewOn": {
+        "type": "Button",
+        "props": { "label": "Needs Review", "variant": "primary", "size": "sm" },
+        "visible": { "$state": "/ui/tab/needs_review" }
+      },
+      "tabNeedsReviewOff": {
+        "type": "Button",
+        "props": { "label": "Needs Review", "variant": "ghost", "size": "sm" },
+        "visible": { "$state": "/ui/tab/needs_review", "not": true },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/tab/all",          "value": false } },
+            { "action": "setState", "params": { "statePath": "/ui/tab/needs_review", "value": true  } },
+            { "action": "setState", "params": { "statePath": "/ui/tab/healthy",      "value": false } }
+          ]
+        }
+      },
+
+      "tabHealthyOn": {
+        "type": "Button",
+        "props": { "label": "Healthy", "variant": "primary", "size": "sm" },
+        "visible": { "$state": "/ui/tab/healthy" }
+      },
+      "tabHealthyOff": {
+        "type": "Button",
+        "props": { "label": "Healthy", "variant": "ghost", "size": "sm" },
+        "visible": { "$state": "/ui/tab/healthy", "not": true },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/tab/all",          "value": false } },
+            { "action": "setState", "params": { "statePath": "/ui/tab/needs_review", "value": false } },
+            { "action": "setState", "params": { "statePath": "/ui/tab/healthy",      "value": true  } }
+          ]
+        }
+      },
+
+      "allContent": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["allEmpty", "allList"],
+        "visible": {
+          "$and": [
+            { "$state": "/ui/tab/needs_review", "not": true },
+            { "$state": "/ui/tab/healthy",      "not": true }
+          ]
+        }
+      },
+      "allEmpty": {
+        "type": "Empty",
+        "props": { "message": "No clients found." },
+        "visible": { "$state": "/ui/data/all/0", "not": true }
+      },
+      "allList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["clientRow"],
+        "repeat": { "statePath": "/ui/data/all", "key": "id" }
+      },
+
+      "needsReviewContent": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["needsReviewEmpty", "needsReviewList"],
+        "visible": { "$state": "/ui/tab/needs_review" }
+      },
+      "needsReviewEmpty": {
+        "type": "Empty",
+        "props": { "message": "No clients need review." },
+        "visible": { "$state": "/ui/data/needs_review/0", "not": true }
+      },
+      "needsReviewList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["clientRow"],
+        "repeat": { "statePath": "/ui/data/needs_review", "key": "id" }
+      },
+
+      "healthyContent": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["healthyEmpty", "healthyList"],
+        "visible": { "$state": "/ui/tab/healthy" }
+      },
+      "healthyEmpty": {
+        "type": "Empty",
+        "props": { "message": "No healthy clients yet." },
+        "visible": { "$state": "/ui/data/healthy/0", "not": true }
+      },
+      "healthyList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["clientRow"],
+        "repeat": { "statePath": "/ui/data/healthy", "key": "id" }
+      },
+
+      "clientRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["clientCircle", "clientInfo", "clientScore"]
+      },
+      "clientCircle": {
+        "type": "Icon",
+        "props": { "name": "Circle", "tone": { "$item": "circle_tone" }, "size": "sm" }
+      },
+      "clientInfo": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["clientName", "clientProvider"]
+      },
+      "clientName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "semibold", "truncate": true }
+      },
+      "clientProvider": {
+        "type": "Caption",
+        "props": { "text": { "$item": "provider_label" }, "tone": "muted", "truncate": true },
+        "visible": { "$item": "provider_label" }
+      },
+      "clientScore": {
+        "type": "Text",
+        "props": { "text": { "$item": "score_label" }, "size": "sm", "tone": "muted", "weight": "semibold" }
+      }
+
+    }
+  },
+  "status": "published"
+}
