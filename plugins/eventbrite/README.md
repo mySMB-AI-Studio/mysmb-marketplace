@@ -32,11 +32,18 @@ Eventbrite scopes almost everything to an organization — `list_organizations` 
 ## Widgets
 
 - **Upcoming Events** (`eventbrite-upcoming-events`) — an organization's current and future events, with date, status, and online/in-person badges
-- **Event Details** (`eventbrite-event-details`) — full detail for one event: date range, venue or online link, organizer, description, and ticket classes with sold/total counts
+- **Event Details** (`eventbrite-event-details`) — full detail for your organization's next upcoming event: date range, venue or online link, organizer, description, and ticket classes with sold/total counts
 
-### Known limitation: `organization_id` / `event_id` can't be auto-resolved
+### Zero-config: both widgets auto-resolve organization_id / event_id
 
-Same limitation as this marketplace's Atlassian Service Desk Queue tile and monday.com's board tiles: a widget's `dataProvider` fires exactly **one** MCP tool call on mount, and there is no dataProvider-chaining support yet to call `list_organizations` (or `list_events`) first and feed the result into a second call. `list_events` requires `organization_id`; `get_event` / `list_attendees` / `list_orders` require an `event_id`. Both widgets below ship with a placeholder value in their `dataProvider.params` — **call `list_organizations` (and, for Event Details, `list_events`) yourself first and edit the widget's `dataProvider.params` to your real id before enabling it for a tenant.**
+`list_events` requires `organization_id`; `get_event` requires an `event_id`. Neither widget hardcodes one — each `dataProvider` fetches `list_organizations` on mount (no params needed), and a chained `watch` fires the next MCP call automatically once the previous one resolves an id:
+
+- **Upcoming Events**: `list_organizations` → `watch` on `organizations/0/id` fires `eventbrite.list_events` with that id as `organization_id`.
+- **Event Details**: `list_organizations` → `watch` fires `eventbrite.list_events` (`page_size: 1`, `order_by: start_asc`, i.e. the soonest upcoming event) → `watch` on `events/0/id` fires `eventbrite.get_event` with that id as `event_id`.
+
+This uses the same `watch`-triggered chained-MCP-tool-call primitive already shipped in this marketplace (e.g. `plugins/copilot-studio/widgets/master-agent-chat.json`'s `list_copilot_agents` → `list_copilot_environments` chain, and `plugins/myob-accounting/widgets/myob-financial-position.json`) — confirmed by reading `myHubV2/apps/web/src/features/widgets-system/registry.ts`, where every connected MCP tool is auto-registered as a `<mcp>.<tool>` action callable from a `watch`, not just from `on.click`.
+
+**Known trade-off, not a bug:** both widgets default to the **first** organization returned by `list_organizations` (Eventbrite doesn't document/guarantee an ordering). An account with more than one Eventbrite organization has no way to pick a different one from the widget UI today — that would need a per-tenant override mechanism this widget system doesn't have yet. Single-organization accounts (the common case) are unaffected.
 
 ## Data verification note
 
