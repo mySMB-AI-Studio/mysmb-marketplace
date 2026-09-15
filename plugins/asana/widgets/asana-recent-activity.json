@@ -1,21 +1,22 @@
 {
   "id": "asana-recent-activity",
   "title": "Recent Activity",
-  "description": "Recent completions and updates on your Asana tasks. Approximation: the Asana MCP gateway has no stories/events tool yet, so comments and status-column moves aren't shown -- only real task-level fields (completed/completed_at, modified_at). Scoped to tasks assigned to you (assignee=me), not a full team-wide feed, since there's no cross-teammate activity tool to attribute other people's actions to.",
+  "description": "Recent completions and updates in one Asana project, with each task's assignee shown by name and colored initials avatar -- built to match a reference mockup as closely as this platform's components allow. Approximation: the Asana MCP gateway has no stories/events tool yet, so comments, status-column moves, and bulk-add events aren't shown, only real task-level fields (completed/completed_at, modified_at, assignee). Scoped to a single hardcoded project_gid (see dataProvider.params) since this platform has no per-installation widget config mechanism to let an installer pick their own project. The assignee shown is a proxy for who performed the row's action, not a confirmed per-action actor. The header icon is an approximation too: the system Icon component has no solid-fill background, so it can't reproduce the mockup's solid orange rounded-square badge -- only a tone-colored line icon.",
   "category": "tasks",
   "tags": ["asana", "activity", "feed", "recent", "tasks"],
   "keywords": ["recent activity", "activity feed", "asana activity", "completed tasks", "updated tasks"],
   "connectorsUsed": ["asana"],
   "popularity": 0,
+  "brandColor": "#F2994A",
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 7 },
-    "min": { "colSpan": 3, "rowSpan": 5 },
+    "preferred": { "colSpan": 5, "rowSpan": 4 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
     "max": { "colSpan": 8, "rowSpan": 12 }
   },
   "dataProvider": {
     "mcp": "asana",
     "tool": "list_tasks",
-    "params": { "assignee": "me", "completed_since": "2026-01-01T00:00:00.000Z", "limit": 50 }
+    "params": { "project_gid": "1218344654321276", "completed_since": "2026-01-01T00:00:00.000Z", "limit": 50 }
   },
   "spec": {
     "root": "card",
@@ -24,7 +25,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "div0", "loading", "empty", "activityList", "footerLabel"],
+        "children": ["headerRow", "div0", "body"],
         "watch": {
           "/asana/list_tasks/data": [
             {
@@ -51,12 +52,18 @@
         "props": { "gap": "sm", "align": "center" },
         "children": ["titleIcon", "titleStack"]
       },
-      "titleIcon": { "type": "Icon", "props": { "name": "History", "tone": "accent", "size": "sm" } },
+      "titleIcon": { "type": "Icon", "props": { "name": "Clock", "tone": "brand", "size": "lg" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
       "title": { "type": "Heading", "props": { "text": "Recent Activity", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Asana · Your tasks" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Asana" } },
 
       "div0": { "type": "Divider", "props": {} },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "activityList", "footerLabel"]
+      },
 
       "loading": {
         "type": "Stack",
@@ -70,7 +77,7 @@
 
       "empty": {
         "type": "Empty",
-        "props": { "message": "No recent activity on your tasks." },
+        "props": { "message": "No recent activity in this project." },
         "visible": {
           "$and": [
             { "$state": "/_loading/asana.list_tasks", "not": true },
@@ -94,7 +101,7 @@
 
       "activityRowLink": {
         "type": "Row",
-        "props": { "gap": "none", "hover": true, "clickable": true },
+        "props": { "gap": "sm", "align": "start", "hover": true, "clickable": true },
         "on": {
           "click": {
             "action": "open_url",
@@ -104,27 +111,42 @@
             }
           }
         },
-        "children": ["activityRow"]
+        "children": ["activityAvatar", "activityBody"]
       },
 
-      "activityRow": {
-        "type": "ActivityItem",
+      "activityAvatar": {
+        "type": "Avatar",
         "props": {
-          "iconName": { "$item": "icon_name" },
-          "tone": { "$item": "tone" },
-          "title": { "$item": "title" },
-          "subtitle": { "$item": "subtitle" },
-          "timestamp": {
+          "initials": { "$item": "initials" },
+          "tone": { "$item": "avatar_tone" },
+          "size": "sm"
+        }
+      },
+
+      "activityBody": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["activityTitle", "activityTimestamp"]
+      },
+      "activityTitle": {
+        "type": "Text",
+        "props": { "text": { "$item": "title" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "activityTimestamp": {
+        "type": "Caption",
+        "props": {
+          "text": {
             "$computed": "relative_time",
             "args": { "value": { "$item": "activity_at" } }
-          }
+          },
+          "tone": "muted"
         }
       },
 
       "footerLabel": {
         "type": "Caption",
         "props": {
-          "text": "Shows completions and edits on tasks assigned to you — comments and status-column moves aren't available yet.",
+          "text": "Shows completions and edits in this project, by assignee — comments and status-column moves aren't available yet.",
           "tone": "muted"
         },
         "visible": {
