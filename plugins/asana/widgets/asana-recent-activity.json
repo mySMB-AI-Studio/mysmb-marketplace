@@ -1,12 +1,13 @@
 {
   "id": "asana-recent-activity",
   "title": "Recent Activity",
-  "description": "Recent completions and updates on your Asana tasks, across all of your projects. Approximation: the Asana MCP gateway has no stories/events tool yet, so comments and status-column moves aren't shown -- only real task-level fields (completed/completed_at, modified_at). Scoped to tasks assigned to you (assignee=me), not a full team-wide feed, since there's no cross-teammate activity tool to attribute the completion/edit action itself to a specific teammate.",
+  "description": "Recent completions and updates in one Asana project, with each task's assignee shown by name and colored initials avatar -- built to match a reference mockup as closely as this platform's components allow. Approximation: the Asana MCP gateway has no stories/events tool yet, so comments, status-column moves, and bulk-add events aren't shown, only real task-level fields (completed/completed_at, modified_at, assignee). Scoped to a single hardcoded project_gid (see dataProvider.params) since this platform has no per-installation widget config mechanism to let an installer pick their own project. The assignee shown is a proxy for who performed the row's action, not a confirmed per-action actor. The header icon is an approximation too: the system Icon component has no solid-fill background, so it can't reproduce the mockup's solid orange rounded-square badge -- only a tone-colored line icon.",
   "category": "tasks",
   "tags": ["asana", "activity", "feed", "recent", "tasks"],
   "keywords": ["recent activity", "activity feed", "asana activity", "completed tasks", "updated tasks"],
   "connectorsUsed": ["asana"],
   "popularity": 0,
+  "brandColor": "#F2994A",
   "sizing": {
     "preferred": { "colSpan": 5, "rowSpan": 7 },
     "min": { "colSpan": 3, "rowSpan": 5 },
@@ -15,7 +16,7 @@
   "dataProvider": {
     "mcp": "asana",
     "tool": "list_tasks",
-    "params": { "assignee": "me", "completed_since": "2026-01-01T00:00:00.000Z", "limit": 50 }
+    "params": { "project_gid": "1218344654321276", "completed_since": "2026-01-01T00:00:00.000Z", "limit": 50 }
   },
   "spec": {
     "root": "card",
@@ -51,10 +52,16 @@
         "props": { "gap": "sm", "align": "center" },
         "children": ["titleIcon", "titleStack"]
       },
-      "titleIcon": { "type": "Icon", "props": { "name": "History", "tone": "accent", "size": "sm" } },
+      "titleIcon": { "type": "Icon", "props": { "name": "Clock", "tone": "brand", "size": "lg" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
       "title": { "type": "Heading", "props": { "text": "Recent Activity", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Asana" } },
+      "eyebrow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["eyebrowDot", "eyebrowText"]
+      },
+      "eyebrowDot": { "type": "Dot", "props": { "tone": "brand", "size": "xs" } },
+      "eyebrowText": { "type": "Caption", "props": { "text": "ASANA" } },
 
       "div0": { "type": "Divider", "props": {} },
 
@@ -76,7 +83,7 @@
 
       "empty": {
         "type": "Empty",
-        "props": { "message": "No recent activity on your tasks." },
+        "props": { "message": "No recent activity in this project." },
         "visible": {
           "$and": [
             { "$state": "/_loading/asana.list_tasks", "not": true },
@@ -116,10 +123,8 @@
       "activityRow": {
         "type": "ActivityItem",
         "props": {
-          "iconName": { "$item": "icon_name" },
-          "tone": { "$item": "tone" },
+          "initials": { "$item": "initials" },
           "title": { "$item": "title" },
-          "subtitle": { "$item": "subtitle" },
           "timestamp": {
             "$computed": "relative_time",
             "args": { "value": { "$item": "activity_at" } }
@@ -130,7 +135,7 @@
       "footerLabel": {
         "type": "Caption",
         "props": {
-          "text": "Shows completions and edits on tasks assigned to you — comments and status-column moves aren't available yet.",
+          "text": "Shows completions and edits in this project, by assignee — comments and status-column moves aren't available yet.",
           "tone": "muted"
         },
         "visible": {

@@ -361,36 +361,75 @@ const flatten_milestones = (args) => {
     return rows;
 };
 /**
- * Flattens a list_tasks response (assignee=me) into rows for the Recent
- * Activity tile.
+ * Turns a compact Asana user's `name` into "F. Lastname" display + "FL"
+ * initials. Handles a real data-quality wrinkle confirmed live 2026-09-15:
+ * some accounts have never set an Asana display name, so `name` is just
+ * their raw email (e.g. "jeremy.fermin@mysmb.com") -- detected and split on
+ * "." in the local part to recover a name-shaped string before formatting,
+ * rather than showing the initials of an email address.
+ */
+function formatPersonName(rawName) {
+    let fullName = rawName.trim();
+    if (fullName.includes('@')) {
+        const localPart = fullName.split('@')[0];
+        fullName = localPart
+            .split(/[.\-_]+/)
+            .filter(Boolean)
+            .map((p) => p[0].toUpperCase() + p.slice(1))
+            .join(' ');
+    }
+    if (!fullName)
+        return { displayName: '', initials: '' };
+    const parts = fullName.split(/\s+/).filter(Boolean);
+    const displayName = parts.length >= 2 ? `${parts[0][0]}. ${parts[parts.length - 1]}` : fullName;
+    const initials = (parts.length >= 2
+        ? `${parts[0][0]}${parts[parts.length - 1][0]}`
+        : fullName.slice(0, 2)).toUpperCase();
+    return { displayName, initials };
+}
+/**
+ * Flattens a list_tasks response (project_gid-scoped) into rows for the
+ * Recent Activity tile.
  *
  * Approximation, not a true activity feed: the Asana MCP gateway has no
  * stories/events tool (no per-task comments, status-column moves, or
  * "added N tasks" grouping) as of 2026-09-15 -- only list_tasks, get_task,
  * list_projects, get_project, list_sections, list_users, get_team_workload,
  * list_milestones, plus the write tools. This derives "activity" purely from
- * two task fields that ARE real: `completed`/`completed_at` (a genuine event)
- * and `modified_at` (a genuine but vaguer "something changed" signal).
+ * task fields that ARE real: `completed`/`completed_at`, `modified_at`, and
+ * `assignee` (a real compact-user field, live-confirmed 2026-09-15).
  *
- * Naming attribution history (both tried and reverted, per user request
- * 2026-09-15 -- kept here so a future session doesn't re-derive this from
- * scratch): tried `created_by` (confirmed via a live captured list_tasks
- * response that this gateway never returns that field, even though it's a
- * real Asana Task field) and `assignee` scoped to one project_gid (worked --
- * live-confirmed varied real names -- but narrowed the feed to a single
- * hardcoded project, which the user preferred over trading away for names).
- * Reverted to assignee=me (spans all of the user's own projects) with no
- * per-row name at all, since assignee=me makes every row's name identical
- * and therefore not worth showing. The leading icon encodes the action type
- * (completed vs. updated) instead of a per-person avatar. The tile's footer
- * discloses this scope/limitation per TILE-DISPLAY-STANDARDS.md §13 rather
- * than presenting it as a full team activity feed.
+ * Scoping history (this function has flip-flopped on user request while
+ * chasing a reference mockup -- kept here so a future session doesn't
+ * re-derive it from scratch):
+ * 1. `assignee: "me"`, no name shown -- every row was implicitly "you".
+ * 2. `created_by` instead -- confirmed via a live captured list_tasks
+ *    response that this gateway never returns that field, even though it's
+ *    a real Asana Task field. Dead end.
+ * 3. `project_gid`-scoped + `assignee` -- live-confirmed varied real names,
+ *    but only one project's worth of activity.
+ * 4. Reverted to (1) on user request (multi-project breadth over names).
+ * 5. THIS version: back to (3) on user request ("match the mockup as
+ *    closely as possible" -- the mockup's whole visual identity is
+ *    per-row colored-initial avatars with varied names, which is only
+ *    achievable scoped to one project). `assignee` is still a proxy, not a
+ *    confirmed per-action actor (no stories tool exists to say who actually
+ *    clicked "complete" or edited a field) -- disclosed in the tile's
+ *    footer. Pointing this at a different project means editing
+ *    dataProvider.params.project_gid directly -- no per-installation
+ *    config mechanism exists on this platform (checked CREATING_PLUGINS.md).
+ *
+ * Deliberately NOT done, even in the name of mockup fidelity: fabricating
+ * "commented on", "moved ... Done", or "added N tasks to" text. Those need
+ * a stories/events tool this gateway doesn't have -- inventing them would
+ * misrepresent real task data as activity that didn't happen.
  *
  * Row 0 carries footer_label: "N recent items".
- * Each row has: id, title (`Completed "X"` / `Updated "X"`), subtitle
- * (project label or ''), activity_at (ISO timestamp used for sort +
- * relative_time), icon_name, tone, url (task deep link, '' if not
- * derivable).
+ * Each row has: id, title (`F. Lastname completed "X"` / `... updated "X"`,
+ * or plain `Completed "X"` / `Updated "X"` if a task somehow has no
+ * assignee), initials ('' if no assignee -- ActivityItem falls back to a
+ * neutral "·" avatar), activity_at (ISO timestamp used for sort +
+ * relative_time), url (task deep link, '' if not derivable).
  *
  * `url` prefers the task's own `permalink_url` (a real API field, same as
  * `flatten_projects` trusts for projects); if list_tasks doesn't return it
@@ -417,29 +456,26 @@ const flatten_recent_activity = (args) => {
         const activityAt = (isCompleted && completedAt) ? completedAt : (modifiedAt ?? createdAt ?? '');
         const memberships = Array.isArray(task.memberships) ? task.memberships : [];
         const projects = Array.isArray(task.projects) ? task.projects : [];
-        let projectLabel = '';
         let projectGid = '';
         if (memberships.length > 0) {
             const proj = memberships[0].project;
-            if (proj) {
-                projectLabel = String(proj.name ?? '');
+            if (proj)
                 projectGid = String(proj.gid ?? '');
-            }
         }
         else if (projects.length > 0) {
-            const proj = projects[0];
-            projectLabel = String(proj.name ?? '');
-            projectGid = String(proj.gid ?? '');
+            projectGid = String(projects[0].gid ?? '');
         }
         const permalinkUrl = task.permalink_url ? String(task.permalink_url) : '';
         const url = permalinkUrl || (id && projectGid ? `https://app.asana.com/0/${projectGid}/${id}` : '');
+        const assignee = task.assignee;
+        const { displayName, initials } = formatPersonName(assignee?.name ? String(assignee.name) : '');
+        const verb = isCompleted ? 'completed' : 'updated';
+        const titleText = displayName ? `${displayName} ${verb} "${title}"` : `${verb[0].toUpperCase()}${verb.slice(1)} "${title}"`;
         return {
             id,
-            title: isCompleted ? `Completed "${title}"` : `Updated "${title}"`,
-            subtitle: projectLabel,
+            title: titleText,
+            initials,
             activity_at: activityAt,
-            icon_name: isCompleted ? 'CheckCircle2' : 'Pencil',
-            tone: isCompleted ? 'success' : 'muted',
             url,
             footer_label: '',
         };
