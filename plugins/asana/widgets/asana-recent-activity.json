@@ -1,7 +1,7 @@
 {
   "id": "asana-recent-activity",
   "title": "Recent Activity",
-  "description": "Recent completions and updates in one Asana project, with each task's assignee shown by name. Approximation: the Asana MCP gateway has no stories/events tool yet, so comments and status-column moves aren't shown -- only real task-level fields (completed/completed_at, modified_at, assignee). Scoped to a single hardcoded project_gid (see dataProvider.params), not a full team-wide feed across all projects, since this platform has no per-installation widget config mechanism to let an installer pick their own project. The assignee shown is a proxy for who performed the row's action (their own task, plausibly completed/edited by them), not a confirmed per-action actor -- Asana doesn't expose that without a stories tool.",
+  "description": "Recent completions and updates on your Asana tasks, across all of your projects. Approximation: the Asana MCP gateway has no stories/events tool yet, so comments and status-column moves aren't shown -- only real task-level fields (completed/completed_at, modified_at). Scoped to tasks assigned to you (assignee=me), not a full team-wide feed, since there's no cross-teammate activity tool to attribute the completion/edit action itself to a specific teammate.",
   "category": "tasks",
   "tags": ["asana", "activity", "feed", "recent", "tasks"],
   "keywords": ["recent activity", "activity feed", "asana activity", "completed tasks", "updated tasks"],
@@ -15,7 +15,7 @@
   "dataProvider": {
     "mcp": "asana",
     "tool": "list_tasks",
-    "params": { "project_gid": "1218344654321276", "completed_since": "2026-01-01T00:00:00.000Z", "limit": 50 }
+    "params": { "assignee": "me", "completed_since": "2026-01-01T00:00:00.000Z", "limit": 50 }
   },
   "spec": {
     "root": "card",
@@ -54,7 +54,7 @@
       "titleIcon": { "type": "Icon", "props": { "name": "History", "tone": "accent", "size": "sm" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
       "title": { "type": "Heading", "props": { "text": "Recent Activity", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Asana · MYOB Tiles" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Asana" } },
 
       "div0": { "type": "Divider", "props": {} },
 
@@ -76,7 +76,7 @@
 
       "empty": {
         "type": "Empty",
-        "props": { "message": "No recent activity in this project." },
+        "props": { "message": "No recent activity on your tasks." },
         "visible": {
           "$and": [
             { "$state": "/_loading/asana.list_tasks", "not": true },
@@ -116,7 +116,8 @@
       "activityRow": {
         "type": "ActivityItem",
         "props": {
-          "initials": { "$item": "initials" },
+          "iconName": { "$item": "icon_name" },
+          "tone": { "$item": "tone" },
           "title": { "$item": "title" },
           "subtitle": { "$item": "subtitle" },
           "timestamp": {
@@ -129,7 +130,7 @@
       "footerLabel": {
         "type": "Caption",
         "props": {
-          "text": "Shows completions and edits in this project, by assignee — comments and status-column moves aren't available yet.",
+          "text": "Shows completions and edits on tasks assigned to you — comments and status-column moves aren't available yet.",
           "tone": "muted"
         },
         "visible": {
