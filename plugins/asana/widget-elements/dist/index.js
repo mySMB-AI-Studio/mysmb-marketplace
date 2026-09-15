@@ -427,9 +427,14 @@ function formatPersonName(rawName) {
  * Row 0 carries footer_label: "N recent items".
  * Each row has: id, title (`F. Lastname completed "X"` / `... updated "X"`,
  * or plain `Completed "X"` / `Updated "X"` if a task somehow has no
- * assignee), initials ('' if no assignee -- ActivityItem falls back to a
- * neutral "·" avatar), activity_at (ISO timestamp used for sort +
- * relative_time), url (task deep link, '' if not derivable).
+ * assignee), initials ('' if no assignee -- Avatar falls back to a neutral
+ * "·" glyph), avatar_tone (chart-1..5, deterministic per person; 'muted' if
+ * no assignee), activity_at (ISO timestamp used for sort + relative_time,
+ * rendered BELOW the title as a Caption -- hand-rolled instead of
+ * ActivityItem specifically so the timestamp sits on its own line rather
+ * than ActivityItem's fixed right-hand column, which was getting clipped
+ * off-screen on longer titles at this tile's width), url (task deep link,
+ * '' if not derivable).
  *
  * `url` prefers the task's own `permalink_url` (a real API field, same as
  * `flatten_projects` trusts for projects); if list_tasks doesn't return it
@@ -468,13 +473,27 @@ const flatten_recent_activity = (args) => {
         const permalinkUrl = task.permalink_url ? String(task.permalink_url) : '';
         const url = permalinkUrl || (id && projectGid ? `https://app.asana.com/0/${projectGid}/${id}` : '');
         const assignee = task.assignee;
-        const { displayName, initials } = formatPersonName(assignee?.name ? String(assignee.name) : '');
+        const rawAssigneeName = assignee?.name ? String(assignee.name) : '';
+        const { displayName, initials } = formatPersonName(rawAssigneeName);
         const verb = isCompleted ? 'completed' : 'updated';
         const titleText = displayName ? `${displayName} ${verb} "${title}"` : `${verb[0].toUpperCase()}${verb.slice(1)} "${title}"`;
+        // Deterministic per-person color, not a status tone (nothing here
+        // represents state) -- per TILE-DISPLAY-STANDARDS.md §7's "Categorical
+        // (multi-color, non-status) breakdowns" guidance, this is exactly the
+        // chart-1..5 use case: coloring several arbitrary category labels (here,
+        // people) distinctly, where no single accent or status tone fits any
+        // one of them. Hashing the raw name (not initials) keeps two different
+        // people who happen to share initials from also sharing a color.
+        const CHART_TONES = ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5'];
+        let hash = 0;
+        for (let i = 0; i < rawAssigneeName.length; i++)
+            hash = (hash * 31 + rawAssigneeName.charCodeAt(i)) >>> 0;
+        const avatarTone = rawAssigneeName ? CHART_TONES[hash % CHART_TONES.length] : 'muted';
         return {
             id,
             title: titleText,
             initials,
+            avatar_tone: avatarTone,
             activity_at: activityAt,
             url,
             footer_label: '',

@@ -107,7 +107,7 @@
 
       "activityRowLink": {
         "type": "Row",
-        "props": { "gap": "none", "hover": true, "clickable": true },
+        "props": { "gap": "sm", "align": "start", "hover": true, "clickable": true },
         "on": {
           "click": {
             "action": "open_url",
@@ -117,18 +117,35 @@
             }
           }
         },
-        "children": ["activityRow"]
+        "children": ["activityAvatar", "activityBody"]
       },
 
-      "activityRow": {
-        "type": "ActivityItem",
+      "activityAvatar": {
+        "type": "Avatar",
         "props": {
           "initials": { "$item": "initials" },
-          "title": { "$item": "title" },
-          "timestamp": {
+          "tone": { "$item": "avatar_tone" },
+          "size": "sm"
+        }
+      },
+
+      "activityBody": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["activityTitle", "activityTimestamp"]
+      },
+      "activityTitle": {
+        "type": "Text",
+        "props": { "text": { "$item": "title" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "activityTimestamp": {
+        "type": "Caption",
+        "props": {
+          "text": {
             "$computed": "relative_time",
             "args": { "value": { "$item": "activity_at" } }
-          }
+          },
+          "tone": "muted"
         }
       },
 
