@@ -397,20 +397,29 @@ const flatten_milestones: ComputedFunction = (args) => {
  * "added N tasks" grouping) as of 2026-09-14 -- only list_tasks, get_task,
  * list_projects, get_project, list_sections, list_users, get_team_workload,
  * list_milestones, plus the write tools. This derives "activity" purely from
- * two task fields that ARE real: `completed`/`completed_at` (a genuine event)
- * and `modified_at` (a genuine but vaguer "something changed" signal -- it
- * can't distinguish a comment from a title edit from a due-date change).
- * Every row is implicitly the current user's own task (assignee=me), so
- * there's no cross-teammate attribution to show -- the leading icon encodes
- * the action type (completed vs. updated) instead of a per-person avatar.
- * The tile's footer discloses this scope/limitation per TILE-DISPLAY-
- * STANDARDS.md §13 rather than presenting it as a full team activity feed.
+ * task fields that ARE real: `completed`/`completed_at` (a genuine event),
+ * `modified_at` (a genuine but vaguer "something changed" signal -- it can't
+ * distinguish a comment from a title edit from a due-date change), and
+ * `created_by` (confirmed a real Task field via Asana's public API reference,
+ * 2026-09-15 -- a compact user object, NOT sandbox-confirmed against this
+ * gateway's actual list_tasks response shape).
+ *
+ * Every row is implicitly the current user's own task (assignee=me) -- there
+ * is still no tool that attributes the completion/edit ITSELF to a specific
+ * teammate (that would need stories). `created_by` is a different, static
+ * fact about the task (who originally made it), so the creator's name is
+ * shown as its own disclosed fact ("Created by X" in the subtitle) rather
+ * than rephrased as the subject of the action verb ("X completed...") --
+ * that would misattribute an action we have no data confirming they
+ * performed. The tile's footer still discloses the completions/edits-only,
+ * single-assignee scope per TILE-DISPLAY-STANDARDS.md §13.
  *
  * Row 0 carries footer_label: "N recent items".
  * Each row has: id, title (`Completed "X"` / `Updated "X"`), subtitle
- * (project label or ''), activity_at (ISO timestamp used for sort +
- * relative_time), icon_name, tone, url (task deep link, '' if not
- * derivable).
+ * (project label and/or "Created by F. Lastname", '' if neither known),
+ * initials (creator's 2-letter initials, '' if creator unknown -- ActivityItem
+ * falls back to a neutral "·" avatar), activity_at (ISO timestamp used for
+ * sort + relative_time), url (task deep link, '' if not derivable).
  *
  * `url` prefers the task's own `permalink_url` (a real API field, same as
  * `flatten_projects` trusts for projects); if list_tasks doesn't return it
@@ -456,13 +465,30 @@ const flatten_recent_activity: ComputedFunction = (args) => {
     const permalinkUrl = task.permalink_url ? String(task.permalink_url) : '';
     const url = permalinkUrl || (id && projectGid ? `https://app.asana.com/0/${projectGid}/${id}` : '');
 
+    // "F. Lastname" + "FL" initials -- same formatting flatten_team_workload uses.
+    const creator = task.created_by as Record<string, unknown> | null | undefined;
+    const creatorFullName = creator?.name ? String(creator.name).trim() : '';
+    let creatorDisplayName = '';
+    let creatorInitials = '';
+    if (creatorFullName) {
+      const parts = creatorFullName.split(/\s+/);
+      creatorDisplayName = parts.length >= 2 ? `${parts[0][0]}. ${parts[parts.length - 1]}` : creatorFullName;
+      creatorInitials = (parts.length >= 2
+        ? `${parts[0][0]}${parts[parts.length - 1][0]}`
+        : creatorFullName.slice(0, 2)
+      ).toUpperCase();
+    }
+
+    const subtitle = [projectLabel, creatorDisplayName ? `Created by ${creatorDisplayName}` : '']
+      .filter(Boolean)
+      .join(' · ');
+
     return {
       id,
       title: isCompleted ? `Completed "${title}"` : `Updated "${title}"`,
-      subtitle: projectLabel,
+      subtitle,
+      initials: creatorInitials,
       activity_at: activityAt,
-      icon_name: isCompleted ? 'CheckCircle2' : 'Pencil',
-      tone: isCompleted ? 'success' : 'muted',
       url,
       footer_label: '',
     };
