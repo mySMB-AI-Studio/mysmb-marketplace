@@ -1,7 +1,7 @@
 {
   "id": "eventbrite-event-details",
   "title": "Event Details",
-  "description": "Full detail for one Eventbrite event — date range, venue or online link, organizer, description, and ticket classes. Set event_id in params to a real Eventbrite event ID (call list_events to find one) — a widget's dataProvider fires a single tool call on mount, so this can't be auto-resolved (see this plugin's README).",
+  "description": "Full detail for your Eventbrite organization's next upcoming event — date range, venue or online link, organizer, description, and ticket classes. Zero-config: auto-resolves your organization and its soonest upcoming event, defaulting to the FIRST organization on the connected account if there is more than one (see this plugin's README).",
   "category": "marketing",
   "tags": ["eventbrite", "events", "tickets", "venue"],
   "keywords": ["eventbrite event", "event detail", "venue", "organizer", "ticket classes"],
@@ -14,11 +14,8 @@
   },
   "dataProvider": {
     "mcp": "eventbrite",
-    "tool": "get_event",
-    "params": {
-      "event_id": "YOUR_EVENT_ID",
-      "expand": ["organizer", "venue", "ticket_classes"]
-    }
+    "tool": "list_organizations",
+    "params": {}
   },
   "spec": {
     "root": "card",
@@ -28,6 +25,22 @@
         "props": {},
         "children": ["header", "body"],
         "watch": {
+          "/eventbrite/list_organizations/organizations/0/id": {
+            "action": "eventbrite.list_events",
+            "params": {
+              "organization_id": { "$state": "/eventbrite/list_organizations/organizations/0/id" },
+              "time_filter": "current_future",
+              "order_by": "start_asc",
+              "page_size": 1
+            }
+          },
+          "/eventbrite/list_events/events/0/id": {
+            "action": "eventbrite.get_event",
+            "params": {
+              "event_id": { "$state": "/eventbrite/list_events/events/0/id" },
+              "expand": ["organizer", "venue", "ticket_classes"]
+            }
+          },
           "/eventbrite/get_event/ticket_classes": [
             {
               "action": "setState",
@@ -52,7 +65,7 @@
       "titleIcon": { "type": "Icon", "props": { "name": "CalendarDays", "tone": "accent", "size": "sm" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
       "title": { "type": "Heading", "props": { "text": "Event Details", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Eventbrite" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Eventbrite · Next upcoming" } },
 
       "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "content"] },
 
@@ -60,7 +73,13 @@
         "type": "Stack",
         "props": { "gap": "sm" },
         "children": ["sk1", "sk2", "sk3"],
-        "visible": { "$state": "/_loading/eventbrite.get_event" }
+        "visible": {
+          "$or": [
+            { "$state": "/_loading/eventbrite.list_organizations" },
+            { "$state": "/_loading/eventbrite.list_events" },
+            { "$state": "/_loading/eventbrite.get_event" }
+          ]
+        }
       },
       "sk1": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
       "sk2": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
@@ -68,9 +87,11 @@
 
       "empty": {
         "type": "Empty",
-        "props": { "message": "No event found for this id." },
+        "props": { "message": "No upcoming events found for this organization." },
         "visible": {
           "$and": [
+            { "$state": "/_loading/eventbrite.list_organizations", "not": true },
+            { "$state": "/_loading/eventbrite.list_events", "not": true },
             { "$state": "/_loading/eventbrite.get_event", "not": true },
             { "$state": "/eventbrite/get_event/id", "not": true }
           ]

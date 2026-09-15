@@ -1,7 +1,7 @@
 {
   "id": "eventbrite-upcoming-events",
   "title": "Upcoming Events",
-  "description": "Current and future events for one Eventbrite organization. Set organization_id in params to your Eventbrite organization ID (call list_organizations to find it) — a widget's dataProvider fires a single tool call on mount, so this can't be auto-resolved (see this plugin's README).",
+  "description": "Current and future events for your Eventbrite organization. Zero-config: auto-resolves your organization from list_organizations, then fetches its upcoming events — defaults to the FIRST organization on the connected account if there is more than one (see this plugin's README).",
   "category": "marketing",
   "tags": ["eventbrite", "events", "tickets", "registration"],
   "keywords": ["eventbrite events", "upcoming events", "event list", "ticketing", "registration"],
@@ -14,13 +14,8 @@
   },
   "dataProvider": {
     "mcp": "eventbrite",
-    "tool": "list_events",
-    "params": {
-      "organization_id": "YOUR_ORGANIZATION_ID",
-      "time_filter": "current_future",
-      "order_by": "start_asc",
-      "page_size": 20
-    }
+    "tool": "list_organizations",
+    "params": {}
   },
   "spec": {
     "root": "card",
@@ -30,6 +25,15 @@
         "props": {},
         "children": ["header", "div0", "body"],
         "watch": {
+          "/eventbrite/list_organizations/organizations/0/id": {
+            "action": "eventbrite.list_events",
+            "params": {
+              "organization_id": { "$state": "/eventbrite/list_organizations/organizations/0/id" },
+              "time_filter": "current_future",
+              "order_by": "start_asc",
+              "page_size": 20
+            }
+          },
           "/eventbrite/list_events/events": [
             {
               "action": "setState",
@@ -79,7 +83,12 @@
         "type": "Stack",
         "props": { "gap": "sm" },
         "children": ["sk1", "sk2", "sk3", "sk4"],
-        "visible": { "$state": "/_loading/eventbrite.list_events" }
+        "visible": {
+          "$or": [
+            { "$state": "/_loading/eventbrite.list_organizations" },
+            { "$state": "/_loading/eventbrite.list_events" }
+          ]
+        }
       },
       "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
       "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
@@ -91,6 +100,7 @@
         "props": { "message": "No upcoming events found for this organization." },
         "visible": {
           "$and": [
+            { "$state": "/_loading/eventbrite.list_organizations", "not": true },
             { "$state": "/_loading/eventbrite.list_events", "not": true },
             { "$state": "/ui/rows/0", "not": true }
           ]
