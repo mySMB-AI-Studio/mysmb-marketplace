@@ -1,0 +1,119 @@
+{
+  "id": "humanitix-upcoming-events",
+  "title": "Upcoming Events",
+  "description": "Events on Humanitix that haven't ended yet, soonest first — start date, location, capacity, and publish status.",
+  "category": "operations",
+  "tags": ["humanitix", "events", "ticketing", "tickets"],
+  "keywords": ["events", "upcoming", "tickets", "ticketing", "humanitix", "schedule"],
+  "connectorsUsed": ["humanitix"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 6 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
+    "max": { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "humanitix",
+    "tool": "list_events",
+    "params": { "pageSize": 100 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "divider", "body"],
+        "watch": {
+          "/humanitix/list_events": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "humanitix_flatten_events",
+                  "args": { "value": { "$state": "/humanitix/list_events" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "CalendarClock", "tone": "info", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Upcoming Events", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Humanitix · next 20, soonest first" }
+      },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["empty", "table"]
+      },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No upcoming events on Humanitix." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/humanitix.list_events", "not": true },
+            { "$state": "/ui/rows/0", "not": true }
+          ]
+        }
+      },
+
+      "table": {
+        "type": "Table",
+        "props": {
+          "loading": { "$state": "/_loading/humanitix.list_events" },
+          "skeletonRows": 5,
+          "rows": { "$state": "/ui/rows" },
+          "columns": [
+            { "id": "name", "header": "Event", "field": "name", "priority": 1 },
+            { "id": "start", "header": "Start Date", "field": "start_date", "format": "dd_mmm_yy", "width": 100, "priority": 1 },
+            { "id": "location", "header": "Location", "field": "location", "width": 140, "priority": 2 },
+            { "id": "capacity", "header": "Capacity", "field": "capacity", "width": 90, "align": "right", "priority": 2 },
+            {
+              "id": "status",
+              "header": "Status",
+              "field": "status_label",
+              "variant": "badge",
+              "tone": { "$computed": "identity", "args": { "value": { "$item": "status_tone" } } },
+              "width": 130,
+              "priority": 1
+            }
+          ]
+        },
+        "visible": {
+          "$or": [
+            { "$state": "/_loading/humanitix.list_events" },
+            { "$state": "/ui/rows/0" }
+          ]
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}

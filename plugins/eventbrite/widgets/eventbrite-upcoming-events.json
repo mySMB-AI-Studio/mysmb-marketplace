@@ -7,6 +7,7 @@
   "keywords": ["eventbrite events", "upcoming events", "event list", "ticketing", "registration"],
   "connectorsUsed": ["eventbrite"],
   "popularity": 0,
+  "brandColor": "#34DFBA",
   "sizing": {
     "preferred": { "colSpan": 5, "rowSpan": 6 },
     "min": { "colSpan": 4, "rowSpan": 4 },
@@ -23,7 +24,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "div0", "body"],
+        "children": ["header", "div0", "body", "footerRow"],
         "watch": {
           "/eventbrite/list_organizations/organizations/0/id": {
             "action": "eventbrite.list_events",
@@ -127,7 +128,13 @@
       },
       "eventRowContent": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true, "clickable": true },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": { "$bindItem": "url" }, "target": "_blank" }
+          }
+        },
         "children": ["eventInfo", "eventStatusBadge"]
       },
       "eventInfo": {
@@ -161,7 +168,23 @@
           "variant": "soft"
         }
       },
-      "eventDivider": { "type": "Divider", "props": {} }
+      "eventDivider": { "type": "Divider", "props": {} },
+
+      "footerRow": {
+        "type": "Row",
+        "props": { "justify": "end", "pt": "sm" },
+        "children": ["footerOpenBtn"]
+      },
+      "footerOpenBtn": {
+        "type": "Button",
+        "props": { "label": "Open Eventbrite", "variant": "primary", "tone": "brand", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": "https://www.eventbrite.com", "target": "_blank" }
+          }
+        }
+      }
     }
   },
   "status": "published"
