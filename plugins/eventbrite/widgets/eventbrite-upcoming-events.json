@@ -1,0 +1,158 @@
+{
+  "id": "eventbrite-upcoming-events",
+  "title": "Upcoming Events",
+  "description": "Current and future events for one Eventbrite organization. Set organization_id in params to your Eventbrite organization ID (call list_organizations to find it) — a widget's dataProvider fires a single tool call on mount, so this can't be auto-resolved (see this plugin's README).",
+  "category": "marketing",
+  "tags": ["eventbrite", "events", "tickets", "registration"],
+  "keywords": ["eventbrite events", "upcoming events", "event list", "ticketing", "registration"],
+  "connectorsUsed": ["eventbrite"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 6 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
+    "max": { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "eventbrite",
+    "tool": "list_events",
+    "params": {
+      "organization_id": "YOUR_ORGANIZATION_ID",
+      "time_filter": "current_future",
+      "order_by": "start_asc",
+      "page_size": 20
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "div0", "body"],
+        "watch": {
+          "/eventbrite/list_events/events": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "eventbrite_flatten_upcoming_events",
+                  "args": { "value": { "$state": "/eventbrite/list_events/events" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Ticket", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Upcoming Events", "level": "h2" } },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Eventbrite · {n} events",
+              "n": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/eventbrite/list_events/events" } }
+              }
+            }
+          }
+        },
+        "visible": { "$state": "/ui/rows/0" }
+      },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "eventList"] },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/eventbrite.list_events" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No upcoming events found for this organization." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/eventbrite.list_events", "not": true },
+            { "$state": "/ui/rows/0", "not": true }
+          ]
+        }
+      },
+
+      "eventList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["eventRow"],
+        "repeat": { "statePath": "/ui/rows", "key": "id" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/eventbrite.list_events", "not": true },
+            { "$state": "/ui/rows/0" }
+          ]
+        }
+      },
+
+      "eventRow": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["eventRowContent", "eventDivider"]
+      },
+      "eventRowContent": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["eventInfo", "eventStatusBadge"]
+      },
+      "eventInfo": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["eventName", "eventMeta"]
+      },
+      "eventName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "semibold", "truncate": true }
+      },
+      "eventMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{date} · {location}",
+              "date": { "$item": "date_label" },
+              "location": { "$item": "location_label" }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "eventStatusBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "status_label" },
+          "tone": { "$item": "status_tone" },
+          "variant": "soft"
+        }
+      },
+      "eventDivider": { "type": "Divider", "props": {} }
+    }
+  },
+  "status": "published"
+}
