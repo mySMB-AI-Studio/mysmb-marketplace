@@ -45,9 +45,13 @@
       "titleStack": {
         "type": "Stack",
         "props": { "gap": "none" },
-        "children": ["title"]
+        "children": ["title", "asanaLabel"]
       },
       "title": { "type": "Heading", "props": { "text": "Upcoming Milestones", "level": "h2" } },
+      "asanaLabel": {
+        "type": "Caption",
+        "props": { "text": "Asana" }
+      },
 
       "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "list"] },
 
@@ -123,8 +127,13 @@
       "footerDivider": { "type": "Divider", "props": {} },
       "footerRow": {
         "type": "Row",
-        "props": { "justify": "end" },
-        "children": ["openInAsanaBtn"]
+        "props": { "justify": "between", "align": "center" },
+        "children": ["footerLabel", "openInAsanaBtn"]
+      },
+      "footerLabel": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/ui/rows/0/footer_label" } },
+        "visible": { "$state": "/ui/rows/0" }
       },
       "openInAsanaBtn": {
         "type": "Button",
