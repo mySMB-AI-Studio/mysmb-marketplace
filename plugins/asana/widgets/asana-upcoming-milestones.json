@@ -45,21 +45,15 @@
       "titleStack": {
         "type": "Stack",
         "props": { "gap": "none" },
-        "children": ["title", "eyebrow"]
+        "children": ["title", "asanaLabel"]
       },
       "title": { "type": "Heading", "props": { "text": "Upcoming Milestones", "level": "h2" } },
-      "eyebrow": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["eyebrowDot", "eyebrowText"]
-      },
-      "eyebrowDot": { "type": "Dot", "props": { "tone": "brand", "size": "xs" } },
-      "eyebrowText": {
+      "asanaLabel": {
         "type": "Caption",
-        "props": { "text": "ASANA" }
+        "props": { "text": "Asana" }
       },
 
-      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "list", "footerLabel"] },
+      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "list"] },
 
       "loading": {
         "type": "Stack",
@@ -130,17 +124,16 @@
         "props": { "text": { "$item": "project_label" } }
       },
 
+      "footerDivider": { "type": "Divider", "props": {} },
+      "footerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["footerLabel", "openInAsanaBtn"]
+      },
       "footerLabel": {
         "type": "Caption",
         "props": { "text": { "$state": "/ui/rows/0/footer_label" } },
         "visible": { "$state": "/ui/rows/0" }
-      },
-
-      "footerDivider": { "type": "Divider", "props": {} },
-      "footerRow": {
-        "type": "Row",
-        "props": { "justify": "end" },
-        "children": ["openInAsanaBtn"]
       },
       "openInAsanaBtn": {
         "type": "Button",

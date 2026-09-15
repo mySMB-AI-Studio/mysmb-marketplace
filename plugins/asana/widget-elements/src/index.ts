@@ -443,28 +443,82 @@ const flatten_milestones: ComputedFunction = (args) => {
 };
 
 /**
- * Flattens a list_tasks response (assignee=me) into rows for the Recent
- * Activity tile.
+ * Turns a compact Asana user's `name` into "F. Lastname" display + "FL"
+ * initials. Handles a real data-quality wrinkle confirmed live 2026-09-15:
+ * some accounts have never set an Asana display name, so `name` is just
+ * their raw email (e.g. "jeremy.fermin@mysmb.com") -- detected and split on
+ * "." in the local part to recover a name-shaped string before formatting,
+ * rather than showing the initials of an email address.
+ */
+function formatPersonName(rawName: string): { displayName: string; initials: string } {
+  let fullName = rawName.trim();
+  if (fullName.includes('@')) {
+    const localPart = fullName.split('@')[0];
+    fullName = localPart
+      .split(/[.\-_]+/)
+      .filter(Boolean)
+      .map((p) => p[0].toUpperCase() + p.slice(1))
+      .join(' ');
+  }
+  if (!fullName) return { displayName: '', initials: '' };
+
+  const parts = fullName.split(/\s+/).filter(Boolean);
+  const displayName = parts.length >= 2 ? `${parts[0][0]}. ${parts[parts.length - 1]}` : fullName;
+  const initials = (parts.length >= 2
+    ? `${parts[0][0]}${parts[parts.length - 1][0]}`
+    : fullName.slice(0, 2)
+  ).toUpperCase();
+  return { displayName, initials };
+}
+
+/**
+ * Flattens a list_tasks response (project_gid-scoped) into rows for the
+ * Recent Activity tile.
  *
  * Approximation, not a true activity feed: the Asana MCP gateway has no
  * stories/events tool (no per-task comments, status-column moves, or
- * "added N tasks" grouping) as of 2026-09-14 -- only list_tasks, get_task,
+ * "added N tasks" grouping) as of 2026-09-15 -- only list_tasks, get_task,
  * list_projects, get_project, list_sections, list_users, get_team_workload,
  * list_milestones, plus the write tools. This derives "activity" purely from
- * two task fields that ARE real: `completed`/`completed_at` (a genuine event)
- * and `modified_at` (a genuine but vaguer "something changed" signal -- it
- * can't distinguish a comment from a title edit from a due-date change).
- * Every row is implicitly the current user's own task (assignee=me), so
- * there's no cross-teammate attribution to show -- the leading icon encodes
- * the action type (completed vs. updated) instead of a per-person avatar.
- * The tile's footer discloses this scope/limitation per TILE-DISPLAY-
- * STANDARDS.md §13 rather than presenting it as a full team activity feed.
+ * task fields that ARE real: `completed`/`completed_at`, `modified_at`, and
+ * `assignee` (a real compact-user field, live-confirmed 2026-09-15).
+ *
+ * Scoping history (this function has flip-flopped on user request while
+ * chasing a reference mockup -- kept here so a future session doesn't
+ * re-derive it from scratch):
+ * 1. `assignee: "me"`, no name shown -- every row was implicitly "you".
+ * 2. `created_by` instead -- confirmed via a live captured list_tasks
+ *    response that this gateway never returns that field, even though it's
+ *    a real Asana Task field. Dead end.
+ * 3. `project_gid`-scoped + `assignee` -- live-confirmed varied real names,
+ *    but only one project's worth of activity.
+ * 4. Reverted to (1) on user request (multi-project breadth over names).
+ * 5. THIS version: back to (3) on user request ("match the mockup as
+ *    closely as possible" -- the mockup's whole visual identity is
+ *    per-row colored-initial avatars with varied names, which is only
+ *    achievable scoped to one project). `assignee` is still a proxy, not a
+ *    confirmed per-action actor (no stories tool exists to say who actually
+ *    clicked "complete" or edited a field) -- disclosed in the tile's
+ *    footer. Pointing this at a different project means editing
+ *    dataProvider.params.project_gid directly -- no per-installation
+ *    config mechanism exists on this platform (checked CREATING_PLUGINS.md).
+ *
+ * Deliberately NOT done, even in the name of mockup fidelity: fabricating
+ * "commented on", "moved ... Done", or "added N tasks to" text. Those need
+ * a stories/events tool this gateway doesn't have -- inventing them would
+ * misrepresent real task data as activity that didn't happen.
  *
  * Row 0 carries footer_label: "N recent items".
- * Each row has: id, title (`Completed "X"` / `Updated "X"`), subtitle
- * (project label or ''), activity_at (ISO timestamp used for sort +
- * relative_time), icon_name, tone, url (task deep link, '' if not
- * derivable).
+ * Each row has: id, title (`F. Lastname completed "X"` / `... updated "X"`,
+ * or plain `Completed "X"` / `Updated "X"` if a task somehow has no
+ * assignee), initials ('' if no assignee -- Avatar falls back to a neutral
+ * "·" glyph), avatar_tone (chart-1..5, deterministic per person; 'muted' if
+ * no assignee), activity_at (ISO timestamp used for sort + relative_time,
+ * rendered BELOW the title as a Caption -- hand-rolled instead of
+ * ActivityItem specifically so the timestamp sits on its own line rather
+ * than ActivityItem's fixed right-hand column, which was getting clipped
+ * off-screen on longer titles at this tile's width), url (task deep link,
+ * '' if not derivable).
  *
  * `url` prefers the task's own `permalink_url` (a real API field, same as
  * `flatten_projects` trusts for projects); if list_tasks doesn't return it
@@ -493,30 +547,42 @@ const flatten_recent_activity: ComputedFunction = (args) => {
 
     const memberships = Array.isArray(task.memberships) ? (task.memberships as Record<string, unknown>[]) : [];
     const projects = Array.isArray(task.projects) ? (task.projects as Record<string, unknown>[]) : [];
-    let projectLabel = '';
     let projectGid = '';
     if (memberships.length > 0) {
       const proj = memberships[0].project as Record<string, unknown> | undefined;
-      if (proj) {
-        projectLabel = String(proj.name ?? '');
-        projectGid = String(proj.gid ?? '');
-      }
+      if (proj) projectGid = String(proj.gid ?? '');
     } else if (projects.length > 0) {
-      const proj = projects[0] as Record<string, unknown>;
-      projectLabel = String(proj.name ?? '');
-      projectGid = String(proj.gid ?? '');
+      projectGid = String((projects[0] as Record<string, unknown>).gid ?? '');
     }
 
     const permalinkUrl = task.permalink_url ? String(task.permalink_url) : '';
     const url = permalinkUrl || (id && projectGid ? `https://app.asana.com/0/${projectGid}/${id}` : '');
 
+    const assignee = task.assignee as Record<string, unknown> | null | undefined;
+    const rawAssigneeName = assignee?.name ? String(assignee.name) : '';
+    const { displayName, initials } = formatPersonName(rawAssigneeName);
+
+    const verb = isCompleted ? 'completed' : 'updated';
+    const titleText = displayName ? `${displayName} ${verb} "${title}"` : `${verb[0].toUpperCase()}${verb.slice(1)} "${title}"`;
+
+    // Deterministic per-person color, not a status tone (nothing here
+    // represents state) -- per TILE-DISPLAY-STANDARDS.md §7's "Categorical
+    // (multi-color, non-status) breakdowns" guidance, this is exactly the
+    // chart-1..5 use case: coloring several arbitrary category labels (here,
+    // people) distinctly, where no single accent or status tone fits any
+    // one of them. Hashing the raw name (not initials) keeps two different
+    // people who happen to share initials from also sharing a color.
+    const CHART_TONES = ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5'] as const;
+    let hash = 0;
+    for (let i = 0; i < rawAssigneeName.length; i++) hash = (hash * 31 + rawAssigneeName.charCodeAt(i)) >>> 0;
+    const avatarTone = rawAssigneeName ? CHART_TONES[hash % CHART_TONES.length] : 'muted';
+
     return {
       id,
-      title: isCompleted ? `Completed "${title}"` : `Updated "${title}"`,
-      subtitle: projectLabel,
+      title: titleText,
+      initials,
+      avatar_tone: avatarTone,
       activity_at: activityAt,
-      icon_name: isCompleted ? 'CheckCircle2' : 'Pencil',
-      tone: isCompleted ? 'success' : 'muted',
       url,
       footer_label: '',
     };
