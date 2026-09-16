@@ -1,16 +1,16 @@
 {
   "id": "square-sales-summary",
   "title": "Square — Sales Summary",
-  "description": "Today's gross sales, transaction count, average sale, and net sales after refunds — all in one compact card.",
+  "description": "Recent gross sales, transaction count, average sale, and net sales after refunds — all in one compact card.",
   "category": "finance",
   "tags": ["square", "payments", "sales", "summary", "pos", "finance"],
   "keywords": ["sales", "revenue", "gross", "net", "refunds", "transactions", "average", "square", "today"],
   "connectorsUsed": ["square"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 4, "rowSpan": 5 },
-    "min": { "colSpan": 3, "rowSpan": 4 },
-    "max": { "colSpan": 8, "rowSpan": 7 }
+    "preferred": { "colSpan": 4, "rowSpan": 6 },
+    "min": { "colSpan": 3, "rowSpan": 5 },
+    "max": { "colSpan": 8, "rowSpan": 9 }
   },
   "dataProvider": {
     "mcp": "square",
@@ -23,22 +23,21 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["titleRow", "grossSection", "divider1", "statsRow", "divider2", "netRow"]
+        "children": ["header", "grossSection", "statsGrid", "netSection"]
       },
 
-      "titleRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
+      "header": {
+        "type": "Header",
         "children": ["titleGroup"]
       },
       "titleGroup": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
+        "props": { "gap": "sm", "align": "start" },
         "children": ["titleIcon", "titleStack"]
       },
       "titleIcon": {
         "type": "Icon",
-        "props": { "name": "TrendingUp", "tone": "accent", "size": "md" }
+        "props": { "name": "TrendingUp", "tone": "accent", "size": "sm" }
       },
       "titleStack": {
         "type": "Stack",
@@ -55,84 +54,111 @@
       },
 
       "grossSection": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["grossLabel", "grossAmount"]
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["grossLabelRow", "grossAmount"]
+      },
+      "grossLabelRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["grossIcon", "grossLabel"]
+      },
+      "grossIcon": {
+        "type": "Icon",
+        "props": { "name": "DollarSign", "tone": "success", "size": "xs" }
       },
       "grossLabel": {
-        "type": "Caption",
+        "type": "Eyebrow",
         "props": { "text": "Gross sales · recent" }
       },
       "grossAmount": {
-        "type": "Heading",
+        "type": "Stat",
         "props": {
-          "text": { "$state": "/square/get_payments_summary/gross_display" },
-          "level": "h1"
+          "value": { "$state": "/square/get_payments_summary/gross_display" },
+          "tone": "success"
         }
       },
 
-      "divider1": { "type": "Divider", "props": {} },
-
-      "statsRow": {
-        "type": "Row",
-        "props": { "gap": "lg", "align": "start" },
-        "children": ["txStack", "avgStack"]
+      "statsGrid": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["txBox", "avgBox"]
       },
-      "txStack": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["txLabel", "txValue"]
+      "txBox": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["txLabelRow", "txValue"]
+      },
+      "txLabelRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["txIcon", "txLabel"]
+      },
+      "txIcon": {
+        "type": "Icon",
+        "props": { "name": "ShoppingCart", "tone": "accent", "size": "xs" }
       },
       "txLabel": {
-        "type": "Caption",
+        "type": "Eyebrow",
         "props": { "text": "Transactions" }
       },
       "txValue": {
-        "type": "Heading",
+        "type": "Stat",
         "props": {
-          "text": { "$state": "/square/get_payments_summary/transaction_count" },
-          "level": "h3"
+          "value": { "$state": "/square/get_payments_summary/transaction_count" },
+          "size": "sm",
+          "tone": "accent"
         }
       },
-      "avgStack": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["avgLabel", "avgValue"]
+      "avgBox": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["avgLabelRow", "avgValue"]
+      },
+      "avgLabelRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["avgIcon", "avgLabel"]
+      },
+      "avgIcon": {
+        "type": "Icon",
+        "props": { "name": "Tag", "tone": "info", "size": "xs" }
       },
       "avgLabel": {
-        "type": "Caption",
+        "type": "Eyebrow",
         "props": { "text": "Average sale" }
       },
       "avgValue": {
-        "type": "Heading",
+        "type": "Stat",
         "props": {
-          "text": { "$state": "/square/get_payments_summary/average_display" },
-          "level": "h3"
+          "value": { "$state": "/square/get_payments_summary/average_display" },
+          "size": "sm",
+          "tone": "info"
         }
       },
 
-      "divider2": { "type": "Divider", "props": {} },
-
-      "netRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "end" },
-        "children": ["netStack", "refundBadge"]
+      "netSection": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["netTop", "netValue"]
       },
-      "netStack": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["netLabel", "netValue"]
+      "netTop": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["netLabelRow", "refundBadge"]
+      },
+      "netLabelRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["netIcon", "netLabel"]
+      },
+      "netIcon": {
+        "type": "Icon",
+        "props": { "name": "ReceiptText", "tone": "success", "size": "xs" }
       },
       "netLabel": {
-        "type": "Caption",
+        "type": "Eyebrow",
         "props": { "text": "Net sales (after refunds)" }
-      },
-      "netValue": {
-        "type": "Heading",
-        "props": {
-          "text": { "$state": "/square/get_payments_summary/net_display" },
-          "level": "h3"
-        }
       },
       "refundBadge": {
         "type": "Badge",
@@ -140,6 +166,14 @@
           "label": { "$state": "/square/get_payments_summary/refund_badge_label" },
           "tone": "warning",
           "variant": "solid"
+        }
+      },
+      "netValue": {
+        "type": "Stat",
+        "props": {
+          "value": { "$state": "/square/get_payments_summary/net_display" },
+          "size": "sm",
+          "tone": "success"
         }
       }
     }
