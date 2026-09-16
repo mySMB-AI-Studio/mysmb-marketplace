@@ -1,0 +1,148 @@
+{
+  "id": "square-sales-summary",
+  "title": "Square — Sales Summary",
+  "description": "Today's gross sales, transaction count, average sale, and net sales after refunds — all in one compact card.",
+  "category": "finance",
+  "tags": ["square", "payments", "sales", "summary", "pos", "finance"],
+  "keywords": ["sales", "revenue", "gross", "net", "refunds", "transactions", "average", "square", "today"],
+  "connectorsUsed": ["square"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 5 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 8, "rowSpan": 7 }
+  },
+  "dataProvider": {
+    "mcp": "square",
+    "tool": "get_payments_summary",
+    "params": { "days": 1 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "grossSection", "divider1", "statsRow", "divider2", "netRow"]
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "TrendingUp", "tone": "accent", "size": "md" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Sales Summary", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Square" }
+      },
+
+      "grossSection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["grossLabel", "grossAmount"]
+      },
+      "grossLabel": {
+        "type": "Caption",
+        "props": { "text": "Gross sales · today" }
+      },
+      "grossAmount": {
+        "type": "Heading",
+        "props": {
+          "text": { "$state": "/square/get_payments_summary/gross_display" },
+          "level": "h1"
+        }
+      },
+
+      "divider1": { "type": "Divider", "props": {} },
+
+      "statsRow": {
+        "type": "Row",
+        "props": { "gap": "lg", "align": "start" },
+        "children": ["txStack", "avgStack"]
+      },
+      "txStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["txLabel", "txValue"]
+      },
+      "txLabel": {
+        "type": "Caption",
+        "props": { "text": "Transactions" }
+      },
+      "txValue": {
+        "type": "Heading",
+        "props": {
+          "text": { "$state": "/square/get_payments_summary/transaction_count" },
+          "level": "h3"
+        }
+      },
+      "avgStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["avgLabel", "avgValue"]
+      },
+      "avgLabel": {
+        "type": "Caption",
+        "props": { "text": "Average sale" }
+      },
+      "avgValue": {
+        "type": "Heading",
+        "props": {
+          "text": { "$state": "/square/get_payments_summary/average_display" },
+          "level": "h3"
+        }
+      },
+
+      "divider2": { "type": "Divider", "props": {} },
+
+      "netRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "end" },
+        "children": ["netStack", "refundBadge"]
+      },
+      "netStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["netLabel", "netValue"]
+      },
+      "netLabel": {
+        "type": "Caption",
+        "props": { "text": "Net sales (after refunds)" }
+      },
+      "netValue": {
+        "type": "Heading",
+        "props": {
+          "text": { "$state": "/square/get_payments_summary/net_display" },
+          "level": "h3"
+        }
+      },
+      "refundBadge": {
+        "type": "Badge",
+        "props": {
+          "label": { "$state": "/square/get_payments_summary/refund_badge_label" },
+          "tone": "warning",
+          "variant": "solid"
+        }
+      }
+    }
+  },
+  "status": "published"
+}
