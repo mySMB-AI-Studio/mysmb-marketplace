@@ -166,6 +166,14 @@ const flatten_upcoming_events: ComputedFunction = (args) => {
     const status = String(event.status ?? '');
     const isOnline = Boolean(event.online_event);
 
+    // Eventbrite returns `capacity: null` for an event with no attendee cap
+    // ("unlimited" ticketing) rather than omitting the field — carried
+    // through as `null` (not 0) so the Check-In Progress tile can tell
+    // "no seats" apart from "no cap set" and skip the fill-percentage line
+    // instead of showing a misleading "0 seats" or dividing by zero.
+    const capacityRaw = event.capacity;
+    const capacity = typeof capacityRaw === 'number' && capacityRaw > 0 ? capacityRaw : null;
+
     return {
       id,
       name,
@@ -174,6 +182,7 @@ const flatten_upcoming_events: ComputedFunction = (args) => {
       status_tone: event_status_tone({ value: status }),
       location_label: location_label({ value: isOnline }),
       url: String(event.url ?? ''),
+      capacity,
       footer_label: '',
     };
   });
@@ -224,6 +233,97 @@ const flatten_ticket_classes: ComputedFunction = (args) => {
   });
 };
 
+/**
+ * Summarizes a `list_attendees` response's `attendees` array — plus the
+ * selected event's own seat `capacity` (carried on its row by
+ * `flatten_upcoming_events`) — into check-in AND seat-fill stats for the
+ * Check-In Progress tile.
+ *
+ * Two distinct percentages, deliberately not conflated: `percent` is
+ * check-in rate (checked-in ÷ registered attendees); `filled_percent` is
+ * seat-fill rate (registered attendees ÷ event capacity). An event can be
+ * 100% checked-in while only 40% of its seats sold, or vice versa before
+ * doors open — collapsing them into one number would hide that.
+ *
+ * `capacity` is `null` (not 0) for an Eventbrite event with no attendee
+ * cap ("unlimited" ticketing) — `filled_percent` is `null` in that case
+ * too, since there's no denominator to fill against; the tile skips
+ * rendering the fill line rather than showing a fake 0%/divide-by-zero.
+ *
+ * Documented field used: `checked_in` (boolean) — Eventbrite v3's own
+ * attendee-object field for this concept. Not confirmed against a live
+ * sandbox response with real attendees: the test events used while
+ * building this plugin have zero registrations, so `list_attendees`
+ * only ever returned an empty array during development (see this
+ * plugin's README's data verification note) — the response envelope
+ * shape (`{ attendees: [...], pagination }`) IS live-confirmed, just not
+ * the per-attendee field names.
+ *
+ * Args: { attendees: array, capacity: number | null }
+ * Returns: { checked_in, total, remaining, percent, capacity, filled_percent }
+ * — `percent`/`filled_percent` are 0-100 integers (or `null` for
+ * `filled_percent` with no capacity), ready for `ProgressBar.value`
+ * directly (0 when total is 0, not NaN).
+ */
+const checkin_summary: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.attendees) ? (args.attendees as Record<string, unknown>[]) : [];
+  const total = raw.length;
+  const checkedIn = raw.filter((a) => Boolean(a.checked_in)).length;
+  const percent = total > 0 ? Math.round((checkedIn / total) * 100) : 0;
+
+  const capacity = typeof args.capacity === 'number' && args.capacity > 0 ? args.capacity : null;
+  const filledPercent = capacity != null ? Math.min(100, Math.round((total / capacity) * 100)) : null;
+
+  return {
+    checked_in: checkedIn,
+    total,
+    remaining: total - checkedIn,
+    percent,
+    capacity,
+    filled_percent: filledPercent,
+  };
+};
+
+/**
+ * Flattens a `list_attendees` response's `attendees` array into display
+ * rows for the Check-In Lookup tile's attendee list.
+ *
+ * Per TILE-DISPLAY-STANDARDS.md §11 (max 20 rows shown at once; a plain
+ * count when truncated, no "see more" reveal exists on `repeat` yet),
+ * this caps the returned rows at 20 regardless of how many attendees
+ * exist — `checkin_summary`, run separately against the SAME untruncated
+ * `attendees` array, still reports the true total for the "Showing 20 of
+ * N" note.
+ *
+ * Documented fields used: `id`, `profile.name`, `profile.email`,
+ * `checked_in` (bool), `ticket_class_name`. Not confirmed against a live
+ * response with real attendees — the test events used while building
+ * this plugin have zero registrations (see this plugin's README's data
+ * verification note); sourced from Eventbrite's own v3 API docs, not
+ * observed. This is organizer-facing data (the same attendee roster
+ * Eventbrite's own dashboard shows the event's organizer) — not exposed
+ * to anyone the organizer hasn't already connected this plugin for.
+ *
+ * Args: { value: array } — the response's `attendees` array (untruncated).
+ */
+const flatten_attendees: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+
+  return raw.slice(0, 20).map((attendee, i) => {
+    const profile = attendee.profile as Record<string, unknown> | undefined;
+    const checkedIn = Boolean(attendee.checked_in);
+
+    return {
+      id: String(attendee.id ?? i),
+      name: dash_if_empty({ value: profile?.name }),
+      email: dash_if_empty({ value: profile?.email }),
+      ticket_label: dash_if_empty({ value: attendee.ticket_class_name }),
+      checkin_label: checkedIn ? 'Checked In' : 'Not Checked In',
+      checkin_tone: checkedIn ? 'success' : 'muted',
+    };
+  });
+};
+
 const elements: PluginElementsModule = {
   slug: 'eventbrite',
   functions: {
@@ -234,6 +334,8 @@ const elements: PluginElementsModule = {
     dash_if_empty,
     flatten_upcoming_events,
     flatten_ticket_classes,
+    checkin_summary,
+    flatten_attendees,
   },
 };
 
