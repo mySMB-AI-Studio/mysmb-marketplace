@@ -14,8 +14,8 @@
   },
   "dataProvider": {
     "mcp": "square",
-    "tool": "make_api_request",
-    "params": { "service": "customers", "method": "list", "request": { "sort_field": "CREATED_AT", "sort_order": "DESC" } }
+    "tool": "list_customers",
+    "params": { "limit": 100, "sort_order": "DESC" }
   },
   "spec": {
     "root": "card",
@@ -61,9 +61,9 @@
       "table": {
         "type": "Table",
         "props": {
-          "loading": { "$state": "/_loading/square.make_api_request" },
+          "loading": { "$state": "/_loading/square.list_customers" },
           "skeletonRows": 5,
-          "rows": { "$state": "/square/make_api_request/customers" },
+          "rows": { "$state": "/square/list_customers/customers" },
           "columns": [
             { "id": "name", "header": "First Name", "field": "given_name", "priority": 1 },
             { "id": "surname", "header": "Last Name", "field": "family_name", "width": 140, "priority": 1 },

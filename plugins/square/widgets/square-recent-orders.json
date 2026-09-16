@@ -1,0 +1,112 @@
+{
+  "id": "square-recent-orders",
+  "title": "Square — Recent Orders",
+  "description": "Recent Square orders — order ID, total, status, and date. Sorted most recent first.",
+  "category": "finance",
+  "tags": ["square", "orders", "pos", "transactions", "finance"],
+  "keywords": ["orders", "transactions", "square", "pos", "sales"],
+  "connectorsUsed": ["square"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
+    "max": { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "square",
+    "tool": "get_merchant",
+    "params": {}
+  },
+  "watches": [
+    {
+      "on": "/square/get_merchant",
+      "actions": [
+        {
+          "action": "setState",
+          "params": {
+            "statePath": "/ui/locationId",
+            "value": { "$state": "/square/get_merchant/main_location_id" }
+          }
+        }
+      ]
+    },
+    {
+      "on": "/ui/locationId",
+      "actions": [
+        {
+          "action": "callTool",
+          "params": {
+            "mcp": "square",
+            "tool": "search_orders",
+            "toolParams": {
+              "location_ids": [{ "$state": "/ui/locationId" }],
+              "states": ["COMPLETED", "OPEN"],
+              "sort_order": "DESC",
+              "limit": 50
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "divider", "tableBody"]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "ShoppingBag", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Recent Orders", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Square" }
+      },
+      "divider": { "type": "Divider", "props": {} },
+      "tableBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["table"]
+      },
+      "table": {
+        "type": "Table",
+        "props": {
+          "loading": { "$state": "/_loading/square.search_orders" },
+          "skeletonRows": 5,
+          "rows": { "$state": "/square/search_orders/orders" },
+          "columns": [
+            { "id": "id", "header": "Order ID", "field": "id", "priority": 2 },
+            { "id": "total", "header": "Total", "field": "total_money.amount", "width": 130, "priority": 1, "format": "currency" },
+            { "id": "currency", "header": "Currency", "field": "total_money.currency", "width": 90, "priority": 3 },
+            { "id": "status", "header": "Status", "field": "state", "width": 110, "priority": 1 },
+            { "id": "source", "header": "Source", "field": "source.name", "width": 130, "priority": 2 },
+            { "id": "created", "header": "Date", "field": "created_at", "width": 160, "priority": 1, "format": "datetime" }
+          ]
+        }
+      }
+    }
+  },
+  "status": "published"
+}
