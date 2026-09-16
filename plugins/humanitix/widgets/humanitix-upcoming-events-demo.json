@@ -1,16 +1,16 @@
 {
   "id": "humanitix-upcoming-events-demo",
   "title": "Upcoming Events (Demo)",
-  "description": "Sample upcoming events with start date, location, capacity, and publish status.",
+  "description": "Sample upcoming events with category, start date/time, location, and capacity.",
   "category": "operations",
   "tags": ["humanitix", "events", "ticketing", "tickets", "demo"],
-  "keywords": ["events", "upcoming", "tickets", "ticketing", "humanitix", "demo"],
+  "keywords": ["events", "upcoming", "tickets", "ticketing", "humanitix", "demo", "capacity"],
   "connectorsUsed": [],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 6 },
-    "min": { "colSpan": 4, "rowSpan": 4 },
-    "max": { "colSpan": 8, "rowSpan": 10 }
+    "preferred": { "colSpan": 6, "rowSpan": 8 },
+    "min":       { "colSpan": 5, "rowSpan": 6 },
+    "max":       { "colSpan": 10, "rowSpan": 14 }
   },
   "spec": {
     "root": "card",
@@ -19,112 +19,140 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["titleRow", "divider", "body"]
+        "children": ["headerRow", "divider1", "columnHeaderRow", "divider2", "body", "divider3", "footerRow"]
       },
 
-      "titleRow": {
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "statusGroup"]
+      },
+      "titleGroup": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center" },
         "children": ["titleIcon", "titleStack"]
       },
-      "titleIcon": {
-        "type": "Icon",
-        "props": { "name": "CalendarClock", "tone": "info", "size": "sm" }
-      },
-      "titleStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["title", "eyebrow"]
-      },
-      "title": {
-        "type": "Heading",
-        "props": { "text": "Upcoming Events", "level": "h2" }
-      },
-      "eyebrow": {
-        "type": "Eyebrow",
-        "props": { "text": "Humanitix · next 20, soonest first" }
-      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Calendar", "tone": "info", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Upcoming Events", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Humanitix · next 20 · soonest first" } },
 
-      "divider": { "type": "Divider", "props": {} },
+      "statusGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["liveBadge", "refreshBtn"]
+      },
+      "liveBadge": { "type": "Badge", "props": { "text": "Live sync", "tone": "success", "variant": "soft" } },
+      "refreshBtn": { "type": "IconButton", "props": { "icon": "RefreshCw", "tone": "muted", "size": "sm", "ariaLabel": "Refresh" } },
+
+      "divider1": { "type": "Divider", "props": {} },
+
+      "columnHeaderRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["colEvent", "colStart", "colLocation", "colCapacity"]
+      },
+      "colEvent":    { "type": "Caption", "props": { "text": "Event",      "tone": "muted" } },
+      "colStart":    { "type": "Caption", "props": { "text": "Start Date", "tone": "muted" } },
+      "colLocation": { "type": "Caption", "props": { "text": "Location",   "tone": "muted" } },
+      "colCapacity": { "type": "Caption", "props": { "text": "Capacity",   "tone": "muted" } },
+
+      "divider2": { "type": "Divider", "props": {} },
 
       "body": {
         "type": "Body",
         "props": {},
-        "children": ["rows"]
+        "children": ["list"]
       },
 
-      "rows": {
+      "list": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["row1", "div1", "row2", "div2", "row3"]
+        "children": ["row1", "row2", "row3", "row4", "row5"]
       },
 
-      "row1": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "start" },
-        "children": ["r1left", "r1badge"]
-      },
-      "r1left": {
-        "type": "Stack",
-        "props": { "gap": "none", "grow": true },
-        "children": ["r1name", "r1meta"]
-      },
-      "r1name": { "type": "Text", "props": { "text": "Winter Gala", "size": "sm", "weight": "medium" } },
-      "r1meta": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["r1date", "r1loc", "r1cap"]
-      },
-      "r1date": { "type": "Text", "props": { "text": "12-Oct-26", "size": "xs", "tone": "muted" } },
-      "r1loc": { "type": "Text", "props": { "text": "Town Hall", "size": "xs", "tone": "muted" } },
-      "r1cap": { "type": "Text", "props": { "text": "200 cap.", "size": "xs", "tone": "muted" } },
-      "r1badge": { "type": "Badge", "props": { "text": "Published", "tone": "muted", "variant": "soft" } },
+      "row1": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["r1dot", "r1main", "r1date", "r1loc", "r1cap"] },
+      "r1dot": { "type": "Dot", "props": { "tone": "chart-1" } },
+      "r1main": { "type": "Stack", "props": { "gap": "none", "grow": true }, "children": ["r1name", "r1sub"] },
+      "r1name": { "type": "Text", "props": { "text": "Annual Conference & AGM 2026", "size": "sm", "weight": "medium", "truncate": true } },
+      "r1sub": { "type": "Caption", "props": { "text": "Conference · AGM · Hybrid", "tone": "muted" } },
+      "r1date": { "type": "Stack", "props": { "gap": "none" }, "children": ["r1dateMain", "r1dateSub"] },
+      "r1dateMain": { "type": "Text", "props": { "text": "23-Sep-26", "size": "sm" } },
+      "r1dateSub": { "type": "Caption", "props": { "text": "Wed · 9:00 AM", "tone": "muted" } },
+      "r1loc": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["r1locIcon", "r1locText"] },
+      "r1locIcon": { "type": "Icon", "props": { "name": "MapPin", "tone": "muted", "size": "sm" } },
+      "r1locText": { "type": "Text", "props": { "text": "Perth, AU", "size": "sm", "tone": "muted" } },
+      "r1cap": { "type": "Stack", "props": { "gap": "xs", "align": "end" }, "children": ["r1capLabel", "r1capBar"] },
+      "r1capLabel": { "type": "Text", "props": { "text": "142 / 500", "size": "sm", "tone": "chart-1" } },
+      "r1capBar": { "type": "ProgressBar", "props": { "value": 28, "tone": "chart-1" } },
 
-      "div1": { "type": "Divider", "props": {} },
+      "row2": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["r2dot", "r2main", "r2date", "r2loc", "r2cap"] },
+      "r2dot": { "type": "Dot", "props": { "tone": "chart-3" } },
+      "r2main": { "type": "Stack", "props": { "gap": "none", "grow": true }, "children": ["r2name", "r2sub"] },
+      "r2name": { "type": "Text", "props": { "text": "CPD Professional Development Workshop", "size": "sm", "weight": "medium", "truncate": true } },
+      "r2sub": { "type": "Caption", "props": { "text": "Workshop · CPD · Waitlist", "tone": "muted" } },
+      "r2date": { "type": "Stack", "props": { "gap": "none" }, "children": ["r2dateMain", "r2dateSub"] },
+      "r2dateMain": { "type": "Text", "props": { "text": "02-Oct-26", "size": "sm" } },
+      "r2dateSub": { "type": "Caption", "props": { "text": "Fri · 1:00 PM", "tone": "muted" } },
+      "r2loc": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["r2locIcon", "r2locText"] },
+      "r2locIcon": { "type": "Icon", "props": { "name": "Globe", "tone": "muted", "size": "sm" } },
+      "r2locText": { "type": "Text", "props": { "text": "Online", "size": "sm", "tone": "muted" } },
+      "r2cap": { "type": "Stack", "props": { "gap": "xs", "align": "end" }, "children": ["r2capLabel", "r2capBar"] },
+      "r2capLabel": { "type": "Text", "props": { "text": "18 / 20", "size": "sm", "tone": "warning" } },
+      "r2capBar": { "type": "ProgressBar", "props": { "value": 90, "tone": "warning" } },
 
-      "row2": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "start" },
-        "children": ["r2left", "r2badge"]
-      },
-      "r2left": {
-        "type": "Stack",
-        "props": { "gap": "none", "grow": true },
-        "children": ["r2name", "r2meta"]
-      },
-      "r2name": { "type": "Text", "props": { "text": "Comedy Night", "size": "sm", "weight": "medium" } },
-      "r2meta": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["r2date", "r2loc", "r2cap"]
-      },
-      "r2date": { "type": "Text", "props": { "text": "18-Oct-26", "size": "xs", "tone": "muted" } },
-      "r2loc": { "type": "Text", "props": { "text": "The Basement", "size": "xs", "tone": "muted" } },
-      "r2cap": { "type": "Text", "props": { "text": "80 cap.", "size": "xs", "tone": "muted" } },
-      "r2badge": { "type": "Badge", "props": { "text": "Sold Out", "tone": "warning", "variant": "soft" } },
+      "row3": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["r3dot", "r3main", "r3date", "r3loc", "r3cap"] },
+      "r3dot": { "type": "Dot", "props": { "tone": "chart-2" } },
+      "r3main": { "type": "Stack", "props": { "gap": "none", "grow": true }, "children": ["r3name", "r3sub"] },
+      "r3name": { "type": "Text", "props": { "text": "Community Food Market", "size": "sm", "weight": "medium", "truncate": true } },
+      "r3sub": { "type": "Caption", "props": { "text": "Community · Recurring · Free", "tone": "muted" } },
+      "r3date": { "type": "Stack", "props": { "gap": "none" }, "children": ["r3dateMain", "r3dateSub"] },
+      "r3dateMain": { "type": "Text", "props": { "text": "11-Oct-26", "size": "sm" } },
+      "r3dateSub": { "type": "Caption", "props": { "text": "Sun · 8:00 AM", "tone": "muted" } },
+      "r3loc": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["r3locIcon", "r3locText"] },
+      "r3locIcon": { "type": "Icon", "props": { "name": "MapPin", "tone": "muted", "size": "sm" } },
+      "r3locText": { "type": "Text", "props": { "text": "Fremantle, AU", "size": "sm", "tone": "muted" } },
+      "r3cap": { "type": "Badge", "props": { "text": "No Limit", "tone": "muted", "variant": "soft" } },
 
-      "div2": { "type": "Divider", "props": {} },
+      "row4": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["r4dot", "r4main", "r4date", "r4loc", "r4cap"] },
+      "r4dot": { "type": "Dot", "props": { "tone": "chart-4" } },
+      "r4main": { "type": "Stack", "props": { "gap": "none", "grow": true }, "children": ["r4name", "r4sub"] },
+      "r4name": { "type": "Text", "props": { "text": "Industry Awards & Gala Dinner", "size": "sm", "weight": "medium", "truncate": true } },
+      "r4sub": { "type": "Caption", "props": { "text": "Awards · Gala · Group Tables", "tone": "muted" } },
+      "r4date": { "type": "Stack", "props": { "gap": "none" }, "children": ["r4dateMain", "r4dateSub"] },
+      "r4dateMain": { "type": "Text", "props": { "text": "24-Oct-26", "size": "sm" } },
+      "r4dateSub": { "type": "Caption", "props": { "text": "Sat · 6:30 PM", "tone": "muted" } },
+      "r4loc": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["r4locIcon", "r4locText"] },
+      "r4locIcon": { "type": "Icon", "props": { "name": "MapPin", "tone": "muted", "size": "sm" } },
+      "r4locText": { "type": "Text", "props": { "text": "Perth, AU", "size": "sm", "tone": "muted" } },
+      "r4cap": { "type": "Stack", "props": { "gap": "xs", "align": "end" }, "children": ["r4capLabel", "r4capBar"] },
+      "r4capLabel": { "type": "Text", "props": { "text": "96 / 240", "size": "sm", "tone": "chart-4" } },
+      "r4capBar": { "type": "ProgressBar", "props": { "value": 40, "tone": "chart-4" } },
 
-      "row3": {
+      "row5": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["r5dot", "r5main", "r5date", "r5loc", "r5cap"] },
+      "r5dot": { "type": "Dot", "props": { "tone": "chart-5" } },
+      "r5main": { "type": "Stack", "props": { "gap": "none", "grow": true }, "children": ["r5name", "r5sub"] },
+      "r5name": { "type": "Text", "props": { "text": "Live Music Night", "size": "sm", "weight": "medium", "truncate": true } },
+      "r5sub": { "type": "Caption", "props": { "text": "Concert · Early-bird · 18+", "tone": "muted" } },
+      "r5date": { "type": "Stack", "props": { "gap": "none" }, "children": ["r5dateMain", "r5dateSub"] },
+      "r5dateMain": { "type": "Text", "props": { "text": "07-Nov-26", "size": "sm" } },
+      "r5dateSub": { "type": "Caption", "props": { "text": "Sat · 7:00 PM", "tone": "muted" } },
+      "r5loc": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["r5locIcon", "r5locText"] },
+      "r5locIcon": { "type": "Icon", "props": { "name": "MapPin", "tone": "muted", "size": "sm" } },
+      "r5locText": { "type": "Text", "props": { "text": "Perth, AU", "size": "sm", "tone": "muted" } },
+      "r5cap": { "type": "Stack", "props": { "gap": "xs", "align": "end" }, "children": ["r5capLabel", "r5capBar"] },
+      "r5capLabel": { "type": "Text", "props": { "text": "210 / 300", "size": "sm", "tone": "chart-5" } },
+      "r5capBar": { "type": "ProgressBar", "props": { "value": 70, "tone": "chart-5" } },
+
+      "divider3": { "type": "Divider", "props": {} },
+
+      "footerRow": {
         "type": "Row",
-        "props": { "justify": "between", "align": "start" },
-        "children": ["r3left", "r3badge"]
+        "props": { "justify": "between", "align": "center" },
+        "children": ["footerCount", "footerLink"]
       },
-      "r3left": {
-        "type": "Stack",
-        "props": { "gap": "none", "grow": true },
-        "children": ["r3name", "r3meta"]
-      },
-      "r3name": { "type": "Text", "props": { "text": "Charity Fun Run", "size": "sm", "weight": "medium" } },
-      "r3meta": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["r3date", "r3loc", "r3cap"]
-      },
-      "r3date": { "type": "Text", "props": { "text": "01-Nov-26", "size": "xs", "tone": "muted" } },
-      "r3loc": { "type": "Text", "props": { "text": "Riverside Park", "size": "xs", "tone": "muted" } },
-      "r3cap": { "type": "Text", "props": { "text": "500 cap.", "size": "xs", "tone": "muted" } },
-      "r3badge": { "type": "Badge", "props": { "text": "Draft", "tone": "muted", "variant": "soft" } }
+      "footerCount": { "type": "Caption", "props": { "text": "Showing 5 of 20 upcoming", "tone": "muted" } },
+      "footerLink": { "type": "Button", "props": { "label": "View all events →", "variant": "ghost", "size": "sm" } }
 
     }
   },

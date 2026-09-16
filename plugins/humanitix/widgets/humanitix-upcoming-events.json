@@ -1,21 +1,21 @@
 {
   "id": "humanitix-upcoming-events",
   "title": "Upcoming Events",
-  "description": "Events on Humanitix that haven't ended yet, soonest first — start date, location, capacity, and publish status.",
+  "description": "Events on Humanitix that haven't ended yet, soonest first — category, start date/time, location, and capacity at a glance.",
   "category": "operations",
   "tags": ["humanitix", "events", "ticketing", "tickets"],
-  "keywords": ["events", "upcoming", "tickets", "ticketing", "humanitix", "schedule"],
+  "keywords": ["events", "upcoming", "tickets", "ticketing", "humanitix", "schedule", "capacity"],
   "connectorsUsed": ["humanitix"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 6 },
-    "min": { "colSpan": 4, "rowSpan": 4 },
-    "max": { "colSpan": 10, "rowSpan": 12 }
+    "preferred": { "colSpan": 6, "rowSpan": 8 },
+    "min":       { "colSpan": 5, "rowSpan": 6 },
+    "max":       { "colSpan": 10, "rowSpan": 14 }
   },
   "dataProvider": {
     "mcp": "humanitix",
     "tool": "list_events",
-    "params": { "pageSize": 100 }
+    "params": { "pageSize": 20 }
   },
   "spec": {
     "root": "card",
@@ -24,7 +24,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["titleRow", "divider", "body"],
+        "children": ["headerRow", "divider1", "columnHeaderRow", "divider2", "body", "divider3", "footerRow"],
         "watch": {
           "/humanitix/list_events": [
             {
@@ -32,8 +32,18 @@
               "params": {
                 "statePath": "/ui/rows",
                 "value": {
-                  "$computed": "humanitix_flatten_events",
-                  "args": { "value": { "$state": "/humanitix/list_events" } }
+                  "$computed": "humanitix_flatten_upcoming_events_rich",
+                  "args": { "value": { "$state": "/humanitix/list_events" }, "displayLimit": 5 }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/counts",
+                "value": {
+                  "$computed": "humanitix_upcoming_events_counts",
+                  "args": { "value": { "$state": "/humanitix/list_events" }, "displayLimit": 5 }
                 }
               }
             }
@@ -41,36 +51,66 @@
         }
       },
 
-      "titleRow": {
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "statusGroup"]
+      },
+      "titleGroup": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center" },
         "children": ["titleIcon", "titleStack"]
       },
-      "titleIcon": {
-        "type": "Icon",
-        "props": { "name": "CalendarClock", "tone": "info", "size": "sm" }
+      "titleIcon": { "type": "Icon", "props": { "name": "Calendar", "tone": "info", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Upcoming Events", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Humanitix · next 20 · soonest first" } },
+
+      "statusGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["liveBadge", "refreshBtn"]
       },
-      "titleStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["title", "eyebrow"]
+      "liveBadge": {
+        "type": "Badge",
+        "props": { "text": "Live sync", "tone": "success", "variant": "soft" }
       },
-      "title": {
-        "type": "Heading",
-        "props": { "text": "Upcoming Events", "level": "h2" }
-      },
-      "eyebrow": {
-        "type": "Eyebrow",
-        "props": { "text": "Humanitix · next 20, soonest first" }
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": { "icon": "RefreshCw", "tone": "muted", "size": "sm", "ariaLabel": "Refresh" },
+        "on": {
+          "click": { "action": "humanitix.list_events", "params": { "pageSize": 20 } }
+        }
       },
 
-      "divider": { "type": "Divider", "props": {} },
+      "divider1": { "type": "Divider", "props": {} },
+
+      "columnHeaderRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["colEvent", "colStart", "colLocation", "colCapacity"]
+      },
+      "colEvent":    { "type": "Caption", "props": { "text": "Event",      "tone": "muted" } },
+      "colStart":    { "type": "Caption", "props": { "text": "Start Date", "tone": "muted" } },
+      "colLocation": { "type": "Caption", "props": { "text": "Location",   "tone": "muted" } },
+      "colCapacity": { "type": "Caption", "props": { "text": "Capacity",   "tone": "muted" } },
+
+      "divider2": { "type": "Divider", "props": {} },
 
       "body": {
         "type": "Body",
         "props": {},
-        "children": ["empty", "table"]
+        "children": ["loading", "empty", "list"]
       },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$state": "/_loading/humanitix.list_events" },
+        "children": ["sk1", "sk2", "sk3"]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
 
       "empty": {
         "type": "Empty",
@@ -83,34 +123,83 @@
         }
       },
 
-      "table": {
-        "type": "Table",
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$state": "/_loading/humanitix.list_events", "not": true },
+        "repeat": { "statePath": "/ui/rows", "key": "id" },
+        "children": ["row"]
+      },
+
+      "row": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["rowDot", "rowMain", "rowDate", "rowLocation", "rowCapacityGroup"]
+      },
+      "rowDot": { "type": "Dot", "props": { "tone": { "$item": "category_tone" } } },
+      "rowMain": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["rowName", "rowSubtitle"]
+      },
+      "rowName":     { "type": "Text",    "props": { "text": { "$item": "name" },     "size": "sm", "weight": "medium", "truncate": true } },
+      "rowSubtitle": { "type": "Caption", "props": { "text": { "$item": "subtitle" }, "tone": "muted" } },
+
+      "rowDate": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["rowDateMain", "rowDateSub"]
+      },
+      "rowDateMain": { "type": "Text",    "props": { "text": { "$item": "start_date_label" }, "size": "sm" } },
+      "rowDateSub":  { "type": "Caption", "props": { "text": { "$item": "start_time_label" }, "tone": "muted" } },
+
+      "rowLocation": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["rowLocationIcon", "rowLocationText"]
+      },
+      "rowLocationIcon": { "type": "Icon", "props": { "name": { "$item": "location_icon" }, "tone": "muted", "size": "sm" } },
+      "rowLocationText": { "type": "Text", "props": { "text": { "$item": "location_label" }, "size": "sm", "tone": "muted" } },
+
+      "rowCapacityGroup": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["rowCapacityWithBar", "rowCapacityUnlimited"]
+      },
+      "rowCapacityWithBar": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "visible": { "$item": "has_capacity" },
+        "children": ["rowCapacityLabel", "rowCapacityBar"]
+      },
+      "rowCapacityLabel": { "type": "Text", "props": { "text": { "$item": "capacity_label" }, "size": "sm", "tone": { "$item": "capacity_tone" } } },
+      "rowCapacityBar":   { "type": "ProgressBar", "props": { "value": { "$item": "capacity_pct" }, "tone": { "$item": "capacity_tone" } } },
+      "rowCapacityUnlimited": {
+        "type": "Badge",
+        "props": { "text": "No Limit", "tone": "muted", "variant": "soft" },
+        "visible": { "$item": "has_capacity", "not": true }
+      },
+
+      "divider3": { "type": "Divider", "props": {} },
+
+      "footerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["footerCount", "footerLink"]
+      },
+      "footerCount": {
+        "type": "Caption",
         "props": {
-          "loading": { "$state": "/_loading/humanitix.list_events" },
-          "skeletonRows": 5,
-          "rows": { "$state": "/ui/rows" },
-          "columns": [
-            { "id": "name", "header": "Event", "field": "name", "priority": 1 },
-            { "id": "start", "header": "Start Date", "field": "start_date", "format": "dd_mmm_yy", "width": 100, "priority": 1 },
-            { "id": "location", "header": "Location", "field": "location", "width": 140, "priority": 2 },
-            { "id": "capacity", "header": "Capacity", "field": "capacity", "width": 90, "align": "right", "priority": 2 },
-            {
-              "id": "status",
-              "header": "Status",
-              "field": "status_label",
-              "variant": "badge",
-              "tone": { "$computed": "identity", "args": { "value": { "$item": "status_tone" } } },
-              "width": 130,
-              "priority": 1
-            }
-          ]
-        },
-        "visible": {
-          "$or": [
-            { "$state": "/_loading/humanitix.list_events" },
-            { "$state": "/ui/rows/0" }
-          ]
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Showing {shown} of {total} upcoming", "shown": { "$state": "/ui/counts/shown" }, "total": { "$state": "/ui/counts/total" } }
+          },
+          "tone": "muted"
         }
+      },
+      "footerLink": {
+        "type": "Button",
+        "props": { "label": "View all events →", "variant": "ghost", "size": "sm" }
       }
 
     }

@@ -18,15 +18,23 @@ function toItems(raw, key) {
         return v.results;
     return [];
 }
-/** `dd-Mmm-yy`, e.g. `05-Aug-26` — matches the platform's default date format. */
-function formatDate(iso) {
+/**
+ * `dd-Mmm-yy`, e.g. `05-Aug-26` — matches the platform's default date format.
+ *
+ * `timeZone` (an IANA name, e.g. "Australia/Perth") renders the event's own
+ * local date rather than the viewer's — important since the same row also
+ * shows the venue location, and Humanitix supplies `event.timezone` for
+ * exactly this. Omit it to fall back to the viewer's local timezone.
+ */
+function formatDate(iso, timeZone) {
     const ms = Date.parse(String(iso ?? ''));
     if (!Number.isFinite(ms))
         return '—';
     const d = new Date(ms);
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = d.toLocaleString('en-US', { month: 'short' });
-    const year = String(d.getFullYear()).slice(-2);
+    const opts = timeZone ? { timeZone } : {};
+    const day = new Intl.DateTimeFormat('en-US', { ...opts, day: '2-digit' }).format(d);
+    const month = new Intl.DateTimeFormat('en-US', { ...opts, month: 'short' }).format(d);
+    const year = new Intl.DateTimeFormat('en-US', { ...opts, year: '2-digit' }).format(d);
     return `${day}-${month}-${year}`;
 }
 /**
@@ -61,22 +69,6 @@ function eventLocationLabel(event) {
     if (typeof event.location === 'string' && event.location.trim())
         return event.location.trim();
     return '—';
-}
-/**
- * Only genuinely exceptional states get a non-muted tone — most events are
- * simply "published and on sale", which is the platform's normal/no-news
- * state, not a "success". See TILE-DISPLAY-STANDARDS.md §7.
- */
-function eventStatus(event) {
-    if (event.isArchived)
-        return { label: 'Archived', tone: 'muted' };
-    if (event.suspendSales)
-        return { label: 'Sales Suspended', tone: 'destructive' };
-    if (event.markedAsSoldOut)
-        return { label: 'Sold Out', tone: 'warning' };
-    if (!event.published)
-        return { label: 'Draft', tone: 'muted' };
-    return { label: 'Published', tone: 'muted' };
 }
 /** Humanitix ticket `status` is `complete` | `cancelled` per the public API docs. */
 function ticketStatus(ticket) {
@@ -118,31 +110,140 @@ function upcomingSorted(raw) {
     });
 }
 /**
- * Maps the `list_events` response into display rows for the Upcoming Events
- * tile. Filters out archived events, sorts soonest-first, and caps at 20 rows
- * (TILE-DISPLAY-STANDARDS.md §11).
- *
- * Each row: id, name, start_date (ISO, pass through to the Table's own
- * dd_mmm_yy formatter), location, capacity, status_label, status_tone.
- *
- * Args: { value: raw list_events response }
+ * `chart-1`..`chart-5` — the platform's categorical (non-status) tone set
+ * (TILE-DISPLAY-STANDARDS.md §7 "Categorical breakdowns"). Used here to give
+ * each distinct event category a stable, deterministic color — never a
+ * status tone, since "what kind of event is this" isn't a state that
+ * changes based on live data.
  */
-const flatten_events = (args) => {
+const CHART_TONES = ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5'];
+/** Same category always maps to the same tone, regardless of what else is in the list. */
+function stableCategoryTone(category) {
+    const key = (category || 'uncategorised').toLowerCase();
+    let hash = 0;
+    for (let i = 0; i < key.length; i++)
+        hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+    return CHART_TONES[hash % CHART_TONES.length];
+}
+/** "Conference · Hybrid" — Title Case, de-duplicated, from category + classification. */
+function eventSubtitle(event) {
+    const parts = [event.category, event.classification]
+        .filter((v) => typeof v === 'string' && v.trim().length > 0)
+        .map((v) => titleCase(v.trim()));
+    const unique = [...new Set(parts)];
+    return unique.length ? unique.join(' · ') : '—';
+}
+/** "Wed · 9:00 AM" — see `formatDate` re: the `timeZone` param. */
+function formatDayTime(iso, timeZone) {
+    const ms = Date.parse(String(iso ?? ''));
+    if (!Number.isFinite(ms))
+        return '—';
+    const d = new Date(ms);
+    const opts = timeZone ? { timeZone } : {};
+    const weekday = new Intl.DateTimeFormat('en-US', { ...opts, weekday: 'short' }).format(d);
+    const time = new Intl.DateTimeFormat('en-US', { ...opts, hour: 'numeric', minute: '2-digit', hour12: true }).format(d);
+    return `${weekday} · ${time}`;
+}
+/**
+ * Humanitix's event object exposes `totalCapacity` but no direct
+ * "sold" count — per-type sold counts, if present at all, would live
+ * nested inside `ticketTypes`. Try the plausible field names defensively;
+ * when none are populated, degrade to showing capacity without a sold
+ * count rather than fabricating one.
+ */
+function ticketsSoldFromEvent(event) {
+    const types = Array.isArray(event.ticketTypes) ? event.ticketTypes : [];
+    if (types.length === 0)
+        return null;
+    let total = 0;
+    let anyKnown = false;
+    for (const t of types) {
+        const sold = t.sold ?? t.quantitySold ?? t.ticketsSold ?? t.numSold;
+        if (typeof sold === 'number' && Number.isFinite(sold)) {
+            total += sold;
+            anyKnown = true;
+        }
+    }
+    return anyKnown ? total : null;
+}
+function capacityInfo(event, categoryTone) {
+    const total = typeof event.totalCapacity === 'number' && event.totalCapacity > 0 ? event.totalCapacity : null;
+    if (total === null) {
+        return { has_capacity: false, capacity_label: '', capacity_pct: 0, capacity_tone: categoryTone };
+    }
+    const sold = ticketsSoldFromEvent(event);
+    if (sold === null) {
+        // Capacity is known, sold count isn't — show the ceiling only, no bar fill implied.
+        return { has_capacity: true, capacity_label: `— / ${total}`, capacity_pct: 0, capacity_tone: 'muted' };
+    }
+    const pct = Math.max(0, Math.min(100, Math.round((sold / total) * 100)));
+    const nearlyFull = pct >= 90;
+    return {
+        has_capacity: true,
+        capacity_label: `${sold} / ${total}`,
+        capacity_pct: pct,
+        capacity_tone: nearlyFull ? 'warning' : categoryTone,
+    };
+}
+function locationIconLabel(event) {
+    const label = eventLocationLabel(event);
+    if (label === '—')
+        return { icon: 'Globe', label: 'Online' };
+    return { icon: 'MapPin', label };
+}
+/**
+ * Maps the `list_events` response into rich display rows for the Upcoming
+ * Events tile. Filters out archived and already-ended events, sorts
+ * soonest-first, and caps at `displayLimit` (default 5 — the tile shows a
+ * handful with a "Showing X of Y" count, matching the reference design;
+ * `dataProvider.params.pageSize` controls how many are actually fetched).
+ *
+ * Each row: id, name, subtitle, category_tone, start_date_label,
+ * start_time_label, location_icon, location_label, has_capacity,
+ * capacity_label, capacity_pct, capacity_tone.
+ *
+ * Args: { value: raw list_events response, displayLimit?: number }
+ */
+const flatten_upcoming_events_rich = (args) => {
     const raw = toItems(args.value, 'events');
+    const limit = Number(args.displayLimit ?? 5);
     return upcomingSorted(raw)
-        .slice(0, 20)
+        .slice(0, limit)
         .map((event) => {
-        const status = eventStatus(event);
+        const category = typeof event.category === 'string' ? event.category : '';
+        const tone = stableCategoryTone(category);
+        const cap = capacityInfo(event, tone);
+        const loc = locationIconLabel(event);
+        const tz = typeof event.timezone === 'string' && event.timezone ? event.timezone : undefined;
         return {
             id: String(event._id ?? ''),
             name: String(event.name ?? 'Untitled event'),
-            start_date: event.startDate ?? null,
-            location: eventLocationLabel(event),
-            capacity: event.totalCapacity != null ? String(event.totalCapacity) : '—',
-            status_label: status.label,
-            status_tone: status.tone,
+            subtitle: eventSubtitle(event),
+            category_tone: tone,
+            start_date_label: formatDate(event.startDate, tz),
+            start_time_label: formatDayTime(event.startDate, tz),
+            location_icon: loc.icon,
+            location_label: loc.label,
+            has_capacity: cap.has_capacity,
+            capacity_label: cap.capacity_label,
+            capacity_pct: cap.capacity_pct,
+            capacity_tone: cap.capacity_tone,
         };
     });
+};
+/**
+ * Companion to `flatten_upcoming_events_rich` — "Showing 5 of 20 upcoming"
+ * counts for the tile footer. `total` is capped by however many upcoming
+ * events actually came back (which is itself capped by the dataProvider's
+ * own `pageSize`), not a live count of everything on Humanitix.
+ *
+ * Args: { value: raw list_events response, displayLimit?: number }
+ */
+const upcoming_events_counts = (args) => {
+    const raw = toItems(args.value, 'events');
+    const total = upcomingSorted(raw).length;
+    const shown = Math.min(Number(args.displayLimit ?? 5), total);
+    return { shown, total };
 };
 /**
  * Finds the soonest non-archived event and returns its id — used to
@@ -169,7 +270,8 @@ const next_upcoming_event_label = (args) => {
     if (!next)
         return '';
     const name = String(next.name ?? 'Untitled event');
-    return `${name} (${formatDate(next.startDate)})`;
+    const tz = typeof next.timezone === 'string' && next.timezone ? next.timezone : undefined;
+    return `${name} (${formatDate(next.startDate, tz)})`;
 };
 /**
  * Maps the `list_tickets` response (for one event) into display rows for the
@@ -201,7 +303,8 @@ const flatten_tickets = (args) => {
 const elements = {
     slug: 'humanitix',
     functions: {
-        flatten_events,
+        flatten_upcoming_events_rich,
+        upcoming_events_counts,
         next_upcoming_event_id,
         next_upcoming_event_label,
         flatten_tickets,
