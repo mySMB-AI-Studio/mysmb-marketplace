@@ -1,16 +1,16 @@
 {
   "id": "humanitix-upcoming-events",
   "title": "Upcoming Events",
-  "description": "Events on Humanitix that haven't ended yet, soonest first — category, start date/time, location, and capacity at a glance.",
+  "description": "Events on Humanitix that haven't ended yet, soonest first. Click a row to open that event's own page on Humanitix.",
   "category": "operations",
   "tags": ["humanitix", "events", "ticketing", "tickets"],
   "keywords": ["events", "upcoming", "tickets", "ticketing", "humanitix", "schedule", "capacity"],
   "connectorsUsed": ["humanitix"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 6, "rowSpan": 8 },
-    "min":       { "colSpan": 5, "rowSpan": 6 },
-    "max":       { "colSpan": 10, "rowSpan": 14 }
+    "preferred": { "colSpan": 5, "rowSpan": 7 },
+    "min":       { "colSpan": 4, "rowSpan": 5 },
+    "max":       { "colSpan": 8, "rowSpan": 12 }
   },
   "dataProvider": {
     "mcp": "humanitix",
@@ -24,7 +24,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "divider1", "columnHeaderRow", "divider2", "body", "divider3", "footerRow"],
+        "children": ["headerRow", "divider1", "body", "divider2", "footerRow"],
         "watch": {
           "/humanitix/list_events": [
             {
@@ -32,7 +32,7 @@
               "params": {
                 "statePath": "/ui/rows",
                 "value": {
-                  "$computed": "humanitix_flatten_upcoming_events_rich",
+                  "$computed": "humanitix_flatten_upcoming_events_compact",
                   "args": { "value": { "$state": "/humanitix/list_events" }, "displayLimit": 5 }
                 }
               }
@@ -54,48 +54,32 @@
       "headerRow": {
         "type": "Row",
         "props": { "justify": "between", "align": "center" },
-        "children": ["titleGroup", "statusGroup"]
+        "children": ["titleStack", "nextBadgeRow"]
       },
-      "titleGroup": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
-      },
-      "titleIcon": { "type": "Icon", "props": { "name": "Calendar", "tone": "info", "size": "sm" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
       "title": { "type": "Heading", "props": { "text": "Upcoming Events", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Humanitix · next 20 · soonest first" } },
-
-      "statusGroup": {
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Humanitix" } },
+      "nextBadgeRow": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["liveBadge", "refreshBtn"]
-      },
-      "liveBadge": {
-        "type": "Badge",
-        "props": { "text": "Live sync", "tone": "success", "variant": "soft" }
-      },
-      "refreshBtn": {
-        "type": "IconButton",
-        "props": { "icon": "RefreshCw", "tone": "muted", "size": "sm", "ariaLabel": "Refresh" },
+        "props": { "clickable": true, "hover": true },
+        "children": ["nextBadge"],
         "on": {
-          "click": { "action": "humanitix.list_events", "params": { "pageSize": 20 } }
+          "click": { "action": "open_url", "params": { "url": "https://events.humanitix.com" } }
+        }
+      },
+      "nextBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Next {n}", "n": { "$state": "/ui/counts/shown" } }
+          },
+          "tone": "info",
+          "variant": "soft"
         }
       },
 
       "divider1": { "type": "Divider", "props": {} },
-
-      "columnHeaderRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["colEvent", "colStart", "colLocation", "colCapacity"]
-      },
-      "colEvent":    { "type": "Caption", "props": { "text": "Event",      "tone": "muted" } },
-      "colStart":    { "type": "Caption", "props": { "text": "Start Date", "tone": "muted" } },
-      "colLocation": { "type": "Caption", "props": { "text": "Location",   "tone": "muted" } },
-      "colCapacity": { "type": "Caption", "props": { "text": "Capacity",   "tone": "muted" } },
-
-      "divider2": { "type": "Divider", "props": {} },
 
       "body": {
         "type": "Body",
@@ -125,7 +109,7 @@
 
       "list": {
         "type": "Stack",
-        "props": { "gap": "sm" },
+        "props": { "gap": "xs" },
         "visible": { "$state": "/_loading/humanitix.list_events", "not": true },
         "repeat": { "statePath": "/ui/rows", "key": "id" },
         "children": ["row"]
@@ -133,73 +117,62 @@
 
       "row": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["rowDot", "rowMain", "rowDate", "rowLocation", "rowCapacityGroup"]
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "clickable": { "$item": "has_url" },
+          "hover": { "$item": "has_url" }
+        },
+        "children": ["rowDateBadge", "rowMain", "rowChevron"],
+        "on": {
+          "click": { "action": "open_url", "params": { "url": { "$bindItem": "event_url" }, "target": "_blank" } }
+        }
       },
-      "rowDot": { "type": "Dot", "props": { "tone": { "$item": "category_tone" } } },
+
+      "rowDateBadge": {
+        "type": "Stack",
+        "props": { "gap": "none", "align": "center" },
+        "children": ["rowMonth", "rowDay"]
+      },
+      "rowMonth": { "type": "Caption", "props": { "text": { "$item": "start_month_label" }, "tone": { "$item": "category_tone" } } },
+      "rowDay":   { "type": "Text",    "props": { "text": { "$item": "start_day_label" },   "size": "lg", "weight": "semibold", "tone": { "$item": "category_tone" } } },
+
       "rowMain": {
         "type": "Stack",
         "props": { "gap": "none", "grow": true },
-        "children": ["rowName", "rowSubtitle"]
+        "children": ["rowName", "rowMeta"]
       },
-      "rowName":     { "type": "Text",    "props": { "text": { "$item": "name" },     "size": "sm", "weight": "medium", "truncate": true } },
-      "rowSubtitle": { "type": "Caption", "props": { "text": { "$item": "subtitle" }, "tone": "muted" } },
-
-      "rowDate": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["rowDateMain", "rowDateSub"]
-      },
-      "rowDateMain": { "type": "Text",    "props": { "text": { "$item": "start_date_label" }, "size": "sm" } },
-      "rowDateSub":  { "type": "Caption", "props": { "text": { "$item": "start_time_label" }, "tone": "muted" } },
-
-      "rowLocation": {
+      "rowName": { "type": "Text", "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "tone": "info", "truncate": true } },
+      "rowMeta": {
         "type": "Row",
         "props": { "gap": "xs", "align": "center" },
-        "children": ["rowLocationIcon", "rowLocationText"]
+        "children": ["rowMetaTime", "rowMetaSep1", "rowMetaLocation", "rowMetaSep2", "rowMetaCapacity"]
       },
-      "rowLocationIcon": { "type": "Icon", "props": { "name": { "$item": "location_icon" }, "tone": "muted", "size": "sm" } },
-      "rowLocationText": { "type": "Text", "props": { "text": { "$item": "location_label" }, "size": "sm", "tone": "muted" } },
+      "rowMetaTime":     { "type": "Caption", "props": { "text": { "$item": "start_time_label" }, "tone": "muted" } },
+      "rowMetaSep1":     { "type": "Caption", "props": { "text": "·", "tone": "muted" } },
+      "rowMetaLocation": { "type": "Caption", "props": { "text": { "$item": "location_label" }, "tone": "muted", "truncate": true } },
+      "rowMetaSep2":     { "type": "Caption", "props": { "text": "·", "tone": "muted" } },
+      "rowMetaCapacity": { "type": "Caption", "props": { "text": { "$item": "capacity_label" }, "tone": { "$item": "capacity_tone" } } },
 
-      "rowCapacityGroup": {
-        "type": "Stack",
-        "props": { "gap": "xs", "align": "end" },
-        "children": ["rowCapacityWithBar", "rowCapacityUnlimited"]
-      },
-      "rowCapacityWithBar": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "visible": { "$item": "has_capacity" },
-        "children": ["rowCapacityLabel", "rowCapacityBar"]
-      },
-      "rowCapacityLabel": { "type": "Text", "props": { "text": { "$item": "capacity_label" }, "size": "sm", "tone": { "$item": "capacity_tone" } } },
-      "rowCapacityBar":   { "type": "ProgressBar", "props": { "value": { "$item": "capacity_pct" }, "tone": { "$item": "capacity_tone" } } },
-      "rowCapacityUnlimited": {
-        "type": "Badge",
-        "props": { "text": "No Limit", "tone": "muted", "variant": "soft" },
-        "visible": { "$item": "has_capacity", "not": true }
-      },
+      "rowChevron": { "type": "Icon", "props": { "name": "ChevronRight", "tone": "muted", "size": "sm" } },
 
-      "divider3": { "type": "Divider", "props": {} },
+      "divider2": { "type": "Divider", "props": {} },
 
       "footerRow": {
         "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["footerCount", "footerLink"]
-      },
-      "footerCount": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": { "pattern": "Showing {shown} of {total} upcoming", "shown": { "$state": "/ui/counts/shown" }, "total": { "$state": "/ui/counts/total" } }
-          },
-          "tone": "muted"
-        }
+        "props": { "justify": "center", "align": "center" },
+        "children": ["footerLink"]
       },
       "footerLink": {
         "type": "Button",
-        "props": { "label": "View all events →", "variant": "ghost", "size": "sm" }
+        "props": {
+          "label": { "$computed": "fmt", "args": { "pattern": "View all {n} events →", "n": { "$state": "/ui/counts/total" } } },
+          "variant": "ghost",
+          "size": "sm"
+        },
+        "on": {
+          "click": { "action": "open_url", "params": { "url": "https://events.humanitix.com" } }
+        }
       }
 
     }
