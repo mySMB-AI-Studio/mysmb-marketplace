@@ -1,7 +1,7 @@
 {
   "id": "square-sales-summary",
   "title": "Square — Sales Summary",
-  "description": "Today's gross sales, transaction count, average sale, and net sales after refunds — all in one compact card.",
+  "description": "Recent gross sales, transaction count, average sale, and net sales after refunds — all in one compact card.",
   "category": "finance",
   "tags": ["square", "payments", "sales", "summary", "pos", "finance"],
   "keywords": ["sales", "revenue", "gross", "net", "refunds", "transactions", "average", "square", "today"],
@@ -23,22 +23,21 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["titleRow", "grossSection", "divider1", "statsRow", "divider2", "netRow"]
+        "children": ["header", "grossSection", "divider1", "statsRow", "divider2", "netRow"]
       },
 
-      "titleRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
+      "header": {
+        "type": "Header",
         "children": ["titleGroup"]
       },
       "titleGroup": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
+        "props": { "gap": "sm", "align": "start" },
         "children": ["titleIcon", "titleStack"]
       },
       "titleIcon": {
         "type": "Icon",
-        "props": { "name": "TrendingUp", "tone": "accent", "size": "md" }
+        "props": { "name": "TrendingUp", "tone": "accent", "size": "sm" }
       },
       "titleStack": {
         "type": "Stack",
@@ -64,10 +63,9 @@
         "props": { "text": "Gross sales · recent" }
       },
       "grossAmount": {
-        "type": "Heading",
+        "type": "Stat",
         "props": {
-          "text": { "$state": "/square/get_payments_summary/gross_display" },
-          "level": "h1"
+          "value": { "$state": "/square/get_payments_summary/gross_display" }
         }
       },
 
@@ -88,10 +86,10 @@
         "props": { "text": "Transactions" }
       },
       "txValue": {
-        "type": "Heading",
+        "type": "Stat",
         "props": {
-          "text": { "$state": "/square/get_payments_summary/transaction_count" },
-          "level": "h3"
+          "value": { "$state": "/square/get_payments_summary/transaction_count" },
+          "size": "sm"
         }
       },
       "avgStack": {
@@ -104,10 +102,10 @@
         "props": { "text": "Average sale" }
       },
       "avgValue": {
-        "type": "Heading",
+        "type": "Stat",
         "props": {
-          "text": { "$state": "/square/get_payments_summary/average_display" },
-          "level": "h3"
+          "value": { "$state": "/square/get_payments_summary/average_display" },
+          "size": "sm"
         }
       },
 
@@ -128,10 +126,10 @@
         "props": { "text": "Net sales (after refunds)" }
       },
       "netValue": {
-        "type": "Heading",
+        "type": "Stat",
         "props": {
-          "text": { "$state": "/square/get_payments_summary/net_display" },
-          "level": "h3"
+          "value": { "$state": "/square/get_payments_summary/net_display" },
+          "size": "sm"
         }
       },
       "refundBadge": {
