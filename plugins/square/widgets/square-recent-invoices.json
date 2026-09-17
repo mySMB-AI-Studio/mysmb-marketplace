@@ -148,7 +148,7 @@
       "body": {
         "type": "Body",
         "props": {},
-        "children": ["loading", "empty", "invoiceList"]
+        "children": ["loading", "empty", "tableWrapper"]
       },
 
       "loading": {
@@ -157,11 +157,11 @@
         "children": ["sk1", "sk2", "sk3", "sk4", "sk5"],
         "visible": { "$state": "/_loading/square.get_recent_invoices" }
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
-      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
-      "sk5": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
+      "sk1": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "sm" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "sm" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "sm" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "sm" } },
+      "sk5": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "sm" } },
 
       "empty": {
         "type": "Empty",
@@ -174,6 +174,26 @@
         }
       },
 
+      "tableWrapper": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["tableHeader", "headerDivider", "invoiceList"],
+        "visible": { "$state": "/_loading/square.get_recent_invoices", "not": true }
+      },
+
+      "tableHeader": {
+        "type": "Grid",
+        "props": { "cols": 5, "gap": "xs" },
+        "children": ["hInvoice", "hCustomer", "hAmount", "hStatus", "hDue"]
+      },
+      "hInvoice":  { "type": "Eyebrow", "props": { "text": "Invoice"  } },
+      "hCustomer": { "type": "Eyebrow", "props": { "text": "Customer" } },
+      "hAmount":   { "type": "Eyebrow", "props": { "text": "Amount"   } },
+      "hStatus":   { "type": "Eyebrow", "props": { "text": "Status"   } },
+      "hDue":      { "type": "Eyebrow", "props": { "text": "Due"      } },
+
+      "headerDivider": { "type": "Divider", "props": {} },
+
       "invoiceList": {
         "type": "Stack",
         "props": { "gap": "xs" },
@@ -181,61 +201,18 @@
         "repeat": {
           "statePath": "/square/get_recent_invoices/invoices",
           "key": "invoice_number"
-        },
-        "visible": { "$state": "/_loading/square.get_recent_invoices", "not": true }
+        }
       },
       "invoiceRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["invoiceLeft", "invoiceRight"]
+        "type": "Grid",
+        "props": { "cols": 5, "gap": "xs" },
+        "children": ["rowInvoice", "rowCustomer", "rowAmount", "rowStatus", "rowDue"]
       },
-      "invoiceLeft": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["invoiceCustomer", "invoiceMeta"]
-      },
-      "invoiceCustomer": {
-        "type": "Text",
-        "props": {
-          "text": { "$item": "customer_name" },
-          "size": "sm",
-          "weight": "medium"
-        }
-      },
-      "invoiceMeta": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{inv} · {due}",
-              "inv": { "$item": "invoice_number" },
-              "due": { "$item": "due_display" }
-            }
-          },
-          "tone": "muted"
-        }
-      },
-      "invoiceRight": {
-        "type": "Stack",
-        "props": { "gap": "none", "align": "end" },
-        "children": ["invoiceAmount", "invoiceStatus"]
-      },
-      "invoiceAmount": {
-        "type": "Text",
-        "props": {
-          "text": { "$item": "amount_display" },
-          "size": "sm",
-          "weight": "medium"
-        }
-      },
-      "invoiceStatus": {
-        "type": "Badge",
-        "props": {
-          "text": { "$item": "status_label" },
-          "tone": { "$item": "status_tone" }
-        }
-      }
+      "rowInvoice":  { "type": "Text",    "props": { "text": { "$item": "invoice_number" }, "size": "sm", "tone": "muted" } },
+      "rowCustomer": { "type": "Text",    "props": { "text": { "$item": "customer_name"  }, "size": "sm", "weight": "medium" } },
+      "rowAmount":   { "type": "Text",    "props": { "text": { "$item": "amount_display" }, "size": "sm" } },
+      "rowStatus":   { "type": "Badge",   "props": { "text": { "$item": "status_label"  }, "tone": { "$item": "status_tone" } } },
+      "rowDue":      { "type": "Text",    "props": { "text": { "$item": "due_display"   }, "size": "sm", "tone": "muted" } }
     }
   },
   "status": "published"
