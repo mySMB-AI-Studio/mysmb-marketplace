@@ -123,12 +123,22 @@
       "tabAnnualOn": {
         "type": "Button",
         "props": { "label": "Annual", "variant": "primary", "size": "sm" },
-        "visible": { "$state": "/ui/tab/annual" }
+        "visible": {
+          "$and": [
+            { "$state": "/ui/tab/quarterly", "not": true },
+            { "$state": "/ui/tab/monthly",   "not": true }
+          ]
+        }
       },
       "tabAnnualOff": {
         "type": "Button",
         "props": { "label": "Annual", "variant": "ghost", "size": "sm" },
-        "visible": { "$state": "/ui/tab/annual", "not": true },
+        "visible": {
+          "$or": [
+            { "$state": "/ui/tab/quarterly" },
+            { "$state": "/ui/tab/monthly"   }
+          ]
+        },
         "on": {
           "click": [
             { "action": "setState", "params": { "statePath": "/ui/tab/annual",    "value": true  } },
@@ -178,7 +188,12 @@
         "type": "Stack",
         "props": { "gap": "sm" },
         "children": ["annualEmpty", "annualList"],
-        "visible": { "$state": "/ui/tab/annual" }
+        "visible": {
+          "$and": [
+            { "$state": "/ui/tab/quarterly", "not": true },
+            { "$state": "/ui/tab/monthly",   "not": true }
+          ]
+        }
       },
       "annualEmpty": {
         "type": "Empty",
