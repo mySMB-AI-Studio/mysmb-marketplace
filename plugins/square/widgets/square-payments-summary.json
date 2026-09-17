@@ -56,18 +56,71 @@
       "body": {
         "type": "Body",
         "props": {},
-        "children": ["table"]
+        "children": ["loading", "empty", "list"]
       },
-      "table": {
-        "type": "Table",
-        "props": {
-          "loading": { "$state": "/_loading/square.get_latest_payments" },
-          "skeletonRows": 5,
-          "rows": { "$state": "/square/get_latest_payments/payments" },
-          "columns": [
-            { "id": "payer",  "header": "Customer", "field": "name", "subField": "sub_label", "subTone": "accent", "priority": 1 },
-            { "id": "amount", "header": "Amount",   "field": "amount_display", "width": 120, "priority": 1, "align": "right" }
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["sk1", "sk2", "sk3", "sk4", "sk5"],
+        "visible": { "$state": "/_loading/square.get_latest_payments" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
+      "sk5": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No payments found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/square.get_latest_payments", "not": true },
+            { "$state": "/square/get_latest_payments/payments/0", "not": true }
           ]
+        }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["paymentRow"],
+        "repeat": {
+          "statePath": "/square/get_latest_payments/payments",
+          "key": "id"
+        },
+        "visible": { "$state": "/_loading/square.get_latest_payments", "not": true }
+      },
+      "paymentRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["payerStack", "paymentAmount"]
+      },
+      "payerStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["payerName", "payerDetails"]
+      },
+      "payerName": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "name" },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "payerDetails": {
+        "type": "Caption",
+        "props": {
+          "text": { "$item": "sub_label" },
+          "tone": "accent"
+        }
+      },
+      "paymentAmount": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "amount_display" },
+          "size": "sm",
+          "weight": "medium"
         }
       }
     }
