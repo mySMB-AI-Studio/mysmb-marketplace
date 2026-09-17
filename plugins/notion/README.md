@@ -1,85 +1,93 @@
 # Notion
 
-Access Notion pages, databases, tasks, comments, and workspace members via Notion's official hosted MCP server at `https://mcp.notion.com/mcp`. Covers documentation, task management, knowledge search, report building, and campaign planning from a single OAuth-authenticated endpoint.
+Access Notion pages, data sources, and comments via the **myHub-hosted Notion MCP gateway** — a self-hosted connector (`myhub-mcp-servers/src/integrations/notion`) that talks to Notion's own REST API on your behalf. Covers workspace search, page reading/authoring, database and data-source inspection, row queries, and comments, all through a single OAuth-authenticated endpoint.
 
-Browser OAuth — no API keys, no env vars. Each user authorises individually; the MCP server only sees data that user can already access in Notion.
+Browser OAuth through myHub — no API keys, no env vars. Click Connect, sign in to Notion, grant the requested pages/databases, and you're done. The MCP server only sees content the connected Notion account has explicitly shared with the integration.
 
 ## Configuration
 
-No environment variables are required on the client side. On first use, the browser redirects to Notion's OAuth 2.0 Authorization Code flow with PKCE — sign in, grant the requested permissions, and subsequent calls flow over the authorised session.
+No environment variables are required on the client side — this plugin's `.mcp.json` points at myHub's own hosted MCP gateway, and myHub injects the OAuth bearer token automatically once you connect.
 
-Access tokens expire after one hour. The workspace refreshes them automatically using the refresh token. Refresh tokens are valid for up to 180 days from the initial authorisation, or 30 consecutive days of inactivity, whichever comes first. If the connection stops working after a long period of inactivity, click Connect again to re-authorise.
+On first use, Connect redirects to Notion's OAuth 2.0 authorization page (`https://api.notion.com/v1/oauth/authorize`) — sign in, choose a workspace if you belong to more than one, select which pages/databases to share, and you're returned to myHub. Notion has no granular OAuth scope system: access is controlled entirely by what you share with the integration during that same authorize screen, not by a scope negotiation.
+
+Token behavior (see `myhub-mcp-servers/src/integrations/notion/provider.ts`'s header comment for the authoritative source): Notion's OAuth docs document no `expires_in` for the access token, and Notion access tokens are workspace/bot-scoped rather than tied to a timed session — the only documented way one stops working is the user uninstalling/revoking the integration in Notion. Notion does issue a real, usable `refresh_token` grant (unlike some other connectors in this marketplace that have no refresh grant at all), so myHub treats the token as long-lived but keeps a genuine refresh path wired in case Notion ever starts sending a real expiry, or in case a token needs recovering after being revoked and reissued. If the connection ever stops working, click Connect again to re-authorize.
 
 ### Prerequisites
 
-- A Notion account (Free, Plus, Business, or Enterprise plan).
-- The Notion workspace you want to access must be connected during the OAuth flow — select the correct workspace if you belong to more than one.
-- Pages and databases the bot integration can access are controlled by Notion's standard sharing model: share individual pages with the integration, or grant workspace-level access during the OAuth flow.
+- A Notion account (Free, Plus, Business, or Enterprise plan) — no specific plan is required by this connector; it uses Notion's standard public REST API, not an Enterprise-only feature.
+- Share the pages/databases you want this connector to see — either during the Connect flow, or later in Notion via **Settings → Connections**. A `403` on a specific id almost always means it hasn't been shared, not that the connection is broken.
 
-## Available actions
+## Tools & resources
 
-### Search and find answers (`notion-search`, `notion-fetch`)
+This connector exposes the following MCP tools, backed directly by Notion's REST API:
 
-- Search across pages, databases, and connected sources (Slack, Google Drive, Jira where configured) using natural language or exact terms. Full cross-workspace search including connected tools requires Notion AI access; without it, results are limited to workspace content only.
-- Retrieve the full content and schema of any page or database by URL or ID.
+### Users
 
-### Create documentation (`notion-create-pages`, `notion-update-page`, `notion-duplicate-page`)
+| Tool | Description |
+|------|-------------|
+| `get_current_user` | The bot/workspace identity this connection authenticates as — bot id, workspace name, owner info. |
+| `list_users` | Every person and bot user in the connected workspace this integration can see. |
 
-- Create one or more pages in any parent page or database with specified properties and rich-text content.
-- Update existing pages — change title, body content, icon, cover, or any property.
-- Duplicate a page (including nested content) asynchronously within the workspace.
+### Search
 
-### Manage tasks (`notion-create-pages`, `notion-update-page`, `notion-move-pages`, `notion-query-database-view`)
+| Tool | Description |
+|------|-------------|
+| `search` | Search titles of pages and data sources shared with this integration. Omit `query` to list everything shared — Notion has no separate "list all pages" endpoint. Optional `object_type` (`"page"` or `"data_source"` — **not** `"database"`), `sort_direction`, `page_size`, `start_cursor`. |
 
-- Create task entries in a Notion database with assignee, status, due date, and priority properties.
-- Update task status, reassign, or change due dates on existing pages.
-- Move tasks between databases or parent pages.
-- Query a database view to list tasks filtered and sorted by any property (requires Business plan or higher with Notion AI).
+### Pages
 
-### Build reports (`notion-create-database`, `notion-update-data-source`, `notion-create-view`, `notion-update-view`, `notion-query-data-sources`, `notion-query-database-view`)
+| Tool | Description |
+|------|-------------|
+| `get_page` | A page's metadata and property values by id. Does not include body content. |
+| `get_page_content` | A page's body content as a list of blocks. Blocks with children only report `has_children: true` — call again with that block's id to descend into it. |
+| `create_page` | Create a page as a child of another page (`parent_page_id`) or as a new row in a database (`parent_database_id`). |
+| `update_page` | Update a page's property values and/or archived state. |
 
-- Create a new database with custom property schema (text, number, select, date, relation, formula, etc.).
-- Add or modify data source properties and attributes.
-- Create table, board, list, calendar, timeline, gallery, form, chart, map, or dashboard views on any database.
-- Configure view filters, sorts, and display settings.
-- Query a database view using its pre-defined filters and sorts (Business plan or higher with Notion AI required for `notion-query-database-view`).
-- Query across multiple data sources to aggregate and summarise information (Enterprise plan with Notion AI required for `notion-query-data-sources`).
+### Databases / data sources
 
-### Plan campaigns (`notion-create-pages`, `notion-create-database`, `notion-create-view`, `notion-create-comment`, `notion-get-teams`, `notion-get-users`)
+Notion's `2025-09-03` API change split what used to be a single "database" concept into a **container** (the database itself — just title + url) plus one or more **data sources** (where the actual property schema and rows live). Almost every database has exactly one data source, but the shape means these two tools are not interchangeable:
 
-- Create campaign planning databases with timeline and status tracking.
-- Scaffold campaign pages with structured content and linked databases.
-- Add comments and discussion threads to pages for team collaboration.
-- List teams and workspace members to assign ownership.
+| Tool | Description |
+|------|-------------|
+| `get_database` | A database's container metadata (title, url) and its `data_sources` array (id + name for each). **No property schema here.** |
+| `get_data_source` | A data source's full property schema (column names, types, select options, etc.) plus its title and url. |
+| `query_database` | Query a data source's rows, with optional `filter`/`sorts`. **Takes a `data_source_id`, not a `database_id`, despite the tool's name** — get one from `get_database`'s `data_sources` array first. |
 
-### Comments and collaboration (`notion-create-comment`, `notion-get-comments`)
+Typical flow: `search` (or a known link) → `get_database` → `get_data_source` (to learn the schema) → `query_database`.
 
-- Add comments to any page or specific inline content.
-- List all discussion threads and comments on a page.
+### Comments
 
-### Workspace and users (`notion-get-teams`, `notion-get-users`, `notion-get-user`, `notion-get-self`)
+| Tool | Description |
+|------|-------------|
+| `get_comments` | List comments on a page or block, oldest first. Requires the integration to have comment-read capability enabled in Notion. |
+| `create_comment` | Add a comment to a page, a block, or as a reply in an existing discussion thread. Requires comment-write capability. |
 
-- List all teamspaces in the workspace.
-- List workspace members with their details.
-- Look up a specific user by ID.
-- Retrieve the bot's own user record and workspace identity.
+## Capabilities this connector does NOT have
 
-## Destructive operations
+The previous version of this plugin pointed at Notion's own hosted MCP server (`mcp.notion.com`), which exposed a richer tool set. This self-hosted connector talks to Notion's plain REST API directly and genuinely does not support the following — they are not implemented here, not just undocumented:
 
-Confirm before calling — these mutate or remove workspace content:
+- **Duplicating a page.**
+- **Moving a page or a database row between parents.**
+- **Creating a new database, or any of its views.**
+- **Updating a data source's view configuration** (filters/sorts/display settings on a saved view).
+- **Querying across multiple data sources at once** (cross-database aggregation).
+- **Listing teams/teamspaces.**
 
-- `notion-update-page` — overwrites existing page content or properties.
-- `notion-move-pages` — relocates pages or databases; old parent loses the item.
-- `notion-update-data-source` — modifies database schema (property additions/renames/deletions).
-- `notion-update-view` — changes filters and sorts on a shared view visible to all team members.
-- `notion-create-pages` with content — creates account-visible pages.
+If you need any of these, use the Notion UI directly. `create_page`/`update_page` still cover the common "add a row to an existing database" and "edit a page" workflows — the gap is specifically around database/view *structure* and page *relocation/duplication*, not day-to-day content editing.
+
+## Destructive / mutating operations
+
+Confirm before calling — these change workspace content:
+
+- `create_page` — creates a new page or database row.
+- `update_page` — can overwrite property values or archive a page.
+- `create_comment` — adds account-visible content to a page's discussion.
+
+There is no delete tool. Use the Notion UI to permanently remove a page — `update_page`'s `archived` field moves it to the trash-equivalent parent state, it does not delete it.
 
 ## Rate limits
 
-- General tools: 180 requests per minute (averaged per user).
-- `notion-search`: 30 requests per minute.
-
-If you receive a rate-limit error, wait a few seconds before retrying.
+Notion's REST API is rate-limited per integration (roughly 3 requests/second average, per Notion's own published limits). If a tool call returns a `429`, wait a few seconds and retry once.
 
 ## Widgets
 
@@ -87,14 +95,16 @@ Two dashboard tiles are included. Add them to any MyHub dashboard from the widge
 
 | Widget ID | Title | Description |
 |-----------|-------|-------------|
-| `notion-recent-pages` | Recent Notion Pages | Pages recently created or edited in your Notion workspace — title, last edited time. |
-| `notion-search-results` | Recent Notion Content | Recently edited pages and databases in your Notion workspace — title, type, and last edited time. |
+| `notion-recent-pages` | Recent Notion Pages | Pages recently created or edited in your Notion workspace — title, last edited time. Calls `search` with `object_type: "page"`. |
+| `notion-search-results` | Recent Notion Content | Recently edited pages **and data sources** in your Notion workspace — title, type, and last edited time. Calls `search` with no `object_type` filter. |
 
-> **Note**: Both widgets call `notion-search` internally and share the same state slot in the widget runtime. Do not place both on the same dashboard simultaneously — one will overwrite the other's data. Use `notion-recent-pages` for a pages-only feed, or `notion-search-results` for all content types (pages + databases). Pick one per dashboard.
+> **Note**: Both widgets call the `search` tool internally and share the same state slot in the widget runtime. Do not place both on the same dashboard simultaneously — one will overwrite the other's data. Use `notion-recent-pages` for a pages-only feed, or `notion-search-results` for all content types (pages + data sources). Pick one per dashboard.
+
+`notion-search-results` can return both pages and data sources in the same list. Pages and data sources carry their title in different places in Notion's API response (a page's title lives in one of its `properties`; a data source's title is a top-level field), so this widget ships its own `widget-elements` helper (`notion_result_title`) to read the right shape for each row rather than assuming one. The same module also maps the raw `object` field (`"page"` / `"data_source"`) to a Title Case badge label (`Page` / `Data Source`) and a matching row icon, per this repo's `TILE-DISPLAY-STANDARDS.md` §3 rule against showing a raw connector enum directly in a badge.
 
 ## See also
 
-- [Get started with Notion MCP](https://developers.notion.com/guides/mcp/get-started-with-mcp)
-- [Notion MCP supported tools](https://developers.notion.com/guides/mcp/mcp-supported-tools)
-- [Build an MCP client for Notion](https://developers.notion.com/guides/mcp/build-mcp-client)
 - [Notion API reference](https://developers.notion.com/reference/intro)
+- [Notion authorization (OAuth) guide](https://developers.notion.com/docs/authorization)
+- [Notion API versioning](https://developers.notion.com/reference/versioning)
+- [Working with databases (the 2025-09-03 data-source split)](https://developers.notion.com/docs/working-with-databases)
