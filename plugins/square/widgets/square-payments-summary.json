@@ -1,21 +1,21 @@
 {
   "id": "square-payments-summary",
   "title": "Square — Latest Payments",
-  "description": "Table of the latest Square payments — amount, status, source type, and date. Sorted most recent first.",
+  "description": "Most recent Square payments with customer name, card details, and amount — sorted newest first.",
   "category": "finance",
   "tags": ["square", "payments", "pos", "transactions", "finance"],
-  "keywords": ["payments", "transactions", "square", "pos", "revenue", "collected"],
+  "keywords": ["payments", "transactions", "square", "pos", "revenue", "collected", "latest"],
   "connectorsUsed": ["square"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 5 },
-    "min": { "colSpan": 4, "rowSpan": 4 },
-    "max": { "colSpan": 10, "rowSpan": 12 }
+    "preferred": { "colSpan": 4, "rowSpan": 5 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 8, "rowSpan": 12 }
   },
   "dataProvider": {
     "mcp": "square",
-    "tool": "list_payments",
-    "params": { "sort_order": "DESC", "limit": 100 }
+    "tool": "get_latest_payments",
+    "params": { "limit": 10 }
   },
   "spec": {
     "root": "card",
@@ -23,21 +23,26 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["titleRow", "divider", "tableBody"]
+        "children": ["header", "body"]
       },
-      "titleRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
+
+      "header": {
+        "type": "Header",
         "children": ["titleGroup"]
       },
       "titleGroup": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
+        "children": ["titleIconBox", "titleStack"]
+      },
+      "titleIconBox": {
+        "type": "Section",
+        "props": { "tone": "info" },
+        "children": ["titleIcon"]
       },
       "titleIcon": {
         "type": "Icon",
-        "props": { "name": "CreditCard", "tone": "accent", "size": "sm" }
+        "props": { "name": "CreditCard", "tone": "accent", "size": "md" }
       },
       "titleStack": {
         "type": "Stack",
@@ -50,28 +55,77 @@
       },
       "eyebrow": {
         "type": "Eyebrow",
-        "props": { "text": "Square" }
+        "props": { "text": "Square", "tone": "info" }
       },
-      "divider": { "type": "Divider", "props": {} },
-      "tableBody": {
+
+      "body": {
         "type": "Body",
         "props": {},
-        "children": ["table"]
+        "children": ["loading", "empty", "list"]
       },
-      "table": {
-        "type": "Table",
-        "props": {
-          "loading": { "$state": "/_loading/square.list_payments" },
-          "skeletonRows": 5,
-          "rows": { "$state": "/square/list_payments/payments" },
-          "columns": [
-            { "id": "id", "header": "Payment ID", "field": "id", "priority": 2 },
-            { "id": "amount", "header": "Amount", "field": "amount_money.amount", "width": 140, "priority": 1, "format": "currency" },
-            { "id": "currency", "header": "Currency", "field": "amount_money.currency", "width": 90, "priority": 3 },
-            { "id": "status", "header": "Status", "field": "status", "width": 110, "priority": 1 },
-            { "id": "source", "header": "Source", "field": "source_type", "width": 120, "priority": 2 },
-            { "id": "created", "header": "Date", "field": "created_at", "width": 160, "priority": 1, "format": "datetime" }
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["sk1", "sk2", "sk3", "sk4", "sk5"],
+        "visible": { "$state": "/_loading/square.get_latest_payments" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
+      "sk5": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No payments found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/square.get_latest_payments", "not": true },
+            { "$state": "/square/get_latest_payments/payments/0", "not": true }
           ]
+        }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["paymentRow"],
+        "repeat": {
+          "statePath": "/square/get_latest_payments/payments",
+          "key": "id"
+        },
+        "visible": { "$state": "/_loading/square.get_latest_payments", "not": true }
+      },
+      "paymentRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["payerStack", "paymentAmount"]
+      },
+      "payerStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["payerName", "payerDetails"]
+      },
+      "payerName": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "name" },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "payerDetails": {
+        "type": "Caption",
+        "props": {
+          "text": { "$item": "sub_label" },
+          "tone": "muted"
+        }
+      },
+      "paymentAmount": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "amount_display" },
+          "size": "sm",
+          "weight": "medium"
         }
       }
     }
