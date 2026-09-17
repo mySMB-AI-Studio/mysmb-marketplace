@@ -8,8 +8,8 @@
   "connectorsUsed": ["square"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 6, "rowSpan": 4 },
-    "min": { "colSpan": 4, "rowSpan": 3 },
+    "preferred": { "colSpan": 6, "rowSpan": 5 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
     "max": { "colSpan": 12, "rowSpan": 10 }
   },
   "dataProvider": {
@@ -23,7 +23,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "body"]
+        "children": ["header", "statsStrip", "body"]
       },
 
       "header": {
@@ -51,6 +51,93 @@
       "eyebrow": {
         "type": "Eyebrow",
         "props": { "text": "Square" }
+      },
+
+      "statsStrip": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["totalBox", "activeBox", "avgBox"]
+      },
+
+      "totalBox": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["totalLabelRow", "totalValue"]
+      },
+      "totalLabelRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["totalIcon", "totalLabel"]
+      },
+      "totalIcon": {
+        "type": "Icon",
+        "props": { "name": "Users", "tone": "accent", "size": "xs" }
+      },
+      "totalLabel": {
+        "type": "Eyebrow",
+        "props": { "text": "Total" }
+      },
+      "totalValue": {
+        "type": "Stat",
+        "props": {
+          "value": { "$state": "/square/get_customer_orders_summary/total_count" },
+          "size": "sm",
+          "tone": "accent"
+        }
+      },
+
+      "activeBox": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["activeLabelRow", "activeValue"]
+      },
+      "activeLabelRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["activeIcon", "activeLabel"]
+      },
+      "activeIcon": {
+        "type": "Icon",
+        "props": { "name": "UserCheck", "tone": "success", "size": "xs" }
+      },
+      "activeLabel": {
+        "type": "Eyebrow",
+        "props": { "text": "With Orders" }
+      },
+      "activeValue": {
+        "type": "Stat",
+        "props": {
+          "value": { "$state": "/square/get_customer_orders_summary/active_count" },
+          "size": "sm",
+          "tone": "success"
+        }
+      },
+
+      "avgBox": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["avgLabelRow", "avgValue"]
+      },
+      "avgLabelRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["avgIcon", "avgLabel"]
+      },
+      "avgIcon": {
+        "type": "Icon",
+        "props": { "name": "TrendingUp", "tone": "info", "size": "xs" }
+      },
+      "avgLabel": {
+        "type": "Eyebrow",
+        "props": { "text": "Avg Spend" }
+      },
+      "avgValue": {
+        "type": "Stat",
+        "props": {
+          "value": { "$state": "/square/get_customer_orders_summary/avg_spend_display" },
+          "size": "sm",
+          "tone": "info"
+        }
       },
 
       "body": {
