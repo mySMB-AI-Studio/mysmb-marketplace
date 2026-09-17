@@ -1,13 +1,13 @@
 {
   "id": "notion-search-results",
   "title": "Recent Notion Content",
-  "description": "Recently edited pages and databases in your Notion workspace — title, type, and last edited time. Click a row to open it in Notion.",
+  "description": "Recently edited pages and data sources in your Notion workspace — title, type, and last edited time. Click a row to open it in Notion.",
   "category": "productivity",
   "tags": [
     "notion",
     "search",
     "pages",
-    "databases",
+    "data-sources",
     "knowledge",
     "productivity"
   ],
@@ -40,12 +40,9 @@
   },
   "dataProvider": {
     "mcp": "notion",
-    "tool": "notion-search",
+    "tool": "search",
     "params": {
-      "sort": {
-        "direction": "descending",
-        "timestamp": "last_edited_time"
-      }
+      "sort_direction": "descending"
     }
   },
   "spec": {
@@ -111,7 +108,7 @@
                 "$computed": "count",
                 "args": {
                   "value": {
-                    "$state": "/notion/notion-search/results"
+                    "$state": "/notion/search/results"
                   }
                 }
               }
@@ -133,7 +130,7 @@
           "gap": "sm"
         },
         "visible": {
-          "$state": "/_loading/notion.notion-search"
+          "$state": "/_loading/notion.search"
         },
         "children": [
           "sk1",
@@ -152,11 +149,11 @@
         "visible": {
           "$and": [
             {
-              "$state": "/_loading/notion.notion-search",
+              "$state": "/_loading/notion.search",
               "not": true
             },
             {
-              "$state": "/notion/notion-search/results/0",
+              "$state": "/notion/search/results/0",
               "not": true
             }
           ]
@@ -168,11 +165,11 @@
           "gap": "none"
         },
         "visible": {
-          "$state": "/_loading/notion.notion-search",
+          "$state": "/_loading/notion.search",
           "not": true
         },
         "repeat": {
-          "statePath": "/notion/notion-search/results",
+          "statePath": "/notion/search/results",
           "key": "id"
         },
         "children": [
@@ -207,7 +204,14 @@
       "typeIcon": {
         "type": "Icon",
         "props": {
-          "name": "FileText",
+          "name": {
+            "$computed": "notion_object_type_icon",
+            "args": {
+              "value": {
+                "$item": "object"
+              }
+            }
+          },
           "tone": "muted",
           "size": "sm"
         }
@@ -227,7 +231,12 @@
         "type": "Text",
         "props": {
           "text": {
-            "$item": "properties/title/title/0/plain_text"
+            "$computed": "notion_result_title",
+            "args": {
+              "item": {
+                "$item": ""
+              }
+            }
           },
           "size": "md",
           "weight": "medium",
@@ -252,7 +261,12 @@
         "type": "Badge",
         "props": {
           "text": {
-            "$item": "object"
+            "$computed": "notion_object_type_label",
+            "args": {
+              "value": {
+                "$item": "object"
+              }
+            }
           },
           "tone": "default",
           "variant": "soft"
