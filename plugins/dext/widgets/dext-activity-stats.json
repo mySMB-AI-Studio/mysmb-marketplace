@@ -89,7 +89,12 @@
         "type": "Stack",
         "props": { "gap": "sm" },
         "children": ["sk1", "sk2", "sk3", "sk4"],
-        "visible": { "$state": "/_loading/dext.list_clients" }
+        "visible": {
+          "$or": [
+            { "$state": "/_loading/dext.list_clients" },
+            { "$state": "/_loading/dext.get_client_activity_stats" }
+          ]
+        }
       },
       "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
       "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
@@ -102,7 +107,8 @@
         "visible": {
           "$and": [
             { "$state": "/_loading/dext.list_clients", "not": true },
-            { "$state": "/ui/rows", "not": true }
+            { "$state": "/_loading/dext.get_client_activity_stats", "not": true },
+            { "$state": "/ui/clientId", "not": true }
           ]
         }
       },
