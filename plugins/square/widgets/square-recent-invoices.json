@@ -63,7 +63,6 @@
         "props": { "cols": 3, "gap": "sm" },
         "children": ["totalBox", "outstandingBox", "overdueBox"]
       },
-
       "totalBox": {
         "type": "Section",
         "props": { "variant": "bordered" },
@@ -74,21 +73,11 @@
         "props": { "gap": "xs", "align": "center" },
         "children": ["totalIcon", "totalLabel"]
       },
-      "totalIcon": {
-        "type": "Icon",
-        "props": { "name": "FileText", "tone": "info", "size": "xs" }
-      },
-      "totalLabel": {
-        "type": "Eyebrow",
-        "props": { "text": "Total" }
-      },
+      "totalIcon":  { "type": "Icon",   "props": { "name": "FileText",    "tone": "info",        "size": "xs" } },
+      "totalLabel": { "type": "Eyebrow","props": { "text": "Total" } },
       "totalValue": {
         "type": "Stat",
-        "props": {
-          "value": { "$state": "/square/get_recent_invoices/total_count" },
-          "size": "sm",
-          "tone": "info"
-        }
+        "props": { "value": { "$state": "/square/get_recent_invoices/total_count" }, "size": "sm", "tone": "info" }
       },
 
       "outstandingBox": {
@@ -101,21 +90,11 @@
         "props": { "gap": "xs", "align": "center" },
         "children": ["outstandingIcon", "outstandingLabel"]
       },
-      "outstandingIcon": {
-        "type": "Icon",
-        "props": { "name": "Clock", "tone": "warning", "size": "xs" }
-      },
-      "outstandingLabel": {
-        "type": "Eyebrow",
-        "props": { "text": "Outstanding" }
-      },
+      "outstandingIcon":  { "type": "Icon",   "props": { "name": "Clock",        "tone": "warning",     "size": "xs" } },
+      "outstandingLabel": { "type": "Eyebrow","props": { "text": "Outstanding" } },
       "outstandingValue": {
         "type": "Stat",
-        "props": {
-          "value": { "$state": "/square/get_recent_invoices/outstanding_display" },
-          "size": "sm",
-          "tone": "warning"
-        }
+        "props": { "value": { "$state": "/square/get_recent_invoices/outstanding_display" }, "size": "sm", "tone": "warning" }
       },
 
       "overdueBox": {
@@ -128,21 +107,11 @@
         "props": { "gap": "xs", "align": "center" },
         "children": ["overdueIcon", "overdueLabel"]
       },
-      "overdueIcon": {
-        "type": "Icon",
-        "props": { "name": "AlertCircle", "tone": "destructive", "size": "xs" }
-      },
-      "overdueLabel": {
-        "type": "Eyebrow",
-        "props": { "text": "Overdue" }
-      },
+      "overdueIcon":  { "type": "Icon",   "props": { "name": "AlertCircle", "tone": "destructive", "size": "xs" } },
+      "overdueLabel": { "type": "Eyebrow","props": { "text": "Overdue" } },
       "overdueValue": {
         "type": "Stat",
-        "props": {
-          "value": { "$state": "/square/get_recent_invoices/overdue_count" },
-          "size": "sm",
-          "tone": "destructive"
-        }
+        "props": { "value": { "$state": "/square/get_recent_invoices/overdue_count" }, "size": "sm", "tone": "destructive" }
       },
 
       "body": {
@@ -208,11 +177,28 @@
         "props": { "cols": 5, "gap": "xs" },
         "children": ["rowInvoice", "rowCustomer", "rowAmount", "rowStatus", "rowDue"]
       },
-      "rowInvoice":  { "type": "Text",    "props": { "text": { "$item": "invoice_number" }, "size": "sm", "tone": "muted" } },
-      "rowCustomer": { "type": "Text",    "props": { "text": { "$item": "customer_name"  }, "size": "sm", "weight": "medium" } },
-      "rowAmount":   { "type": "Text",    "props": { "text": { "$item": "amount_display" }, "size": "sm" } },
-      "rowStatus":   { "type": "Badge",   "props": { "text": { "$item": "status_label"  }, "tone": { "$item": "status_tone" } } },
-      "rowDue":      { "type": "Text",    "props": { "text": { "$item": "due_display"   }, "size": "sm", "tone": "muted" } }
+      "rowInvoice":  { "type": "Text", "props": { "text": { "$item": "invoice_number" }, "size": "sm", "tone": "muted" } },
+      "rowCustomer": { "type": "Text", "props": { "text": { "$item": "customer_name"  }, "size": "sm", "weight": "medium", "truncate": true } },
+      "rowAmount":   { "type": "Text", "props": { "text": { "$item": "amount_display" }, "size": "sm" } },
+      "rowStatus": {
+        "type": "Row",
+        "props": { "gap": "xs" },
+        "children": [
+          "badgePaid", "badgePartPaid", "badgeSent", "badgeDraft",
+          "badgeCancelled", "badgeRefunded", "badgeFailed", "badgeScheduled", "badgeOverdue"
+        ]
+      },
+      "badgePaid":      { "type": "Badge", "props": { "text": "Paid",      "tone": "success"     }, "visible": { "$item": "status_label", "eq": "Paid"      } },
+      "badgePartPaid":  { "type": "Badge", "props": { "text": "Part Paid", "tone": "warning"     }, "visible": { "$item": "status_label", "eq": "Part Paid" } },
+      "badgeSent":      { "type": "Badge", "props": { "text": "Sent",      "tone": "warning"     }, "visible": { "$item": "status_label", "eq": "Sent"      } },
+      "badgeDraft":     { "type": "Badge", "props": { "text": "Draft",     "tone": "muted"       }, "visible": { "$item": "status_label", "eq": "Draft"     } },
+      "badgeCancelled": { "type": "Badge", "props": { "text": "Cancelled", "tone": "muted"       }, "visible": { "$item": "status_label", "eq": "Cancelled" } },
+      "badgeRefunded":  { "type": "Badge", "props": { "text": "Refunded",  "tone": "muted"       }, "visible": { "$item": "status_label", "eq": "Refunded"  } },
+      "badgeFailed":    { "type": "Badge", "props": { "text": "Failed",    "tone": "destructive" }, "visible": { "$item": "status_label", "eq": "Failed"    } },
+      "badgeScheduled": { "type": "Badge", "props": { "text": "Scheduled", "tone": "info"        }, "visible": { "$item": "status_label", "eq": "Scheduled" } },
+      "badgeOverdue":   { "type": "Badge", "props": { "text": "Overdue",   "tone": "destructive" }, "visible": { "$item": "status_label", "eq": "Overdue"   } },
+
+      "rowDue": { "type": "Text", "props": { "text": { "$item": "due_display" }, "size": "sm", "tone": "muted" } }
     }
   },
   "status": "published"
