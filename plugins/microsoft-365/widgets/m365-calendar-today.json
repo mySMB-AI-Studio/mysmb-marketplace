@@ -18,7 +18,7 @@
     "events"
   ],
   "connectorsUsed": [
-    "m365-calendar"
+    "m365-workspace"
   ],
   "popularity": 92,
   "sizing": {
@@ -36,7 +36,7 @@
     }
   },
   "dataProvider": {
-    "mcp": "m365-calendar",
+    "mcp": "m365-workspace",
     "tool": "list_events",
     "params": {
       "startDateTime": "$today",
@@ -55,7 +55,7 @@
           "overlay"
         ],
         "watch": {
-          "/m365-calendar/list_events": {
+          "/m365-workspace/list_events": {
             "action": "setState",
             "params": {
               "statePath": "/ui/todayEvents",
@@ -63,7 +63,7 @@
                 "$computed": "filter_date_range",
                 "args": {
                   "value": {
-                    "$state": "/m365-calendar/list_events"
+                    "$state": "/m365-workspace/list_events"
                   },
                   "field": "start.dateTime"
                 }
@@ -152,7 +152,7 @@
           "sk3"
         ],
         "visible": {
-          "$state": "/_loading/m365-calendar.list_events"
+          "$state": "/_loading/m365-workspace.list_events"
         }
       },
       "sk1": {
@@ -184,7 +184,7 @@
         "visible": {
           "$and": [
             {
-              "$state": "/_loading/m365-calendar.list_events",
+              "$state": "/_loading/m365-workspace.list_events",
               "not": true
             },
             {
@@ -207,7 +207,7 @@
           "key": "id"
         },
         "visible": {
-          "$state": "/_loading/m365-calendar.list_events",
+          "$state": "/_loading/m365-workspace.list_events",
           "not": true
         }
       },
@@ -229,14 +229,14 @@
             {
               "action": "setState",
               "params": {
-                "statePath": "/m365-calendar/get_event",
+                "statePath": "/m365-workspace/get_event",
                 "value": {}
               }
             },
             {
               "action": "setState",
               "params": {
-                "statePath": "/_errors/m365-calendar.get_event",
+                "statePath": "/_errors/m365-workspace.get_event",
                 "value": ""
               }
             },
@@ -255,7 +255,7 @@
               }
             },
             {
-              "action": "m365-calendar.get_event",
+              "action": "m365-workspace.get_event",
               "params": {
                 "id": {
                   "$computed": "identity",
@@ -421,7 +421,7 @@
         "type": "Heading",
         "props": {
           "text": {
-            "$state": "/m365-calendar/get_event/subject"
+            "$state": "/m365-workspace/get_event/subject"
           },
           "level": "h2"
         }
@@ -455,11 +455,11 @@
         "visible": {
           "$and": [
             {
-              "$state": "/_errors/m365-calendar.get_event",
+              "$state": "/_errors/m365-workspace.get_event",
               "not": true
             },
             {
-              "$state": "/m365-calendar/get_event/id",
+              "$state": "/m365-workspace/get_event/id",
               "neq": {
                 "$state": "/ui/selectedEventId"
               }
@@ -473,7 +473,7 @@
           "message": "Couldn’t load this event. Close and try again."
         },
         "visible": {
-          "$state": "/_errors/m365-calendar.get_event"
+          "$state": "/_errors/m365-workspace.get_event"
         }
       },
       "detailBody": {
@@ -490,7 +490,7 @@
           "linksRow"
         ],
         "visible": {
-          "$state": "/m365-calendar/get_event/id",
+          "$state": "/m365-workspace/get_event/id",
           "eq": {
             "$state": "/ui/selectedEventId"
           }
@@ -519,7 +519,7 @@
                 "$computed": "format_date",
                 "args": {
                   "value": {
-                    "$state": "/m365-calendar/get_event/start/dateTime"
+                    "$state": "/m365-workspace/get_event/start/dateTime"
                   },
                   "format": "long"
                 }
@@ -528,7 +528,7 @@
                 "$computed": "format_time",
                 "args": {
                   "value": {
-                    "$state": "/m365-calendar/get_event/start/dateTime"
+                    "$state": "/m365-workspace/get_event/start/dateTime"
                   }
                 }
               },
@@ -536,7 +536,7 @@
                 "$computed": "format_time",
                 "args": {
                   "value": {
-                    "$state": "/m365-calendar/get_event/end/dateTime"
+                    "$state": "/m365-workspace/get_event/end/dateTime"
                   }
                 }
               }
@@ -549,7 +549,7 @@
         "props": {
           "label": "Organizer",
           "value": {
-            "$state": "/m365-calendar/get_event/organizer/emailAddress/name"
+            "$state": "/m365-workspace/get_event/organizer/emailAddress/name"
           }
         }
       },
@@ -558,7 +558,7 @@
         "props": {
           "label": "Where",
           "value": {
-            "$state": "/m365-calendar/get_event/location/displayName"
+            "$state": "/m365-workspace/get_event/location/displayName"
           }
         }
       },
@@ -576,7 +576,7 @@
                 "$computed": "count",
                 "args": {
                   "value": {
-                    "$state": "/m365-calendar/get_event/attendees"
+                    "$state": "/m365-workspace/get_event/attendees"
                   }
                 }
               }
@@ -593,7 +593,7 @@
           "attRow"
         ],
         "repeat": {
-          "statePath": "/m365-calendar/get_event/attendees",
+          "statePath": "/m365-workspace/get_event/attendees",
           "key": "emailAddress/address"
         }
       },
@@ -641,14 +641,14 @@
           "descHtml"
         ],
         "visible": {
-          "$state": "/m365-calendar/get_event/body/content"
+          "$state": "/m365-workspace/get_event/body/content"
         }
       },
       "descHtml": {
         "type": "RichHtml",
         "props": {
           "html": {
-            "$state": "/m365-calendar/get_event/body/content"
+            "$state": "/m365-workspace/get_event/body/content"
           },
           "minHeight": 80,
           "maxHeight": 320
@@ -674,14 +674,14 @@
           "leadingIcon": "Video"
         },
         "visible": {
-          "$state": "/m365-calendar/get_event/onlineMeeting/joinUrl"
+          "$state": "/m365-workspace/get_event/onlineMeeting/joinUrl"
         },
         "on": {
           "click": {
             "action": "open_url",
             "params": {
               "url": {
-                "$state": "/m365-calendar/get_event/onlineMeeting/joinUrl"
+                "$state": "/m365-workspace/get_event/onlineMeeting/joinUrl"
               }
             }
           }
@@ -700,7 +700,7 @@
             "action": "open_url",
             "params": {
               "url": {
-                "$state": "/m365-calendar/get_event/webLink"
+                "$state": "/m365-workspace/get_event/webLink"
               }
             }
           }

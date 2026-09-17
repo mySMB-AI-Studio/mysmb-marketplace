@@ -16,7 +16,7 @@
     "unread"
   ],
   "connectorsUsed": [
-    "m365-mail-read"
+    "m365-workspace"
   ],
   "popularity": 60,
   "sizing": {
@@ -34,7 +34,7 @@
     }
   },
   "dataProvider": {
-    "mcp": "m365-mail-read",
+    "mcp": "m365-workspace",
     "tool": "list_emails",
     "params": {
       "limit": 30
@@ -93,7 +93,7 @@
                 "$computed": "count_where",
                 "args": {
                   "value": {
-                    "$state": "/m365-mail-read/list_emails"
+                    "$state": "/m365-workspace/list_emails"
                   },
                   "whereField": "isRead",
                   "equals": false
@@ -118,7 +118,7 @@
           "rounded": "md"
         },
         "visible": {
-          "$state": "/_loading/m365-mail-read.list_emails"
+          "$state": "/_loading/m365-workspace.list_emails"
         }
       },
       "empty": {
@@ -129,11 +129,11 @@
         "visible": {
           "$and": [
             {
-              "$state": "/_loading/m365-mail-read.list_emails",
+              "$state": "/_loading/m365-workspace.list_emails",
               "not": true
             },
             {
-              "$state": "/m365-mail-read/list_emails/0",
+              "$state": "/m365-workspace/list_emails/0",
               "not": true
             }
           ]
@@ -145,7 +145,7 @@
           "gap": "none"
         },
         "repeat": {
-          "statePath": "/m365-mail-read/list_emails",
+          "statePath": "/m365-workspace/list_emails",
           "key": "id"
         },
         "children": [

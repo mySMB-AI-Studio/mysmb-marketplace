@@ -51,14 +51,16 @@ Two flavours of `${…}` placeholders are recognised:
 
 ## Multiple servers per plugin
 
-Allowed. The Microsoft 365 plugin uses one server per Graph scope:
+Allowed. The Microsoft 365 plugin uses one server per Graph scope, plus a
+combined `m365-workspace` server so a single consent covers mail, calendar and
+people:
 
 ```json
 {
   "mcpServers": {
-    "m365-mail":     { "type": "http", "url": "…/m365-email/mcp" },
-    "m365-calendar": { "type": "http", "url": "…/m365-calendar/mcp" },
-    "m365-files":    { "type": "http", "url": "…/m365-files/mcp" }
+    "m365-mail-read": { "type": "http", "url": "…/m365-mail-read/mcp" },
+    "m365-calendar":  { "type": "http", "url": "…/m365-calendar/mcp" },
+    "m365-workspace": { "type": "http", "url": "…/m365-workspace/mcp" }
   }
 }
 ```

@@ -19,9 +19,8 @@
     "start"
   ],
   "connectorsUsed": [
-    "m365-calendar",
-    "m365-files",
-    "m365-mail-read"
+    "m365-workspace",
+    "m365-files"
   ],
   "popularity": 88,
   "sizing": {
@@ -39,7 +38,7 @@
     }
   },
   "dataProvider": {
-    "mcp": "m365-mail-read",
+    "mcp": "m365-workspace",
     "tool": "list_emails",
     "params": {
       "limit": 10
@@ -58,15 +57,15 @@
           "fileOverlay"
         ],
         "watch": {
-          "/m365-mail-read/list_emails": {
-            "action": "m365-calendar.list_events",
+          "/m365-workspace/list_emails": {
+            "action": "m365-workspace.list_events",
             "params": {
               "startDateTime": "$today",
               "endDateTime": "$today_end",
               "limit": 10
             }
           },
-          "/m365-calendar/list_events": {
+          "/m365-workspace/list_events": {
             "action": "setState",
             "params": {
               "statePath": "/ui/todayEvents",
@@ -74,7 +73,7 @@
                 "$computed": "filter_date_range",
                 "args": {
                   "value": {
-                    "$state": "/m365-calendar/list_events"
+                    "$state": "/m365-workspace/list_events"
                   },
                   "field": "start.dateTime"
                 }
@@ -172,7 +171,7 @@
             "$computed": "count_where",
             "args": {
               "value": {
-                "$state": "/m365-mail-read/list_emails"
+                "$state": "/m365-workspace/list_emails"
               },
               "whereField": "isRead",
               "equals": false
@@ -272,7 +271,7 @@
           "mailRow"
         ],
         "repeat": {
-          "statePath": "/m365-mail-read/list_emails",
+          "statePath": "/m365-workspace/list_emails",
           "key": "id"
         }
       },
@@ -294,14 +293,14 @@
             {
               "action": "setState",
               "params": {
-                "statePath": "/m365-mail-read/get_email",
+                "statePath": "/m365-workspace/get_email",
                 "value": {}
               }
             },
             {
               "action": "setState",
               "params": {
-                "statePath": "/_errors/m365-mail-read.get_email",
+                "statePath": "/_errors/m365-workspace.get_email",
                 "value": ""
               }
             },
@@ -320,7 +319,7 @@
               }
             },
             {
-              "action": "m365-mail-read.get_email",
+              "action": "m365-workspace.get_email",
               "params": {
                 "id": {
                   "$computed": "identity",
@@ -449,14 +448,14 @@
             {
               "action": "setState",
               "params": {
-                "statePath": "/m365-calendar/get_event",
+                "statePath": "/m365-workspace/get_event",
                 "value": {}
               }
             },
             {
               "action": "setState",
               "params": {
-                "statePath": "/_errors/m365-calendar.get_event",
+                "statePath": "/_errors/m365-workspace.get_event",
                 "value": ""
               }
             },
@@ -475,7 +474,7 @@
               }
             },
             {
-              "action": "m365-calendar.get_event",
+              "action": "m365-workspace.get_event",
               "params": {
                 "id": {
                   "$computed": "identity",
@@ -554,7 +553,7 @@
           "filesList"
         ],
         "watch": {
-          "/m365-mail-read/list_emails": {
+          "/m365-workspace/list_emails": {
             "action": "m365-files.list_recent_files",
             "params": {
               "limit": 5
@@ -774,7 +773,7 @@
         "type": "Heading",
         "props": {
           "text": {
-            "$state": "/m365-mail-read/get_email/subject"
+            "$state": "/m365-workspace/get_email/subject"
           },
           "level": "h2"
         }
@@ -822,11 +821,11 @@
         "visible": {
           "$and": [
             {
-              "$state": "/_errors/m365-mail-read.get_email",
+              "$state": "/_errors/m365-workspace.get_email",
               "not": true
             },
             {
-              "$state": "/m365-mail-read/get_email/id",
+              "$state": "/m365-workspace/get_email/id",
               "neq": {
                 "$state": "/ui/selectedEmailId"
               }
@@ -846,7 +845,7 @@
           "emailActions"
         ],
         "visible": {
-          "$state": "/m365-mail-read/get_email/id",
+          "$state": "/m365-workspace/get_email/id",
           "eq": {
             "$state": "/ui/selectedEmailId"
           }
@@ -861,10 +860,10 @@
             "args": {
               "pattern": "{name} <{addr}>",
               "name": {
-                "$state": "/m365-mail-read/get_email/from/emailAddress/name"
+                "$state": "/m365-workspace/get_email/from/emailAddress/name"
               },
               "addr": {
-                "$state": "/m365-mail-read/get_email/from/emailAddress/address"
+                "$state": "/m365-workspace/get_email/from/emailAddress/address"
               }
             }
           }
@@ -878,7 +877,7 @@
             "$computed": "relative_time",
             "args": {
               "value": {
-                "$state": "/m365-mail-read/get_email/receivedDateTime"
+                "$state": "/m365-workspace/get_email/receivedDateTime"
               }
             }
           }
@@ -897,7 +896,7 @@
         "type": "RichHtml",
         "props": {
           "html": {
-            "$state": "/m365-mail-read/get_email/body/content"
+            "$state": "/m365-workspace/get_email/body/content"
           },
           "minHeight": 120,
           "maxHeight": 420
@@ -926,7 +925,7 @@
             "action": "open_url",
             "params": {
               "url": {
-                "$state": "/m365-mail-read/get_email/webLink"
+                "$state": "/m365-workspace/get_email/webLink"
               }
             }
           }
@@ -978,7 +977,7 @@
         "type": "Heading",
         "props": {
           "text": {
-            "$state": "/m365-calendar/get_event/subject"
+            "$state": "/m365-workspace/get_event/subject"
           },
           "level": "h2"
         }
@@ -1010,11 +1009,11 @@
         "visible": {
           "$and": [
             {
-              "$state": "/_errors/m365-calendar.get_event",
+              "$state": "/_errors/m365-workspace.get_event",
               "not": true
             },
             {
-              "$state": "/m365-calendar/get_event/id",
+              "$state": "/m365-workspace/get_event/id",
               "neq": {
                 "$state": "/ui/selectedEventId"
               }
@@ -1035,7 +1034,7 @@
           "eventActions"
         ],
         "visible": {
-          "$state": "/m365-calendar/get_event/id",
+          "$state": "/m365-workspace/get_event/id",
           "eq": {
             "$state": "/ui/selectedEventId"
           }
@@ -1049,7 +1048,7 @@
             "$computed": "format_date",
             "args": {
               "value": {
-                "$state": "/m365-calendar/get_event/start/dateTime"
+                "$state": "/m365-workspace/get_event/start/dateTime"
               },
               "format": "long"
             }
@@ -1061,11 +1060,11 @@
         "props": {
           "label": "Location",
           "value": {
-            "$state": "/m365-calendar/get_event/location/displayName"
+            "$state": "/m365-workspace/get_event/location/displayName"
           }
         },
         "visible": {
-          "$state": "/m365-calendar/get_event/location/displayName"
+          "$state": "/m365-workspace/get_event/location/displayName"
         }
       },
       "eventKvOrganizer": {
@@ -1073,7 +1072,7 @@
         "props": {
           "label": "Organiser",
           "value": {
-            "$state": "/m365-calendar/get_event/organizer/emailAddress/name"
+            "$state": "/m365-workspace/get_event/organizer/emailAddress/name"
           }
         }
       },
@@ -1086,14 +1085,14 @@
           "eventBodyHtml"
         ],
         "visible": {
-          "$state": "/m365-calendar/get_event/body/content"
+          "$state": "/m365-workspace/get_event/body/content"
         }
       },
       "eventBodyHtml": {
         "type": "RichHtml",
         "props": {
           "html": {
-            "$state": "/m365-calendar/get_event/body/content"
+            "$state": "/m365-workspace/get_event/body/content"
           },
           "minHeight": 80,
           "maxHeight": 360
@@ -1266,7 +1265,7 @@
           "message": "Couldn\u2019t load this message. Close and try again."
         },
         "visible": {
-          "$state": "/_errors/m365-mail-read.get_email"
+          "$state": "/_errors/m365-workspace.get_email"
         }
       },
       "eventDetailError": {
@@ -1275,7 +1274,7 @@
           "message": "Couldn\u2019t load this event. Close and try again."
         },
         "visible": {
-          "$state": "/_errors/m365-calendar.get_event"
+          "$state": "/_errors/m365-workspace.get_event"
         }
       }
     }

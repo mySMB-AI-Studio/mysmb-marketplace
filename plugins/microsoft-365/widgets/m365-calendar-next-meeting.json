@@ -18,7 +18,7 @@
     "event"
   ],
   "connectorsUsed": [
-    "m365-calendar"
+    "m365-workspace"
   ],
   "popularity": 0,
   "sizing": {
@@ -36,7 +36,7 @@
     }
   },
   "dataProvider": {
-    "mcp": "m365-calendar",
+    "mcp": "m365-workspace",
     "tool": "list_events",
     "params": {
       "startDateTime": "$now",
@@ -102,7 +102,7 @@
           "rounded": "md"
         },
         "visible": {
-          "$state": "/_loading/m365-calendar.list_events"
+          "$state": "/_loading/m365-workspace.list_events"
         }
       },
       "empty": {
@@ -113,11 +113,11 @@
         "visible": {
           "$and": [
             {
-              "$state": "/_loading/m365-calendar.list_events",
+              "$state": "/_loading/m365-workspace.list_events",
               "not": true
             },
             {
-              "$state": "/m365-calendar/list_events/0",
+              "$state": "/m365-workspace/list_events/0",
               "not": true
             }
           ]
@@ -136,7 +136,7 @@
           "attendees"
         ],
         "visible": {
-          "$state": "/m365-calendar/list_events/0/id"
+          "$state": "/m365-workspace/list_events/0/id"
         }
       },
       "countdown": {
@@ -146,7 +146,7 @@
             "$computed": "relative_time",
             "args": {
               "value": {
-                "$state": "/m365-calendar/list_events/0/start/dateTime"
+                "$state": "/m365-workspace/list_events/0/start/dateTime"
               }
             }
           },
@@ -157,7 +157,7 @@
         "type": "Text",
         "props": {
           "text": {
-            "$state": "/m365-calendar/list_events/0/subject"
+            "$state": "/m365-workspace/list_events/0/subject"
           },
           "size": "md",
           "weight": "semibold",
@@ -171,7 +171,7 @@
             "$computed": "format_date",
             "args": {
               "value": {
-                "$state": "/m365-calendar/list_events/0/start/dateTime"
+                "$state": "/m365-workspace/list_events/0/start/dateTime"
               },
               "format": "long"
             }
@@ -189,7 +189,7 @@
           "locText"
         ],
         "visible": {
-          "$state": "/m365-calendar/list_events/0/location/displayName"
+          "$state": "/m365-workspace/list_events/0/location/displayName"
         }
       },
       "locIcon": {
@@ -204,7 +204,7 @@
         "type": "Caption",
         "props": {
           "text": {
-            "$state": "/m365-calendar/list_events/0/location/displayName"
+            "$state": "/m365-workspace/list_events/0/location/displayName"
           }
         }
       },
@@ -231,7 +231,7 @@
         "type": "Caption",
         "props": {
           "text": {
-            "$state": "/m365-calendar/list_events/0/organizer/emailAddress/name"
+            "$state": "/m365-workspace/list_events/0/organizer/emailAddress/name"
           }
         }
       }

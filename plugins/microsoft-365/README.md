@@ -10,8 +10,9 @@ Access Microsoft 365 emails, calendar, files, Teams, and people through Microsof
 | m365-mail-send | Compose, reply, forward, delete emails | `Mail.Send`, `Mail.ReadWrite` | **Admin consent required** |
 | m365-calendar | View, create, and manage calendar events | `Calendars.ReadWrite` | User consent (may require admin) |
 | m365-files | Browse, search, upload, and share OneDrive files | `Files.ReadWrite` | User consent (may require admin) |
-| m365-teams | Read and send Teams channel and chat messages | `Team.ReadBasic.All`, `ChannelMessage.Read.All`, `Chat.ReadWrite` | Admin consent required |
+| m365-teams | Read and send Teams channel and chat messages, with chat attachments | `Team.ReadBasic.All`, `ChannelMessage.Read.All`, `Chat.ReadWrite`, `Files.ReadWrite` | Admin consent required |
 | m365-people | Search people, view profiles and org chart | `People.Read`, `User.Read` | User self-consent OK |
+| m365-workspace | Mail (read), calendar and people on **one** connection — the union of `m365-mail-read`, `m365-calendar` and `m365-people` | `Mail.Read`, `Calendars.ReadWrite`, `People.Read`, `User.Read` | **User self-consent OK** — a single Entra consent |
 
 Mail is split into two servers on purpose: `Mail.Send` and `Mail.ReadWrite` are
 classified as high-risk by Entra and user self-consent is blocked by default,
@@ -21,6 +22,25 @@ works without waiting on an admin.
 
 See the **[Admin consent](#admin-consent-for-high-risk-scopes)** section below
 for how to unblock `m365-mail-send` org-wide.
+
+## One connection for mail, calendar and people
+
+`m365-workspace` mounts the mail-read, calendar and people tools — same tool
+names, same output shapes — on a single OAuth issuer whose scope list is the
+union of those three servers. Connecting it is **one** Entra consent, where
+connecting the three per-domain servers is three. It exists for myHub's
+first-run wizard, which needs mail and calendar before it can seed a dashboard,
+and it is what this plugin's mail, calendar and people widgets bind to.
+
+It deliberately stops at the user-consentable set: `m365-mail-send` and
+`m365-teams` (admin consent) and `m365-files` (the scope tenant policy most
+often blocks — Entra evaluates a scope list as one grant, so a single blocked
+scope would fail the whole connection) stay separate opt-ins.
+
+The per-domain servers remain declared and mounted. Their names are the keys
+of every existing user's credentials, so they are never removed; a user who
+connected them before `m365-workspace` existed keeps working, and myHub routes
+the widgets' calls to whichever of the two they hold.
 
 ## Configuration
 
@@ -49,6 +69,10 @@ without another prompt.
 
 ## Tools
 
+### Workspace (14 tools, `m365-workspace`)
+The Mail — Read, Calendar and People tools below, under the same names, on one
+connection. Nothing is unique to this server; see those sections.
+
 ### Mail — Read (3 tools, `m365-mail-read`)
 - `list_emails` — List recent emails from inbox
 - `get_email` — Get a single email with full body
@@ -60,12 +84,13 @@ without another prompt.
 - `forward_email` — Forward to recipients
 - `delete_email` — Move to trash
 
-### Calendar (6 tools)
+### Calendar (7 tools, `m365-calendar`)
 - `list_events` — List upcoming events
 - `get_event` — Get event details
 - `create_event` — Create a new event
 - `update_event` — Modify an event
 - `cancel_event` — Cancel with notification
+- `respond_to_event` — Accept, tentatively accept or decline an invitation
 - `find_free_slots` — Find available meeting times
 
 ### Files (6 tools)
@@ -108,7 +133,7 @@ without another prompt.
   `reactionType` exactly as it appears on the message (a legacy `like` renders
   as 👍 but must be removed as `like`).
 
-### People (4 tools)
+### People (4 tools, `m365-people`)
 - `search_people` — Search by name or email
 - `get_profile` — Get user profile
 - `get_manager` — Get user's manager
@@ -160,6 +185,7 @@ So each server needs **both** rows below registered against the Entra app regist
 | `m365-files` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/m365-files/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/m365-files/callback` |
 | `m365-teams` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/m365-teams/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/m365-teams/callback` |
 | `m365-people` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/m365-people/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/m365-people/callback` |
+| `m365-workspace` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/m365-workspace/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/m365-workspace/callback` — **new; must be registered on the staging AND production Entra app regs before a first Connect** |
 
 > Register these under the Entra app registration whose id is `ENTRA_CLIENT_ID`
 > on the gateway (Azure Portal → App registrations → Authentication → Web →

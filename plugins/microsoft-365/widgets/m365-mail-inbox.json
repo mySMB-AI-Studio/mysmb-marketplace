@@ -20,8 +20,7 @@
     "unread"
   ],
   "connectorsUsed": [
-    "m365-mail-read",
-    "m365-mail-send"
+    "m365-workspace"
   ],
   "popularity": 95,
   "sizing": {
@@ -39,7 +38,7 @@
     }
   },
   "dataProvider": {
-    "mcp": "m365-mail-read",
+    "mcp": "m365-workspace",
     "tool": "list_emails",
     "params": {
       "folder": "inbox",
@@ -100,7 +99,7 @@
                 "$computed": "count_where",
                 "args": {
                   "value": {
-                    "$state": "/m365-mail-read/list_emails"
+                    "$state": "/m365-workspace/list_emails"
                   },
                   "whereField": "isRead",
                   "equals": false
@@ -130,7 +129,7 @@
           "s4"
         ],
         "visible": {
-          "$state": "/_loading/m365-mail-read.list_emails"
+          "$state": "/_loading/m365-workspace.list_emails"
         }
       },
       "s1": {
@@ -169,11 +168,11 @@
         "visible": {
           "$and": [
             {
-              "$state": "/_loading/m365-mail-read.list_emails",
+              "$state": "/_loading/m365-workspace.list_emails",
               "not": true
             },
             {
-              "$state": "/m365-mail-read/list_emails/0",
+              "$state": "/m365-workspace/list_emails/0",
               "not": true
             }
           ]
@@ -188,11 +187,11 @@
           "row"
         ],
         "repeat": {
-          "statePath": "/m365-mail-read/list_emails",
+          "statePath": "/m365-workspace/list_emails",
           "key": "id"
         },
         "visible": {
-          "$state": "/_loading/m365-mail-read.list_emails",
+          "$state": "/_loading/m365-workspace.list_emails",
           "not": true
         }
       },
@@ -216,14 +215,14 @@
             {
               "action": "setState",
               "params": {
-                "statePath": "/m365-mail-read/get_email",
+                "statePath": "/m365-workspace/get_email",
                 "value": {}
               }
             },
             {
               "action": "setState",
               "params": {
-                "statePath": "/_errors/m365-mail-read.get_email",
+                "statePath": "/_errors/m365-workspace.get_email",
                 "value": ""
               }
             },
@@ -242,7 +241,7 @@
               }
             },
             {
-              "action": "m365-mail-read.get_email",
+              "action": "m365-workspace.get_email",
               "params": {
                 "id": {
                   "$computed": "identity",
@@ -398,7 +397,7 @@
         "type": "Heading",
         "props": {
           "text": {
-            "$state": "/m365-mail-read/get_email/subject"
+            "$state": "/m365-workspace/get_email/subject"
           },
           "level": "h2"
         }
@@ -446,11 +445,11 @@
         "visible": {
           "$and": [
             {
-              "$state": "/_errors/m365-mail-read.get_email",
+              "$state": "/_errors/m365-workspace.get_email",
               "not": true
             },
             {
-              "$state": "/m365-mail-read/get_email/id",
+              "$state": "/m365-workspace/get_email/id",
               "neq": {
                 "$state": "/ui/selectedEmailId"
               }
@@ -470,7 +469,7 @@
           "actions"
         ],
         "visible": {
-          "$state": "/m365-mail-read/get_email/id",
+          "$state": "/m365-workspace/get_email/id",
           "eq": {
             "$state": "/ui/selectedEmailId"
           }
@@ -485,10 +484,10 @@
             "args": {
               "pattern": "{name} <{addr}>",
               "name": {
-                "$state": "/m365-mail-read/get_email/from/emailAddress/name"
+                "$state": "/m365-workspace/get_email/from/emailAddress/name"
               },
               "addr": {
-                "$state": "/m365-mail-read/get_email/from/emailAddress/address"
+                "$state": "/m365-workspace/get_email/from/emailAddress/address"
               }
             }
           }
@@ -502,7 +501,7 @@
             "$computed": "relative_time",
             "args": {
               "value": {
-                "$state": "/m365-mail-read/get_email/receivedDateTime"
+                "$state": "/m365-workspace/get_email/receivedDateTime"
               }
             }
           }
@@ -521,7 +520,7 @@
         "type": "RichHtml",
         "props": {
           "html": {
-            "$state": "/m365-mail-read/get_email/body/content"
+            "$state": "/m365-workspace/get_email/body/content"
           },
           "minHeight": 120,
           "maxHeight": 520
@@ -550,7 +549,7 @@
             "action": "open_url",
             "params": {
               "url": {
-                "$state": "/m365-mail-read/get_email/webLink"
+                "$state": "/m365-workspace/get_email/webLink"
               }
             }
           }
@@ -572,7 +571,7 @@
           "message": "Couldn’t load this message. Close and try again."
         },
         "visible": {
-          "$state": "/_errors/m365-mail-read.get_email"
+          "$state": "/_errors/m365-workspace.get_email"
         }
       },
       "receivedCol": {

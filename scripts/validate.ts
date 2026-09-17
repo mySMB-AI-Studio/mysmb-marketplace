@@ -33,6 +33,18 @@
  *      an existing widget not already on the baseline) fails. Retrofitting the
  *      baseline is the separate, deliberately-scoped initiative §14 describes —
  *      remove a file from the baseline once it's actually fixed.
+ *   9. Every widget JSON is cross-checked against the servers its plugin
+ *      declares in .mcp.json: `connectorsUsed` may only name declared servers,
+ *      and every server the spec actually calls (dataProvider.mcp, params.mcp,
+ *      `<server>.<tool>` actions, `/<server>/<tool>` state paths and the
+ *      reserved `/_loading|_errors|_needsConnection/<server>.<tool>` keys)
+ *      must appear in `connectorsUsed`. myHub keys the credential vault, tool
+ *      routing and tile seeding on those exact names, so a stale or undeclared
+ *      name is a tile that never loads or is gated wrongly. Mandatory — zero
+ *      violations existed when it landed. Widget `id` must also equal the
+ *      filename stem (dashboards and the first-run wizard hold tiles by id, so
+ *      a drifted id is a rename that strands them) — forward-only, with the
+ *      pre-existing exceptions grandfathered in scripts/widget-id-baseline.json.
  *
  * Exits 1 on any failure.
  */
@@ -48,6 +60,13 @@ const fail = (msg: string) => errors.push(msg);
 
 const XXS_BASELINE: Set<string> = new Set(
   (JSON.parse(readFileSync(join(__dirname, "xxs-baseline.json"), "utf8")) as string[]).map((p) =>
+    p.split("/").join(sep),
+  ),
+);
+
+/** Widgets whose id already differed from their filename when rule 9 landed. */
+const WIDGET_ID_BASELINE: Set<string> = new Set(
+  (JSON.parse(readFileSync(join(__dirname, "widget-id-baseline.json"), "utf8")) as string[]).map((p) =>
     p.split("/").join(sep),
   ),
 );
@@ -236,6 +255,131 @@ function validateTileDisplayStandards(pluginDirName: string, fileName: string, f
   }
 }
 
+/** Server names a plugin's .mcp.json declares, or null when it cannot be read (reported elsewhere). */
+function readDeclaredServers(pluginDir: string): Set<string> | null {
+  try {
+    const mcp = JSON.parse(readFileSync(join(pluginDir, ".mcp.json"), "utf8")) as { mcpServers?: unknown };
+    return isRecord(mcp.mcpServers) ? new Set(Object.keys(mcp.mcpServers)) : null;
+  } catch {
+    return null;
+  }
+}
+
+let knownServersCache: Set<string> | null = null;
+/**
+ * Every server name any plugin in the marketplace declares. A `/x/...` state
+ * path is only treated as a server reference when `x` is one of these —
+ * widget-local state (`/selected/...`) is otherwise indistinguishable from a
+ * server path — and that is also what catches a stale reference to a server
+ * that still exists elsewhere (a legacy name left behind after a widget moved
+ * to a combined server).
+ */
+function allKnownServers(): Set<string> {
+  if (knownServersCache) return knownServersCache;
+  const out = new Set<string>();
+  const pluginsDir = join(repoRoot, "plugins");
+  for (const dirName of readdirSync(pluginsDir)) {
+    const pluginDir = join(pluginsDir, dirName);
+    if (!statSync(pluginDir).isDirectory()) continue;
+    for (const name of readDeclaredServers(pluginDir) ?? []) out.add(name);
+  }
+  knownServersCache = out;
+  return out;
+}
+
+const RESERVED_STATE_PATH = /^\/(?:_loading|_errors|_needsConnection)\/([^./]+)\.[^/]+/;
+
+/**
+ * Every server a widget calls, with the first place it was seen. Looks at the
+ * five places a widget names a server (see check 9 in the header). `id`,
+ * `title` and `description` are prose and skipped.
+ */
+function collectWidgetServerRefs(widget: unknown, knownServers: Set<string>): Map<string, string> {
+  const refs = new Map<string, string>();
+  const note = (server: string, where: string) => {
+    if (!refs.has(server)) refs.set(server, where || "(root)");
+  };
+  const fromPath = (value: string, where: string) => {
+    const reserved = RESERVED_STATE_PATH.exec(value);
+    if (reserved) {
+      note(reserved[1], where);
+      return;
+    }
+    const first = /^\/([^/]+)(?:\/|$)/.exec(value);
+    if (first && knownServers.has(first[1])) note(first[1], where);
+  };
+  const walk = (value: unknown, key: string, where: string) => {
+    if (typeof value === "string") {
+      if (key === "id" || key === "title" || key === "description") return;
+      if (key === "mcp") note(value, where);
+      else if (key === "action" && value.includes(".")) {
+        const server = value.slice(0, value.indexOf("."));
+        if (knownServers.has(server)) note(server, where);
+      }
+      fromPath(value, where);
+    } else if (Array.isArray(value)) {
+      value.forEach((v, i) => walk(v, key, `${where}[${i}]`));
+    } else if (isRecord(value)) {
+      for (const [k, v] of Object.entries(value)) {
+        const childWhere = where ? `${where}.${k}` : k;
+        fromPath(k, childWhere); // `watch` keys are state paths too
+        walk(v, k, childWhere);
+      }
+    }
+  };
+  walk(widget, "", "");
+  return refs;
+}
+
+function validateWidgetServerRefs(
+  pluginDirName: string,
+  fileName: string,
+  widget: Record<string, unknown>,
+  declaredServers: Set<string>,
+) {
+  const used = Array.isArray(widget.connectorsUsed)
+    ? widget.connectorsUsed.filter((c): c is string => typeof c === "string")
+    : [];
+  for (const server of used) {
+    if (!declaredServers.has(server)) {
+      fail(
+        `plugins/${pluginDirName}: widgets/${fileName} connectorsUsed names "${server}", which is not a server this plugin declares in .mcp.json`,
+      );
+    }
+  }
+  const declaredUsed = new Set(used);
+  for (const [server, where] of collectWidgetServerRefs(widget, allKnownServers())) {
+    if (declaredUsed.has(server)) continue;
+    fail(
+      declaredServers.has(server)
+        ? `plugins/${pluginDirName}: widgets/${fileName} calls server "${server}" at ${where} but does not list it in connectorsUsed`
+        : `plugins/${pluginDirName}: widgets/${fileName} references "${server}" at ${where} — not a server this plugin declares in .mcp.json (stale or foreign server name)`,
+    );
+  }
+}
+
+/**
+ * Widget `id` must equal its filename stem. myHub resolves a tile by `id`
+ * (dashboards store it; the first-run wizard seeds by it), so an id that
+ * drifts from its file is a rename in disguise — every dashboard holding the
+ * old id loses the tile. Forward-only like the "xxs" rule: files listed in
+ * scripts/widget-id-baseline.json predate this check and are grandfathered.
+ */
+function validateWidgetId(
+  pluginDirName: string,
+  fileName: string,
+  filePath: string,
+  widget: Record<string, unknown>,
+) {
+  if (typeof widget.id !== "string") return; // myHub defaults the id to the filename stem
+  const stem = fileName.replace(/\.json$/, "");
+  if (widget.id === stem) return;
+  if (WIDGET_ID_BASELINE.has(relative(repoRoot, filePath))) return; // pre-existing, grandfathered
+  fail(
+    `plugins/${pluginDirName}: widgets/${fileName} has id "${widget.id}" but the filename stem is "${stem}" — dashboards and the first-run wizard hold tiles by id, so a drifted id strands them; rename the file and the id together, deliberately`,
+  );
+}
+
 function validateWidgetElements(
   pluginDirName: string,
   manifest: { widgetElements?: string; widgets?: string },
@@ -282,8 +426,21 @@ function validateWidgetElements(
           `plugins/${pluginDirName}: widgets directory "${declaredW}" must contain at least one *.json file`,
         );
       }
+      const declaredServers = readDeclaredServers(pluginDir);
       for (const fileName of jsonFiles) {
-        validateTileDisplayStandards(pluginDirName, fileName, join(dirPath, fileName));
+        const filePath = join(dirPath, fileName);
+        validateTileDisplayStandards(pluginDirName, fileName, filePath);
+        // Same policy as the xxs check: a widget that does not parse is a
+        // pre-existing, unrelated bug — skip rather than newly fail on it.
+        let widget: unknown;
+        try {
+          widget = JSON.parse(readFileSync(filePath, "utf8"));
+        } catch {
+          continue;
+        }
+        if (!isRecord(widget)) continue;
+        validateWidgetId(pluginDirName, fileName, filePath, widget);
+        if (declaredServers) validateWidgetServerRefs(pluginDirName, fileName, widget, declaredServers);
       }
     }
   }
