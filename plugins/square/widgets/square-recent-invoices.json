@@ -148,21 +148,92 @@
       "body": {
         "type": "Body",
         "props": {},
-        "children": ["table"]
+        "children": ["loading", "empty", "invoiceList"]
       },
-      "table": {
-        "type": "Table",
-        "props": {
-          "loading": { "$state": "/_loading/square.get_recent_invoices" },
-          "skeletonRows": 5,
-          "rows": { "$state": "/square/get_recent_invoices/invoices" },
-          "columns": [
-            { "id": "invoice",  "header": "Invoice",  "field": "invoice_number",  "width": 100, "priority": 1 },
-            { "id": "customer", "header": "Customer", "field": "customer_name",               "priority": 1 },
-            { "id": "amount",   "header": "Amount",   "field": "amount_display",  "width": 120, "priority": 1, "align": "right" },
-            { "id": "status",   "header": "Status",   "field": "status_label",    "width": 110, "priority": 1, "variant": "badge", "tone": { "$item": "status_tone" } },
-            { "id": "due",      "header": "Due",      "field": "due_display",     "width": 90,  "priority": 2 }
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["sk1", "sk2", "sk3", "sk4", "sk5"],
+        "visible": { "$state": "/_loading/square.get_recent_invoices" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
+      "sk5": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No invoices found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/square.get_recent_invoices", "not": true },
+            { "$state": "/square/get_recent_invoices/invoices/0", "not": true }
           ]
+        }
+      },
+
+      "invoiceList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["invoiceRow"],
+        "repeat": {
+          "statePath": "/square/get_recent_invoices/invoices",
+          "key": "invoice_number"
+        },
+        "visible": { "$state": "/_loading/square.get_recent_invoices", "not": true }
+      },
+      "invoiceRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["invoiceLeft", "invoiceRight"]
+      },
+      "invoiceLeft": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["invoiceCustomer", "invoiceMeta"]
+      },
+      "invoiceCustomer": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "customer_name" },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "invoiceMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{inv} · {due}",
+              "inv": { "$item": "invoice_number" },
+              "due": { "$item": "due_display" }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "invoiceRight": {
+        "type": "Stack",
+        "props": { "gap": "none", "align": "end" },
+        "children": ["invoiceAmount", "invoiceStatus"]
+      },
+      "invoiceAmount": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "amount_display" },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "invoiceStatus": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "status_label" },
+          "tone": { "$item": "status_tone" }
         }
       }
     }
