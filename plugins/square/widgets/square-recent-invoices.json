@@ -73,8 +73,8 @@
         "props": { "gap": "xs", "align": "center" },
         "children": ["totalIcon", "totalLabel"]
       },
-      "totalIcon":  { "type": "Icon",   "props": { "name": "FileText",    "tone": "info",        "size": "xs" } },
-      "totalLabel": { "type": "Eyebrow","props": { "text": "Total" } },
+      "totalIcon":  { "type": "Icon",    "props": { "name": "FileText",    "tone": "info",        "size": "xs" } },
+      "totalLabel": { "type": "Eyebrow", "props": { "text": "Total" } },
       "totalValue": {
         "type": "Stat",
         "props": { "value": { "$state": "/square/get_recent_invoices/total_count" }, "size": "sm", "tone": "info" }
@@ -90,8 +90,8 @@
         "props": { "gap": "xs", "align": "center" },
         "children": ["outstandingIcon", "outstandingLabel"]
       },
-      "outstandingIcon":  { "type": "Icon",   "props": { "name": "Clock",        "tone": "warning",     "size": "xs" } },
-      "outstandingLabel": { "type": "Eyebrow","props": { "text": "Outstanding" } },
+      "outstandingIcon":  { "type": "Icon",    "props": { "name": "Clock",        "tone": "warning",     "size": "xs" } },
+      "outstandingLabel": { "type": "Eyebrow", "props": { "text": "Outstanding" } },
       "outstandingValue": {
         "type": "Stat",
         "props": { "value": { "$state": "/square/get_recent_invoices/outstanding_display" }, "size": "sm", "tone": "warning" }
@@ -107,8 +107,8 @@
         "props": { "gap": "xs", "align": "center" },
         "children": ["overdueIcon", "overdueLabel"]
       },
-      "overdueIcon":  { "type": "Icon",   "props": { "name": "AlertCircle", "tone": "destructive", "size": "xs" } },
-      "overdueLabel": { "type": "Eyebrow","props": { "text": "Overdue" } },
+      "overdueIcon":  { "type": "Icon",    "props": { "name": "AlertCircle", "tone": "destructive", "size": "xs" } },
+      "overdueLabel": { "type": "Eyebrow", "props": { "text": "Overdue" } },
       "overdueValue": {
         "type": "Stat",
         "props": { "value": { "$state": "/square/get_recent_invoices/overdue_count" }, "size": "sm", "tone": "destructive" }
@@ -117,88 +117,23 @@
       "body": {
         "type": "Body",
         "props": {},
-        "children": ["loading", "empty", "tableWrapper"]
+        "children": ["table"]
       },
-
-      "loading": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["sk1", "sk2", "sk3", "sk4", "sk5"],
-        "visible": { "$state": "/_loading/square.get_recent_invoices" }
-      },
-      "sk1": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "sm" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "sm" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "sm" } },
-      "sk4": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "sm" } },
-      "sk5": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "sm" } },
-
-      "empty": {
-        "type": "Empty",
-        "props": { "message": "No invoices found." },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/square.get_recent_invoices", "not": true },
-            { "$state": "/square/get_recent_invoices/invoices/0", "not": true }
+      "table": {
+        "type": "Table",
+        "props": {
+          "loading": { "$state": "/_loading/square.get_recent_invoices" },
+          "skeletonRows": 5,
+          "rows": { "$state": "/square/get_recent_invoices/invoices" },
+          "columns": [
+            { "id": "invoice",  "header": "Invoice",  "field": "invoice_number",  "width": 100, "priority": 1 },
+            { "id": "customer", "header": "Customer", "field": "customer_name",               "priority": 1 },
+            { "id": "amount",   "header": "Amount",   "field": "amount_display",  "width": 120, "priority": 1, "align": "right" },
+            { "id": "status",   "header": "Status",   "field": "status_label",    "width": 110, "priority": 1, "variant": "badge" },
+            { "id": "due",      "header": "Due",      "field": "due_display",     "width": 90,  "priority": 2 }
           ]
         }
-      },
-
-      "tableWrapper": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["tableHeader", "headerDivider", "invoiceList"],
-        "visible": { "$state": "/_loading/square.get_recent_invoices", "not": true }
-      },
-
-      "tableHeader": {
-        "type": "Grid",
-        "props": { "cols": 5, "gap": "xs" },
-        "children": ["hInvoice", "hCustomer", "hAmount", "hStatus", "hDue"]
-      },
-      "hInvoice":  { "type": "Eyebrow", "props": { "text": "Invoice"  } },
-      "hCustomer": { "type": "Eyebrow", "props": { "text": "Customer" } },
-      "hAmount":   { "type": "Eyebrow", "props": { "text": "Amount"   } },
-      "hStatus":   { "type": "Eyebrow", "props": { "text": "Status"   } },
-      "hDue":      { "type": "Eyebrow", "props": { "text": "Due"      } },
-
-      "headerDivider": { "type": "Divider", "props": {} },
-
-      "invoiceList": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["invoiceRow"],
-        "repeat": {
-          "statePath": "/square/get_recent_invoices/invoices",
-          "key": "invoice_number"
-        }
-      },
-      "invoiceRow": {
-        "type": "Grid",
-        "props": { "cols": 5, "gap": "xs" },
-        "children": ["rowInvoice", "rowCustomer", "rowAmount", "rowStatus", "rowDue"]
-      },
-      "rowInvoice":  { "type": "Text", "props": { "text": { "$item": "invoice_number" }, "size": "sm", "tone": "muted" } },
-      "rowCustomer": { "type": "Text", "props": { "text": { "$item": "customer_name"  }, "size": "sm", "weight": "medium", "truncate": true } },
-      "rowAmount":   { "type": "Text", "props": { "text": { "$item": "amount_display" }, "size": "sm" } },
-      "rowStatus": {
-        "type": "Row",
-        "props": { "gap": "xs" },
-        "children": [
-          "badgePaid", "badgePartPaid", "badgeSent", "badgeDraft",
-          "badgeCancelled", "badgeRefunded", "badgeFailed", "badgeScheduled", "badgeOverdue"
-        ]
-      },
-      "badgePaid":      { "type": "Badge", "props": { "text": "Paid",      "tone": "success"     }, "visible": { "$item": "status_label", "eq": "Paid"      } },
-      "badgePartPaid":  { "type": "Badge", "props": { "text": "Part Paid", "tone": "warning"     }, "visible": { "$item": "status_label", "eq": "Part Paid" } },
-      "badgeSent":      { "type": "Badge", "props": { "text": "Sent",      "tone": "warning"     }, "visible": { "$item": "status_label", "eq": "Sent"      } },
-      "badgeDraft":     { "type": "Badge", "props": { "text": "Draft",     "tone": "muted"       }, "visible": { "$item": "status_label", "eq": "Draft"     } },
-      "badgeCancelled": { "type": "Badge", "props": { "text": "Cancelled", "tone": "muted"       }, "visible": { "$item": "status_label", "eq": "Cancelled" } },
-      "badgeRefunded":  { "type": "Badge", "props": { "text": "Refunded",  "tone": "muted"       }, "visible": { "$item": "status_label", "eq": "Refunded"  } },
-      "badgeFailed":    { "type": "Badge", "props": { "text": "Failed",    "tone": "destructive" }, "visible": { "$item": "status_label", "eq": "Failed"    } },
-      "badgeScheduled": { "type": "Badge", "props": { "text": "Scheduled", "tone": "info"        }, "visible": { "$item": "status_label", "eq": "Scheduled" } },
-      "badgeOverdue":   { "type": "Badge", "props": { "text": "Overdue",   "tone": "destructive" }, "visible": { "$item": "status_label", "eq": "Overdue"   } },
-
-      "rowDue": { "type": "Text", "props": { "text": { "$item": "due_display" }, "size": "sm", "tone": "muted" } }
+      }
     }
   },
   "status": "published"
