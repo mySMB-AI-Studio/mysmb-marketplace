@@ -1,21 +1,21 @@
 {
   "id": "square-payments-summary",
   "title": "Square — Latest Payments",
-  "description": "Table of the latest Square payments — amount, status, source type, and date. Sorted most recent first.",
+  "description": "Most recent Square payments with customer name, card details, and amount — sorted newest first.",
   "category": "finance",
   "tags": ["square", "payments", "pos", "transactions", "finance"],
-  "keywords": ["payments", "transactions", "square", "pos", "revenue", "collected"],
+  "keywords": ["payments", "transactions", "square", "pos", "revenue", "collected", "latest"],
   "connectorsUsed": ["square"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 5 },
-    "min": { "colSpan": 4, "rowSpan": 4 },
-    "max": { "colSpan": 10, "rowSpan": 12 }
+    "preferred": { "colSpan": 4, "rowSpan": 5 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 8, "rowSpan": 12 }
   },
   "dataProvider": {
     "mcp": "square",
-    "tool": "list_payments",
-    "params": { "sort_order": "DESC", "limit": 100 }
+    "tool": "get_latest_payments",
+    "params": { "limit": 10 }
   },
   "spec": {
     "root": "card",
@@ -23,16 +23,16 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["titleRow", "divider", "tableBody"]
+        "children": ["header", "body"]
       },
-      "titleRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
+
+      "header": {
+        "type": "Header",
         "children": ["titleGroup"]
       },
       "titleGroup": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
+        "props": { "gap": "sm", "align": "start" },
         "children": ["titleIcon", "titleStack"]
       },
       "titleIcon": {
@@ -52,8 +52,8 @@
         "type": "Eyebrow",
         "props": { "text": "Square" }
       },
-      "divider": { "type": "Divider", "props": {} },
-      "tableBody": {
+
+      "body": {
         "type": "Body",
         "props": {},
         "children": ["table"]
@@ -61,16 +61,13 @@
       "table": {
         "type": "Table",
         "props": {
-          "loading": { "$state": "/_loading/square.list_payments" },
+          "loading": { "$state": "/_loading/square.get_latest_payments" },
           "skeletonRows": 5,
-          "rows": { "$state": "/square/list_payments/payments" },
+          "rows": { "$state": "/square/get_latest_payments/payments" },
           "columns": [
-            { "id": "id", "header": "Payment ID", "field": "id", "priority": 2 },
-            { "id": "amount", "header": "Amount", "field": "amount_money.amount", "width": 140, "priority": 1, "format": "currency" },
-            { "id": "currency", "header": "Currency", "field": "amount_money.currency", "width": 90, "priority": 3 },
-            { "id": "status", "header": "Status", "field": "status", "width": 110, "priority": 1 },
-            { "id": "source", "header": "Source", "field": "source_type", "width": 120, "priority": 2 },
-            { "id": "created", "header": "Date", "field": "created_at", "width": 160, "priority": 1, "format": "datetime" }
+            { "id": "name",    "header": "Customer", "field": "name",           "priority": 1 },
+            { "id": "details", "header": "Details",  "field": "sub_label",      "priority": 2 },
+            { "id": "amount",  "header": "Amount",   "field": "amount_display", "width": 120, "priority": 1, "align": "right" }
           ]
         }
       }
