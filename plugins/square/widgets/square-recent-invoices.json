@@ -160,7 +160,7 @@
             { "id": "invoice",  "header": "Invoice",  "field": "invoice_number",  "width": 100, "priority": 1 },
             { "id": "customer", "header": "Customer", "field": "customer_name",               "priority": 1 },
             { "id": "amount",   "header": "Amount",   "field": "amount_display",  "width": 120, "priority": 1, "align": "right" },
-            { "id": "status",   "header": "Status",   "field": "status_label",    "width": 110, "priority": 1, "variant": "badge", "tone": "status_tone" },
+            { "id": "status",   "header": "Status",   "field": "status_label",    "width": 110, "priority": 1, "variant": "badge", "tone": { "$computed": "identity", "args": { "value": { "$item": "status_tone" } } } },
             { "id": "due",      "header": "Due",      "field": "due_display",     "width": 90,  "priority": 2 }
           ]
         }
