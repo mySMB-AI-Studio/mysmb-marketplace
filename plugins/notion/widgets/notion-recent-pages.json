@@ -38,16 +38,10 @@
   },
   "dataProvider": {
     "mcp": "notion",
-    "tool": "notion-search",
+    "tool": "search",
     "params": {
-      "sort": {
-        "direction": "descending",
-        "timestamp": "last_edited_time"
-      },
-      "filter": {
-        "value": "page",
-        "property": "object"
-      }
+      "object_type": "page",
+      "sort_direction": "descending"
     }
   },
   "spec": {
@@ -113,7 +107,7 @@
                 "$computed": "count",
                 "args": {
                   "value": {
-                    "$state": "/notion/notion-search/results"
+                    "$state": "/notion/search/results"
                   }
                 }
               }
@@ -135,7 +129,7 @@
           "gap": "sm"
         },
         "visible": {
-          "$state": "/_loading/notion.notion-search"
+          "$state": "/_loading/notion.search"
         },
         "children": [
           "sk1",
@@ -156,11 +150,11 @@
         "visible": {
           "$and": [
             {
-              "$state": "/_loading/notion.notion-search",
+              "$state": "/_loading/notion.search",
               "not": true
             },
             {
-              "$state": "/notion/notion-search/results/0",
+              "$state": "/notion/search/results/0",
               "not": true
             }
           ]
@@ -172,11 +166,11 @@
           "gap": "none"
         },
         "visible": {
-          "$state": "/_loading/notion.notion-search",
+          "$state": "/_loading/notion.search",
           "not": true
         },
         "repeat": {
-          "statePath": "/notion/notion-search/results",
+          "statePath": "/notion/search/results",
           "key": "id"
         },
         "children": [

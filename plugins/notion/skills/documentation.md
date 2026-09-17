@@ -1,6 +1,6 @@
 ---
 name: notion-documentation
-description: Create, update, and duplicate Notion pages for documentation purposes. Use when the user asks to write a document, create a wiki page, update an existing page, add content to Notion, or duplicate a page template.
+description: Create and update Notion pages for documentation purposes. Use when the user asks to write a document, create a wiki page, update an existing page, or add content to Notion.
 ---
 
 # Notion — creating and updating documentation
@@ -9,58 +9,40 @@ Use the `notion` MCP server for all page authoring operations.
 
 ## Creating pages
 
-Call `notion-create-pages` to create one or more pages. Required fields:
+Call `create_page` with exactly one of:
 
-- `parent` — specify either `{ "type": "page_id", "page_id": "<id>" }` (place under an existing page) or `{ "type": "database_id", "database_id": "<id>" }` (create a row in a database). The `type` field is required. Always resolve the parent ID via `notion-search` before calling.
-- `properties` — at minimum include `title` as a `title`-type property array.
-- `children` — optional array of block objects for the page body.
+- `parent_page_id` — place the new page under an existing page.
+- `parent_database_id` — create a new row in a database (a data source). `properties` keys must match that data source's schema — call `get_data_source` first to learn the property names and types.
 
-**Before creating**: confirm the parent location and title with the user. Creating a page in the wrong parent can clutter the workspace.
+Required field:
 
-After a successful create, echo: "Page '[title]' created under [parent name]. Here is the link: [url]."
+- `properties` — a Notion property-value object, e.g. `{ "Name": { "title": [{ "text": { "content": "..." } }] } }`. For a plain child page (`parent_page_id`), only a `title` property is valid. For a database row (`parent_database_id`), keys must match the target data source's schema.
+
+Optional: `icon_emoji` — a single emoji to use as the page icon.
+
+**Before creating**: confirm the parent location and title with the user. Creating a page in the wrong parent can clutter the workspace, and there is no way to move it afterward (see "What this connector can't do" below) — only to archive/delete and recreate it.
+
+After a successful create, echo: "Page '[title]' created under [parent name]."
 
 ## Structuring page content
 
-Notion blocks are the building blocks of page content. Common block types for documentation:
-
-| Block type | When to use |
-|------------|-------------|
-| `paragraph` | Body text |
-| `heading_1`, `heading_2`, `heading_3` | Section headings |
-| `bulleted_list_item` | Unordered lists |
-| `numbered_list_item` | Ordered steps or lists |
-| `to_do` | Checklists / tasks inline on a page |
-| `toggle` | Collapsible sections |
-| `code` | Code blocks with language syntax |
-| `quote` | Pull quotes or callout text |
-| `divider` | Section breaks |
-| `callout` | Highlighted notes or warnings |
-| `table` | Structured data inline |
-
-Rich text within blocks uses the `rich_text` array — each element is an object with a `type` of `text`, `mention`, or `equation`, plus optional `annotations` for bold, italic, code, strikethrough, underline, and colour.
+`create_page` does not take a `children` block for body content in this connector — it creates the page with its properties only. To add body content, call `get_page_content` to see the page's current blocks (useful for existing pages you're editing), and note the block types Notion supports: `paragraph`, `heading_1`/`heading_2`/`heading_3`, `bulleted_list_item`, `numbered_list_item`, `to_do`, `toggle`, `code`, `quote`, `divider`, `callout`, `table`. Rich text within blocks uses a `rich_text` array — each element has a `type` of `text`, `mention`, or `equation`, plus optional `annotations` (bold, italic, code, strikethrough, underline, color).
 
 ## Updating pages
 
-Call `notion-update-page` with the page ID and the fields to change:
+Call `update_page` with the page id and the fields to change:
 
-- `properties` — update any property (title, status, date, assignee, etc.).
-- `icon` — set an emoji or external URL icon.
-- `cover` — set a cover image URL.
-- To update body content (blocks), first fetch the page to understand its current structure, then update specific blocks or append new ones.
+- `properties` — update any property value (title, status, date, assignee, etc). Only the keys present are modified.
+- `archived` — `true` to archive (Notion's trash-equivalent parent state), `false` to restore.
 
-**Confirm before updating** if the change overwrites visible content — describe what will change and await affirmation.
+**Confirm before updating** if the change overwrites visible content or archives a page — describe what will change and await affirmation.
 
-## Duplicating pages
+## What this connector can't do
 
-Call `notion-duplicate-page` with the source page ID. The official MCP tool does not expose a destination parent parameter — the duplicate is created in the same parent location as the original. Duplication is asynchronous — notify the user that it may take a few seconds for the copy to appear.
-
-Duplication is useful for:
-- Applying a template page to a new project.
-- Cloning a recurring report structure.
-- Creating a draft copy of a published page before making changes.
+The previous Notion plugin (backed by Notion's own hosted MCP server) could duplicate a page. This connector's server has no duplicate tool — Notion's plain REST API doesn't expose one. To copy a page's content, `get_page_content` the source and `create_page` a new one with the same body reproduced manually, or tell the user to duplicate it from the Notion UI.
 
 ## Error handling
 
-- Verify the parent page/database ID before calling create. A missing or wrong ID causes a `400` error.
-- If the user provides a URL, extract the ID as the last hyphen-separated segment before any query string.
-- `403 Forbidden` — the integration lacks write access. Ask the user to share the parent with the integration and grant "Can edit" access.
+- Verify the parent page/database id before calling `create_page`. A missing or wrong id causes a `400`.
+- If the user provides a URL, extract the id as the last hyphen-stripped segment before any query string.
+- `403 Forbidden` — the integration lacks write access. Ask the user to share the parent with the integration and grant edit access.
