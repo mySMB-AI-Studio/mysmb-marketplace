@@ -19,14 +19,22 @@ function toItems(raw: unknown, key: string): AnyRecord[] {
   return [];
 }
 
-/** `dd-Mmm-yy`, e.g. `05-Aug-26` — matches the platform's default date format. */
-function formatDate(iso: unknown): string {
+/**
+ * `dd-Mmm-yy`, e.g. `05-Aug-26` — matches the platform's default date format.
+ *
+ * `timeZone` (an IANA name, e.g. "Australia/Perth") renders the event's own
+ * local date rather than the viewer's — important since the same row also
+ * shows the venue location, and Humanitix supplies `event.timezone` for
+ * exactly this. Omit it to fall back to the viewer's local timezone.
+ */
+function formatDate(iso: unknown, timeZone?: string): string {
   const ms = Date.parse(String(iso ?? ''));
   if (!Number.isFinite(ms)) return '—';
   const d = new Date(ms);
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = d.toLocaleString('en-US', { month: 'short' });
-  const year = String(d.getFullYear()).slice(-2);
+  const opts: Intl.DateTimeFormatOptions = timeZone ? { timeZone } : {};
+  const day = new Intl.DateTimeFormat('en-US', { ...opts, day: '2-digit' }).format(d);
+  const month = new Intl.DateTimeFormat('en-US', { ...opts, month: 'short' }).format(d);
+  const year = new Intl.DateTimeFormat('en-US', { ...opts, year: '2-digit' }).format(d);
   return `${day}-${month}-${year}`;
 }
 
@@ -60,21 +68,6 @@ function eventLocationLabel(event: AnyRecord): string {
   }
   if (typeof event.location === 'string' && event.location.trim()) return event.location.trim();
   return '—';
-}
-
-interface EventStatus { label: string; tone: string; }
-
-/**
- * Only genuinely exceptional states get a non-muted tone — most events are
- * simply "published and on sale", which is the platform's normal/no-news
- * state, not a "success". See TILE-DISPLAY-STANDARDS.md §7.
- */
-function eventStatus(event: AnyRecord): EventStatus {
-  if (event.isArchived) return { label: 'Archived', tone: 'muted' };
-  if (event.suspendSales) return { label: 'Sales Suspended', tone: 'destructive' };
-  if (event.markedAsSoldOut) return { label: 'Sold Out', tone: 'warning' };
-  if (!event.published) return { label: 'Draft', tone: 'muted' };
-  return { label: 'Published', tone: 'muted' };
 }
 
 interface TicketStatus { label: string; tone: string; }
@@ -118,31 +111,207 @@ function upcomingSorted(raw: AnyRecord[]): AnyRecord[] {
 }
 
 /**
- * Maps the `list_events` response into display rows for the Upcoming Events
- * tile. Filters out archived events, sorts soonest-first, and caps at 20 rows
- * (TILE-DISPLAY-STANDARDS.md §11).
+ * Single decorative tone for every row's date badge. Matches the tile's own
+ * header icon so the calendar-badge color reads as "this tile's color," not
+ * per-event category coding — deliberately one consistent color, per
+ * TILE-DISPLAY-STANDARDS.md §7's decorative (non-status) color guidance.
  *
- * Each row: id, name, start_date (ISO, pass through to the Table's own
- * dd_mmm_yy formatter), location, capacity, status_label, status_tone.
- *
- * Args: { value: raw list_events response }
+ * Uses `chart-1` rather than `accent`/`info`: this system's `TONE_TEXT` maps
+ * both `accent` and `info` to the plain foreground color for *text* (only
+ * their *background* tint is actually accent/info-colored), so a badge or
+ * label asking for blue-looking text has to reach for a tone whose text
+ * mapping is a real color — the `chart-N` set (or `brand`, if this tile ever
+ * declares its own `brandColor`) are the only ones that qualify.
  */
-const flatten_events: ComputedFunction = (args) => {
+const DATE_BADGE_TONE = 'chart-1';
+
+/** "23" — zero-padded day-of-month, in the event's own timezone. */
+function formatDayNumber(iso: unknown, timeZone?: string): string {
+  const ms = Date.parse(String(iso ?? ''));
+  if (!Number.isFinite(ms)) return '—';
+  const opts: Intl.DateTimeFormatOptions = timeZone ? { timeZone } : {};
+  return new Intl.DateTimeFormat('en-US', { ...opts, day: '2-digit' }).format(new Date(ms));
+}
+
+/** "SEP" — uppercase 3-letter month, matching the calendar-chip convention. */
+function formatMonthAbbrev(iso: unknown, timeZone?: string): string {
+  const ms = Date.parse(String(iso ?? ''));
+  if (!Number.isFinite(ms)) return '—';
+  const opts: Intl.DateTimeFormatOptions = timeZone ? { timeZone } : {};
+  return new Intl.DateTimeFormat('en-US', { ...opts, month: 'short' }).format(new Date(ms)).toUpperCase();
+}
+
+/** "9:00 AM" — no weekday, see `formatDate` re: the `timeZone` param. */
+function formatTimeOnly(iso: unknown, timeZone?: string): string {
+  const ms = Date.parse(String(iso ?? ''));
+  if (!Number.isFinite(ms)) return '—';
+  const opts: Intl.DateTimeFormatOptions = timeZone ? { timeZone } : {};
+  return new Intl.DateTimeFormat('en-US', { ...opts, hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(ms));
+}
+
+/**
+ * Humanitix's event object exposes `totalCapacity` but no direct
+ * "sold" count — per-type sold counts, if present at all, would live
+ * nested inside `ticketTypes`. Try the plausible field names defensively;
+ * when none are populated, degrade to showing capacity without a sold
+ * count rather than fabricating one.
+ */
+function ticketsSoldFromEvent(event: AnyRecord): number | null {
+  const types = Array.isArray(event.ticketTypes) ? (event.ticketTypes as AnyRecord[]) : [];
+  if (types.length === 0) return null;
+  let total = 0;
+  let anyKnown = false;
+  for (const t of types) {
+    const sold = t.sold ?? t.quantitySold ?? t.ticketsSold ?? t.numSold;
+    if (typeof sold === 'number' && Number.isFinite(sold)) {
+      total += sold;
+      anyKnown = true;
+    }
+  }
+  return anyKnown ? total : null;
+}
+
+interface CapacityMeta { label: string; tone: string; }
+
+/**
+ * "142/500" (always `warning`/amber — a ticket count worth noticing, not an
+ * escalating-severity status), "—/500" when capacity is known but the sold
+ * count isn't (`muted`, nothing to report), or "Free" (`success`/green) when
+ * Humanitix reports no capacity cap at all — matching the reference design's
+ * treatment of uncapped events as free/RSVP-style. Not a guarantee the event
+ * is actually $0 — Humanitix's event object doesn't expose pricing status
+ * directly — but the reference design's own repeated convention for this
+ * exact case.
+ */
+function capacityMeta(event: AnyRecord): CapacityMeta {
+  const total =
+    typeof event.totalCapacity === 'number' && event.totalCapacity > 0 ? event.totalCapacity : null;
+  if (total === null) return { label: 'Free', tone: 'success' };
+  const sold = ticketsSoldFromEvent(event);
+  if (sold === null) return { label: `—/${total}`, tone: 'muted' };
+  return { label: `${sold}/${total}`, tone: 'warning' };
+}
+
+/** True for a humanitix.com host, on a URL that already has an http(s) scheme. */
+function isHumanitixHost(u: URL): boolean {
+  return (u.protocol === 'http:' || u.protocol === 'https:') && /humanitix\.com$/i.test(u.hostname);
+}
+
+/**
+ * Resolves `raw` to an absolute humanitix.com URL, or '' if it can't be made
+ * into one safely.
+ *
+ * Handles three shapes:
+ *  - Already absolute + on a humanitix.com host → used as-is.
+ *  - Scheme-less but otherwise host-shaped (e.g. "events.humanitix.com/e/x",
+ *    a real thing some APIs return) → prefix "https://" and re-check. This
+ *    matters a lot here: passed to `window.open` as-is, a scheme-less string
+ *    isn't rejected by the browser — it's resolved as a RELATIVE PATH
+ *    against the CURRENT page's own origin (confirmed: `new URL('events.
+ *    humanitix.com/e/x', 'http://localhost:5173').href` →
+ *    "http://localhost:5173/events.humanitix.com/e/x"), silently landing back
+ *    on the harness/MyHub tab instead of erroring. That's the exact "redirected
+ *    to the Tile Harness page" bug this function exists to prevent.
+ *  - Absolute but on some other host, or unparseable → rejected outright;
+ *    never guess our way onto the wrong domain.
+ */
+function toAbsoluteHumanitixUrl(raw: string): string {
+  try {
+    const u = new URL(raw);
+    return isHumanitixHost(u) ? u.href : '';
+  } catch {
+    /* not absolute — try the scheme-less case below */
+  }
+  try {
+    const withScheme = new URL(`https://${raw}`);
+    return isHumanitixHost(withScheme) ? withScheme.href : '';
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * The event's own public Humanitix page — "open where it is located in
+ * Humanitix".
+ *
+ * Prefers `event.url` (see `toAbsoluteHumanitixUrl` for exactly what's
+ * accepted from it — absolute or scheme-less, but always on humanitix.com).
+ * Falls back to constructing a URL from `event.slug` on Humanitix's public
+ * ticketing domain when `url` isn't usable. Returns '' (row becomes
+ * non-clickable) if neither is available — never guesses a URL that might
+ * point at the wrong page.
+ */
+function eventPublicUrl(event: AnyRecord): string {
+  const rawUrl = typeof event.url === 'string' ? event.url.trim() : '';
+  if (rawUrl) {
+    const resolved = toAbsoluteHumanitixUrl(rawUrl);
+    if (resolved) return resolved;
+  }
+  const slug = typeof event.slug === 'string' ? event.slug.trim() : '';
+  if (slug) return `https://events.humanitix.com/${slug}`;
+  return '';
+}
+
+/**
+ * Maps the `list_events` response into compact, clickable display rows for
+ * the Upcoming Events tile — each row opens the event's own Humanitix page
+ * in a new tab via `open_url` (bound to `event_url` in the widget spec).
+ * Filters out archived and already-ended events, sorts soonest-first, and
+ * caps at `displayLimit` (default 5, matching the reference design;
+ * `dataProvider.params.pageSize` controls how many are actually fetched).
+ *
+ * Each row: id, name, event_url, category_tone, start_day_label,
+ * start_month_label, start_time_label, location_label, capacity_label,
+ * capacity_tone.
+ *
+ * Args: { value: raw list_events response, displayLimit?: number }
+ */
+const flatten_upcoming_events_compact: ComputedFunction = (args) => {
   const raw = toItems(args.value, 'events');
+  const limit = Number(args.displayLimit ?? 5);
   return upcomingSorted(raw)
-    .slice(0, 20)
-    .map((event) => {
-      const status = eventStatus(event);
+    .slice(0, limit)
+    .map((event, index) => {
+      const cap = capacityMeta(event);
+      const tz = typeof event.timezone === 'string' && event.timezone ? event.timezone : undefined;
+      const location = eventLocationLabel(event);
+      const url = eventPublicUrl(event);
+      // `_id` should always be present and unique, but a blank/duplicate id
+      // here would make React (and the `repeat` binding, which resolves
+      // `$item` by matching this key) silently collapse two different
+      // events onto one row — the exact "clicked X, went to Y" shape of bug.
+      // The index suffix makes that structurally impossible regardless.
+      const rawId = typeof event._id === 'string' ? event._id.trim() : '';
       return {
-        id: String(event._id ?? ''),
+        id: rawId ? `${rawId}-${index}` : `row-${index}`,
         name: String(event.name ?? 'Untitled event'),
-        start_date: event.startDate ?? null,
-        location: eventLocationLabel(event),
-        capacity: event.totalCapacity != null ? String(event.totalCapacity) : '—',
-        status_label: status.label,
-        status_tone: status.tone,
+        event_url: url,
+        has_url: url.length > 0,
+        category_tone: DATE_BADGE_TONE,
+        start_day_label: formatDayNumber(event.startDate, tz),
+        start_month_label: formatMonthAbbrev(event.startDate, tz),
+        start_time_label: formatTimeOnly(event.startDate, tz),
+        location_label: location === '—' ? 'Online' : location,
+        capacity_label: cap.label,
+        capacity_tone: cap.tone,
       };
     });
+};
+
+/**
+ * Companion to `flatten_upcoming_events_compact` — `shown` (rows actually
+ * displayed, for the header's "Next N" badge) and `total` (for the "View
+ * all N events" footer link). Both capped by however many upcoming events
+ * actually came back (itself capped by the dataProvider's own `pageSize`),
+ * not a live count of everything on Humanitix.
+ *
+ * Args: { value: raw list_events response, displayLimit?: number }
+ */
+const upcoming_events_counts: ComputedFunction = (args) => {
+  const raw = toItems(args.value, 'events');
+  const total = upcomingSorted(raw).length;
+  const shown = Math.min(Number(args.displayLimit ?? 5), total);
+  return { shown, total };
 };
 
 /**
@@ -170,7 +339,8 @@ const next_upcoming_event_label: ComputedFunction = (args) => {
   const next = upcomingSorted(raw)[0];
   if (!next) return '';
   const name = String(next.name ?? 'Untitled event');
-  return `${name} (${formatDate(next.startDate)})`;
+  const tz = typeof next.timezone === 'string' && next.timezone ? next.timezone : undefined;
+  return `${name} (${formatDate(next.startDate, tz)})`;
 };
 
 /**
@@ -204,7 +374,8 @@ const flatten_tickets: ComputedFunction = (args) => {
 const elements: PluginElementsModule = {
   slug: 'humanitix',
   functions: {
-    flatten_events,
+    flatten_upcoming_events_compact,
+    upcoming_events_counts,
     next_upcoming_event_id,
     next_upcoming_event_label,
     flatten_tickets,

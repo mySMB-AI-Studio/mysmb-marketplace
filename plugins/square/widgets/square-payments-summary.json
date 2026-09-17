@@ -14,8 +14,8 @@
   },
   "dataProvider": {
     "mcp": "square",
-    "tool": "make_api_request",
-    "params": { "service": "payments", "method": "list", "request": { "sort_order": "DESC" } }
+    "tool": "list_payments",
+    "params": { "sort_order": "DESC", "limit": 100 }
   },
   "spec": {
     "root": "card",
@@ -61,9 +61,9 @@
       "table": {
         "type": "Table",
         "props": {
-          "loading": { "$state": "/_loading/square.make_api_request" },
+          "loading": { "$state": "/_loading/square.list_payments" },
           "skeletonRows": 5,
-          "rows": { "$state": "/square/make_api_request/payments" },
+          "rows": { "$state": "/square/list_payments/payments" },
           "columns": [
             { "id": "id", "header": "Payment ID", "field": "id", "priority": 2 },
             { "id": "amount", "header": "Amount", "field": "amount_money.amount", "width": 140, "priority": 1, "format": "currency" },

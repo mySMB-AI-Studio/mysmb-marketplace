@@ -1,21 +1,21 @@
 {
   "id": "square-customers",
   "title": "Square — Customers",
-  "description": "List of Square customers — name, email, phone, and creation date. Use to explore your customer directory.",
+  "description": "Customer list enriched with order count, total spent, and last visit date — sorted by highest spender.",
   "category": "sales",
-  "tags": ["square", "customers", "crm", "directory"],
-  "keywords": ["customers", "clients", "square", "directory", "contacts"],
+  "tags": ["square", "customers", "crm", "orders", "spending"],
+  "keywords": ["customers", "clients", "square", "orders", "spending", "last visit", "top customers"],
   "connectorsUsed": ["square"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "preferred": { "colSpan": 6, "rowSpan": 5 },
     "min": { "colSpan": 4, "rowSpan": 4 },
-    "max": { "colSpan": 10, "rowSpan": 12 }
+    "max": { "colSpan": 12, "rowSpan": 10 }
   },
   "dataProvider": {
     "mcp": "square",
-    "tool": "make_api_request",
-    "params": { "service": "customers", "method": "list", "request": { "sort_field": "CREATED_AT", "sort_order": "DESC" } }
+    "tool": "get_customer_orders_summary",
+    "params": { "limit": 50 }
   },
   "spec": {
     "root": "card",
@@ -23,16 +23,16 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["titleRow", "divider", "tableBody"]
+        "children": ["header", "statsStrip", "body"]
       },
-      "titleRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
+
+      "header": {
+        "type": "Header",
         "children": ["titleGroup"]
       },
       "titleGroup": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
+        "props": { "gap": "sm", "align": "start" },
         "children": ["titleIcon", "titleStack"]
       },
       "titleIcon": {
@@ -52,8 +52,95 @@
         "type": "Eyebrow",
         "props": { "text": "Square" }
       },
-      "divider": { "type": "Divider", "props": {} },
-      "tableBody": {
+
+      "statsStrip": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["totalBox", "activeBox", "avgBox"]
+      },
+
+      "totalBox": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["totalLabelRow", "totalValue"]
+      },
+      "totalLabelRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["totalIcon", "totalLabel"]
+      },
+      "totalIcon": {
+        "type": "Icon",
+        "props": { "name": "Users", "tone": "accent", "size": "xs" }
+      },
+      "totalLabel": {
+        "type": "Eyebrow",
+        "props": { "text": "Total" }
+      },
+      "totalValue": {
+        "type": "Stat",
+        "props": {
+          "value": { "$state": "/square/get_customer_orders_summary/total_count" },
+          "size": "sm",
+          "tone": "accent"
+        }
+      },
+
+      "activeBox": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["activeLabelRow", "activeValue"]
+      },
+      "activeLabelRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["activeIcon", "activeLabel"]
+      },
+      "activeIcon": {
+        "type": "Icon",
+        "props": { "name": "UserCheck", "tone": "success", "size": "xs" }
+      },
+      "activeLabel": {
+        "type": "Eyebrow",
+        "props": { "text": "With Orders" }
+      },
+      "activeValue": {
+        "type": "Stat",
+        "props": {
+          "value": { "$state": "/square/get_customer_orders_summary/active_count" },
+          "size": "sm",
+          "tone": "success"
+        }
+      },
+
+      "avgBox": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["avgLabelRow", "avgValue"]
+      },
+      "avgLabelRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["avgIcon", "avgLabel"]
+      },
+      "avgIcon": {
+        "type": "Icon",
+        "props": { "name": "TrendingUp", "tone": "info", "size": "xs" }
+      },
+      "avgLabel": {
+        "type": "Eyebrow",
+        "props": { "text": "Avg Spend" }
+      },
+      "avgValue": {
+        "type": "Stat",
+        "props": {
+          "value": { "$state": "/square/get_customer_orders_summary/avg_spend_display" },
+          "size": "sm",
+          "tone": "info"
+        }
+      },
+
+      "body": {
         "type": "Body",
         "props": {},
         "children": ["table"]
@@ -61,16 +148,14 @@
       "table": {
         "type": "Table",
         "props": {
-          "loading": { "$state": "/_loading/square.make_api_request" },
+          "loading": { "$state": "/_loading/square.get_customer_orders_summary" },
           "skeletonRows": 5,
-          "rows": { "$state": "/square/make_api_request/customers" },
+          "rows": { "$state": "/square/get_customer_orders_summary/customers" },
           "columns": [
-            { "id": "name", "header": "First Name", "field": "given_name", "priority": 1 },
-            { "id": "surname", "header": "Last Name", "field": "family_name", "width": 140, "priority": 1 },
-            { "id": "company", "header": "Company", "field": "company_name", "width": 160, "priority": 2 },
-            { "id": "email", "header": "Email", "field": "email_address", "priority": 1 },
-            { "id": "phone", "header": "Phone", "field": "phone_number", "width": 140, "priority": 2 },
-            { "id": "created", "header": "Created", "field": "created_at", "width": 160, "priority": 3, "format": "datetime" }
+            { "id": "name",    "header": "Customer",    "field": "name",                "priority": 1 },
+            { "id": "orders",  "header": "Orders",      "field": "order_count",         "width": 90,  "priority": 1, "align": "right" },
+            { "id": "spent",   "header": "Total Spent", "field": "total_spent_display", "width": 150, "priority": 1, "align": "right" },
+            { "id": "visit",   "header": "Last Visit",  "field": "last_visit",          "width": 110, "priority": 2 }
           ]
         }
       }
