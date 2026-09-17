@@ -302,6 +302,96 @@ const flatten_attendees = (args) => {
         };
     });
 };
+/**
+ * Buckets a `list_attendees` response's `attendees` array into four
+ * status-filtered tabs for the Guest List tile: `all`, `checked_in`,
+ * `not_checked_in`, `cancelled` (this last one covers BOTH `cancelled` and
+ * `refunded` attendees — Eventbrite tracks them as two independent boolean
+ * fields, but neither reads as "an actual guest" to an organizer scanning
+ * the roster, so they share one tab rather than splitting into two mostly-
+ * empty ones).
+ *
+ * Per TILE-DISPLAY-STANDARDS.md §11, each tab's row array is capped at 20 —
+ * a `_total` sibling field (e.g. `checked_in_total`) carries the true,
+ * untruncated count for that bucket, both for the tab button's "(N)" label
+ * and for a "Showing 20 of N" note when a bucket is truncated.
+ *
+ * `name` prefers `profile.first_name` + `profile.last_name` over
+ * `profile.name` — live-verified 2026-09-16 against a real (test) attendee
+ * on a connected account: `profile.name` came back as a malformed Python
+ * byte-string repr (`"b'Neil' b'Simon'"`), while `first_name`/`last_name`
+ * were clean. This plugin's Check-In Progress tile (`flatten_attendees`
+ * above) still reads `profile.name` directly and was built before this was
+ * caught — NOT fixed here, since that's a different tile's file; flagged
+ * for a follow-up.
+ *
+ * Status tone/label priority (highest wins): `cancelled` or `refunded` ->
+ * "Cancelled"/destructive; else `checked_in` -> "Checked In"/success; else
+ * "Not Checked In"/muted — same checked-in/not-checked-in tone pairing as
+ * `checkin_summary` above, so the two tiles read consistently.
+ *
+ * Documented fields used: `id`, `profile.first_name`, `profile.last_name`,
+ * `profile.name` (fallback only), `profile.email`, `ticket_class_name`,
+ * `checked_in`, `cancelled`, `refunded` (all booleans) — every one of these
+ * is now live-confirmed (2026-09-16), unlike `flatten_attendees` above
+ * which shipped field-names-from-docs-only.
+ *
+ * Args: { value: array } — the response's `attendees` array (untruncated).
+ * Returns: { all, all_total, checked_in, checked_in_total,
+ *            not_checked_in, not_checked_in_total, cancelled, cancelled_total }
+ */
+const flatten_guest_list = (args) => {
+    const raw = Array.isArray(args.value) ? args.value : [];
+    const toRow = (attendee, i) => {
+        const profile = attendee.profile ?? {};
+        const firstName = String(profile.first_name ?? '').trim();
+        const lastName = String(profile.last_name ?? '').trim();
+        const fullName = `${firstName} ${lastName}`.trim();
+        const name = fullName || dash_if_empty({ value: profile.name ?? profile.email });
+        const cancelled = Boolean(attendee.cancelled);
+        const refunded = Boolean(attendee.refunded);
+        const checkedIn = Boolean(attendee.checked_in);
+        let statusLabel;
+        let statusTone;
+        if (cancelled || refunded) {
+            statusLabel = cancelled ? 'Cancelled' : 'Refunded';
+            statusTone = 'destructive';
+        }
+        else if (checkedIn) {
+            statusLabel = 'Checked In';
+            statusTone = 'success';
+        }
+        else {
+            statusLabel = 'Not Checked In';
+            statusTone = 'muted';
+        }
+        return {
+            id: String(attendee.id ?? i),
+            name,
+            email: dash_if_empty({ value: profile.email }),
+            ticket_label: dash_if_empty({ value: attendee.ticket_class_name }),
+            status_label: statusLabel,
+            status_tone: statusTone,
+            _cancelled: cancelled || refunded,
+            _checked_in: checkedIn,
+        };
+    };
+    const allRows = raw.map(toRow);
+    const checkedInRows = allRows.filter((r) => r._checked_in && !r._cancelled);
+    const notCheckedInRows = allRows.filter((r) => !r._checked_in && !r._cancelled);
+    const cancelledRows = allRows.filter((r) => r._cancelled);
+    const strip = (rows) => rows.slice(0, 20).map(({ _cancelled, _checked_in, ...rest }) => rest);
+    return {
+        all: strip(allRows),
+        all_total: allRows.length,
+        checked_in: strip(checkedInRows),
+        checked_in_total: checkedInRows.length,
+        not_checked_in: strip(notCheckedInRows),
+        not_checked_in_total: notCheckedInRows.length,
+        cancelled: strip(cancelledRows),
+        cancelled_total: cancelledRows.length,
+    };
+};
 const elements = {
     slug: 'eventbrite',
     functions: {
@@ -314,6 +404,7 @@ const elements = {
         flatten_ticket_classes,
         checkin_summary,
         flatten_attendees,
+        flatten_guest_list,
     },
 };
 export default elements;
