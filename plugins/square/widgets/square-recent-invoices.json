@@ -8,8 +8,8 @@
   "connectorsUsed": ["square"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 6, "rowSpan": 5 },
-    "min": { "colSpan": 5, "rowSpan": 4 },
+    "preferred": { "colSpan": 6, "rowSpan": 6 },
+    "min": { "colSpan": 5, "rowSpan": 5 },
     "max": { "colSpan": 12, "rowSpan": 10 }
   },
   "dataProvider": {
@@ -23,7 +23,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "body"]
+        "children": ["header", "statsStrip", "body"]
       },
 
       "header": {
@@ -56,6 +56,93 @@
       "eyebrow": {
         "type": "Eyebrow",
         "props": { "text": "Square", "tone": "info" }
+      },
+
+      "statsStrip": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["totalBox", "outstandingBox", "overdueBox"]
+      },
+
+      "totalBox": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["totalLabelRow", "totalValue"]
+      },
+      "totalLabelRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["totalIcon", "totalLabel"]
+      },
+      "totalIcon": {
+        "type": "Icon",
+        "props": { "name": "FileText", "tone": "info", "size": "xs" }
+      },
+      "totalLabel": {
+        "type": "Eyebrow",
+        "props": { "text": "Total" }
+      },
+      "totalValue": {
+        "type": "Stat",
+        "props": {
+          "value": { "$state": "/square/get_recent_invoices/total_count" },
+          "size": "sm",
+          "tone": "info"
+        }
+      },
+
+      "outstandingBox": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["outstandingLabelRow", "outstandingValue"]
+      },
+      "outstandingLabelRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["outstandingIcon", "outstandingLabel"]
+      },
+      "outstandingIcon": {
+        "type": "Icon",
+        "props": { "name": "Clock", "tone": "warning", "size": "xs" }
+      },
+      "outstandingLabel": {
+        "type": "Eyebrow",
+        "props": { "text": "Outstanding" }
+      },
+      "outstandingValue": {
+        "type": "Stat",
+        "props": {
+          "value": { "$state": "/square/get_recent_invoices/outstanding_display" },
+          "size": "sm",
+          "tone": "warning"
+        }
+      },
+
+      "overdueBox": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["overdueLabelRow", "overdueValue"]
+      },
+      "overdueLabelRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["overdueIcon", "overdueLabel"]
+      },
+      "overdueIcon": {
+        "type": "Icon",
+        "props": { "name": "AlertCircle", "tone": "destructive", "size": "xs" }
+      },
+      "overdueLabel": {
+        "type": "Eyebrow",
+        "props": { "text": "Overdue" }
+      },
+      "overdueValue": {
+        "type": "Stat",
+        "props": {
+          "value": { "$state": "/square/get_recent_invoices/overdue_count" },
+          "size": "sm",
+          "tone": "destructive"
+        }
       },
 
       "body": {
