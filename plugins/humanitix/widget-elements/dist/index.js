@@ -110,21 +110,19 @@ function upcomingSorted(raw) {
     });
 }
 /**
- * `chart-1`..`chart-5` — the platform's categorical (non-status) tone set
- * (TILE-DISPLAY-STANDARDS.md §7 "Categorical breakdowns"). Used here to give
- * each distinct event category a stable, deterministic color — never a
- * status tone, since "what kind of event is this" isn't a state that
- * changes based on live data.
+ * Single decorative tone for every row's date badge. Matches the tile's own
+ * header icon so the calendar-badge color reads as "this tile's color," not
+ * per-event category coding — deliberately one consistent color, per
+ * TILE-DISPLAY-STANDARDS.md §7's decorative (non-status) color guidance.
+ *
+ * Uses `chart-1` rather than `accent`/`info`: this system's `TONE_TEXT` maps
+ * both `accent` and `info` to the plain foreground color for *text* (only
+ * their *background* tint is actually accent/info-colored), so a badge or
+ * label asking for blue-looking text has to reach for a tone whose text
+ * mapping is a real color — the `chart-N` set (or `brand`, if this tile ever
+ * declares its own `brandColor`) are the only ones that qualify.
  */
-const CHART_TONES = ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5'];
-/** Same category always maps to the same tone, regardless of what else is in the list. */
-function stableCategoryTone(category) {
-    const key = (category || 'uncategorised').toLowerCase();
-    let hash = 0;
-    for (let i = 0; i < key.length; i++)
-        hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
-    return CHART_TONES[hash % CHART_TONES.length];
-}
+const DATE_BADGE_TONE = 'chart-1';
 /** "23" — zero-padded day-of-month, in the event's own timezone. */
 function formatDayNumber(iso, timeZone) {
     const ms = Date.parse(String(iso ?? ''));
@@ -172,24 +170,23 @@ function ticketsSoldFromEvent(event) {
     return anyKnown ? total : null;
 }
 /**
- * "142/500" (tone escalates to `warning` past 90% sold), "— /500" when
- * capacity is known but the sold count isn't, or "Free" when Humanitix
- * reports no capacity cap at all — matching the reference design's
- * treatment of uncapped events as free/RSVP-style. Not a guarantee the
- * event is actually $0 — Humanitix's event object doesn't expose pricing
- * status directly — but the reference design's own repeated convention
- * for this exact case.
+ * "142/500" (always `warning`/amber — a ticket count worth noticing, not an
+ * escalating-severity status), "—/500" when capacity is known but the sold
+ * count isn't (`muted`, nothing to report), or "Free" (`success`/green) when
+ * Humanitix reports no capacity cap at all — matching the reference design's
+ * treatment of uncapped events as free/RSVP-style. Not a guarantee the event
+ * is actually $0 — Humanitix's event object doesn't expose pricing status
+ * directly — but the reference design's own repeated convention for this
+ * exact case.
  */
-function capacityMeta(event, categoryTone) {
+function capacityMeta(event) {
     const total = typeof event.totalCapacity === 'number' && event.totalCapacity > 0 ? event.totalCapacity : null;
     if (total === null)
-        return { label: 'Free', tone: 'muted' };
+        return { label: 'Free', tone: 'success' };
     const sold = ticketsSoldFromEvent(event);
     if (sold === null)
         return { label: `—/${total}`, tone: 'muted' };
-    const pct = total > 0 ? sold / total : 0;
-    const nearlyFull = pct >= 0.9;
-    return { label: `${sold}/${total}`, tone: nearlyFull ? 'warning' : categoryTone };
+    return { label: `${sold}/${total}`, tone: 'warning' };
 }
 /** True for a humanitix.com host, on a URL that already has an http(s) scheme. */
 function isHumanitixHost(u) {
@@ -272,9 +269,7 @@ const flatten_upcoming_events_compact = (args) => {
     return upcomingSorted(raw)
         .slice(0, limit)
         .map((event, index) => {
-        const category = typeof event.category === 'string' ? event.category : '';
-        const tone = stableCategoryTone(category);
-        const cap = capacityMeta(event, tone);
+        const cap = capacityMeta(event);
         const tz = typeof event.timezone === 'string' && event.timezone ? event.timezone : undefined;
         const location = eventLocationLabel(event);
         const url = eventPublicUrl(event);
@@ -289,7 +284,7 @@ const flatten_upcoming_events_compact = (args) => {
             name: String(event.name ?? 'Untitled event'),
             event_url: url,
             has_url: url.length > 0,
-            category_tone: tone,
+            category_tone: DATE_BADGE_TONE,
             start_day_label: formatDayNumber(event.startDate, tz),
             start_month_label: formatMonthAbbrev(event.startDate, tz),
             start_time_label: formatTimeOnly(event.startDate, tz),
