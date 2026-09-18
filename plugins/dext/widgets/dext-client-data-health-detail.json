@@ -164,29 +164,50 @@
       "scoreRow": {
         "type": "Row",
         "props": { "gap": "md", "align": "center" },
-        "children": ["scoreBlock", "clientInfo"]
+        "children": ["donutSuccess", "donutWarning", "donutDestructive", "clientInfo"]
       },
-      "scoreBlock": {
-        "type": "Section",
-        "props": { "variant": "muted" },
-        "children": ["scoreStack"]
-      },
-      "scoreStack": {
-        "type": "Stack",
-        "props": { "gap": "none", "align": "center" },
-        "children": ["scoreNumber", "scoreCaption"]
-      },
-      "scoreNumber": {
-        "type": "Stat",
+
+      "donutSuccess": {
+        "type": "Donut",
         "props": {
-          "value": { "$state": "/dext/get_client/healthScore" },
-          "tone":  { "$state": "/ui/healthTone" },
-          "size":  "sm"
-        }
+          "data": { "$computed": "dext_score_to_donut_data", "args": { "score": { "$state": "/dext/get_client/healthScore" } } },
+          "groupField": "s",
+          "legend": {
+            "score": { "label": "", "tone": "success" },
+            "rest":  { "label": "", "tone": "muted" }
+          },
+          "centerLabel": { "$state": "/dext/get_client/healthScore" },
+          "size": 110
+        },
+        "visible": { "$state": "/ui/healthTone", "eq": "success" }
       },
-      "scoreCaption": {
-        "type": "Caption",
-        "props": { "text": "SCORE", "tone": "muted" }
+      "donutWarning": {
+        "type": "Donut",
+        "props": {
+          "data": { "$computed": "dext_score_to_donut_data", "args": { "score": { "$state": "/dext/get_client/healthScore" } } },
+          "groupField": "s",
+          "legend": {
+            "score": { "label": "", "tone": "warning" },
+            "rest":  { "label": "", "tone": "muted" }
+          },
+          "centerLabel": { "$state": "/dext/get_client/healthScore" },
+          "size": 110
+        },
+        "visible": { "$state": "/ui/healthTone", "eq": "warning" }
+      },
+      "donutDestructive": {
+        "type": "Donut",
+        "props": {
+          "data": { "$computed": "dext_score_to_donut_data", "args": { "score": { "$state": "/dext/get_client/healthScore" } } },
+          "groupField": "s",
+          "legend": {
+            "score": { "label": "", "tone": "destructive" },
+            "rest":  { "label": "", "tone": "muted" }
+          },
+          "centerLabel": { "$state": "/dext/get_client/healthScore" },
+          "size": 110
+        },
+        "visible": { "$state": "/ui/healthTone", "eq": "destructive" }
       },
 
       "clientInfo": {

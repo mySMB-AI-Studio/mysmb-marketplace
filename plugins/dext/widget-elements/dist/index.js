@@ -351,6 +351,24 @@ const compute_health_tone = (args) => {
         return 'warning';
     return 'destructive';
 };
+/**
+ * Converts a 0–100 health score into a 100-item synthetic array for the Donut
+ * component. `score` items fill the arc; `rest` items form the empty background.
+ *
+ * Args: { score: number }
+ *
+ * Spec example:
+ *   { "$computed": "dext_score_to_donut_data", "args": { "score": { "$state": "/dext/get_client/healthScore" } } }
+ */
+const score_to_donut_data = (args) => {
+    const score = Math.max(0, Math.min(100, Math.round(Number(args.score ?? 0))));
+    const result = [];
+    for (let i = 0; i < score; i++)
+        result.push({ s: 'score' });
+    for (let i = score; i < 100; i++)
+        result.push({ s: 'rest' });
+    return result;
+};
 const elements = {
     slug: 'dext',
     functions: {
@@ -360,6 +378,7 @@ const elements = {
         flatten_client_detail_rows,
         flatten_activity_stats_rows,
         compute_health_tone,
+        score_to_donut_data,
     },
 };
 export default elements;
