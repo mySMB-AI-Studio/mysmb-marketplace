@@ -154,22 +154,19 @@ const flatten_portfolio_health: ComputedFunction = (args) => {
     const alertLevel    = String(client.alertLevel    ?? '').toLowerCase();
     const scoreLabel    = String(healthScore);
 
-    let circleTone = 'success';
-    if (alertLevel === 'error' || alertLevel === 'high') circleTone = 'destructive';
-    else if (alertLevel === 'medium') circleTone = 'warning';
+    // Bucket and colour by healthScore — alertLevel values from list_clients
+    // are inconsistent across accounts, so score is the reliable signal.
+    const isHealthy  = healthScore >= 70;
+    const circleTone = healthScore < 40 ? 'destructive' : healthScore < 70 ? 'warning' : 'success';
 
-    let scoreTone = 'success';
-    if (healthScore < 40) scoreTone = 'destructive';
-    else if (healthScore < 70) scoreTone = 'warning';
-
-    const row: Record<string, unknown> = { id, name, provider_label: providerLabel, score_label: scoreLabel, circle_tone: circleTone, score_tone: scoreTone };
+    const row: Record<string, unknown> = { id, name, provider_label: providerLabel, score_label: scoreLabel, circle_tone: circleTone };
 
     all.push(row);
-    if (alertLevel === 'low') healthy.push(row);
+    if (isHealthy) healthy.push(row);
     else needs_review.push(row);
   }
 
-  return { all, needs_review, healthy };
+  return { all, needs_review, healthy, total_count: all.length, review_count: needs_review.length };
 };
 
 /**
@@ -185,6 +182,31 @@ const flatten_portfolio_health: ComputedFunction = (args) => {
  *
  * Args: { client: object }
  */
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function fmtMonth(dateStr: string): string {
+  const parts = dateStr.split('-');
+  const idx = parts.length >= 2 ? parseInt(parts[1], 10) - 1 : -1;
+  return (idx >= 0 && idx <= 11) ? MONTHS[idx] : dateStr;
+}
+
+function fmtYearEnd(dateStr: string): string {
+  const parts = dateStr.split('-');
+  if (parts.length < 3) return dateStr;
+  const day  = parseInt(parts[2], 10);
+  const mIdx = parseInt(parts[1], 10) - 1;
+  return `${day} ${MONTHS[mIdx] ?? ''}`;
+}
+
+const GST_CYCLE_LABELS: Record<string, string> = {
+  QUARTERLY1: 'Quarterly', QUARTERLY2: 'Quarterly', QUARTERLY3: 'Quarterly',
+  QUARTERLY: 'Quarterly', MONTHLY: 'Monthly', ANNUAL: 'Annual', ANNUALLY: 'Annual',
+};
+const GST_SCHEME_LABELS: Record<string, string> = {
+  ACCRUALS: 'Accruals basis', ACCRUAL: 'Accruals basis',
+  CASH: 'Cash basis', CASH_ACCOUNTING: 'Cash basis',
+};
+
 const flatten_client_detail_rows: ComputedFunction = (args) => {
   const client = args.client as Record<string, unknown>;
   if (!client || typeof client !== 'object' || Array.isArray(client)) return [];
@@ -195,36 +217,59 @@ const flatten_client_detail_rows: ComputedFunction = (args) => {
 
   const rows: Record<string, unknown>[] = [];
 
-  // GST method
-  const vatScheme = String(vatDetails.scheme          ?? '').trim();
-  const vatCycle  = String(vatDetails.reportingCycle  ?? '').trim();
+  // GST method — humanize raw API values
+  const vatSchemeRaw = String(vatDetails.scheme         ?? '').trim();
+  const vatCycleRaw  = String(vatDetails.reportingCycle ?? '').trim();
+  const vatCycleLabel  = (GST_CYCLE_LABELS[vatCycleRaw.toUpperCase()]  ?? vatCycleRaw)  || '—';
+  const vatSchemeLabel = (GST_SCHEME_LABELS[vatSchemeRaw.toUpperCase()] ?? vatSchemeRaw) || '—';
   rows.push({
     id: 'gst_method',
     label: 'GST method',
-    sub_label: vatScheme || '—',
-    badge_label: vatCycle || '—',
+    sub_label: vatSchemeLabel,
+    badge_label: vatCycleLabel,
     badge_tone: 'default',
     dot_tone: 'muted',
   });
 
-  // Current BAS period
+  // Current BAS period — "Jul–Sep" range + "Q2 FY27 · year end 30 Jun" sub-label
   const periodStart = String(vatDetails.periodStart ?? '').trim();
   const periodEnd   = String(vatDetails.periodEnd   ?? '').trim();
-  const periodLabel = periodStart && periodEnd ? `${periodStart}–${periodEnd}` : (periodStart || periodEnd || '—');
-  const yearEnd     = String(client.yearEnd ?? '').trim();
+  const periodLabel = periodStart && periodEnd
+    ? `${fmtMonth(periodStart)}–${fmtMonth(periodEnd)}`
+    : (periodStart ? fmtMonth(periodStart) : (periodEnd ? fmtMonth(periodEnd) : '—'));
+  const yearEnd = String(client.yearEnd ?? '').trim();
+
+  let basSub = yearEnd ? `Year end ${fmtYearEnd(yearEnd)}` : '—';
+  if (periodStart && yearEnd) {
+    const pParts  = periodStart.split('-');
+    const yParts  = yearEnd.split('-');
+    const pMonth  = parseInt(pParts[1]  ?? '0', 10);
+    const pYear   = parseInt(pParts[0]  ?? '0', 10);
+    const yeMonth = parseInt(yParts[1]  ?? '0', 10);
+    if (pMonth && yeMonth) {
+      const rel     = ((pMonth - yeMonth - 1 + 12) % 12);
+      const quarter = Math.floor(rel / 3) + 1;
+      const fyYear  = pMonth > yeMonth ? pYear + 1 : pYear;
+      const fyLabel = `FY${String(fyYear).slice(-2)}`;
+      basSub = yearEnd
+        ? `Q${quarter} ${fyLabel} · year end ${fmtYearEnd(yearEnd)}`
+        : `Q${quarter} ${fyLabel}`;
+    }
+  }
+
   rows.push({
     id: 'bas_period',
     label: 'Current BAS period',
-    sub_label: yearEnd ? `Year end ${yearEnd}` : '—',
+    sub_label: basSub,
     badge_label: periodLabel,
     badge_tone: 'default',
     dot_tone: 'muted',
   });
 
   // Debtor balance
-  const debtorBalance  = Number(metrics.debtorBalance ?? 0);
-  const avgDebtorDays  = Number(metrics.avgDebtorDays ?? 0);
-  const balanceLabel   = debtorBalance
+  const debtorBalance = Number(metrics.debtorBalance ?? 0);
+  const avgDebtorDays = Number(metrics.avgDebtorDays ?? 0);
+  const balanceLabel  = debtorBalance
     ? `A$${debtorBalance.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     : '—';
   rows.push({
@@ -237,41 +282,37 @@ const flatten_client_detail_rows: ComputedFunction = (args) => {
   });
 
   // Bank reconciliation
-  const bankAccounts  = bankRec.bankAccounts;
-  const manualFeeds   = bankRec.manualFeeds;
-  const accountCount  = Array.isArray(bankAccounts) ? bankAccounts.length : (typeof bankAccounts === 'number' ? bankAccounts : 0);
-  const feedCount     = Array.isArray(manualFeeds)  ? manualFeeds.length  : (typeof manualFeeds  === 'number' ? manualFeeds  : 0);
+  const bankAccounts = bankRec.bankAccounts;
+  const manualFeeds  = bankRec.manualFeeds;
+  const accountCount = Array.isArray(bankAccounts) ? bankAccounts.length : (typeof bankAccounts === 'number' ? bankAccounts : 0);
+  const feedCount    = Array.isArray(manualFeeds)  ? manualFeeds.length  : (typeof manualFeeds  === 'number' ? manualFeeds  : 0);
   rows.push({
     id: 'bank_rec',
     label: 'Bank reconciliation',
-    sub_label: feedCount     ? `${feedCount} manual feed${feedCount !== 1 ? 's' : ''}`         : '—',
+    sub_label: feedCount    ? `${feedCount} manual feed${feedCount !== 1 ? 's' : ''}`        : '—',
     badge_label: accountCount ? `${accountCount} account${accountCount !== 1 ? 's' : ''}` : '—',
     badge_tone: 'default',
     dot_tone: 'muted',
   });
 
-  // ATO status (mapped from hmrcStatus)
+  // ATO status — normalize underscored API values (e.g. NOT_CONNECTED → not connected)
   const hmrcStatus   = String(client.hmrcStatus ?? '').trim();
   const oneDayImpact = Number(metrics.oneDayImpact ?? 0);
-  const normalized   = hmrcStatus.toLowerCase();
-  let badgeTone = 'default';
-  let dotTone   = 'muted';
+  const normalized   = hmrcStatus.toLowerCase().replace(/_/g, ' ');
+  let dotTone = 'muted';
   if (normalized === 'not connected' || normalized === 'disconnected') {
-    badgeTone = 'warning';
-    dotTone   = 'warning';
+    dotTone = 'warning';
   } else if (normalized === 'connected') {
-    badgeTone = 'success';
-    dotTone   = 'success';
+    dotTone = 'success';
   } else if (normalized === 'error' || normalized === 'failed') {
-    badgeTone = 'destructive';
-    dotTone   = 'destructive';
+    dotTone = 'destructive';
   }
   rows.push({
     id: 'ato_status',
     label: 'ATO status',
     sub_label: oneDayImpact ? `One-day impact A$${oneDayImpact.toFixed(2)}` : '—',
-    badge_label: hmrcStatus || '—',
-    badge_tone: badgeTone,
+    badge_label: normalized || '—',
+    badge_tone: dotTone,
     dot_tone: dotTone,
   });
 
@@ -374,6 +415,23 @@ const compute_health_tone: ComputedFunction = (args) => {
   return 'destructive';
 };
 
+/**
+ * Converts a 0–100 health score into a 100-item synthetic array for the Donut
+ * component. `score` items fill the arc; `rest` items form the empty background.
+ *
+ * Args: { score: number }
+ *
+ * Spec example:
+ *   { "$computed": "dext_score_to_donut_data", "args": { "score": { "$state": "/dext/get_client/healthScore" } } }
+ */
+const score_to_donut_data: ComputedFunction = (args) => {
+  const score = Math.max(0, Math.min(100, Math.round(Number(args.score ?? 0))));
+  const result: { s: string }[] = [];
+  for (let i = 0; i < score; i++) result.push({ s: 'score' });
+  for (let i = score; i < 100; i++) result.push({ s: 'rest' });
+  return result;
+};
+
 const elements: PluginElementsModule = {
   slug: 'dext',
   functions: {
@@ -383,6 +441,7 @@ const elements: PluginElementsModule = {
     flatten_client_detail_rows,
     flatten_activity_stats_rows,
     compute_health_tone,
+    score_to_donut_data,
   },
 };
 
