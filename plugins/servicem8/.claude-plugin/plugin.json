@@ -1,7 +1,7 @@
 {
   "name": "servicem8",
-  "version": "0.2.0",
-  "description": "ServiceM8 field-service management via myHub's self-hosted ServiceM8 MCP gateway, talking directly to ServiceM8's REST API. Manage jobs, clients, staff, and job templates — search and list jobs/clients, create jobs from templates, add job notes, and list staff members. Browser OAuth, no API keys.",
+  "version": "0.2.1",
+  "description": "ServiceM8 field-service management via myHub's self-hosted ServiceM8 MCP gateway, talking directly to ServiceM8's REST API. Manage jobs, clients, staff, and job templates — search and list jobs/clients, create jobs from templates, add job notes, and list staff members. Single account-level API key, configured server-side — no per-user sign-in.",
   "author": {
     "name": "mySMB AI Studio"
   },
@@ -17,11 +17,11 @@
     "invoices",
     "trades",
     "smb",
-    "oauth"
+    "api-key"
   ],
   "connection": {
-    "authType": "oauth",
-    "instructions": "Click Connect and sign in to your ServiceM8 account. myHub handles the OAuth handshake and token refresh automatically — no API keys or manual token copying needed. Grant the requested permissions and you're returned to myHub.",
+    "authType": "token",
+    "instructions": "Generate an API key in ServiceM8: Settings → API Keys (requires account-owner access). This is a single account-level key shared across the whole organisation, not a per-user credential — provide it to mySMB ops to register as the server-side secret on myhub-mcp-servers. End users of this plugin don't authenticate individually.",
     "docUrl": "https://developer.servicem8.com/docs/authentication"
   },
   "widgets": "widgets",

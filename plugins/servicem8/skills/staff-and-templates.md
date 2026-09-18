@@ -31,7 +31,7 @@ Present templates as a list with template name and any description available. As
 ## Error handling
 
 If `list_staff_members` or `list_job_templates` returns an error or an empty result:
-- Inform the user that the call failed and suggest they check their ServiceM8 connection (Settings → Connections → ServiceM8).
+- Inform the user that the call failed. This connector uses a single shared, account-level API key configured by mySMB ops — there is no per-user connection to check or reconnect. If the error looks auth-related (401/403), say the ServiceM8 connection appears to be misconfigured and suggest contacting a workspace admin or mySMB support.
 - Do not proceed to job creation if `list_job_templates` fails — a valid template name is required.
 
 ## Combining with job creation
