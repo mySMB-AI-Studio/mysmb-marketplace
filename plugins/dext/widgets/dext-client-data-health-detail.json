@@ -24,7 +24,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "div0", "loading", "clientSection"],
+        "children": ["header", "clientPicker", "loading", "emptyState", "clientSection"],
         "watch": {
           "/dext/list_clients/data": [
             {
@@ -33,12 +33,10 @@
                 "statePath": "/ui/clientId",
                 "value": { "$computed": "identity", "args": { "value": { "$state": "/dext/list_clients/data/0/id" } } }
               }
-            }
-          ],
-          "/ui/clientId": [
+            },
             {
               "action": "dext.get_client",
-              "params": { "clientId": { "$state": "/ui/clientId" } }
+              "params": { "clientId": { "$state": "/dext/list_clients/data/0/id" } }
             }
           ],
           "/dext/get_client": [
@@ -66,28 +64,73 @@
         }
       },
 
-      "headerRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
+      "header": {
+        "type": "Header",
         "children": ["titleGroup"]
       },
       "titleGroup": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
+        "children": ["titleIconBox", "titleStack"]
       },
-      "titleIcon": { "type": "Icon", "props": { "name": "ClipboardList", "tone": "warning", "size": "sm" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "titleIconBox": {
+        "type": "Section",
+        "props": { "tone": "destructive" },
+        "children": ["titleIcon"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "FileText", "tone": "destructive", "size": "md" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
       "title":   { "type": "Heading", "props": { "text": "Client Data Health Detail", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow",  "props": { "text": "Dext" } },
+      "eyebrow": { "type": "Eyebrow",  "props": { "text": "DEXT", "tone": "destructive" } },
 
-      "div0": { "type": "Divider", "props": {} },
+      "clientPicker": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/clientId" },
+          "options": {
+            "$computed": "to_options",
+            "args": {
+              "value": { "$state": "/dext/list_clients/data" },
+              "valueField": "id",
+              "labelField": "name"
+            }
+          },
+          "placeholder": "Select a client…",
+          "ariaLabel": "Client",
+          "size": "sm"
+        },
+        "visible": { "$state": "/dext/list_clients/data/0" },
+        "on": {
+          "change": [
+            {
+              "action": "bust_tool_cache",
+              "params": { "mcp": "dext", "tool": "get_client" }
+            },
+            {
+              "action": "dext.get_client",
+              "params": { "clientId": { "$state": "/ui/clientId" } }
+            }
+          ]
+        }
+      },
 
       "loading": {
         "type": "Stack",
         "props": { "gap": "sm" },
         "children": ["sk0", "sk1", "sk2", "sk3", "sk4"],
-        "visible": { "$state": "/ui/rows", "not": true }
+        "visible": {
+          "$or": [
+            { "$state": "/_loading/dext.list_clients" },
+            { "$state": "/_loading/dext.get_client" }
+          ]
+        }
       },
       "sk0": { "type": "Skeleton", "props": { "height": "3rem",   "rounded": "md" } },
       "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
@@ -95,18 +138,57 @@
       "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
       "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
 
+      "emptyState": {
+        "type": "Empty",
+        "props": { "message": "No client data available." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dext.list_clients", "not": true },
+            { "$state": "/ui/clientId", "not": true }
+          ]
+        }
+      },
+
       "clientSection": {
         "type": "Stack",
         "props": { "gap": "md" },
-        "children": ["clientHeader", "div1", "rowList"],
-        "visible": { "$state": "/ui/rows" }
+        "children": ["scoreRow", "statsGrid", "atoStatus"],
+        "visible": {
+          "$and": [
+            { "$state": "/ui/rows" },
+            { "$state": "/_loading/dext.get_client", "not": true }
+          ]
+        }
       },
 
-      "clientHeader": {
+      "scoreRow": {
         "type": "Row",
-        "props": { "align": "center", "gap": "sm" },
-        "children": ["clientInfo", "scoreBadge"]
+        "props": { "gap": "md", "align": "center" },
+        "children": ["scoreBlock", "clientInfo"]
       },
+      "scoreBlock": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["scoreStack"]
+      },
+      "scoreStack": {
+        "type": "Stack",
+        "props": { "gap": "none", "align": "center" },
+        "children": ["scoreNumber", "scoreCaption"]
+      },
+      "scoreNumber": {
+        "type": "Stat",
+        "props": {
+          "value": { "$state": "/dext/get_client/healthScore" },
+          "tone":  { "$state": "/ui/healthTone" },
+          "size":  "sm"
+        }
+      },
+      "scoreCaption": {
+        "type": "Caption",
+        "props": { "text": "SCORE", "tone": "muted" }
+      },
+
       "clientInfo": {
         "type": "Stack",
         "props": { "gap": "none", "grow": true },
@@ -114,7 +196,7 @@
       },
       "clientName": {
         "type": "Text",
-        "props": { "text": { "$state": "/dext/get_client/name" }, "size": "sm", "weight": "semibold", "truncate": true }
+        "props": { "text": { "$state": "/dext/get_client/name" }, "weight": "semibold" }
       },
       "clientAbn": {
         "type": "Caption",
@@ -124,54 +206,121 @@
         },
         "visible": { "$state": "/dext/get_client/companyNumber" }
       },
-      "scoreBadge": {
-        "type": "Badge",
-        "props": {
-          "label":   { "$template": "${/dext/get_client/healthScore}" },
-          "variant": "solid",
-          "tone":    { "$state": "/ui/healthTone" }
-        }
+
+      "statsGrid": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["gstCell", "basCell", "debtorCell", "bankRecCell"]
       },
 
-      "div1": { "type": "Divider", "props": {} },
-
-      "rowList": {
+      "gstCell": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["gstStack"]
+      },
+      "gstStack": {
         "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["detailRow"],
-        "repeat": { "statePath": "/ui/rows", "key": "id" }
+        "props": { "gap": "none" },
+        "children": ["gstLabel", "gstValue", "gstSub"]
+      },
+      "gstLabel": { "type": "Eyebrow", "props": { "text": "GST METHOD" } },
+      "gstValue": { "type": "Text", "props": { "text": { "$state": "/ui/rows/0/badge_label" }, "weight": "semibold" } },
+      "gstSub":   {
+        "type": "Caption",
+        "props": { "text": { "$state": "/ui/rows/0/sub_label" }, "tone": "muted" },
+        "visible": { "$state": "/ui/rows/0/sub_label" }
       },
 
-      "detailRow": {
+      "basCell": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["basStack"]
+      },
+      "basStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["basLabel", "basValue", "basSub"]
+      },
+      "basLabel": { "type": "Eyebrow", "props": { "text": "CURRENT BAS PERIOD" } },
+      "basValue": { "type": "Text", "props": { "text": { "$state": "/ui/rows/1/badge_label" }, "weight": "semibold" } },
+      "basSub":   {
+        "type": "Caption",
+        "props": { "text": { "$state": "/ui/rows/1/sub_label" }, "tone": "muted" },
+        "visible": { "$state": "/ui/rows/1/sub_label" }
+      },
+
+      "debtorCell": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["debtorStack"]
+      },
+      "debtorStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["debtorLabel", "debtorValue", "debtorSub"]
+      },
+      "debtorLabel": { "type": "Eyebrow", "props": { "text": "DEBTOR BALANCE" } },
+      "debtorValue": { "type": "Text", "props": { "text": { "$state": "/ui/rows/2/badge_label" }, "weight": "semibold" } },
+      "debtorSub":   {
+        "type": "Caption",
+        "props": { "text": { "$state": "/ui/rows/2/sub_label" }, "tone": "muted" },
+        "visible": { "$state": "/ui/rows/2/sub_label" }
+      },
+
+      "bankRecCell": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["bankRecStack"]
+      },
+      "bankRecStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["bankRecLabel", "bankRecValue", "bankRecSub"]
+      },
+      "bankRecLabel": { "type": "Eyebrow", "props": { "text": "BANK RECONCILIATION" } },
+      "bankRecValue": { "type": "Text", "props": { "text": { "$state": "/ui/rows/3/badge_label" }, "weight": "semibold" } },
+      "bankRecSub":   {
+        "type": "Caption",
+        "props": { "text": { "$state": "/ui/rows/3/sub_label" }, "tone": "muted" },
+        "visible": { "$state": "/ui/rows/3/sub_label" }
+      },
+
+      "atoStatus": {
+        "type": "Section",
+        "props": { "tone": { "$state": "/ui/rows/4/dot_tone" } },
+        "children": ["atoRow"],
+        "visible": { "$state": "/ui/rows/4" }
+      },
+      "atoRow": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center" },
-        "children": ["rowCircle", "rowInfo", "rowBadge"]
+        "children": ["atoIcon", "atoInfo"]
       },
-      "rowCircle": {
+      "atoIcon": {
         "type": "Icon",
-        "props": { "name": "Circle", "tone": { "$item": "dot_tone" }, "size": "sm" }
-      },
-      "rowInfo": {
-        "type": "Stack",
-        "props": { "gap": "none", "grow": true },
-        "children": ["rowLabel", "rowSubLabel"]
-      },
-      "rowLabel": {
-        "type": "Text",
-        "props": { "text": { "$item": "label" }, "size": "sm", "weight": "semibold" }
-      },
-      "rowSubLabel": {
-        "type": "Caption",
-        "props": { "text": { "$item": "sub_label" }, "tone": "muted" },
-        "visible": { "$item": "sub_label" }
-      },
-      "rowBadge": {
-        "type": "Badge",
         "props": {
-          "label":   { "$item": "badge_label" },
-          "tone":    { "$item": "badge_tone" },
-          "variant": "soft"
+          "name": "AlertTriangle",
+          "tone": { "$state": "/ui/rows/4/dot_tone" },
+          "size": "sm"
         }
+      },
+      "atoInfo": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["atoLabel", "atoSub"]
+      },
+      "atoLabel": {
+        "type": "Text",
+        "props": {
+          "text": { "$template": "ATO status: ${/ui/rows/4/badge_label}" },
+          "weight": "semibold",
+          "size": "sm"
+        }
+      },
+      "atoSub": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/ui/rows/4/sub_label" }, "tone": "muted" },
+        "visible": { "$state": "/ui/rows/4/sub_label" }
       }
 
     }
