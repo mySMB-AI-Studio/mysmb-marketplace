@@ -154,18 +154,24 @@ const flatten_portfolio_health: ComputedFunction = (args) => {
     const alertLevel    = String(client.alertLevel    ?? '').toLowerCase();
     const scoreLabel    = String(healthScore);
 
-    let circleTone = 'success';
-    if (alertLevel === 'error' || alertLevel === 'high') circleTone = 'destructive';
-    else if (alertLevel === 'medium') circleTone = 'warning';
+    // Derive circle tone and healthy/review bucket.
+    // alertLevel from list_clients may be empty — fall back to healthScore.
+    let circleTone: string;
+    let isHealthy: boolean;
+    if (alertLevel) {
+      isHealthy  = alertLevel === 'low';
+      circleTone = (alertLevel === 'error' || alertLevel === 'high') ? 'destructive'
+                 : alertLevel === 'medium' ? 'warning'
+                 : 'success';
+    } else {
+      isHealthy  = healthScore >= 70;
+      circleTone = healthScore < 40 ? 'destructive' : healthScore < 70 ? 'warning' : 'success';
+    }
 
-    let scoreTone = 'success';
-    if (healthScore < 40) scoreTone = 'destructive';
-    else if (healthScore < 70) scoreTone = 'warning';
-
-    const row: Record<string, unknown> = { id, name, provider_label: providerLabel, score_label: scoreLabel, circle_tone: circleTone, score_tone: scoreTone };
+    const row: Record<string, unknown> = { id, name, provider_label: providerLabel, score_label: scoreLabel, circle_tone: circleTone };
 
     all.push(row);
-    if (alertLevel === 'low') healthy.push(row);
+    if (isHealthy) healthy.push(row);
     else needs_review.push(row);
   }
 
