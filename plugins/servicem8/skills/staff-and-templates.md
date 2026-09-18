@@ -15,7 +15,7 @@ Load this skill when the user asks to:
 
 ## Staff members
 
-Call `list_staff_members` to retrieve all staff configured in the account. The response includes staff names and their identifiers. This is useful for:
+Call `list_staff_members` to retrieve all staff configured in the account. The response is a wrapped, paginated object — `{ staff: [...], next_cursor }`, not a bare array — read from `staff`. Each record includes name fields and its `uuid`. This is useful for:
 - Confirming a staff member's identifier when filtering jobs by assignee
 - Verifying who is available or active in the account
 - Providing a staff picker when the user wants to assign a new job
@@ -31,7 +31,7 @@ Present templates as a list with template name and any description available. As
 ## Error handling
 
 If `list_staff_members` or `list_job_templates` returns an error or an empty result:
-- Inform the user that the call failed and suggest they check their ServiceM8 connection (Settings → Connections → ServiceM8).
+- Inform the user that the call failed. This connector uses a single shared, account-level API key configured by mySMB ops — there is no per-user connection to check or reconnect. If the error looks auth-related (401/403), say the ServiceM8 connection appears to be misconfigured and suggest contacting a workspace admin or mySMB support.
 - Do not proceed to job creation if `list_job_templates` fails — a valid template name is required.
 
 ## Combining with job creation
