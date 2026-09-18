@@ -14,8 +14,8 @@
   },
   "dataProvider": {
     "mcp": "basiq",
-    "tool": "get_jobs",
-    "params": {}
+    "tool": "execute-request",
+    "params": { "method": "GET", "path": "/jobs" }
   },
   "spec": {
     "root": "card",
@@ -73,7 +73,7 @@
         "type": "Stack",
         "props": { "gap": "sm" },
         "children": ["sk1", "sk2"],
-        "visible": { "$state": "/_loading/basiq.get_jobs" }
+        "visible": { "$state": "/_loading/basiq.execute-request" }
       },
       "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
       "sk2": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
@@ -82,7 +82,7 @@
         "type": "Stack",
         "props": { "gap": "md" },
         "children": ["statsRow", "footerRow"],
-        "visible": { "$state": "/_loading/basiq.get_jobs", "not": true }
+        "visible": { "$state": "/_loading/basiq.execute-request", "not": true }
       },
 
       "statsRow": {
@@ -98,7 +98,7 @@
       },
       "successVal": {
         "type": "Stat",
-        "props": { "value": { "$state": "/basiq/get_jobs/success_count" }, "size": "lg", "tone": "success" }
+        "props": { "value": { "$state": "/basiq/execute-request/success_count" }, "size": "lg", "tone": "success" }
       },
       "successMeta": {
         "type": "Row",
@@ -115,7 +115,7 @@
       },
       "runningVal": {
         "type": "Stat",
-        "props": { "value": { "$state": "/basiq/get_jobs/running_count" }, "size": "lg", "tone": "info" }
+        "props": { "value": { "$state": "/basiq/execute-request/running_count" }, "size": "lg", "tone": "info" }
       },
       "runningMeta": {
         "type": "Row",
@@ -132,7 +132,7 @@
       },
       "failedVal": {
         "type": "Stat",
-        "props": { "value": { "$state": "/basiq/get_jobs/failed_count" }, "size": "lg", "tone": "destructive" }
+        "props": { "value": { "$state": "/basiq/execute-request/failed_count" }, "size": "lg", "tone": "destructive" }
       },
       "failedMeta": {
         "type": "Row",
@@ -150,8 +150,8 @@
       "healthBadge": {
         "type": "Badge",
         "props": {
-          "label": { "$state": "/basiq/get_jobs/overall_status_label" },
-          "tone": { "$state": "/basiq/get_jobs/overall_status_tone" }
+          "label": { "$state": "/basiq/execute-request/overall_status_label" },
+          "tone": { "$state": "/basiq/execute-request/overall_status_tone" }
         }
       },
       "refreshLbl": {
@@ -163,7 +163,7 @@
         "props": {
           "text": {
             "$computed": "relative_time",
-            "args": { "value": { "$state": "/basiq/get_jobs/last_updated" } }
+            "args": { "value": { "$state": "/basiq/execute-request/last_updated" } }
           }
         }
       }
