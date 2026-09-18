@@ -63,7 +63,6 @@
         "props": { "cols": 3, "gap": "sm" },
         "children": ["totalBox", "outstandingBox", "overdueBox"]
       },
-
       "totalBox": {
         "type": "Section",
         "props": { "variant": "bordered" },
@@ -74,21 +73,11 @@
         "props": { "gap": "xs", "align": "center" },
         "children": ["totalIcon", "totalLabel"]
       },
-      "totalIcon": {
-        "type": "Icon",
-        "props": { "name": "FileText", "tone": "info", "size": "xs" }
-      },
-      "totalLabel": {
-        "type": "Eyebrow",
-        "props": { "text": "Total" }
-      },
+      "totalIcon":  { "type": "Icon",    "props": { "name": "FileText",    "tone": "info",        "size": "xs" } },
+      "totalLabel": { "type": "Eyebrow", "props": { "text": "Total" } },
       "totalValue": {
         "type": "Stat",
-        "props": {
-          "value": { "$state": "/square/get_recent_invoices/total_count" },
-          "size": "sm",
-          "tone": "info"
-        }
+        "props": { "value": { "$state": "/square/get_recent_invoices/total_count" }, "size": "sm", "tone": "info" }
       },
 
       "outstandingBox": {
@@ -101,21 +90,11 @@
         "props": { "gap": "xs", "align": "center" },
         "children": ["outstandingIcon", "outstandingLabel"]
       },
-      "outstandingIcon": {
-        "type": "Icon",
-        "props": { "name": "Clock", "tone": "warning", "size": "xs" }
-      },
-      "outstandingLabel": {
-        "type": "Eyebrow",
-        "props": { "text": "Outstanding" }
-      },
+      "outstandingIcon":  { "type": "Icon",    "props": { "name": "Clock",        "tone": "warning",     "size": "xs" } },
+      "outstandingLabel": { "type": "Eyebrow", "props": { "text": "Outstanding" } },
       "outstandingValue": {
         "type": "Stat",
-        "props": {
-          "value": { "$state": "/square/get_recent_invoices/outstanding_display" },
-          "size": "sm",
-          "tone": "warning"
-        }
+        "props": { "value": { "$state": "/square/get_recent_invoices/outstanding_display" }, "size": "sm", "tone": "warning" }
       },
 
       "overdueBox": {
@@ -128,21 +107,11 @@
         "props": { "gap": "xs", "align": "center" },
         "children": ["overdueIcon", "overdueLabel"]
       },
-      "overdueIcon": {
-        "type": "Icon",
-        "props": { "name": "AlertCircle", "tone": "destructive", "size": "xs" }
-      },
-      "overdueLabel": {
-        "type": "Eyebrow",
-        "props": { "text": "Overdue" }
-      },
+      "overdueIcon":  { "type": "Icon",    "props": { "name": "AlertCircle", "tone": "destructive", "size": "xs" } },
+      "overdueLabel": { "type": "Eyebrow", "props": { "text": "Overdue" } },
       "overdueValue": {
         "type": "Stat",
-        "props": {
-          "value": { "$state": "/square/get_recent_invoices/overdue_count" },
-          "size": "sm",
-          "tone": "destructive"
-        }
+        "props": { "value": { "$state": "/square/get_recent_invoices/overdue_count" }, "size": "sm", "tone": "destructive" }
       },
 
       "body": {
@@ -157,11 +126,11 @@
           "skeletonRows": 5,
           "rows": { "$state": "/square/get_recent_invoices/invoices" },
           "columns": [
-            { "id": "invoice",  "header": "Invoice",  "field": "invoice_number",  "width": 100, "priority": 1 },
-            { "id": "customer", "header": "Customer", "field": "customer_name",               "priority": 1 },
-            { "id": "amount",   "header": "Amount",   "field": "amount_display",  "width": 120, "priority": 1, "align": "right" },
-            { "id": "status",   "header": "Status",   "field": "status_label",    "width": 110, "priority": 1, "variant": "badge", "tone": { "$computed": "identity", "args": { "value": { "$item": "status_tone" } } } },
-            { "id": "due",      "header": "Due",      "field": "due_display",     "width": 90,  "priority": 2 }
+            { "id": "customer", "header": "Customer", "field": "customer_name",                      "priority": 1 },
+            { "id": "invoice",  "header": "Invoice",  "field": "invoice_number", "width": 90,        "priority": 2 },
+            { "id": "amount",   "header": "Amount",   "field": "amount_display", "width": 100,       "priority": 1 },
+            { "id": "status",   "header": "Status",   "field": "status_label",   "width": 110,       "priority": 1, "variant": "badge", "tone": "status_tone" },
+            { "id": "due",      "header": "Due",       "field": "due_display",    "width": 90,        "priority": 2 }
           ]
         }
       }

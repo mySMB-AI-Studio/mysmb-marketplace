@@ -1,16 +1,16 @@
 {
   "id": "dext-activity-stats",
-  "title": "Activity Stats",
-  "description": "Practice-wide client health summary (total clients, average health score, alert counts) plus rolling turnover and transaction activity for the top client across Annual, Quarterly, and Monthly periods.",
+  "title": "Client Activity Stats",
+  "description": "Rolling turnover and transaction activity for a client across Annual, Quarterly avg, and Monthly avg periods.",
   "category": "analytics",
-  "tags": ["dext", "activity", "stats", "health score", "alert level", "turnover", "invoices", "transactions"],
-  "keywords": ["dext stats", "client summary", "health score average", "alert counts", "practice overview", "turnover", "sales invoices", "bills", "bank transactions", "quarterly monthly annual"],
+  "tags": ["dext", "activity", "stats", "turnover", "invoices", "transactions"],
+  "keywords": ["dext stats", "client activity", "turnover", "sales invoices", "bills", "bank transactions", "quarterly monthly annual"],
   "connectorsUsed": ["dext"],
   "popularity": 65,
   "sizing": {
-    "preferred": { "colSpan": 4, "rowSpan": 11 },
-    "min": { "colSpan": 3, "rowSpan": 8 },
-    "max": { "colSpan": 8, "rowSpan": 18 }
+    "preferred": { "colSpan": 4, "rowSpan": 7 },
+    "min": { "colSpan": 3, "rowSpan": 5 },
+    "max": { "colSpan": 8, "rowSpan": 12 }
   },
   "dataProvider": {
     "mcp": "dext",
@@ -24,31 +24,19 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "div0", "kpiLoading", "kpiEmpty", "kpiGrid", "div1", "activityClientLabel", "tabRow", "annualContent", "quarterlyContent", "monthlyContent", "activityFooter"],
+        "children": ["header", "clientPicker", "activityLoading", "activityEmpty", "noDataEmpty", "tabRow", "annualContent", "quarterlyContent", "monthlyContent"],
         "watch": {
           "/dext/list_clients/data": [
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/summary",
-                "value": {
-                  "$computed": "dext_flatten_activity_summary",
-                  "args": { "value": { "$state": "/dext/list_clients/data" } }
-                }
-              }
-            },
             {
               "action": "setState",
               "params": {
                 "statePath": "/ui/clientId",
                 "value": { "$computed": "identity", "args": { "value": { "$state": "/dext/list_clients/data/0/id" } } }
               }
-            }
-          ],
-          "/ui/clientId": [
+            },
             {
               "action": "dext.get_client_activity_stats",
-              "params": { "clientId": { "$state": "/ui/clientId" } }
+              "params": { "clientId": { "$state": "/dext/list_clients/data/0/id" } }
             }
           ],
           "/dext/get_client_activity_stats": [
@@ -69,113 +57,130 @@
         }
       },
 
-      "headerRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
+      "header": {
+        "type": "Header",
         "children": ["titleGroup"]
       },
       "titleGroup": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
+        "children": ["titleIconBox", "titleStack"]
       },
-      "titleIcon": { "type": "Icon", "props": { "name": "BarChart2", "tone": "info", "size": "sm" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Activity Stats", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Dext" } },
+      "titleIconBox": {
+        "type": "Section",
+        "props": { "tone": "accent" },
+        "children": ["titleIcon"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "BarChart2", "tone": "accent", "size": "md" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": { "type": "Heading", "props": { "text": "Client Activity Stats", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Dext", "tone": "accent" } },
 
-      "div0": { "type": "Divider", "props": {} },
+      "clientPicker": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/clientId" },
+          "options": {
+            "$computed": "to_options",
+            "args": {
+              "value": { "$state": "/dext/list_clients/data" },
+              "valueField": "id",
+              "labelField": "name"
+            }
+          },
+          "placeholder": "Select a client…",
+          "ariaLabel": "Client",
+          "size": "sm"
+        },
+        "visible": { "$state": "/dext/list_clients/data/0" },
+        "on": {
+          "change": [
+            {
+              "action": "bust_tool_cache",
+              "params": { "mcp": "dext", "tool": "get_client_activity_stats" }
+            },
+            {
+              "action": "dext.get_client_activity_stats",
+              "params": { "clientId": { "$state": "/ui/clientId" } }
+            }
+          ]
+        }
+      },
 
-      "kpiLoading": {
+      "activityLoading": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["sk1", "sk2"],
-        "visible": { "$state": "/_loading/dext.list_clients" }
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": {
+          "$or": [
+            { "$state": "/_loading/dext.list_clients" },
+            { "$state": "/_loading/dext.get_client_activity_stats" }
+          ]
+        }
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "sm" } },
 
-      "kpiEmpty": {
+      "activityEmpty": {
         "type": "Empty",
         "props": { "message": "No client data available." },
         "visible": {
           "$and": [
             { "$state": "/_loading/dext.list_clients", "not": true },
-            { "$state": "/ui/summary/0", "not": true }
+            { "$state": "/_loading/dext.get_client_activity_stats", "not": true },
+            { "$state": "/ui/clientId", "not": true }
           ]
         }
       },
 
-      "kpiGrid": {
-        "type": "Grid",
-        "props": { "cols": 3, "gap": "sm" },
-        "children": ["tileTotal", "tileAvgHealth", "tileHighAlert", "tileMediumAlert", "tileLowAlert"],
+      "noDataEmpty": {
+        "type": "Empty",
+        "props": { "message": "No activity data available for this client." },
         "visible": {
           "$and": [
             { "$state": "/_loading/dext.list_clients", "not": true },
-            { "$state": "/ui/summary/0" }
+            { "$state": "/_loading/dext.get_client_activity_stats", "not": true },
+            { "$state": "/ui/clientId" },
+            { "$state": "/ui/rows/annual/0", "not": true }
           ]
         }
-      },
-
-      "tileTotal": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackTotal"] },
-      "stackTotal": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["iconTotal", "valTotal", "lblTotal"] },
-      "iconTotal": { "type": "Icon", "props": { "name": "Users", "tone": "info", "size": "sm" } },
-      "valTotal": { "type": "Stat", "props": { "value": { "$state": "/ui/summary/0/stat_total" }, "size": "md" } },
-      "lblTotal": { "type": "Caption", "props": { "text": "Total Clients", "tone": "muted" } },
-
-      "tileAvgHealth": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackAvgHealth"] },
-      "stackAvgHealth": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["iconAvgHealth", "valAvgHealth", "lblAvgHealth"] },
-      "iconAvgHealth": { "type": "Icon", "props": { "name": "Activity", "tone": "success", "size": "sm" } },
-      "valAvgHealth": { "type": "Stat", "props": { "value": { "$state": "/ui/summary/0/stat_avg_health" }, "size": "md" } },
-      "lblAvgHealth": { "type": "Caption", "props": { "text": "Avg Health Score", "tone": "muted" } },
-
-      "tileHighAlert": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackHighAlert"] },
-      "stackHighAlert": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["iconHighAlert", "valHighAlert", "lblHighAlert"] },
-      "iconHighAlert": { "type": "Icon", "props": { "name": "AlertTriangle", "tone": "destructive", "size": "sm" } },
-      "valHighAlert": { "type": "Stat", "props": { "value": { "$state": "/ui/summary/0/stat_high_alert" }, "size": "md", "tone": "destructive" } },
-      "lblHighAlert": { "type": "Caption", "props": { "text": "High Alert", "tone": "destructive" } },
-
-      "tileMediumAlert": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackMediumAlert"] },
-      "stackMediumAlert": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["iconMediumAlert", "valMediumAlert", "lblMediumAlert"] },
-      "iconMediumAlert": { "type": "Icon", "props": { "name": "AlertCircle", "tone": "warning", "size": "sm" } },
-      "valMediumAlert": { "type": "Stat", "props": { "value": { "$state": "/ui/summary/0/stat_medium_alert" }, "size": "md", "tone": "warning" } },
-      "lblMediumAlert": { "type": "Caption", "props": { "text": "Medium Alert", "tone": "warning" } },
-
-      "tileLowAlert": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackLowAlert"] },
-      "stackLowAlert": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["iconLowAlert", "valLowAlert", "lblLowAlert"] },
-      "iconLowAlert": { "type": "Icon", "props": { "name": "CheckCircle2", "tone": "success", "size": "sm" } },
-      "valLowAlert": { "type": "Stat", "props": { "value": { "$state": "/ui/summary/0/stat_low_alert" }, "size": "md", "tone": "success" } },
-      "lblLowAlert": { "type": "Caption", "props": { "text": "Low Alert", "tone": "success" } },
-
-      "div1": {
-        "type": "Divider",
-        "props": {},
-        "visible": { "$state": "/ui/summary/0" }
-      },
-
-      "activityClientLabel": {
-        "type": "Caption",
-        "props": { "text": { "$template": "${/dext/list_clients/data/0/name}" }, "tone": "muted" },
-        "visible": { "$state": "/ui/rows" }
       },
 
       "tabRow": {
         "type": "Row",
         "props": { "gap": "xs" },
         "children": ["tabAnnualOn", "tabAnnualOff", "tabQuarterlyOn", "tabQuarterlyOff", "tabMonthlyOn", "tabMonthlyOff"],
-        "visible": { "$state": "/ui/rows" }
+        "visible": { "$state": "/ui/rows/annual/0" }
       },
 
       "tabAnnualOn": {
         "type": "Button",
-        "props": { "label": "Annual", "variant": "primary", "size": "sm" },
-        "visible": { "$state": "/ui/tab/annual" }
+        "props": { "label": "Annual", "variant": "link", "size": "sm" },
+        "visible": {
+          "$and": [
+            { "$state": "/ui/tab/quarterly", "not": true },
+            { "$state": "/ui/tab/monthly",   "not": true }
+          ]
+        }
       },
       "tabAnnualOff": {
         "type": "Button",
         "props": { "label": "Annual", "variant": "ghost", "size": "sm" },
-        "visible": { "$state": "/ui/tab/annual", "not": true },
+        "visible": {
+          "$or": [
+            { "$state": "/ui/tab/quarterly" },
+            { "$state": "/ui/tab/monthly"   }
+          ]
+        },
         "on": {
           "click": [
             { "action": "setState", "params": { "statePath": "/ui/tab/annual",    "value": true  } },
@@ -187,7 +192,7 @@
 
       "tabQuarterlyOn": {
         "type": "Button",
-        "props": { "label": "Quarterly avg", "variant": "primary", "size": "sm" },
+        "props": { "label": "Quarterly avg", "variant": "link", "size": "sm" },
         "visible": { "$state": "/ui/tab/quarterly" }
       },
       "tabQuarterlyOff": {
@@ -205,7 +210,7 @@
 
       "tabMonthlyOn": {
         "type": "Button",
-        "props": { "label": "Monthly avg", "variant": "primary", "size": "sm" },
+        "props": { "label": "Monthly avg", "variant": "link", "size": "sm" },
         "visible": { "$state": "/ui/tab/monthly" }
       },
       "tabMonthlyOff": {
@@ -225,7 +230,12 @@
         "type": "Stack",
         "props": { "gap": "sm" },
         "children": ["annualEmpty", "annualList"],
-        "visible": { "$state": "/ui/tab/annual" }
+        "visible": {
+          "$and": [
+            { "$state": "/ui/tab/quarterly", "not": true },
+            { "$state": "/ui/tab/monthly",   "not": true }
+          ]
+        }
       },
       "annualEmpty": {
         "type": "Empty",
@@ -278,11 +288,22 @@
       "activityRow": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center" },
-        "children": ["rowCircle", "rowInfo", "rowBadge"]
+        "children": ["rowIconUp", "rowIconDown", "rowIconMinus", "rowInfo", "rowValue"]
       },
-      "rowCircle": {
+      "rowIconUp": {
         "type": "Icon",
-        "props": { "name": "Circle", "tone": { "$item": "dot_tone" }, "size": "sm" }
+        "props": { "name": "ArrowUp", "tone": "success", "size": "sm" },
+        "visible": { "$item": "dot_tone", "eq": "success" }
+      },
+      "rowIconDown": {
+        "type": "Icon",
+        "props": { "name": "ArrowDown", "tone": "destructive", "size": "sm" },
+        "visible": { "$item": "dot_tone", "eq": "destructive" }
+      },
+      "rowIconMinus": {
+        "type": "Icon",
+        "props": { "name": "Minus", "tone": "muted", "size": "sm" },
+        "visible": { "$item": "dot_tone", "eq": "muted" }
       },
       "rowInfo": {
         "type": "Stack",
@@ -295,22 +316,12 @@
       },
       "rowSubLabel": {
         "type": "Caption",
-        "props": { "text": { "$item": "sub_label" }, "tone": "muted" },
+        "props": { "text": { "$item": "sub_label" }, "tone": { "$item": "dot_tone" } },
         "visible": { "$item": "sub_label" }
       },
-      "rowBadge": {
-        "type": "Badge",
-        "props": {
-          "label":   { "$item": "badge_label" },
-          "tone":    { "$item": "badge_tone" },
-          "variant": "soft"
-        }
-      },
-
-      "activityFooter": {
-        "type": "Caption",
-        "props": { "text": { "$state": "/ui/summary/0/footer_label" }, "tone": "muted" },
-        "visible": { "$state": "/ui/summary/0/footer_label" }
+      "rowValue": {
+        "type": "Stat",
+        "props": { "value": { "$item": "badge_label" }, "size": "sm" }
       }
 
     }
