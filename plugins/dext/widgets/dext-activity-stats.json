@@ -24,7 +24,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "activityLoading", "activityEmpty", "noDataEmpty", "tabRow", "annualContent", "quarterlyContent", "monthlyContent"],
+        "children": ["header", "clientPicker", "activityLoading", "activityEmpty", "noDataEmpty", "tabRow", "annualContent", "quarterlyContent", "monthlyContent"],
         "watch": {
           "/dext/list_clients/data": [
             {
@@ -33,12 +33,10 @@
                 "statePath": "/ui/clientId",
                 "value": { "$computed": "identity", "args": { "value": { "$state": "/dext/list_clients/data/0/id" } } }
               }
-            }
-          ],
-          "/ui/clientId": [
+            },
             {
               "action": "dext.get_client_activity_stats",
-              "params": { "clientId": { "$state": "/ui/clientId" } }
+              "params": { "clientId": { "$state": "/dext/list_clients/data/0/id" } }
             }
           ],
           "/dext/get_client_activity_stats": [
@@ -84,6 +82,37 @@
       },
       "title": { "type": "Heading", "props": { "text": "Client Activity Stats", "level": "h2" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "DEXT", "tone": "destructive" } },
+
+      "clientPicker": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/clientId" },
+          "options": {
+            "$computed": "to_options",
+            "args": {
+              "value": { "$state": "/dext/list_clients/data" },
+              "valueField": "id",
+              "labelField": "name"
+            }
+          },
+          "placeholder": "Select a client…",
+          "ariaLabel": "Client",
+          "size": "sm"
+        },
+        "visible": { "$state": "/dext/list_clients/data/0" },
+        "on": {
+          "change": [
+            {
+              "action": "bust_tool_cache",
+              "params": { "mcp": "dext", "tool": "get_client_activity_stats" }
+            },
+            {
+              "action": "dext.get_client_activity_stats",
+              "params": { "clientId": { "$state": "/ui/clientId" } }
+            }
+          ]
+        }
+      },
 
       "activityLoading": {
         "type": "Stack",
