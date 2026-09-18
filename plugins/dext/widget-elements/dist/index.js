@@ -184,6 +184,22 @@ function fmtMonth(dateStr) {
     const idx = parts.length >= 2 ? parseInt(parts[1], 10) - 1 : -1;
     return (idx >= 0 && idx <= 11) ? MONTHS[idx] : dateStr;
 }
+function fmtYearEnd(dateStr) {
+    const parts = dateStr.split('-');
+    if (parts.length < 3)
+        return dateStr;
+    const day = parseInt(parts[2], 10);
+    const mIdx = parseInt(parts[1], 10) - 1;
+    return `${day} ${MONTHS[mIdx] ?? ''}`;
+}
+const GST_CYCLE_LABELS = {
+    QUARTERLY1: 'Quarterly', QUARTERLY2: 'Quarterly', QUARTERLY3: 'Quarterly',
+    QUARTERLY: 'Quarterly', MONTHLY: 'Monthly', ANNUAL: 'Annual', ANNUALLY: 'Annual',
+};
+const GST_SCHEME_LABELS = {
+    ACCRUALS: 'Accruals basis', ACCRUAL: 'Accruals basis',
+    CASH: 'Cash basis', CASH_ACCOUNTING: 'Cash basis',
+};
 const flatten_client_detail_rows = (args) => {
     const client = args.client;
     if (!client || typeof client !== 'object' || Array.isArray(client))
@@ -192,28 +208,47 @@ const flatten_client_detail_rows = (args) => {
     const metrics = (client.metrics ?? {});
     const bankRec = (client.bankReconciliation ?? {});
     const rows = [];
-    // GST method
-    const vatScheme = String(vatDetails.scheme ?? '').trim();
-    const vatCycle = String(vatDetails.reportingCycle ?? '').trim();
+    // GST method — humanize raw API values
+    const vatSchemeRaw = String(vatDetails.scheme ?? '').trim();
+    const vatCycleRaw = String(vatDetails.reportingCycle ?? '').trim();
+    const vatCycleLabel = (GST_CYCLE_LABELS[vatCycleRaw.toUpperCase()] ?? vatCycleRaw) || '—';
+    const vatSchemeLabel = (GST_SCHEME_LABELS[vatSchemeRaw.toUpperCase()] ?? vatSchemeRaw) || '—';
     rows.push({
         id: 'gst_method',
         label: 'GST method',
-        sub_label: vatScheme || '—',
-        badge_label: vatCycle || '—',
+        sub_label: vatSchemeLabel,
+        badge_label: vatCycleLabel,
         badge_tone: 'default',
         dot_tone: 'muted',
     });
-    // Current BAS period — format dates as "Jul–Sep" month range
+    // Current BAS period — "Jul–Sep" range + "Q2 FY27 · year end 30 Jun" sub-label
     const periodStart = String(vatDetails.periodStart ?? '').trim();
     const periodEnd = String(vatDetails.periodEnd ?? '').trim();
     const periodLabel = periodStart && periodEnd
         ? `${fmtMonth(periodStart)}–${fmtMonth(periodEnd)}`
         : (periodStart ? fmtMonth(periodStart) : (periodEnd ? fmtMonth(periodEnd) : '—'));
     const yearEnd = String(client.yearEnd ?? '').trim();
+    let basSub = yearEnd ? `Year end ${fmtYearEnd(yearEnd)}` : '—';
+    if (periodStart && yearEnd) {
+        const pParts = periodStart.split('-');
+        const yParts = yearEnd.split('-');
+        const pMonth = parseInt(pParts[1] ?? '0', 10);
+        const pYear = parseInt(pParts[0] ?? '0', 10);
+        const yeMonth = parseInt(yParts[1] ?? '0', 10);
+        if (pMonth && yeMonth) {
+            const rel = ((pMonth - yeMonth - 1 + 12) % 12);
+            const quarter = Math.floor(rel / 3) + 1;
+            const fyYear = pMonth > yeMonth ? pYear + 1 : pYear;
+            const fyLabel = `FY${String(fyYear).slice(-2)}`;
+            basSub = yearEnd
+                ? `Q${quarter} ${fyLabel} · year end ${fmtYearEnd(yearEnd)}`
+                : `Q${quarter} ${fyLabel}`;
+        }
+    }
     rows.push({
         id: 'bas_period',
         label: 'Current BAS period',
-        sub_label: yearEnd ? `Year end ${yearEnd}` : '—',
+        sub_label: basSub,
         badge_label: periodLabel,
         badge_tone: 'default',
         dot_tone: 'muted',
@@ -245,30 +280,26 @@ const flatten_client_detail_rows = (args) => {
         badge_tone: 'default',
         dot_tone: 'muted',
     });
-    // ATO status (mapped from hmrcStatus)
+    // ATO status — normalize underscored API values (e.g. NOT_CONNECTED → not connected)
     const hmrcStatus = String(client.hmrcStatus ?? '').trim();
     const oneDayImpact = Number(metrics.oneDayImpact ?? 0);
-    const normalized = hmrcStatus.toLowerCase();
-    let badgeTone = 'default';
+    const normalized = hmrcStatus.toLowerCase().replace(/_/g, ' ');
     let dotTone = 'muted';
     if (normalized === 'not connected' || normalized === 'disconnected') {
-        badgeTone = 'warning';
         dotTone = 'warning';
     }
     else if (normalized === 'connected') {
-        badgeTone = 'success';
         dotTone = 'success';
     }
     else if (normalized === 'error' || normalized === 'failed') {
-        badgeTone = 'destructive';
         dotTone = 'destructive';
     }
     rows.push({
         id: 'ato_status',
         label: 'ATO status',
         sub_label: oneDayImpact ? `One-day impact A$${oneDayImpact.toFixed(2)}` : '—',
-        badge_label: hmrcStatus || '—',
-        badge_tone: badgeTone,
+        badge_label: normalized || '—',
+        badge_tone: dotTone,
         dot_tone: dotTone,
     });
     return rows;

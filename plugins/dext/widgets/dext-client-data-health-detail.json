@@ -302,33 +302,29 @@
       "atoRow": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center" },
-        "children": ["atoIcon", "atoInfo", "atoBadge"]
+        "children": ["atoIcon", "atoInfo"]
       },
       "atoIcon": {
         "type": "Icon",
-        "props": { "name": "AlertTriangle", "tone": "warning", "size": "sm" }
+        "props": { "name": "AlertTriangle", "tone": { "$state": "/ui/rows/4/dot_tone" }, "size": "sm" }
       },
       "atoInfo": {
         "type": "Stack",
-        "props": { "gap": "none", "grow": true },
+        "props": { "gap": "none" },
         "children": ["atoLabel", "atoSub"]
       },
       "atoLabel": {
         "type": "Text",
-        "props": { "text": "ATO Connection", "weight": "semibold", "size": "sm" }
+        "props": {
+          "text": { "$template": "ATO status: ${/ui/rows/4/badge_label}" },
+          "weight": "semibold",
+          "size": "sm"
+        }
       },
       "atoSub": {
         "type": "Caption",
         "props": { "text": { "$state": "/ui/rows/4/sub_label" }, "tone": "muted" },
         "visible": { "$state": "/ui/rows/4/sub_label" }
-      },
-      "atoBadge": {
-        "type": "Badge",
-        "props": {
-          "text": { "$state": "/ui/rows/4/badge_label" },
-          "tone": "warning",
-          "variant": "solid"
-        }
       }
 
     }
