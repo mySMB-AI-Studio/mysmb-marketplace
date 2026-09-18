@@ -122,7 +122,7 @@
 
       "tabAnnualOn": {
         "type": "Button",
-        "props": { "label": "Annual", "variant": "primary", "size": "sm" },
+        "props": { "label": "Annual", "variant": "link", "size": "sm" },
         "visible": {
           "$and": [
             { "$state": "/ui/tab/quarterly", "not": true },
@@ -150,7 +150,7 @@
 
       "tabQuarterlyOn": {
         "type": "Button",
-        "props": { "label": "Quarterly avg", "variant": "primary", "size": "sm" },
+        "props": { "label": "Quarterly avg", "variant": "link", "size": "sm" },
         "visible": { "$state": "/ui/tab/quarterly" }
       },
       "tabQuarterlyOff": {
@@ -168,7 +168,7 @@
 
       "tabMonthlyOn": {
         "type": "Button",
-        "props": { "label": "Monthly avg", "variant": "primary", "size": "sm" },
+        "props": { "label": "Monthly avg", "variant": "link", "size": "sm" },
         "visible": { "$state": "/ui/tab/monthly" }
       },
       "tabMonthlyOff": {
@@ -246,11 +246,22 @@
       "activityRow": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center" },
-        "children": ["rowCircle", "rowInfo", "rowBadge"]
+        "children": ["rowIconUp", "rowIconDown", "rowIconMinus", "rowInfo", "rowValue"]
       },
-      "rowCircle": {
+      "rowIconUp": {
         "type": "Icon",
-        "props": { "name": "Circle", "tone": { "$item": "dot_tone" }, "size": "sm" }
+        "props": { "name": "ArrowUp", "tone": "success", "size": "sm" },
+        "visible": { "$item": "dot_tone", "eq": "success" }
+      },
+      "rowIconDown": {
+        "type": "Icon",
+        "props": { "name": "ArrowDown", "tone": "destructive", "size": "sm" },
+        "visible": { "$item": "dot_tone", "eq": "destructive" }
+      },
+      "rowIconMinus": {
+        "type": "Icon",
+        "props": { "name": "Minus", "tone": "muted", "size": "sm" },
+        "visible": { "$item": "dot_tone", "eq": "muted" }
       },
       "rowInfo": {
         "type": "Stack",
@@ -263,16 +274,12 @@
       },
       "rowSubLabel": {
         "type": "Caption",
-        "props": { "text": { "$item": "sub_label" }, "tone": "muted" },
+        "props": { "text": { "$item": "sub_label" }, "tone": { "$item": "dot_tone" } },
         "visible": { "$item": "sub_label" }
       },
-      "rowBadge": {
-        "type": "Badge",
-        "props": {
-          "text":    { "$item": "badge_label" },
-          "tone":    { "$item": "badge_tone" },
-          "variant": "soft"
-        }
+      "rowValue": {
+        "type": "Stat",
+        "props": { "value": { "$item": "badge_label" }, "size": "sm" }
       }
 
     }
