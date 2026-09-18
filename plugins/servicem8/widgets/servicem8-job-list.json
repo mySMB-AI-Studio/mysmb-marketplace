@@ -1,7 +1,7 @@
 {
   "id": "servicem8-job-list",
   "title": "ServiceM8 — Job list",
-  "description": "A live list of jobs from ServiceM8, showing job description/number, address, and status. Client name is not shown — ServiceM8's raw API only exposes a company id on the job record, with no tool to resolve it to a name.",
+  "description": "A live list of jobs from ServiceM8, showing job description/number, address, and status. Click a row to open that job in the ServiceM8 web app in a new tab. Client name is not shown — ServiceM8's raw API only exposes a company id on the job record, with no tool to resolve it to a name.",
   "category": "field-service",
   "tags": ["servicem8", "jobs", "field-service", "trades", "operations"],
   "keywords": ["jobs", "work orders", "field service", "trades", "clients", "servicem8"],
@@ -93,7 +93,19 @@
       },
       "row": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center", "template": "auto minmax(0, 1fr) auto" },
+        "props": { "gap": "sm", "align": "center", "template": "auto minmax(0, 1fr) auto", "hover": true, "clickable": true },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": { "pattern": "https://go.servicem8.com/OpenJob/{uuid}", "uuid": { "$item": "uuid" } }
+              },
+              "target": "_blank"
+            }
+          }
+        },
         "children": ["rowIcon", "rowDetails", "rowStatus"]
       },
       "rowIcon": {
