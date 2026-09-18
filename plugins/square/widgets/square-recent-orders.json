@@ -14,7 +14,7 @@
   },
   "dataProvider": {
     "mcp": "square",
-    "tool": "get_merchant",
+    "tool": "list_recent_orders",
     "params": {}
   },
   "spec": {
@@ -23,20 +23,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "body"],
-        "watch": {
-          "/square/get_merchant/main_location_id": [
-            {
-              "action": "square.search_orders",
-              "params": {
-                "location_ids": [{ "$state": "/square/get_merchant/main_location_id" }],
-                "states": ["COMPLETED", "OPEN"],
-                "sort_order": "DESC",
-                "limit": 50
-              }
-            }
-          ]
-        }
+        "children": ["header", "body"]
       },
 
       "header": {
@@ -79,15 +66,15 @@
       "table": {
         "type": "Table",
         "props": {
-          "loading": { "$state": "/_loading/square.search_orders" },
+          "loading": { "$state": "/_loading/square.list_recent_orders" },
           "skeletonRows": 5,
-          "rows": { "$state": "/square/search_orders/orders" },
+          "rows": { "$state": "/square/list_recent_orders/orders" },
           "columns": [
-            { "id": "id",      "header": "Order ID", "field": "id",               "priority": 2 },
-            { "id": "total",   "header": "Total",    "field": "total_money.amount", "width": 120, "priority": 1, "format": "currency" },
-            { "id": "status",  "header": "Status",   "field": "state",             "width": 110, "priority": 1 },
-            { "id": "source",  "header": "Source",   "field": "source.name",       "width": 120, "priority": 2 },
-            { "id": "created", "header": "Date",     "field": "created_at",        "width": 130, "priority": 1, "format": "relative" }
+            { "id": "id",      "header": "Order",  "field": "order_id_short",     "width": 110, "priority": 1 },
+            { "id": "total",   "header": "Total",  "field": "total_money.amount", "width": 120, "priority": 1, "format": "currency" },
+            { "id": "status",  "header": "Status", "field": "status_label",       "width": 110, "priority": 1, "variant": "badge", "tone": "status_tone" },
+            { "id": "source",  "header": "Source", "field": "source.name",        "priority": 2 },
+            { "id": "created", "header": "Date",   "field": "created_at",         "width": 120, "priority": 1, "format": "relative" }
           ]
         }
       }
