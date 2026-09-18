@@ -163,7 +163,7 @@ const flatten_portfolio_health = (args) => {
         else
             needs_review.push(row);
     }
-    return { all, needs_review, healthy };
+    return { all, needs_review, healthy, total_count: all.length, review_count: needs_review.length };
 };
 /**
  * Transforms the `get_client` response into display rows for the Client Data Health Detail tile.

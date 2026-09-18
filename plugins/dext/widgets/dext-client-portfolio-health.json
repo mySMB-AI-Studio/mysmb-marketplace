@@ -24,7 +24,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "div0", "loading", "tabRow", "allContent", "needsReviewContent", "healthyContent"],
+        "children": ["header", "loading", "tabBar", "summaryRow", "allContent", "needsReviewContent", "healthyContent"],
         "watch": {
           "/dext/list_clients/data": [
             {
@@ -44,22 +44,31 @@
         }
       },
 
-      "headerRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
+      "header": {
+        "type": "Header",
         "children": ["titleGroup"]
       },
       "titleGroup": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
+        "children": ["titleIconBox", "titleStack"]
       },
-      "titleIcon": { "type": "Icon", "props": { "name": "LayoutDashboard", "tone": "info", "size": "sm" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "titleIconBox": {
+        "type": "Section",
+        "props": { "tone": "destructive" },
+        "children": ["titleIcon"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "FileText", "tone": "destructive", "size": "md" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
       "title":   { "type": "Heading", "props": { "text": "Client Portfolio Health", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Dext" } },
-
-      "div0": { "type": "Divider", "props": {} },
+      "eyebrow": { "type": "Eyebrow",  "props": { "text": "DEXT", "tone": "success" } },
 
       "loading": {
         "type": "Stack",
@@ -71,11 +80,16 @@
       "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
       "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
 
+      "tabBar": {
+        "type": "Stack",
+        "props": { "variant": "muted", "rounded": "lg", "padding": "xs", "gap": "none" },
+        "children": ["tabRow"],
+        "visible": { "$state": "/_loading/dext.list_clients", "not": true }
+      },
       "tabRow": {
         "type": "Row",
         "props": { "gap": "xs" },
-        "children": ["tabAllOn", "tabAllOff", "tabNeedsReviewOn", "tabNeedsReviewOff", "tabHealthyOn", "tabHealthyOff"],
-        "visible": { "$state": "/_loading/dext.list_clients", "not": true }
+        "children": ["tabAllOn", "tabAllOff", "tabNeedsReviewOn", "tabNeedsReviewOff", "tabHealthyOn", "tabHealthyOff"]
       },
 
       "tabAllOn": {
@@ -98,12 +112,12 @@
 
       "tabNeedsReviewOn": {
         "type": "Button",
-        "props": { "label": "Needs Review", "variant": "primary", "size": "sm" },
+        "props": { "label": "Needs review", "variant": "primary", "size": "sm" },
         "visible": { "$state": "/ui/tab/needs_review" }
       },
       "tabNeedsReviewOff": {
         "type": "Button",
-        "props": { "label": "Needs Review", "variant": "ghost", "size": "sm" },
+        "props": { "label": "Needs review", "variant": "ghost", "size": "sm" },
         "visible": { "$state": "/ui/tab/needs_review", "not": true },
         "on": {
           "click": [
@@ -130,6 +144,27 @@
             { "action": "setState", "params": { "statePath": "/ui/tab/healthy",      "value": true  } }
           ]
         }
+      },
+
+      "summaryRow": {
+        "type": "Row",
+        "props": { "gap": "none", "align": "center" },
+        "children": ["summaryTotal", "summaryReview"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dext.list_clients", "not": true },
+            { "$state": "/ui/data/total_count" }
+          ]
+        }
+      },
+      "summaryTotal": {
+        "type": "Caption",
+        "props": { "text": { "$template": "${/ui/data/total_count} clients · " }, "tone": "muted" }
+      },
+      "summaryReview": {
+        "type": "Caption",
+        "props": { "text": { "$template": "${/ui/data/review_count} needs review" }, "tone": "warning" },
+        "visible": { "$state": "/ui/data/review_count" }
       },
 
       "allContent": {
@@ -218,7 +253,7 @@
         "type": "Badge",
         "props": {
           "label": { "$item": "score_label" },
-          "tone": { "$item": "score_tone" },
+          "tone": "muted",
           "variant": "soft"
         }
       }
