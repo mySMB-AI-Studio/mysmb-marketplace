@@ -24,7 +24,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "activityLoading", "activityEmpty", "tabRow", "annualContent", "quarterlyContent", "monthlyContent"],
+        "children": ["header", "activityLoading", "activityEmpty", "noDataEmpty", "tabRow", "annualContent", "quarterlyContent", "monthlyContent"],
         "watch": {
           "/dext/list_clients/data": [
             {
@@ -113,11 +113,24 @@
         }
       },
 
+      "noDataEmpty": {
+        "type": "Empty",
+        "props": { "message": "No activity data available for this client." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dext.list_clients", "not": true },
+            { "$state": "/_loading/dext.get_client_activity_stats", "not": true },
+            { "$state": "/ui/clientId" },
+            { "$state": "/ui/rows/annual/0", "not": true }
+          ]
+        }
+      },
+
       "tabRow": {
         "type": "Row",
         "props": { "gap": "xs" },
         "children": ["tabAnnualOn", "tabAnnualOff", "tabQuarterlyOn", "tabQuarterlyOff", "tabMonthlyOn", "tabMonthlyOff"],
-        "visible": { "$state": "/ui/rows" }
+        "visible": { "$state": "/ui/rows/annual/0" }
       },
 
       "tabAnnualOn": {
