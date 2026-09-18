@@ -24,7 +24,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "clientPicker", "loading", "emptyState", "clientSection"],
+        "children": ["header", "clientPicker", "loading", "emptyState", "noDataEmpty", "clientSection"],
         "watch": {
           "/dext/list_clients/data": [
             {
@@ -149,65 +149,52 @@
         }
       },
 
+      "noDataEmpty": {
+        "type": "Empty",
+        "props": { "message": "No detail data available for this client." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dext.list_clients", "not": true },
+            { "$state": "/_loading/dext.get_client", "not": true },
+            { "$state": "/ui/clientId" },
+            { "$state": "/ui/rows", "not": true }
+          ]
+        }
+      },
+
       "clientSection": {
         "type": "Stack",
         "props": { "gap": "md" },
         "children": ["scoreRow", "statsGrid", "atoStatus"],
-        "visible": {
-          "$and": [
-            { "$state": "/ui/rows" },
-            { "$state": "/_loading/dext.get_client", "not": true }
-          ]
-        }
+        "visible": { "$state": "/ui/rows" }
       },
 
       "scoreRow": {
         "type": "Row",
         "props": { "gap": "md", "align": "center" },
-        "children": ["donutSuccess", "donutWarning", "donutDestructive", "clientInfo"]
+        "children": ["scoreBlock", "clientInfo"]
       },
-
-      "donutSuccess": {
-        "type": "Donut",
-        "props": {
-          "data": { "$computed": "dext_score_to_donut_data", "args": { "score": { "$state": "/dext/get_client/healthScore" } } },
-          "groupField": "s",
-          "legend": {
-            "score": { "label": "", "tone": "success" },
-            "rest":  { "label": "", "tone": "muted" }
-          },
-          "centerLabel": { "$state": "/dext/get_client/healthScore" },
-          "size": 110
-        },
-        "visible": { "$state": "/ui/healthTone", "eq": "success" }
+      "scoreBlock": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["scoreStack"]
       },
-      "donutWarning": {
-        "type": "Donut",
-        "props": {
-          "data": { "$computed": "dext_score_to_donut_data", "args": { "score": { "$state": "/dext/get_client/healthScore" } } },
-          "groupField": "s",
-          "legend": {
-            "score": { "label": "", "tone": "warning" },
-            "rest":  { "label": "", "tone": "muted" }
-          },
-          "centerLabel": { "$state": "/dext/get_client/healthScore" },
-          "size": 110
-        },
-        "visible": { "$state": "/ui/healthTone", "eq": "warning" }
+      "scoreStack": {
+        "type": "Stack",
+        "props": { "gap": "none", "align": "center" },
+        "children": ["scoreNumber", "scoreCaption"]
       },
-      "donutDestructive": {
-        "type": "Donut",
+      "scoreNumber": {
+        "type": "Stat",
         "props": {
-          "data": { "$computed": "dext_score_to_donut_data", "args": { "score": { "$state": "/dext/get_client/healthScore" } } },
-          "groupField": "s",
-          "legend": {
-            "score": { "label": "", "tone": "destructive" },
-            "rest":  { "label": "", "tone": "muted" }
-          },
-          "centerLabel": { "$state": "/dext/get_client/healthScore" },
-          "size": 110
-        },
-        "visible": { "$state": "/ui/healthTone", "eq": "destructive" }
+          "value": { "$state": "/dext/get_client/healthScore" },
+          "tone":  { "$state": "/ui/healthTone" },
+          "size":  "sm"
+        }
+      },
+      "scoreCaption": {
+        "type": "Caption",
+        "props": { "text": "SCORE", "tone": "muted" }
       },
 
       "clientInfo": {
