@@ -117,22 +117,99 @@
       "body": {
         "type": "Body",
         "props": {},
-        "children": ["table"]
+        "children": ["loading", "invoiceEmpty", "listHeader", "list"]
       },
-      "table": {
-        "type": "Table",
-        "props": {
-          "loading": { "$state": "/_loading/square.get_recent_invoices" },
-          "skeletonRows": 5,
-          "rows": { "$state": "/square/get_recent_invoices/invoices" },
-          "columns": [
-            { "id": "customer", "header": "Customer", "field": "customer_name",                      "priority": 1 },
-            { "id": "invoice",  "header": "Invoice",  "field": "invoice_number", "width": 90,        "priority": 2 },
-            { "id": "amount",   "header": "Amount",   "field": "amount_display", "width": 100,       "priority": 1 },
-            { "id": "status",   "header": "Status",   "field": "status_label",   "width": 110,       "priority": 1, "tone": "status_tone" },
-            { "id": "due",      "header": "Due",       "field": "due_display",    "width": 90,        "priority": 2 }
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/square.get_recent_invoices" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "invoiceEmpty": {
+        "type": "Empty",
+        "props": { "message": "No invoices found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/square.get_recent_invoices", "not": true },
+            { "$state": "/square/get_recent_invoices/invoices/0", "not": true }
           ]
         }
+      },
+
+      "listHeader": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "template": "minmax(0, 1fr) 5.5rem 7rem 6rem 6rem",
+          "padded": true
+        },
+        "children": ["hdrCustomer", "hdrInvoice", "hdrAmount", "hdrStatus", "hdrDue"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/square.get_recent_invoices", "not": true },
+            { "$state": "/square/get_recent_invoices/invoices/0" }
+          ]
+        }
+      },
+      "hdrCustomer": { "type": "Caption", "props": { "text": "Customer" } },
+      "hdrInvoice":  { "type": "Caption", "props": { "text": "Invoice" } },
+      "hdrAmount":   { "type": "Caption", "props": { "text": "Amount" } },
+      "hdrStatus":   { "type": "Caption", "props": { "text": "Status" } },
+      "hdrDue":      { "type": "Caption", "props": { "text": "Due" } },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["invoiceRow"],
+        "repeat": { "statePath": "/square/get_recent_invoices/invoices", "key": "id" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/square.get_recent_invoices", "not": true },
+            { "$state": "/square/get_recent_invoices/invoices/0" }
+          ]
+        }
+      },
+
+      "invoiceRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "template": "minmax(0, 1fr) 5.5rem 7rem 6rem 6rem"
+        },
+        "children": ["rowCustomer", "rowInvoice", "rowAmount", "rowStatus", "rowDue"]
+      },
+      "rowCustomer": {
+        "type": "Text",
+        "props": { "text": { "$item": "customer_name" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "rowInvoice": {
+        "type": "Caption",
+        "props": { "text": { "$item": "invoice_number" }, "truncate": true }
+      },
+      "rowAmount": {
+        "type": "Caption",
+        "props": { "text": { "$item": "amount_display" } }
+      },
+      "rowStatus": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "status_label" },
+          "tone": { "$item": "status_tone" },
+          "size": "sm"
+        }
+      },
+      "rowDue": {
+        "type": "Caption",
+        "props": { "text": { "$item": "due_display" } }
       }
     }
   },
