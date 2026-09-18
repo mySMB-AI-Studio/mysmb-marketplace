@@ -15,7 +15,7 @@ Load this skill when the user asks to:
 
 ## Staff members
 
-Call `list_staff_members` to retrieve all staff configured in the account. The response includes staff names and their identifiers. This is useful for:
+Call `list_staff_members` to retrieve all staff configured in the account. The response is a wrapped, paginated object — `{ staff: [...], next_cursor }`, not a bare array — read from `staff`. Each record includes name fields and its `uuid`. This is useful for:
 - Confirming a staff member's identifier when filtering jobs by assignee
 - Verifying who is available or active in the account
 - Providing a staff picker when the user wants to assign a new job

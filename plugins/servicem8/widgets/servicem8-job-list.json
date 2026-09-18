@@ -1,7 +1,7 @@
 {
   "id": "servicem8-job-list",
   "title": "ServiceM8 — Job list",
-  "description": "A live list of jobs from ServiceM8, showing job number, client, address, and status.",
+  "description": "A live list of jobs from ServiceM8, showing job description/number, address, and status. Client name is not shown — ServiceM8's raw API only exposes a company id on the job record, with no tool to resolve it to a name.",
   "category": "field-service",
   "tags": ["servicem8", "jobs", "field-service", "trades", "operations"],
   "keywords": ["jobs", "work orders", "field service", "trades", "clients", "servicem8"],
@@ -76,7 +76,7 @@
         "visible": {
           "$and": [
             { "$state": "/_loading/servicem8.list_jobs", "not": true },
-            { "$state": "/servicem8/list_jobs/0", "not": true }
+            { "$state": "/servicem8/list_jobs/jobs/0", "not": true }
           ]
         }
       },
@@ -85,9 +85,10 @@
         "props": { "gap": "xs" },
         "children": ["row"],
         "repeat": {
-          "statePath": "/servicem8/list_jobs",
+          "statePath": "/servicem8/list_jobs/jobs",
           "key": "uuid"
         },
+        "limit": 20,
         "visible": { "$state": "/_loading/servicem8.list_jobs", "not": true }
       },
       "row": {
@@ -102,12 +103,16 @@
       "rowDetails": {
         "type": "Stack",
         "props": { "gap": "none" },
-        "children": ["rowClient", "rowAddress"]
+        "children": ["rowTitle", "rowAddress"]
       },
-      "rowClient": {
+      "rowTitle": {
         "type": "Text",
         "props": {
-          "text": { "$item": "contact_full_name" },
+          "text": {
+            "$cond": { "$item": "job_description" },
+            "$then": { "$item": "job_description" },
+            "$else": { "$item": "generated_job_id" }
+          },
           "size": "sm",
           "weight": "medium",
           "truncate": true
@@ -127,7 +132,7 @@
             "$cond": { "$item": "status", "eq": "Completed" },
             "$then": "positive",
             "$else": {
-              "$cond": { "$item": "status", "eq": "Cancelled" },
+              "$cond": { "$item": "status", "eq": "Unsuccessful" },
               "$then": "critical",
               "$else": {
                 "$cond": { "$item": "status", "eq": "Quote" },
