@@ -165,7 +165,7 @@
       "clientSection": {
         "type": "Stack",
         "props": { "gap": "md" },
-        "children": ["scoreRow", "statsGrid", "atoStatus"],
+        "children": ["scoreRow", "statsGrid", "atoWrapper"],
         "visible": { "$state": "/ui/rows" }
       },
 
@@ -293,11 +293,35 @@
         "visible": { "$state": "/ui/rows/3/sub_label" }
       },
 
-      "atoStatus": {
-        "type": "Section",
-        "props": { "tone": { "$state": "/ui/rows/4/dot_tone" } },
-        "children": ["atoRow"],
+      "atoWrapper": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["atoWarning", "atoDestructive", "atoSuccess", "atoMuted"],
         "visible": { "$state": "/ui/rows/4" }
+      },
+      "atoWarning": {
+        "type": "Section",
+        "props": { "tone": "warning" },
+        "children": ["atoRow"],
+        "visible": { "$state": "/ui/rows/4/dot_tone", "eq": "warning" }
+      },
+      "atoDestructive": {
+        "type": "Section",
+        "props": { "tone": "destructive" },
+        "children": ["atoRow"],
+        "visible": { "$state": "/ui/rows/4/dot_tone", "eq": "destructive" }
+      },
+      "atoSuccess": {
+        "type": "Section",
+        "props": { "tone": "success" },
+        "children": ["atoRow"],
+        "visible": { "$state": "/ui/rows/4/dot_tone", "eq": "success" }
+      },
+      "atoMuted": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["atoRow"],
+        "visible": { "$state": "/ui/rows/4/dot_tone", "eq": "muted" }
       },
       "atoRow": {
         "type": "Row",

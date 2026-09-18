@@ -178,6 +178,12 @@ const flatten_portfolio_health = (args) => {
  *
  * Args: { client: object }
  */
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function fmtMonth(dateStr) {
+    const parts = dateStr.split('-');
+    const idx = parts.length >= 2 ? parseInt(parts[1], 10) - 1 : -1;
+    return (idx >= 0 && idx <= 11) ? MONTHS[idx] : dateStr;
+}
 const flatten_client_detail_rows = (args) => {
     const client = args.client;
     if (!client || typeof client !== 'object' || Array.isArray(client))
@@ -197,10 +203,12 @@ const flatten_client_detail_rows = (args) => {
         badge_tone: 'default',
         dot_tone: 'muted',
     });
-    // Current BAS period
+    // Current BAS period — format dates as "Jul–Sep" month range
     const periodStart = String(vatDetails.periodStart ?? '').trim();
     const periodEnd = String(vatDetails.periodEnd ?? '').trim();
-    const periodLabel = periodStart && periodEnd ? `${periodStart}–${periodEnd}` : (periodStart || periodEnd || '—');
+    const periodLabel = periodStart && periodEnd
+        ? `${fmtMonth(periodStart)}–${fmtMonth(periodEnd)}`
+        : (periodStart ? fmtMonth(periodStart) : (periodEnd ? fmtMonth(periodEnd) : '—'));
     const yearEnd = String(client.yearEnd ?? '').trim();
     rows.push({
         id: 'bas_period',
