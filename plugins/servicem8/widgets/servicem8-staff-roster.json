@@ -1,0 +1,152 @@
+{
+  "id": "servicem8-staff-roster",
+  "title": "ServiceM8 — Staff Roster",
+  "description": "A live table of active staff members from your ServiceM8 account — Name, Security Role, Email Address, Mobile Number, and Job Title, matching ServiceM8's own Staff settings screen. Security Role is resolved from a staff record's raw security_role_uuid via a separate list_security_roles call, since ServiceM8's API has no combined staff+role endpoint. Inactive staff are excluded by design — this also filters out a quirk of ServiceM8's own data: its staff list includes an internal record representing the connected API key itself, which comes back marked inactive, so filtering to active staff only avoids showing it as if it were a person. \"Open in ServiceM8\" opens the app's home page — there is no documented, non-session-specific deep link directly to the Staff settings page, so this intentionally does not use an account-specific URL with an embedded session token (that would leak a live credential into every installation of this shared plugin).",
+  "category": "field-service",
+  "tags": ["servicem8", "staff", "team", "roster", "field-service", "trades", "security-role"],
+  "keywords": ["staff", "team", "roster", "employees", "security role", "job title", "field service", "servicem8"],
+  "connectorsUsed": ["servicem8"],
+  "popularity": 0,
+  "brandColor": "#34DFBA",
+  "sizing": {
+    "preferred": { "colSpan": 8, "rowSpan": 6 },
+    "min": { "colSpan": 5, "rowSpan": 4 },
+    "max": { "colSpan": 12, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "servicem8",
+    "tool": "list_staff_members",
+    "params": { "filter": "active eq 1" }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "divider0", "body", "footer"],
+        "watch": {
+          "/servicem8/list_staff_members/staff": [
+            {
+              "action": "servicem8.list_security_roles",
+              "params": {}
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "servicem8_join_staff_roles",
+                  "args": {
+                    "staff": { "$state": "/servicem8/list_staff_members/staff" },
+                    "roles": { "$state": "/servicem8/list_security_roles" }
+                  }
+                }
+              }
+            }
+          ],
+          "/servicem8/list_security_roles": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "servicem8_join_staff_roles",
+                  "args": {
+                    "staff": { "$state": "/servicem8/list_staff_members/staff" },
+                    "roles": { "$state": "/servicem8/list_security_roles" }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
+      "headerRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Users", "tone": "brand", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "subtitle"] },
+      "title": { "type": "Heading", "props": { "text": "Staff Roster", "level": "h2" } },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "ServiceM8 · {n} active", "n": { "$computed": "count", "args": { "value": { "$state": "/ui/rows" } } } }
+          }
+        },
+        "visible": { "$state": "/ui/rows/0" }
+      },
+
+      "divider0": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "table"] },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/servicem8.list_staff_members" },
+            { "$state": "/ui/rows/0", "not": true }
+          ]
+        }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No active staff found in this ServiceM8 account." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/servicem8.list_staff_members", "not": true },
+            { "$state": "/ui/rows/0", "not": true }
+          ]
+        }
+      },
+
+      "table": {
+        "type": "Table",
+        "props": {
+          "loading": { "$state": "/_loading/servicem8.list_staff_members" },
+          "skeletonRows": 4,
+          "rows": { "$state": "/ui/rows" },
+          "columns": [
+            { "id": "name", "header": "Name", "field": "name", "priority": 1 },
+            { "id": "role", "header": "Security Role", "field": "role_name", "width": 130, "priority": 1 },
+            { "id": "email", "header": "Email Address", "field": "email", "priority": 2 },
+            { "id": "mobile", "header": "Mobile Number", "field": "mobile", "width": 130, "priority": 3 },
+            { "id": "title", "header": "Job Title", "field": "job_title", "width": 120, "priority": 3 }
+          ]
+        },
+        "visible": { "$state": "/ui/rows/0" }
+      },
+
+      "footer": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["openServiceM8Btn"]
+      },
+      "openServiceM8Btn": {
+        "type": "Button",
+        "props": { "label": "Open in ServiceM8", "tone": "brand", "variant": "primary", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": "https://go.servicem8.com/", "target": "_blank" }
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}
