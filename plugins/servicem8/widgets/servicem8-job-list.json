@@ -1,12 +1,13 @@
 {
   "id": "servicem8-job-list",
   "title": "ServiceM8 — Job list",
-  "description": "A live list of jobs from ServiceM8, showing job description/number, address, and status. Click a row to open that job in the ServiceM8 web app in a new tab. Client name is not shown — ServiceM8's raw API only exposes a company id on the job record, with no tool to resolve it to a name.",
+  "description": "A live list of jobs from ServiceM8, showing job description/number, address, status, and an Active/Inactive badge. Filter by Active/Inactive/All jobs (defaults to All). Click an active job's row to open it in the ServiceM8 web app in a new tab; clicking an inactive (archived) job shows a notice instead, since ServiceM8's own web app refuses to open an inactive job's page directly. \"Open Dispatch Board\" opens ServiceM8's app home page (there is no separate documented Dispatch Board URL — it's the default view after login). Client name is not shown — ServiceM8's raw API only exposes a company id on the job record, with no tool to resolve it to a name.",
   "category": "field-service",
   "tags": ["servicem8", "jobs", "field-service", "trades", "operations"],
   "keywords": ["jobs", "work orders", "field service", "trades", "clients", "servicem8"],
   "connectorsUsed": ["servicem8"],
   "popularity": 0,
+  "brandColor": "#34DFBA",
   "sizing": {
     "preferred": { "colSpan": 8, "rowSpan": 8 },
     "min": { "colSpan": 4, "rowSpan": 4 },
@@ -20,12 +21,12 @@
   "spec": {
     "root": "card",
     "elements": {
-      "card": { "type": "Card", "props": {}, "children": ["header", "body"] },
+      "card": { "type": "Card", "props": {}, "children": ["header", "body", "footer"] },
       "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
       "headerRow": {
         "type": "Row",
         "props": { "justify": "between", "align": "center" },
-        "children": ["titleGroup", "refreshBtn"]
+        "children": ["titleGroup", "headerActions"]
       },
       "titleGroup": {
         "type": "Row",
@@ -34,7 +35,7 @@
       },
       "titleIcon": {
         "type": "Icon",
-        "props": { "name": "Briefcase", "tone": "accent", "size": "sm" }
+        "props": { "name": "Briefcase", "tone": "brand", "size": "sm" }
       },
       "titleStack": {
         "type": "Stack",
@@ -49,14 +50,71 @@
         "type": "Eyebrow",
         "props": { "text": "ServiceM8" }
       },
+      "headerActions": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["statusFilter", "refreshBtn"]
+      },
+      "statusFilter": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/statusFilter" },
+          "options": [
+            { "value": "all", "label": "All jobs" },
+            { "value": "active", "label": "Active" },
+            { "value": "inactive", "label": "Inactive" }
+          ],
+          "placeholder": "All jobs",
+          "ariaLabel": "Filter by job status",
+          "size": "sm"
+        },
+        "on": {
+          "change": [
+            {
+              "action": "bust_tool_cache",
+              "params": { "mcp": "servicem8", "tool": "list_jobs" }
+            },
+            {
+              "action": "servicem8.list_jobs",
+              "params": {
+                "filter": {
+                  "$cond": { "$state": "/ui/statusFilter", "eq": "active" },
+                  "$then": "active eq 1",
+                  "$else": {
+                    "$cond": { "$state": "/ui/statusFilter", "eq": "inactive" },
+                    "$then": "active eq 0",
+                    "$else": ""
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
       "refreshBtn": {
         "type": "IconButton",
         "props": { "name": "RefreshCw", "size": "sm", "ariaLabel": "Refresh" },
         "on": {
-          "click": {
-            "action": "servicem8.list_jobs",
-            "params": {}
-          }
+          "click": [
+            {
+              "action": "bust_tool_cache",
+              "params": { "mcp": "servicem8", "tool": "list_jobs" }
+            },
+            {
+              "action": "servicem8.list_jobs",
+              "params": {
+                "filter": {
+                  "$cond": { "$state": "/ui/statusFilter", "eq": "active" },
+                  "$then": "active eq 1",
+                  "$else": {
+                    "$cond": { "$state": "/ui/statusFilter", "eq": "inactive" },
+                    "$then": "active eq 0",
+                    "$else": ""
+                  }
+                }
+              }
+            }
+          ]
         }
       },
       "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "list"] },
@@ -72,7 +130,7 @@
       "lk4": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
       "empty": {
         "type": "Empty",
-        "props": { "message": "No jobs found." },
+        "props": { "message": "No jobs found for the selected filter." },
         "visible": {
           "$and": [
             { "$state": "/_loading/servicem8.list_jobs", "not": true },
@@ -95,22 +153,39 @@
         "type": "Row",
         "props": { "gap": "sm", "align": "center", "template": "auto minmax(0, 1fr) auto", "hover": true, "clickable": true },
         "on": {
-          "click": {
-            "action": "open_url",
-            "params": {
-              "url": {
-                "$computed": "fmt",
-                "args": { "pattern": "https://go.servicem8.com/OpenJob/{uuid}", "uuid": { "$item": "uuid" } }
-              },
-              "target": "_blank"
+          "click": [
+            {
+              "action": "toast",
+              "params": {
+                "message": {
+                  "$cond": { "$item": "active", "eq": 0 },
+                  "$then": "This job is inactive in ServiceM8 and can't be opened directly from here.",
+                  "$else": ""
+                },
+                "tone": "info"
+              }
+            },
+            {
+              "action": "open_url",
+              "params": {
+                "url": {
+                  "$cond": { "$item": "active", "eq": 0 },
+                  "$then": "",
+                  "$else": {
+                    "$computed": "fmt",
+                    "args": { "pattern": "https://go.servicem8.com/OpenJob/{uuid}", "uuid": { "$item": "uuid" } }
+                  }
+                },
+                "target": "_blank"
+              }
             }
-          }
+          ]
         },
-        "children": ["rowIcon", "rowDetails", "rowStatus"]
+        "children": ["rowIcon", "rowDetails", "rowBadges"]
       },
       "rowIcon": {
         "type": "Icon",
-        "props": { "name": "Briefcase", "tone": "accent", "size": "sm" }
+        "props": { "name": "Briefcase", "tone": "brand", "size": "sm" }
       },
       "rowDetails": {
         "type": "Stack",
@@ -136,22 +211,59 @@
           "text": { "$item": "job_address" }
         }
       },
+      "rowBadges": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["rowStatus", "rowActiveBadge"]
+      },
       "rowStatus": {
         "type": "Badge",
         "props": {
           "text": { "$item": "status" },
           "tone": {
             "$cond": { "$item": "status", "eq": "Completed" },
-            "$then": "positive",
+            "$then": "success",
             "$else": {
               "$cond": { "$item": "status", "eq": "Unsuccessful" },
-              "$then": "critical",
+              "$then": "destructive",
               "$else": {
                 "$cond": { "$item": "status", "eq": "Quote" },
                 "$then": "warning",
                 "$else": "info"
               }
             }
+          }
+        }
+      },
+      "rowActiveBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$cond": { "$item": "active", "eq": 1 },
+            "$then": "Active",
+            "$else": "Inactive"
+          },
+          "tone": {
+            "$cond": { "$item": "active", "eq": 1 },
+            "$then": "success",
+            "$else": "muted"
+          },
+          "variant": "outline"
+        }
+      },
+
+      "footer": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["dispatchBoardBtn"]
+      },
+      "dispatchBoardBtn": {
+        "type": "Button",
+        "props": { "label": "Open Dispatch Board", "tone": "brand", "variant": "primary", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": "https://go.servicem8.com/", "target": "_blank" }
           }
         }
       }
