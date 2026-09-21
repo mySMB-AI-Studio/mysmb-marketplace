@@ -384,6 +384,14 @@ const compute_health_tone = (args) => {
         return 'warning';
     return 'destructive';
 };
+const compute_health_tone_flags = (args) => {
+    const score = Number(args.score ?? 0);
+    return {
+        success:     score >= 70,
+        warning:     score >= 40 && score < 70,
+        destructive: score < 40,
+    };
+};
 /**
  * Converts a 0–100 health score into a 100-item synthetic array for the Donut
  * component. `score` items fill the arc; `rest` items form the empty background.
@@ -411,6 +419,7 @@ const elements = {
         flatten_client_detail_rows,
         flatten_activity_stats_rows,
         compute_health_tone,
+        compute_health_tone_flags,
         score_to_donut_data,
     },
 };
