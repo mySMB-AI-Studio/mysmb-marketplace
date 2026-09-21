@@ -182,43 +182,38 @@
       "scoreRow": {
         "type": "Row",
         "props": { "gap": "md", "align": "center" },
-        "children": ["scoreBlockSuccess", "scoreBlockWarning", "scoreBlockDestructive", "clientInfo"]
+        "children": ["scoreBlockS", "scoreBlockW", "scoreBlockD", "clientInfo"]
       },
-      "scoreBlockSuccess": {
+
+      "scoreBlockS": {
         "type": "Stack",
         "props": { "variant": "soft", "tone": "success", "padding": "sm", "rounded": "md", "align": "center" },
-        "children": ["scoreStack"],
+        "children": ["scoreStackS"],
         "visible": { "$state": "/ui/healthToneFlags/success" }
       },
-      "scoreBlockWarning": {
+      "scoreStackS": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["scoreNumS", "scoreCaptS"] },
+      "scoreNumS":   { "type": "Stat",    "props": { "value": { "$state": "/dext/get_client/healthScore" }, "tone": "success",     "size": "sm" } },
+      "scoreCaptS":  { "type": "Caption", "props": { "text": "SCORE", "tone": "muted" } },
+
+      "scoreBlockW": {
         "type": "Stack",
         "props": { "variant": "soft", "tone": "warning", "padding": "sm", "rounded": "md", "align": "center" },
-        "children": ["scoreStack"],
+        "children": ["scoreStackW"],
         "visible": { "$state": "/ui/healthToneFlags/warning" }
       },
-      "scoreBlockDestructive": {
+      "scoreStackW": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["scoreNumW", "scoreCaptW"] },
+      "scoreNumW":   { "type": "Stat",    "props": { "value": { "$state": "/dext/get_client/healthScore" }, "tone": "warning",     "size": "sm" } },
+      "scoreCaptW":  { "type": "Caption", "props": { "text": "SCORE", "tone": "muted" } },
+
+      "scoreBlockD": {
         "type": "Stack",
         "props": { "variant": "soft", "tone": "destructive", "padding": "sm", "rounded": "md", "align": "center" },
-        "children": ["scoreStack"],
+        "children": ["scoreStackD"],
         "visible": { "$state": "/ui/healthToneFlags/destructive" }
       },
-      "scoreStack": {
-        "type": "Stack",
-        "props": { "gap": "none", "align": "center" },
-        "children": ["scoreNumber", "scoreCaption"]
-      },
-      "scoreNumber": {
-        "type": "Stat",
-        "props": {
-          "value": { "$state": "/dext/get_client/healthScore" },
-          "tone":  { "$state": "/ui/healthTone" },
-          "size":  "sm"
-        }
-      },
-      "scoreCaption": {
-        "type": "Caption",
-        "props": { "text": "SCORE", "tone": "muted" }
-      },
+      "scoreStackD": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["scoreNumD", "scoreCaptD"] },
+      "scoreNumD":   { "type": "Stat",    "props": { "value": { "$state": "/dext/get_client/healthScore" }, "tone": "destructive", "size": "sm" } },
+      "scoreCaptD":  { "type": "Caption", "props": { "text": "SCORE", "tone": "muted" } },
 
       "clientInfo": {
         "type": "Stack",
