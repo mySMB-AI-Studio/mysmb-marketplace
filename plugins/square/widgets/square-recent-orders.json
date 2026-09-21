@@ -17,49 +17,30 @@
     "tool": "get_merchant",
     "params": {}
   },
-  "watches": [
-    {
-      "on": "/square/get_merchant",
-      "actions": [
-        {
-          "action": "setState",
-          "params": {
-            "statePath": "/ui/locationId",
-            "value": { "$state": "/square/get_merchant/main_location_id" }
-          }
-        }
-      ]
-    },
-    {
-      "on": "/ui/locationId",
-      "actions": [
-        {
-          "action": "callTool",
-          "params": {
-            "mcp": "square",
-            "tool": "search_orders",
-            "toolParams": {
-              "location_ids": [{ "$state": "/ui/locationId" }],
-              "states": ["COMPLETED", "OPEN"],
-              "sort_order": "DESC",
-              "limit": 50
-            }
-          }
-        }
-      ]
-    }
-  ],
   "spec": {
     "root": "card",
     "elements": {
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["titleRow", "divider", "tableBody"]
+        "children": ["header", "body"],
+        "watch": {
+          "/square/get_merchant/main_location_id": [
+            {
+              "action": "square.search_orders",
+              "params": {
+                "location_ids": [{ "$state": "/square/get_merchant/main_location_id" }],
+                "states": ["COMPLETED", "OPEN"],
+                "sort_order": "DESC",
+                "limit": 50
+              }
+            }
+          ]
+        }
       },
-      "titleRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
+
+      "header": {
+        "type": "Header",
         "children": ["titleGroup"]
       },
       "titleGroup": {
@@ -74,7 +55,7 @@
       },
       "titleIcon": {
         "type": "Icon",
-        "props": { "name": "ShoppingBag", "tone": "accent", "size": "md" }
+        "props": { "name": "ShoppingBag", "tone": "info", "size": "md" }
       },
       "titleStack": {
         "type": "Stack",
@@ -89,8 +70,8 @@
         "type": "Eyebrow",
         "props": { "text": "Square", "tone": "info" }
       },
-      "divider": { "type": "Divider", "props": {} },
-      "tableBody": {
+
+      "body": {
         "type": "Body",
         "props": {},
         "children": ["table"]
@@ -100,14 +81,16 @@
         "props": {
           "loading": { "$state": "/_loading/square.search_orders" },
           "skeletonRows": 5,
-          "rows": { "$state": "/square/search_orders/orders" },
+          "rows": {
+            "$computed": "square_enrich_orders",
+            "args": { "value": { "$state": "/square/search_orders/orders" } }
+          },
           "columns": [
-            { "id": "id", "header": "Order ID", "field": "id", "priority": 2 },
-            { "id": "total", "header": "Total", "field": "total_money.amount", "width": 130, "priority": 1, "format": "currency" },
-            { "id": "currency", "header": "Currency", "field": "total_money.currency", "width": 90, "priority": 3 },
-            { "id": "status", "header": "Status", "field": "state", "width": 110, "priority": 1 },
-            { "id": "source", "header": "Source", "field": "source.name", "width": 130, "priority": 2 },
-            { "id": "created", "header": "Date", "field": "created_at", "width": 160, "priority": 1, "format": "datetime" }
+            { "id": "id",      "header": "Order",  "field": "order_id_short",     "width": 110, "priority": 1 },
+            { "id": "total",   "header": "Total",  "field": "total_money.amount", "width": 120, "priority": 1, "format": "currency" },
+            { "id": "status",  "header": "Status", "field": "status_label",       "width": 110, "priority": 1, "variant": "badge", "tone": "status_tone" },
+            { "id": "source",  "header": "Source", "field": "source.name",        "priority": 2 },
+            { "id": "created", "header": "Date",   "field": "created_at",         "width": 120, "priority": 1, "format": "relative" }
           ]
         }
       }
