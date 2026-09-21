@@ -195,9 +195,12 @@ const GST_SCHEME_LABELS = {
     CASH: 'Cash basis', CASH_ACCOUNTING: 'Cash basis',
 };
 const flatten_client_detail_rows = (args) => {
-    const vatDetails = (args.vatDetails ?? {});
-    const metrics = (args.metrics ?? {});
-    const bankRec = (args.bankReconciliation ?? {});
+    const client = args.client;
+    if (!client || typeof client !== 'object' || Array.isArray(client))
+        return [];
+    const vatDetails = (client.vatDetails ?? {});
+    const metrics = (client.metrics ?? {});
+    const bankRec = (client.bankReconciliation ?? {});
     const rows = [];
     // GST method — humanize raw API values
     const vatSchemeRaw = String(vatDetails.scheme ?? '').trim();
@@ -218,7 +221,7 @@ const flatten_client_detail_rows = (args) => {
     const periodLabel = periodStart && periodEnd
         ? `${fmtMonth(periodStart)}–${fmtMonth(periodEnd)}`
         : (periodStart ? fmtMonth(periodStart) : (periodEnd ? fmtMonth(periodEnd) : '—'));
-    const yearEnd = String(args.yearEnd ?? '').trim();
+    const yearEnd = String(client.yearEnd ?? '').trim();
     let basSub = yearEnd ? `Year end ${fmtYearEnd(yearEnd)}` : '—';
     if (periodStart && yearEnd) {
         const pParts = periodStart.split('-');
@@ -272,7 +275,7 @@ const flatten_client_detail_rows = (args) => {
         dot_tone: 'muted',
     });
     // ATO status — normalize underscored API values (e.g. NOT_CONNECTED → not connected)
-    const hmrcStatus = String(args.hmrcStatus ?? '').trim();
+    const hmrcStatus = String(client.hmrcStatus ?? '').trim();
     const oneDayImpact = Number(metrics.oneDayImpact ?? 0);
     const normalized = hmrcStatus.toLowerCase().replace(/_/g, ' ');
     let dotTone = 'muted';
