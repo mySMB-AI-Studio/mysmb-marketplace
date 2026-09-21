@@ -424,6 +424,10 @@ const compute_health_tone_flags: ComputedFunction = (args) => {
   };
 };
 
+const score_is_success:     ComputedFunction = (args) => Number(args.score ?? 0) >= 70;
+const score_is_warning:     ComputedFunction = (args) => { const s = Number(args.score ?? 0); return s >= 40 && s < 70; };
+const score_is_destructive: ComputedFunction = (args) => Number(args.score ?? 0) < 40;
+
 /**
  * Converts a 0–100 health score into a 100-item synthetic array for the Donut
  * component. `score` items fill the arc; `rest` items form the empty background.
@@ -451,6 +455,9 @@ const elements: PluginElementsModule = {
     flatten_activity_stats_rows,
     compute_health_tone,
     compute_health_tone_flags,
+    score_is_success,
+    score_is_warning,
+    score_is_destructive,
     score_to_donut_data,
   },
 };

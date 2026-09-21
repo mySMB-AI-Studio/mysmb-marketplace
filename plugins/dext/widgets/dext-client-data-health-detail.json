@@ -63,11 +63,22 @@
             {
               "action": "setState",
               "params": {
-                "statePath": "/ui/healthToneFlags",
-                "value": {
-                  "$computed": "dext_compute_health_tone_flags",
-                  "args": { "score": { "$state": "/dext/get_client/healthScore" } }
-                }
+                "statePath": "/ui/scoreIsSuccess",
+                "value": { "$computed": "dext_score_is_success", "args": { "score": { "$state": "/dext/get_client/healthScore" } } }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/scoreIsWarning",
+                "value": { "$computed": "dext_score_is_warning", "args": { "score": { "$state": "/dext/get_client/healthScore" } } }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/scoreIsDestructive",
+                "value": { "$computed": "dext_score_is_destructive", "args": { "score": { "$state": "/dext/get_client/healthScore" } } }
               }
             }
           ]
@@ -189,7 +200,7 @@
         "type": "Stack",
         "props": { "variant": "soft", "tone": "success", "padding": "sm", "rounded": "md", "align": "center" },
         "children": ["scoreStackS"],
-        "visible": { "$state": "/ui/healthToneFlags/success" }
+        "visible": { "$state": "/ui/scoreIsSuccess" }
       },
       "scoreStackS": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["scoreNumS", "scoreCaptS"] },
       "scoreNumS":   { "type": "Stat",    "props": { "value": { "$state": "/dext/get_client/healthScore" }, "tone": "success",     "size": "sm" } },
@@ -199,7 +210,7 @@
         "type": "Stack",
         "props": { "variant": "soft", "tone": "warning", "padding": "sm", "rounded": "md", "align": "center" },
         "children": ["scoreStackW"],
-        "visible": { "$state": "/ui/healthToneFlags/warning" }
+        "visible": { "$state": "/ui/scoreIsWarning" }
       },
       "scoreStackW": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["scoreNumW", "scoreCaptW"] },
       "scoreNumW":   { "type": "Stat",    "props": { "value": { "$state": "/dext/get_client/healthScore" }, "tone": "warning",     "size": "sm" } },
@@ -209,7 +220,7 @@
         "type": "Stack",
         "props": { "variant": "soft", "tone": "destructive", "padding": "sm", "rounded": "md", "align": "center" },
         "children": ["scoreStackD"],
-        "visible": { "$state": "/ui/healthToneFlags/destructive" }
+        "visible": { "$state": "/ui/scoreIsDestructive" }
       },
       "scoreStackD": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["scoreNumD", "scoreCaptD"] },
       "scoreNumD":   { "type": "Stat",    "props": { "value": { "$state": "/dext/get_client/healthScore" }, "tone": "destructive", "size": "sm" } },
