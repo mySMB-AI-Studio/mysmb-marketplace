@@ -39,14 +39,20 @@
               "params": { "clientId": { "$state": "/dext/list_clients/data/0/id" } }
             }
           ],
-          "/dext/get_client": [
+          "/dext/get_client/name": [
             {
               "action": "setState",
               "params": {
                 "statePath": "/ui/rows",
                 "value": {
                   "$computed": "dext_flatten_client_detail_rows",
-                  "args": { "client": { "$state": "/dext/get_client" } }
+                  "args": {
+                    "vatDetails":        { "$state": "/dext/get_client/vatDetails" },
+                    "metrics":           { "$state": "/dext/get_client/metrics" },
+                    "bankReconciliation":{ "$state": "/dext/get_client/bankReconciliation" },
+                    "yearEnd":           { "$state": "/dext/get_client/yearEnd" },
+                    "hmrcStatus":        { "$state": "/dext/get_client/hmrcStatus" }
+                  }
                 }
               }
             },

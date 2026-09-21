@@ -195,12 +195,9 @@ const GST_SCHEME_LABELS = {
     CASH: 'Cash basis', CASH_ACCOUNTING: 'Cash basis',
 };
 const flatten_client_detail_rows = (args) => {
-    const client = args.client;
-    if (!client || typeof client !== 'object' || Array.isArray(client))
-        return [];
-    const vatDetails = (client.vatDetails ?? {});
-    const metrics = (client.metrics ?? {});
-    const bankRec = (client.bankReconciliation ?? {});
+    const vatDetails = (args.vatDetails ?? {});
+    const metrics = (args.metrics ?? {});
+    const bankRec = (args.bankReconciliation ?? {});
     const rows = [];
     // GST method — humanize raw API values
     const vatSchemeRaw = String(vatDetails.scheme ?? '').trim();
@@ -221,7 +218,7 @@ const flatten_client_detail_rows = (args) => {
     const periodLabel = periodStart && periodEnd
         ? `${fmtMonth(periodStart)}–${fmtMonth(periodEnd)}`
         : (periodStart ? fmtMonth(periodStart) : (periodEnd ? fmtMonth(periodEnd) : '—'));
-    const yearEnd = String(client.yearEnd ?? '').trim();
+    const yearEnd = String(args.yearEnd ?? '').trim();
     let basSub = yearEnd ? `Year end ${fmtYearEnd(yearEnd)}` : '—';
     if (periodStart && yearEnd) {
         const pParts = periodStart.split('-');
@@ -275,7 +272,7 @@ const flatten_client_detail_rows = (args) => {
         dot_tone: 'muted',
     });
     // ATO status — normalize underscored API values (e.g. NOT_CONNECTED → not connected)
-    const hmrcStatus = String(client.hmrcStatus ?? '').trim();
+    const hmrcStatus = String(args.hmrcStatus ?? '').trim();
     const oneDayImpact = Number(metrics.oneDayImpact ?? 0);
     const normalized = hmrcStatus.toLowerCase().replace(/_/g, ' ');
     let dotTone = 'muted';
@@ -387,13 +384,13 @@ const compute_health_tone = (args) => {
 const compute_health_tone_flags = (args) => {
     const score = Number(args.score ?? 0);
     return {
-        success:     score >= 70,
-        warning:     score >= 40 && score < 70,
+        success: score >= 70,
+        warning: score >= 40 && score < 70,
         destructive: score < 40,
     };
 };
-const score_is_success =     (args) => Number(args.score ?? 0) >= 70;
-const score_is_warning =     (args) => { const s = Number(args.score ?? 0); return s >= 40 && s < 70; };
+const score_is_success = (args) => Number(args.score ?? 0) >= 70;
+const score_is_warning = (args) => { const s = Number(args.score ?? 0); return s >= 40 && s < 70; };
 const score_is_destructive = (args) => Number(args.score ?? 0) < 40;
 /**
  * Converts a 0–100 health score into a 100-item synthetic array for the Donut
