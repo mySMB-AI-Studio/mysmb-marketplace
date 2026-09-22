@@ -38,7 +38,7 @@ const age_label: ComputedFunction = (args) => {
 };
 
 // ── sent_meta ────────────────────────────────────────────────────────────────
-// Format "dd-Mmm-yy · Status Label" (no "Sent" prefix — redundant on this tile).
+// Format "dd-Mmm-yy · Status Label" (no "Sent" prefix).
 // Args: { sent: string, status: string }
 const sent_meta: ComputedFunction = (args) => {
   const raw = args.sent;
@@ -91,6 +91,23 @@ const status_tone: ComputedFunction = (args) => {
   return 'muted';
 };
 
+// ── row_title ─────────────────────────────────────────────────────────────────
+// Build the row's primary line: "First Signer — Subject" when recipient data
+// is available (list_envelopes called with include='recipients'), falling back
+// to just "Subject" when it isn't.
+// Args: { recipients: object, subject: string }
+const row_title: ComputedFunction = (args) => {
+  const subject = typeof args.subject === 'string' ? args.subject.trim() : '';
+  const recipients = args.recipients as Record<string, unknown> | null | undefined;
+  if (!recipients || typeof recipients !== 'object') return subject;
+  const signers = recipients.signers;
+  if (!Array.isArray(signers) || signers.length === 0) return subject;
+  const first = signers[0] as Record<string, unknown> | undefined;
+  const name = typeof first?.name === 'string' ? first.name.trim() : '';
+  if (!name) return subject;
+  return `${name} — ${subject}`;
+};
+
 // ── filter_pending ────────────────────────────────────────────────────────────
 // Filter an envelopes array to only "sent" and "delivered" entries.
 // Used via a card `watch` to pre-populate /ui/pendingEnvelopes.
@@ -112,6 +129,7 @@ const elements: PluginElementsModule = {
     sent_meta,
     status_label,
     status_tone,
+    row_title,
     filter_pending,
   },
 };

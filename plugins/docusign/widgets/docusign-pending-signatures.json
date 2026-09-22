@@ -16,7 +16,8 @@
     "mcp": "docusign",
     "tool": "list_envelopes",
     "params": {
-      "count": 30
+      "count": 30,
+      "include": "recipients"
     }
   },
   "spec": {
@@ -127,7 +128,13 @@
       "rowTitle": {
         "type": "Text",
         "props": {
-          "text": { "$item": "emailSubject" },
+          "text": {
+            "$computed": "docusign_row_title",
+            "args": {
+              "recipients": { "$item": "recipients" },
+              "subject":    { "$item": "emailSubject" }
+            }
+          },
           "size": "sm",
           "weight": "medium",
           "truncate": true

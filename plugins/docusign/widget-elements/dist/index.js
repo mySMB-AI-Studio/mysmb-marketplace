@@ -68,6 +68,19 @@ const status_tone = (args) => {
     return 'muted';
 };
 
+// "First Signer — Subject" when include='recipients' data is present, else just "Subject".
+const row_title = (args) => {
+    const subject = typeof args.subject === 'string' ? args.subject.trim() : '';
+    const recipients = args.recipients;
+    if (!recipients || typeof recipients !== 'object') return subject;
+    const signers = recipients.signers;
+    if (!Array.isArray(signers) || signers.length === 0) return subject;
+    const first = signers[0];
+    const name = typeof first?.name === 'string' ? first.name.trim() : '';
+    if (!name) return subject;
+    return `${name} — ${subject}`;
+};
+
 const filter_pending = (args) => {
     const envelopes = Array.isArray(args.value) ? args.value : [];
     return envelopes.filter((env) => {
@@ -85,6 +98,7 @@ const elements = {
         sent_meta,
         status_label,
         status_tone,
+        row_title,
         filter_pending,
     },
 };
