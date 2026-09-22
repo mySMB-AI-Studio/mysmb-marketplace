@@ -1,0 +1,198 @@
+{
+  "id": "docusign-pending-signatures",
+  "title": "Pending Signatures",
+  "description": "DocuSign envelopes still awaiting a recipient signature — sent or viewed but not yet completed — ordered most-recent first, with a colour-coded age badge showing how long each envelope has been waiting.",
+  "category": "documents",
+  "tags": ["docusign", "esignature", "envelopes", "signing", "contracts", "pending"],
+  "keywords": ["pending signatures", "awaiting signature", "sent envelopes", "unsigned", "docusign", "envelope", "contract", "signing"],
+  "connectorsUsed": ["docusign"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 6 },
+    "min":       { "colSpan": 4, "rowSpan": 4 },
+    "max":       { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "docusign",
+    "tool": "list_envelopes",
+    "params": {
+      "count": 30
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"],
+        "watch": {
+          "/docusign/list_envelopes/envelopes": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/pendingEnvelopes",
+              "value": {
+                "$computed": "docusign_filter_pending",
+                "args": { "value": { "$state": "/docusign/list_envelopes/envelopes" } }
+              }
+            }
+          }
+        }
+      },
+
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "PenLine", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Pending Signatures", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Awaiting recipient action" }
+      },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "list"]
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/docusign.list_envelopes" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No envelopes awaiting signature." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/docusign.list_envelopes", "not": true },
+            { "$state": "/ui/pendingEnvelopes/0", "not": true }
+          ]
+        }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": {
+          "statePath": "/ui/pendingEnvelopes",
+          "key": "envelopeId"
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/docusign.list_envelopes", "not": true },
+            { "$state": "/ui/pendingEnvelopes/0" }
+          ]
+        }
+      },
+
+      "row": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["rowLeft", "agePill"]
+      },
+
+      "rowLeft": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["rowSubject", "rowMeta"]
+      },
+      "rowSubject": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "emailSubject" },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "rowMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "docusign_sent_meta",
+            "args": {
+              "sent":   { "$item": "sentDateTime" },
+              "status": { "$item": "status" }
+            }
+          }
+        }
+      },
+
+      "agePill": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["ageDot", "ageText"]
+      },
+      "ageDot": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": {
+            "$computed": "docusign_age_tone",
+            "args": {
+              "value": {
+                "$computed": "docusign_days_waiting",
+                "args": { "value": { "$item": "sentDateTime" } }
+              }
+            }
+          }
+        }
+      },
+      "ageText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "docusign_age_label",
+            "args": {
+              "value": {
+                "$computed": "docusign_days_waiting",
+                "args": { "value": { "$item": "sentDateTime" } }
+              }
+            }
+          },
+          "size": "xs",
+          "weight": "medium",
+          "tone": {
+            "$computed": "docusign_age_tone",
+            "args": {
+              "value": {
+                "$computed": "docusign_days_waiting",
+                "args": { "value": { "$item": "sentDateTime" } }
+              }
+            }
+          }
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}
