@@ -343,6 +343,57 @@ const completed_stats: ComputedFunction = (args) => {
   };
 };
 
+// ── envelope_overview_stats ───────────────────────────────────────────────────
+// Compute status breakdown for the Envelope Status Overview tile.
+// Buckets every envelope into completed / sent+delivered / declined / voided,
+// computes proportional percentages (flex-grow values for the segmented bar),
+// and pre-formats legend strings.
+// Args: { value: unknown[] } — the /docusign/list_envelopes/envelopes array.
+const envelope_overview_stats: ComputedFunction = (args) => {
+  const envelopes = Array.isArray(args.value)
+    ? (args.value as Record<string, unknown>[])
+    : [];
+
+  let completed = 0, sent = 0, delivered = 0, declined = 0, voided = 0;
+
+  for (const e of envelopes) {
+    const s = String(e.status ?? '').toLowerCase();
+    if (s === 'completed')       completed++;
+    else if (s === 'sent')       sent++;
+    else if (s === 'delivered')  delivered++;
+    else if (s === 'declined')   declined++;
+    else if (s === 'voided')     voided++;
+  }
+
+  const sentDelivered = sent + delivered;
+  const total = completed + sentDelivered + declined + voided;
+
+  // Proportional grow values (sum ≈ 100); last bucket absorbs rounding.
+  const pct = (n: number) => (total > 0 ? Math.max(1, Math.round((n / total) * 100)) : 0);
+  const completedPct    = pct(completed);
+  const sentPct         = pct(sentDelivered);
+  const declinedPct     = pct(declined);
+  const voidedPct       = total > 0
+    ? Math.max(0, 100 - completedPct - sentPct - declinedPct)
+    : 0;
+
+  return {
+    total:           String(total),
+    completedPct,
+    sentPct,
+    declinedPct,
+    voidedPct,
+    completedVisible:  completed    > 0,
+    sentVisible:       sentDelivered > 0,
+    declinedVisible:   declined     > 0,
+    voidedVisible:     voided       > 0,
+    completedLegend:  `Completed · ${completed}`,
+    sentLegend:       `Sent/Delivered · ${sentDelivered}`,
+    declinedLegend:   `Declined · ${declined}`,
+    voidedLegend:     `Voided · ${voided}`,
+  };
+};
+
 const elements: PluginElementsModule = {
   slug: 'docusign',
   functions: {
@@ -358,6 +409,7 @@ const elements: PluginElementsModule = {
     activity_dot_tone,
     relative_time,
     completed_stats,
+    envelope_overview_stats,
   },
 };
 

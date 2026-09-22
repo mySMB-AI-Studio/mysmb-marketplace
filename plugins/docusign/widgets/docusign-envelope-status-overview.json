@@ -1,0 +1,245 @@
+{
+  "id": "docusign-envelope-status-overview",
+  "title": "Envelope Status Overview",
+  "description": "Total envelope count and proportional status breakdown for the last 30 days — completed, sent/delivered, declined, and voided — shown as a segmented bar with a colour-coded legend.",
+  "category": "documents",
+  "tags": ["docusign", "esignature", "envelopes", "overview", "status", "kpi", "contracts"],
+  "keywords": ["envelope overview", "envelope status", "completed", "sent", "declined", "voided", "docusign", "kpi", "summary"],
+  "connectorsUsed": ["docusign"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 4 },
+    "min":       { "colSpan": 4, "rowSpan": 3 },
+    "max":       { "colSpan": 12, "rowSpan": 8 }
+  },
+  "dataProvider": {
+    "mcp": "docusign",
+    "tool": "list_envelopes",
+    "params": {
+      "count": 100
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"],
+        "watch": {
+          "/docusign/list_envelopes/envelopes": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/docusignOverviewStats",
+              "value": {
+                "$computed": "docusign_envelope_overview_stats",
+                "args": { "value": { "$state": "/docusign/list_envelopes/envelopes" } }
+              }
+            }
+          }
+        }
+      },
+
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Mail", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Envelope Status Overview", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "All Envelopes · Last 30 Days" }
+      },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "content"]
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2"],
+        "visible": { "$state": "/_loading/docusign.list_envelopes" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3rem",  "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No envelopes found in the last 30 days." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/docusign.list_envelopes", "not": true },
+            { "$state": "/docusign/list_envelopes/envelopes/0", "not": true }
+          ]
+        }
+      },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["statBlock", "segBar", "legend"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/docusign.list_envelopes", "not": true },
+            { "$state": "/docusign/list_envelopes/envelopes/0" }
+          ]
+        }
+      },
+
+      "statBlock": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["statVal", "statLbl"]
+      },
+      "statVal": {
+        "type": "Stat",
+        "props": {
+          "value": { "$state": "/ui/docusignOverviewStats/total" }
+        }
+      },
+      "statLbl": {
+        "type": "Caption",
+        "props": { "text": "Total Envelopes" }
+      },
+
+      "segBar": {
+        "type": "Row",
+        "props": { "gap": "none" },
+        "children": ["seg1", "seg2", "seg3", "seg4"]
+      },
+
+      "seg1": {
+        "type": "Stack",
+        "props": { "grow": { "$state": "/ui/docusignOverviewStats/completedPct" } },
+        "children": ["seg1Bar"],
+        "visible": { "$state": "/ui/docusignOverviewStats/completedVisible" }
+      },
+      "seg1Bar": {
+        "type": "ProgressBar",
+        "props": { "value": 100, "tone": "success" }
+      },
+
+      "seg2": {
+        "type": "Stack",
+        "props": { "grow": { "$state": "/ui/docusignOverviewStats/sentPct" } },
+        "children": ["seg2Bar"],
+        "visible": { "$state": "/ui/docusignOverviewStats/sentVisible" }
+      },
+      "seg2Bar": {
+        "type": "ProgressBar",
+        "props": { "value": 100, "tone": "info" }
+      },
+
+      "seg3": {
+        "type": "Stack",
+        "props": { "grow": { "$state": "/ui/docusignOverviewStats/declinedPct" } },
+        "children": ["seg3Bar"],
+        "visible": { "$state": "/ui/docusignOverviewStats/declinedVisible" }
+      },
+      "seg3Bar": {
+        "type": "ProgressBar",
+        "props": { "value": 100, "tone": "destructive" }
+      },
+
+      "seg4": {
+        "type": "Stack",
+        "props": { "grow": { "$state": "/ui/docusignOverviewStats/voidedPct" } },
+        "children": ["seg4Bar"],
+        "visible": { "$state": "/ui/docusignOverviewStats/voidedVisible" }
+      },
+      "seg4Bar": {
+        "type": "ProgressBar",
+        "props": { "value": 100, "tone": "warning" }
+      },
+
+      "legend": {
+        "type": "Row",
+        "props": { "gap": "md", "wrap": true },
+        "children": ["legCompleted", "legSent", "legDeclined", "legVoided"]
+      },
+
+      "legCompleted": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["dotCompleted", "txtCompleted"],
+        "visible": { "$state": "/ui/docusignOverviewStats/completedVisible" }
+      },
+      "dotCompleted": { "type": "Dot", "props": { "size": "sm", "tone": "success" } },
+      "txtCompleted": {
+        "type": "Text",
+        "props": {
+          "text": { "$state": "/ui/docusignOverviewStats/completedLegend" },
+          "size": "xs"
+        }
+      },
+
+      "legSent": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["dotSent", "txtSent"],
+        "visible": { "$state": "/ui/docusignOverviewStats/sentVisible" }
+      },
+      "dotSent": { "type": "Dot", "props": { "size": "sm", "tone": "info" } },
+      "txtSent": {
+        "type": "Text",
+        "props": {
+          "text": { "$state": "/ui/docusignOverviewStats/sentLegend" },
+          "size": "xs"
+        }
+      },
+
+      "legDeclined": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["dotDeclined", "txtDeclined"],
+        "visible": { "$state": "/ui/docusignOverviewStats/declinedVisible" }
+      },
+      "dotDeclined": { "type": "Dot", "props": { "size": "sm", "tone": "destructive" } },
+      "txtDeclined": {
+        "type": "Text",
+        "props": {
+          "text": { "$state": "/ui/docusignOverviewStats/declinedLegend" },
+          "size": "xs"
+        }
+      },
+
+      "legVoided": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["dotVoided", "txtVoided"],
+        "visible": { "$state": "/ui/docusignOverviewStats/voidedVisible" }
+      },
+      "dotVoided": { "type": "Dot", "props": { "size": "sm", "tone": "warning" } },
+      "txtVoided": {
+        "type": "Text",
+        "props": {
+          "text": { "$state": "/ui/docusignOverviewStats/voidedLegend" },
+          "size": "xs"
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}
