@@ -16,7 +16,8 @@
     "mcp": "docusign",
     "tool": "list_envelopes",
     "params": {
-      "count": 30
+      "count": 30,
+      "include": "recipients"
     }
   },
   "spec": {
@@ -66,7 +67,7 @@
       },
       "eyebrow": {
         "type": "Eyebrow",
-        "props": { "text": "Awaiting recipient action" }
+        "props": { "text": "Awaiting Recipient Action" }
       },
 
       "body": {
@@ -127,7 +128,13 @@
       "rowSubject": {
         "type": "Text",
         "props": {
-          "text": { "$item": "emailSubject" },
+          "text": {
+            "$computed": "docusign_row_title",
+            "args": {
+              "subject":    { "$item": "emailSubject" },
+              "recipients": { "$item": "recipients" }
+            }
+          },
           "size": "sm",
           "weight": "medium",
           "truncate": true
