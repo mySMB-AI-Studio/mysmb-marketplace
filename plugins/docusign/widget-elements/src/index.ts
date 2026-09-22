@@ -92,9 +92,10 @@ const status_tone: ComputedFunction = (args) => {
 };
 
 // ── row_title ─────────────────────────────────────────────────────────────────
-// Build the row's primary line: "First Signer — Subject" when recipient data
+// Build the row's primary line: "F. LastName — Subject" when recipient data
 // is available (list_envelopes called with include='recipients'), falling back
 // to just "Subject" when it isn't.
+// Name is abbreviated to first initial + last name: "Rem Fermin" → "R. Fermin".
 // Args: { recipients: object, subject: string }
 const row_title: ComputedFunction = (args) => {
   const subject = typeof args.subject === 'string' ? args.subject.trim() : '';
@@ -105,8 +106,15 @@ const row_title: ComputedFunction = (args) => {
   const first = signers[0] as Record<string, unknown> | undefined;
   const name = typeof first?.name === 'string' ? first.name.trim() : '';
   if (!name) return subject;
-  return `${name} — ${subject}`;
+  const abbreviated = abbreviateName(name);
+  return `${abbreviated} — ${subject}`;
 };
+
+function abbreviateName(name: string): string {
+  const words = name.split(/\s+/).filter(Boolean);
+  if (words.length < 2) return name;
+  return `${words[0][0].toUpperCase()}. ${words[words.length - 1]}`;
+}
 
 // ── filter_pending ────────────────────────────────────────────────────────────
 // Filter an envelopes array to only "sent" and "delivered" entries.

@@ -68,7 +68,13 @@ const status_tone = (args) => {
     return 'muted';
 };
 
-// "First Signer — Subject" when include='recipients' data is present, else just "Subject".
+function abbreviateName(name) {
+    const words = name.split(/\s+/).filter(Boolean);
+    if (words.length < 2) return name;
+    return `${words[0][0].toUpperCase()}. ${words[words.length - 1]}`;
+}
+
+// "F. LastName — Subject" when include='recipients' data is present, else just "Subject".
 const row_title = (args) => {
     const subject = typeof args.subject === 'string' ? args.subject.trim() : '';
     const recipients = args.recipients;
@@ -78,7 +84,7 @@ const row_title = (args) => {
     const first = signers[0];
     const name = typeof first?.name === 'string' ? first.name.trim() : '';
     if (!name) return subject;
-    return `${name} — ${subject}`;
+    return `${abbreviateName(name)} — ${subject}`;
 };
 
 const filter_pending = (args) => {
