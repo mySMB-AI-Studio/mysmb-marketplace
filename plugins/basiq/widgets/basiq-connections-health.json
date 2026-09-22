@@ -1,10 +1,10 @@
 {
   "id": "basiq-connections-health",
-  "title": "Basiq — Connections Health",
-  "description": "Bank connection health at a glance — success, running, and failed counts with overall status and last refresh time.",
+  "title": "Connections Health",
+  "description": "Live count of Basiq bank connections by status — Success, Running, Failed — plus an overall health indicator and time since last activity. Uses BASIQ_DEFAULT_USER_ID on the server when no specific user is scoped.",
   "category": "finance",
-  "tags": ["basiq", "connections", "banking", "health", "open-banking"],
-  "keywords": ["connections", "bank", "health", "success", "failed", "running", "basiq", "open banking"],
+  "tags": ["basiq", "connections", "health", "status", "open-banking", "banking"],
+  "keywords": ["connections health", "connection status", "success", "running", "failed", "healthy", "basiq"],
   "connectorsUsed": ["basiq"],
   "popularity": 0,
   "sizing": {
@@ -13,170 +13,310 @@
     "max": { "colSpan": 6, "rowSpan": 4 }
   },
   "dataProvider": {
-    "mcp": "basiq",
-    "tool": "execute-request",
-    "params": {
-      "title": "Platform",
-      "harRequest": {
-        "method": "GET",
-        "url": "https://au-api.basiq.io/jobs",
-        "httpVersion": "HTTP/1.1",
-        "headers": [],
-        "queryString": []
-      }
-    }
+    "mcp": "basiq-connect",
+    "tool": "list_basiq_connections",
+    "params": {}
   },
   "spec": {
     "root": "card",
     "elements": {
+
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "body"]
+        "children": ["headerRow", "divider0", "body"],
+        "watch": {
+          "/basiq-connect/list_basiq_connections/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "basiq_flatten_connections_health",
+                  "args": { "value": { "$state": "/basiq-connect/list_basiq_connections/data" } }
+                }
+              }
+            }
+          ],
+          "/ui/selectedStatus": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/breakdown",
+                "value": {
+                  "$computed": "basiq_connections_by_status",
+                  "args": {
+                    "value": { "$state": "/basiq-connect/list_basiq_connections/data" },
+                    "bucket": { "$state": "/ui/selectedStatus" }
+                  }
+                }
+              }
+            }
+          ]
+        }
       },
 
-      "header": {
-        "type": "Header",
-        "children": ["titleGroup", "connectBtn"]
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
       },
       "titleGroup": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIconBox", "titleStack"]
+        "children": ["collapseToggle", "brandIcon", "titleStack"]
       },
-      "titleIconBox": {
-        "type": "Section",
-        "props": { "tone": "info" },
-        "children": ["titleIcon"]
+      "brandIcon": { "type": "Icon", "props": { "name": "Landmark", "tone": "accent", "size": "sm" } },
+      "collapseToggle": {
+        "type": "Row",
+        "props": { "gap": "none", "align": "center", "clickable": true },
+        "children": ["chevronUp", "chevronDown"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/collapsed",
+              "value": {
+                "$computed": "not",
+                "args": { "value": { "$state": "/ui/collapsed" } }
+              }
+            }
+          }
+        }
       },
-      "titleIcon": {
+      "chevronUp": {
         "type": "Icon",
-        "props": { "name": "Wifi", "tone": "info", "size": "md" }
+        "props": { "name": "ChevronUp", "size": "sm", "tone": "muted" },
+        "visible": { "$computed": "not", "args": { "value": { "$state": "/ui/collapsed" } } }
       },
-      "titleStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["title", "eyebrow"]
+      "chevronDown": {
+        "type": "Icon",
+        "props": { "name": "ChevronDown", "size": "sm", "tone": "muted" },
+        "visible": { "$state": "/ui/collapsed" }
       },
-      "title": {
-        "type": "Heading",
-        "props": { "text": "Connections Health", "level": "h2" }
-      },
-      "eyebrow": {
-        "type": "Eyebrow",
-        "props": { "text": "Basiq", "tone": "info" }
-      },
-      "connectBtn": {
-        "type": "Button",
-        "props": { "label": "Connect", "variant": "ghost", "size": "sm", "tone": "info" },
-        "on": { "click": [{ "action": "open_url", "params": { "url": "https://dashboard.basiq.io" } }] }
-      },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Connections Health", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Basiq" } },
+      "divider0": { "type": "Divider", "props": {}, "visible": { "$state": "/ui/collapsed", "not": true } },
 
       "body": {
         "type": "Body",
         "props": {},
-        "children": ["loading", "content"]
+        "children": ["loading", "empty", "content"],
+        "visible": { "$state": "/ui/collapsed", "not": true }
       },
 
       "loading": {
         "type": "Stack",
         "props": { "gap": "sm" },
         "children": ["sk1", "sk2"],
-        "visible": { "$state": "/_loading/basiq.execute-request" }
+        "visible": { "$state": "/_loading/basiq-connect.list_basiq_connections" }
       },
       "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "1.25rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No Basiq connections yet." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/basiq-connect.list_basiq_connections", "not": true },
+            { "$state": "/basiq-connect/list_basiq_connections/data/0", "not": true }
+          ]
+        }
+      },
 
       "content": {
         "type": "Stack",
-        "props": { "gap": "md" },
-        "children": ["statsRow", "footerRow"],
-        "visible": { "$state": "/_loading/basiq.execute-request", "not": true }
+        "props": { "gap": "sm" },
+        "children": ["statsRow", "footerRow", "breakdown"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/basiq-connect.list_basiq_connections", "not": true },
+            { "$state": "/basiq-connect/list_basiq_connections/data/0" }
+          ]
+        }
       },
 
       "statsRow": {
         "type": "Grid",
-        "props": { "cols": 3, "gap": "md" },
-        "children": ["successCol", "runningCol", "failedCol"]
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["successClick", "runningClick", "failedClick"]
       },
 
-      "successCol": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["successVal", "successMeta"]
-      },
-      "successVal": {
-        "type": "Stat",
-        "props": { "value": { "$state": "/basiq/execute-request/success_count" }, "size": "lg", "tone": "success" }
-      },
-      "successMeta": {
+      "successClick": {
         "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["successDot", "successLbl"]
+        "props": {
+          "hover": true,
+          "clickable": true,
+          "selected": { "$computed": "equals", "args": { "a": "active", "b": { "$state": "/ui/selectedStatus" } } }
+        },
+        "children": ["successGroup"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/selectedStatus", "value": "active" } } }
       },
-      "successDot": { "type": "Dot", "props": { "tone": "success" } },
-      "successLbl": { "type": "Caption", "props": { "text": "Success" } },
+      "successGroup": { "type": "Stack", "props": { "gap": "xs", "align": "start" }, "children": ["successStat", "successLabelRow"] },
+      "successStat": { "type": "Stat", "props": { "value": { "$state": "/ui/rows/0/stat_success" }, "size": "lg" } },
+      "successLabelRow": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["successDot", "successLabel"] },
+      "successDot": { "type": "Dot", "props": { "tone": "success", "size": "sm" } },
+      "successLabel": { "type": "Text", "props": { "text": "Success", "size": "sm", "tone": "muted" } },
 
-      "runningCol": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["runningVal", "runningMeta"]
-      },
-      "runningVal": {
-        "type": "Stat",
-        "props": { "value": { "$state": "/basiq/execute-request/running_count" }, "size": "lg", "tone": "info" }
-      },
-      "runningMeta": {
+      "runningClick": {
         "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["runningDot", "runningLbl"]
+        "props": {
+          "hover": true,
+          "clickable": true,
+          "selected": { "$computed": "equals", "args": { "a": "pending", "b": { "$state": "/ui/selectedStatus" } } }
+        },
+        "children": ["runningGroup"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/selectedStatus", "value": "pending" } } }
       },
-      "runningDot": { "type": "Dot", "props": { "tone": "info" } },
-      "runningLbl": { "type": "Caption", "props": { "text": "Running" } },
+      "runningGroup": { "type": "Stack", "props": { "gap": "xs", "align": "start" }, "children": ["runningStat", "runningLabelRow"] },
+      "runningStat": { "type": "Stat", "props": { "value": { "$state": "/ui/rows/0/stat_running" }, "size": "lg" } },
+      "runningLabelRow": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["runningDot", "runningLabel"] },
+      "runningDot": { "type": "Dot", "props": { "tone": "info", "size": "sm" } },
+      "runningLabel": { "type": "Text", "props": { "text": "Running", "size": "sm", "tone": "muted" } },
 
-      "failedCol": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["failedVal", "failedMeta"]
-      },
-      "failedVal": {
-        "type": "Stat",
-        "props": { "value": { "$state": "/basiq/execute-request/failed_count" }, "size": "lg", "tone": "destructive" }
-      },
-      "failedMeta": {
+      "failedClick": {
         "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["failedDot", "failedLbl"]
+        "props": {
+          "hover": true,
+          "clickable": true,
+          "selected": { "$computed": "equals", "args": { "a": "invalid", "b": { "$state": "/ui/selectedStatus" } } }
+        },
+        "children": ["failedGroup"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/selectedStatus", "value": "invalid" } } }
       },
-      "failedDot": { "type": "Dot", "props": { "tone": "destructive" } },
-      "failedLbl": { "type": "Caption", "props": { "text": "Failed" } },
+      "failedGroup": { "type": "Stack", "props": { "gap": "xs", "align": "start" }, "children": ["failedStat", "failedLabelRow"] },
+      "failedStat": { "type": "Stat", "props": { "value": { "$state": "/ui/rows/0/stat_failed" }, "size": "lg" } },
+      "failedLabelRow": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["failedDot", "failedLabel"] },
+      "failedDot": { "type": "Dot", "props": { "tone": "destructive", "size": "sm" } },
+      "failedLabel": { "type": "Text", "props": { "text": "Failed", "size": "sm", "tone": "muted" } },
 
       "footerRow": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["healthBadge", "refreshLbl", "refreshTime"]
+        "props": { "justify": "between", "align": "center" },
+        "children": ["footerLeft", "connectBtn"]
       },
-      "healthBadge": {
-        "type": "Badge",
-        "props": {
-          "label": { "$state": "/basiq/execute-request/overall_status_label" },
-          "tone": { "$state": "/basiq/execute-request/overall_status_tone" }
+      "footerLeft": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["healthGroup", "refreshCaption", "noActivityCaption"]
+      },
+      "connectBtn": {
+        "type": "Button",
+        "props": { "label": "Connect", "variant": "ghost", "tone": "accent", "size": "sm" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://dashboard.basiq.io/users/all",
+              "target": "_blank"
+            }
+          }
         }
       },
-      "refreshLbl": {
-        "type": "Caption",
-        "props": { "text": "last refresh" }
+      "healthGroup": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["healthDot", "healthLabel"] },
+      "healthDot": { "type": "Dot", "props": { "tone": { "$state": "/ui/rows/0/health_tone" }, "size": "sm" } },
+      "healthLabel": {
+        "type": "Text",
+        "props": {
+          "text": { "$state": "/ui/rows/0/health_label" },
+          "size": "sm",
+          "weight": "medium",
+          "tone": { "$state": "/ui/rows/0/health_tone" }
+        }
       },
-      "refreshTime": {
+      "refreshCaption": {
         "type": "Caption",
         "props": {
           "text": {
-            "$computed": "relative_time",
-            "args": { "value": { "$state": "/basiq/execute-request/last_updated" } }
-          }
+            "$computed": "fmt",
+            "args": {
+              "pattern": "last refresh {t}",
+              "t": { "$computed": "relative_time", "args": { "value": { "$state": "/ui/rows/0/last_used_iso" } } }
+            }
+          },
+          "tone": "muted"
+        },
+        "visible": { "$state": "/ui/rows/0/last_used_iso" }
+      },
+      "noActivityCaption": {
+        "type": "Caption",
+        "props": { "text": "No activity yet", "tone": "muted" },
+        "visible": { "$state": "/ui/rows/0/last_used_iso", "not": true }
+      },
+
+      "breakdown": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["breakdownDivider", "breakdownHeader", "breakdownList", "breakdownEmpty"],
+        "visible": { "$state": "/ui/selectedStatus" }
+      },
+      "breakdownDivider": { "type": "Divider", "props": {} },
+      "breakdownHeader": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["breakdownTitle", "breakdownClose"]
+      },
+      "breakdownTitle": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{label} connections",
+              "label": {
+                "$computed": "basiq_status_bucket_label",
+                "args": { "value": { "$state": "/ui/selectedStatus" } }
+              }
+            }
+          },
+          "weight": "medium"
         }
+      },
+      "breakdownClose": {
+        "type": "IconButton",
+        "props": { "icon": "X", "tone": "muted", "ariaLabel": "Close breakdown", "size": "sm" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/selectedStatus", "value": "" } } }
+      },
+      "breakdownList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["bdRow"],
+        "repeat": { "statePath": "/ui/breakdown", "key": "id" }
+      },
+      "bdRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["bdLeft", "bdWhen"]
+      },
+      "bdLeft": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["bdDot", "bdName"]
+      },
+      "bdDot": {
+        "type": "Dot",
+        "props": {
+          "tone": { "$computed": "basiq_connection_status_tone", "args": { "value": { "$item": "status" } } },
+          "size": "sm"
+        }
+      },
+      "bdName": { "type": "Text", "props": { "text": { "$item": "name" }, "size": "sm", "truncate": true } },
+      "bdWhen": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "relative_time", "args": { "value": { "$item": "last_used_iso" } } },
+          "tone": "muted"
+        }
+      },
+      "breakdownEmpty": {
+        "type": "Caption",
+        "props": { "text": "No connections in this status.", "tone": "muted" },
+        "visible": { "$state": "/ui/breakdown/0", "not": true }
       }
+
     }
   },
-  "status": "draft"
+  "status": "published"
 }
