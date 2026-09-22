@@ -57,8 +57,51 @@ const join_staff_roles = (args) => {
         };
     });
 };
+/**
+ * Flattens a `list_jobs` response into rows for the Job History tile —
+ * every job (not filtered by active/inactive, unlike the Job List tile),
+ * sorted by `date` descending (most recent first) to match ServiceM8's own
+ * job list view. Resolves each job's raw `company_uuid` to a name via a
+ * separately-fetched `list_companies` response (same cross-referencing
+ * pattern as ServiceM8's job+client join elsewhere — ServiceM8 has no
+ * combined job+client endpoint).
+ *
+ * Self-contained (its own company-name lookup, not shared with any other
+ * tile's join helper) so this tile has no dependency on unmerged work.
+ *
+ * Args: { jobs: array, companies: array }
+ * Returns: array of { uuid, date, generated_job_id, company_name, status,
+ * active }, sorted by `date` descending.
+ */
+const job_history_rows = (args) => {
+    const jobs = Array.isArray(args.jobs) ? args.jobs : [];
+    const companies = Array.isArray(args.companies) ? args.companies : [];
+    const companyNameByUuid = new Map();
+    for (const company of companies) {
+        const uuid = typeof company.uuid === 'string' ? company.uuid : '';
+        const name = typeof company.name === 'string' ? company.name : '';
+        if (uuid && name)
+            companyNameByUuid.set(uuid, name);
+    }
+    const rows = jobs.map((job) => {
+        const companyUuid = typeof job.company_uuid === 'string' ? job.company_uuid : '';
+        return {
+            uuid: job.uuid,
+            date: job.date,
+            generated_job_id: job.generated_job_id,
+            company_name: companyUuid ? (companyNameByUuid.get(companyUuid) ?? '') : '',
+            status: job.status,
+            active: job.active,
+        };
+    });
+    return rows.sort((a, b) => {
+        const ta = Date.parse(String(a.date ?? '')) || 0;
+        const tb = Date.parse(String(b.date ?? '')) || 0;
+        return tb - ta;
+    });
+};
 const elements = {
     slug: 'servicem8',
-    functions: { join_staff_roles },
+    functions: { join_staff_roles, job_history_rows },
 };
 export default elements;
