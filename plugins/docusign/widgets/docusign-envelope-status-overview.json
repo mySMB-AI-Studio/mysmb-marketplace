@@ -1,16 +1,16 @@
 {
   "id": "docusign-envelope-status-overview",
   "title": "Envelope Status Overview",
-  "description": "Total envelope count and proportional status breakdown for the last 30 days — completed, sent/delivered, declined, and voided — shown as a segmented bar with a colour-coded legend.",
+  "description": "Total envelope count and proportional status breakdown for the last 30 days — completed, sent/delivered, declined, and voided — shown as colour-coded progress bars.",
   "category": "documents",
   "tags": ["docusign", "esignature", "envelopes", "overview", "status", "kpi", "contracts"],
   "keywords": ["envelope overview", "envelope status", "completed", "sent", "declined", "voided", "docusign", "kpi", "summary"],
   "connectorsUsed": ["docusign"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 6, "rowSpan": 4 },
-    "min":       { "colSpan": 4, "rowSpan": 3 },
-    "max":       { "colSpan": 12, "rowSpan": 8 }
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "min":       { "colSpan": 4, "rowSpan": 4 },
+    "max":       { "colSpan": 10, "rowSpan": 10 }
   },
   "dataProvider": {
     "mcp": "docusign",
@@ -78,11 +78,14 @@
       "loading": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["sk1", "sk2"],
+        "children": ["sk1", "sk2", "sk3", "sk4", "sk5"],
         "visible": { "$state": "/_loading/docusign.list_envelopes" }
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "3rem",  "rounded": "md" } },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
       "sk2": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "sk5": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
 
       "empty": {
         "type": "Empty",
@@ -98,7 +101,7 @@
       "content": {
         "type": "Stack",
         "props": { "gap": "md" },
-        "children": ["statBlock", "segBar", "legend"],
+        "children": ["statBlock", "divider", "bars"],
         "visible": {
           "$and": [
             { "$state": "/_loading/docusign.list_envelopes", "not": true },
@@ -123,119 +126,127 @@
         "props": { "text": "Total Envelopes" }
       },
 
-      "segBar": {
-        "type": "Row",
-        "props": { "gap": "none" },
-        "children": ["seg1", "seg2", "seg3", "seg4"]
+      "divider": { "type": "Divider", "props": {} },
+
+      "bars": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["rowCompleted", "rowSent", "rowDeclined", "rowVoided"]
       },
 
-      "seg1": {
-        "type": "Stack",
-        "props": { "grow": { "$state": "/ui/docusignOverviewStats/completedPct" } },
-        "children": ["seg1Bar"],
+      "rowCompleted": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["lblCompleted", "barCompleted", "cntCompleted"],
         "visible": { "$state": "/ui/docusignOverviewStats/completedVisible" }
       },
-      "seg1Bar": {
-        "type": "ProgressBar",
-        "props": { "value": 100, "tone": "success" }
-      },
-
-      "seg2": {
-        "type": "Stack",
-        "props": { "grow": { "$state": "/ui/docusignOverviewStats/sentPct" } },
-        "children": ["seg2Bar"],
-        "visible": { "$state": "/ui/docusignOverviewStats/sentVisible" }
-      },
-      "seg2Bar": {
-        "type": "ProgressBar",
-        "props": { "value": 100, "tone": "info" }
-      },
-
-      "seg3": {
-        "type": "Stack",
-        "props": { "grow": { "$state": "/ui/docusignOverviewStats/declinedPct" } },
-        "children": ["seg3Bar"],
-        "visible": { "$state": "/ui/docusignOverviewStats/declinedVisible" }
-      },
-      "seg3Bar": {
-        "type": "ProgressBar",
-        "props": { "value": 100, "tone": "destructive" }
-      },
-
-      "seg4": {
-        "type": "Stack",
-        "props": { "grow": { "$state": "/ui/docusignOverviewStats/voidedPct" } },
-        "children": ["seg4Bar"],
-        "visible": { "$state": "/ui/docusignOverviewStats/voidedVisible" }
-      },
-      "seg4Bar": {
-        "type": "ProgressBar",
-        "props": { "value": 100, "tone": "warning" }
-      },
-
-      "legend": {
-        "type": "Row",
-        "props": { "gap": "md", "wrap": true },
-        "children": ["legCompleted", "legSent", "legDeclined", "legVoided"]
-      },
-
-      "legCompleted": {
+      "lblCompleted": {
         "type": "Row",
         "props": { "gap": "xs", "align": "center" },
-        "children": ["dotCompleted", "txtCompleted"],
-        "visible": { "$state": "/ui/docusignOverviewStats/completedVisible" }
+        "children": ["dotCompleted", "txtCompleted"]
       },
       "dotCompleted": { "type": "Dot", "props": { "size": "sm", "tone": "success" } },
-      "txtCompleted": {
+      "txtCompleted":  { "type": "Text", "props": { "text": "Completed",     "size": "xs" } },
+      "barCompleted": {
+        "type": "ProgressBar",
+        "props": {
+          "value": { "$state": "/ui/docusignOverviewStats/completedPct" },
+          "tone": "success"
+        }
+      },
+      "cntCompleted": {
         "type": "Text",
         "props": {
-          "text": { "$state": "/ui/docusignOverviewStats/completedLegend" },
-          "size": "xs"
+          "text": { "$state": "/ui/docusignOverviewStats/completedCount" },
+          "size": "xs",
+          "tone": "muted"
         }
       },
 
-      "legSent": {
+      "rowSent": {
         "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["dotSent", "txtSent"],
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["lblSent", "barSent", "cntSent"],
         "visible": { "$state": "/ui/docusignOverviewStats/sentVisible" }
       },
+      "lblSent": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["dotSent", "txtSent"]
+      },
       "dotSent": { "type": "Dot", "props": { "size": "sm", "tone": "info" } },
-      "txtSent": {
+      "txtSent":  { "type": "Text", "props": { "text": "Sent / Delivered", "size": "xs" } },
+      "barSent": {
+        "type": "ProgressBar",
+        "props": {
+          "value": { "$state": "/ui/docusignOverviewStats/sentPct" },
+          "tone": "info"
+        }
+      },
+      "cntSent": {
         "type": "Text",
         "props": {
-          "text": { "$state": "/ui/docusignOverviewStats/sentLegend" },
-          "size": "xs"
+          "text": { "$state": "/ui/docusignOverviewStats/sentCount" },
+          "size": "xs",
+          "tone": "muted"
         }
       },
 
-      "legDeclined": {
+      "rowDeclined": {
         "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["dotDeclined", "txtDeclined"],
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["lblDeclined", "barDeclined", "cntDeclined"],
         "visible": { "$state": "/ui/docusignOverviewStats/declinedVisible" }
       },
+      "lblDeclined": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["dotDeclined", "txtDeclined"]
+      },
       "dotDeclined": { "type": "Dot", "props": { "size": "sm", "tone": "destructive" } },
-      "txtDeclined": {
+      "txtDeclined":  { "type": "Text", "props": { "text": "Declined",       "size": "xs" } },
+      "barDeclined": {
+        "type": "ProgressBar",
+        "props": {
+          "value": { "$state": "/ui/docusignOverviewStats/declinedPct" },
+          "tone": "destructive"
+        }
+      },
+      "cntDeclined": {
         "type": "Text",
         "props": {
-          "text": { "$state": "/ui/docusignOverviewStats/declinedLegend" },
-          "size": "xs"
+          "text": { "$state": "/ui/docusignOverviewStats/declinedCount" },
+          "size": "xs",
+          "tone": "muted"
         }
       },
 
-      "legVoided": {
+      "rowVoided": {
         "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["dotVoided", "txtVoided"],
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["lblVoided", "barVoided", "cntVoided"],
         "visible": { "$state": "/ui/docusignOverviewStats/voidedVisible" }
       },
+      "lblVoided": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["dotVoided", "txtVoided"]
+      },
       "dotVoided": { "type": "Dot", "props": { "size": "sm", "tone": "warning" } },
-      "txtVoided": {
+      "txtVoided":  { "type": "Text", "props": { "text": "Voided",          "size": "xs" } },
+      "barVoided": {
+        "type": "ProgressBar",
+        "props": {
+          "value": { "$state": "/ui/docusignOverviewStats/voidedPct" },
+          "tone": "warning"
+        }
+      },
+      "cntVoided": {
         "type": "Text",
         "props": {
-          "text": { "$state": "/ui/docusignOverviewStats/voidedLegend" },
-          "size": "xs"
+          "text": { "$state": "/ui/docusignOverviewStats/voidedCount" },
+          "size": "xs",
+          "tone": "muted"
         }
       }
 

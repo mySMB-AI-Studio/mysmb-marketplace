@@ -368,29 +368,23 @@ const envelope_overview_stats: ComputedFunction = (args) => {
   const sentDelivered = sent + delivered;
   const total = completed + sentDelivered + declined + voided;
 
-  // Proportional grow values (sum ≈ 100); last bucket absorbs rounding.
-  const pct = (n: number) => (total > 0 ? Math.max(1, Math.round((n / total) * 100)) : 0);
-  const completedPct    = pct(completed);
-  const sentPct         = pct(sentDelivered);
-  const declinedPct     = pct(declined);
-  const voidedPct       = total > 0
-    ? Math.max(0, 100 - completedPct - sentPct - declinedPct)
-    : 0;
+  // Percentage of total for each bucket (0–100, used as ProgressBar value).
+  const pct = (n: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
 
   return {
-    total:           String(total),
-    completedPct,
-    sentPct,
-    declinedPct,
-    voidedPct,
-    completedVisible:  completed    > 0,
-    sentVisible:       sentDelivered > 0,
-    declinedVisible:   declined     > 0,
-    voidedVisible:     voided       > 0,
-    completedLegend:  `Completed · ${completed}`,
-    sentLegend:       `Sent/Delivered · ${sentDelivered}`,
-    declinedLegend:   `Declined · ${declined}`,
-    voidedLegend:     `Voided · ${voided}`,
+    total:              String(total),
+    completedPct:       pct(completed),
+    sentPct:            pct(sentDelivered),
+    declinedPct:        pct(declined),
+    voidedPct:          pct(voided),
+    completedCount:     String(completed),
+    sentCount:          String(sentDelivered),
+    declinedCount:      String(declined),
+    voidedCount:        String(voided),
+    completedVisible:   completed    > 0,
+    sentVisible:        sentDelivered > 0,
+    declinedVisible:    declined     > 0,
+    voidedVisible:      voided       > 0,
   };
 };
 
