@@ -1,0 +1,183 @@
+{
+  "id": "notion-projects",
+  "title": "Notion Projects",
+  "description": "Rows from your Notion workspace's \"Projects\" database — project name, stage, timeline, and lead. Zero-config: finds the database via search, no id to configure. Live-verified 2026-09-17 against a real connected workspace's Projects database (Name/Stage/Timeline/Lead properties). This tile assumes that common template shape — a workspace with a differently-shaped or differently-named projects database will show blank Stage/Timeline/Lead fields per row rather than fail to load, since Notion database schemas are user-authored, not an API-fixed enum. Click a row to open that project's page in Notion.",
+  "category": "productivity",
+  "tags": ["notion", "projects", "database", "productivity", "planning"],
+  "keywords": ["notion projects", "project tracker", "project stage", "project timeline", "project lead", "roadmap"],
+  "connectorsUsed": ["notion"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 6 },
+    "min": { "colSpan": 4, "rowSpan": 5 },
+    "max": { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "notion",
+    "tool": "search",
+    "params": { "query": "Projects", "object_type": "data_source", "page_size": 5 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "divider0", "body"],
+        "watch": {
+          "/notion/search/results": {
+            "action": "notion.query_database",
+            "params": {
+              "data_source_id": { "$state": "/notion/search/results/0/id" },
+              "page_size": 20
+            }
+          },
+          "/notion/query_database/results": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "notion_flatten_projects",
+                  "args": { "value": { "$state": "/notion/query_database/results" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Target", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Notion Projects", "level": "h2" } },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": { "$state": "/ui/rows/0/footer_label" } },
+        "visible": { "$state": "/ui/rows/0" }
+      },
+
+      "divider0": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["loading", "errorSearch", "errorQuery", "emptyDataSource", "emptyRows", "list"] },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": {
+          "$or": [
+            { "$state": "/_loading/notion.search" },
+            { "$state": "/_loading/notion.query_database" }
+          ]
+        }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+
+      "errorSearch": {
+        "type": "Empty",
+        "props": {
+          "message": {
+            "$computed": "fmt",
+            "args": { "pattern": "Error finding Projects database: {msg}", "msg": { "$state": "/_errors/notion.search" } }
+          }
+        },
+        "visible": { "$state": "/_errors/notion.search" }
+      },
+      "errorQuery": {
+        "type": "Empty",
+        "props": {
+          "message": {
+            "$computed": "fmt",
+            "args": { "pattern": "Error loading projects: {msg}", "msg": { "$state": "/_errors/notion.query_database" } }
+          }
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_errors/notion.search", "not": true },
+            { "$state": "/_errors/notion.query_database" }
+          ]
+        }
+      },
+
+      "emptyDataSource": {
+        "type": "Empty",
+        "props": { "message": "No \"Projects\" database found in this Notion workspace. Share a database named \"Projects\" with this integration to use this tile." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/notion.search", "not": true },
+            { "$state": "/notion/search/results/0/id", "not": true },
+            { "$state": "/_errors/notion.search", "not": true }
+          ]
+        }
+      },
+
+      "emptyRows": {
+        "type": "Empty",
+        "props": { "message": "No projects in this database yet." },
+        "visible": {
+          "$and": [
+            { "$state": "/notion/search/results/0/id" },
+            { "$state": "/_loading/notion.query_database", "not": true },
+            { "$state": "/ui/rows/0", "not": true },
+            { "$state": "/_errors/notion.query_database", "not": true }
+          ]
+        }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["row"],
+        "repeat": { "statePath": "/ui/rows", "key": "id" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/notion.query_database", "not": true },
+            { "$state": "/ui/rows/0" }
+          ]
+        }
+      },
+
+      "row": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "hover": true, "clickable": true },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": { "$item": "url" }, "target": "_blank" }
+          }
+        },
+        "children": ["stageBadge", "rowInfo"]
+      },
+      "stageBadge": {
+        "type": "Badge",
+        "props": { "text": { "$item": "stage_label" }, "tone": { "$item": "stage_tone" }, "variant": "soft" }
+      },
+      "rowInfo": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["rowName", "rowTimeline", "rowLead"]
+      },
+      "rowName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "semibold", "truncate": true }
+      },
+      "rowTimeline": {
+        "type": "Caption",
+        "props": { "text": { "$item": "timeline_label" }, "tone": "muted" }
+      },
+      "rowLead": {
+        "type": "Caption",
+        "props": { "text": { "$item": "lead_label" }, "tone": "muted" }
+      }
+    }
+  },
+  "status": "published"
+}
