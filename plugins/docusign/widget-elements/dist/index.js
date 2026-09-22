@@ -36,7 +36,7 @@ function docuSignStatusLabel(raw) {
     }
 }
 
-// "dd-Mmm-yy · Status" — no leading "Sent" prefix.
+// "dd-Mmm-yy · Status" — no "Sent" prefix.
 const sent_meta = (args) => {
     const raw = args.sent;
     const status = typeof args.status === 'string' ? args.status : '';
@@ -68,29 +68,6 @@ const status_tone = (args) => {
     return 'muted';
 };
 
-// First signer's name from the recipients object embedded via include='recipients'.
-const first_signer_name = (args) => {
-    const recipients = args.recipients;
-    if (!recipients || typeof recipients !== 'object') return '';
-    const signers = recipients.signers;
-    if (!Array.isArray(signers) || signers.length === 0) return '';
-    const first = signers[0];
-    return typeof first?.name === 'string' ? first.name.trim() : '';
-};
-
-// "First Signer — Subject" when recipients are available, else just "Subject".
-const row_title = (args) => {
-    const subject = typeof args.subject === 'string' ? args.subject.trim() : '';
-    const recipients = args.recipients;
-    if (!recipients || typeof recipients !== 'object') return subject;
-    const signers = recipients.signers;
-    if (!Array.isArray(signers) || signers.length === 0) return subject;
-    const first = signers[0];
-    const name = typeof first?.name === 'string' ? first.name.trim() : '';
-    if (!name) return subject;
-    return `${name} — ${subject}`;
-};
-
 const filter_pending = (args) => {
     const envelopes = Array.isArray(args.value) ? args.value : [];
     return envelopes.filter((env) => {
@@ -108,8 +85,6 @@ const elements = {
         sent_meta,
         status_label,
         status_tone,
-        first_signer_name,
-        row_title,
         filter_pending,
     },
 };
