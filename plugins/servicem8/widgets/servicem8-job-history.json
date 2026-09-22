@@ -9,8 +9,8 @@
   "popularity": 0,
   "brandColor": "#34DFBA",
   "sizing": {
-    "preferred": { "colSpan": 8, "rowSpan": 8 },
-    "min": { "colSpan": 6, "rowSpan": 4 },
+    "preferred": { "colSpan": 8, "rowSpan": 9 },
+    "min": { "colSpan": 6, "rowSpan": 5 },
     "max": { "colSpan": 12, "rowSpan": 12 }
   },
   "dataProvider": {
@@ -24,7 +24,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "colHeader", "divider", "body", "footer"],
+        "children": ["header", "statusBreakdownSection", "breakdownDivider", "colHeader", "divider", "body", "footer"],
         "watch": {
           "/servicem8/list_jobs/jobs": [
             {
@@ -56,6 +56,18 @@
                     "jobs": { "$state": "/servicem8/list_jobs/jobs" },
                     "companies": { "$state": "/servicem8/list_companies/companies" }
                   }
+                }
+              }
+            }
+          ],
+          "/ui/rows": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/statusBreakdown",
+                "value": {
+                  "$computed": "servicem8_job_status_breakdown",
+                  "args": { "jobs": { "$state": "/ui/rows" } }
                 }
               }
             }
@@ -112,6 +124,74 @@
           ]
         }
       },
+
+      "statusBreakdownSection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["statusBreakdownHeaderRow", "statusBreakdownBar", "statusBreakdownLegend"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/servicem8.list_jobs", "not": true },
+            { "$state": "/ui/rows/0" }
+          ]
+        }
+      },
+      "statusBreakdownHeaderRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["statusBreakdownCaption", "statusBreakdownTotalCaption"]
+      },
+      "statusBreakdownCaption": {
+        "type": "Caption",
+        "props": { "text": "Job Status Breakdown", "tone": "muted" }
+      },
+      "statusBreakdownTotalCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{total} jobs", "total": { "$state": "/ui/statusBreakdown/total" } }
+          },
+          "tone": "muted"
+        }
+      },
+      "statusBreakdownBar": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "template": { "$state": "/ui/statusBreakdown/template" } },
+        "children": ["statusSegment"],
+        "repeat": { "statePath": "/ui/statusBreakdown/segments", "key": "status" }
+      },
+      "statusSegment": {
+        "type": "ProgressBar",
+        "props": { "value": 100, "tone": { "$item": "tone" } }
+      },
+      "statusBreakdownLegend": {
+        "type": "Row",
+        "props": { "gap": "md", "align": "center" },
+        "children": ["legendItem"],
+        "repeat": { "statePath": "/ui/statusBreakdown/segments", "key": "status" }
+      },
+      "legendItem": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["legendDot", "legendLabel"]
+      },
+      "legendDot": {
+        "type": "Dot",
+        "props": { "tone": { "$item": "tone" }, "size": "sm" }
+      },
+      "legendLabel": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{status} ({count})", "status": { "$item": "status" }, "count": { "$item": "count" } }
+          },
+          "tone": "muted"
+        }
+      },
+
+      "breakdownDivider": { "type": "Divider", "props": {} },
 
       "colHeader": {
         "type": "Row",
