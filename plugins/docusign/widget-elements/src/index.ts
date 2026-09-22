@@ -111,6 +111,123 @@ const filter_pending: ComputedFunction = (args) => {
   });
 };
 
+// ── abbreviateName ────────────────────────────────────────────────────────────
+// "Rem Fermin" → "R. Fermin"  (first letter of first word + ". " + last word)
+function abbreviateName(name: string): string {
+  const words = name.split(/\s+/).filter(Boolean);
+  if (words.length < 2) return name;
+  return `${words[0][0].toUpperCase()}. ${words[words.length - 1]}`;
+}
+
+// ── row_title ─────────────────────────────────────────────────────────────────
+// Build the primary text for a pending-signatures row.
+// Format: "F. LastName — Subject" when a signer is present, else just "Subject".
+// Args: { subject: string, recipients: object }
+const row_title: ComputedFunction = (args) => {
+  const subject = typeof args.subject === 'string' ? args.subject.trim() : '';
+  const recipients = args.recipients as Record<string, unknown> | null | undefined;
+  if (!recipients || typeof recipients !== 'object') return subject;
+  const signers = recipients.signers;
+  if (!Array.isArray(signers) || signers.length === 0) return subject;
+  const first = signers[0] as Record<string, unknown> | undefined;
+  const name = typeof first?.name === 'string' ? first.name.trim() : '';
+  if (!name) return subject;
+  return `${abbreviateName(name)} — ${subject}`;
+};
+
+// ── activity_line ─────────────────────────────────────────────────────────────
+// Build the primary activity-feed text line from envelope status + recipients.
+//   completed → "Completed — {subject}"
+//   delivered → "Viewed by {R. Name} — {subject}"
+//   sent      → "Sent — {subject} to {R. Name}"
+//   declined  → "Declined by {R. Name} — {subject}"
+//   voided    → "Voided — {subject}"
+//   created   → "Draft — {subject}"
+// Args: { status: string, subject: string, recipients: object }
+const activity_line: ComputedFunction = (args) => {
+  const status  = typeof args.status  === 'string' ? args.status.toLowerCase()  : '';
+  const subject = typeof args.subject === 'string' ? args.subject.trim()        : '';
+  const recipients = args.recipients as Record<string, unknown> | null | undefined;
+
+  const signers: Record<string, unknown>[] = Array.isArray(
+    (recipients as Record<string, unknown> | null)?.signers,
+  )
+    ? ((recipients as Record<string, unknown>).signers as Record<string, unknown>[])
+    : [];
+
+  const firstName = (): string => {
+    if (signers.length === 0) return '';
+    const s = signers[0];
+    const n = typeof s.name === 'string' ? s.name.trim() : '';
+    return abbreviateName(n);
+  };
+
+  switch (status) {
+    case 'completed': return `Completed — ${subject}`;
+    case 'delivered': {
+      const n = firstName();
+      return n ? `Viewed by ${n} — ${subject}` : `Viewed — ${subject}`;
+    }
+    case 'sent': {
+      const n = firstName();
+      return n ? `Sent — ${subject} to ${n}` : `Sent — ${subject}`;
+    }
+    case 'declined': {
+      const n = firstName();
+      return n ? `Declined by ${n} — ${subject}` : `Declined — ${subject}`;
+    }
+    case 'voided':  return `Voided — ${subject}`;
+    case 'created': return `Draft — ${subject}`;
+    default:        return subject;
+  }
+};
+
+// ── activity_dot_tone ─────────────────────────────────────────────────────────
+// Tone for the activity-feed row dot based on envelope status.
+//   completed → success   (green)
+//   delivered → accent    (purple — viewed but not signed)
+//   sent      → info      (blue — awaiting action)
+//   declined/voided → destructive (red)
+// Args: { value: string }
+const activity_dot_tone: ComputedFunction = (args) => {
+  const s = typeof args.value === 'string' ? args.value.toLowerCase() : '';
+  if (s === 'completed') return 'success';
+  if (s === 'delivered') return 'accent';
+  if (s === 'sent')      return 'info';
+  if (s === 'declined' || s === 'voided') return 'destructive';
+  return 'muted';
+};
+
+// ── relative_time ─────────────────────────────────────────────────────────────
+// Human-readable relative timestamp for the activity feed.
+//   < 1 min   → "Just now"
+//   < 1 hour  → "N minutes ago"
+//   < 1 day   → "N hours ago"
+//   1 day     → "Yesterday"
+//   2–6 days  → "N days ago"
+//   ≥ 7 days  → "dd-Mmm-yy"
+// Args: { value: string } — ISO timestamp (e.g. statusChangedDateTime).
+const relative_time: ComputedFunction = (args) => {
+  const raw = typeof args.value === 'string' ? args.value : '';
+  if (!raw) return '—';
+  const ms = Date.parse(raw);
+  if (!Number.isFinite(ms)) return '—';
+  const diffMs   = Date.now() - ms;
+  const diffMins = Math.floor(diffMs / 60_000);
+  if (diffMins < 1)  return 'Just now';
+  if (diffMins < 60) return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays <= 6)  return `${diffDays} days ago`;
+  const d   = new Date(ms);
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  const mon = MONTH_ABBR[d.getUTCMonth()];
+  const yr  = String(d.getUTCFullYear()).slice(-2);
+  return `${day}-${mon}-${yr}`;
+};
+
 const elements: PluginElementsModule = {
   slug: 'docusign',
   functions: {
@@ -121,6 +238,10 @@ const elements: PluginElementsModule = {
     status_label,
     status_tone,
     filter_pending,
+    row_title,
+    activity_line,
+    activity_dot_tone,
+    relative_time,
   },
 };
 

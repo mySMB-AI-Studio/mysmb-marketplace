@@ -85,6 +85,103 @@ const filter_pending = (args) => {
     });
 };
 
+// "Rem Fermin" → "R. Fermin"
+function abbreviateName(name) {
+    const words = name.split(/\s+/).filter(Boolean);
+    if (words.length < 2) return name;
+    return `${words[0][0].toUpperCase()}. ${words[words.length - 1]}`;
+}
+
+// "F. LastName — Subject" or just "Subject" if no signer name.
+const row_title = (args) => {
+    const subject = typeof args.subject === 'string' ? args.subject.trim() : '';
+    const recipients = args.recipients;
+    if (!recipients || typeof recipients !== 'object') return subject;
+    const signers = recipients.signers;
+    if (!Array.isArray(signers) || signers.length === 0) return subject;
+    const first = signers[0];
+    const name = typeof first?.name === 'string' ? first.name.trim() : '';
+    if (!name) return subject;
+    return `${abbreviateName(name)} — ${subject}`;
+};
+
+// Activity-feed primary text line.
+//   completed → "Completed — Subject"
+//   delivered → "Viewed by R. Name — Subject"
+//   sent      → "Sent — Subject to R. Name"
+//   declined  → "Declined by R. Name — Subject"
+//   voided    → "Voided — Subject"
+//   created   → "Draft — Subject"
+const activity_line = (args) => {
+    const status  = typeof args.status  === 'string' ? args.status.toLowerCase()  : '';
+    const subject = typeof args.subject === 'string' ? args.subject.trim()        : '';
+    const recipients = args.recipients;
+    const signers = Array.isArray(recipients?.signers) ? recipients.signers : [];
+    const firstName = () => {
+        if (signers.length === 0) return '';
+        const s = signers[0];
+        const n = typeof s.name === 'string' ? s.name.trim() : '';
+        return abbreviateName(n);
+    };
+    switch (status) {
+        case 'completed': return `Completed — ${subject}`;
+        case 'delivered': {
+            const n = firstName();
+            return n ? `Viewed by ${n} — ${subject}` : `Viewed — ${subject}`;
+        }
+        case 'sent': {
+            const n = firstName();
+            return n ? `Sent — ${subject} to ${n}` : `Sent — ${subject}`;
+        }
+        case 'declined': {
+            const n = firstName();
+            return n ? `Declined by ${n} — ${subject}` : `Declined — ${subject}`;
+        }
+        case 'voided':  return `Voided — ${subject}`;
+        case 'created': return `Draft — ${subject}`;
+        default:        return subject;
+    }
+};
+
+// Dot tone for the activity feed.
+//   completed → success, delivered → accent, sent → info, declined/voided → destructive
+const activity_dot_tone = (args) => {
+    const s = typeof args.value === 'string' ? args.value.toLowerCase() : '';
+    if (s === 'completed') return 'success';
+    if (s === 'delivered') return 'accent';
+    if (s === 'sent')      return 'info';
+    if (s === 'declined' || s === 'voided') return 'destructive';
+    return 'muted';
+};
+
+// Human-readable relative timestamp for the activity feed.
+//   < 1 min  → "Just now"
+//   < 1 hour → "N minutes ago"
+//   < 1 day  → "N hours ago"
+//   1 day    → "Yesterday"
+//   2–6 days → "N days ago"
+//   ≥ 7 days → "dd-Mmm-yy"
+const relative_time = (args) => {
+    const raw = typeof args.value === 'string' ? args.value : '';
+    if (!raw) return '—';
+    const ms = Date.parse(raw);
+    if (!Number.isFinite(ms)) return '—';
+    const diffMs   = Date.now() - ms;
+    const diffMins = Math.floor(diffMs / 60_000);
+    if (diffMins < 1)  return 'Just now';
+    if (diffMins < 60) return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays <= 6)  return `${diffDays} days ago`;
+    const d   = new Date(ms);
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    const mon = MONTH_ABBR[d.getUTCMonth()];
+    const yr  = String(d.getUTCFullYear()).slice(-2);
+    return `${day}-${mon}-${yr}`;
+};
+
 const elements = {
     slug: 'docusign',
     functions: {
@@ -95,6 +192,10 @@ const elements = {
         status_label,
         status_tone,
         filter_pending,
+        row_title,
+        activity_line,
+        activity_dot_tone,
+        relative_time,
     },
 };
 
