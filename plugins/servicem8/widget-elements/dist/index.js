@@ -172,8 +172,59 @@ const job_status_breakdown = (args) => {
         template: segments.length ? segments.map((s) => `${s.count}fr`).join(' ') : '1fr',
     };
 };
+/**
+ * Flattens a `list_companies` response into rows for the Clients tile's
+ * Table — every client (active and inactive; this is meant as a full
+ * directory, not a filtered workload view), sorted alphabetically by name.
+ *
+ * Builds a human-readable address from the street/city/state/postcode
+ * fields (ServiceM8's own `address` field is frequently blank even when
+ * those component fields are populated — confirmed against a real
+ * connected account), falling back to the raw `address` field, then to an
+ * explicit "No address on file" rather than an empty cell.
+ *
+ * Precomputes the full `open_url` per row (rather than building it at
+ * click time from a raw `uuid`) so the widget's Table `buttonAction` can
+ * inject it via a plain `fromRow` field read — no `$item`/`$bindItem`
+ * binding involved at all for this click, sidestepping that whole bug
+ * class entirely (see json-render-item-vs-binditem-click-bug in prior
+ * session notes). Uses ServiceM8's `OpenClient/{uuid}` web-app deep link,
+ * the direct counterpart to `OpenJob/{uuid}` already used by this plugin's
+ * Job History/Job List tiles — NOT independently re-verified against a
+ * live authenticated ServiceM8 session by this change; flagged for the
+ * user to confirm with one real click.
+ *
+ * Args: { companies: array }
+ * Returns: array of { uuid, name, address_label, status_label, open_url }
+ */
+const servicem8_client_rows = (args) => {
+    const companies = Array.isArray(args.companies) ? args.companies : [];
+    const rows = companies.map((c) => {
+        const uuid = typeof c.uuid === 'string' ? c.uuid : '';
+        const name = typeof c.name === 'string' && c.name.trim() ? c.name.trim() : 'Unnamed client';
+        const parts = [c.address_street, c.address_city, c.address_state, c.address_postcode]
+            .map((v) => (typeof v === 'string' ? v.trim() : ''))
+            .filter(Boolean);
+        const fallbackAddress = typeof c.address === 'string' ? c.address.trim() : '';
+        const addressLabel = parts.length > 0 ? parts.join(', ') : fallbackAddress || 'No address on file';
+        const isActive = Number(c.active) === 1;
+        return {
+            uuid,
+            name,
+            address_label: addressLabel,
+            status_label: isActive ? 'Active' : 'Inactive',
+            open_url: uuid ? `https://go.servicem8.com/OpenClient/${uuid}` : '',
+        };
+    });
+    return rows.sort((a, b) => a.name.localeCompare(b.name));
+};
 const elements = {
     slug: 'servicem8',
-    functions: { join_staff_roles, job_history_rows, job_status_breakdown },
+    functions: {
+        join_staff_roles,
+        job_history_rows,
+        job_status_breakdown,
+        client_rows: servicem8_client_rows,
+    },
 };
 export default elements;
