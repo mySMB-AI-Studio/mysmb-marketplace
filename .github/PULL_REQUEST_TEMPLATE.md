@@ -1,4 +1,6 @@
-<!-- Target `dev` unless you are promoting a tier (dev→staging→main). -->
+<!-- Target `dev`. Tiers are dev → qa → uat → main; qa/uat/main are written only
+     by AI Studio's per-extension Publish / Promote, never by PR. After merge,
+     Pull + Publish the extension in AI Studio → Extensions. Leave `version` alone. -->
 
 ## What & why
 
@@ -13,6 +15,7 @@
 - [ ] Plugin is registered in `.claude-plugin/marketplace.json`
 - [ ] If a new hosted MCP server was needed, the matching PR in
       `myhub-mcp-servers` is linked below
-- [ ] PR targets the correct branch (`dev` for new work)
+- [ ] Store `branding` / `listing` images (if any) are in the bundle, SVG preferred, ≤ 96 KB
+- [ ] PR targets `dev`
 
 ## Linked PRs / notes

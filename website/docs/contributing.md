@@ -8,14 +8,20 @@ sidebar_position: 99
 
 ## Add a plugin
 
+The repo has four branch tiers — `dev → qa → uat → main` — and all work lands on `dev`.
+
 1. Read the [authoring guide](/authoring/overview).
-2. Scaffold under `plugins/<your-plugin>/`.
-3. Add an entry to `.claude-plugin/marketplace.json`.
-4. Run the validator locally — it must pass:
+2. Clone the repo and `git checkout dev && git pull`.
+3. Scaffold under `plugins/<your-plugin>/`.
+4. Add an entry to `.claude-plugin/marketplace.json` (optionally with store [`branding` and `listing`](/authoring/validate-and-ship#store-branding-and-listing-optional)).
+5. Run the validator locally — it must pass:
    ```bash
    npx tsx scripts/validate.ts
    ```
-5. Open a PR. CI runs the same validator.
+6. Push to `dev` (or open a PR into `dev`). CI runs the same validator.
+7. In the mySMB.com Admin Center → **AI Studio → Extensions**, **Pull** then **Publish** the extension to QA; promote it to UAT and production from there. AI Studio sets the version — don't bump it yourself.
+
+Full rules, including versioning: [`CONTRIBUTING.md`](https://github.com/mySMB-AI-Studio/mysmb-marketplace/blob/dev/CONTRIBUTING.md#branch-tiers).
 
 ## Improve these docs
 

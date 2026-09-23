@@ -1,5 +1,12 @@
 # Marketplace Consolidation Runbook
 
+> **Historical — completed.** The tier model below (`dev → staging → main`) was
+> superseded in September 2026 by **`dev → qa → uat → main`**, with per-extension
+> publish/promotion done by the mySMB.com Admin Center's AI Studio. `staging` is
+> kept only as a temporary rollback branch. For the current model see
+> [CONTRIBUTING.md](../CONTRIBUTING.md#branch-tiers); the production-MCP-host rule
+> below still applies on every branch.
+
 Merges the two legacy repos (`mysmb-marketplace` + `mysmb-marketplace-staging`)
 into **one repo with branch tiers**. This repo (`mysmb-marketplace`) is the
 survivor; the staging repo is archived at the end.
