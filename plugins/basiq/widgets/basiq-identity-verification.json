@@ -1,0 +1,168 @@
+{
+  "id": "basiq-identity-verification",
+  "title": "Identity Verifications",
+  "description": "Count of active connections with a retrieved identity record vs. total connections, split into still-syncing and needs-attention buckets.",
+  "category": "finance",
+  "tags": ["basiq", "identity", "verification", "kyc", "open-banking"],
+  "keywords": ["identity", "verification", "identified", "pending", "awaiting review", "basiq"],
+  "connectorsUsed": ["basiq"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 3 },
+    "min": { "colSpan": 3, "rowSpan": 3 },
+    "max": { "colSpan": 6, "rowSpan": 4 }
+  },
+  "dataProvider": {
+    "mcp": "basiq-connect",
+    "tool": "get_basiq_identity_verification",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "divider0", "body"],
+        "watch": {
+          "/basiq-connect/get_basiq_identity_verification": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "basiq_flatten_identity_verification",
+                  "args": { "value": { "$state": "/basiq-connect/get_basiq_identity_verification" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "ShieldCheck", "tone": "muted", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Identity Verifications", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Basiq" } },
+
+      "divider0": { "type": "Divider", "props": {} },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "content"]
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2"],
+        "visible": { "$state": "/_loading/basiq-connect.get_basiq_identity_verification" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "1.25rem", "rounded": "md" } },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["countRow", "progressBarRow", "statusRow", "awaitingBadge"],
+        "visible": { "$state": "/_loading/basiq-connect.get_basiq_identity_verification", "not": true }
+      },
+
+      "countRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "baseline" },
+        "children": ["identifiedStat", "totalCaption"]
+      },
+      "identifiedStat": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/ui/rows/0/identified_count" }, "size": "lg" }
+      },
+      "totalCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "/ {n}", "n": { "$state": "/ui/rows/0/total_count" } }
+          },
+          "tone": "muted"
+        }
+      },
+
+      "progressBarRow": {
+        "type": "Row",
+        "props": { "gap": "none", "align": "center" },
+        "children": ["identifiedProgressBar"]
+      },
+      "identifiedProgressBar": {
+        "type": "ProgressBar",
+        "props": { "value": { "$state": "/ui/rows/0/identified_pct" }, "tone": "success" }
+      },
+
+      "statusRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["identifiedGroup", "pendingGroup"]
+      },
+      "identifiedGroup": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["identifiedDot", "identifiedLabel"]
+      },
+      "identifiedDot": { "type": "Dot", "props": { "tone": "success", "size": "sm" } },
+      "identifiedLabel": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{n} identified", "n": { "$state": "/ui/rows/0/identified_count" } }
+          }
+        }
+      },
+      "pendingGroup": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["pendingDot", "pendingLabel"]
+      },
+      "pendingDot": { "type": "Dot", "props": { "tone": "info", "size": "sm" } },
+      "pendingLabel": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{n} pending", "n": { "$state": "/ui/rows/0/pending_count" } }
+          }
+        }
+      },
+
+      "awaitingBadge": {
+        "type": "Badge",
+        "props": { "tone": "warning", "variant": "soft" },
+        "children": ["awaitingDot", "awaitingLabel"]
+      },
+      "awaitingDot": { "type": "Dot", "props": { "tone": "warning", "size": "sm" } },
+      "awaitingLabel": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{n} awaiting review", "n": { "$state": "/ui/rows/0/awaiting_count" } }
+          }
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}
