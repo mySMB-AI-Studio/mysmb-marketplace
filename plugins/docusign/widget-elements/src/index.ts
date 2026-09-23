@@ -128,30 +128,6 @@ const filter_pending: ComputedFunction = (args) => {
   });
 };
 
-// ── abbreviateName ────────────────────────────────────────────────────────────
-// "Rem Fermin" → "R. Fermin"  (first letter of first word + ". " + last word)
-function abbreviateName(name: string): string {
-  const words = name.split(/\s+/).filter(Boolean);
-  if (words.length < 2) return name;
-  return `${words[0][0].toUpperCase()}. ${words[words.length - 1]}`;
-}
-
-// ── row_title ─────────────────────────────────────────────────────────────────
-// Build the primary text for a pending-signatures row.
-// Format: "F. LastName — Subject" when a signer is present, else just "Subject".
-// Args: { subject: string, recipients: object }
-const row_title: ComputedFunction = (args) => {
-  const subject = typeof args.subject === 'string' ? args.subject.trim() : '';
-  const recipients = args.recipients as Record<string, unknown> | null | undefined;
-  if (!recipients || typeof recipients !== 'object') return subject;
-  const signers = recipients.signers;
-  if (!Array.isArray(signers) || signers.length === 0) return subject;
-  const first = signers[0] as Record<string, unknown> | undefined;
-  const name = typeof first?.name === 'string' ? first.name.trim() : '';
-  if (!name) return subject;
-  return `${abbreviateName(name)} — ${subject}`;
-};
-
 // ── activity_line ─────────────────────────────────────────────────────────────
 // Build the primary activity-feed text line from envelope status + recipients.
 //   completed → "Completed — {subject}"
