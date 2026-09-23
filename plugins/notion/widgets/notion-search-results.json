@@ -27,15 +27,15 @@
   "sizing": {
     "preferred": {
       "colSpan": 6,
-      "rowSpan": 7
+      "rowSpan": 8
     },
     "min": {
       "colSpan": 4,
-      "rowSpan": 5
+      "rowSpan": 6
     },
     "max": {
       "colSpan": 12,
-      "rowSpan": 12
+      "rowSpan": 13
     }
   },
   "dataProvider": {
@@ -52,8 +52,25 @@
         "type": "Card",
         "children": [
           "header",
+          "typeBreakdownSection",
+          "colHeader",
+          "divider0",
           "body"
-        ]
+        ],
+        "watch": {
+          "/notion/search/results": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/typeBreakdown",
+                "value": {
+                  "$computed": "notion_content_type_breakdown",
+                  "args": { "results": { "$state": "/notion/search/results" } }
+                }
+              }
+            }
+          ]
+        }
       },
       "header": {
         "type": "Header",
@@ -116,6 +133,79 @@
           }
         }
       },
+      "typeBreakdownSection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["typeBreakdownHeaderRow", "typeBreakdownBar", "typeBreakdownLegend"],
+        "visible": { "$state": "/notion/search/results/0" }
+      },
+      "typeBreakdownHeaderRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["typeBreakdownCaption", "typeBreakdownTotalCaption"]
+      },
+      "typeBreakdownCaption": {
+        "type": "Caption",
+        "props": { "text": "Content Type Breakdown", "tone": "muted" }
+      },
+      "typeBreakdownTotalCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{total} items", "total": { "$state": "/ui/typeBreakdown/total" } }
+          },
+          "tone": "muted"
+        }
+      },
+      "typeBreakdownBar": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "template": { "$state": "/ui/typeBreakdown/template" } },
+        "children": ["typeSegment"],
+        "repeat": { "statePath": "/ui/typeBreakdown/segments", "key": "status" }
+      },
+      "typeSegment": {
+        "type": "ProgressBar",
+        "props": { "value": 100, "tone": { "$item": "tone" } }
+      },
+      "typeBreakdownLegend": {
+        "type": "Row",
+        "props": { "gap": "md", "align": "center" },
+        "children": ["typeLegendItem"],
+        "repeat": { "statePath": "/ui/typeBreakdown/segments", "key": "status" }
+      },
+      "typeLegendItem": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["typeLegendDot", "typeLegendLabel"]
+      },
+      "typeLegendDot": {
+        "type": "Dot",
+        "props": { "tone": { "$item": "tone" }, "size": "sm" }
+      },
+      "typeLegendLabel": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{status} ({count})", "status": { "$item": "status" }, "count": { "$item": "count" } }
+          },
+          "tone": "muted"
+        }
+      },
+
+      "colHeader": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "template": "auto minmax(0, 1fr) auto" },
+        "visible": { "$state": "/notion/search/results/0" },
+        "children": ["colIconSpacer", "colContent", "colType"]
+      },
+      "colIconSpacer": { "type": "Caption", "props": { "text": "" } },
+      "colContent": { "type": "Caption", "props": { "text": "Content" } },
+      "colType": { "type": "Caption", "props": { "text": "Type" } },
+
+      "divider0": { "type": "Divider", "props": {} },
+
       "body": {
         "type": "Body",
         "children": [
@@ -181,17 +271,18 @@
         "props": {
           "gap": "sm",
           "align": "center",
+          "template": "auto minmax(0, 1fr) auto",
           "hover": true,
-          "clickable": true,
-          "justify": "between"
+          "clickable": true
         },
         "on": {
           "click": {
             "action": "open_url",
             "params": {
               "url": {
-                "$item": "url"
-              }
+                "$bindItem": "url"
+              },
+              "target": "_blank"
             }
           }
         },
@@ -268,7 +359,14 @@
               }
             }
           },
-          "tone": "default",
+          "tone": {
+            "$computed": "notion_object_type_tone",
+            "args": {
+              "value": {
+                "$item": "object"
+              }
+            }
+          },
           "variant": "soft"
         }
       }
