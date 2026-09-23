@@ -172,8 +172,107 @@ const job_status_breakdown = (args) => {
         template: segments.length ? segments.map((s) => `${s.count}fr`).join(' ') : '1fr',
     };
 };
+/**
+ * Groups a `list_jobs` response into a Status | Amount invoicing summary —
+ * Quotes, Work Orders, Completed - Pending Approval, Completed - Awaiting
+ * Payment — each row summing `total_invoice_amount` for jobs in that state,
+ * matching ServiceM8's own Invoicing tab's "Summary" view. Rows are always
+ * present, even at 0.00, same as that screen.
+ *
+ * An earlier draft (mysmb-marketplace PR #870, unmerged) built this as a
+ * flat 3-row Quotes/Work Orders/Completed summary, explicitly NOT splitting
+ * Completed further — at the time, the connected test account had never had
+ * a real invoiced job, so `invoice_sent`/`payment_received`'s semantics
+ * were unverified and a wrong guess seemed worse than an honestly coarser
+ * number. Confirmed since (2026-09-23) directly against real `list_jobs`
+ * output: `invoice_sent` is a real boolean field, `payment_received` a real
+ * 0/1 field, both present on every job record regardless of status. The
+ * split here is:
+ *   - Completed, invoice_sent falsy           -> "Completed - Pending Approval"
+ *   - Completed, invoice_sent true, payment_received !== 1 -> "Completed - Awaiting Payment"
+ *   - Completed, invoice_sent true, payment_received === 1 -> excluded entirely
+ *     (this is a PAID job — ServiceM8's own Summary view doesn't carry a
+ *     "Paid" row either; paid jobs live under that screen's separate "Paid"
+ *     tab, not its pending-items Summary)
+ * Residual caveat this draft can't close: the connected test account still
+ * has no job with `invoice_sent: true` to observe, so the Awaiting-Payment
+ * bucket's field-mapping is inferred from ServiceM8's own field naming, not
+ * confirmed against a real invoiced-and-sent job. Flagged for the user to
+ * verify once a real invoice gets sent in this account.
+ *
+ * Same exclusions as the prior draft, confirmed against a real account's
+ * live Invoicing screen: inactive (archived) jobs excluded; "Unsuccessful"
+ * jobs excluded (never invoiced, nothing to contribute); no currency symbol
+ * prefixed (ServiceM8's API exposes no account-currency field, and the
+ * live screen's amounts were confirmed NOT in AUD — showing a wrong symbol
+ * is worse than showing none); any status outside ServiceM8's defaults
+ * folds into an "Other" row, shown only when non-empty. `list_jobs` caps at
+ * 1,000 records per page — sums only the page it's given.
+ *
+ * Args: { value: array } — the response's `jobs` array.
+ * Returns: array of { id, status_label, amount } — the four named rows
+ * always present (even "0.00"); "Other" only when non-empty.
+ */
+const servicem8_invoicing_summary = (args) => {
+    const jobs = Array.isArray(args.value) ? args.value : [];
+    const fmtAmt = (n) => new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+    const groups = {
+        Quote: 0,
+        'Work Order': 0,
+        'Completed-PendingApproval': 0,
+        'Completed-AwaitingPayment': 0,
+        Other: 0,
+    };
+    let hasOther = false;
+    for (const job of jobs) {
+        if (Number(job.active) !== 1)
+            continue;
+        const status = typeof job.status === 'string' ? job.status : '';
+        if (status === 'Unsuccessful')
+            continue;
+        const amount = Number(job.total_invoice_amount) || 0;
+        if (status === 'Completed') {
+            const invoiceSent = job.invoice_sent === true || Number(job.invoice_sent) === 1;
+            const paymentReceived = Number(job.payment_received) === 1;
+            if (!invoiceSent) {
+                groups['Completed-PendingApproval'] += amount;
+            }
+            else if (!paymentReceived) {
+                groups['Completed-AwaitingPayment'] += amount;
+            }
+            // invoiced AND paid -> excluded, matches ServiceM8's own Summary view
+            continue;
+        }
+        const key = status === 'Quote' || status === 'Work Order' ? status : 'Other';
+        groups[key] += amount;
+        if (key === 'Other')
+            hasOther = true;
+    }
+    const rows = [
+        { id: 'Quote', status_label: 'Quotes', amount: fmtAmt(groups.Quote) },
+        { id: 'Work Order', status_label: 'Work Orders', amount: fmtAmt(groups['Work Order']) },
+        {
+            id: 'Completed-PendingApproval',
+            status_label: 'Completed - Pending Approval',
+            amount: fmtAmt(groups['Completed-PendingApproval']),
+        },
+        {
+            id: 'Completed-AwaitingPayment',
+            status_label: 'Completed - Awaiting Payment',
+            amount: fmtAmt(groups['Completed-AwaitingPayment']),
+        },
+    ];
+    if (hasOther)
+        rows.push({ id: 'Other', status_label: 'Other', amount: fmtAmt(groups.Other) });
+    return rows;
+};
 const elements = {
     slug: 'servicem8',
-    functions: { join_staff_roles, job_history_rows, job_status_breakdown },
+    functions: {
+        join_staff_roles,
+        job_history_rows,
+        job_status_breakdown,
+        invoicing_summary: servicem8_invoicing_summary,
+    },
 };
 export default elements;
