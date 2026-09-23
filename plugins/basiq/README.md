@@ -9,11 +9,9 @@ Basiq is an Australian open-banking data platform. It provides consented access 
 | Server key | Backend | Powers |
 |---|---|---|
 | `basiq` | Basiq's own hosted MCP (`https://api.basiq.io/mcp`) | The 7 generic discovery/execution tools below, and the 3 skills |
-| `basiq-connect` | mySMB's `myhub-mcp-servers` `/basiq/mcp` route | The `basiq-connections-health` widget (see Widgets) |
+| `basiq-connect` | mySMB's `myhub-mcp-servers` `/basiq/mcp` route | The `basiq-connections-health` and `basiq-identity-verification` widgets (see Widgets) |
 
 They're unrelated backends with no shared state. `basiq`'s generic tools (`execute-request` etc.) need a specific Basiq user ID supplied by the caller on every data call, and Basiq's real API has no endpoint that returns connection/job data without one — there's no way to wire a per-tenant default into a live *widget's* data-fetch params (the renderer only resolves date tokens and `$state`, nothing else), so that server can't power a live dashboard tile without hardcoding one customer's user ID into this shared file. `basiq-connect` sidesteps this because the *server itself* holds a default (`BASIQ_DEFAULT_USER_ID`), the same pattern MYOB (`MYOB_COMPANY_FILE_ID`) and Dataverse (`DATAVERSE_DEFAULT_ORG`) use — see `myhub-mcp-servers/docs/BASIQ.md`.
-
-**Known deployment gap:** the `basiq-connections-health` widget calls `list_basiq_connections` with no `userId`, relying on the server resolving `BASIQ_DEFAULT_USER_ID`. As of this writing, that fallback code isn't yet merged into `myhub-mcp-servers`'s `dev`, and `deploy-staging.yml` doesn't pass `BASIQ_DEFAULT_USER_ID` through to the deployed container even once it is. Until both are done, the tile will show its loading/error state against the real deployed endpoint — this is a `myhub-mcp-servers` follow-up, not a bug in this plugin.
 
 ## Tools & resources
 
@@ -34,15 +32,17 @@ They're unrelated backends with no shared state. `basiq`'s generic tools (`execu
 
 | Widget | MCP server | Description |
 |---|---|---|
-| `basiq-connections-health` | `basiq-connect` | Live count of connections by status (Success/Running/Failed, mapped from Basiq's real `active`/`pending`+`pre-init`/`invalid` statuses — see the widget-elements JSDoc), overall health, and time since last activity. Click a status to drill into the individual connections in that bucket. Calls `list_basiq_connections` with no `userId` — the server resolves it from `BASIQ_DEFAULT_USER_ID` (see the deployment gap noted above). |
-| `basiq-recent-transactions-demo` | — (static) | Sample bank transactions (date, description, account, amount) showing what a live transactions view would look like. Stays static because `execute-request` needs a specific Basiq user ID per call with no default-resolution path available to it, so it can't go live the way `basiq-connections-health` did. |
+| `basiq-connections-health` | `basiq-connect` | Live count of connections by status (Success/Running/Failed, mapped from Basiq's real `active`/`pending`+`pre-init`/`invalid` statuses — see the widget-elements JSDoc), overall health, and time since last activity. Click a status to drill into the individual connections in that bucket. Calls `list_basiq_connections` with no `userId` — the server resolves it from `BASIQ_DEFAULT_USER_ID`. |
+| `basiq-identity-verification` | `basiq-connect` | Count of connections with a retrieved identity record ("identified") vs. total, split into still-syncing (`pending`) and needs-attention (`awaiting review`) buckets. Basiq's real Identity API has no status field on identity objects, so this is a derived cross-reference of connections against identities — not a literal "verified" status — see `get_basiq_identity_verification` in `myhub-mcp-servers/docs/BASIQ.md`. Calls `get_basiq_identity_verification` with no `userId` — the server resolves it from `BASIQ_DEFAULT_USER_ID`. |
+| `basiq-recent-transactions-demo` | — (static) | Sample bank transactions (date, description, account, amount) showing what a live transactions view would look like. Stays static because `execute-request` needs a specific Basiq user ID per call with no default-resolution path available to it, so it can't go live the way the other widgets did. |
 
 ### Widget-elements
 
-`widget-elements/src/index.ts` contributes the functions `basiq-connections-health` binds to:
-- `basiq_flatten_connections_health` — maps `list_basiq_connections`' raw response into the single summary row (status counts, health label/tone, most-recent `lastUsed`). Status→bucket mapping is documented in its JSDoc — an interpretive grouping onto Basiq's real 4-value status enum, not something Basiq itself calls "Success/Running/Failed".
-- `basiq_connections_by_status` — filters the same raw response down to one status bucket, for the click-to-drill-down breakdown panel.
-- `basiq_connection_status_tone` / `basiq_status_bucket_label` — per-item tone and bucket label helpers used by the breakdown panel.
+`widget-elements/src/index.ts` contributes:
+- `basiq_flatten_connections_health` — maps `list_basiq_connections`' raw response into the single summary row `basiq-connections-health` binds to (status counts, health label/tone, most-recent `lastUsed`). Status→bucket mapping is documented in its JSDoc — an interpretive grouping onto Basiq's real 4-value status enum, not something Basiq itself calls "Success/Running/Failed".
+- `basiq_connections_by_status` — filters the same raw response down to one status bucket, for `basiq-connections-health`'s click-to-drill-down breakdown panel.
+- `basiq_connection_status_tone` / `basiq_status_bucket_label` — per-item tone and bucket label helpers used by that breakdown panel.
+- `basiq_flatten_identity_verification` — maps `get_basiq_identity_verification`'s aggregate result into the row `basiq-identity-verification` binds to.
 
 ## Configuration
 

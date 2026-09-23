@@ -158,6 +158,37 @@ const status_bucket_label: ComputedFunction = (args) => {
   return '';
 };
 
+/**
+ * Maps the `get_basiq_identity_verification` tool result — already an
+ * aggregate `{ identifiedCount, pendingCount, awaitingCount, totalCount,
+ * identifiedPct }` object — into display-ready row fields for the Identity
+ * Verifications tile.
+ *
+ * Reframed from the mockup's "verified/pending/awaiting review" concept:
+ * Basiq's real Identity API has no status field at all, so this counts
+ * connections that have at least one retrieved identity record
+ * ("identified") vs. connections that don't yet, split by whether that's
+ * expected (still `pending`/`pre-init` — no identity expected yet) or worth
+ * a look (`active`/`invalid` with no identity — "awaiting review").
+ *
+ * Args: { value: { identifiedCount: number, pendingCount: number, awaitingCount: number, totalCount: number, identifiedPct: number } }
+ *
+ * Spec example:
+ *   { "$computed": "basiq_flatten_identity_verification", "args": { "value": { "$state": "/basiq-connect/get_basiq_identity_verification" } } }
+ */
+const flatten_identity_verification: ComputedFunction = (args) => {
+  const raw = (args.value ?? {}) as Record<string, unknown>;
+  return [
+    {
+      identified_count: String(Number(raw.identifiedCount ?? 0)),
+      pending_count: String(Number(raw.pendingCount ?? 0)),
+      awaiting_count: String(Number(raw.awaitingCount ?? 0)),
+      total_count: String(Number(raw.totalCount ?? 0)),
+      identified_pct: Number(raw.identifiedPct ?? 0),
+    },
+  ];
+};
+
 const elements: PluginElementsModule = {
   slug: 'basiq',
   functions: {
@@ -165,6 +196,7 @@ const elements: PluginElementsModule = {
     connections_by_status,
     connection_status_tone,
     status_bucket_label,
+    flatten_identity_verification,
   },
 };
 
