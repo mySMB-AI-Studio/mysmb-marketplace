@@ -1,7 +1,6 @@
 const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-// Days elapsed since an ISO timestamp from DocuSign (sentDateTime, etc.).
 const days_waiting = (args) => {
     const raw = args.value;
     if (!raw || typeof raw !== 'string') return -1;
@@ -10,10 +9,6 @@ const days_waiting = (args) => {
     return Math.max(0, Math.floor((Date.now() - ms) / MS_PER_DAY));
 };
 
-// Map elapsed days to a status tone.
-//   ≤ 2 days  → success     (green)
-//   3–7 days  → warning     (amber)
-//   ≥ 8 days  → destructive (red)
 const age_tone = (args) => {
     const days = Number(args.value);
     if (!Number.isFinite(days) || days < 0) return 'muted';
@@ -22,7 +17,6 @@ const age_tone = (args) => {
     return 'destructive';
 };
 
-// Human-readable elapsed-time label.
 const age_label = (args) => {
     const days = Number(args.value);
     if (!Number.isFinite(days) || days < 0) return '—';
@@ -42,7 +36,7 @@ function docuSignStatusLabel(raw) {
     }
 }
 
-// Format "Sent dd-Mmm-yy · Status".
+// "dd-Mmm-yy · Status" — no "Sent" prefix.
 const sent_meta = (args) => {
     const raw = args.sent;
     const status = typeof args.status === 'string' ? args.status : '';
@@ -58,17 +52,15 @@ const sent_meta = (args) => {
         }
     }
     const statusLabel = docuSignStatusLabel(status);
-    if (datePart && statusLabel) return `Sent ${datePart} · ${statusLabel}`;
-    if (datePart) return `Sent ${datePart}`;
+    if (datePart && statusLabel) return `${datePart} · ${statusLabel}`;
+    if (datePart) return datePart;
     return statusLabel;
 };
 
-// Title-case DocuSign envelope status.
 const status_label = (args) => {
     return docuSignStatusLabel(typeof args.value === 'string' ? args.value : '');
 };
 
-// Tone for the status badge.
 const status_tone = (args) => {
     const s = typeof args.value === 'string' ? args.value.toLowerCase() : '';
     if (s === 'completed') return 'success';
@@ -76,7 +68,25 @@ const status_tone = (args) => {
     return 'muted';
 };
 
-// Filter an envelopes array to only "sent"/"delivered" (awaiting signature).
+function abbreviateName(name) {
+    const words = name.split(/\s+/).filter(Boolean);
+    if (words.length < 2) return name;
+    return `${words[0][0].toUpperCase()}. ${words[words.length - 1]}`;
+}
+
+// "F. LastName — Subject" when include='recipients' data is present, else just "Subject".
+const row_title = (args) => {
+    const subject = typeof args.subject === 'string' ? args.subject.trim() : '';
+    const recipients = args.recipients;
+    if (!recipients || typeof recipients !== 'object') return subject;
+    const signers = recipients.signers;
+    if (!Array.isArray(signers) || signers.length === 0) return subject;
+    const first = signers[0];
+    const name = typeof first?.name === 'string' ? first.name.trim() : '';
+    if (!name) return subject;
+    return `${abbreviateName(name)} — ${subject}`;
+};
+
 const filter_pending = (args) => {
     const envelopes = Array.isArray(args.value) ? args.value : [];
     return envelopes.filter((env) => {
@@ -94,6 +104,7 @@ const elements = {
         sent_meta,
         status_label,
         status_tone,
+        row_title,
         filter_pending,
     },
 };
