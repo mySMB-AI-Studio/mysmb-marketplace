@@ -8,9 +8,9 @@
   "connectorsUsed": ["notion"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 6 },
-    "min": { "colSpan": 4, "rowSpan": 5 },
-    "max": { "colSpan": 8, "rowSpan": 10 }
+    "preferred": { "colSpan": 5, "rowSpan": 7 },
+    "min": { "colSpan": 4, "rowSpan": 6 },
+    "max": { "colSpan": 8, "rowSpan": 11 }
   },
   "dataProvider": {
     "mcp": "notion",
@@ -23,7 +23,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "divider0", "body"],
+        "children": ["header", "stageBreakdownSection", "colHeader", "divider0", "body"],
         "watch": {
           "/notion/search/results": {
             "action": "notion.query_database",
@@ -40,6 +40,18 @@
                 "value": {
                   "$computed": "notion_flatten_projects",
                   "args": { "value": { "$state": "/notion/query_database/results" } }
+                }
+              }
+            }
+          ],
+          "/ui/rows": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/stageBreakdown",
+                "value": {
+                  "$computed": "notion_project_stage_breakdown",
+                  "args": { "rows": { "$state": "/ui/rows" } }
                 }
               }
             }
@@ -61,6 +73,76 @@
         "props": { "text": { "$state": "/ui/rows/0/footer_label" } },
         "visible": { "$state": "/ui/rows/0" }
       },
+
+      "stageBreakdownSection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["stageBreakdownHeaderRow", "stageBreakdownBar", "stageBreakdownLegend"],
+        "visible": { "$state": "/ui/rows/0" }
+      },
+      "stageBreakdownHeaderRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["stageBreakdownCaption", "stageBreakdownTotalCaption"]
+      },
+      "stageBreakdownCaption": {
+        "type": "Caption",
+        "props": { "text": "Stage Breakdown", "tone": "muted" }
+      },
+      "stageBreakdownTotalCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{total} projects", "total": { "$state": "/ui/stageBreakdown/total" } }
+          },
+          "tone": "muted"
+        }
+      },
+      "stageBreakdownBar": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "template": { "$state": "/ui/stageBreakdown/template" } },
+        "children": ["stageSegment"],
+        "repeat": { "statePath": "/ui/stageBreakdown/segments", "key": "status" }
+      },
+      "stageSegment": {
+        "type": "ProgressBar",
+        "props": { "value": 100, "tone": { "$item": "tone" } }
+      },
+      "stageBreakdownLegend": {
+        "type": "Row",
+        "props": { "gap": "md", "align": "center" },
+        "children": ["stageLegendItem"],
+        "repeat": { "statePath": "/ui/stageBreakdown/segments", "key": "status" }
+      },
+      "stageLegendItem": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["stageLegendDot", "stageLegendLabel"]
+      },
+      "stageLegendDot": {
+        "type": "Dot",
+        "props": { "tone": { "$item": "tone" }, "size": "sm" }
+      },
+      "stageLegendLabel": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{status} ({count})", "status": { "$item": "status" }, "count": { "$item": "count" } }
+          },
+          "tone": "muted"
+        }
+      },
+
+      "colHeader": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "template": "minmax(0, 1fr) auto" },
+        "visible": { "$state": "/ui/rows/0" },
+        "children": ["colName", "colStatus"]
+      },
+      "colName": { "type": "Caption", "props": { "text": "Project Name" } },
+      "colStatus": { "type": "Caption", "props": { "text": "Project Status" } },
 
       "divider0": { "type": "Divider", "props": {} },
 
@@ -147,14 +229,14 @@
 
       "row": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center", "hover": true, "clickable": true },
+        "props": { "gap": "sm", "align": "center", "template": "minmax(0, 1fr) auto", "hover": true, "clickable": true },
         "on": {
           "click": {
             "action": "open_url",
-            "params": { "url": { "$item": "url" }, "target": "_blank" }
+            "params": { "url": { "$bindItem": "url" }, "target": "_blank" }
           }
         },
-        "children": ["stageBadge", "rowInfo"]
+        "children": ["rowInfo", "stageBadge"]
       },
       "stageBadge": {
         "type": "Badge",
