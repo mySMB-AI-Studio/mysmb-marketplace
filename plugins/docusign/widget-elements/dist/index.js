@@ -344,7 +344,6 @@ const elements = {
         status_tone,
         row_title,
         filter_pending,
-        row_title,
         activity_line,
         activity_dot_tone,
         relative_time,
