@@ -95,26 +95,6 @@ const filter_pending = (args) => {
     });
 };
 
-// "Rem Fermin" → "R. Fermin"
-function abbreviateName(name) {
-    const words = name.split(/\s+/).filter(Boolean);
-    if (words.length < 2) return name;
-    return `${words[0][0].toUpperCase()}. ${words[words.length - 1]}`;
-}
-
-// "F. LastName — Subject" or just "Subject" if no signer name.
-const row_title = (args) => {
-    const subject = typeof args.subject === 'string' ? args.subject.trim() : '';
-    const recipients = args.recipients;
-    if (!recipients || typeof recipients !== 'object') return subject;
-    const signers = recipients.signers;
-    if (!Array.isArray(signers) || signers.length === 0) return subject;
-    const first = signers[0];
-    const name = typeof first?.name === 'string' ? first.name.trim() : '';
-    if (!name) return subject;
-    return `${abbreviateName(name)} — ${subject}`;
-};
-
 // Activity-feed primary text line.
 //   completed → "Completed — Subject"
 //   delivered → "Viewed by R. Name — Subject"
