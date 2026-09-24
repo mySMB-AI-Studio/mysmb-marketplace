@@ -1,6 +1,6 @@
 # Josh Test
 
-This is a test extension. will be deleted later
+This is a test extension. will be deleted laters
 
 Packaged from a MyHub workspace via the /developer Plugins page.
 
