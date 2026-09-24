@@ -8,14 +8,7 @@ Browser OAuth through myHub — no API keys, no env vars. Click Connect, sign in
 
 ## Configuration
 
-No environment variables are required on the client side — this plugin's `.mcp.json` points at myHub's own hosted MCP gateway, and myHub injects the OAuth bearer token automatically once you connect.
-
-On first use, Connect redirects to Lightspeed's OAuth 2.0 authorization page (`https://secure.retail.lightspeed.app/connect`) — sign in, choose the retailer/store to authorize if you have more than one, and you're returned to myHub. Lightspeed's OAuth flow returns a `domain_prefix` specific to your store as part of the token exchange, which the server stores alongside your token so it can construct the correct per-retailer API base URL on every subsequent call without asking again.
-
-### Prerequisites
-
-- A Lightspeed Retail (X-Series) account with an active store.
-- The account you connect with needs whatever Lightspeed staff permissions cover the actions you intend to use this connector for (e.g. a staff role with catalogue/inventory access to manage products, or sales access to read/create sales) — Lightspeed enforces this on its own side per staff account, independent of the OAuth scopes this connector requests.
+No configuration variables are required.
 
 ## Tools & resources
 
