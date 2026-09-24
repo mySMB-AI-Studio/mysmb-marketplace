@@ -1,45 +1,85 @@
 import type { ComputedFunction, PluginElementsModule } from './types';
 
-// ── sinch_message_stats ───────────────────────────────────────────────────────
-// Formats delivery stats from get_sinch_delivery_stats into display-ready
-// values for the Messaging Status Overview tile.
-// Args: { value: { total?, delivered, pending, failed, rejected } }
-const sinch_message_stats: ComputedFunction = (args) => {
-  const stats = args.value as Record<string, unknown> | null | undefined;
-  if (!stats || typeof stats !== 'object') return null;
+// ── sinch_activity_events ──────────────────────────────────────────────────────
+// Adds display-ready `label` and `tone` fields to each event in the
+// list_sinch_message_events response for the Recent Message Activity tile.
+// Args: { value: Array<{ status?: string, direction?: string, ... }> }
+const sinch_activity_events: ComputedFunction = (args) => {
+  const events = args.value as Array<Record<string, unknown>> | null | undefined;
+  if (!Array.isArray(events)) return null;
 
-  const delivered = Math.max(0, Number(stats.delivered ?? 0));
-  const pending   = Math.max(0, Number(stats.pending   ?? 0));
-  const failed    = Math.max(0, Number(stats.failed    ?? 0));
-  const rejected  = Math.max(0, Number(stats.rejected  ?? 0));
-  const total     = Math.max(0, Number(stats.total ?? (delivered + pending + failed + rejected)));
+  return events.map(ev => {
+    const status    = ((ev.status    as string | undefined) ?? '').toUpperCase();
+    const direction =  (ev.direction as string | undefined) ?? '';
+
+    let label: string;
+    let tone: string;
+
+    if (direction === 'inbound') {
+      label = 'Inbound Reply';
+      tone  = 'accent';
+    } else {
+      switch (status) {
+        case 'DELIVERED':
+          label = 'Delivered';  tone = 'success';     break;
+        case 'DISPATCHED':
+        case 'DISPATCHING':
+        case 'QUEUED':
+          label = 'Sent';       tone = 'info';        break;
+        case 'FAILED':
+        case 'UNDELIVERED':
+          label = 'Failed';     tone = 'destructive'; break;
+        case 'SWITCHING_CHANNEL':
+          label = 'Retrying';   tone = 'warning';     break;
+        default:
+          label = ev.status as string || 'Unknown';
+          tone  = 'muted';
+      }
+    }
+
+    return { ...ev, label, tone };
+  });
+};
+
+// ── sinch_registration_counts ─────────────────────────────────────────────────
+// Counts sender-ID registrations by status for the Registration Status Overview
+// tile. Status values as returned by the Sinch Registration API (case-mixed):
+//   approved, PENDING, IN_QUEUE, rejected, DRAFT
+// Args: { value: Array<{ status?: string }> }
+const sinch_registration_counts: ComputedFunction = (args) => {
+  const registrations = args.value as Array<{ status?: string }> | null | undefined;
+  if (!Array.isArray(registrations)) return null;
+
+  const countByStatus = (target: string): number =>
+    registrations.filter(r => (r.status ?? '').toLowerCase() === target.toLowerCase()).length;
+
+  const approved = countByStatus('approved');
+  const pending  = countByStatus('PENDING');
+  const inQueue  = countByStatus('IN_QUEUE');
+  const rejected = countByStatus('rejected');
+  const draft    = countByStatus('DRAFT');
+  const total    = registrations.length;
 
   const pct = (n: number): number =>
     total > 0 ? Math.round((n / total) * 100) : 0;
 
-  const fmt = (n: number): string =>
-    n.toLocaleString('en-AU');
-
-  const countPct = (n: number): string =>
-    `${fmt(n)} · ${pct(n)}%`;
+  const label = (n: number): string => `${n} · ${pct(n)}%`;
 
   return {
-    total:             fmt(total),
-    deliveredCountPct: countPct(delivered),
-    deliveredPct:      pct(delivered),
-    pendingCountPct:   countPct(pending),
-    pendingPct:        pct(pending),
-    failedCountPct:    countPct(failed),
-    failedPct:         pct(failed),
-    rejectedCountPct:  countPct(rejected),
-    rejectedPct:       pct(rejected),
+    total:        String(total),
+    approvedPct:  pct(approved),  approvedLabel:  label(approved),
+    pendingPct:   pct(pending),   pendingLabel:   label(pending),
+    inQueuePct:   pct(inQueue),   inQueueLabel:   label(inQueue),
+    rejectedPct:  pct(rejected),  rejectedLabel:  label(rejected),
+    draftPct:     pct(draft),     draftLabel:     label(draft),
   };
 };
 
 const elements: PluginElementsModule = {
   slug: 'sinch',
   functions: {
-    sinch_message_stats,
+    sinch_activity_events,
+    sinch_registration_counts,
   },
 };
 
