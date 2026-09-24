@@ -1,6 +1,6 @@
 # Sample Demo Extension 1
 
-demo only
+A mock extension with sample data, used to preview how an extension appears in the mySMB marketplace.
 
 Packaged from a MyHub workspace via the /developer Plugins page.
 
