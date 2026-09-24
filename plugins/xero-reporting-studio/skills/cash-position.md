@@ -1,7 +1,10 @@
-# Analytics — Cash Position
+# Analytics  Cash Position
 
-Use `get_bank_summary` (called once per month across the trend window — no single call covers a multi-month trend, since this report has no `periods`/`timeframe` param) plus `list_accounts` (where `Type=="BANK"`) for current balance, `get_balance_sheet` for the point-in-time financial position, and `list_invoices` (`Type=="ACCREC"`/`Type=="ACCPAY"`, `AUTHORISED`, aggregated by `DueDate`) for receivables/payables ageing composition — same method as the standalone Aged Receivables/Aged Payables summary skills. There is no single "cash position" tool.
+Use `get_cash_position`, `get_financial_position`, `get_aged_receivables`, and `get_aged_payables`.
 
 Show cash balance and monthly trend, cash in versus cash out, net cash flow, receivables ageing composition, and payables ageing composition. Use accessible donut/bar alternatives and clearly label connector gaps.
 
-Validate cash balance equals the sum of bank accounts, ageing segments equal their totals, and cash in/out reconciles to the `get_bank_summary` figures for each month. Flag that the source workbook's live widget set was only partially captured.
+Validate cash balance equals bank accounts, ageing segments equal their totals, and cash in/out reconciles to available bank-summary data. Flag that the source workbooks live widget set was only partially captured.
+## Interactivity
+
+Declare `as_at_date` (date, default "today") mapped 1:1 to the tool's date parameter. Bank-account filter is client-side; recompute displayed totals over the filtered accounts, labelled as filtered.

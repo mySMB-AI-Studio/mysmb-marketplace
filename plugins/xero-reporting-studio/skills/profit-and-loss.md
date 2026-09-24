@@ -1,7 +1,10 @@
 # Profit and Loss
 
-Use `get_profit_and_loss`. For financial-year boundaries, use `get_organisation` (`FinancialYearEndDay`/`FinancialYearEndMonth` fields) — there is no separate financial-year tool.
+Use `get_profit_and_loss` and `get_organisation_financial_year`.
 
-Present Trading Income, Cost of Sales, Gross Profit, Other Income, Operating Expenses, and Net Profit in that order. For user-requested comparisons: use `get_profit_and_loss`'s own `periods`/`timeframe` params for adjacent-period comparison in one call; for prior-year comparison against a custom range, make a second call with `fromDate`/`toDate` shifted back a year. Show variance amounts/percentages. Preserve account detail and bold subtotal/total rows.
+Present Trading Income, Cost of Sales, Gross Profit, Other Income, Operating Expenses, and Net Profit in that order. Support user-requested previous-period or prior-year comparison columns and variance amounts/percentages. Preserve account detail and bold subtotal/total rows.
 
-Validate Gross Profit = Trading Income − Cost of Sales, Net Profit = Gross Profit + Other Income − Operating Expenses, and every section total equals its account rows.
+Validate Gross Profit = Trading Income - Cost of Sales, Net Profit = Gross Profit + Other Income - Operating Expenses, and every section total equals its account rows.
+## Interactivity
+
+Declare `from_date` and `to_date` (date) inputs mapped 1:1 to the tool's from/to date parameters, driven by a client-side preset picker (this month, last month, this quarter, YTD → the picker computes the two dates and calls getData with the declared names). Comparison or basis controls only through parameters the tool actually exposes (e.g. `periods`, `timeframe`, `paymentsOnly`), each as its own declared input. Account sections expand/collapse client-side.
