@@ -1,0 +1,119 @@
+{
+  "contentHash": "45b27859e7f2f663b5ac100bd6e1944a1c26e53fa736d1629cb2e3d67a58d126",
+  "declaredScopes": [
+    "workq:write"
+  ],
+  "dependencies": [],
+  "description": "Every day at 7am, creates a WorkQ item asking for a P&L report to be generated and assigns it to the Xero Reporting Specialist Agent.",
+  "flowIr": {
+    "description": "Every day at 7am, creates a WorkQ item asking for a P&L report to be generated and assigns it to the Xero Reporting Specialist Agent.",
+    "irVersion": 1,
+    "name": "Daily P&L Report WorkQ Item",
+    "nodes": [
+      {
+        "code": "todo = api.workq.create(title=params[\"title\"], scope=params[\"scope\"], description=params[\"description\"], priority=params[\"priority\"], assignee_ids=[params[\"assignee_id\"]])\ntodo_id = todo.get(\"id\") or \"\"\ntitle = todo.get(\"title\") or \"\"",
+        "id": "create_pnl_workq_item",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "The id of the newly created WorkQ item.",
+            "name": "todo_id",
+            "type": "uuid"
+          },
+          {
+            "description": "The title of the created WorkQ item.",
+            "name": "title",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "control": "text",
+            "label": "Item title",
+            "name": "title",
+            "required": true,
+            "type": "str",
+            "value": "Generate P&L Report"
+          },
+          {
+            "control": "text",
+            "label": "Item description",
+            "name": "description",
+            "required": true,
+            "type": "str",
+            "value": "Please generate the Profit & Loss report for the current period and share it once complete."
+          },
+          {
+            "control": "select",
+            "label": "Priority",
+            "name": "priority",
+            "options": [
+              {
+                "label": "Low",
+                "value": "low"
+              },
+              {
+                "label": "Medium",
+                "value": "medium"
+              },
+              {
+                "label": "High",
+                "value": "high"
+              }
+            ],
+            "required": true,
+            "type": "str",
+            "value": "medium"
+          },
+          {
+            "control": "user-picker",
+            "label": "Assign to",
+            "name": "assignee_id",
+            "required": true,
+            "type": "str",
+            "value": "b6405956-842e-49f7-9922-fc63808aa89e"
+          },
+          {
+            "control": "select",
+            "label": "Visibility scope",
+            "name": "scope",
+            "options": [
+              {
+                "label": "Everyone",
+                "value": "org"
+              },
+              {
+                "label": "Me + assignees",
+                "value": "me"
+              }
+            ],
+            "required": true,
+            "type": "str",
+            "value": "org"
+          }
+        ],
+        "summary": "Creates a daily WorkQ task requesting the Profit & Loss report be generated and assigns it to the Xero Reporting Specialist Agent.",
+        "title": "Create P&L report WorkQ item"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "create_pnl_workq_item"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      },
+      {
+        "cron": "0 7 * * *",
+        "kind": "schedule",
+        "timezone": "Asia/Manila"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "user",
+  "name": "Daily P&L Report WorkQ Item",
+  "originKey": "90d44b16-7d38-403a-8c6b-d4dba1efe1bb",
+  "tags": []
+}
