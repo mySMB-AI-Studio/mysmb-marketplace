@@ -12,11 +12,49 @@
  *   5. Every ${VAR} placeholder in .mcp.json env values (or headers, for
  *      remote transports) is either CLAUDE_PLUGIN_ROOT (reserved) or
  *      documented in the plugin README under a "Configuration" heading.
+ *   6. If plugin.json declares a MyHub `content` section (tenant-authored
+ *      plugin packaging), every listed content file exists and parses as
+ *      JSON, its filename matches the payload's originKey (and its `kind`
+ *      matches the section it is listed under), and every automation
+ *      dependency resolves to a content entity bundled in the same plugin.
+ *      Plugins without a content section are unaffected.
+ *   7. If plugin.json declares `briefingEmailSources` (mySidekick briefing
+ *      mailboxes), every listed file exists, parses, matches the email-source
+ *      schema, belongs to this plugin, names only a server this plugin declares
+ *      in .mcp.json, and uses an https compose template with known placeholders.
+ *   8. Every widget JSON under a plugin's widgets/ dir is checked for
+ *      TILE-DISPLAY-STANDARDS.md §5's "xxs" gap bug (not a real value, silently
+ *      renders as zero gap). Mirrors exactly that one rule from the doc — see
+ *      the doc's own §14 for why only this rule is mechanically enforced here.
+ *      Forward-only (§14's rollout policy): files listed in
+ *      scripts/xxs-baseline.json are pre-existing, known violators from the
+ *      2026-08-05 audit and are grandfathered — editing this validator does
+ *      NOT retroactively fail them. Only a NEW "xxs" usage (a new widget, or
+ *      an existing widget not already on the baseline) fails. Retrofitting the
+ *      baseline is the separate, deliberately-scoped initiative §14 describes —
+ *      remove a file from the baseline once it's actually fixed.
+ *   9. Every myhub-hosted MCP URL in .mcp.json uses the PRODUCTION
+ *      myhub-mcp-servers host on every branch tier (dev, qa, uat, main).
+ *      Per-environment routing is myHub's job at runtime (MCP_SERVERS_BASE_URL).
+ *  10. If a marketplace.json entry declares Workspace Extensions store
+ *      `branding` / `listing` blocks: branding.color is #rgb/#rrggbb, tagline
+ *      ≤ 90 chars, highlights ≤ 4 × ≤ 120 chars, screenshots ≤ 6, publisher /
+ *      support URLs parse, and every asset (branding.logo, branding.logoDark,
+ *      listing.screenshots[]) is an https URL, a data:image URI, or a
+ *      bundle-relative path to an existing svg/png/jpg/webp/gif of ≤ 96 KB
+ *      inside the plugin dir (marketplace sync inlines those as data URIs and
+ *      silently drops anything else). Entries without the blocks are unaffected.
+ *
+ * Branch tiers: dev → qa → uat → main. CI (.github/workflows/validate.yml)
+ * runs this on every PR and on every push to each tier — including the
+ * mySMB.com Admin Center AI Studio's publish (dev → qa) and promote
+ * (qa → uat → main) commits, so a promotion that breaks a rule shows up in
+ * the AI Studio promotion log.
  *
  * Exits 1 on any failure.
  */
 import { readFileSync, existsSync, statSync, readdirSync } from "node:fs";
-import { join, resolve, dirname } from "node:path";
+import { join, resolve, dirname, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -25,12 +63,19 @@ const repoRoot = resolve(__dirname, "..");
 const errors: string[] = [];
 const fail = (msg: string) => errors.push(msg);
 
+const XXS_BASELINE: Set<string> = new Set(
+  (JSON.parse(readFileSync(join(__dirname, "xxs-baseline.json"), "utf8")) as string[]).map((p) =>
+    p.split("/").join(sep),
+  ),
+);
+
 const RESERVED_VARS = new Set(["CLAUDE_PLUGIN_ROOT"]);
 
 /**
  * The canonical production myhub-mcp-servers host. Every myhub-hosted plugin
- * `.mcp.json` URL must use this host on ALL branches — staging/dev routing is
- * applied at runtime by myHub (MCP_SERVERS_BASE_URL), never baked into the repo.
+ * `.mcp.json` URL must use this host on ALL branch tiers (dev, qa, uat, main) —
+ * non-production routing is applied at runtime by myHub (MCP_SERVERS_BASE_URL),
+ * never baked into the repo.
  * Overridable via env for a future FQDN change without editing the validator.
  */
 const PROD_MCP_HOST =
@@ -40,6 +85,8 @@ const PROD_MCP_HOST =
 interface MarketplacePlugin {
   name: string;
   source?: string | { type?: string; path?: string; source?: string };
+  branding?: unknown;
+  listing?: unknown;
 }
 
 interface Marketplace {
@@ -169,6 +216,46 @@ function validateActionSchemas(pluginDirName: string, filePath: string, src: str
   }
 }
 
+/**
+ * TILE-DISPLAY-STANDARDS.md §5: "xxs" is not a real gap value — it silently
+ * renders as zero gap, identical to "none". Mirrors exactly one rule from that
+ * doc; if §5 is ever resolved by promoting "xxs" to a real GAP_SIZE value
+ * instead of mass-fixing existing widgets, update this check in the same PR.
+ */
+function findXxsGaps(value: unknown, path: string, out: string[]) {
+  if (Array.isArray(value)) {
+    value.forEach((v, i) => findXxsGaps(v, `${path}[${i}]`, out));
+  } else if (isRecord(value)) {
+    for (const [key, v] of Object.entries(value)) {
+      if (key === "gap" && v === "xxs") out.push(path || "(root)");
+      else findXxsGaps(v, path ? `${path}.${key}` : key, out);
+    }
+  }
+}
+
+function validateTileDisplayStandards(pluginDirName: string, fileName: string, filePath: string) {
+  // Parse locally (not the shared readJson helper) and skip silently on
+  // failure — a malformed widget JSON is a pre-existing, unrelated bug this
+  // check shouldn't newly start failing PRs over; it's a separate finding.
+  let widget: unknown;
+  try {
+    widget = JSON.parse(readFileSync(filePath, "utf8"));
+  } catch {
+    return;
+  }
+  const hits: string[] = [];
+  findXxsGaps(widget, "", hits);
+  if (hits.length === 0) return;
+
+  if (XXS_BASELINE.has(relative(repoRoot, filePath))) return; // pre-existing, grandfathered — see §14 rollout note above
+
+  for (const hit of hits) {
+    fail(
+      `plugins/${pluginDirName}: widgets/${fileName} uses "gap": "xxs" at ${hit} — not a real value (TILE-DISPLAY-STANDARDS.md §5), silently renders as zero gap; use "xs" or "none"`,
+    );
+  }
+}
+
 function validateWidgetElements(
   pluginDirName: string,
   manifest: { widgetElements?: string; widgets?: string },
@@ -215,6 +302,496 @@ function validateWidgetElements(
           `plugins/${pluginDirName}: widgets directory "${declaredW}" must contain at least one *.json file`,
         );
       }
+      for (const fileName of jsonFiles) {
+        validateTileDisplayStandards(pluginDirName, fileName, join(dirPath, fileName));
+      }
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// MyHub content section — tenant-authored plugin packaging (2026-07).
+// plugin.json may carry a `content` object listing plugin-relative paths of
+// DB-backed content files (content/<kind-dir>/<origin-key>.json) that the
+// MyHub tenant installer upserts by origin_key. Claude Code ignores the
+// section; plugins without one are unaffected. Kept in lock-step with the
+// in-app bundle validator in myHubV2:
+// packages/shared/src/plugins/authoring/validate.ts (see its parity map).
+// ──────────────────────────────────────────────────────────────────────────
+
+type ContentKind = "automation" | "workq_template" | "form_template" | "form" | "agent";
+
+/** plugin.json `content` section key → the `kind` its payloads must carry.
+ *  Parity with myHubV2 packages/shared/src/plugins/authoring/validate.ts —
+ *  `agents` was missing here (added with the myconnect-builder 0.3.0 runner
+ *  hints), so agent payloads were never checked by this validator. */
+const CONTENT_SECTION_KINDS: Record<string, ContentKind> = {
+  automations: "automation",
+  workqTemplates: "workq_template",
+  formTemplates: "form_template",
+  forms: "form",
+  agents: "agent",
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function validateContent(pluginDirName: string, content: unknown) {
+  if (!isRecord(content)) {
+    fail(`plugins/${pluginDirName}: plugin.json content section must be an object`);
+    return;
+  }
+  const pluginDir = join(repoRoot, "plugins", pluginDirName);
+
+  /** kind → originKeys of every payload that parsed (dependency targets). */
+  const bundledByKind = new Map<ContentKind, Set<string>>();
+  /** Parsed automation payloads, revisited for the dependency check. */
+  const automationPayloads: Array<{
+    entry: string;
+    payload: Record<string, unknown>;
+  }> = [];
+
+  for (const [section, expectedKind] of Object.entries(CONTENT_SECTION_KINDS)) {
+    const listed = content[section];
+    if (listed === undefined) continue;
+    if (!Array.isArray(listed)) {
+      fail(
+        `plugins/${pluginDirName}: plugin.json content.${section} must be an array of paths`,
+      );
+      continue;
+    }
+    for (const entry of listed) {
+      if (typeof entry !== "string") {
+        fail(
+          `plugins/${pluginDirName}: plugin.json content.${section} has a non-string entry`,
+        );
+        continue;
+      }
+      const filePath = join(pluginDir, entry);
+      if (!existsSync(filePath) || !statSync(filePath).isFile()) {
+        fail(
+          `plugins/${pluginDirName}: content file "${entry}" listed in plugin.json is missing`,
+        );
+        continue;
+      }
+      const payload = readJson<unknown>(filePath);
+      if (payload === null) continue; // readJson already reported the parse failure
+      if (!isRecord(payload)) {
+        fail(`plugins/${pluginDirName}: ${entry} content payload must be a JSON object`);
+        continue;
+      }
+      if (payload.kind !== expectedKind) {
+        fail(
+          `plugins/${pluginDirName}: ${entry} payload kind "${String(payload.kind)}" does not match its plugin.json section "${section}" (expected "${expectedKind}")`,
+        );
+      }
+      const originKey = typeof payload.originKey === "string" ? payload.originKey : null;
+      const fileBase = entry.slice(entry.lastIndexOf("/") + 1).replace(/\.json$/, "");
+      if (originKey === null || originKey !== fileBase) {
+        fail(
+          `plugins/${pluginDirName}: ${entry} filename "${fileBase}" does not match the payload originKey "${String(payload.originKey)}"`,
+        );
+      }
+      if (originKey !== null) {
+        const keys = bundledByKind.get(expectedKind) ?? new Set<string>();
+        keys.add(originKey);
+        bundledByKind.set(expectedKind, keys);
+      }
+      if (expectedKind === "automation") automationPayloads.push({ entry, payload });
+    }
+  }
+
+  // Automations' declared dependencies must resolve inside the same plugin —
+  // the MyHub installer upserts forms/templates first, then remaps the
+  // automation IR by originKey; a dangling key would leave the automation
+  // broken on install.
+  const allKeys = new Set<string>([...bundledByKind.values()].flatMap((s) => [...s]));
+  for (const { entry, payload } of automationPayloads) {
+    if (!Array.isArray(payload.dependencies)) continue;
+    for (const dep of payload.dependencies) {
+      if (!isRecord(dep) || typeof dep.originKey !== "string") continue;
+      const entityKind = typeof dep.entityKind === "string" ? dep.entityKind : "";
+      const kindSet = (Object.values(CONTENT_SECTION_KINDS) as string[]).includes(
+        entityKind,
+      )
+        ? (bundledByKind.get(entityKind as ContentKind) ?? new Set<string>())
+        : allKeys;
+      if (!kindSet.has(dep.originKey)) {
+        fail(
+          `plugins/${pluginDirName}: ${entry} automation dependency ${entityKind || "entity"} ${dep.originKey} is not bundled — add it to the plugin (dangling reference)`,
+        );
+      }
+    }
+  }
+}
+
+
+// ── Briefing email sources ────────────────────────────────────────────────────
+//
+// A plugin that exposes a mailbox to the mySidekick morning briefing declares
+// `briefingEmailSources` in plugin.json, pointing at JSON files that describe
+// which MCP tool to call and how to project its rows.
+//
+// This is a higher-stakes contract than a widget: at runtime the briefing
+// invokes the named server with the user's live mail credential. So the file is
+// checked here, in CI, rather than being discovered as a silently missing
+// mailbox at 8am. The authoritative schema lives in myHubV2
+// (packages/shared/src/briefing-sources/email-source-schema.ts); this mirrors
+// its structural rules so the marketplace can be validated standalone.
+
+const EMAIL_MESSAGE_FIELDS = new Set([
+  "id",
+  "fromName",
+  "fromAddress",
+  "subject",
+  "snippet",
+  "receivedAt",
+  "isUnread",
+]);
+const REQUIRED_EMAIL_FIELDS = ["id", "fromAddress", "receivedAt"];
+const EMAIL_TRANSFORMS = new Set([
+  "mailbox-name",
+  "mailbox-address",
+  "unix-ms-to-iso",
+  "iso-date",
+  "boolean-not",
+]);
+const COMPOSE_PLACEHOLDERS = new Set(["to", "subject", "body", "accountAddress"]);
+const DOT_PATH_RE = /^[a-zA-Z0-9_$-]+(\.[a-zA-Z0-9_$-]+)*$/;
+
+
+
+function validateBriefingEmailSources(
+  pluginDirName: string,
+  declared: unknown,
+  ownedServers: Set<string>,
+) {
+  const where = `plugins/${pluginDirName}`;
+  if (!Array.isArray(declared)) {
+    fail(`${where}: plugin.json briefingEmailSources must be an array of paths`);
+    return;
+  }
+
+  const pluginDir = join(repoRoot, "plugins", pluginDirName);
+
+  for (const entry of declared) {
+    if (typeof entry !== "string") {
+      fail(`${where}: briefingEmailSources has a non-string entry`);
+      continue;
+    }
+    // Path containment: a declared path must not escape the plugin directory,
+    // or one plugin could serve another's source file and borrow its credential.
+    const filePath = resolve(pluginDir, entry);
+    // `sep`, not "/": resolve() yields backslash paths on Windows.
+    if (filePath !== pluginDir && !filePath.startsWith(pluginDir + sep)) {
+      fail(`${where}: briefingEmailSources entry "${entry}" escapes the plugin directory`);
+      continue;
+    }
+    if (!existsSync(filePath) || !statSync(filePath).isFile()) {
+      fail(`${where}: briefingEmailSources entry "${entry}" is missing`);
+      continue;
+    }
+    const src = readJson<Record<string, unknown>>(filePath);
+    if (src === null) continue; // readJson already reported the parse failure
+    if (!isRecord(src)) {
+      fail(`${where}: ${entry} must be a JSON object`);
+      continue;
+    }
+
+    if (src.canonical !== "email/Message") {
+      fail(`${where}: ${entry} canonical must be "email/Message"`);
+    }
+    if (src.plugin !== pluginDirName) {
+      fail(`${where}: ${entry} declares plugin "${String(src.plugin)}", expected "${pluginDirName}"`);
+    }
+    if (typeof src.id !== "string" || !src.id.startsWith(`${pluginDirName}/`)) {
+      fail(`${where}: ${entry} id "${String(src.id)}" must start with "${pluginDirName}/"`);
+    }
+
+    const provider = src.provider;
+    if (!isRecord(provider) || typeof provider.key !== "string" || typeof provider.label !== "string") {
+      fail(`${where}: ${entry} provider must be { key, label }`);
+    }
+
+    const source = src.source;
+    if (!isRecord(source) || typeof source.mcpServer !== "string" || typeof source.tool !== "string") {
+      fail(`${where}: ${entry} source must be { mcpServer, tool }`);
+    } else {
+      if (!ownedServers.has(source.mcpServer)) {
+        fail(
+          `${where}: ${entry} names MCP server "${source.mcpServer}", which this plugin does not declare in .mcp.json`,
+        );
+      }
+      if (source.itemsPath !== undefined && (typeof source.itemsPath !== "string" || !DOT_PATH_RE.test(source.itemsPath))) {
+        fail(`${where}: ${entry} source.itemsPath must be a dot-path`);
+      }
+    }
+
+    const projection = src.fieldProjection;
+    if (!Array.isArray(projection) || projection.length === 0) {
+      fail(`${where}: ${entry} fieldProjection must be a non-empty array`);
+    } else {
+      const produced = new Set<string>();
+      for (const rule of projection) {
+        if (!isRecord(rule) || typeof rule.out !== "string" || !EMAIL_MESSAGE_FIELDS.has(rule.out)) {
+          fail(`${where}: ${entry} fieldProjection has a rule with an unknown "out" field`);
+          continue;
+        }
+        if (produced.has(rule.out)) {
+          fail(`${where}: ${entry} fieldProjection produces "${rule.out}" more than once`);
+        }
+        produced.add(rule.out);
+        const hasIn = rule.in !== undefined;
+        const hasValue = rule.value !== undefined;
+        if (hasIn === hasValue) {
+          fail(`${where}: ${entry} projection for "${rule.out}" needs exactly one of "in" or "value"`);
+        }
+        if (hasIn && (typeof rule.in !== "string" || !DOT_PATH_RE.test(rule.in))) {
+          fail(`${where}: ${entry} projection for "${rule.out}" has an invalid dot-path`);
+        }
+        if (rule.transform !== undefined && (typeof rule.transform !== "string" || !EMAIL_TRANSFORMS.has(rule.transform))) {
+          fail(`${where}: ${entry} projection for "${rule.out}" has unknown transform "${String(rule.transform)}"`);
+        }
+        if (hasValue && rule.transform !== undefined) {
+          fail(`${where}: ${entry} projection for "${rule.out}" cannot combine "value" with "transform"`);
+        }
+      }
+      for (const required of REQUIRED_EMAIL_FIELDS) {
+        if (!produced.has(required)) {
+          fail(`${where}: ${entry} fieldProjection is missing required output "${required}"`);
+        }
+      }
+    }
+
+    const compose = src.compose;
+    if (!isRecord(compose)) {
+      fail(`${where}: ${entry} compose must be an object`);
+    } else if (compose.mode === "createDraft") {
+      // A createDraft source names a SECOND server (usually a write server, a
+      // separate OAuth grant) — it must be owned by this plugin too, or a
+      // manifest could point draft creation at a sibling plugin's connection.
+      if (typeof compose.mcpServer !== "string" || !ownedServers.has(compose.mcpServer)) {
+        fail(
+          `${where}: ${entry} compose.mcpServer "${String(compose.mcpServer)}" is not declared by this plugin in .mcp.json`,
+        );
+      }
+      if (typeof compose.newTool !== "string" || !compose.newTool) {
+        fail(`${where}: ${entry} compose.newTool is required for mode "createDraft"`);
+      }
+      if (compose.replyTool !== undefined && typeof compose.replyTool !== "string") {
+        fail(`${where}: ${entry} compose.replyTool must be a string when present`);
+      }
+      if (compose.resultUrlPath !== undefined && (typeof compose.resultUrlPath !== "string" || !DOT_PATH_RE.test(compose.resultUrlPath))) {
+        fail(`${where}: ${entry} compose.resultUrlPath must be a dot-path`);
+      }
+      if (compose.urlTemplate !== undefined) {
+        fail(`${where}: ${entry} compose.urlTemplate is not valid in mode "createDraft"`);
+      }
+    } else if (compose.mode !== "deeplink" || typeof compose.urlTemplate !== "string") {
+      fail(`${where}: ${entry} compose.mode must be "deeplink" or "createDraft"`);
+    } else {
+      const template = compose.urlTemplate;
+      if (!template.startsWith("https://")) {
+        fail(`${where}: ${entry} compose.urlTemplate must be https://`);
+      }
+      if (/@/.test(template.split("?")[0] ?? "")) {
+        fail(`${where}: ${entry} compose.urlTemplate must not embed credentials in its origin`);
+      }
+      for (const match of template.matchAll(/\{([a-zA-Z0-9_]+)\}/g)) {
+        if (!COMPOSE_PLACEHOLDERS.has(match[1])) {
+          fail(
+            `${where}: ${entry} compose.urlTemplate uses unknown placeholder "{${match[1]}}" (allowed: ${[...COMPOSE_PLACEHOLDERS].join(", ")})`,
+          );
+        }
+      }
+    }
+  }
+}
+
+// ── Workspace Extensions store branding + listing ─────────────────────────────
+//
+// A marketplace.json entry may carry optional `branding` and `listing` blocks
+// that drive the Workspace Extensions store card and detail page. The
+// authoritative schema lives in myHubV2
+// (packages/shared/src/plugins/marketplace-manifest.ts — pluginBrandingSchema /
+// pluginListingSchema); this mirrors its limits so a bad entry fails here, in
+// CI, rather than failing the manifest parse at marketplace sync. The asset
+// rules mirror the sync's inliner (packages/shared/src/plugins/
+// marketplace-fetcher.ts, fetchMarketplaceAssetAsDataUri): a bundle-relative
+// asset that is missing, oversized, or not an image type it knows is silently
+// dropped there, so it is a hard failure here.
+
+const HEX_COLOR_RE = /^#(?:[0-9a-fA-F]{3}){1,2}$/;
+const STORE_ASSET_EXTENSIONS = new Set(["svg", "png", "jpg", "jpeg", "webp", "gif"]);
+const STORE_ASSET_MAX_BYTES = 96 * 1024;
+const STORE_ASSET_REF_MAX_CHARS = 200_000;
+const TAGLINE_MAX_CHARS = 90;
+const HIGHLIGHTS_MAX = 4;
+const HIGHLIGHT_MAX_CHARS = 120;
+const SCREENSHOTS_MAX = 6;
+const LONG_DESCRIPTION_MAX_CHARS = 20_000;
+const PUBLISHER_NAME_MAX_CHARS = 80;
+
+function isParsableUrl(value: string): boolean {
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function validateStoreAsset(where: string, field: string, pluginDirName: string, value: unknown) {
+  if (typeof value !== "string" || value.length === 0) {
+    fail(`${where} ${field} must be a non-empty string`);
+    return;
+  }
+  if (value.length > STORE_ASSET_REF_MAX_CHARS) {
+    fail(
+      `${where} ${field} is ${value.length} characters (max ${STORE_ASSET_REF_MAX_CHARS}) — ship the image in the bundle and reference it by path instead of inlining it`,
+    );
+    return;
+  }
+  if (/^data:/i.test(value)) {
+    if (!/^data:image\//i.test(value)) {
+      fail(`${where} ${field} is a data URI but not a data:image/… URI`);
+    }
+    return;
+  }
+  if (/^[a-z][a-z0-9+.-]*:/i.test(value)) {
+    // Any scheme other than https (http:, ftp:, a Windows drive letter "C:") —
+    // the store only renders https assets.
+    let protocol = "";
+    try {
+      protocol = new URL(value).protocol;
+    } catch {
+      // reported below
+    }
+    if (protocol !== "https:") {
+      fail(
+        `${where} ${field} "${value}" must be an https URL, a data:image URI, or a bundle-relative path (e.g. "assets/logo.svg")`,
+      );
+    }
+    return;
+  }
+  // Bundle-relative path: marketplace sync strips a leading "./" or "/" and
+  // reads the file from plugins/<name>/ on the same branch.
+  const rel = value.replace(/^\.?\//, "");
+  if (rel.includes("..") || rel.includes("\\")) {
+    fail(
+      `${where} ${field} "${value}" must be a forward-slash path inside plugins/${pluginDirName}/ (no ".." or "\\")`,
+    );
+    return;
+  }
+  const ext = (rel.split(".").pop() ?? "").toLowerCase();
+  if (!STORE_ASSET_EXTENSIONS.has(ext)) {
+    fail(
+      `${where} ${field} "${value}" must be one of ${[...STORE_ASSET_EXTENSIONS].join(", ")} (SVG preferred)`,
+    );
+    return;
+  }
+  const filePath = join(repoRoot, "plugins", pluginDirName, rel);
+  if (!existsSync(filePath) || !statSync(filePath).isFile()) {
+    fail(`${where} ${field} "${value}" does not exist in plugins/${pluginDirName}/`);
+    return;
+  }
+  const size = statSync(filePath).size;
+  if (size === 0 || size > STORE_ASSET_MAX_BYTES) {
+    fail(
+      `${where} ${field} "${value}" is ${size} bytes — store assets must be non-empty and at most ${STORE_ASSET_MAX_BYTES / 1024} KB (marketplace sync drops anything larger)`,
+    );
+  }
+}
+
+function validateStoreListing(pluginDirName: string, entry: MarketplacePlugin) {
+  const { branding, listing } = entry;
+  if (branding === undefined && listing === undefined) return;
+  // A missing plugin dir is already reported by validatePlugin; asset paths
+  // cannot be resolved without it.
+  const pluginDir = join(repoRoot, "plugins", pluginDirName);
+  if (!existsSync(pluginDir) || !statSync(pluginDir).isDirectory()) return;
+  const where = `marketplace.json: plugin "${entry.name}"`;
+
+  if (branding !== undefined) {
+    if (!isRecord(branding)) {
+      fail(`${where} branding must be an object`);
+    } else {
+      for (const key of ["logo", "logoDark"] as const) {
+        if (branding[key] !== undefined) {
+          validateStoreAsset(where, `branding.${key}`, pluginDirName, branding[key]);
+        }
+      }
+      if (branding.color !== undefined && (typeof branding.color !== "string" || !HEX_COLOR_RE.test(branding.color))) {
+        fail(`${where} branding.color "${String(branding.color)}" must be a #rgb or #rrggbb colour`);
+      }
+      if (branding.tagline !== undefined && (typeof branding.tagline !== "string" || branding.tagline.length > TAGLINE_MAX_CHARS)) {
+        fail(`${where} branding.tagline must be a string of at most ${TAGLINE_MAX_CHARS} characters`);
+      }
+    }
+  }
+
+  if (listing !== undefined) {
+    if (!isRecord(listing)) {
+      fail(`${where} listing must be an object`);
+      return;
+    }
+    if (
+      listing.longDescription !== undefined &&
+      (typeof listing.longDescription !== "string" || listing.longDescription.length > LONG_DESCRIPTION_MAX_CHARS)
+    ) {
+      fail(`${where} listing.longDescription must be a Markdown string of at most ${LONG_DESCRIPTION_MAX_CHARS} characters`);
+    }
+    if (listing.highlights !== undefined) {
+      if (!Array.isArray(listing.highlights) || listing.highlights.length > HIGHLIGHTS_MAX) {
+        fail(`${where} listing.highlights must be an array of at most ${HIGHLIGHTS_MAX} strings`);
+      } else {
+        listing.highlights.forEach((line, i) => {
+          if (typeof line !== "string" || line.length > HIGHLIGHT_MAX_CHARS) {
+            fail(`${where} listing.highlights[${i}] must be a string of at most ${HIGHLIGHT_MAX_CHARS} characters`);
+          }
+        });
+      }
+    }
+    if (listing.screenshots !== undefined) {
+      if (!Array.isArray(listing.screenshots) || listing.screenshots.length > SCREENSHOTS_MAX) {
+        fail(`${where} listing.screenshots must be an array of at most ${SCREENSHOTS_MAX} assets`);
+      } else {
+        listing.screenshots.forEach((shot, i) => {
+          validateStoreAsset(where, `listing.screenshots[${i}]`, pluginDirName, shot);
+        });
+      }
+    }
+    const publisher = listing.publisher;
+    if (publisher !== undefined) {
+      if (
+        !isRecord(publisher) ||
+        typeof publisher.name !== "string" ||
+        publisher.name.length === 0 ||
+        publisher.name.length > PUBLISHER_NAME_MAX_CHARS
+      ) {
+        fail(`${where} listing.publisher must be { name (1–${PUBLISHER_NAME_MAX_CHARS} characters), url?, verified? }`);
+      } else {
+        if (publisher.url !== undefined && (typeof publisher.url !== "string" || !isParsableUrl(publisher.url))) {
+          fail(`${where} listing.publisher.url "${String(publisher.url)}" is not a valid URL`);
+        }
+        if (publisher.verified !== undefined && typeof publisher.verified !== "boolean") {
+          fail(`${where} listing.publisher.verified must be a boolean`);
+        }
+      }
+    }
+    const support = listing.support;
+    if (support !== undefined) {
+      if (!isRecord(support)) {
+        fail(`${where} listing.support must be an object`);
+      } else {
+        for (const key of ["url", "privacyUrl"] as const) {
+          const value = support[key];
+          if (value !== undefined && (typeof value !== "string" || !isParsableUrl(value))) {
+            fail(`${where} listing.support.${key} "${String(value)}" is not a valid URL`);
+          }
+        }
+      }
     }
   }
 }
@@ -243,6 +820,8 @@ function validatePlugin(pluginDirName: string, expectedName: string) {
     name?: string;
     widgetElements?: string;
     widgets?: string;
+    content?: unknown;
+    briefingEmailSources?: unknown;
   }>(manifestPath);
   if (manifest && manifest.name && manifest.name !== expectedName) {
     fail(
@@ -251,6 +830,9 @@ function validatePlugin(pluginDirName: string, expectedName: string) {
   }
   if (manifest) {
     validateWidgetElements(pluginDirName, manifest);
+    if (manifest.content !== undefined) {
+      validateContent(pluginDirName, manifest.content);
+    }
   }
 
   const mcp = readJson<{
@@ -269,6 +851,17 @@ function validatePlugin(pluginDirName: string, expectedName: string) {
     return;
   }
 
+  // Briefing email sources are validated here, AFTER .mcp.json has parsed,
+  // because the ownership rule needs the server list: a source may only name a
+  // server its OWN plugin declares.
+  if (manifest?.briefingEmailSources !== undefined) {
+    validateBriefingEmailSources(
+      pluginDirName,
+      manifest.briefingEmailSources,
+      new Set(Object.keys(mcp.mcpServers)),
+    );
+  }
+
   const readme = readFileSync(readmePath, "utf8");
   const documentedVars = extractConfigVars(readme);
 
@@ -281,10 +874,10 @@ function validatePlugin(pluginDirName: string, expectedName: string) {
       );
     }
     // Env-agnostic-URL invariant: any myhub-hosted MCP URL must use the
-    // PRODUCTION FQDN on every branch. Per-environment routing is handled at
-    // runtime by myHub's MCP_SERVERS_BASE_URL host-rewrite — branches must NOT
-    // bake in staging/dev hosts. (Third-party hosts like mcp.monday.com are
-    // unaffected; stdio servers have no URL.)
+    // PRODUCTION FQDN on every branch tier (dev, qa, uat, main). Per-environment
+    // routing is handled at runtime by myHub's MCP_SERVERS_BASE_URL host-rewrite
+    // — branches must NOT bake in non-production MCP hosts. (Third-party hosts
+    // like mcp.monday.com are unaffected; stdio servers have no URL.)
     if (typeof server.url === "string" && server.url.length > 0) {
       let host = "";
       try {
@@ -349,6 +942,7 @@ function main() {
     }
     const relPath = sourcePath.replace(/^\.\//, "").replace(/^plugins\//, "");
     validatePlugin(relPath, p.name);
+    validateStoreListing(relPath, p);
   }
 
   report();
