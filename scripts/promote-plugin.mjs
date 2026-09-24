@@ -1,18 +1,26 @@
 #!/usr/bin/env node
 /**
- * Promote a single plugin from one branch tier to the next (e.g. graduate it
- * from `staging` to `main`). Copies the plugin directory from the source branch
- * into the working tree and upserts its entry in `.claude-plugin/marketplace.json`
- * from the source branch's manifest.
+ * BREAK-GLASS ONLY. Tiers are dev → qa → uat → main, and promotion between
+ * them is normally done per extension by the mySMB.com Admin Center's
+ * AI Studio (Publish dev → qa, Promote qa → uat → main), which also rewrites
+ * the version and refreshes the environment's marketplace. Use this script only
+ * when AI Studio is unavailable — it does NEITHER: set `version` in plugin.json
+ * and the marketplace.json entry yourself (publish = patch + 1, promote to UAT =
+ * major + 1, UAT → prod = unchanged), refresh the environment's marketplace in
+ * AMP, and tell the extension's owner.
  *
- *   node scripts/promote-plugin.mjs <plugin> [--from staging] [--to main]
+ * Copies the plugin directory from the source branch into the working tree and
+ * upserts its entry in `.claude-plugin/marketplace.json` from the source
+ * branch's manifest.
+ *
+ *   node scripts/promote-plugin.mjs <plugin> [--from uat] [--to main]
  *
  * Workflow:
  *   git checkout <to>            # e.g. main
- *   node scripts/promote-plugin.mjs xero-scheduler --from staging
+ *   node scripts/promote-plugin.mjs xero-scheduler --from uat
  *   node scripts/normalize-mcp-urls.mjs            # belt-and-braces
  *   npx tsx scripts/validate.ts
- *   git add -A && git commit -m "feat: promote xero-scheduler staging -> main"
+ *   git add -A && git commit -m "feat: promote xero-scheduler uat -> main"
  *
  * This does NOT push or switch branches for you — it only stages file content,
  * so you stay in control of the commit and target branch.
@@ -29,11 +37,11 @@ const getFlag = (name, def) => {
   const i = args.indexOf(`--${name}`);
   return i >= 0 && args[i + 1] ? args[i + 1] : def;
 };
-const from = getFlag('from', 'staging');
+const from = getFlag('from', 'uat');
 const to = getFlag('to', 'main');
 
 if (!plugin) {
-  console.error('usage: promote-plugin.mjs <plugin> [--from staging] [--to main]');
+  console.error('usage: promote-plugin.mjs <plugin> [--from uat] [--to main]');
   process.exit(2);
 }
 
