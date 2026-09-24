@@ -1,10 +1,7 @@
 # Cash Summary
 
-Use `get_cash_position` and `get_profit_and_loss`; request a Xero Bank Summary export if opening, closing, or category movements are not exposed.
+Use `get_bank_summary` (per bank account, per month for multi-month requests) for opening balance, Cash Received, Cash Spent, and closing balance. There is no single "cash position" tool, and no Xero report exposes cash movement broken down by category — `get_bank_summary` gives account-level totals only.
 
-Present Cash Received and Cash Spent by category, Net Cash Flows, and optional investing/financing/equity sections. For multi-month requests use monthly columns plus a total.
+Present total Cash Received and Cash Spent, Net Cash Flow, opening and closing balance. For multi-month requests use monthly columns plus a total. Do not attempt category-level (Operating/Investing/Financing/Equity) breakdown or invent categorization — state plainly that this would require classifying `list_journals` by account type, which this skill does not currently do.
 
-Validate net cash movement = cash received - cash spent and closing balance = opening balance + net movement whenever balances are available. Flag that the workbook's exact Xero column layout was not live-verified.
-## Interactivity
-
-Declare date/period inputs matching the tool's real parameters (months window via the tool's own periods parameter when available), preset picker client-side. Month columns sort client-side.
+Validate net cash movement = cash received − cash spent and closing balance = opening balance + net movement.
