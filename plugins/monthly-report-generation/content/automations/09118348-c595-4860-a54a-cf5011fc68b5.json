@@ -1,0 +1,383 @@
+{
+  "contentHash": "11c954e8ff05ca12ad8eea5d03ff88d9731e286a0e41628d4df01676253c0ca9",
+  "declaredScopes": [
+    "workq:read",
+    "ai:generate",
+    "artifacts:write",
+    "notify:send"
+  ],
+  "dependencies": [],
+  "description": "Every Monday, summarizes all WorkQ activity by status/priority/assignee, flags overdue work, asks AI for a bottleneck summary, and publishes a dated HTML report as a private artifact with a notification.",
+  "flowIr": {
+    "description": "Every Monday, summarizes all WorkQ activity by status/priority/assignee, flags overdue work, asks AI for a bottleneck summary, and publishes a dated HTML report as a private artifact with a notification.",
+    "irVersion": 1,
+    "name": "Weekly WorkQ Bottleneck Report",
+    "nodes": [
+      {
+        "code": "from datetime import datetime, timezone, timedelta\n\nraw_items = api.workq.list() or []\nitems = raw_items\nitem_count = len(items)\nmanila_tz = timezone(timedelta(hours=8))\nreport_date = datetime.now(manila_tz).date().isoformat()\ndata_notes = \"This report only includes WorkQ items visible to the automation owner; items restricted to other users or groups may not be reflected.\"",
+        "id": "fetch_workq_items",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "All WorkQ items visible to this automation's owner (id, title, status, priority, dueDate, assigneeIds, labels).",
+            "name": "items",
+            "type": "list[dict]"
+          },
+          {
+            "description": "Total number of WorkQ items returned.",
+            "name": "item_count",
+            "type": "int"
+          },
+          {
+            "description": "Today's date (Asia/Manila), used as the report's reporting date.",
+            "name": "report_date",
+            "type": "date"
+          },
+          {
+            "description": "Plain-English note on data-coverage limits, e.g. that only items visible to the automation owner were included.",
+            "name": "data_notes",
+            "type": "str"
+          }
+        ],
+        "params": [],
+        "summary": "Gathers all WorkQ activities visible to the automation owner, counts them, records today's date in Manila time, and notes any data coverage limits for the report.",
+        "title": "Read all WorkQ activities"
+      },
+      {
+        "cond": "len(steps[\"fetch_workq_items\"][\"outputs\"][\"items\"]) > 0",
+        "else": [
+          "build_empty_report"
+        ],
+        "id": "has_items",
+        "kind": "if",
+        "summary": "Checks whether any WorkQ items were found this run so the report can either summarize real data or state that none was found.",
+        "then": [
+          "compute_stats",
+          "ai_summary",
+          "build_and_save_report"
+        ],
+        "title": "Any activities found?"
+      },
+      {
+        "code": "import datetime\n\nitems = params.get(\"items\") or []\n\nstatus_counts = {}\npriority_counts = {}\nassignee_counts = {}\noverdue_items = []\n\ntoday = (datetime.datetime.utcnow() + datetime.timedelta(hours=8)).date()\n\nfor it in items:\n    status = it.get(\"status\") or \"unknown\"\n    status_counts[status] = status_counts.get(status, 0) + 1\n\n    priority = it.get(\"priority\") or \"unknown\"\n    priority_counts[priority] = priority_counts.get(priority, 0) + 1\n\n    assignee_ids = it.get(\"assigneeIds\") or []\n    if assignee_ids:\n        for aid in assignee_ids:\n            assignee_counts[aid] = assignee_counts.get(aid, 0) + 1\n    else:\n        assignee_counts[\"unassigned\"] = assignee_counts.get(\"unassigned\", 0) + 1\n\n    due_date = it.get(\"dueDate\")\n    if due_date and status not in (\"done\", \"cancelled\"):\n        try:\n            due = datetime.date.fromisoformat(due_date)\n        except (ValueError, TypeError):\n            due = None\n        if due is not None and due < today:\n            overdue_items.append(it)\n\noverdue_count = len(overdue_items)\n",
+        "id": "compute_stats",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "Number of items per status value.",
+            "name": "status_counts",
+            "type": "dict"
+          },
+          {
+            "description": "Number of items per priority value.",
+            "name": "priority_counts",
+            "type": "dict"
+          },
+          {
+            "description": "Number of items per assignee (keyed by assignee id, unassigned items grouped separately).",
+            "name": "assignee_counts",
+            "type": "dict"
+          },
+          {
+            "description": "Items whose due date is in the past and are not done/cancelled.",
+            "name": "overdue_items",
+            "type": "list[dict]"
+          },
+          {
+            "description": "Count of overdue items.",
+            "name": "overdue_count",
+            "type": "int"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ steps.fetch_workq_items.outputs.items }}",
+            "control": "hidden",
+            "label": "WorkQ items",
+            "name": "items",
+            "required": true,
+            "type": "list[dict]"
+          }
+        ],
+        "summary": "Tallies WorkQ items by status, priority, and assignee, and identifies items that are overdue and not yet completed or cancelled.",
+        "title": "Calculate counts and overdue items"
+      },
+      {
+        "code": "import json\n\nitem_count = params[\"item_count\"] or 0\nstatus_counts = params[\"status_counts\"] or {}\npriority_counts = params[\"priority_counts\"] or {}\nassignee_counts = params[\"assignee_counts\"] or {}\noverdue_items = params[\"overdue_items\"] or []\noverdue_count = params[\"overdue_count\"] or 0\n\noverdue_brief = [\n    {\n        \"title\": it.get(\"title\"),\n        \"priority\": it.get(\"priority\"),\n        \"dueDate\": it.get(\"dueDate\"),\n        \"assigneeIds\": it.get(\"assigneeIds\"),\n    }\n    for it in overdue_items\n]\n\ndata = {\n    \"total_items\": item_count,\n    \"status_counts\": status_counts,\n    \"priority_counts\": priority_counts,\n    \"assignee_counts\": assignee_counts,\n    \"overdue_count\": overdue_count,\n    \"overdue_items\": overdue_brief,\n}\n\nsummary_text = api.ai.generate(\n    prompt=(\n        \"You are writing a short section of a weekly operations report for a business owner. \"\n        \"Using ONLY the JSON data provided (WorkQ item counts by status, priority, assignee, and \"\n        \"overdue items), identify the main bottlenecks: where work is piling up, which statuses or \"\n        \"priorities dominate, whether any assignee is overloaded, and how serious the overdue backlog \"\n        \"is. Write 3-5 concise plain-English sentences or a short bulleted list suitable for direct \"\n        \"inclusion in an HTML report. Do not invent data not present in the input, and do not restate \"\n        \"raw numbers mechanically \\u2014 interpret them.\"\n    ),\n    input=json.dumps(data),\n) or \"\"\n",
+        "id": "ai_summary",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "A concise AI-written summary of the main bottlenecks, based only on the provided counts and overdue data.",
+            "name": "summary_text",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ steps.fetch_workq_items.outputs.item_count }}",
+            "control": "hidden",
+            "label": "Total items",
+            "name": "item_count",
+            "required": true,
+            "type": "int"
+          },
+          {
+            "binding": "{{ steps.compute_stats.outputs.status_counts }}",
+            "control": "hidden",
+            "label": "Status counts",
+            "name": "status_counts",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ steps.compute_stats.outputs.priority_counts }}",
+            "control": "hidden",
+            "label": "Priority counts",
+            "name": "priority_counts",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ steps.compute_stats.outputs.assignee_counts }}",
+            "control": "hidden",
+            "label": "Assignee counts",
+            "name": "assignee_counts",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ steps.compute_stats.outputs.overdue_items }}",
+            "control": "hidden",
+            "label": "Overdue items",
+            "name": "overdue_items",
+            "required": true,
+            "type": "list[dict]"
+          },
+          {
+            "binding": "{{ steps.compute_stats.outputs.overdue_count }}",
+            "control": "hidden",
+            "label": "Overdue count",
+            "name": "overdue_count",
+            "required": true,
+            "type": "int"
+          }
+        ],
+        "summary": "Uses AI to write a short plain-English summary of where WorkQ work is piling up, based on the status, priority, assignee and overdue counts for the week.",
+        "title": "Ask AI to summarize the main bottlenecks"
+      },
+      {
+        "code": "import html\nreport_date = params[\"report_date\"] or \"\"\nreport_date = str(report_date)\ndata_notes = params[\"data_notes\"] or \"\"\nitem_count = params[\"item_count\"] or 0\nstatus_counts = params[\"status_counts\"] or {}\npriority_counts = params[\"priority_counts\"] or {}\nassignee_counts = params[\"assignee_counts\"] or {}\noverdue_items = params[\"overdue_items\"] or []\noverdue_count = params[\"overdue_count\"] or 0\nsummary_text = params[\"summary_text\"] or \"\"\nartifact_visibility = params[\"artifact_visibility\"] or \"private\"\nnotify_user_id = params[\"notify_user_id\"] or \"\"\n\ntitle = f\"WorkQ Bottleneck Report — {report_date}\"\n\ndef _rows(d):\n    if not d:\n        return \"<tr><td colspan='2'>None</td></tr>\"\n    return \"\".join(f\"<tr><td>{html.escape(str(k))}</td><td>{html.escape(str(v))}</td></tr>\" for k, v in d.items())\n\ndef _overdue_rows(items):\n    if not items:\n        return \"<tr><td colspan='4'>None</td></tr>\"\n    rows = []\n    for it in items:\n        rows.append(\n            \"<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>\".format(\n                html.escape(str(it.get(\"title\", \"\"))),\n                html.escape(str(it.get(\"status\", \"\"))),\n                html.escape(str(it.get(\"priority\", \"\"))),\n                html.escape(str(it.get(\"dueDate\", \"\") or \"\")),\n            )\n        )\n    return \"\".join(rows)\n\nhtml_content = f\"\"\"<!DOCTYPE html>\n<html>\n<head>\n<meta charset='utf-8'>\n<title>{html.escape(title)}</title>\n<style>\nbody {{ font-family: Arial, sans-serif; margin: 24px; color: #222; }}\nh1 {{ font-size: 20px; }}\nh2 {{ font-size: 16px; margin-top: 24px; }}\ntable {{ border-collapse: collapse; width: 100%; margin-top: 8px; }}\ntd, th {{ border: 1px solid #ccc; padding: 6px 10px; text-align: left; font-size: 13px; }}\n.notes {{ color: #555; font-size: 12px; margin-top: 16px; }}\n.summary {{ background: #f7f7f7; padding: 12px; border-radius: 6px; white-space: pre-wrap; }}\n</style>\n</head>\n<body>\n<h1>{html.escape(title)}</h1>\n<p>Total WorkQ items: <strong>{item_count}</strong> &nbsp;|&nbsp; Overdue: <strong>{overdue_count}</strong></p>\n<h2>Bottleneck Summary</h2>\n<div class='summary'>{html.escape(summary_text)}</div>\n<h2>Counts by Status</h2>\n<table><tr><th>Status</th><th>Count</th></tr>{_rows(status_counts)}</table>\n<h2>Counts by Priority</h2>\n<table><tr><th>Priority</th><th>Count</th></tr>{_rows(priority_counts)}</table>\n<h2>Counts by Assignee</h2>\n<table><tr><th>Assignee</th><th>Count</th></tr>{_rows(assignee_counts)}</table>\n<h2>Overdue Items</h2>\n<table><tr><th>Title</th><th>Status</th><th>Priority</th><th>Due Date</th></tr>{_overdue_rows(overdue_items)}</table>\n<p class='notes'>{html.escape(data_notes)}</p>\n</body>\n</html>\n\"\"\"\n\nfile_name = f\"workq_bottleneck_report_{report_date}.html\"\n\nresult = api.artifacts.put(\n    title=title,\n    content=html_content,\n    file_name=file_name,\n    description=f\"Weekly WorkQ bottleneck report for {report_date}.\",\n    kind=\"document\",\n    visibility=artifact_visibility,\n    mime_type=\"text/html\",\n    tags=[\"workq\", \"weekly-report\"],\n)\n\nartifact_id = result.get(\"artifact_id\") or \"\"\nartifact_url = result.get(\"url\") or \"\"\n\napi.notify.send(\n    title=title,\n    body=f\"This week's WorkQ bottleneck report is ready. {overdue_count} item(s) are overdue.\\n\\n{artifact_url}\",\n    user_ids=[notify_user_id] if notify_user_id else None,\n)\n",
+        "id": "build_and_save_report",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "Id of the saved HTML report artifact.",
+            "name": "artifact_id",
+            "type": "uuid"
+          },
+          {
+            "description": "Link to the saved report artifact.",
+            "name": "artifact_url",
+            "type": "str"
+          },
+          {
+            "description": "The report's title, including its reporting date.",
+            "name": "title",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ steps.fetch_workq_items.outputs.report_date }}",
+            "control": "hidden",
+            "label": "Report date",
+            "name": "report_date",
+            "required": true,
+            "type": "date"
+          },
+          {
+            "binding": "{{ steps.fetch_workq_items.outputs.data_notes }}",
+            "control": "hidden",
+            "label": "Data coverage notes",
+            "name": "data_notes",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.fetch_workq_items.outputs.item_count }}",
+            "control": "hidden",
+            "label": "Total items",
+            "name": "item_count",
+            "required": true,
+            "type": "int"
+          },
+          {
+            "binding": "{{ steps.compute_stats.outputs.status_counts }}",
+            "control": "hidden",
+            "label": "Status counts",
+            "name": "status_counts",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ steps.compute_stats.outputs.priority_counts }}",
+            "control": "hidden",
+            "label": "Priority counts",
+            "name": "priority_counts",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ steps.compute_stats.outputs.assignee_counts }}",
+            "control": "hidden",
+            "label": "Assignee counts",
+            "name": "assignee_counts",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ steps.compute_stats.outputs.overdue_items }}",
+            "control": "hidden",
+            "label": "Overdue items",
+            "name": "overdue_items",
+            "required": true,
+            "type": "list[dict]"
+          },
+          {
+            "binding": "{{ steps.compute_stats.outputs.overdue_count }}",
+            "control": "hidden",
+            "label": "Overdue count",
+            "name": "overdue_count",
+            "required": true,
+            "type": "int"
+          },
+          {
+            "binding": "{{ steps.ai_summary.outputs.summary_text }}",
+            "control": "hidden",
+            "label": "AI bottleneck summary",
+            "name": "summary_text",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "control": "select",
+            "label": "Artifact visibility",
+            "name": "artifact_visibility",
+            "options": [
+              {
+                "label": "Private (owner only)",
+                "value": "private"
+              },
+              {
+                "label": "Tenant-wide",
+                "value": "tenant"
+              }
+            ],
+            "required": true,
+            "type": "str",
+            "value": "private"
+          },
+          {
+            "control": "user-picker",
+            "label": "Notify this person",
+            "name": "notify_user_id",
+            "required": true,
+            "type": "uuid",
+            "value": "46d6e345-1f71-4d81-9304-c81f812b8727"
+          }
+        ],
+        "summary": "Builds a formatted HTML report of this week's WorkQ activity (counts, overdue items, and an AI bottleneck summary), saves it as a private or tenant-wide report, and notifies the chosen person with a link to it.",
+        "title": "Build report, save artifact, and notify"
+      },
+      {
+        "code": "report_date = str(params.get(\"report_date\") or \"\")\ndata_notes = params.get(\"data_notes\") or \"\"\nvisibility = params.get(\"artifact_visibility\") or \"private\"\nnotify_user_id = params.get(\"notify_user_id\") or \"\"\n\ntitle = f\"Weekly WorkQ Bottleneck Report - {report_date}\"\n\nhtml = f\"\"\"<!DOCTYPE html>\n<html>\n<head><meta charset=\\\"utf-8\\\"><title>{title}</title></head>\n<body>\n<h1>{title}</h1>\n<p><strong>Reporting date:</strong> {report_date}</p>\n<p>No WorkQ activities were found during this run.</p>\n<h2>Data Coverage Notes</h2>\n<p>{data_notes}</p>\n</body>\n</html>\"\"\"\n\nartifact = api.artifacts.put(\n title=title,\n content=html,\n file_name=f\"workq-bottleneck-report-{report_date}.html\",\n description=\"Weekly WorkQ bottleneck report - no activities found this run.\",\n kind=\"document\",\n visibility=visibility,\n mime_type=\"text/html\",\n tags=[\"workq\", \"weekly-report\"]\n)\n\nartifact_id = artifact.get(\"artifact_id\") or \"\"\nartifact_url = artifact.get(\"url\") or \"\"\n\napi.notify.send(\n title=f\"Weekly WorkQ Report ({report_date}): No activities found\",\n body=f\"This week's WorkQ bottleneck report found no activities to summarize.\\n\\nView it here: {artifact_url}\",\n user_ids=[notify_user_id]\n)",
+        "id": "build_empty_report",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "Id of the saved 'No activities found' report artifact.",
+            "name": "artifact_id",
+            "type": "uuid"
+          },
+          {
+            "description": "Link to the saved report artifact.",
+            "name": "artifact_url",
+            "type": "str"
+          },
+          {
+            "description": "The report's title, including its reporting date.",
+            "name": "title",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ steps.fetch_workq_items.outputs.report_date }}",
+            "control": "hidden",
+            "label": "Report date",
+            "name": "report_date",
+            "required": true,
+            "type": "date"
+          },
+          {
+            "binding": "{{ steps.fetch_workq_items.outputs.data_notes }}",
+            "control": "hidden",
+            "label": "Data coverage notes",
+            "name": "data_notes",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "control": "select",
+            "label": "Artifact visibility",
+            "name": "artifact_visibility",
+            "options": [
+              {
+                "label": "Private (owner only)",
+                "value": "private"
+              },
+              {
+                "label": "Tenant-wide",
+                "value": "tenant"
+              }
+            ],
+            "required": true,
+            "type": "str",
+            "value": "private"
+          },
+          {
+            "control": "user-picker",
+            "label": "Notify this person",
+            "name": "notify_user_id",
+            "required": true,
+            "type": "uuid",
+            "value": "46d6e345-1f71-4d81-9304-c81f812b8727"
+          }
+        ],
+        "summary": "Creates a short weekly report noting that no WorkQ activities were found, saves it as a private report artifact, and notifies the designated person with a link to it.",
+        "title": "Build 'No activities found' report, save artifact, and notify"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "fetch_workq_items",
+      "has_items"
+    ],
+    "triggers": [
+      {
+        "cron": "0 8 * * 1",
+        "kind": "schedule",
+        "timezone": "Asia/Manila"
+      },
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "user",
+  "name": "Weekly WorkQ Bottleneck Report",
+  "originKey": "09118348-c595-4860-a54a-cf5011fc68b5",
+  "tags": []
+}

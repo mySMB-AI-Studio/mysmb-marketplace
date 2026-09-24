@@ -1,5 +1,83 @@
 {
-  "contentHash": "3550827983f7235e5173d345eb8590a0332b259f129554a1214cd730cbb8a7b1",
+  "attachments": [
+    {
+      "bundlePath": "content/automations/c9f31a59-1329-4de8-baf0-8b6fdab4821d/files/hj-monthly-report-template.pdf",
+      "contentType": "application/pdf",
+      "fileName": "HJ-monthly-report-template.pdf",
+      "kind": "pdf",
+      "role": "reference",
+      "sha256": "842e66e6595bc5fc60996946236729d1ff078e9ed37c307b223b7b0dd3c35ebb",
+      "sizeBytes": 556480,
+      "storage": "automation",
+      "summary": "PDF, 2 pages — content readable on demand by the AI builder.",
+      "tokens": []
+    },
+    {
+      "bundlePath": "content/automations/c9f31a59-1329-4de8-baf0-8b6fdab4821d/files/template.pdf",
+      "contentType": "application/pdf",
+      "fileName": "template.pdf",
+      "kind": "pdf",
+      "role": "reference",
+      "sha256": "85300f941ea2709d7e21607bbc7404f86c8bb6a37cf63d3bab951d1484720f90",
+      "sizeBytes": 581297,
+      "storage": "automation",
+      "summary": "PDF, 2 pages — content readable on demand by the AI builder.",
+      "tokens": []
+    },
+    {
+      "bundlePath": "content/automations/c9f31a59-1329-4de8-baf0-8b6fdab4821d/files/rubik-regular.ttf",
+      "contentType": "application/octet-stream",
+      "fileName": "Rubik-Regular.ttf",
+      "kind": "other",
+      "role": "resource",
+      "scope": "org",
+      "sha256": "ad0554f561259a3bc07b4d642db8c6073cc0d8ea9a2c690f7bee2e58ef91d752",
+      "sizeBytes": 47288,
+      "storage": "knowledge",
+      "summary": "TTF font (Rubik Regular) — bundled font used to overlay text onto the report template.",
+      "tokens": []
+    },
+    {
+      "bundlePath": "content/automations/c9f31a59-1329-4de8-baf0-8b6fdab4821d/files/rubik-bold.ttf",
+      "contentType": "application/octet-stream",
+      "fileName": "Rubik-Bold.ttf",
+      "kind": "other",
+      "role": "resource",
+      "scope": "org",
+      "sha256": "500ce175bf2237a826087f16a97739c5131590d2f75d4d6943afe70818f90c2a",
+      "sizeBytes": 47688,
+      "storage": "knowledge",
+      "summary": "TTF font (Rubik Bold) — bundled font used to overlay text onto the report template.",
+      "tokens": []
+    },
+    {
+      "bundlePath": "content/automations/c9f31a59-1329-4de8-baf0-8b6fdab4821d/files/rubik-semibold.ttf",
+      "contentType": "application/octet-stream",
+      "fileName": "Rubik-SemiBold.ttf",
+      "kind": "other",
+      "role": "resource",
+      "scope": "org",
+      "sha256": "24e71a032cbd4e739020ca380ec933e56e5c514301f2b443ff75d2a4add07b9c",
+      "sizeBytes": 47620,
+      "storage": "knowledge",
+      "summary": "TTF font (Rubik SemiBold) — bundled font used to overlay text onto the report template.",
+      "tokens": []
+    },
+    {
+      "bundlePath": "content/automations/c9f31a59-1329-4de8-baf0-8b6fdab4821d/files/lato-regular.ttf",
+      "contentType": "application/octet-stream",
+      "fileName": "Lato-Regular.ttf",
+      "kind": "other",
+      "role": "resource",
+      "scope": "org",
+      "sha256": "e79e1d2371fd277467f7151eb10b5b2a9f58a2cb0a843df42d27f518af78f213",
+      "sizeBytes": 28240,
+      "storage": "knowledge",
+      "summary": "TTF font (Lato Regular) — bundled font used to overlay text onto the report template.",
+      "tokens": []
+    }
+  ],
+  "contentHash": "9ec456bbaa31c5ad2d36a3c88d850714597508ca09b734803b18dae3cc24fde4",
   "declaredScopes": [
     "portal_reports:read",
     "portals:read",
@@ -10,7 +88,7 @@
   "dependencies": [],
   "description": "On the 1st of each month, builds a per-client Monthly Report PDF from the latest published report + snapshot data and saves it into each client portal's folder.",
   "flowIr": {
-    "description": "On the 1st of each month, builds a pixel-faithful per-client Monthly Report PDF by overlaying the current month's dynamic values (reporting date, attendance metrics, past/upcoming events, gallery photos) onto the bundled hammerjack template.pdf with fpdf2 + pypdf, and saves it into each client portal's folder.",
+    "description": "On the 1st of each month, builds a pixel-faithful per-client Monthly Report PDF by overlaying the current month's dynamic values (reporting date, attendance metrics, ALL past/upcoming events flowed into a fitting grid, gallery photos on page 1 under the past-events band) onto the bundled template.pdf with fpdf2 + pypdf, and saves it into each client portal's folder.",
     "irVersion": 1,
     "name": "Monthly Client Report PDF Generator",
     "nodes": [
@@ -169,7 +247,7 @@
         "title": "Find this portal's attendance metrics"
       },
       {
-        "code": "from fpdf import FPDF\nfrom pypdf import PdfReader, PdfWriter\n\nW, H = 595.5, 842.25\nORANGE = (254, 96, 0)\nNAVY = (10, 36, 63)\nWHITE = (255, 255, 255)\nBLACK = (0, 0, 0)\nGRAY = (239, 239, 239)\n\n\ndef _s(t):\n    t = t or \"\"\n    for a, b in [\n        (\"—\", \"-\"), (\"–\", \"-\"), (\"‘\", \"'\"), (\"’\", \"'\"),\n        (\"“\", '\"'), (\"”\", '\"'), (\"…\", \"...\"),\n    ]:\n        t = t.replace(a, b)\n    return t\n\n\ndef _font_setup(pdf, regular, bold, semibold, lato):\n    pdf.add_font(\"Rubik\", \"\", regular)\n    pdf.add_font(\"Rubik\", \"B\", bold)\n    pdf.add_font(\"RubikSemi\", \"\", semibold)\n    pdf.add_font(\"Lato\", \"\", lato)\n\n\ndef _cover(pdf, x0, y0, x1, y1, rgb):\n    pdf.set_fill_color(*rgb)\n    pdf.rect(x0, y0, x1 - x0, y1 - y0, style=\"F\")\n\n\ndef _ctext(pdf, cx, baseline, text, font, style, size, rgb):\n    pdf.set_font(font, style, size)\n    pdf.set_text_color(*rgb)\n    w = pdf.get_string_width(text)\n    pdf.text(cx - w / 2, baseline, text)\n\n\ndef _wrapped(pdf, x, y, width, lines, font, style, size, rgb, leading, bullet=\"• \", markdown=False):\n    pdf.set_font(font, style, size)\n    pdf.set_text_color(*rgb)\n    for para in lines:\n        pdf.set_xy(x, y)\n        pdf.multi_cell(width, leading, bullet + para, align=\"L\", markdown=markdown,\n                        new_x=\"LMARGIN\", new_y=\"NEXT\")\n        y = pdf.get_y() + 2.5\n    return y\n\n\ndef _build_overlay(data, fonts):\n    pdf = FPDF(unit=\"pt\", format=(W, H))\n    _font_setup(pdf, *fonts)\n\n    # ===================== PAGE 1 =====================\n    pdf.add_page()\n    _cover(pdf, 451, 40, 566, 59, NAVY)\n    pdf.set_font(\"Lato\", \"\", 9)\n    pdf.set_text_color(*WHITE)\n    w = pdf.get_string_width(data[\"date_label\"])\n    pdf.text(562 - w, 56.5, data[\"date_label\"])\n\n    # metric circles\n    # The template's own artwork has placeholder numbers baked into these\n    # circles (\"19 DAYS\", \"76%\", …) — the zone must always be covered even\n    # when this portal has no value yet (null leave_taken_days renders as a\n    # blank circle, never the template's leftover placeholder digits).\n    _cover(pdf, 165, 188, 210, 233, ORANGE)\n    if data[\"leave\"] is not None:\n        _ctext(pdf, 187.5, 214, data[\"leave\"], \"Rubik\", \"\", 21, WHITE)\n    _ctext(pdf, 187.5, 227, \"DAYS\", \"Rubik\", \"\", 9, WHITE)\n    _cover(pdf, 277, 190, 324, 223, ORANGE)\n    if data[\"office\"] is not None:\n        _ctext(pdf, 300.6, 218, data[\"office\"], \"Rubik\", \"\", 21, WHITE)\n    pdf.set_fill_color(239, 233, 232)\n    pdf.ellipse(409 - 21, 208 - 21, 42, 42, style=\"F\")\n    if data[\"attend\"] is not None:\n        _ctext(pdf, 409, 217, data[\"attend\"], \"Rubik\", \"\", 17, BLACK)\n\n    # past-month events (cover gray band, redraw up to 2 columns)\n    _cover(pdf, 38, 568, 560, 688, GRAY)\n    cols = [(42, 200), (256, 205)]\n    for i, ev in enumerate(data[\"past\"][:2]):\n        cx, cw = cols[i]\n        pdf.set_font(\"Rubik\", \"B\", 11)\n        pdf.set_text_color(*NAVY)\n        pdf.text(cx, 588, ev[\"heading\"])\n        _wrapped(pdf, cx, 614, cw, ev[\"body\"], \"Rubik\", \"\", 9, NAVY, 11.5)\n\n    # 4 gallery photos\n    rects = [(39.9, 695.2, 182.5, 786.0), (190.8, 696.3, 306.3, 786.3),\n             (313.7, 696.6, 435.2, 785.9), (442.9, 696.6, 557.7, 785.9)]\n    for path, (x0, y0, x1, y1) in zip(data[\"photos\"], rects):\n        try:\n            pdf.image(path, x=x0, y=y0, w=x1 - x0, h=y1 - y0)\n        except Exception:\n            pass\n\n    # ===================== PAGE 2 =====================\n    pdf.add_page()\n    _cover(pdf, 451, 40, 566, 59, NAVY)\n    pdf.set_font(\"Lato\", \"\", 9)\n    pdf.set_text_color(*WHITE)\n    w = pdf.get_string_width(data[\"date_label\"])\n    pdf.text(562 - w, 56.5, data[\"date_label\"])\n\n    _cover(pdf, 40, 120, 366, 338, WHITE)\n    gy = 129\n    for gi, grp in enumerate(data[\"upcoming\"][:2]):\n        pdf.set_font(\"RubikSemi\", \"\", 10)\n        pdf.set_text_color(*ORANGE)\n        pdf.text(44, gy + 10, grp[\"category\"])\n        y = gy + 20\n        paras = []\n        for lead, body in grp[\"items\"]:\n            clean_lead = lead.rstrip(\":\")\n            clean_body = body.lstrip(\": \")\n            paras.append(\"**\" + clean_lead + \":** \" + clean_body)\n        y = _wrapped(pdf, 61, y, 295, paras, \"Rubik\", \"\", 10, NAVY, 11.8, markdown=True)\n        gy = max(241, y + 10) if gi == 0 else y\n\n    return pdf\n\n\nmonth_label = params[\"month_label\"]\nleave_taken_days = params.get(\"leave_taken_days\")\noffice_days_pct = params.get(\"office_days_pct\")\nattendance_pct = params.get(\"attendance_pct\")\npast_events = params[\"past_events\"] or []\nupcoming_events = params[\"upcoming_events\"] or []\ngallery_paths = params[\"gallery_paths\"] or []\ntemplate_path = params[\"template_path\"]\nfont_regular_path = params[\"font_regular_path\"]\nfont_bold_path = params[\"font_bold_path\"]\nfont_semibold_path = params[\"font_semibold_path\"]\nfont_lato_path = params[\"font_lato_path\"]\nportal_id = params[\"portal_id\"]\nmonth_yyyy_mm = params[\"month_yyyy_mm\"]\n\ndata = {\n    \"date_label\": _s(\"Reporting Date: \" + month_label),\n    \"leave\": ((\"%.0f\" % leave_taken_days) if leave_taken_days is not None else None),\n    \"office\": ((\"%.0f%%\" % office_days_pct) if office_days_pct is not None else None),\n    \"attend\": ((\"%.0f%%\" % attendance_pct) if attendance_pct is not None else None),\n    \"past\": [\n        {\"heading\": _s(ev.get(\"heading\") or \"\"), \"body\": [_s(b) for b in (ev.get(\"body\") or [])]}\n        for ev in past_events\n    ],\n    \"upcoming\": [\n        {\n            \"category\": _s(ev.get(\"heading\") or \"\"),\n            \"items\": [[_s(lead), _s(body)] for lead, body in (ev.get(\"items\") or [])],\n        }\n        for ev in upcoming_events\n    ],\n    \"photos\": gallery_paths,\n}\n\noverlay = _build_overlay(data, (font_regular_path, font_bold_path, font_semibold_path, font_lato_path))\noverlay_path = api.files.scratch_path(\"overlay-\" + portal_id + \".pdf\")\noverlay.output(overlay_path)\n\ntpl_reader = PdfReader(template_path)\noverlay_reader = PdfReader(overlay_path)\nwriter = PdfWriter()\npage_count = min(len(tpl_reader.pages), len(overlay_reader.pages), 2)\nfor i in range(page_count):\n    page = tpl_reader.pages[i]\n    page.merge_page(overlay_reader.pages[i])\n    writer.add_page(page)\n\nmerged_path = api.files.scratch_path(\"report-\" + portal_id + \".pdf\")\nwith open(merged_path, \"wb\") as fh:\n    writer.write(fh)\n\nsaved_path = \"Monthly Reports/\" + month_yyyy_mm + \".pdf\"\napi.files.put(file=saved_path, scratch_file=merged_path, scope=\"client\", scope_id=portal_id)\n",
+        "code": "import math\nfrom fpdf import FPDF\nfrom pypdf import PdfReader, PdfWriter\n\nW, H = 595.5, 842.25\nORANGE = (254, 96, 0)\nNAVY = (10, 36, 63)\nWHITE = (255, 255, 255)\nBLACK = (0, 0, 0)\nGRAY = (239, 239, 239)\n\n\ndef _s(t):\n    t = t or \"\"\n    for a, b in [\n        (\"\\u2014\", \"-\"), (\"\\u2013\", \"-\"), (\"\\u2018\", \"'\"), (\"\\u2019\", \"'\"),\n        (\"\\u201c\", '\"'), (\"\\u201d\", '\"'), (\"\\u2026\", \"...\"),\n    ]:\n        t = t.replace(a, b)\n    return t\n\n\ndef _font_setup(pdf, regular, bold, semibold, lato):\n    pdf.add_font(\"Rubik\", \"\", regular)\n    pdf.add_font(\"Rubik\", \"B\", bold)\n    pdf.add_font(\"RubikSemi\", \"\", semibold)\n    pdf.add_font(\"Lato\", \"\", lato)\n\n\ndef _cover(pdf, x0, y0, x1, y1, rgb):\n    pdf.set_fill_color(*rgb)\n    pdf.rect(x0, y0, x1 - x0, y1 - y0, style=\"F\")\n\n\ndef _num(v):\n    try:\n        f = float(v)\n        return str(int(f)) if f == int(f) else (\"%.1f\" % f)\n    except Exception:\n        return str(v)\n\n\ndef _fill_circle(pdf, cx, cy, r, rgb):\n    pdf.set_fill_color(*rgb)\n    pdf.ellipse(cx - r, cy - r, 2 * r, 2 * r, style=\"F\")\n\n\ndef _circle_text(pdf, cx, baseline, text, size, rgb, style=\"\"):\n    pdf.set_font(\"Helvetica\", style, size)\n    pdf.set_text_color(*rgb)\n    w = pdf.get_string_width(text)\n    pdf.text(cx - w / 2, baseline, text)\n\n\ndef _wrapped(pdf, x, y, width, lines, font, style, size, rgb, leading, bullet=\"\\u2022 \", markdown=False, gap=2.5):\n    pdf.set_font(font, style, size)\n    pdf.set_text_color(*rgb)\n    for para in lines:\n        pdf.set_xy(x, y)\n        pdf.multi_cell(width, leading, bullet + para, align=\"L\", markdown=markdown,\n                        new_x=\"LMARGIN\", new_y=\"NEXT\")\n        y = pdf.get_y() + gap\n    return y\n\n\ndef _build_overlay(data, fonts):\n    pdf = FPDF(unit=\"pt\", format=(W, H))\n    _font_setup(pdf, *fonts)\n\n    # ===================== PAGE 1 =====================\n    pdf.add_page()\n\n    ATTN_ORANGE = (254, 96, 0)\n    ATTN_WHITE = (255, 255, 255)\n    ATTN_BLACK = (0, 0, 0)\n    ATTN_INTERIOR = (238, 232, 231)\n    C = [(187.0, 193.5), (300.5, 193.5), (409.5, 194.0)]\n\n    leave = data[\"leave_raw\"] or 0\n    office = data[\"office_raw\"] or 0\n    attend = data[\"attend_raw\"] or 0\n\n    _fill_circle(pdf, C[0][0], C[0][1], 33, ATTN_ORANGE)\n    _circle_text(pdf, C[0][0], 195, _num(leave), 22, ATTN_WHITE, \"B\")\n    _circle_text(pdf, C[0][0], 209, \"DAYS\", 9, ATTN_WHITE)\n    _fill_circle(pdf, C[1][0], C[1][1], 33, ATTN_ORANGE)\n    _circle_text(pdf, C[1][0], 201, _num(office) + \"%\", 22, ATTN_WHITE, \"B\")\n    _fill_circle(pdf, C[2][0], C[2][1], 33, ATTN_ORANGE)\n    _fill_circle(pdf, C[2][0], C[2][1], 28, ATTN_INTERIOR)\n    _circle_text(pdf, C[2][0], 201, _num(attend) + \"%\", 18, ATTN_BLACK, \"B\")\n\n    # past-month events — flow ALL events into a grid that shrinks to fit\n    band_x0, band_y0, band_x1, band_y1 = 38, 568, 560, 688\n    _cover(pdf, band_x0, band_y0, band_x1, band_y1, GRAY)\n    past = data[\"past\"]\n    n_past = len(past)\n    if n_past:\n        cols = min(n_past, 3)\n        rows = math.ceil(n_past / cols)\n        if rows == 1:\n            head_size, body_size, leading, gap, top_pad = 11, 9, 11.5, 2.5, 20\n        elif rows == 2:\n            head_size, body_size, leading, gap, top_pad = 10, 8, 10.0, 2.0, 18\n        else:\n            head_size, body_size, leading, gap, top_pad = 9, 7, 8.5, 1.5, 15\n        gutter = 14\n        col_w = (band_x1 - band_x0 - (cols - 1) * gutter) / cols\n        row_h = (band_y1 - band_y0) / rows\n        for i, ev in enumerate(past):\n            col = i % cols\n            row = i // cols\n            cx = band_x0 + 4 + col * (col_w + gutter)\n            cy = band_y0 + row * row_h\n            pdf.set_font(\"Rubik\", \"B\", head_size)\n            pdf.set_text_color(*NAVY)\n            pdf.text(cx, cy + top_pad, ev[\"heading\"])\n            _wrapped(pdf, cx, cy + top_pad + leading * 0.9, col_w, ev[\"body\"],\n                      \"Rubik\", \"\", body_size, NAVY, leading, gap=gap)\n\n    # gallery photos — now directly under the past-events band, on page 1\n    rects = [(39.9, 695.2, 182.5, 786.0), (190.8, 696.3, 306.3, 786.3),\n             (313.7, 696.6, 435.2, 785.9), (442.9, 696.6, 557.7, 785.9)]\n    for path, (x0, y0, x1, y1) in zip(data[\"photos\"], rects):\n        try:\n            pdf.image(path, x=x0, y=y0, w=x1 - x0, h=y1 - y0)\n        except Exception:\n            pass\n\n    # ===================== PAGE 2 =====================\n    pdf.add_page()\n    _cover(pdf, 451, 40, 566, 59, NAVY)\n    pdf.set_font(\"Lato\", \"\", 9)\n    pdf.set_text_color(*WHITE)\n    w = pdf.get_string_width(data[\"date_label\"])\n    pdf.text(562 - w, 56.5, data[\"date_label\"])\n\n    # upcoming events — flow ALL groups, shrinking spacing to fit the band\n    ub_x0, ub_y0, ub_x1, ub_y1 = 40, 120, 366, 338\n    _cover(pdf, ub_x0, ub_y0, ub_x1, ub_y1, WHITE)\n    upcoming = data[\"upcoming\"]\n    n_groups = len(upcoming)\n    total_items = sum(len(g[\"items\"]) for g in upcoming)\n    if n_groups <= 2 and total_items <= 6:\n        head_size, body_size, leading, gap = 10, 10, 11.8, 10\n    elif n_groups <= 4 and total_items <= 12:\n        head_size, body_size, leading, gap = 9, 8.5, 10.0, 8\n    else:\n        head_size, body_size, leading, gap = 8, 7.5, 8.5, 6\n    gy = ub_y0 + 9\n    for grp in upcoming:\n        pdf.set_font(\"RubikSemi\", \"\", head_size)\n        pdf.set_text_color(*ORANGE)\n        pdf.text(ub_x0 + 4, gy + 10, grp[\"category\"])\n        y = gy + 18\n        paras = []\n        for lead, body in grp[\"items\"]:\n            clean_lead = lead.rstrip(\":\")\n            clean_body = body.lstrip(\": \")\n            paras.append(\"**\" + clean_lead + \":** \" + clean_body)\n        y = _wrapped(pdf, ub_x0 + 21, y, 295, paras, \"Rubik\", \"\", body_size, NAVY, leading,\n                      markdown=True, gap=gap * 0.25)\n        gy = y + gap\n\n    return pdf\n\n\nmonth_label = params[\"month_label\"]\nleave_taken_days = params.get(\"leave_taken_days\")\noffice_days_pct = params.get(\"office_days_pct\")\nattendance_pct = params.get(\"attendance_pct\")\npast_events = params[\"past_events\"] or []\nupcoming_events = params[\"upcoming_events\"] or []\ngallery_paths = params[\"gallery_paths\"] or []\ntemplate_path = params[\"template_path\"]\nfont_regular_path = params[\"font_regular_path\"]\nfont_bold_path = params[\"font_bold_path\"]\nfont_semibold_path = params[\"font_semibold_path\"]\nfont_lato_path = params[\"font_lato_path\"]\nportal_id = params[\"portal_id\"]\nmonth_yyyy_mm = params[\"month_yyyy_mm\"]\n\ndata = {\n    \"date_label\": _s(\"Reporting Date: \" + month_label),\n    \"leave_raw\": leave_taken_days,\n    \"office_raw\": office_days_pct,\n    \"attend_raw\": attendance_pct,\n    \"past\": [\n        {\"heading\": _s(ev.get(\"heading\") or \"\"), \"body\": [_s(b) for b in (ev.get(\"body\") or [])]}\n        for ev in past_events\n    ],\n    \"upcoming\": [\n        {\n            \"category\": _s(ev.get(\"heading\") or \"\"),\n            \"items\": [[_s(lead), _s(body)] for lead, body in (ev.get(\"items\") or [])],\n        }\n        for ev in upcoming_events\n    ],\n    \"photos\": gallery_paths,\n}\n\noverlay = _build_overlay(data, (font_regular_path, font_bold_path, font_semibold_path, font_lato_path))\noverlay_path = api.files.scratch_path(\"overlay-\" + portal_id + \".pdf\")\noverlay.output(overlay_path)\n\ntpl_reader = PdfReader(template_path)\noverlay_reader = PdfReader(overlay_path)\nwriter = PdfWriter()\npage_count = min(len(tpl_reader.pages), len(overlay_reader.pages), 2)\nfor i in range(page_count):\n    page = tpl_reader.pages[i]\n    page.merge_page(overlay_reader.pages[i])\n    writer.add_page(page)\n\nmerged_path = api.files.scratch_path(\"report-\" + portal_id + \".pdf\")\nwith open(merged_path, \"wb\") as fh:\n    writer.write(fh)\n\nsaved_path = \"Monthly Reports/\" + month_yyyy_mm + \".pdf\"\napi.files.put(file=saved_path, scratch_file=merged_path, scope=\"client\", scope_id=portal_id)\n",
         "id": "build_and_save_pdf",
         "kind": "python",
         "outputs": [
@@ -341,7 +419,7 @@
       {
         "cron": "0 7 1 * *",
         "kind": "schedule",
-        "timezone": "UTC"
+        "timezone": "Asia/Manila"
       }
     ]
   },
