@@ -1,40 +1,60 @@
 {
-  "id": "eventbrite-upcoming-events",
-  "title": "Upcoming Events",
-  "description": "Current and future events for your Eventbrite organization. Zero-config: auto-resolves your organization from list_organizations, then fetches its upcoming events — defaults to the FIRST organization on the connected account if there is more than one (see this plugin's README).",
-  "category": "marketing",
-  "tags": ["eventbrite", "events", "tickets", "registration"],
-  "keywords": ["eventbrite events", "upcoming events", "event list", "ticketing", "registration"],
-  "connectorsUsed": ["eventbrite"],
-  "popularity": 0,
   "brandColor": "#34DFBA",
-  "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 6 },
-    "min": { "colSpan": 4, "rowSpan": 4 },
-    "max": { "colSpan": 10, "rowSpan": 12 }
-  },
+  "category": "marketing",
+  "connectorsUsed": [
+    "eventbrite"
+  ],
   "dataProvider": {
+    "kind": "tool",
     "mcp": "eventbrite",
-    "tool": "list_organizations",
-    "params": {}
+    "params": {},
+    "tool": "list_organizations"
+  },
+  "description": "Current and future events for your Eventbrite organization. Zero-config: auto-resolves your organization from list_organizations, then fetches its upcoming events — defaults to the FIRST organization on the connected account if there is more than one (see this plugin's README).",
+  "id": "eventbrite-upcoming-events",
+  "keywords": [
+    "eventbrite events",
+    "upcoming events",
+    "event list",
+    "ticketing",
+    "registration"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 12
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 6
+    }
   },
   "spec": {
-    "root": "card",
     "elements": {
-      "card": {
-        "type": "Card",
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "eventList"
+        ],
         "props": {},
-        "children": ["header", "div0", "body", "footerRow"],
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "header",
+          "div0",
+          "body",
+          "footerRow"
+        ],
+        "props": {},
+        "type": "Card",
         "watch": {
-          "/eventbrite/list_organizations/organizations/0/id": {
-            "action": "eventbrite.list_events",
-            "params": {
-              "organization_id": { "$state": "/eventbrite/list_organizations/organizations/0/id" },
-              "time_filter": "current_future",
-              "order_by": "start_asc",
-              "page_size": 20
-            }
-          },
           "/eventbrite/list_events/events": [
             {
               "action": "setState",
@@ -42,150 +62,321 @@
                 "statePath": "/ui/rows",
                 "value": {
                   "$computed": "eventbrite_flatten_upcoming_events",
-                  "args": { "value": { "$state": "/eventbrite/list_events/events" } }
+                  "args": {
+                    "value": {
+                      "$state": "/eventbrite/list_events/events"
+                    }
+                  }
                 }
               }
             }
+          ],
+          "/eventbrite/list_organizations/organizations/0/id": {
+            "action": "eventbrite.list_events",
+            "params": {
+              "order_by": "start_asc",
+              "organization_id": {
+                "$state": "/eventbrite/list_organizations/organizations/0/id"
+              },
+              "page_size": 20,
+              "time_filter": "current_future"
+            }
+          }
+        }
+      },
+      "div0": {
+        "props": {},
+        "type": "Divider"
+      },
+      "empty": {
+        "props": {
+          "message": "No upcoming events found for this organization."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/eventbrite.list_organizations",
+              "not": true
+            },
+            {
+              "$state": "/_loading/eventbrite.list_events",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0",
+              "not": true
+            }
           ]
         }
       },
-
-      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
-      "titleGroup": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
+      "eventDivider": {
+        "props": {},
+        "type": "Divider"
       },
-      "titleIcon": { "type": "Icon", "props": { "name": "Ticket", "tone": "accent", "size": "sm" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Upcoming Events", "level": "h2" } },
-      "eyebrow": {
-        "type": "Eyebrow",
+      "eventInfo": {
+        "children": [
+          "eventName",
+          "eventMeta"
+        ],
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "eventList": {
+        "children": [
+          "eventRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/rows"
+        },
+        "type": "Stack",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/eventbrite.list_events",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0"
+            }
+          ]
+        }
+      },
+      "eventMeta": {
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "Eventbrite · {n} events",
-              "n": {
-                "$computed": "count",
-                "args": { "value": { "$state": "/eventbrite/list_events/events" } }
+              "date": {
+                "$item": "date_label"
+              },
+              "location": {
+                "$item": "location_label"
+              },
+              "pattern": "{date} · {location}"
+            }
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "eventName": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "name"
+          },
+          "truncate": true,
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "eventRow": {
+        "children": [
+          "eventRowContent",
+          "eventDivider"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "eventRowContent": {
+        "children": [
+          "eventInfo",
+          "eventStatusBadge"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$bindItem": "url"
               }
             }
           }
         },
-        "visible": { "$state": "/ui/rows/0" }
-      },
-
-      "div0": { "type": "Divider", "props": {} },
-
-      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "eventList"] },
-
-      "loading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3", "sk4"],
-        "visible": {
-          "$or": [
-            { "$state": "/_loading/eventbrite.list_organizations" },
-            { "$state": "/_loading/eventbrite.list_events" }
-          ]
-        }
-      },
-      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-
-      "empty": {
-        "type": "Empty",
-        "props": { "message": "No upcoming events found for this organization." },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/eventbrite.list_organizations", "not": true },
-            { "$state": "/_loading/eventbrite.list_events", "not": true },
-            { "$state": "/ui/rows/0", "not": true }
-          ]
-        }
-      },
-
-      "eventList": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["eventRow"],
-        "repeat": { "statePath": "/ui/rows", "key": "id" },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/eventbrite.list_events", "not": true },
-            { "$state": "/ui/rows/0" }
-          ]
-        }
-      },
-
-      "eventRow": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["eventRowContent", "eventDivider"]
-      },
-      "eventRowContent": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true, "clickable": true },
-        "on": {
-          "click": {
-            "action": "open_url",
-            "params": { "url": { "$bindItem": "url" }, "target": "_blank" }
-          }
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "sm",
+          "hover": true,
+          "justify": "between"
         },
-        "children": ["eventInfo", "eventStatusBadge"]
+        "type": "Row"
       },
-      "eventInfo": {
-        "type": "Stack",
-        "props": { "gap": "none", "grow": true },
-        "children": ["eventName", "eventMeta"]
+      "eventStatusBadge": {
+        "props": {
+          "text": {
+            "$item": "status_label"
+          },
+          "tone": {
+            "$item": "status_tone"
+          },
+          "variant": "soft"
+        },
+        "type": "Badge"
       },
-      "eventName": {
-        "type": "Text",
-        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "semibold", "truncate": true }
-      },
-      "eventMeta": {
-        "type": "Caption",
+      "eyebrow": {
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{date} · {location}",
-              "date": { "$item": "date_label" },
-              "location": { "$item": "location_label" }
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/eventbrite/list_events/events"
+                  }
+                }
+              },
+              "pattern": "Eventbrite · {n} events"
             }
-          },
-          "tone": "muted"
+          }
+        },
+        "type": "Eyebrow",
+        "visible": {
+          "$state": "/ui/rows/0"
         }
-      },
-      "eventStatusBadge": {
-        "type": "Badge",
-        "props": {
-          "text": { "$item": "status_label" },
-          "tone": { "$item": "status_tone" },
-          "variant": "soft"
-        }
-      },
-      "eventDivider": { "type": "Divider", "props": {} },
-
-      "footerRow": {
-        "type": "Row",
-        "props": { "justify": "end", "pt": "sm" },
-        "children": ["footerOpenBtn"]
       },
       "footerOpenBtn": {
-        "type": "Button",
-        "props": { "label": "Open Eventbrite", "variant": "primary", "tone": "brand", "size": "sm", "leadingIcon": "ExternalLink" },
         "on": {
           "click": {
             "action": "open_url",
-            "params": { "url": "https://www.eventbrite.com", "target": "_blank" }
+            "params": {
+              "target": "_blank",
+              "url": "https://www.eventbrite.com"
+            }
           }
+        },
+        "props": {
+          "label": "Open Eventbrite",
+          "leadingIcon": "ExternalLink",
+          "size": "sm",
+          "tone": "brand",
+          "variant": "primary"
+        },
+        "type": "Button"
+      },
+      "footerRow": {
+        "children": [
+          "footerOpenBtn"
+        ],
+        "props": {
+          "justify": "end",
+          "pt": "sm"
+        },
+        "type": "Row"
+      },
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {},
+        "type": "Header"
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3",
+          "sk4"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$or": [
+            {
+              "$state": "/_loading/eventbrite.list_organizations"
+            },
+            {
+              "$state": "/_loading/eventbrite.list_events"
+            }
+          ]
         }
+      },
+      "sk1": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk4": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Upcoming Events"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Ticket",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
       }
-    }
+    },
+    "root": "card"
   },
-  "status": "published"
+  "tags": [
+    "eventbrite",
+    "events",
+    "tickets",
+    "registration"
+  ],
+  "title": "Upcoming Events"
 }
