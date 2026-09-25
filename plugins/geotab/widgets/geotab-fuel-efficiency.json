@@ -1,35 +1,65 @@
 {
-  "id": "geotab-fuel-efficiency",
-  "title": "Fuel & Efficiency",
-  "description": "Month-to-date fuel spend and per-vehicle L/100km efficiency, computed fill-to-fill from real FuelTransaction records via the connected MyGeotab account.",
   "category": "fleet-management",
-  "tags": ["geotab", "fleet", "fuel", "efficiency"],
-  "keywords": ["fuel", "efficiency", "l100km", "vehicles", "cost"],
-  "connectorsUsed": ["geotab"],
-  "popularity": 0,
-  "sizing": {
-    "preferred": { "colSpan": 6, "rowSpan": 6 },
-    "min":       { "colSpan": 4, "rowSpan": 8 },
-    "max":       { "colSpan": 10, "rowSpan": 14 }
-  },
+  "connectorsUsed": [
+    "geotab"
+  ],
   "dataProvider": {
+    "kind": "tool",
     "mcp": "geotab",
-    "tool": "Get",
     "params": {
       "database": "demo_mysmb_dev",
-      "typeName": "FuelTransaction",
-      "search": { "fromDate": "$last_month_start_date", "toDate": "$today_date" },
-      "resultsLimit": 500
+      "resultsLimit": 500,
+      "search": {
+        "fromDate": "$last_month_start_date",
+        "toDate": "$today_date"
+      },
+      "typeName": "FuelTransaction"
+    },
+    "tool": "Get"
+  },
+  "description": "Month-to-date fuel spend and per-vehicle L/100km efficiency, computed fill-to-fill from real FuelTransaction records via the connected MyGeotab account.",
+  "id": "geotab-fuel-efficiency",
+  "keywords": [
+    "fuel",
+    "efficiency",
+    "l100km",
+    "vehicles",
+    "cost"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 14
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 8
+    },
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 6
     }
   },
   "spec": {
-    "root": "card",
     "elements": {
-
-      "card": {
-        "type": "Card",
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "content"
+        ],
         "props": {},
-        "children": ["headerRow", "div0", "body"],
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "headerRow",
+          "div0",
+          "body"
+        ],
+        "props": {},
+        "type": "Card",
         "watch": {
           "/geotab/Get": [
             {
@@ -39,8 +69,13 @@
                 "value": {
                   "$computed": "geotab_fuel_dashboard",
                   "args": {
-                    "transactions": { "$state": "/geotab/Get/result" },
-                    "monthStartIso": { "$computed": "geotab_month_start_iso", "args": {} }
+                    "monthStartIso": {
+                      "$computed": "geotab_month_start_iso",
+                      "args": {}
+                    },
+                    "transactions": {
+                      "$state": "/geotab/Get/result"
+                    }
                   }
                 }
               }
@@ -48,105 +83,304 @@
           ]
         }
       },
-
-      "headerRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["titleGroup"] },
-      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
-      "titleIcon": { "type": "Icon", "props": { "name": "Fuel", "tone": "muted", "size": "sm" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Fuel & Efficiency", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Month to date · MyGeotab" } },
-
-      "div0": { "type": "Divider", "props": {} },
-
-      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "content"] },
-
-      "loading": {
+      "content": {
+        "children": [
+          "statRow",
+          "sparkRow",
+          "div1",
+          "vehiclesLabel",
+          "vehicleList",
+          "noteSection"
+        ],
+        "props": {
+          "gap": "md"
+        },
         "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["lk1", "lk2", "lk3"],
-        "visible": { "$state": "/_loading/geotab.Get" }
+        "visible": {
+          "$state": "/_loading/geotab.Get",
+          "not": true
+        }
       },
-      "lk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "lk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "lk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-
+      "div0": {
+        "props": {},
+        "type": "Divider"
+      },
+      "div1": {
+        "props": {},
+        "type": "Divider"
+      },
       "empty": {
+        "props": {
+          "message": "No fuel transactions found in the fetched window."
+        },
         "type": "Empty",
-        "props": { "message": "No fuel transactions found in the fetched window." },
         "visible": {
           "$and": [
-            { "$state": "/_loading/geotab.Get", "not": true },
-            { "$state": "/ui/dashboard/rows/0", "not": true }
+            {
+              "$state": "/_loading/geotab.Get",
+              "not": true
+            },
+            {
+              "$state": "/ui/dashboard/rows/0",
+              "not": true
+            }
           ]
         }
       },
-
-      "content": {
-        "type": "Stack",
-        "props": { "gap": "md" },
-        "visible": { "$state": "/_loading/geotab.Get", "not": true },
-        "children": ["statRow", "sparkRow", "div1", "vehiclesLabel", "vehicleList", "noteSection"]
-      },
-
-      "statRow": { "type": "Row", "props": { "gap": "lg", "align": "start" }, "children": ["statFuel", "statAvg"] },
-      "statFuel": {
-        "type": "Stat",
+      "eyebrow": {
         "props": {
-          "label": "Fuel MTD",
-          "value": {
-            "$computed": "format_currency",
-            "args": { "value": { "$state": "/ui/dashboard/totalCost" }, "currency": "AUD" }
+          "text": "Month to date · MyGeotab"
+        },
+        "type": "Eyebrow"
+      },
+      "fuelSpark": {
+        "props": {
+          "fill": true,
+          "height": 48,
+          "tone": "muted",
+          "values": {
+            "$state": "/ui/dashboard/dailyVolumes"
           }
+        },
+        "type": "Sparkline"
+      },
+      "headerRow": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "lk1": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "lk2": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "lk3": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "loading": {
+        "children": [
+          "lk1",
+          "lk2",
+          "lk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/geotab.Get"
         }
       },
+      "noteCaption": {
+        "props": {
+          "text": {
+            "$state": "/ui/dashboard/outlierNote"
+          },
+          "tone": "warning"
+        },
+        "type": "Caption"
+      },
+      "noteSection": {
+        "children": [
+          "noteCaption"
+        ],
+        "props": {
+          "variant": "muted"
+        },
+        "type": "Section"
+      },
+      "sparkRow": {
+        "children": [
+          "fuelSpark"
+        ],
+        "props": {},
+        "type": "Row"
+      },
       "statAvg": {
-        "type": "Stat",
         "props": {
           "label": "Fleet avg",
           "value": {
             "$computed": "fmt",
-            "args": { "pattern": "{v} L/100km", "v": { "$state": "/ui/dashboard/fleetAvgL100km" } }
+            "args": {
+              "pattern": "{v} L/100km",
+              "v": {
+                "$state": "/ui/dashboard/fleetAvgL100km"
+              }
+            }
           }
-        }
+        },
+        "type": "Stat"
       },
-
-      "sparkRow": { "type": "Row", "props": {}, "children": ["fuelSpark"] },
-      "fuelSpark": {
-        "type": "Sparkline",
-        "props": { "values": { "$state": "/ui/dashboard/dailyVolumes" }, "tone": "muted", "height": 48, "fill": true }
-      },
-
-      "div1": { "type": "Divider", "props": {} },
-
-      "vehiclesLabel": { "type": "Eyebrow", "props": { "text": "L/100km by vehicle (fill-to-fill)" } },
-      "vehicleList": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["vehicleRow"],
-        "repeat": { "statePath": "/ui/dashboard/rows", "key": "deviceId" },
-        "limit": 20
-      },
-
-      "vehicleRow": { "type": "Stack", "props": { "gap": "xs" }, "children": ["vRow", "vBarRow"] },
-      "vRow": { "type": "Row", "props": { "justify": "between" }, "children": ["vLabel", "vVal"] },
-      "vLabel": { "type": "Text", "props": { "text": { "$item": "deviceName" }, "size": "sm", "truncate": true } },
-      "vVal": { "type": "Text", "props": { "text": { "$item": "l100km" }, "size": "sm", "weight": "medium" } },
-      "vBarRow": { "type": "Row", "props": {}, "children": ["vBar"] },
-      "vBar": {
-        "type": "ProgressBar",
+      "statFuel": {
         "props": {
-          "value": { "$item": "barPercent" },
-          "tone": { "$computed": "geotab_efficiency_tone", "args": { "value": { "$item": "l100km" } } }
-        }
+          "label": "Fuel MTD",
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "currency": "AUD",
+              "value": {
+                "$state": "/ui/dashboard/totalCost"
+              }
+            }
+          }
+        },
+        "type": "Stat"
       },
-
-      "noteSection": { "type": "Section", "props": { "variant": "muted" }, "children": ["noteCaption"] },
-      "noteCaption": {
-        "type": "Caption",
-        "props": { "text": { "$state": "/ui/dashboard/outlierNote" }, "tone": "warning" }
+      "statRow": {
+        "children": [
+          "statFuel",
+          "statAvg"
+        ],
+        "props": {
+          "align": "start",
+          "gap": "lg"
+        },
+        "type": "Row"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Fuel & Efficiency"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Fuel",
+          "size": "sm",
+          "tone": "muted"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "vBar": {
+        "props": {
+          "tone": {
+            "$computed": "geotab_efficiency_tone",
+            "args": {
+              "value": {
+                "$item": "l100km"
+              }
+            }
+          },
+          "value": {
+            "$item": "barPercent"
+          }
+        },
+        "type": "ProgressBar"
+      },
+      "vBarRow": {
+        "children": [
+          "vBar"
+        ],
+        "props": {},
+        "type": "Row"
+      },
+      "vLabel": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "deviceName"
+          },
+          "truncate": true
+        },
+        "type": "Text"
+      },
+      "vRow": {
+        "children": [
+          "vLabel",
+          "vVal"
+        ],
+        "props": {
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "vVal": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "l100km"
+          },
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "vehicleList": {
+        "children": [
+          "vehicleRow"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "repeat": {
+          "key": "deviceId",
+          "statePath": "/ui/dashboard/rows"
+        },
+        "type": "Stack"
+      },
+      "vehicleRow": {
+        "children": [
+          "vRow",
+          "vBarRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "vehiclesLabel": {
+        "props": {
+          "text": "L/100km by vehicle (fill-to-fill)"
+        },
+        "type": "Eyebrow"
       }
-
-    }
+    },
+    "root": "card"
   },
-  "status": "published"
+  "tags": [
+    "geotab",
+    "fleet",
+    "fuel",
+    "efficiency"
+  ],
+  "title": "Fuel & Efficiency"
 }
