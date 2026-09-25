@@ -137,11 +137,55 @@ const category_breakdown: ComputedFunction = (args) => {
   };
 };
 
+/**
+ * Groups a `list_products` response into a Brands breakdown for the Brands
+ * tile — count of products per brand, ranked most-common first, each
+ * assigned a `chart-1..5` tone (brand is a portal-defined, non-status
+ * label, same categorical case as product category). Excludes Lightspeed's
+ * own system-generated "Discount" line product, same as
+ * `lightspeed_catalog_rows` — it has no real brand and would otherwise
+ * inflate an "Unbranded" bucket with a non-product.
+ *
+ * A product with no brand set (`brand: null`) is grouped under
+ * "Unbranded" rather than dropped, since that's a real, honest state for
+ * that product — not an error.
+ *
+ * Args: { products: array }
+ * Returns: { total, segments: [{ brand, count, tone }], template }
+ *
+ * Spec example:
+ *   {
+ *     "$computed": "lightspeed_brand_breakdown",
+ *     "args": { "products": { "$state": "/lightspeed/list_products/data" } }
+ *   }
+ */
+const brand_breakdown: ComputedFunction = (args) => {
+  const products = Array.isArray(args.products) ? (args.products as Record<string, unknown>[]) : [];
+  const realProducts = products.filter((product) => product.source !== 'SYSTEM');
+
+  const counts = new Map<string, number>();
+  for (const product of realProducts) {
+    const brand = (product.brand as { name?: string } | null)?.name ?? 'Unbranded';
+    counts.set(brand, (counts.get(brand) ?? 0) + 1);
+  }
+
+  const segments = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([brand, count], i) => ({ brand, count, tone: CHART_TONES[i % CHART_TONES.length] }));
+
+  return {
+    total: realProducts.length,
+    segments,
+    template: segments.length ? segments.map((s) => `${s.count}fr`).join(' ') : '1fr',
+  };
+};
+
 const elements: PluginElementsModule = {
   slug: 'lightspeed',
   functions: {
     catalog_rows,
     category_breakdown,
+    brand_breakdown,
   },
 };
 

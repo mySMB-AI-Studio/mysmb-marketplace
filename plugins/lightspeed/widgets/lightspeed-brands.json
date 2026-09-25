@@ -1,0 +1,184 @@
+{
+  "id": "lightspeed-brands",
+  "title": "Lightspeed — Brands",
+  "description": "Every brand in your Lightspeed Retail (X-Series) catalog, ranked by how many products carry it, each colored distinctly. Excludes Lightspeed's own system-generated Discount line item. A product with no brand set is grouped under \"Unbranded\" rather than dropped.",
+  "category": "ecommerce",
+  "tags": ["lightspeed", "retail", "pos", "brands", "catalog", "ecommerce"],
+  "keywords": ["brands", "manufacturers", "catalog", "products", "retail", "pos", "lightspeed", "vend", "x-series"],
+  "connectorsUsed": ["lightspeed"],
+  "popularity": 0,
+  "brandColor": "#34DFBA",
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 8 },
+    "min": { "colSpan": 4, "rowSpan": 5 },
+    "max": { "colSpan": 8, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "lightspeed",
+    "tool": "list_products",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "breakdownSection", "divider", "body", "footer"],
+        "watch": {
+          "/lightspeed/list_products/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/breakdown",
+                "value": {
+                  "$computed": "lightspeed_brand_breakdown",
+                  "args": { "products": { "$state": "/lightspeed/list_products/data" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleRow"] },
+      "titleRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Tag", "tone": "brand", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Brands", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Lightspeed" }
+      },
+
+      "breakdownSection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["breakdownHeaderRow", "breakdownBar"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/lightspeed.list_products", "not": true },
+            { "$state": "/ui/breakdown/segments/0" }
+          ]
+        }
+      },
+      "breakdownHeaderRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["breakdownCaption", "breakdownTotalCaption"]
+      },
+      "breakdownCaption": {
+        "type": "Caption",
+        "props": { "text": "Products by Brand", "tone": "muted" }
+      },
+      "breakdownTotalCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{total} products", "total": { "$state": "/ui/breakdown/total" } }
+          },
+          "tone": "muted"
+        }
+      },
+      "breakdownBar": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "template": { "$state": "/ui/breakdown/template" } },
+        "children": ["breakdownSegment"],
+        "repeat": { "statePath": "/ui/breakdown/segments", "key": "brand" }
+      },
+      "breakdownSegment": {
+        "type": "ProgressBar",
+        "props": { "value": 100, "tone": { "$item": "tone" } }
+      },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "list"] },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$state": "/_loading/lightspeed.list_products" },
+        "children": ["sk1", "sk2", "sk3", "sk4"]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No products found in this Lightspeed catalog." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/lightspeed.list_products", "not": true },
+            { "$state": "/ui/breakdown/segments/0", "not": true }
+          ]
+        }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": { "statePath": "/ui/breakdown/segments", "key": "brand" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/lightspeed.list_products", "not": true },
+            { "$state": "/ui/breakdown/segments/0" }
+          ]
+        }
+      },
+      "row": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center", "gap": "sm" },
+        "children": ["rowBadge", "rowCount"]
+      },
+      "rowBadge": {
+        "type": "Badge",
+        "props": { "text": { "$item": "brand" }, "tone": { "$item": "tone" } }
+      },
+      "rowCount": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{count} products", "count": { "$item": "count" } }
+          },
+          "tone": "muted"
+        }
+      },
+
+      "footer": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["openBrandsBtn"]
+      },
+      "openBrandsBtn": {
+        "type": "Button",
+        "props": { "label": "Open Brands in Lightspeed", "tone": "brand", "variant": "primary", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": "https://secure.retail.lightspeed.app/", "target": "_blank" }
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}
