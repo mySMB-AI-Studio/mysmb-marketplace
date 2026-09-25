@@ -105,7 +105,17 @@ svg .donut-c{fill:var(--ink);font-size:15px;font-weight:700}
 .skel{height:14px;border-radius:4px;background:var(--line);margin:8px 0;opacity:.6}
 .page{break-after:page}
 @media (max-width:720px){.btns{margin-left:0}.cz{grid-template-columns:1fr}}
-@media print{body{background:var(--card);padding:0}#qb-controls,#qb-status,.no-print,.qb-filter{display:none!important}.qb-card{border:0;padding:0 0 12px}th{position:static}@page{size:A4 portrait;margin:14mm}}</style>
+@media print{body{background:var(--card);padding:0}#qb-controls,#qb-status,.no-print,.qb-filter{display:none!important}.qb-card{border:0;padding:0 0 12px}th{position:static}@page{size:A4 portrait;margin:14mm}}
+/* QuickBooks branding accents (the accent follows the house-style toggle and the optional brand colour) */
+#qb-controls{border-top:3px solid var(--accent)}
+main.qb-card{border-top:4px solid var(--accent)}
+.qb-kpi{border-left:4px solid var(--accent)}
+.qb-stmt thead th,.qb-grid thead th{border-bottom:2px solid var(--accent)}
+.qb-src{font-size:12px;color:var(--muted);margin-top:4px}.qb-src i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:6px;vertical-align:middle}
+:root.style-mysmb #qb-head .qb-src{color:var(--band-ink);opacity:.85}:root.style-mysmb #qb-head .qb-src i{background:var(--band-ink)}
+/* keep the right-hand amounts clear of the workspace's floating chat button */
+@media (min-width:900px){body{padding-right:64px}}
+@media print{body{padding-right:0}}</style>
 </head>
 <body class="persona-detail">
 <div id="qb-controls" aria-label="Audit log filters">
