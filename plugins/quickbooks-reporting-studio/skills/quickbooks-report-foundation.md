@@ -16,10 +16,10 @@ Spec: QuickBooks Reports Prompt Library v1.1 (Q00–Q39, Reporting Library Catal
    - Confirm that QuickBooks is connected. If a call fails with a connection error, tell the user to connect QuickBooks under Settings → Connections, and stop.
    - Check that the response has the shape the family skill describes (QuickBooks report JSON is `Header` / `Columns` / `Rows.Row[]`, with sections carrying `group`, `Header`, `Rows` and `Summary`).
    - Read `CompanyName` and `FiscalYearStartMonth` for the date defaults. Do not copy any returned figure into the document.
-3. **dataBindings.** Copy the family's `dataBindings` JSON exactly. Change only the `default` values of date inputs, as the family skill's *Date defaults* line says. A date default is `YYYY-MM-DD` or `"today"`. Keep every input name, option, binding id, tool name and param. The `display` default is a JSON string: set `p` (period preset), `a` (as-of preset), `c` (compare mode) and `v` (report view or member) to match the request. Keep every other key.
+3. **dataBindings.** Copy the family's `dataBindings` JSON exactly. Change only the `default` values of date inputs, as the family skill's *Date defaults* line says. A date default is `YYYY-MM-DD` or `"today"`. Keep every input name, option, binding id, tool name and param. The `display` default is a JSON string: set `p` (period preset), `a` (as-of preset), `c` (compare mode) and `v` (report view or member) to match the request. **Branding:** set `b` to a brand colour (`#rrggbb`) only when the user asks for their own or their customer's branding in chat ("use our brand colour #1a4d8f", "match Acme's navy"); otherwise leave `b` empty and the report uses QuickBooks branding, because the data comes from QuickBooks. Keep every other key.
 4. **Report config.** Copy the family's report config JS exactly. Change only the `defaults` object so that it equals the manifest defaults, with `"today"` written as today's date (`YYYY-MM-DD`). If the discovery call showed a label or group the config does not recognise, you may widen the matching regular expression in `render`. Change nothing else.
 5. **Assemble** one HTML document from the skeleton below. Replace `{{TITLE}}` with the report title, `{{CSS}}` with the stylesheet, `{{KIT}}` with the report kit and `{{CFG}}` with the report config, all verbatim. Never edit, shorten, reformat or "improve" the kit or the stylesheet: they are tested as one unit, and the platform validates the document against the bindings.
-6. **Save** with `artifact_save`: `title` = "<Company> — <Report name> — <period>", `fileName` from the family skill, a one-line `description`, the family `tags`, `content` = the document and `dataBindings` = the manifest. Do not pass `connectors`, because a live report derives them. Never paste the HTML into chat.
+6. **Save** with `artifact_save`: `title` = "<Company> — <Report name>" — no period, because the reader can change the period and the saved title cannot follow; the report header always shows the current period. Put the opening period in the one-line `description` instead ("Opened on August 2026, accrual basis"). Use `fileName` from the family skill, the family `tags`, the family `tags`, `content` = the document and `dataBindings` = the manifest. Do not pass `connectors`, because a live report derives them. Never paste the HTML into chat.
 7. **Completion note.** Keep it to 3–6 lines:
    - that the report is live and refreshes on open;
    - the controls the reader can change;
@@ -36,7 +36,7 @@ The kit renders the control row from the config, so every report has the same gr
 - **Client selector (LIB-002).** It lists the companies this QuickBooks connection can access. The `quickbooks-accounting` connector is authorised for exactly one company (realm), so it shows that one company, taken from CompanyInfo. The report holds only that company's data. To switch client, connect another QuickBooks company under Settings → Connections. Never type or guess a client name. When CompanyInfo returns no name, the header says "N/A — not in source".
 - **Period controls.** A Report period preset (Today … Last financial year, Last 30 days, Since 60/90/365 days ago, Custom) sits next to editable From / To dates. Or As of with presets (Today, End of last month, End of last quarter, End of last financial year, Custom). Presets use the company's financial-year start (CompanyInfo, then Preferences; 1 July only as a flagged fallback). **Relative presets roll forward**: a saved "This financial year to date" report is recomputed to today's window each time it is opened.
 - Accounting method (Cash | Accrual) where the report takes it; Display columns by; Compare to (previous period / previous year / year-to-date, with $ and % change); Report (the family members); View as (persona).
-- **Customise** (display only, never refetches): Show cents, Divide by 1000, Except zero amounts, negative style (-100 / (100) / 100-), Show in red, Header, Footer, Compact | 100% view, and Style (**QuickBooks look** by default, or the **mySMB house style** toggle). These live in the one `display` input so downloads keep them.
+- **Customise** (display only, never refetches): Show cents, Divide by 1000, Except zero amounts, negative style (-100 / (100) / 100-), Show in red, Header, Footer, Compact | 100% view, Style (**QuickBooks look** by default, or the **mySMB house style** toggle) and **Brand colour** (re-colours every accent; "Use QuickBooks branding" resets it). With no brand colour the report carries QuickBooks branding — green accents and "Prepared from QuickBooks Online" — because the data comes from the QuickBooks connector. These live in the one `display` input so downloads keep them.
 - **Delivery (Q39).** Download PDF (print stylesheet, A4), Download Excel (a real .xlsx: one sheet per table with a header block, A$ number format, bold totals, a Validation sheet and a Parameters sheet), Open in QuickBooks (a classic report deep link where the library gives a token). Host Download and Share produce a self-contained snapshot. Email is done from the workspace, not the report.
 - **Parameter contract (Q38).** The Parameters sheet and the deep link use QuickBooks' classic `reportv2` names: `token`, `date_macro`, `low_date`, `high_date`, `cash_basis`, `divideby1000`, `hidecents`, `exceptzeros`, `negativenums`, `negativered`, `show_header_title` / `range` / `company`. The deep link carries only `token` + `date_macro` (a named preset). The `low_date` / `high_date` date format is unconfirmed, so verify the round trip on first run.
 - **Persona modes.** Client and Executive give summary mode (account lines hidden; headline totals, charts and validation kept). Bookkeeper and Practitioner give detail mode. A failed check is never hidden.
@@ -169,6 +169,16 @@ svg .donut-c{fill:var(--ink);font-size:15px;font-weight:700}
 .page{break-after:page}
 @media (max-width:720px){.btns{margin-left:0}.cz{grid-template-columns:1fr}}
 @media print{body{background:var(--card);padding:0}#qb-controls,#qb-status,.no-print,.qb-filter{display:none!important}.qb-card{border:0;padding:0 0 12px}th{position:static}@page{size:A4 portrait;margin:14mm}}
+/* QuickBooks branding accents (the accent follows the house-style toggle and the optional brand colour) */
+#qb-controls{border-top:3px solid var(--accent)}
+main.qb-card{border-top:4px solid var(--accent)}
+.qb-kpi{border-left:4px solid var(--accent)}
+.qb-stmt thead th,.qb-grid thead th{border-bottom:2px solid var(--accent)}
+.qb-src{font-size:12px;color:var(--muted);margin-top:4px}.qb-src i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:6px;vertical-align:middle}
+:root.style-mysmb #qb-head .qb-src{color:var(--band-ink);opacity:.85}:root.style-mysmb #qb-head .qb-src i{background:var(--band-ink)}
+/* keep the right-hand amounts clear of the workspace's floating chat button */
+@media (min-width:900px){body{padding-right:64px}}
+@media print{body{padding-right:0}}
 ```
 
 ## Report kit ({{KIT}}) — copy verbatim
@@ -255,7 +265,16 @@ return (p && p.CurrencyPrefs && p.CurrencyPrefs.HomeCurrency && p.CurrencyPrefs.
 }
 var SYM = { AUD: 'A$', NZD: 'NZ$', USD: 'US$', CAD: 'C$', GBP: '£', EUR: '€', PHP: '₱', SGD: 'S$', HKD: 'HK$', JPY: '¥', INR: '₹' };
 function symbol(code) { return SYM[code] || (code ? code + ' ' : ''); }
-var DISPLAY_DEFAULT = { cents: 1, k: 0, zeros: 1, neg: 'minus', red: 0, hdr: 1, ftr: 1, style: 'qbo', dens: '100', p: 'custom', a: 'custom', c: 'none', v: '', x: '' };
+var DISPLAY_DEFAULT = { cents: 1, k: 0, zeros: 1, neg: 'minus', red: 0, hdr: 1, ftr: 1, style: 'qbo', dens: '100', p: 'custom', a: 'custom', c: 'none', v: '', x: '', b: '' };
+var HEX = /^#[0-9a-f]{6}$/i;
+function shade(hex, f) { var n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255; var t = function (c) { return Math.max(0, Math.min(255, Math.round(f < 0 ? c * (1 + f) : c + (255 - c) * f))); }; return '#' + [t(r), t(g), t(b)].map(function (x) { return x.toString(16).padStart(2, '0'); }).join(''); }
+function applyBrand(root, hex) {
+var props = ['--accent', '--btn', '--c1', '--d1', '--pos'];
+if (!HEX.test(hex || '')) { props.forEach(function (p) { root.style.removeProperty(p); }); return false; }
+var dark = root.getAttribute('data-myhub-theme') === 'dark', a = dark ? shade(hex, 0.25) : hex;
+root.style.setProperty('--accent', a); root.style.setProperty('--btn', dark ? hex : shade(hex, -0.2)); root.style.setProperty('--c1', a); root.style.setProperty('--d1', a); root.style.setProperty('--pos', a);
+return true;
+}
 function readDisplay(str) {
 var d = {}, k, src = {};
 try { src = JSON.parse(str || '{}') || {}; } catch (e) { src = {}; }
@@ -674,7 +693,8 @@ x += '<details class="ctl customise"><summary>Customise</summary><div class="cz"
 '<label><input type="checkbox" id="qb-cents"' + (d.cents ? ' checked' : '') + '> Show cents</label><label><input type="checkbox" id="qb-k"' + (d.k ? ' checked' : '') + '> Divide by 1000</label>' +
 '<label><input type="checkbox" id="qb-zeros"' + (d.zeros ? '' : ' checked') + '> Except zero amounts</label><label>Negative numbers<select id="qb-neg">' + opt([['minus', '-100'], ['paren', '(100)'], ['trail', '100-']], d.neg) + '</select></label>' +
 '<label><input type="checkbox" id="qb-red"' + (d.red ? ' checked' : '') + '> Show in red</label><label><input type="checkbox" id="qb-hdr"' + (d.hdr ? ' checked' : '') + '> Header</label><label><input type="checkbox" id="qb-ftr"' + (d.ftr ? ' checked' : '') + '> Footer</label>' +
-'<label>View<select id="qb-dens">' + opt([['compact', 'Compact'], ['100', '100%']], d.dens) + '</select></label><label>Style<select id="qb-style">' + opt([['qbo', 'QuickBooks look'], ['mysmb', 'mySMB house style']], d.style) + '</select></label></div></details>';
+'<label>View<select id="qb-dens">' + opt([['compact', 'Compact'], ['100', '100%']], d.dens) + '</select></label><label>Style<select id="qb-style">' + opt([['qbo', 'QuickBooks look'], ['mysmb', 'mySMB house style']], d.style) + '</select></label>' +
+'<label>Brand colour<input type="color" id="qb-brand" value="' + h(HEX.test(d.b) ? d.b : '#2ca01c') + '"></label><label>&nbsp;<button type="button" id="qb-brand-reset"' + (HEX.test(d.b) ? '' : ' disabled') + '>Use QuickBooks branding</button></label></div></details>';
 x += '<div class="ctl btns"><button type="button" id="qb-pdf">Download PDF</button><button type="button" id="qb-xlsx">Download Excel</button>' + (cfg.token ? '<a id="qb-open" target="_blank" rel="noopener" href="' + h(deepLink(cfg.token, cfg.route, d.p)) + '">Open in QuickBooks</a>' : '') + '</div>';
 el.innerHTML = x; wire();
 }
@@ -696,6 +716,8 @@ on('qb-zeros', 'change', function () { change({}, { zeros: this.checked ? 0 : 1 
 on('qb-neg', 'change', function () { change({}, { neg: this.value }); });
 on('qb-dens', 'change', function () { change({}, { dens: this.value }); });
 on('qb-style', 'change', function () { change({}, { style: this.value }); });
+on('qb-brand', 'change', function () { if (HEX.test(this.value)) change({}, { b: this.value.toLowerCase() }); });
+on('qb-brand-reset', 'click', function () { change({}, { b: '' }); });
 on('qb-pdf', 'click', function () { window.print(); });
 on('qb-xlsx', 'click', function () { exportXlsx(); });
 }
@@ -709,6 +731,7 @@ var last = { checks: [], na: [], notes: [] };
 function render() {
 var c = ctx(), d = c.display, root = document.documentElement;
 root.classList.toggle('style-mysmb', d.style === 'mysmb'); root.classList.toggle('dens-compact', d.dens === 'compact');
+root.classList.toggle('brand-custom', applyBrand(root, d.style === 'mysmb' ? '' : d.b));
 document.body.classList.toggle('persona-summary', c.persona === 'Client' || c.persona === 'Executive');
 document.body.classList.toggle('persona-detail', !(c.persona === 'Client' || c.persona === 'Executive'));
 controls();
@@ -724,7 +747,7 @@ if (last.checks.some(function (k) { return k.pass === false && k.detail === msg;
 last.checks.unshift({ name: 'Data loaded: ' + ((cfg.tools || {})[id] || id), pass: false, detail: msg });
 });
 var hd = $('qb-head');
-if (hd) { hd.hidden = !d.hdr || !!cfg.noHead; var per = out.period || (I.start ? periodLine(S.inputs[I.start], S.inputs[I.end]) : I.asAt ? asOfLine(S.inputs[I.asAt]) : ''); hd.innerHTML = '<div class="co">' + h(c.company || 'N/A — not in source') + '</div><div class="ti">' + h(out.title || cfg.title) + '</div><div class="pe">' + h(per) + '</div>'; }
+if (hd) { hd.hidden = !d.hdr || !!cfg.noHead; var per = out.period || (I.start ? periodLine(S.inputs[I.start], S.inputs[I.end]) : I.asAt ? asOfLine(S.inputs[I.asAt]) : ''); hd.innerHTML = '<div class="co">' + h(c.company || 'N/A — not in source') + '</div><div class="ti">' + h(out.title || cfg.title) + '</div><div class="pe">' + h(per) + '</div><div class="qb-src"><i aria-hidden="true"></i>Prepared from QuickBooks Online</div>'; }
 var ft = $('qb-foot'); if (ft) { ft.hidden = !d.ftr; ft.textContent = footerStamp(I.basis ? S.inputs[I.basis] : (header(S.data[cfg.primary]).ReportBasis || 'Accrual'), S.fetchedAt); }
 banner(c); sources(c);
 }
@@ -764,9 +787,10 @@ render();
 if (!MH) { status('Open this report in mySMB to load QuickBooks data.'); return { state: S }; }
 MyHubReport.onData(boot);
 if (MH.onRefresh) MH.onRefresh(function () { status('Refreshing…'); });
+if (MH.onThemeChange) MH.onThemeChange(function () { render(); });
 return { state: S, change: change, render: render, exportXlsx: exportXlsx, ctx: ctx };
 }
-return { bas: bas, sectionTies: sectionTies, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, mergeCompare: mergeCompare, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app, MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays,
+return { applyBrand: applyBrand, bas: bas, sectionTies: sectionTies, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, mergeCompare: mergeCompare, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app, MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays,
 num: num, cols: cols, walk: walk, find: find, val: val, header: header, noData: noData, totalFor: totalFor, near: near, sum: sum,
 companyInfo: companyInfo, fiscalStart: fiscalStart, homeCurrency: homeCurrency, symbol: symbol,
 DISPLAY_DEFAULT: DISPLAY_DEFAULT, readDisplay: readDisplay, writeDisplay: writeDisplay, money: money, pct: pct, isNeg: isNeg,
