@@ -1,34 +1,61 @@
 {
-  "id": "geotab-vehicle-status",
-  "title": "Vehicle Status",
-  "description": "Live driving/stopped/offline status per vehicle, computed from real DeviceStatusInfo records via the connected MyGeotab account. Originally scoped as live geofence on-site/in-transit detection, but that needs a second Geotab entity type (Zone) fetched in the same widget, which MyHub's widget runtime can't do today (state is keyed purely by <mcp>.<tool>, no per-params disambiguation) -- see the widget-elements source comment for the full finding.",
   "category": "fleet-management",
-  "tags": ["geotab", "fleet", "live-tracking"],
-  "keywords": ["vehicle status", "driving", "stopped", "offline", "live"],
-  "connectorsUsed": ["geotab"],
-  "popularity": 0,
-  "sizing": {
-    "preferred": { "colSpan": 6, "rowSpan": 6 },
-    "min":       { "colSpan": 4, "rowSpan": 8 },
-    "max":       { "colSpan": 10, "rowSpan": 14 }
-  },
+  "connectorsUsed": [
+    "geotab"
+  ],
   "dataProvider": {
+    "kind": "tool",
     "mcp": "geotab",
-    "tool": "Get",
     "params": {
       "database": "demo_mysmb_dev",
-      "typeName": "DeviceStatusInfo",
-      "resultsLimit": 500
+      "resultsLimit": 500,
+      "typeName": "DeviceStatusInfo"
+    },
+    "tool": "Get"
+  },
+  "description": "Live driving/stopped/offline status per vehicle, computed from real DeviceStatusInfo records via the connected MyGeotab account. Originally scoped as live geofence on-site/in-transit detection, but that needs a second Geotab entity type (Zone) fetched in the same widget, which MyHub's widget runtime can't do today (state is keyed purely by <mcp>.<tool>, no per-params disambiguation) -- see the widget-elements source comment for the full finding.",
+  "id": "geotab-vehicle-status",
+  "keywords": [
+    "vehicle status",
+    "driving",
+    "stopped",
+    "offline",
+    "live"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 14
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 8
+    },
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 6
     }
   },
   "spec": {
-    "root": "card",
     "elements": {
-
-      "card": {
-        "type": "Card",
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "content"
+        ],
         "props": {},
-        "children": ["headerRow", "div0", "body"],
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "headerRow",
+          "div0",
+          "body"
+        ],
+        "props": {},
+        "type": "Card",
         "watch": {
           "/geotab/Get": [
             {
@@ -37,117 +64,299 @@
                 "statePath": "/ui/dashboard",
                 "value": {
                   "$computed": "geotab_vehicle_status_dashboard",
-                  "args": { "statuses": { "$state": "/geotab/Get/result" } }
+                  "args": {
+                    "statuses": {
+                      "$state": "/geotab/Get/result"
+                    }
+                  }
                 }
               }
             }
           ]
         }
       },
-
-      "headerRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["titleGroup"] },
-      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
-      "titleIcon": { "type": "Icon", "props": { "name": "Truck", "tone": "muted", "size": "sm" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Vehicle Status", "level": "h2" } },
-      "eyebrow": {
-        "type": "Eyebrow",
+      "content": {
+        "children": [
+          "pillRow",
+          "div1",
+          "vehicleRows"
+        ],
         "props": {
-          "text": { "$computed": "fmt", "args": { "pattern": "Live · {n} vehicles", "n": { "$state": "/ui/dashboard/totalCount" } } }
+          "gap": "md"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/geotab.Get",
+          "not": true
         }
       },
-
-      "div0": { "type": "Divider", "props": {} },
-
-      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "content"] },
-
-      "loading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["lk1", "lk2", "lk3"],
-        "visible": { "$state": "/_loading/geotab.Get" }
+      "div0": {
+        "props": {},
+        "type": "Divider"
       },
-      "lk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "lk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "lk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-
+      "div1": {
+        "props": {},
+        "type": "Divider"
+      },
       "empty": {
+        "props": {
+          "message": "No device status data available."
+        },
         "type": "Empty",
-        "props": { "message": "No device status data available." },
         "visible": {
           "$and": [
-            { "$state": "/_loading/geotab.Get", "not": true },
-            { "$state": "/ui/dashboard/totalCount", "not": true }
+            {
+              "$state": "/_loading/geotab.Get",
+              "not": true
+            },
+            {
+              "$state": "/ui/dashboard/totalCount",
+              "not": true
+            }
           ]
         }
       },
-
-      "content": {
-        "type": "Stack",
-        "props": { "gap": "md" },
-        "visible": { "$state": "/_loading/geotab.Get", "not": true },
-        "children": ["pillRow", "div1", "vehicleRows"]
-      },
-
-      "pillRow": { "type": "Row", "props": { "gap": "sm" }, "children": ["pillDriving", "pillStopped", "pillOffline"] },
-      "pillDriving": {
-        "type": "Badge",
+      "eyebrow": {
         "props": {
-          "text": { "$computed": "fmt", "args": { "pattern": "Driving {n}", "n": { "$state": "/ui/dashboard/drivingCount" } } },
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/dashboard/totalCount"
+              },
+              "pattern": "Live · {n} vehicles"
+            }
+          }
+        },
+        "type": "Eyebrow"
+      },
+      "headerRow": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "lk1": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "lk2": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "lk3": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "loading": {
+        "children": [
+          "lk1",
+          "lk2",
+          "lk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/geotab.Get"
+        }
+      },
+      "pillDriving": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/dashboard/drivingCount"
+              },
+              "pattern": "Driving {n}"
+            }
+          },
           "tone": "info",
           "variant": "solid"
-        }
-      },
-      "pillStopped": {
-        "type": "Badge",
-        "props": {
-          "text": { "$computed": "fmt", "args": { "pattern": "Stopped {n}", "n": { "$state": "/ui/dashboard/stoppedCount" } } },
-          "tone": "muted"
-        }
+        },
+        "type": "Badge"
       },
       "pillOffline": {
-        "type": "Badge",
         "props": {
-          "text": { "$computed": "fmt", "args": { "pattern": "Offline {n}", "n": { "$state": "/ui/dashboard/offlineCount" } } },
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/dashboard/offlineCount"
+              },
+              "pattern": "Offline {n}"
+            }
+          },
           "tone": "warning"
-        }
+        },
+        "type": "Badge"
       },
-
-      "div1": { "type": "Divider", "props": {} },
-
-      "vehicleRows": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["vehicleRow"],
-        "repeat": { "statePath": "/ui/dashboard/rows", "key": "deviceName" },
-        "limit": 20
+      "pillRow": {
+        "children": [
+          "pillDriving",
+          "pillStopped",
+          "pillOffline"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Row"
       },
-
-      "vehicleRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["vLabelStack", "vBadge"] },
-      "vLabelStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["vLabel", "vCaption"] },
-      "vLabel": { "type": "Text", "props": { "text": { "$item": "deviceName" }, "size": "sm", "truncate": true } },
+      "pillStopped": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/dashboard/stoppedCount"
+              },
+              "pattern": "Stopped {n}"
+            }
+          },
+          "tone": "muted"
+        },
+        "type": "Badge"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Vehicle Status"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Truck",
+          "size": "sm",
+          "tone": "muted"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "vBadge": {
+        "props": {
+          "text": {
+            "$item": "state"
+          },
+          "tone": {
+            "$computed": "geotab_vehicle_state_tone",
+            "args": {
+              "value": {
+                "$item": "state"
+              }
+            }
+          }
+        },
+        "type": "Badge"
+      },
       "vCaption": {
-        "type": "Caption",
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
               "pattern": "{v} km/h · {t} in this state",
-              "v": { "$item": "speedKmh" },
-              "t": { "$computed": "geotab_format_duration_hm", "args": { "minutes": { "$item": "stateMinutes" } } }
+              "t": {
+                "$computed": "geotab_format_duration_hm",
+                "args": {
+                  "minutes": {
+                    "$item": "stateMinutes"
+                  }
+                }
+              },
+              "v": {
+                "$item": "speedKmh"
+              }
             }
           }
-        }
+        },
+        "type": "Caption"
       },
-      "vBadge": {
-        "type": "Badge",
+      "vLabel": {
         "props": {
-          "text": { "$item": "state" },
-          "tone": { "$computed": "geotab_vehicle_state_tone", "args": { "value": { "$item": "state" } } }
-        }
+          "size": "sm",
+          "text": {
+            "$item": "deviceName"
+          },
+          "truncate": true
+        },
+        "type": "Text"
+      },
+      "vLabelStack": {
+        "children": [
+          "vLabel",
+          "vCaption"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "vehicleRow": {
+        "children": [
+          "vLabelStack",
+          "vBadge"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "vehicleRows": {
+        "children": [
+          "vehicleRow"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "repeat": {
+          "key": "deviceName",
+          "statePath": "/ui/dashboard/rows"
+        },
+        "type": "Stack"
       }
-
-    }
+    },
+    "root": "card"
   },
-  "status": "published"
+  "tags": [
+    "geotab",
+    "fleet",
+    "live-tracking"
+  ],
+  "title": "Vehicle Status"
 }

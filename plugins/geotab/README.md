@@ -6,16 +6,7 @@ OAuth 2.1 + PKCE — no API keys, no env vars. Each user authorises individually
 
 ## Configuration
 
-No environment variables are required. The Geotab MCP server implements OAuth 2.1 Authorization Code + PKCE with Dynamic Client Registration (DCR, RFC 7591):
-
-- Confirmed via `https://mcp.geotab.com/.well-known/oauth-authorization-server` — the metadata document lists a real `registration_endpoint` (`https://mcp.geotab.com/register`), so clients self-register at connect time. No pre-registered `client_id`/`client_secret` needed.
-- On first use, the browser redirects to Geotab's sign-in page — authenticate and grant access — and subsequent calls flow over a scoped, per-user token with automatic refresh. MyGeotab credentials never reach the client.
-
-### Prerequisites
-
-- An active MyGeotab database with API access enabled.
-- The connecting user must be on **Geotab Unified Login** (self-service migration from MyGeotab profile settings). **SAML-authenticated accounts cannot connect directly** — they need to migrate first, or the customer's Geotab account team can assist.
-- MyGeotab API rate limits apply and are passed through as structured errors — no fixed numeric limit is published; design any polling/bulk usage defensively.
+No configuration variables are required.
 
 ## Tool coverage
 
