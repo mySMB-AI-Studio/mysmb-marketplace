@@ -7,11 +7,11 @@ description: Shared build recipe, controls contract, validation rules, QuickBook
 
 Use when you build any QuickBooks Online report, dashboard or report pack. Load this skill first, then the family skill (for example `quickbooks-profit-and-loss`). This file carries the tested report kit and stylesheet, and every family skill carries its own tested `dataBindings` and report config. You assemble them. You do not write report code from scratch.
 
-Spec: QuickBooks Reports Prompt Library v1.1 (Q00–Q39, Reporting Library Catalogue RPT/LIB rows, Operating Model v0.1). Wave 1 families are built. Each family skill traces its FULL PROMPT sections to this build.
+Spec: QuickBooks Reports Prompt Library v1.1 (Q00–Q39, Reporting Library Catalogue RPT/LIB rows, Operating Model v0.1). Waves 1 and 2 are built. Each family skill traces its FULL PROMPT sections to this build.
 
 ## Build a report (every family)
 
-1. **Pick the family skill** that matches the request. If the family is not built yet, say so and offer the closest built report or a QuickBooks export (see the agent's routing table). Never approximate a report from adjacent data.
+1. **Pick the family skill** that matches the request. (The reports catalogue, Q02, is a static page with its own steps.) If the family is not built yet, say so and offer the closest built report or a QuickBooks export (see the agent's routing table). Never approximate a report from adjacent data.
 2. **Discovery call.** Call the family's primary tool once, with the family's default inputs, and call `qbo_query` with `SELECT * FROM CompanyInfo` once. You need three things from these calls:
    - Confirm that QuickBooks is connected. If a call fails with a connection error, tell the user to connect QuickBooks under Settings → Connections, and stop.
    - Check that the response has the shape the family skill describes (QuickBooks report JSON is `Header` / `Columns` / `Rows.Row[]`, with sections carrying `group`, `Header`, `Rows` and `Summary`).
@@ -61,7 +61,7 @@ The kit renders the control row from the config, so every report has the same gr
 | (d) Layout, charts, appearance | Family config `render` + stylesheet (QuickBooks look; mySMB house-style toggle; light and dark themes) |
 | (e) Source & connection mechanisms | Mechanism 4 only: the mySMB custom MCP on the Accounting API v3 (`quickbooks-accounting`). Mechanisms 1–3 (Intuit connector, Intuit open-source MCP, CData) and 5 (Spreadsheet Sync) do not exist inside a workspace; 6 = export fallback (above); 7 = Open in QuickBooks |
 | (f) Screenshots | QA compares the report against the Shots tabs (family QA script) |
-| (g) Priority / delivery order | Wave 1, Trains 01–02 |
+| (g) Priority / delivery order | Per family skill (Wave 1: Trains 01–02; Wave 2: Trains 03–04) |
 | STEP 1 Confirm inputs | Declared inputs with defaults. Ask only for what cannot be defaulted, never for the output format |
 | STEP 2 Get data | Live bindings, re-run as the viewer on every open |
 | STEP 3 Build per layout spec | Family config `render` (QuickBooks row order, indented sub-accounts, bold "Total for" rows, header block, footer) |
@@ -156,7 +156,7 @@ tbody tr:nth-child(even) td{background:var(--zebra)}
 .chip.up{background:var(--pass-bg);color:var(--pos)}.chip.down{background:var(--fail-bg);color:var(--neg)}
 .qb-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
 .qb-card h2,.qb-card h3{font-size:15px;margin:0 0 10px}
-svg{width:100%;height:auto;display:block}svg .axis{stroke:var(--line);stroke-width:1}svg .tick{fill:var(--muted);font-size:11px}
+svg{width:100%;height:auto;max-height:300px;display:block;margin:0 auto}svg .axis{stroke:var(--line);stroke-width:1}svg .tick{fill:var(--muted);font-size:11px}
 svg .donut-c{fill:var(--ink);font-size:15px;font-weight:700}
 .qb-legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);margin-top:6px}
 .qb-legend i,.qb-donut li i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
@@ -715,6 +715,12 @@ controls();
 var out = {};
 try { out = cfg.render(c) || {}; } catch (e) { if (c.body) c.body.innerHTML = '<p class="qb-err">This report could not render: ' + h(e.message) + '</p>'; out = { checks: [{ name: 'Report rendered', pass: false, detail: e.message }] }; }
 last = { checks: out.checks || [], na: out.na || [], notes: out.notes || [] };
+Object.keys(S.errors).forEach(function (id) {
+if (id === cfg.company || id === cfg.prefs) return;
+var msg = err(id);
+if (last.checks.some(function (k) { return k.pass === false && k.detail === msg; })) return;
+last.checks.unshift({ name: 'Data loaded: ' + ((cfg.tools || {})[id] || id), pass: false, detail: msg });
+});
 var hd = $('qb-head');
 if (hd) { hd.hidden = !d.hdr || !!cfg.noHead; var per = out.period || (I.start ? periodLine(S.inputs[I.start], S.inputs[I.end]) : I.asAt ? asOfLine(S.inputs[I.asAt]) : ''); hd.innerHTML = '<div class="co">' + h(c.company || 'N/A — not in source') + '</div><div class="ti">' + h(out.title || cfg.title) + '</div><div class="pe">' + h(per) + '</div>'; }
 var ft = $('qb-foot'); if (ft) { ft.hidden = !d.ftr; ft.textContent = footerStamp(I.basis ? S.inputs[I.basis] : (header(S.data[cfg.primary]).ReportBasis || 'Accrual'), S.fetchedAt); }
