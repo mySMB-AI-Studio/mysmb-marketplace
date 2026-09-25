@@ -1,0 +1,197 @@
+{
+  "id": "humanitix-live-checkin",
+  "title": "Live Check-in",
+  "description": "Live door check-in status for the currently-happening event, broken down by ticket type.",
+  "category": "operations",
+  "tags": ["humanitix", "check-in", "attendance", "tickets", "door", "live"],
+  "keywords": ["check-in", "door status", "attendance", "checked in", "ticket type", "humanitix"],
+  "connectorsUsed": ["humanitix"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
+    "max": { "colSpan": 6, "rowSpan": 7 }
+  },
+  "dataProvider": {
+    "mcp": "humanitix",
+    "tool": "get_humanitix_live_checkin",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "divider0", "body"],
+        "watch": {
+          "/humanitix/get_humanitix_live_checkin": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "humanitix_flatten_live_checkin",
+                  "args": { "value": { "$state": "/humanitix/get_humanitix_live_checkin" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "CircleCheckBig", "tone": "accent", "size": "lg" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Live Check-in", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Humanitix" } },
+
+      "divider0": { "type": "Divider", "props": {} },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "content"]
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2"],
+        "visible": { "$state": "/_loading/humanitix.get_humanitix_live_checkin" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No event is currently in progress." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/humanitix.get_humanitix_live_checkin", "not": true },
+            { "$state": "/ui/rows/0/has_live_event", "not": true }
+          ]
+        }
+      },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["overallRow", "ticketTypeList", "footerRow"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/humanitix.get_humanitix_live_checkin", "not": true },
+            { "$state": "/ui/rows/0/has_live_event" }
+          ]
+        }
+      },
+
+      "overallRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "baseline" },
+        "children": ["overallPctStat", "overallCountCaption"]
+      },
+      "overallPctStat": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/ui/rows/0/overall_pct_label" }, "size": "lg" }
+      },
+      "overallCountCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{checked} of {total} checked in",
+              "checked": { "$state": "/ui/rows/0/overall_checked_in" },
+              "total": { "$state": "/ui/rows/0/overall_total" }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+
+      "ticketTypeList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["ticketTypeRow"],
+        "repeat": { "statePath": "/ui/rows/0/ticket_types", "key": "id" }
+      },
+      "ticketTypeRow": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["ticketTypeLabelRow", "ticketTypeBarRow"]
+      },
+      "ticketTypeBarRow": {
+        "type": "Row",
+        "props": { "gap": "none", "align": "center" },
+        "children": ["ticketTypeBar"]
+      },
+      "ticketTypeLabelRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "baseline" },
+        "children": ["ticketTypeName", "ticketTypeCountsRow"]
+      },
+      "ticketTypeName": { "type": "Text", "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "tone": { "$item": "row_tone" } } },
+      "ticketTypeCountsRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "baseline" },
+        "children": ["ticketTypeCounts", "ticketTypePct"]
+      },
+      "ticketTypeCounts": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{checked} / {total}", "checked": { "$item": "checked_in" }, "total": { "$item": "total" } }
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "ticketTypePct": {
+        "type": "Caption",
+        "props": { "text": { "$item": "pct_label" }, "tone": "muted" }
+      },
+      "ticketTypeBar": {
+        "type": "ProgressBar",
+        "props": { "value": { "$item": "pct" }, "tone": { "$item": "row_tone" } }
+      },
+
+      "footerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["updatedCaption", "doorStatusCaption"]
+      },
+      "updatedCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Updated {t}",
+              "t": { "$computed": "relative_time", "args": { "value": { "$state": "/ui/rows/0/last_updated_iso" } } }
+            }
+          },
+          "tone": "muted"
+        },
+        "visible": { "$state": "/ui/rows/0/last_updated_iso" }
+      },
+      "doorStatusCaption": {
+        "type": "Caption",
+        "props": { "text": "Door status · by ticket type", "tone": "muted" }
+      }
+
+    }
+  },
+  "status": "published"
+}

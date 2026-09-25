@@ -1,0 +1,168 @@
+{
+  "id": "humanitix-sales-snapshot",
+  "title": "Sales Snapshot",
+  "description": "Tickets sold, orders, and total earnings across all non-past events today, combining online and manual sales channels.",
+  "category": "operations",
+  "tags": ["humanitix", "sales", "events", "tickets", "orders", "earnings"],
+  "keywords": ["sales snapshot", "tickets sold", "orders", "total earnings", "today", "humanitix"],
+  "connectorsUsed": ["humanitix"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 3 },
+    "min": { "colSpan": 3, "rowSpan": 3 },
+    "max": { "colSpan": 6, "rowSpan": 4 }
+  },
+  "dataProvider": {
+    "mcp": "humanitix",
+    "tool": "get_humanitix_sales_snapshot",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "divider0", "body"],
+        "watch": {
+          "/humanitix/get_humanitix_sales_snapshot": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "humanitix_flatten_sales_snapshot",
+                  "args": { "value": { "$state": "/humanitix/get_humanitix_sales_snapshot" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Ticket", "tone": "accent", "size": "lg" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Sales Snapshot", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Humanitix" } },
+
+      "divider0": { "type": "Divider", "props": {} },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "content"]
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2"],
+        "visible": { "$state": "/_loading/humanitix.get_humanitix_sales_snapshot" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["statsRow", "earningsHighlight", "footerRow"],
+        "visible": { "$state": "/_loading/humanitix.get_humanitix_sales_snapshot", "not": true }
+      },
+
+      "footerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["updatedCaption", "scopeCaption"]
+      },
+      "updatedCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Updated {t}",
+              "t": { "$computed": "relative_time", "args": { "value": { "$state": "/ui/rows/0/last_updated_iso" } } }
+            }
+          },
+          "tone": "muted"
+        },
+        "visible": { "$state": "/ui/rows/0/last_updated_iso" }
+      },
+      "scopeCaption": {
+        "type": "Caption",
+        "props": {
+          "text": { "$state": "/ui/rows/0/channel_scope" },
+          "tone": "muted"
+        }
+      },
+
+      "statsRow": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["ticketsPanel", "ordersPanel"]
+      },
+      "ticketsPanel": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["ticketsLabel", "ticketsStat"]
+      },
+      "ticketsLabel": { "type": "Text", "props": { "text": "Tickets sold", "size": "sm", "tone": "warning" } },
+      "ticketsStat": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/ui/rows/0/tickets_sold" }, "size": "lg" }
+      },
+
+      "ordersPanel": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["ordersLabel", "ordersStat"]
+      },
+      "ordersLabel": { "type": "Text", "props": { "text": "Orders", "size": "sm", "tone": "destructive" } },
+      "ordersStat": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/ui/rows/0/orders_count" }, "size": "lg" }
+      },
+
+      "earningsHighlight": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["earningsLabel", "earningsStat", "avgPerOrderCaption"]
+      },
+      "earningsLabel": { "type": "Text", "props": { "text": "Total earnings", "size": "sm", "tone": "success" } },
+      "earningsStat": {
+        "type": "Stat",
+        "props": {
+          "value": { "$state": "/ui/rows/0/total_earnings_formatted" },
+          "size": "lg"
+        }
+      },
+      "avgPerOrderCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Avg. {n} per order",
+              "n": { "$state": "/ui/rows/0/avg_per_order_formatted" }
+            }
+          },
+          "tone": "muted"
+        },
+        "visible": { "$state": "/ui/rows/0/orders_count" }
+      }
+
+    }
+  },
+  "status": "published"
+}
