@@ -1,13 +1,13 @@
 # QuickBooks Reporting Studio
 
-Live, validated QuickBooks Online reports in QuickBooks styling — statements, ageing, GST/BAS, dashboards and management packs — with a specialist reporting agent (AGT-003).
+Live, validated QuickBooks Online reports in QuickBooks styling — statements, ageing, GST/BAS, dashboards and management packs — with a specialist reporting agent.
 
-Reporting Library: QuickBooks Reports Prompt Library v1.1 (Q00–Q39). This version delivers **Wave 1**. The Trial Balance (Q22, a Wave 2 story) is included early.
+Reporting Library: QuickBooks Reports Prompt Library v1.1 (Q00–Q39). This version delivers **Waves 1 and 2** (22 families).
 
 ## What's in the box
 
 - **Agent:** QuickBooks Reporting Specialist (AGT-003), on Sonnet, with the `quickbooks-accounting` connector.
-- **Skills:** 1 foundation (build recipe, controls contract, validation rules, the tested report kit and stylesheet) + 13 family skills:
+- **Skills:** 1 foundation (build recipe, controls contract, validation rules, the tested report kit and stylesheet) + 22 family skills:
   - Q17 Profit and Loss family — `quickbooks-profit-and-loss`
   - Q18 Balance Sheet family — `quickbooks-balance-sheet`
   - Q19 Statement of Cash Flows — `quickbooks-statement-of-cash-flows`
@@ -21,7 +21,18 @@ Reporting Library: QuickBooks Reports Prompt Library v1.1 (Q00–Q39). This vers
   - Q07 Cash flow overview — `quickbooks-cash-flow-overview`
   - Q06 Performance centre (KPI charts) — `quickbooks-performance-centre`
   - Q04 Management reports (report packs) — `quickbooks-management-reports`
+  - Q16 Client overview (accountant-only) — `quickbooks-client-overview`
+  - Q23 General Ledger and transaction-list family — `quickbooks-general-ledger`
+  - Q25 Sales and customers family — `quickbooks-sales-and-customers`
+  - Q27 Expenses and suppliers family — `quickbooks-expenses-and-suppliers`
+  - Q01 Business feed — `quickbooks-business-feed`
+  - Q08 Budgets (Budget vs Actuals) — `quickbooks-budgets`
+  - Q10 Expenses & Pay Bills overview — `quickbooks-expenses-overview`
+  - Q11 Sales & Get Paid overview — `quickbooks-sales-overview`
+  - Q02 Standard reports catalogue — `quickbooks-reports-catalogue`
 - **Every report:** live data, client selector (one company per connection), period presets that roll forward, Cash/Accrual, Display columns by, Compare to, Customise (cents, divide by 1000, zero rows, negatives, header/footer), persona modes, QuickBooks look with a mySMB house-style toggle, light and dark themes, a validation banner, Download PDF and Download Excel (.xlsx), and Open in QuickBooks where a deep link exists.
+
+Connect QuickBooks under Settings → Connections (OAuth) before asking for a report.
 
 ## Connector limits (stated in the reports)
 
