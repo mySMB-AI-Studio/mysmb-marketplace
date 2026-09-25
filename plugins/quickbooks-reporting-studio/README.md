@@ -2,12 +2,12 @@
 
 Live, validated QuickBooks Online reports in QuickBooks styling — statements, ageing, GST/BAS, dashboards and management packs — with a specialist reporting agent.
 
-Reporting Library: QuickBooks Reports Prompt Library v1.1 (Q00–Q39). This version delivers **Waves 1 and 2** (22 families).
+Reporting Library: QuickBooks Reports Prompt Library v1.1 (Q00–Q39). This version delivers **Waves 1 and 2** (31 families).
 
 ## What's in the box
 
 - **Agent:** QuickBooks Reporting Specialist (AGT-003), on Sonnet, with the `quickbooks-accounting` connector.
-- **Skills:** 1 foundation (build recipe, controls contract, validation rules, the tested report kit and stylesheet) + 22 family skills:
+- **Skills:** 1 foundation (build recipe, controls contract, validation rules, the tested report kit and stylesheet) + 31 family skills:
   - Q17 Profit and Loss family — `quickbooks-profit-and-loss`
   - Q18 Balance Sheet family — `quickbooks-balance-sheet`
   - Q19 Statement of Cash Flows — `quickbooks-statement-of-cash-flows`
@@ -30,6 +30,15 @@ Reporting Library: QuickBooks Reports Prompt Library v1.1 (Q00–Q39). This vers
   - Q10 Expenses & Pay Bills overview — `quickbooks-expenses-overview`
   - Q11 Sales & Get Paid overview — `quickbooks-sales-overview`
   - Q02 Standard reports catalogue — `quickbooks-reports-catalogue`
+  - Q14 Inventory overview — `quickbooks-inventory-overview`
+  - Q30 Inventory family — `quickbooks-inventory`
+  - Q12 Customer Hub overview — `quickbooks-customer-hub`
+  - Q13 Projects overview — `quickbooks-projects-overview`
+  - Q29 Projects family — `quickbooks-projects`
+  - Q36 Exchange gains and losses (multi-currency) — `quickbooks-exchange-gains-losses`
+  - Q35 Custom report builder — `quickbooks-custom-report-builder`
+  - Q21 Audit Log — `quickbooks-audit-log`
+  - Q37 Ask a question — `quickbooks-ask-a-question`
 - **Every report:** live data, client selector (one company per connection), period presets that roll forward, Cash/Accrual, Display columns by, Compare to, Customise (cents, divide by 1000, zero rows, negatives, header/footer), persona modes, QuickBooks look with a mySMB house-style toggle, light and dark themes, a validation banner, Download PDF and Download Excel (.xlsx), and Open in QuickBooks where a deep link exists.
 
 Connect QuickBooks under Settings → Connections (OAuth) before asking for a report.
