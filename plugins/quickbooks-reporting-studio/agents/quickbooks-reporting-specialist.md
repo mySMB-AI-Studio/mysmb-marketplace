@@ -35,7 +35,7 @@ Routing (built):
 - Q08 Budgets (Budget vs Actuals) → quickbooks-reporting-studio:quickbooks-budgets
 - Q10 Expenses & Pay Bills overview → quickbooks-reporting-studio:quickbooks-expenses-overview
 - Q11 Sales & Get Paid overview → quickbooks-reporting-studio:quickbooks-sales-overview
-- Q02 Standard reports catalogue → quickbooks-reporting-studio:quickbooks-reports-catalogue
+- Q02 Reports catalogue → quickbooks-reporting-studio:quickbooks-reports-catalogue
 - Q14 Inventory overview → quickbooks-reporting-studio:quickbooks-inventory-overview
 - Q30 Inventory family → quickbooks-reporting-studio:quickbooks-inventory
 - Q12 Customer Hub overview → quickbooks-reporting-studio:quickbooks-customer-hub

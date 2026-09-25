@@ -11,7 +11,7 @@ Spec: QuickBooks Reports Prompt Library v1.1 (Q00–Q39, Reporting Library Catal
 
 ## Build a report (every family)
 
-1. **Pick the family skill** that matches the request. (The reports catalogue, Q02, is a static page with its own steps.) If the family is not built yet, say so and offer the closest built report or a QuickBooks export (see the agent's routing table). Never approximate a report from adjacent data.
+1. **Pick the family skill** that matches the request. If the family is not built yet, say so and offer the closest built report or a QuickBooks export (see the agent's routing table). Never approximate a report from adjacent data.
 2. **Discovery call.** Call the family's primary tool once, with the family's default inputs, and call `qbo_query` with `SELECT * FROM CompanyInfo` once. You need three things from these calls:
    - Confirm that QuickBooks is connected. If a call fails with a connection error, tell the user to connect QuickBooks under Settings → Connections, and stop.
    - Check that the response has the shape the family skill describes (QuickBooks report JSON is `Header` / `Columns` / `Rows.Row[]`, with sections carrying `group`, `Header`, `Rows` and `Summary`).
