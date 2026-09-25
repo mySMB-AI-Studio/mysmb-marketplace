@@ -37,4 +37,4 @@ The skills embed a report kit that is tested as one unit, with each family's `da
 
 ## Configuration
 
-No configuration variables are required. Connect QuickBooks under Settings → Connections (OAuth).
+No configuration variables are required.
