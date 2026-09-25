@@ -29,7 +29,7 @@ Reporting Library: QuickBooks Reports Prompt Library v1.1 (Q00–Q39). This vers
   - Q08 Budgets (Budget vs Actuals) — `quickbooks-budgets`
   - Q10 Expenses & Pay Bills overview — `quickbooks-expenses-overview`
   - Q11 Sales & Get Paid overview — `quickbooks-sales-overview`
-  - Q02 Standard reports catalogue — `quickbooks-reports-catalogue`
+  - Q02 Reports catalogue — `quickbooks-reports-catalogue`
   - Q14 Inventory overview — `quickbooks-inventory-overview`
   - Q30 Inventory family — `quickbooks-inventory`
   - Q12 Customer Hub overview — `quickbooks-customer-hub`
