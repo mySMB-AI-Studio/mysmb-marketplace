@@ -1,30 +1,57 @@
 {
-  "id": "humanitix-revenue-trend",
-  "title": "Revenue Trend",
-  "description": "Total earnings over the last 7 days, day-over-day trend vs. the prior week, and the best-performing day.",
   "category": "operations",
-  "tags": ["humanitix", "revenue", "earnings", "trend", "orders"],
-  "keywords": ["revenue trend", "earnings", "last 7 days", "best day", "vs last week", "humanitix"],
-  "connectorsUsed": ["humanitix"],
+  "connectorsUsed": [
+    "humanitix"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "humanitix",
+    "params": {},
+    "tool": "get_humanitix_revenue_trend"
+  },
+  "description": "Total earnings over the last 7 days, day-over-day trend vs. the prior week, and the best-performing day.",
+  "id": "humanitix-revenue-trend",
+  "keywords": [
+    "revenue trend",
+    "earnings",
+    "last 7 days",
+    "best day",
+    "vs last week",
+    "humanitix"
+  ],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 5 },
-    "min": { "colSpan": 4, "rowSpan": 4 },
-    "max": { "colSpan": 7, "rowSpan": 6 }
-  },
-  "dataProvider": {
-    "mcp": "humanitix",
-    "tool": "get_humanitix_revenue_trend",
-    "params": {}
+    "max": {
+      "colSpan": 7,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 5
+    }
   },
   "spec": {
-    "root": "card",
     "elements": {
-
-      "card": {
-        "type": "Card",
+      "body": {
+        "children": [
+          "loading",
+          "content"
+        ],
         "props": {},
-        "children": ["headerRow", "divider0", "body"],
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "headerRow",
+          "divider0",
+          "body"
+        ],
+        "props": {},
+        "type": "Card",
         "watch": {
           "/humanitix/get_humanitix_revenue_trend": [
             {
@@ -33,152 +60,314 @@
                 "statePath": "/ui/rows",
                 "value": {
                   "$computed": "humanitix_flatten_revenue_trend",
-                  "args": { "value": { "$state": "/humanitix/get_humanitix_revenue_trend" } }
+                  "args": {
+                    "value": {
+                      "$state": "/humanitix/get_humanitix_revenue_trend"
+                    }
+                  }
                 }
               }
             }
           ]
         }
       },
-
-      "headerRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["titleGroup"]
-      },
-      "titleGroup": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIconBadge", "titleStack"]
-      },
-      "titleIconBadge": {
-        "type": "Badge",
-        "props": { "tone": "info", "variant": "soft" },
-        "children": ["titleIcon"]
-      },
-      "titleIcon": { "type": "Icon", "props": { "name": "list", "size": "md" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Revenue Trend", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Humanitix" } },
-
-      "divider0": { "type": "Divider", "props": {} },
-
-      "body": {
-        "type": "Body",
-        "props": {},
-        "children": ["loading", "content"]
-      },
-
-      "loading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk1", "sk2"],
-        "visible": { "$state": "/_loading/humanitix.get_humanitix_revenue_trend" }
-      },
-      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "6rem", "rounded": "md" } },
-
       "content": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sourceCaption", "totalRow", "trendBlock", "footerRow"],
-        "visible": { "$state": "/_loading/humanitix.get_humanitix_revenue_trend", "not": true }
-      },
-
-      "totalRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["totalStat", "vsLastWeekBadge"]
-      },
-      "totalStat": {
-        "type": "Stat",
-        "props": { "value": { "$state": "/ui/rows/0/total_formatted" }, "size": "lg" }
-      },
-
-      "vsLastWeekBadge": {
-        "type": "Badge",
-        "props": { "tone": { "$state": "/ui/rows/0/vs_last_week_badge_tone" }, "variant": "soft" },
-        "children": ["vsLastWeekDelta", "vsLastWeekSuffix"],
-        "visible": { "$state": "/ui/rows/0/has_comparison" }
-      },
-      "vsLastWeekDelta": {
-        "type": "Delta",
+        "children": [
+          "sourceCaption",
+          "totalRow",
+          "trendBlock",
+          "footerRow"
+        ],
         "props": {
-          "value": { "$state": "/ui/rows/0/vs_last_week_label" },
-          "direction": { "$state": "/ui/rows/0/vs_last_week_direction" }
-        }
-      },
-      "vsLastWeekSuffix": { "type": "Text", "props": { "text": "vs last week", "size": "sm" } },
-
-      "trendBlock": {
+          "gap": "sm"
+        },
         "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["dailyBreakdownList"]
-      },
-      "dailyBreakdownList": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["dailyBreakdownRow"],
-        "repeat": { "statePath": "/ui/rows/0/daily_breakdown", "key": "id" }
-      },
-      "dailyBreakdownRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["dailyDayLabel", "dailyBarRow", "dailyValueLabel"]
-      },
-      "dailyDayLabel": {
-        "type": "Text",
-        "props": {
-          "text": { "$item": "label" },
-          "size": "sm",
-          "weight": { "$item": "weight" },
-          "tone": { "$item": "row_tone" }
+        "visible": {
+          "$state": "/_loading/humanitix.get_humanitix_revenue_trend",
+          "not": true
         }
-      },
-      "dailyBarRow": {
-        "type": "Row",
-        "props": { "gap": "none", "align": "center", "grow": true },
-        "children": ["dailyBar"]
       },
       "dailyBar": {
-        "type": "ProgressBar",
-        "props": { "value": { "$item": "bar_pct" }, "tone": { "$item": "row_tone" } }
+        "props": {
+          "tone": {
+            "$item": "row_tone"
+          },
+          "value": {
+            "$item": "bar_pct"
+          }
+        },
+        "type": "ProgressBar"
+      },
+      "dailyBarRow": {
+        "children": [
+          "dailyBar"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "none",
+          "grow": true
+        },
+        "type": "Row"
+      },
+      "dailyBreakdownList": {
+        "children": [
+          "dailyBreakdownRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/rows/0/daily_breakdown"
+        },
+        "type": "Stack"
+      },
+      "dailyBreakdownRow": {
+        "children": [
+          "dailyDayLabel",
+          "dailyBarRow",
+          "dailyValueLabel"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "dailyDayLabel": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "label"
+          },
+          "tone": {
+            "$item": "row_tone"
+          },
+          "weight": {
+            "$item": "weight"
+          }
+        },
+        "type": "Text"
       },
       "dailyValueLabel": {
-        "type": "Text",
         "props": {
-          "text": { "$item": "value_formatted" },
           "size": "sm",
-          "weight": { "$item": "weight" },
-          "tone": { "$item": "row_tone" }
+          "text": {
+            "$item": "value_formatted"
+          },
+          "tone": {
+            "$item": "row_tone"
+          },
+          "weight": {
+            "$item": "weight"
+          }
+        },
+        "type": "Text"
+      },
+      "divider0": {
+        "props": {},
+        "type": "Divider"
+      },
+      "eyebrow": {
+        "props": {
+          "text": "Humanitix"
+        },
+        "type": "Eyebrow"
+      },
+      "footerRow": {
+        "children": [
+          "updatedCaption"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "headerRow": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/humanitix.get_humanitix_revenue_trend"
         }
       },
-
-      "footerRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["updatedCaption"]
+      "sk1": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "6rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sourceCaption": {
+        "props": {
+          "text": "Earnings · Last 7 days",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Revenue Trend"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIconBadge",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "list",
+          "size": "md"
+        },
+        "type": "Icon"
+      },
+      "titleIconBadge": {
+        "children": [
+          "titleIcon"
+        ],
+        "props": {
+          "tone": "info",
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "totalRow": {
+        "children": [
+          "totalStat",
+          "vsLastWeekBadge"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "totalStat": {
+        "props": {
+          "size": "lg",
+          "value": {
+            "$state": "/ui/rows/0/total_formatted"
+          }
+        },
+        "type": "Stat"
+      },
+      "trendBlock": {
+        "children": [
+          "dailyBreakdownList"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack"
       },
       "updatedCaption": {
-        "type": "Caption",
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
               "pattern": "Updated {t}",
-              "t": { "$computed": "relative_time", "args": { "value": { "$state": "/ui/rows/0/last_updated_iso" } } }
+              "t": {
+                "$computed": "relative_time",
+                "args": {
+                  "value": {
+                    "$state": "/ui/rows/0/last_updated_iso"
+                  }
+                }
+              }
             }
           },
           "tone": "muted"
         },
-        "visible": { "$state": "/ui/rows/0/last_updated_iso" }
-      },
-      "sourceCaption": {
         "type": "Caption",
-        "props": { "text": "Earnings · Last 7 days", "tone": "muted" }
+        "visible": {
+          "$state": "/ui/rows/0/last_updated_iso"
+        }
+      },
+      "vsLastWeekBadge": {
+        "children": [
+          "vsLastWeekDelta",
+          "vsLastWeekSuffix"
+        ],
+        "props": {
+          "tone": {
+            "$state": "/ui/rows/0/vs_last_week_badge_tone"
+          },
+          "variant": "soft"
+        },
+        "type": "Badge",
+        "visible": {
+          "$state": "/ui/rows/0/has_comparison"
+        }
+      },
+      "vsLastWeekDelta": {
+        "props": {
+          "direction": {
+            "$state": "/ui/rows/0/vs_last_week_direction"
+          },
+          "value": {
+            "$state": "/ui/rows/0/vs_last_week_label"
+          }
+        },
+        "type": "Delta"
+      },
+      "vsLastWeekSuffix": {
+        "props": {
+          "size": "sm",
+          "text": "vs last week"
+        },
+        "type": "Text"
       }
-
-    }
+    },
+    "root": "card"
   },
-  "status": "published"
+  "tags": [
+    "humanitix",
+    "revenue",
+    "earnings",
+    "trend",
+    "orders"
+  ],
+  "title": "Revenue Trend"
 }
