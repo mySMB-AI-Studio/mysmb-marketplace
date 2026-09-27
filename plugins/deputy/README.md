@@ -6,14 +6,7 @@ Browser OAuth through myHub — no API keys, no env vars. Click Connect, sign in
 
 ## Configuration
 
-No environment variables are required on the client side — this plugin's `.mcp.json` points at myHub's own hosted MCP gateway, and myHub injects the OAuth bearer token automatically once you connect.
-
-On first use, Connect redirects to Deputy's OAuth 2.0 authorization page (`https://once.deputy.com/my/oauth/authorize`) — sign in and authorize access, and you're returned to myHub. Deputy's OAuth flow returns an `endpoint` field as part of the token exchange — your business's own install URL (e.g. `https://yourbusiness.deputy.com`) — which the server stores alongside your token so it can call the right subdomain on every subsequent request without asking again.
-
-### Prerequisites
-
-- A Deputy account with an active business.
-- The account you connect with needs whatever Deputy permissions cover the actions you intend to use this connector for (e.g. a role with department/team management access to create departments) — Deputy enforces this on its own side per user account, independent of the OAuth scope this connector requests.
+No configuration variables are required.
 
 ## Tools & resources
 
