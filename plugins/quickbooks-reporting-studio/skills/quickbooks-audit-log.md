@@ -67,7 +67,7 @@ a{color:var(--accent)}
 .btns button#qb-xlsx{background:var(--btn);color:var(--btn-ink)}
 #qb-status{font-size:12px;color:var(--muted);min-height:16px;margin:0 0 6px}
 .qb-banner{border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;border:1px solid var(--line)}
-.qb-banner.pass{background:var(--pass-bg)}.qb-banner.fail{background:var(--fail-bg);border-color:var(--neg)}
+.qb-banner.pass{background:var(--pass-bg)}.qb-banner.na{border-color:var(--muted)}.qb-banner.fail{background:var(--fail-bg);border-color:var(--neg)}
 .qb-banner ul{margin:6px 0 0;padding-left:18px}.qb-banner li.bad{color:var(--neg);font-weight:600}.qb-banner li.na{color:var(--muted)}
 .qb-card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:20px 24px;margin-bottom:12px}
 #qb-head{text-align:center;padding:8px 0 16px;background:var(--band);color:var(--band-ink);border-radius:6px}

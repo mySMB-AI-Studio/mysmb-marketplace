@@ -5,13 +5,13 @@ description: QuickBooks Online Employees and time family (Q31) as a live, valida
 
 # Employees and time family (Q31)
 
-Use when the user asks for time activities, timesheets, hours by employee, billable hours, recent or edited time entries, time by pay type, or the employee contact list. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`qbo_query`, `get_preferences`).
+Use when the user asks for time activities, timesheets, hours by employee, billable hours, recent or edited time entries, time by pay type, or the employee contact list. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`list_time_activity`, `list_employee`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports › Employees / Payroll · Time. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q31. Delivery: Wave 4 (Feature F6).
 
 ## Discovery call
 
-`qbo_query` with the dataBindings TimeActivity query — expect `QueryResponse.TimeActivity[]` with TxnDate, NameOf (Employee | Vendor), EmployeeRef / VendorRef, CustomerRef, ItemRef, BillableStatus, HourlyRate, Hours + Minutes (or StartTime / EndTime + breaks). **If QuickBooks rejects the field list** (the query fails with a query-syntax error), change the `time_activities` binding to `list_time_activity` (`orderBy` = `TxnDate DESC`, `maxResults` = 1000) and the `employees` binding to `list_employee` (`maxResults` = 1000); the config reads the same response. The field lists keep pay rates and personal details out of the report.
+`list_time_activity` (latest 1,000 by date) — expect `QueryResponse.TimeActivity[]` with TxnDate, NameOf (Employee | Vendor), EmployeeRef / VendorRef, CustomerRef, ItemRef, BillableStatus, HourlyRate, Hours + Minutes (or StartTime / EndTime + breaks); `list_employee` (active). QuickBooks returns full records (it does not accept field lists in queries): the report shows only contact fields and hours, but a downloaded or shared snapshot carries what QuickBooks returned, so say so when the user shares it.
 
 ## Date defaults
 
@@ -93,12 +93,16 @@ Preset `this_month`. Time has no accounting basis.
       "id": "time_activities",
       "tool": {
         "mcp": "quickbooks-accounting",
-        "name": "qbo_query"
+        "name": "list_time_activity"
       },
       "params": {
-        "query": {
+        "orderBy": {
           "kind": "static",
-          "value": "SELECT Id, TxnDate, NameOf, EmployeeRef, VendorRef, CustomerRef, ItemRef, ClassRef, DepartmentRef, BillableStatus, HourlyRate, Hours, Minutes, BreakHours, BreakMinutes, StartTime, EndTime, Description, PayrollItemRef, MetaData FROM TimeActivity ORDER BY TxnDate DESC MAXRESULTS 1000"
+          "value": "TxnDate DESC"
+        },
+        "maxResults": {
+          "kind": "static",
+          "value": 1000
         }
       }
     },
@@ -106,12 +110,16 @@ Preset `this_month`. Time has no accounting basis.
       "id": "employees",
       "tool": {
         "mcp": "quickbooks-accounting",
-        "name": "qbo_query"
+        "name": "list_employee"
       },
       "params": {
-        "query": {
+        "where": {
           "kind": "static",
-          "value": "SELECT Id, DisplayName, GivenName, FamilyName, PrimaryPhone, Mobile, PrimaryEmailAddr, PrimaryAddr, EmployeeNumber, Active FROM Employee MAXRESULTS 1000"
+          "value": "Active = true"
+        },
+        "maxResults": {
+          "kind": "static",
+          "value": 1000
         }
       }
     },
@@ -149,7 +157,7 @@ QB.app({
   defaults: { start_date: '2026-09-01', end_date: '2026-09-30', persona: 'Bookkeeper',
     display: '{"cents":1,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"this_month","a":"custom","c":"none","v":"by_employee","x":""}' },
   uses: { time_activities: [], employees: [], company_info: [], prefs: [] },
-  tools: { time_activities: 'qbo_query (TimeActivity, latest 1,000)', employees: 'qbo_query (Employee contact fields)', company_info: 'qbo_query (CompanyInfo)', prefs: 'get_preferences' },
+  tools: { time_activities: 'list_time_activity (latest 1,000)', employees: 'list_employee (active employees)', company_info: 'qbo_query (CompanyInfo)', prefs: 'get_preferences' },
   views: [['by_employee', 'Time Activities by Employee Detail'], ['timesheet', 'Timesheet Detail'], ['recent', 'Recent/Edited Time Activities'], ['pay_type', 'Time Summary by Pay Type'], ['contacts', 'Employee Contact List']],
   render: function (c) {
     var body = c.body, money = function (v) { return QB.money(v, c.currency, c.display); }, v = c.view || 'by_employee', h = QB.h;
@@ -228,7 +236,7 @@ QB.app({
       { name: 'All time activities in the period were loaded', pass: complete, detail: capped ? (complete ? 'Latest 1,000 reach back before the period' : 'QuickBooks returned the latest 1,000 time activities; the oldest is ' + oldest + ', after the period start — shorten the period') : all.length + ' time activities in QuickBooks' }];
     this._x = { groups: groups, order: order, shown: shown, totH: totH, hm: hm, view: v };
     return { checks: checks, title: (this.views.filter(function (x) { return x[0] === v; })[0] || ['', ''])[1] + (sel ? ' — ' + people[sel] : ''), period: v === 'contacts' ? 'Active employees' : undefined,
-      notes: ['Durations are hours:minutes. Time entered as start and end times is the difference less breaks.', 'Contacts show only the fields QuickBooks holds for the contact list (phone, mobile, email, address, employee ID); pay, tax and personal details are not requested.'].concat(inP.some(function (r) { return r.kind === 'Supplier'; }) ? ['Supplier (contractor) time is included and marked (supplier).'] : []),
+      notes: ['Durations are hours:minutes. Time entered as start and end times is the difference less breaks.', 'QuickBooks returns full employee and time records; this report shows only contact fields (phone, mobile, email, address, employee ID) and hours. A downloaded or shared copy carries the data QuickBooks returned — share it only with people who may see employee records.'].concat(inP.some(function (r) { return r.kind === 'Supplier'; }) ? ['Supplier (contractor) time is included and marked (supplier).'] : []),
       na: ['Time Summary by Pay Type when QuickBooks Payroll is not used (AU payroll is in Employment Hero)', 'Payroll, leave and pay details (Employment Hero)'] };
   },
   excel: function (c) {

@@ -207,7 +207,7 @@ QB.app({
     if (c.errors.gst_current) { body.innerHTML = '<p class="qb-err">' + QB.h(c.err('gst_current')) + '</p>'; return { checks: [{ name: 'GST position loaded', pass: false, detail: c.err('gst_current') }] }; }
     if (!c.data.gst_current) return {};
     var cur = QB.noData(c.data.gst_current) ? null : QB.bas(c.data.gst_current), prev = c.data.gst_previous && !QB.noData(c.data.gst_previous) ? QB.bas(c.data.gst_previous) : null;
-    if (!cur) { body.innerHTML = '<div class="qb-banner fail"><strong>QuickBooks returned no GST rows for this period.</strong> The GST position is unavailable — not zero.</div>'; return { checks: [{ name: 'QuickBooks returned GST rows for the period', pass: null }] }; }
+    if (!cur) { body.innerHTML = '<div class="qb-banner na"><strong>QuickBooks returned no GST rows for this period.</strong> The GST position is unavailable — not zero. Either there were no GST transactions in the period, or the connector\'s Tax Summary returned nothing; try a period you know has GST activity.</div>'; return { checks: [{ name: 'QuickBooks returned GST rows for the period', pass: null }] }; }
     var net = function (b) { return b && b.a1 != null && b.b1 != null ? Math.round((b.a1 - b.b1) * 100) / 100 : null; }, n = net(cur), refund = n != null && n < 0;
     var bsl = c.data.bs_end ? QB.walk(c.data.bs_end) : [], liab = QB.val(QB.find(bsl, null, /gst (liabilities|payable)/i, 'row'));
     body.innerHTML = QB.kpis([{ label: refund ? 'GST refund' : 'GST payable', value: n == null ? null : Math.abs(n), sub: QB.periodLine(c.inputs.start_date, c.inputs.end_date) },
