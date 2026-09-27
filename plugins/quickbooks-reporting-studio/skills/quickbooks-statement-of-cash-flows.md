@@ -198,7 +198,7 @@ QB.app({
     var m = QB.mergeCompare(rep, cmpOn ? c.data.cash_flow_compare : null), lines = m.lines;
     var T = function (g, re) { return QB.val(QB.find(lines, g, re)); };
     var op = T('OperatingActivities', /^net cash provided by operating activities$/i), inv = T('InvestingActivities', /^net cash provided by investing activities$/i) || 0, fin = T('FinancingActivities', /^net cash provided by financing activities$/i) || 0;
-    var inc = T('CashIncrease', /^net cash (increase|decrease) for period$/i), beg = T('BeginningCash', /^cash at beginning of period$/i), end = T('EndingCash', /^cash at end of period$/i);
+    var inc = T('CashIncrease', QB.CF_INC_RE), beg = T('BeginningCash', QB.CF_BEG_RE), end = T('EndingCash', QB.CF_END_RE);
     var ni = QB.val(QB.find(lines, null, QB.NI_RE, 'row')), adj = T('OperatingAdjustments', /^total adjustments/i) || 0;
     lines.forEach(function (l) { if (l.kind === 'row' && /^net income$/i.test(l.label)) l.label = 'Net Earnings'; });
     var extra = cmpOn ? QB.compareCols({ prev_period: 'Previous period', prev_year: 'Previous year', ytd: 'Year-to-date' }[c.compareMode]) : [];

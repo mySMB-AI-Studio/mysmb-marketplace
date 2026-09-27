@@ -225,11 +225,16 @@ rec(rep && rep.Rows && rep.Rows.Row, 0, []);
 return out;
 }
 function find(rows, group, labelRe, kind) {
-var k = kind || 'total', i;
-if (group) for (i = 0; i < rows.length; i++) if (rows[i].group === group && rows[i].kind === k) return rows[i];
-if (labelRe) for (i = 0; i < rows.length; i++) if (rows[i].kind === k && labelRe.test(rows[i].label)) return rows[i];
+var kinds = kind ? [kind] : ['total', 'row', 'header'], i, j, k, ok = function (l) { return kind || l.kind !== 'header' || l.values.some(function (v) { return v != null; }); }; // fallback headers only when they carry amounts
+for (j = 0; j < kinds.length; j++) { k = kinds[j];
+if (group) for (i = 0; i < rows.length; i++) if (rows[i].group === group && rows[i].kind === k && ok(rows[i])) return rows[i];
+if (labelRe) for (i = 0; i < rows.length; i++) if (rows[i].kind === k && labelRe.test(rows[i].label) && ok(rows[i])) return rows[i];
+}
 return null;
 }
+var CF_END_RE = /^(cash( and cash equivalents)? at (the )?end of (the )?(period|year|month)|closing cash( balance)?)$/i,
+CF_BEG_RE = /^(cash( and cash equivalents)? at (the )?beginning of (the )?(period|year|month)|opening cash( balance)?)$/i,
+CF_INC_RE = /^net (cash )?(increase|decrease|change)( \(decrease\))?( in cash( and cash equivalents)?)?( for (the )?(period|year))?$/i;
 var NI_RE = /^(net (income|earnings|profit)|profit (\(loss\) )?for the (year|period)|current year (earnings|profit))$/i;
 function bsParts(lines) {
 var A = find(lines, 'TotalAssets', /^total assets$/i), LE = find(lines, 'TotalLiabilitiesAndEquity', /^total liabilities and .*equity$/i);
@@ -817,7 +822,7 @@ if (MH.onRefresh) MH.onRefresh(function () { status('Refreshing…'); });
 if (MH.onThemeChange) MH.onThemeChange(function () { render(); });
 return { state: S, change: change, render: render, exportXlsx: exportXlsx, ctx: ctx };
 }
-return { NI_RE: NI_RE, bsParts: bsParts, applyBrand: applyBrand, bas: bas, sectionTies: sectionTies, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, mergeCompare: mergeCompare, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app, MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays,
+return { CF_END_RE: CF_END_RE, CF_BEG_RE: CF_BEG_RE, CF_INC_RE: CF_INC_RE, NI_RE: NI_RE, bsParts: bsParts, applyBrand: applyBrand, bas: bas, sectionTies: sectionTies, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, mergeCompare: mergeCompare, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app, MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays,
 num: num, cols: cols, walk: walk, find: find, val: val, header: header, noData: noData, totalFor: totalFor, near: near, sum: sum,
 companyInfo: companyInfo, fiscalStart: fiscalStart, homeCurrency: homeCurrency, symbol: symbol,
 DISPLAY_DEFAULT: DISPLAY_DEFAULT, readDisplay: readDisplay, writeDisplay: writeDisplay, money: money, pct: pct, isNeg: isNeg,

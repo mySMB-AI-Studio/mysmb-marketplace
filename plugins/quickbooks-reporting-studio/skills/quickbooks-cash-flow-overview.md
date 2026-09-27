@@ -261,7 +261,7 @@ QB.app({
     var upOut = QB.sum(bills.filter(function (x) { return x.DueDate >= today && x.DueDate <= mEnd; }).map(function (x) { return x.Balance; }));
     var paidOut = QB.sum(q('bill_payments', 'BillPayment').filter(function (x) { return inMonth(x.TxnDate); }).map(function (x) { return x.TotalAmt; })) + QB.sum(q('expenses_paid', 'Purchase').filter(function (x) { return inMonth(x.TxnDate); }).map(function (x) { return x.TotalAmt; }));
     paidOut = Math.round(paidOut * 100) / 100;
-    var cf = c.data.cash_flow_12m, cfc = cf ? QB.cols(cf) : [], cfL = cf ? QB.walk(cf) : [], endL = QB.find(cfL, 'EndingCash', /^cash at end of period$/i), incL = QB.find(cfL, 'CashIncrease');
+    var cf = c.data.cash_flow_12m, cfc = cf ? QB.cols(cf) : [], cfL = cf ? QB.walk(cf) : [], endL = QB.find(cfL, 'EndingCash', QB.CF_END_RE), incL = QB.find(cfL, 'CashIncrease', QB.CF_INC_RE);
     var months = cfc.slice(1).filter(function (x) { return !/^total$/i.test(x.title); }), idx = months.map(function (x) { return x.i - 1; });
     var due30 = QB.iso(QB.addDays(QB.parse(today), 30));
     var proj = Math.round((bankTot + QB.sum(inv.filter(function (x) { return x.DueDate <= due30; }).map(function (x) { return x.Balance; })) - QB.sum(bills.filter(function (x) { return x.DueDate <= due30; }).map(function (x) { return x.Balance; }))) * 100) / 100;
