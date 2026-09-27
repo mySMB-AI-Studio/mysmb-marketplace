@@ -173,7 +173,7 @@ QB.app({
     var body = c.body, money = function (v) { return QB.money(v, c.currency, c.display); }, v = c.view || 'bva';
     if (c.errors.budgets) { body.innerHTML = '<p class="qb-err">' + QB.h(c.err('budgets')) + '</p>'; return { checks: [{ name: 'Budgets loaded', pass: false, detail: c.err('budgets') }] }; }
     var list = ((c.data.budgets && c.data.budgets.QueryResponse && c.data.budgets.QueryResponse.Budget) || []).filter(function (b) { return !b.BudgetType || b.BudgetType === 'ProfitAndLoss'; });
-    if (!list.length) { body.innerHTML = '<div class="qb-banner fail"><strong>No Profit and Loss budget in QuickBooks.</strong> Create one in QuickBooks › Reports › Financial planning › Budgets, then refresh this report.</div>'; return { checks: [{ name: 'A Profit and Loss budget exists', pass: null, detail: 'None found' }], na: ['Budget figures (no budget in QuickBooks)'] }; }
+    if (!list.length) { body.innerHTML = '<div class="qb-banner na"><strong>No Profit and Loss budget in QuickBooks.</strong> Create one in QuickBooks › Reports › Financial planning › Budgets, then refresh this report.</div>'; return { checks: [{ name: 'A Profit and Loss budget exists', pass: null, detail: 'None found' }], na: ['Budget figures (no budget in QuickBooks)'] }; }
     if (c.errors.pnl_monthly) { body.innerHTML = '<p class="qb-err">Actuals are unavailable — not zero: ' + QB.h(c.err('pnl_monthly')) + '</p>'; return { checks: [{ name: 'Actual = Profit and Loss (each account, budget period)', pass: false, detail: c.err('pnl_monthly') }] }; }
     if (!c.data.pnl_monthly) return {};
     var sel = list.filter(function (b) { return b.Id === c.display.x; })[0] || list.filter(function (b) { return b.StartDate === c.inputs.start_date; })[0] || list[0];

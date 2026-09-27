@@ -238,12 +238,10 @@ QB.app({
     var cols = QB.cols(rep), multi = cols.length > 2, cmpOn = c.compareMode !== 'none' && !multi;
     var m = QB.mergeCompare(rep, cmpOn ? c.data.bs_compare : null), lines = m.lines;
     if (c.view === 'summary') lines = lines.filter(function (l) { return l.kind !== 'row' || l.depth <= 1; });
-    var T = function (g, re) { return QB.val(QB.find(lines, g, re)); };
-    var A = T('TotalAssets', /^total assets$/i), L = T('Liabilities', /^total liabilities$/i), E = T('Equity', /^total equity$/i), LE = T('TotalLiabilitiesAndEquity', /^total liabilities and (shareholders' )?equity$/i);
-    var CA = T('CurrentAssets', /^total current assets$/i), CL = T('CurrentLiabilities', /^total current liabilities$/i);
-    var niRow = QB.find(m.lines, null, /^net (income|earnings)$/i, 'row'), niBS = QB.val(niRow);
-    m.lines.forEach(function (l) { if (l === niRow) l.label = 'Net Earnings'; });
-    var pl = c.data.pnl_ytd, niPL = pl ? QB.val(QB.find(QB.walk(pl), 'NetIncome', /^net income$/i)) : null;
+    var P = QB.bsParts(m.lines), A = QB.val(P.A), L = QB.val(P.L), E = QB.val(P.E), LE = QB.val(P.LE), CA = QB.val(P.CA), CL = QB.val(P.CL);
+    var niRow = P.ni, niBS = QB.val(niRow), niLabel = niRow ? niRow.label : 'Net Earnings';
+    m.lines.forEach(function (l) { if (l === niRow && /^net income$/i.test(l.label)) l.label = 'Net Earnings'; });
+    var pl = c.data.pnl_ytd, niPL = pl ? QB.val(QB.find(QB.walk(pl), 'NetIncome', QB.NI_RE)) : null;
     var extra = cmpOn ? QB.compareCols(c.compareMode === 'prev_year' ? 'Previous year' : 'Previous month end') : [];
     var titles = [''].concat(cols.slice(1).map(function (x) { return x.title || 'Total'; }));
     var html = QB.kpis([{ label: 'Total for Assets', value: A }, { label: 'Total for Liabilities', value: L }, { label: 'Total for Equity', value: E },
@@ -254,20 +252,20 @@ QB.app({
     QB.bars(document.getElementById('ch1'), { title: 'Assets vs liabilities and equity', labels: ['Assets', 'Liabilities', 'Equity', 'Liabilities + Equity'], series: [{ name: 'As of ' + c.inputs.as_at, values: [A, L, E, LE] }] }, c);
     if (multi) {
       var mc = cols.slice(1).filter(function (x) { return !/^total$/i.test(x.title); }), idx = mc.map(function (x) { return x.i - 1; });
-      var ser = function (g) { var l = QB.find(lines, g); return idx.map(function (i) { return l ? l.values[i] : null; }); };
-      QB.line(document.getElementById('ch2'), { title: 'Assets and liabilities over time', labels: mc.map(function (x) { return x.title; }), series: [{ name: 'Total Assets', values: ser('TotalAssets') }, { name: 'Total Liabilities', values: ser('Liabilities') }] }, c);
+      var ser = function (l) { return idx.map(function (i) { return l ? l.values[i] : null; }); };
+      QB.line(document.getElementById('ch2'), { title: 'Assets and liabilities over time', labels: mc.map(function (x) { return x.title; }), series: [{ name: 'Total Assets', values: ser(P.A) }, { name: 'Total Liabilities', values: ser(P.L) }] }, c);
     }
     var ties = QB.sectionTies(rep), hd = QB.header(rep);
     var checks = [
       { name: 'Total for Assets = Total for Liabilities + Equity', pass: A == null || LE == null ? null : QB.near(A, LE) && (L == null || E == null || QB.near(A, L + E)), detail: QB.money(A, c.currency, c.display) + ' vs ' + QB.money(LE, c.currency, c.display) },
       { name: "Each 'Total for' = Σ its rows", pass: ties.checked ? ties.failed.length === 0 : null, detail: ties.failed.length ? 'Mismatch: ' + ties.failed.join(', ') : ties.checked + ' sections' },
-      { name: 'Net Earnings = P&L financial year to date', pass: niBS == null || niPL == null ? null : QB.near(niBS, niPL), detail: c.errors.pnl_ytd ? c.err('pnl_ytd') : QB.money(niBS, c.currency, c.display) + ' vs P&L ' + QB.money(niPL, c.currency, c.display) + ' (' + c.inputs.fy_start + ' to ' + c.inputs.as_at + ')' },
+      { name: 'Net Earnings = P&L financial year to date', pass: niBS == null || niPL == null ? null : QB.near(niBS, niPL), detail: c.errors.pnl_ytd ? c.err('pnl_ytd') : niRow == null ? 'No current-year profit line in equity' : niLabel + ' ' + QB.money(niBS, c.currency, c.display) + ' vs P&L ' + QB.money(niPL, c.currency, c.display) + ' (' + c.inputs.fy_start + ' to ' + c.inputs.as_at + ')' },
       { name: 'QuickBooks returned the requested date', pass: !c.live ? null : hd.EndPeriod === c.inputs.as_at, detail: 'As of ' + (hd.EndPeriod || '?') + ', ' + (hd.ReportBasis || '?') + ' basis' }
     ];
     if (cmpOn) { var ch = QB.header(c.data.bs_compare); checks.push({ name: 'Comparison deltas recomputed from the comparison date', pass: c.errors.bs_compare ? false : !c.live ? null : ch.EndPeriod === c.inputs.compare_as_at, detail: c.errors.bs_compare ? c.err('bs_compare') : 'As of ' + (ch.EndPeriod || '?') }); }
     this._x = { lines: lines, titles: titles, extra: extra };
     return { checks: checks, na: ['Balance Sheet Detail (transaction level — use the General Ledger family)', 'Statement of Changes in Equity (not exposed by the Accounting API)'],
-      notes: m.onlyInCompare.length ? [m.onlyInCompare.length + ' account(s) had a balance only at the comparison date: ' + m.onlyInCompare.join(', ')] : [],
+      notes: (P.L && P.L.derived ? ['Total for Liabilities is the sum of the liabilities sections (QuickBooks shows no liabilities total for this company): Total liabilities and equity − equity.'] : []).concat(m.onlyInCompare.length ? [m.onlyInCompare.length + ' account(s) had a balance only at the comparison date: ' + m.onlyInCompare.join(', ')] : []),
       title: c.view === 'summary' ? 'Balance Sheet Summary' : cmpOn ? 'Balance Sheet Comparison' : 'Balance Sheet', period: QB.asOfLine(c.inputs.as_at) };
   },
   excel: function (c) {

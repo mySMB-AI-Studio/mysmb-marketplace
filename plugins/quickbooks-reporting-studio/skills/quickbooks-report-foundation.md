@@ -130,7 +130,7 @@ a{color:var(--accent)}
 .btns button#qb-xlsx{background:var(--btn);color:var(--btn-ink)}
 #qb-status{font-size:12px;color:var(--muted);min-height:16px;margin:0 0 6px}
 .qb-banner{border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;border:1px solid var(--line)}
-.qb-banner.pass{background:var(--pass-bg)}.qb-banner.fail{background:var(--fail-bg);border-color:var(--neg)}
+.qb-banner.pass{background:var(--pass-bg)}.qb-banner.na{border-color:var(--muted)}.qb-banner.fail{background:var(--fail-bg);border-color:var(--neg)}
 .qb-banner ul{margin:6px 0 0;padding-left:18px}.qb-banner li.bad{color:var(--neg);font-weight:600}.qb-banner li.na{color:var(--muted)}
 .qb-card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:20px 24px;margin-bottom:12px}
 #qb-head{text-align:center;padding:8px 0 16px;background:var(--band);color:var(--band-ink);border-radius:6px}
@@ -225,10 +225,34 @@ rec(rep && rep.Rows && rep.Rows.Row, 0, []);
 return out;
 }
 function find(rows, group, labelRe, kind) {
-var k = kind || 'total', i;
-if (group) for (i = 0; i < rows.length; i++) if (rows[i].group === group && rows[i].kind === k) return rows[i];
-if (labelRe) for (i = 0; i < rows.length; i++) if (rows[i].kind === k && labelRe.test(rows[i].label)) return rows[i];
+var kinds = kind ? [kind] : ['total', 'row', 'header'], i, j, k, ok = function (l) { return kind || l.kind !== 'header' || l.values.some(function (v) { return v != null; }); }; // fallback headers only when they carry amounts
+for (j = 0; j < kinds.length; j++) { k = kinds[j];
+if (group) for (i = 0; i < rows.length; i++) if (rows[i].group === group && rows[i].kind === k && ok(rows[i])) return rows[i];
+if (labelRe) for (i = 0; i < rows.length; i++) if (rows[i].kind === k && labelRe.test(rows[i].label) && ok(rows[i])) return rows[i];
+}
 return null;
+}
+var CF_END_RE = /^(cash( and cash equivalents)? at (the )?end of (the )?(period|year|month)|closing cash( balance)?)$/i,
+CF_BEG_RE = /^(cash( and cash equivalents)? at (the )?beginning of (the )?(period|year|month)|opening cash( balance)?)$/i,
+CF_INC_RE = /^net (cash )?(increase|decrease|change)( \(decrease\))?( in cash( and cash equivalents)?)?( for (the )?(period|year))?$/i;
+var NI_RE = /^(net (income|earnings|profit)|profit (\(loss\) )?for the (year|period)|current year (earnings|profit))$/i;
+function bsParts(lines) {
+var A = find(lines, 'TotalAssets', /^total assets$/i), LE = find(lines, 'TotalLiabilitiesAndEquity', /^total liabilities and .*equity$/i);
+var E = find(lines, 'Equity', /^total ([a-z]+['\u2019]?s?['\u2019]?\s)?equity$/i), L = find(lines, 'Liabilities', /^total liabilities$/i);
+var CA = find(lines, 'CurrentAssets', /^total current assets:?$/i), CL = find(lines, 'CurrentLiabilities', /^total current liabilities:?$/i);
+if (LE) {
+var i = lines.indexOf(LE), hdr = null, j;
+for (j = i - 1; j >= 0; j--) if (lines[j].kind === 'header' && lines[j].depth === LE.depth) { hdr = lines[j]; break; }
+if (hdr) {
+var kids = lines.filter(function (l) { return l.kind !== 'header' && l.depth === LE.depth + 1 && l.path.length === LE.depth + 1 && l.path[LE.depth] === hdr.label; });
+if (!E) E = kids.filter(function (l) { return l.kind === 'total' && /equity/i.test(l.label); })[0] || null;
+if (!L && E) { var rest = kids.filter(function (l) { return l !== E; });
+if (rest.length) L = { kind: 'total', derived: true, depth: LE.depth + 1, path: LE.path.concat(hdr.label), label: 'Total liabilities', group: '', values: E.values.map(function (_, k) { return sum(rest.map(function (l) { return l.values[k]; })); }) }; }
+}
+}
+var ni = find(lines, null, NI_RE, 'row');
+if (!ni) ni = lines.filter(function (l) { return l.kind === 'row' && !l.id && l.path.some(function (p) { return /equity/i.test(p); }) && /profit|income|earnings/i.test(l.label) && !/retained/i.test(l.label); })[0] || null;
+return { A: A, L: L, E: E, LE: LE, CA: CA, CL: CL, ni: ni };
 }
 function val(line, col) { return line ? line.values[col == null ? line.values.length - 1 : col] : null; }
 function header(rep) { return (rep && rep.Header) || {}; }
@@ -567,6 +591,9 @@ if (!items.length) { el.innerHTML = '<p class="muted">Data appears once it\'s av
 if (items.length > 6) { var rest = items.slice(5); items = items.slice(0, 5).concat([{ label: '+' + rest.length + ' more', value: sum(rest.map(function (r) { return r.value; })) }]); }
 var tot = sum(items.map(function (i) { return i.value; })), a0 = -Math.PI / 2, R = 80, r = 50, cx = 100, cy = 100, svg = '<svg viewBox="0 0 200 200" role="img" aria-label="' + h(o.title || 'Donut chart') + '">';
 items.forEach(function (it, i) {
+if (it.value / tot > 0.9999) { // one slice: a full-circle arc starts and ends at the same point and draws nothing — draw a ring
+svg += '<path fill-rule="evenodd" d="M' + cx + ' ' + (cy - R) + ' A' + R + ' ' + R + ' 0 1 1 ' + cx + ' ' + (cy + R) + ' A' + R + ' ' + R + ' 0 1 1 ' + cx + ' ' + (cy - R) + 'Z M' + cx + ' ' + (cy - r) + ' A' + r + ' ' + r + ' 0 1 0 ' + cx + ' ' + (cy + r) + ' A' + r + ' ' + r + ' 0 1 0 ' + cx + ' ' + (cy - r) + 'Z" fill="var(--d' + (i + 1) + ')"><title>' + h(it.label + ': ' + money(it.value, ctx.currency, ctx.display)) + '</title></path>'; return;
+}
 var a1 = a0 + (it.value / tot) * Math.PI * 2 - 1e-6, lg = a1 - a0 > Math.PI ? 1 : 0;
 var p = [cx + R * Math.cos(a0), cy + R * Math.sin(a0), cx + R * Math.cos(a1), cy + R * Math.sin(a1), cx + r * Math.cos(a1), cy + r * Math.sin(a1), cx + r * Math.cos(a0), cy + r * Math.sin(a0)].map(function (v) { return v.toFixed(2); });
 svg += '<path d="M' + p[0] + ' ' + p[1] + ' A' + R + ' ' + R + ' 0 ' + lg + ' 1 ' + p[2] + ' ' + p[3] + ' L' + p[4] + ' ' + p[5] + ' A' + r + ' ' + r + ' 0 ' + lg + ' 0 ' + p[6] + ' ' + p[7] + 'Z" fill="var(--d' + (i + 1) + ')"><title>' + h(it.label + ': ' + money(it.value, ctx.currency, ctx.display)) + '</title></path>';
@@ -757,8 +784,9 @@ banner(c); sources(c);
 }
 function banner(c) {
 var el = $('qb-banner'); if (!el) return; var ch = last.checks, fails = ch.filter(function (k) { return k.pass === false; }), done = ch.filter(function (k) { return k.pass === true; });
-el.className = 'qb-banner ' + (fails.length ? 'fail' : 'pass');
-el.innerHTML = '<strong>' + (fails.length ? '⚠ Validation: ' + fails.length + ' check' + (fails.length > 1 ? 's' : '') + ' failed' : '✓ Validation: ' + done.length + '/' + ch.length + ' checks passed') + '</strong>' +
+var none = !fails.length && !done.length && ch.length > 0; // every check N/A: say so, never a green tick
+el.className = 'qb-banner ' + (fails.length ? 'fail' : none ? 'na' : 'pass');
+el.innerHTML = '<strong>' + (fails.length ? '⚠ Validation: ' + fails.length + ' check' + (fails.length > 1 ? 's' : '') + ' failed' : none ? '– Validation: no check could run (' + ch.length + ' N/A)' : '✓ Validation: ' + done.length + '/' + ch.length + ' checks passed') + '</strong>' +
 ' · Data as of ' + h(S.fetchedAt ? new Date(S.fetchedAt).toLocaleString('en-AU') : '—') + (live ? '' : ' · Snapshot: figures frozen at capture time') +
 ' · Financial year starts ' + h(MONTHS[c.fy.month - 1]) + ' (' + h(c.fy.source) + ')' +
 '<ul>' + ch.map(function (k) { return '<li class="' + (k.pass === false ? 'bad' : k.pass === true ? 'ok' : 'na') + '">' + (k.pass === false ? '✗ ' : k.pass === true ? '✓ ' : '– ') + h(k.name) + (k.detail ? ' — ' + h(k.detail) : '') + '</li>'; }).join('') + '</ul>';
@@ -794,7 +822,7 @@ if (MH.onRefresh) MH.onRefresh(function () { status('Refreshing…'); });
 if (MH.onThemeChange) MH.onThemeChange(function () { render(); });
 return { state: S, change: change, render: render, exportXlsx: exportXlsx, ctx: ctx };
 }
-return { applyBrand: applyBrand, bas: bas, sectionTies: sectionTies, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, mergeCompare: mergeCompare, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app, MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays,
+return { CF_END_RE: CF_END_RE, CF_BEG_RE: CF_BEG_RE, CF_INC_RE: CF_INC_RE, NI_RE: NI_RE, bsParts: bsParts, applyBrand: applyBrand, bas: bas, sectionTies: sectionTies, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, mergeCompare: mergeCompare, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app, MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays,
 num: num, cols: cols, walk: walk, find: find, val: val, header: header, noData: noData, totalFor: totalFor, near: near, sum: sum,
 companyInfo: companyInfo, fiscalStart: fiscalStart, homeCurrency: homeCurrency, symbol: symbol,
 DISPLAY_DEFAULT: DISPLAY_DEFAULT, readDisplay: readDisplay, writeDisplay: writeDisplay, money: money, pct: pct, isNeg: isNeg,

@@ -228,7 +228,8 @@ QB.app({
     accts.forEach(function (a) {
       var s = base.map(function (x) { return a.l.values[x.i - 1] || 0; }), f = fit(s), own = adj[a.key] != null && adj[a.key] !== '', p = Number(own ? adj[a.key] : adj[a.g]) || 0;
       a.base = s; a.baseTot = QB.sum(s); a.pct = p; a.own = own;
-      a.raw = fm.map(function (_, i) { return n ? r2(f(n + i)) : 0; }); a.fc = a.raw.map(function (x) { return r2(x * (1 + p / 100)); });
+      var pos = s.every(function (x) { return x >= 0; }), neg = s.every(function (x) { return x <= 0; }), hit = false; // never cross zero if the base never did
+      a.raw = fm.map(function (_, i) { var x = n ? r2(f(n + i)) : 0; if (pos && x < 0 || neg && x > 0) { hit = true; x = 0; } return x; }); a.fc = a.raw.map(function (x) { return r2(x * (1 + p / 100)); }); a.floored = hit;
       a.act = after.map(function (x) { return a.l.values[x.i - 1] || 0; });
       a.rawTot = QB.sum(a.raw); a.fcTot = QB.sum(a.fc);
     });
@@ -320,7 +321,7 @@ QB.app({
     return { checks: checks, title: vt === 'Forecast' ? 'Forecast — ' + mLabel[useM] : vt,
       period: 'Base period ' + QB.periodLine(base[0].start, base[n - 1].end) + ' · forecast ' + mon(fm[0]) + ' - ' + mon(fm[H - 1]),
       notes: ['This is an estimate projected from past results (' + mLabel[useM] + ' of each account over the ' + n + ' base months), not a figure from QuickBooks. The shaded range is where 80% of outcomes would fall if the base-period variation continued.',
-        'Adjustments change the forecast only; nothing is written to QuickBooks.'].concat(useM !== method ? ['Same month last year needs 12 complete base months; this base period has ' + n + ', so the average is used.'] : [])
+        'Adjustments change the forecast only; nothing is written to QuickBooks.'].concat(accts.some(function (a) { return a.floored; }) ? [accts.filter(function (a) { return a.floored; }).length + ' account(s) trend past zero within the forecast (' + accts.filter(function (a) { return a.floored; }).slice(0, 4).map(function (a) { return a.name; }).join(', ') + (accts.filter(function (a) { return a.floored; }).length > 4 ? ', …' : '') + ') and are held at zero — an account that never changed sign in the base period is not forecast to. Consider Average of base period when the history is uneven.'] : []).concat(useM !== method ? ['Same month last year needs 12 complete base months; this base period has ' + n + ', so the average is used.'] : [])
         .concat(mcols.some(function (x) { return x.start >= sIso && x.end <= eIso && !full(x); }) ? ['Partial months in the base period are left out of the forecast (the base period uses complete months only).'] : []),
       na: ['Saved forecasts inside QuickBooks (Reports › Financial planning › Forecasts are not in the Accounting API) — this report is recomputed on every open', 'Balance Sheet and cash forecasts'] };
   },

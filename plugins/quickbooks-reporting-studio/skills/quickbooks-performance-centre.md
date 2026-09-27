@@ -271,7 +271,7 @@ QB.app({
     var ser = function (M, g, re) { if (!M) return []; var l = QB.find(M.lines, g, re); return M.idx.map(function (i) { return l ? l.values[i] : null; }); };
     var tot = function (M, g) { if (!M) return null; var l = QB.find(M.lines, g); return l ? (M.t != null ? l.values[M.t] : QB.sum(M.idx.map(function (i) { return l.values[i]; }))) : null; };
     var expS = ser(P, 'Expenses'), revS = ser(P, 'Income'), gpS = ser(P, 'GrossProfit'), npS = ser(P, 'NetIncome');
-    var ca = ser(B, 'CurrentAssets'), cl = ser(B, 'CurrentLiabilities'), bank = ser(B, 'BankAccounts'), arB = ser(B, 'AR');
+    var ca = ser(B, 'CurrentAssets', /^total current assets:?$/i), cl = ser(B, 'CurrentLiabilities', /^total current liabilities:?$/i), bank = ser(B, 'BankAccounts'), arB = ser(B, 'AR');
     var cr = ca.map(function (v, i) { return v != null && cl[i] ? Math.round((v / cl[i]) * 100) / 100 : null; }), qr = ca.map(function (v, i) { return cl[i] ? Math.round((((bank[i] || 0) + (arB[i] || 0)) / cl[i]) * 100) / 100 : null; });
     function aged(id) { var rep = c.data[id]; if (!rep) return null; var cols = QB.cols(rep), ls = QB.walk(rep), gt = QB.find(ls, 'GrandTotal', /^total$/i); return { bands: cols.slice(1, cols.length - 1).map(function (x) { return x.title; }), tot: gt ? gt.values : [], rows: ls.filter(function (l) { return l.kind === 'row'; }) }; }
     var ar = aged('aged_receivables'), ap = aged('aged_payables');
@@ -285,7 +285,7 @@ QB.app({
     QB.line(document.getElementById('c2'), { title: 'Revenue over time', labels: L, series: [{ name: 'Revenue', values: revS }].concat(cmpSer('Income')) }, c);
     QB.bars(document.getElementById('c3'), { title: 'Gross profit over time', labels: L, series: [{ name: 'Gross profit', values: gpS }].concat(cmpSer('GrossProfit')) }, c);
     QB.bars(document.getElementById('c4'), { title: 'Net profit over time', labels: L, series: [{ name: 'Net profit', values: npS }].concat(cmpSer('NetIncome')) }, c);
-    if (c.errors.cash_flow_monthly) document.getElementById('c5').innerHTML = '<p class="qb-err">' + QB.h(c.err('cash_flow_monthly')) + '</p>'; else QB.bars(document.getElementById('c5'), { title: 'Net cash flow', labels: CF ? CF.labels : [], series: [{ name: 'Net cash flow', values: ser(CF, 'CashIncrease') }] }, c);
+    if (c.errors.cash_flow_monthly) document.getElementById('c5').innerHTML = '<p class="qb-err">' + QB.h(c.err('cash_flow_monthly')) + '</p>'; else QB.bars(document.getElementById('c5'), { title: 'Net cash flow', labels: CF ? CF.labels : [], series: [{ name: 'Net cash flow', values: ser(CF, 'CashIncrease', QB.CF_INC_RE) }] }, c);
     [['c6', ar, 'aged_receivables'], ['c7', ap, 'aged_payables']].forEach(function (x) { var el = document.getElementById(x[0]); if (c.errors[x[2]]) { el.innerHTML = '<p class="qb-err">' + QB.h(c.err(x[2])) + '</p>'; return; } if (x[1]) QB.bars(el, { title: 'Ageing periods', labels: x[1].bands, series: [{ name: 'Balance', values: x[1].tot.slice(0, x[1].bands.length) }] }, c); });
     var fmtRatio = Object.assign({}, c.display);
     QB.line(document.getElementById('c8'), { title: 'Current ratio', labels: B ? B.labels : [], series: [{ name: 'Current ratio', values: cr }, { name: 'Target 1.00', values: cr.map(function () { return 1; }) }] }, { currency: '', display: Object.assign(fmtRatio, { cents: 1 }) });
