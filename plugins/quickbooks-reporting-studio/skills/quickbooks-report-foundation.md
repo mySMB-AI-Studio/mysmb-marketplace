@@ -47,7 +47,7 @@ The kit renders the control row from the config, so every report has the same gr
 - Only `quickbooks-accounting` tools. Never invent, estimate or reuse example figures. Anything missing is "N/A — not in source" and is listed under Sources & limitations. A tool that returns no rows is *unavailable*, not zero.
 - Every family has STEP 4 checks. The kit recomputes them on every load and every control change and shows them in the validation banner: Pass, Fail (red, listed first) or N/A (cannot be computed), with the data timestamp, the financial-year source and the mechanism used.
 - Sign and classification: QuickBooks can return credits where you expect debits (for example a negative Cost of Sales). The report shows the figures as QuickBooks returned them and adds a note. It never silently flips a sign.
-- Connector limits that the reports state rather than work around: one company per connection; the ageing reports age as of today (`report_date`, `aging_period`, `num_periods`, `aging_method` and `past_due` are not passed by the connector yet); the Tax Summary has returned no rows on a live company; PAYG, payroll, leave and ATO reports live in Employment Hero (QuickBooks time activities and the employee contact list are in Q31); the Audit Log is UI-only; a forecast (Q09) is an estimate projected from actuals, never a QuickBooks figure.
+- Connector limits that the reports state rather than work around: one company per connection; the ageing reports age as of today (`report_date`, `aging_period`, `num_periods`, `aging_method` and `past_due` are not passed by the connector yet); the Tax Summary returns BAS figures only for a named tax agency (`agency_id`; the GST reports list the agencies with `list_tax_agency` and use the ATO); PAYG, payroll, leave and ATO reports live in Employment Hero (QuickBooks time activities and the employee contact list are in Q31); the Audit Log is UI-only; a forecast (Q09) is an estimate projected from actuals, never a QuickBooks figure.
 - If the user needs data the connector does not expose, ask them for the QuickBooks export (Reports › open the report › set the controls › Export › Excel). Read the company, report name, period and basis from the export header and confirm them. Then save a STATIC report (no `dataBindings`) with `connectors: ["quickbooks-accounting"]` and say it is frozen.
 - Financial output is decision support, not audit, tax or legal advice.
 
@@ -235,6 +235,15 @@ return null;
 var CF_END_RE = /^(cash( and cash equivalents)? at (the )?end of (the )?(period|year|month)|closing cash( balance)?)$/i,
 CF_BEG_RE = /^(cash( and cash equivalents)? at (the )?beginning of (the )?(period|year|month)|opening cash( balance)?)$/i,
 CF_INC_RE = /^net (cash )?(increase|decrease|change)( \(decrease\))?( in cash( and cash equivalents)?)?( for (the )?(period|year))?$/i;
+var ATO_RE = /australian tax(ation)? office|^ato$/i;
+function taxAgency(ctx, listId, input) {
+var all = ((ctx.data[listId] || {}).QueryResponse || {}).TaxAgency || [], cur = ctx.inputs[input], pick = null;
+all.forEach(function (a) { if (String(a.Id) === String(cur)) pick = a; });
+if (!pick) pick = all.filter(function (a) { return ATO_RE.test(a.DisplayName || a.Name || ''); })[0] || (all.length === 1 ? all[0] : null);
+var pending = !!(pick && String(pick.Id) !== String(cur) && ctx.live);
+if (pending) setTimeout(function () { var p = {}; p[input] = String(pick.Id); ctx.change(p); }, 0);
+return { id: pick ? String(pick.Id) : null, name: pick ? (pick.DisplayName || pick.Name || 'Tax agency ' + pick.Id) : null, all: all, pending: pending };
+}
 var NI_RE = /^(net (income|earnings|profit)|profit (\(loss\) )?for the (year|period)|current year (earnings|profit))$/i;
 function bsParts(lines) {
 var A = find(lines, 'TotalAssets', /^total assets$/i), LE = find(lines, 'TotalLiabilitiesAndEquity', /^total liabilities and .*equity$/i);
@@ -822,7 +831,7 @@ if (MH.onRefresh) MH.onRefresh(function () { status('Refreshing…'); });
 if (MH.onThemeChange) MH.onThemeChange(function () { render(); });
 return { state: S, change: change, render: render, exportXlsx: exportXlsx, ctx: ctx };
 }
-return { CF_END_RE: CF_END_RE, CF_BEG_RE: CF_BEG_RE, CF_INC_RE: CF_INC_RE, NI_RE: NI_RE, bsParts: bsParts, applyBrand: applyBrand, bas: bas, sectionTies: sectionTies, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, mergeCompare: mergeCompare, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app, MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays,
+return { taxAgency: taxAgency, CF_END_RE: CF_END_RE, CF_BEG_RE: CF_BEG_RE, CF_INC_RE: CF_INC_RE, NI_RE: NI_RE, bsParts: bsParts, applyBrand: applyBrand, bas: bas, sectionTies: sectionTies, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, mergeCompare: mergeCompare, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app, MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays,
 num: num, cols: cols, walk: walk, find: find, val: val, header: header, noData: noData, totalFor: totalFor, near: near, sum: sum,
 companyInfo: companyInfo, fiscalStart: fiscalStart, homeCurrency: homeCurrency, symbol: symbol,
 DISPLAY_DEFAULT: DISPLAY_DEFAULT, readDisplay: readDisplay, writeDisplay: writeDisplay, money: money, pct: pct, isNeg: isNeg,

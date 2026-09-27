@@ -51,7 +51,7 @@ Connect QuickBooks under Settings → Connections (OAuth) before asking for a re
 
 - One QuickBooks company per connection.
 - Ageing reports age as of today: `report_date`, `aging_period`, `num_periods`, `aging_method` and `past_due` are not passed by the connector yet.
-- `get_report_tax_summary` has returned no rows on a live company; the GST reports then say "unavailable — not zero".
+- `get_report_tax_summary` returns BAS figures only when `agency_id` names the tax agency (added in myhub-mcp-servers #542). The GST reports list the agencies and use the Australian Tax Office.
 - PAYG, payroll, leave and ATO reports live in Employment Hero. QuickBooks time activities and the employee contact list are in Q31.
 - `get_company_info` looks CompanyInfo up by realm id and returns "not found". The reports read CompanyInfo through `qbo_query` instead.
 
