@@ -219,7 +219,7 @@ QB.app({
     else g.innerHTML = fxLines.length ? '<div class="qb-scroll">' + QB.statement(fxLines.map(function (l) { return Object.assign({}, l, { depth: 0 }); }).concat([{ kind: 'total', depth: 0, label: 'Total realised gain / (loss)', values: [realised] }]), ['Account', 'Total'], c) + '</div>' : '<p class="muted">No exchange gain or loss account on the Profit and Loss for this period.</p>';
     QB.bars(document.getElementById('ch1'), { title: 'Unrealised gain / (loss) by currency', labels: curs, series: [{ name: 'Unrealised (estimate)', values: curs.map(function (k) { return byCur[k]; }) }] }, c);
     var checks = [
-      { name: 'Realised gains / losses = FX accounts on the Profit and Loss (information — taken from those accounts)', pass: null, detail: fxLines.length ? fxLines.map(function (l) { return l.label; }).join(', ') + ': ' + money(realised) : 'No FX account in the period' },
+      { name: 'Realised gains / losses = FX accounts on the Profit and Loss (information — taken from those accounts)', pass: null, info: true, detail: fxLines.length ? fxLines.map(function (l) { return l.label; }).join(', ') + ': ' + money(realised) : 'No FX account in the period' },
       { name: 'Unrealised by currency sums to the total', pass: docs.length ? QB.near(unreal, QB.sum(curs.map(function (k) { return byCur[k]; }))) : null, detail: money(unreal) },
       { name: 'Every open foreign-currency document has a current rate', pass: Object.keys(missingRate).length ? false : docs.length ? true : null, detail: Object.keys(missingRate).length ? 'Missing: ' + Object.keys(missingRate).join(', ') : '' }];
     this._x = { fxLines: fxLines, realised: realised, docs: docs, unreal: unreal };

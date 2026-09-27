@@ -45,7 +45,7 @@ The kit renders the control row from the config, so every report has the same gr
 ## Data and validation rules
 
 - Only `quickbooks-accounting` tools. Never invent, estimate or reuse example figures. Anything missing is "N/A — not in source" and is listed under Sources & limitations. A tool that returns no rows is *unavailable*, not zero.
-- Every family has STEP 4 checks. The kit recomputes them on every load and every control change and shows them in the validation banner: Pass, Fail (red, listed first) or N/A (cannot be computed), with the data timestamp, the financial-year source and the mechanism used.
+- Every family has STEP 4 checks. The kit recomputes them on every load and every control change and shows them in the validation banner: Pass, Fail (red, listed first), N/A (cannot be computed) or information only (`info: true`), with the data timestamp, the financial-year source and the mechanism used. Only real checks count in "x/y passed"; N/A and information lines are listed and counted separately, so a report with nothing wrong never reads as a failure.
 - Sign and classification: QuickBooks can return credits where you expect debits (for example a negative Cost of Sales). The report shows the figures as QuickBooks returned them and adds a note. It never silently flips a sign.
 - Connector limits that the reports state rather than work around: one company per connection; the ageing reports age as of today (`report_date`, `aging_period`, `num_periods`, `aging_method` and `past_due` are not passed by the connector yet); the Tax Summary returns BAS figures only for a named tax agency (`agency_id`; the GST reports list the agencies with `list_tax_agency` and use the ATO); PAYG, payroll, leave and ATO reports live in Employment Hero (QuickBooks time activities and the employee contact list are in Q31); the Audit Log is UI-only; a forecast (Q09) is an estimate projected from actuals, never a QuickBooks figure.
 - If the user needs data the connector does not expose, ask them for the QuickBooks export (Reports › open the report › set the controls › Export › Excel). Read the company, report name, period and basis from the export header and confirm them. Then save a STATIC report (no `dataBindings`) with `connectors: ["quickbooks-accounting"]` and say it is frozen.
@@ -70,7 +70,7 @@ The kit renders the control row from the config, so every report has the same gr
 
 ## Kit reference (for adapting a config after discovery)
 
-`QB.app(cfg)` config keys: `title`, `token` / `route` (deep link), `primary` (binding whose Header gives the period in snapshots), `company` / `prefs` (binding ids), `inputs` (role → declared input name: start, end, asAt, basis, columnsBy, cmpStart, cmpEnd, cmpAsAt, persona, display), `defaults`, `uses` (binding id → the declared inputs it consumes; drives which bindings refetch), `tools` (shown in Sources), `columnsBy`, `compare`, `enums` (`[{input, label, options:[[value, label]]}]` — extra declared inputs as selects), `presets` (period preset list override), `headerEnd` (false keeps the declared end date in snapshots), `views`, `derive(inputs, fyMonth)`, `roll(inputs, fyMonth, display)`, `noHead`, `render(ctx)` → `{checks:[{name, pass:true|false|null, detail}], na:[], notes:[], title, period}`, `excel(ctx)` → sheets.
+`QB.app(cfg)` config keys: `title`, `token` / `route` (deep link), `primary` (binding whose Header gives the period in snapshots), `company` / `prefs` (binding ids), `inputs` (role → declared input name: start, end, asAt, basis, columnsBy, cmpStart, cmpEnd, cmpAsAt, persona, display), `defaults`, `uses` (binding id → the declared inputs it consumes; drives which bindings refetch), `tools` (shown in Sources), `columnsBy`, `compare`, `enums` (`[{input, label, options:[[value, label]]}]` — extra declared inputs as selects), `presets` (period preset list override), `headerEnd` (false keeps the declared end date in snapshots), `views`, `derive(inputs, fyMonth)`, `roll(inputs, fyMonth, display)`, `noHead`, `render(ctx)` → `{checks:[{name, pass:true|false|null, info?, detail}], na:[], notes:[], title, period}`, `excel(ctx)` → sheets.
 
 The `ctx` passed to `render` has: `data`, `errors`, `err(id)`, `inputs`, `display`, `view`, `compareMode`, `persona`, `company`, `fy`, `currency`, `live`, `today`, `body`, `change(patch, displayPatch)`.
 
@@ -793,13 +793,17 @@ var ft = $('qb-foot'); if (ft) { ft.hidden = !d.ftr; ft.textContent = footerStam
 banner(c); sources(c);
 }
 function banner(c) {
-var el = $('qb-banner'); if (!el) return; var ch = last.checks, fails = ch.filter(function (k) { return k.pass === false; }), done = ch.filter(function (k) { return k.pass === true; });
-var none = !fails.length && !done.length && ch.length > 0; // every check N/A: say so, never a green tick
+var el = $('qb-banner'); if (!el) return; var ch = last.checks, isInfo = function (k) { return !!k.info; }, fails = ch.filter(function (k) { return k.pass === false; }), done = ch.filter(function (k) { return k.pass === true; });
+var nInfo = ch.filter(isInfo).length, nNA = ch.filter(function (k) { return k.pass == null && !isInfo(k); }).length, real = ch.length - nInfo;
+var none = !fails.length && !done.length && ch.length > 0; // nothing could be checked: say so, never a green tick
+var extra = (nNA ? ' · ' + nNA + ' N/A' : '') + (nInfo ? ' · ' + nInfo + ' for information' : '');
 el.className = 'qb-banner ' + (fails.length ? 'fail' : none ? 'na' : 'pass');
-el.innerHTML = '<strong>' + (fails.length ? '⚠ Validation: ' + fails.length + ' check' + (fails.length > 1 ? 's' : '') + ' failed' : none ? '– Validation: no check could run (' + ch.length + ' N/A)' : '✓ Validation: ' + done.length + '/' + ch.length + ' checks passed') + '</strong>' +
+el.innerHTML = '<strong>' + (fails.length ? '⚠ Validation: ' + fails.length + ' check' + (fails.length > 1 ? 's' : '') + ' failed' + (done.length ? ' · ' + done.length + ' passed' : '') + extra :
+none ? (real ? '– Validation: no check could run (' + nNA + ' N/A' + (nInfo ? ' · ' + nInfo + ' for information' : '') + ')' : 'ℹ Validation: ' + nInfo + ' line' + (nInfo > 1 ? 's' : '') + ' for information') :
+'✓ Validation: ' + done.length + '/' + done.length + ' check' + (done.length > 1 ? 's' : '') + ' passed' + extra) + '</strong>' +
 ' · Data as of ' + h(S.fetchedAt ? new Date(S.fetchedAt).toLocaleString('en-AU') : '—') + (live ? '' : ' · Snapshot: figures frozen at capture time') +
 ' · Financial year starts ' + h(MONTHS[c.fy.month - 1]) + ' (' + h(c.fy.source) + ')' +
-'<ul>' + ch.map(function (k) { return '<li class="' + (k.pass === false ? 'bad' : k.pass === true ? 'ok' : 'na') + '">' + (k.pass === false ? '✗ ' : k.pass === true ? '✓ ' : '– ') + h(k.name) + (k.detail ? ' — ' + h(k.detail) : '') + '</li>'; }).join('') + '</ul>';
+'<ul>' + ch.map(function (k) { return '<li class="' + (k.pass === false ? 'bad' : k.pass === true ? 'ok' : isInfo(k) ? 'na info' : 'na') + '">' + (k.pass === false ? '✗ ' : k.pass === true ? '✓ ' : isInfo(k) ? 'ℹ ' : '– ') + h(k.name) + (k.detail ? ' — ' + h(k.detail) : '') + '</li>'; }).join('') + '</ul>';
 }
 function sources(c) {
 var el = $('qb-sources'); if (!el) return; var t = cfg.tools || {};

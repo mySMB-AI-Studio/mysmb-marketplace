@@ -281,7 +281,7 @@ QB.app({
     var cfEnd = endL ? endL.values[endL.values.length - 1] : null, errs = ['cash_accounts', 'open_invoices', 'open_bills', 'payments_received', 'bill_payments', 'expenses_paid'].filter(function (id) { return c.errors[id]; });
     var checks = [
       { name: 'All accounts = bank accounts − credit card balances', pass: accts.length ? QB.near(all, bankTot - cardTot) : null, detail: money(bankTot) + ' − ' + money(cardTot) },
-      { name: 'Upcoming + paid = month totals (information — the totals are built from the same documents)', pass: null, detail: 'In ' + money(upIn + paidIn) + ', out ' + money(-(upOut + paidOut)) },
+      { name: 'Upcoming + paid = month totals (information — the totals are built from the same documents)', pass: null, info: true, detail: 'In ' + money(upIn + paidIn) + ', out ' + money(-(upOut + paidOut)) },
       { name: 'Cash balance chart ends at the bank balance in QuickBooks', pass: cfEnd == null || !bank.length ? null : QB.near(cfEnd, bankTot, 1), detail: money(cfEnd) + ' vs ' + money(bankTot) },
       { name: 'All data sources loaded', pass: errs.length ? false : true, detail: errs.length ? errs.map(function (id) { return id + ': ' + c.err(id); }).join('; ') : '' }];
     this._x = { accts: accts, months: months, idx: idx, endL: endL, incL: incL, upIn: upIn, paidIn: paidIn, upOut: upOut, paidOut: paidOut, inv: inv, bills: bills };

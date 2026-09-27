@@ -190,7 +190,7 @@ QB.app({
     var ar = c.data.aged_receivables ? QB.find(QB.walk(c.data.aged_receivables), 'GrandTotal', /^total$/i) : null, arTot = ar ? QB.val(ar) : null;
     var checks = [
       { name: 'Unpaid invoices = A/R ageing total', pass: arTot == null || c.errors.open_invoices ? null : QB.near(unpaid, arTot, 1), detail: money(unpaid) + ' vs ' + money(arTot) + (arTot != null && !QB.near(unpaid, arTot, 1) ? ' — credits and journals to A/R are in the ageing but not in the invoice list' : '') },
-      { name: 'Funnel counts equal the entity queries (information)', pass: null, detail: openQ.length + ' open quotes · ' + projects.length + ' projects · ' + inv.length + ' unpaid invoices' }];
+      { name: 'Funnel counts equal the entity queries (information)', pass: null, info: true, detail: openQ.length + ' open quotes · ' + projects.length + ' projects · ' + inv.length + ' unpaid invoices' }];
     this._x = { funnel: funnel, openQ: openQ, attention: attention, odAmt: odAmt, unpaid: unpaid };
     return { checks: checks, period: QB.asOfLine(today), notes: ['"Needs attention" is built from overdue invoices and quotes expiring within 7 days (Customer Hub tasks are not in the Accounting API).'],
       na: ['Open opportunities, work requests, referrals and reviews (Customer Hub features outside the Accounting API)'] };
