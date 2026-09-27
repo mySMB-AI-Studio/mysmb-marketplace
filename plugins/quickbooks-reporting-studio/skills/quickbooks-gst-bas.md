@@ -5,13 +5,13 @@ description: QuickBooks Online GST and PAYG family (BAS) (Q28) as a live, valida
 
 # GST and PAYG family (BAS) (Q28)
 
-Use when the user asks for GST, a GST summary, BAS, BAS labels (G1, 1A, 1B, 9), GST payable or refund, the activity statement, or PAYG withholding. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_tax_summary`, `get_report_balance_sheet`, `qbo_query`, `get_preferences`).
+Use when the user asks for GST, a GST summary, BAS, BAS labels (G1, 1A, 1B, 9), GST payable or refund, the activity statement, or PAYG withholding. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_tax_summary`, `get_report_balance_sheet`, `list_tax_agency`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports › Manage Taxes › GST Summary. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q28. Delivery: Wave 1.
 
 ## Discovery call
 
-`get_report_tax_summary` with `start_date`, `end_date`, `accounting_method` — for an AU company expect rows labelled Net amount for G1 · Tax amount for G1 · GST-Free sales · G1 TOTAL SALES · 1A GST ON SALES · 1B GST ON PURCHASES · 8A · 8B · 9 REFUND OR PAYMENT DUE. KNOWN ISSUE: it has returned NoReportData on a live company — the report then says so and shows no figures.
+`get_report_tax_summary` with `start_date`, `end_date`, `accounting_method` — for an AU company expect rows labelled Net amount for G1 · Tax amount for G1 · GST-Free sales · G1 TOTAL SALES · 1A GST ON SALES · 1B GST ON PURCHASES · 8A · 8B · 9 REFUND OR PAYMENT DUE. QuickBooks returns BAS figures only when `agency_id` names the tax agency: call `list_tax_agency` too and set the `agency_id` default to the Australian Tax Office's `Id` (the report also finds the ATO itself on open). With the agency, NoReportData means no GST transactions in the period.
 
 ## Date defaults
 
@@ -76,6 +76,13 @@ Preset `this_quarter` (current BAS quarter) or `last_quarter` when the user is p
       "default": "Accrual"
     },
     {
+      "name": "agency_id",
+      "label": "Tax agency",
+      "type": "string",
+      "maxLength": 20,
+      "default": ""
+    },
+    {
       "name": "persona",
       "label": "View as",
       "type": "enum",
@@ -114,6 +121,10 @@ Preset `this_quarter` (current BAS quarter) or `last_quarter` when the user is p
         "accounting_method": {
           "kind": "input",
           "input": "basis"
+        },
+        "agency_id": {
+          "kind": "input",
+          "input": "agency_id"
         }
       }
     },
@@ -131,6 +142,19 @@ Preset `this_quarter` (current BAS quarter) or `last_quarter` when the user is p
         "accounting_method": {
           "kind": "input",
           "input": "basis"
+        }
+      }
+    },
+    {
+      "id": "tax_agencies",
+      "tool": {
+        "mcp": "quickbooks-accounting",
+        "name": "list_tax_agency"
+      },
+      "params": {
+        "maxResults": {
+          "kind": "static",
+          "value": 100
         }
       }
     },
@@ -165,10 +189,10 @@ Preset `this_quarter` (current BAS quarter) or `last_quarter` when the user is p
 QB.app({
   title: 'GST Summary Report', token: 'GTM_SUM', route: 'reportv2', primary: 'gst_summary', company: 'company_info', prefs: 'prefs',
   inputs: { start: 'start_date', end: 'end_date', basis: 'basis', persona: 'persona', display: 'display' },
-  defaults: { start_date: '2026-07-01', end_date: '2026-09-30', basis: 'Accrual', persona: 'Bookkeeper',
+  defaults: { start_date: '2026-07-01', end_date: '2026-09-30', basis: 'Accrual', agency_id: '', persona: 'Bookkeeper',
     display: '{"cents":1,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"this_quarter","a":"custom","c":"none","v":"summary","x":""}' },
-  uses: { gst_summary: ['start_date', 'end_date', 'basis'], bs_end: ['end_date', 'basis'], company_info: [], prefs: [] },
-  tools: { gst_summary: 'get_report_tax_summary (GST Summary)', bs_end: 'get_report_balance_sheet (GST Liabilities at period end)', company_info: 'qbo_query (CompanyInfo)', prefs: 'get_preferences' },
+  uses: { gst_summary: ['start_date', 'end_date', 'basis', 'agency_id'], bs_end: ['end_date', 'basis'], tax_agencies: [], company_info: [], prefs: [] },
+  tools: { gst_summary: 'get_report_tax_summary (GST Summary, for the tax agency)', tax_agencies: 'list_tax_agency', bs_end: 'get_report_balance_sheet (GST Liabilities at period end)', company_info: 'qbo_query (CompanyInfo)', prefs: 'get_preferences' },
   views: [['summary', 'GST Summary'], ['payg', 'PAYG Withholding Summary']],
   render: function (c) {
     var body = c.body, rep = c.data.gst_summary, money = function (v) { return QB.money(v, c.currency, c.display); };
@@ -176,11 +200,13 @@ QB.app({
       body.innerHTML = '<div class="qb-banner na"><strong>PAYG withholding is not available from the connected QuickBooks tools.</strong> Payroll runs in Employment Hero (outside the QuickBooks Accounting API). Export QuickBooks › Reports › Manage Taxes › PAYG Withholding Summary to Excel and attach it to have it reproduced.</div>';
       return { checks: [{ name: 'PAYG Withholding data available', pass: null, detail: 'N/A — not in source (Employment Hero payroll)' }], na: ['PAYG Withholding Summary / Details / Amendment (payroll data lives in Employment Hero)'], title: 'PAYG Withholding Summary' };
     }
+    var ag = QB.taxAgency(c, 'tax_agencies', 'agency_id');
+    if (ag.pending) { body.innerHTML = '<p class="muted">Loading GST for ' + QB.h(ag.name) + '…</p>'; return {}; }
     if (c.errors.gst_summary) { body.innerHTML = '<p class="qb-err">' + QB.h(c.err('gst_summary')) + '</p>'; return { checks: [{ name: 'GST Summary loaded', pass: false, detail: c.err('gst_summary') }] }; }
     if (!rep) return {};
     if (QB.noData(rep)) {
-      body.innerHTML = '<div class="qb-banner na"><strong>QuickBooks returned no GST rows for this period.</strong> GST figures are unavailable — not zero. Either there were no GST transactions in ' + QB.h(QB.periodLine(c.inputs.start_date, c.inputs.end_date)) + ', or the connector\'s Tax Summary returned nothing (this has happened on a live company that had GST transactions). Try a period you know has GST activity; if it is still empty, export QuickBooks › Reports › GST Summary to Excel and attach it.</div>';
-      return { checks: [{ name: 'QuickBooks returned GST rows for the period', pass: null, detail: 'NoReportData' }], na: ['All BAS labels for this period (Tax Summary returned no rows)'] };
+      body.innerHTML = '<div class="qb-banner na">' + (ag.id ? '<strong>No GST transactions for ' + QB.h(ag.name) + ' in ' + QB.h(QB.periodLine(c.inputs.start_date, c.inputs.end_date)) + '.</strong> QuickBooks returned no GST figures for this period — GST is unavailable, not zero. Choose a period with GST activity.' : '<strong>No tax agency is set up in QuickBooks.</strong> The GST Summary needs one (QuickBooks › Taxes › GST). GST figures are unavailable — not zero.') + '</div>';
+      return { checks: [{ name: 'QuickBooks returned GST rows for the period', pass: null, detail: ag.id ? 'No GST transactions (' + ag.name + ')' : 'No tax agency in QuickBooks' }], na: ['All BAS labels for this period (no GST figures from QuickBooks)'] };
     }
     var b = QB.bas(rep), refund = b.nine != null && b.nine < 0;
     var bsl = c.data.bs_end ? QB.walk(c.data.bs_end) : [], gstLiab = QB.val(QB.find(bsl, null, /gst (liabilities|payable)/i, 'row'));

@@ -5,7 +5,7 @@ description: QuickBooks Online Management reports (report packs) (Q04) as a live
 
 # Management reports (report packs) (Q04)
 
-Use when the user asks for a management report, board pack, report pack, company financials pack, month-end pack, BAS workpapers or a PDF pack of the statements. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `get_report_balance_sheet`, `get_report_cash_flow`, `get_report_aged_receivables`, `get_report_aged_payables`, `get_report_tax_summary`, `qbo_query`, `get_preferences`).
+Use when the user asks for a management report, board pack, report pack, company financials pack, month-end pack, BAS workpapers or a PDF pack of the statements. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `get_report_balance_sheet`, `get_report_cash_flow`, `get_report_aged_receivables`, `get_report_aged_payables`, `get_report_tax_summary`, `list_tax_agency`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Management reports. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q04. Delivery: Wave 1.
 
@@ -77,6 +77,13 @@ Custom period — the pack period the user asks for (default: financial year to 
         "Cash"
       ],
       "default": "Accrual"
+    },
+    {
+      "name": "agency_id",
+      "label": "Tax agency",
+      "type": "string",
+      "maxLength": 20,
+      "default": ""
     },
     {
       "name": "persona",
@@ -200,6 +207,23 @@ Custom period — the pack period the user asks for (default: financial year to 
         "accounting_method": {
           "kind": "input",
           "input": "basis"
+        },
+        "agency_id": {
+          "kind": "input",
+          "input": "agency_id"
+        }
+      }
+    },
+    {
+      "id": "tax_agencies",
+      "tool": {
+        "mcp": "quickbooks-accounting",
+        "name": "list_tax_agency"
+      },
+      "params": {
+        "maxResults": {
+          "kind": "static",
+          "value": 100
         }
       }
     },
@@ -234,13 +258,15 @@ Custom period — the pack period the user asks for (default: financial year to 
 QB.app({
   title: 'Management Report', token: null, noHead: true, primary: 'pnl', company: 'company_info', prefs: 'prefs',
   inputs: { start: 'start_date', end: 'end_date', basis: 'basis', persona: 'persona', display: 'display' },
-  defaults: { start_date: '2026-07-01', end_date: '2026-08-31', basis: 'Accrual', persona: 'Executive',
+  defaults: { start_date: '2026-07-01', end_date: '2026-08-31', basis: 'Accrual', agency_id: '', persona: 'Executive',
     display: '{"cents":1,"k":0,"zeros":0,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"custom","a":"custom","c":"none","v":"basic","x":""}' },
-  uses: { pnl: ['start_date', 'end_date', 'basis'], balance_sheet: ['end_date', 'basis'], cash_flow: ['start_date', 'end_date'], gst_summary: ['start_date', 'end_date', 'basis'], aged_receivables: [], aged_payables: [], company_info: [], prefs: [] },
+  uses: { pnl: ['start_date', 'end_date', 'basis'], balance_sheet: ['end_date', 'basis'], cash_flow: ['start_date', 'end_date'], gst_summary: ['start_date', 'end_date', 'basis', 'agency_id'], tax_agencies: [], aged_receivables: [], aged_payables: [], company_info: [], prefs: [] },
   tools: { pnl: 'get_report_profit_and_loss', balance_sheet: 'get_report_balance_sheet', cash_flow: 'get_report_cash_flow', aged_receivables: 'get_report_aged_receivables', aged_payables: 'get_report_aged_payables', gst_summary: 'get_report_tax_summary', company_info: 'qbo_query (CompanyInfo)', prefs: 'get_preferences' },
   views: [['basic', 'Basic Company Financials'], ['expanded', 'Expanded Company Financials'], ['bas', 'BAS workpapers']],
   render: function (c) {
     var body = c.body, money = function (v) { return QB.money(v, c.currency, c.display); }, tpl = c.view || 'basic';
+    var ag = QB.taxAgency(c, 'tax_agencies', 'agency_id');
+    if (ag.pending && tpl === 'bas') { body.innerHTML = '<p class="muted">Loading GST for ' + QB.h(ag.name) + '…</p>'; return {}; }
     if (c.errors.pnl) { body.innerHTML = '<p class="qb-err">' + QB.h(c.err('pnl')) + '</p>'; return { checks: [{ name: 'Profit and Loss loaded', pass: false, detail: c.err('pnl') }] }; }
     if (!c.data.pnl) return {};
     var endLine = QB.parse(c.inputs.end_date), ended = endLine.getUTCDate() + ' ' + QB.MONTHS[endLine.getUTCMonth()] + ' ' + endLine.getUTCFullYear();
