@@ -209,7 +209,7 @@ QB.app({
       return { checks: [{ name: 'QuickBooks returned GST rows for the period', pass: null, detail: ag.id ? 'No GST transactions (' + ag.name + ')' : 'No tax agency in QuickBooks' }], na: ['All BAS labels for this period (no GST figures from QuickBooks)'] };
     }
     var b = QB.bas(rep), refund = b.nine != null && b.nine < 0;
-    var bsl = c.data.bs_end ? QB.walk(c.data.bs_end) : [], gstLiab = QB.val(QB.find(bsl, null, /gst (liabilities|payable)/i, 'row'));
+    var bsl = c.data.bs_end ? QB.walk(c.data.bs_end) : [], gstRow = QB.find(bsl, null, QB.GST_LIAB_RE, 'row'), gstLiab = QB.val(gstRow);
     body.innerHTML = QB.kpis([{ label: 'G1 Total sales', value: b.g1 }, { label: '1A GST on sales', value: b.a1 }, { label: '1B GST on purchases', value: b.b1 },
       { label: refund ? '9 Refund due from the ATO' : '9 Payment due to the ATO', value: b.nine == null ? null : Math.abs(b.nine) }], c) +
       (b.found ? '' : '<p class="qb-err">The Tax Summary rows do not carry BAS labels (G1, 1A, 1B, 9); they are shown as returned — verify on first run.</p>') +
@@ -218,7 +218,7 @@ QB.app({
     var hd = QB.header(rep), checks = [
       { name: '1A − 1B = 9', pass: b.a1 == null || b.b1 == null || b.nine == null ? null : QB.near(b.a1 - b.b1, b.nine), detail: money(b.a1) + ' − ' + money(b.b1) + ' = ' + money(b.nine) },
       { name: 'G1 = net amount + tax amount + GST-free sales', pass: b.g1 == null || b.net == null || b.tax == null ? null : QB.near(b.g1, b.net + b.tax + (b.free || 0)), detail: money(b.g1) },
-      { name: 'GST Liabilities on the balance sheet at period end (information)', pass: null, detail: gstLiab == null ? (c.errors.bs_end ? c.err('bs_end') : 'N/A — not in source') : money(gstLiab) + ' — includes unpaid prior periods, so it need not equal label 9' },
+      { name: 'GST Liabilities on the balance sheet at period end (information)', pass: null, detail: gstLiab == null ? (c.errors.bs_end ? c.err('bs_end') : 'N/A — not in source') : gstRow.label + ' ' + money(gstLiab) + ' — includes unpaid prior periods, so it need not equal label 9' },
       { name: 'QuickBooks returned the requested period', pass: !c.live ? null : hd.StartPeriod === c.inputs.start_date && hd.EndPeriod === c.inputs.end_date, detail: (hd.StartPeriod || '?') + ' to ' + (hd.EndPeriod || '?') + ', ' + (hd.ReportBasis || '?') + ' basis' }];
     this._x = b;
     return { checks: checks, notes: ['GST Agency: Australian Tax Office. Decision support for BAS preparation — not lodgement advice.'],

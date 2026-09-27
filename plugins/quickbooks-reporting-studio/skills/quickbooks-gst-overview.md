@@ -239,7 +239,7 @@ QB.app({
     var cur = QB.noData(c.data.gst_current) ? null : QB.bas(c.data.gst_current), prev = c.data.gst_previous && !QB.noData(c.data.gst_previous) ? QB.bas(c.data.gst_previous) : null;
     if (!cur) { body.innerHTML = '<div class="qb-banner na"><strong>QuickBooks returned no GST rows for this period.</strong> The GST position is unavailable — not zero. ' + (ag.id ? 'There were no GST transactions for ' + QB.h(ag.name) + ' in the period; choose a period with GST activity.' : 'No tax agency is set up in QuickBooks (Taxes › GST).') + '</div>'; return { checks: [{ name: 'QuickBooks returned GST rows for the period', pass: null }] }; }
     var net = function (b) { return b && b.a1 != null && b.b1 != null ? Math.round((b.a1 - b.b1) * 100) / 100 : null; }, n = net(cur), refund = n != null && n < 0;
-    var bsl = c.data.bs_end ? QB.walk(c.data.bs_end) : [], liab = QB.val(QB.find(bsl, null, /gst (liabilities|payable)/i, 'row'));
+    var bsl = c.data.bs_end ? QB.walk(c.data.bs_end) : [], liab = QB.val(QB.find(bsl, null, QB.GST_LIAB_RE, 'row'));
     body.innerHTML = QB.kpis([{ label: refund ? 'GST refund' : 'GST payable', value: n == null ? null : Math.abs(n), sub: QB.periodLine(c.inputs.start_date, c.inputs.end_date) },
       { label: 'GST collected', value: cur.a1 }, { label: 'GST paid', value: cur.b1 }, { label: 'GST liabilities (balance sheet)', value: liab }], c) +
       '<div class="qb-grid2"><div class="qb-card"><h3>Collected vs paid</h3><div id="ch1"></div></div><div class="qb-card"><h3>History</h3><div id="hist"></div></div></div>' +

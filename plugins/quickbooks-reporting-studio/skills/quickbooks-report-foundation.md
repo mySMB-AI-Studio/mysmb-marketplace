@@ -235,6 +235,7 @@ return null;
 var CF_END_RE = /^(cash( and cash equivalents)? at (the )?end of (the )?(period|year|month)|closing cash( balance)?)$/i,
 CF_BEG_RE = /^(cash( and cash equivalents)? at (the )?beginning of (the )?(period|year|month)|opening cash( balance)?)$/i,
 CF_INC_RE = /^net (cash )?(increase|decrease|change)( \(decrease\))?( in cash( and cash equivalents)?)?( for (the )?(period|year))?$/i;
+var GST_LIAB_RE = /^(gst|bas)\b.*\b(liabilit(y|ies)|payable|control)\b|^tax (payable|control)$/i;
 var ATO_RE = /australian tax(ation)? office|^ato$/i;
 function taxAgency(ctx, listId, input) {
 var all = ((ctx.data[listId] || {}).QueryResponse || {}).TaxAgency || [], cur = ctx.inputs[input], pick = null;
@@ -831,7 +832,7 @@ if (MH.onRefresh) MH.onRefresh(function () { status('Refreshing…'); });
 if (MH.onThemeChange) MH.onThemeChange(function () { render(); });
 return { state: S, change: change, render: render, exportXlsx: exportXlsx, ctx: ctx };
 }
-return { taxAgency: taxAgency, CF_END_RE: CF_END_RE, CF_BEG_RE: CF_BEG_RE, CF_INC_RE: CF_INC_RE, NI_RE: NI_RE, bsParts: bsParts, applyBrand: applyBrand, bas: bas, sectionTies: sectionTies, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, mergeCompare: mergeCompare, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app, MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays,
+return { GST_LIAB_RE: GST_LIAB_RE, taxAgency: taxAgency, CF_END_RE: CF_END_RE, CF_BEG_RE: CF_BEG_RE, CF_INC_RE: CF_INC_RE, NI_RE: NI_RE, bsParts: bsParts, applyBrand: applyBrand, bas: bas, sectionTies: sectionTies, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, mergeCompare: mergeCompare, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app, MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays,
 num: num, cols: cols, walk: walk, find: find, val: val, header: header, noData: noData, totalFor: totalFor, near: near, sum: sum,
 companyInfo: companyInfo, fiscalStart: fiscalStart, homeCurrency: homeCurrency, symbol: symbol,
 DISPLAY_DEFAULT: DISPLAY_DEFAULT, readDisplay: readDisplay, writeDisplay: writeDisplay, money: money, pct: pct, isNeg: isNeg,
