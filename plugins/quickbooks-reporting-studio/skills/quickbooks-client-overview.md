@@ -176,7 +176,7 @@ QB.app({
     var ar = aged('aged_receivables'), ap = aged('aged_payables');
     var bank = accts.filter(function (a) { return a.AccountType === 'Bank' || a.AccountType === 'Credit Card'; });
     var find = function (re, sub) { return accts.filter(function (a) { return re.test(a.Name) || (sub && a.AccountSubType === sub); }); };
-    var undep = find(/^undeposited funds$/i, 'UndepositedFunds'), uncat = find(/^uncategori[sz]ed (asset|income|expense)/i), obe = find(/^opening balance equity$/i), gst = find(/gst (liabilities|payable)/i);
+    var undep = find(/^undeposited funds$/i, 'UndepositedFunds'), uncat = find(/^uncategori[sz]ed (asset|income|expense)/i), obe = find(/^opening balance equity$/i), gst = find(QB.GST_LIAB_RE, 'GlobalTaxPayable');
     var contra = function (a) { return /^(Accumulated|AllowanceForBadDebts)/.test(a.AccountSubType || '') || /^(accumulated (depreciation|amorti[sz]ation|depletion)|allowance for (bad|doubtful) debts|provision for (bad|doubtful) debts)/i.test(a.Name || ''); }, // contra-asset accounts are negative by design
       negAL = accts.filter(function (a) { return (a.Classification === 'Asset' || a.Classification === 'Liability') && a.AccountType !== 'Credit Card' && !contra(a) && Number(a.CurrentBalance) < 0; });
     var bal = function (list) { return QB.sum(list.map(function (a) { return Number(a.CurrentBalance) || 0; })); };
@@ -187,7 +187,7 @@ QB.app({
       { issue: 'A/P ageing over 90 days', detail: ap ? money(ap.over90) + ' (' + ap.rowsOver + ' supplier' + (ap.rowsOver === 1 ? '' : 's') + ')' : c.err('aged_payables') || '', flag: ap && ap.over90 > 0 },
       { issue: 'Opening balance equity', detail: obe.length ? money(bal(obe)) : 'No Opening Balance Equity account', flag: bal(obe) !== 0 },
       { issue: 'Negative asset and liability accounts', detail: negAL.length ? negAL.length + ': ' + negAL.map(function (a) { return a.Name + ' ' + money(a.CurrentBalance); }).join(' · ') : 'None', flag: negAL.length > 0 },
-      { issue: 'GST Liabilities Payable', detail: gst.length ? money(bal(gst)) : 'No GST liability account', flag: false }];
+      { issue: 'GST liability account', detail: gst.length ? gst.map(function (a) { return a.Name; }).join(' · ') + ' ' + money(bal(gst)) : 'No GST liability account', flag: false }];
     var tl = c.data.transactions_30d, tc = tl ? QB.cols(tl).map(function (x) { return x.title; }) : [], ti = tc.indexOf('Transaction Type') - 1, byType = {};
     var txRows = tl ? QB.walk(tl).filter(function (l) { return l.kind === 'row'; }) : [];
     txRows.forEach(function (r) { var k = ti >= 0 ? r.raw[ti] : 'Transaction'; byType[k] = (byType[k] || 0) + 1; });
