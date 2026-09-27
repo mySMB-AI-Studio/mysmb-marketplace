@@ -231,7 +231,7 @@ QB.app({
     lines.forEach(function (l) { if (l.group === 'NetIncome' && /^net income$/i.test(l.label)) l.label = 'Net Earnings'; });
     var T = function (g, re) { return QB.val(QB.find(lines, g, re)); };
     var inc = T('Income', /^total (for )?income$/i), cogs = T('COGS', /^total (for )?cost of (sales|goods sold)$/i) || 0, gp = T('GrossProfit', /^gross profit$/i),
-      exp = T('Expenses', /^total (for )?expenses$/i), oi = T('OtherIncome', /^total (for )?other income$/i) || 0, oe = T('OtherExpenses', /^total (for )?other expenses$/i) || 0, ni = T('NetIncome', /^net (income|earnings)$/i);
+      exp = T('Expenses', /^total (for )?expenses$/i), oi = T('OtherIncome', /^total (for )?other income$/i) || 0, oe = T('OtherExpenses', /^total (for )?other expenses$/i) || 0, ni = T('NetIncome', QB.NI_RE);
     var incHdr = QB.find(lines, 'Income', null, 'header'), incRows = lines.filter(function (l) { return l.kind === 'row' && incHdr && l.path[0] === incHdr.label; });
     var extra = [];
     if (cmpOn) extra = QB.compareCols({ prev_period: 'Previous period', prev_year: 'Previous year', ytd: 'Year-to-date' }[c.compareMode]);

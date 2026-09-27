@@ -271,7 +271,7 @@ QB.app({
     var ser = function (M, g, re) { if (!M) return []; var l = QB.find(M.lines, g, re); return M.idx.map(function (i) { return l ? l.values[i] : null; }); };
     var tot = function (M, g) { if (!M) return null; var l = QB.find(M.lines, g); return l ? (M.t != null ? l.values[M.t] : QB.sum(M.idx.map(function (i) { return l.values[i]; }))) : null; };
     var expS = ser(P, 'Expenses'), revS = ser(P, 'Income'), gpS = ser(P, 'GrossProfit'), npS = ser(P, 'NetIncome');
-    var ca = ser(B, 'CurrentAssets'), cl = ser(B, 'CurrentLiabilities'), bank = ser(B, 'BankAccounts'), arB = ser(B, 'AR');
+    var ca = ser(B, 'CurrentAssets', /^total current assets:?$/i), cl = ser(B, 'CurrentLiabilities', /^total current liabilities:?$/i), bank = ser(B, 'BankAccounts'), arB = ser(B, 'AR');
     var cr = ca.map(function (v, i) { return v != null && cl[i] ? Math.round((v / cl[i]) * 100) / 100 : null; }), qr = ca.map(function (v, i) { return cl[i] ? Math.round((((bank[i] || 0) + (arB[i] || 0)) / cl[i]) * 100) / 100 : null; });
     function aged(id) { var rep = c.data[id]; if (!rep) return null; var cols = QB.cols(rep), ls = QB.walk(rep), gt = QB.find(ls, 'GrandTotal', /^total$/i); return { bands: cols.slice(1, cols.length - 1).map(function (x) { return x.title; }), tot: gt ? gt.values : [], rows: ls.filter(function (l) { return l.kind === 'row'; }) }; }
     var ar = aged('aged_receivables'), ap = aged('aged_payables');
