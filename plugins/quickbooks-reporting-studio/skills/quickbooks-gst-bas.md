@@ -173,7 +173,7 @@ QB.app({
   render: function (c) {
     var body = c.body, rep = c.data.gst_summary, money = function (v) { return QB.money(v, c.currency, c.display); };
     if (c.view === 'payg') {
-      body.innerHTML = '<div class="qb-banner fail"><strong>PAYG withholding is not available from the connected QuickBooks tools.</strong> Payroll runs in Employment Hero (outside the QuickBooks Accounting API). Export QuickBooks › Reports › Manage Taxes › PAYG Withholding Summary to Excel and attach it to have it reproduced.</div>';
+      body.innerHTML = '<div class="qb-banner na"><strong>PAYG withholding is not available from the connected QuickBooks tools.</strong> Payroll runs in Employment Hero (outside the QuickBooks Accounting API). Export QuickBooks › Reports › Manage Taxes › PAYG Withholding Summary to Excel and attach it to have it reproduced.</div>';
       return { checks: [{ name: 'PAYG Withholding data available', pass: null, detail: 'N/A — not in source (Employment Hero payroll)' }], na: ['PAYG Withholding Summary / Details / Amendment (payroll data lives in Employment Hero)'], title: 'PAYG Withholding Summary' };
     }
     if (c.errors.gst_summary) { body.innerHTML = '<p class="qb-err">' + QB.h(c.err('gst_summary')) + '</p>'; return { checks: [{ name: 'GST Summary loaded', pass: false, detail: c.err('gst_summary') }] }; }
