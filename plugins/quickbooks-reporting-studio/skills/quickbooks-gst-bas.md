@@ -11,7 +11,7 @@ QuickBooks location: Reports › Standard reports › Manage Taxes › GST Summa
 
 ## Discovery call
 
-`get_report_tax_summary` with `start_date`, `end_date`, `accounting_method` — for an AU company expect rows labelled Net amount for G1 · Tax amount for G1 · GST-Free sales · G1 TOTAL SALES · 1A GST ON SALES · 1B GST ON PURCHASES · 8A · 8B · 9 REFUND OR PAYMENT DUE. QuickBooks returns BAS figures only when `agency_id` names the tax agency: call `list_tax_agency` too and set the `agency_id` default to the Australian Tax Office's `Id` (the report also finds the ATO itself on open). With the agency, NoReportData means no GST transactions in the period.
+`get_report_tax_summary` with `start_date`, `end_date`, `accounting_method` — for an AU company expect rows labelled Net amount for G1 · Tax amount for G1 · GST-Free sales · G1 TOTAL SALES · 1A GST ON SALES · 1B GST ON PURCHASES · 8A · 8B · 9 REFUND OR PAYMENT DUE. QuickBooks returns BAS figures only when `agency_id` names the tax agency: call `list_tax_agency` too and set the `agency_id` default to the Australian Tax Office's `Id` (the report also finds the ATO itself on open). With the agency, NoReportData means no GST transactions in the period — a nil period, shown as A$0 (not unavailable).
 
 ## Date defaults
 
@@ -204,22 +204,31 @@ QB.app({
     if (ag.pending) { body.innerHTML = '<p class="muted">Loading GST for ' + QB.h(ag.name) + '…</p>'; return {}; }
     if (c.errors.gst_summary) { body.innerHTML = '<p class="qb-err">' + QB.h(c.err('gst_summary')) + '</p>'; return { checks: [{ name: 'GST Summary loaded', pass: false, detail: c.err('gst_summary') }] }; }
     if (!rep) return {};
-    if (QB.noData(rep)) {
-      body.innerHTML = '<div class="qb-banner na">' + (ag.id ? '<strong>No GST transactions for ' + QB.h(ag.name) + ' in ' + QB.h(QB.periodLine(c.inputs.start_date, c.inputs.end_date)) + '.</strong> QuickBooks returned no GST figures for this period — GST is unavailable, not zero. Choose a period with GST activity.' : '<strong>No tax agency is set up in QuickBooks.</strong> The GST Summary needs one (QuickBooks › Taxes › GST). GST figures are unavailable — not zero.') + '</div>';
-      return { checks: [{ name: 'QuickBooks returned GST rows for the period', pass: null, detail: ag.id ? 'No GST transactions (' + ag.name + ')' : 'No tax agency in QuickBooks' }], na: ['All BAS labels for this period (no GST figures from QuickBooks)'] };
+    var bsl = c.data.bs_end ? QB.walk(c.data.bs_end) : [], gstRow = QB.find(bsl, null, QB.GST_LIAB_RE, 'row'), gstLiab = QB.val(gstRow), hd = QB.header(rep);
+    var liabCheck = { name: 'GST Liabilities on the balance sheet at period end (information)', pass: null, info: true, detail: gstLiab == null ? (c.errors.bs_end ? c.err('bs_end') : 'N/A — not in source') : gstRow.label + ' ' + money(gstLiab) + ' — includes unpaid prior periods, so it need not equal label 9' };
+    var periodCheck = { name: 'QuickBooks returned the requested period', pass: !c.live || !hd.StartPeriod ? null : hd.StartPeriod === c.inputs.start_date && hd.EndPeriod === c.inputs.end_date, detail: (hd.StartPeriod || '?') + ' to ' + (hd.EndPeriod || '?') + ', ' + (hd.ReportBasis || c.inputs.basis) + ' basis' };
+    if (QB.noData(rep) && !ag.id) {
+      body.innerHTML = '<div class="qb-banner na"><strong>No tax agency is set up in QuickBooks.</strong> The GST Summary needs one (QuickBooks › Taxes › GST). GST figures are unavailable — not zero.</div>';
+      this._x = null; return { checks: [{ name: 'QuickBooks returned GST rows for the period', pass: null, detail: 'No tax agency in QuickBooks' }], na: ['All BAS labels for this period (no tax agency in QuickBooks)'] };
+    }
+    if (QB.noData(rep)) { // agency known: QuickBooks has no GST transactions for it in the period, i.e. a nil period
+      var pl = QB.periodLine(c.inputs.start_date, c.inputs.end_date);
+      body.innerHTML = QB.kpis([{ label: 'G1 Total sales', value: 0 }, { label: '1A GST on sales', value: 0 }, { label: '1B GST on purchases', value: 0 }, { label: '9 Payment due to the ATO', value: 0 }], c) +
+        '<div class="qb-card detail-block" style="margin-top:16px"><h3>Nil period</h3><p>QuickBooks has no GST transactions for <strong>' + QB.h(ag.name) + '</strong> in <strong>' + QB.h(pl) + '</strong>, so every BAS label is ' + QB.h(money(0)) + '. Choose another period to see GST activity.</p></div>';
+      this._x = null;
+      return { checks: [{ name: 'GST activity in the period (information)', pass: null, info: true, detail: 'None — nil period for ' + ag.name }, liabCheck, periodCheck], notes: ['GST Agency: ' + ag.name + '. Decision support for BAS preparation — not lodgement advice.'],
+        na: ['PAYG withholding labels W1/W2/4 (payroll data lives in Employment Hero)'] };
     }
     var b = QB.bas(rep), refund = b.nine != null && b.nine < 0;
-    var bsl = c.data.bs_end ? QB.walk(c.data.bs_end) : [], gstRow = QB.find(bsl, null, QB.GST_LIAB_RE, 'row'), gstLiab = QB.val(gstRow);
     body.innerHTML = QB.kpis([{ label: 'G1 Total sales', value: b.g1 }, { label: '1A GST on sales', value: b.a1 }, { label: '1B GST on purchases', value: b.b1 },
       { label: refund ? '9 Refund due from the ATO' : '9 Payment due to the ATO', value: b.nine == null ? null : Math.abs(b.nine) }], c) +
       (b.found ? '' : '<p class="qb-err">The Tax Summary rows do not carry BAS labels (G1, 1A, 1B, 9); they are shown as returned — verify on first run.</p>') +
       '<div class="qb-scroll">' + QB.statement(b.lines, ['', 'TOTAL'], c) + '</div><div class="qb-card detail-block" style="margin-top:16px"><h3>GST collected vs paid</h3><div id="ch1"></div></div>';
     QB.bars(document.getElementById('ch1'), { title: 'GST collected vs paid', labels: ['1A GST on sales', '1B GST on purchases', '9 Net'], series: [{ name: 'This period', values: [b.a1, b.b1, b.nine] }] }, c);
-    var hd = QB.header(rep), checks = [
+    var checks = [
       { name: '1A − 1B = 9', pass: b.a1 == null || b.b1 == null || b.nine == null ? null : QB.near(b.a1 - b.b1, b.nine), detail: money(b.a1) + ' − ' + money(b.b1) + ' = ' + money(b.nine) },
       { name: 'G1 = net amount + tax amount + GST-free sales', pass: b.g1 == null || b.net == null || b.tax == null ? null : QB.near(b.g1, b.net + b.tax + (b.free || 0)), detail: money(b.g1) },
-      { name: 'GST Liabilities on the balance sheet at period end (information)', pass: null, info: true, detail: gstLiab == null ? (c.errors.bs_end ? c.err('bs_end') : 'N/A — not in source') : gstRow.label + ' ' + money(gstLiab) + ' — includes unpaid prior periods, so it need not equal label 9' },
-      { name: 'QuickBooks returned the requested period', pass: !c.live ? null : hd.StartPeriod === c.inputs.start_date && hd.EndPeriod === c.inputs.end_date, detail: (hd.StartPeriod || '?') + ' to ' + (hd.EndPeriod || '?') + ', ' + (hd.ReportBasis || '?') + ' basis' }];
+      liabCheck, periodCheck];
     this._x = b;
     return { checks: checks, notes: ['GST Agency: Australian Tax Office. Decision support for BAS preparation — not lodgement advice.'],
       na: ['PAYG withholding labels W1/W2/4 (payroll data lives in Employment Hero)', 'GST Details, GST Liability, GST Amendment, TPAR, Transactions without GST and Transaction Detail by Tax Code (Wave 2 members)'] };
