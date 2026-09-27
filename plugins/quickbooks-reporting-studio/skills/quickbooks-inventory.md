@@ -207,7 +207,7 @@ QB.app({
     if (ch) { document.getElementById('cht').textContent = 'On hand vs reorder point'; QB.bars(ch, { title: 'On hand vs reorder point', labels: items.slice(0, 16).map(function (i) { return i.Name.slice(0, 14); }), series: [{ name: 'On hand', values: items.slice(0, 16).map(qty) }, { name: 'Reorder point', values: items.slice(0, 16).map(function (i) { return i.ReorderPoint == null ? 0 : Number(i.ReorderPoint); }) }] }, { currency: '', display: Object.assign({}, c.display, { cents: 0 }) }); }
     var itemQty = QB.sum(items.map(qty));
     var checks = [
-      { name: 'Out-of-stock and low-stock counts equal the item query', pass: null, detail: out.length + ' out, ' + low.length + ' low of ' + items.length + ' inventory items (information — the lists are built from the item query)' },
+      { name: 'Out-of-stock and low-stock counts equal the item query', pass: null, info: true, detail: out.length + ' out, ' + low.length + ' low of ' + items.length + ' inventory items (information — the lists are built from the item query)' },
       { name: 'Inventory Valuation quantity = Σ item quantity on hand', pass: valQty == null ? null : QB.near(valQty, itemQty, 0.001), detail: (valQty == null ? 'N/A' : valQty) + ' vs ' + itemQty },
       { name: 'Σ asset value = Inventory Asset account', pass: valTot == null || assetBal == null ? null : QB.near(valTot, assetBal, 1), detail: money(valTot) + ' vs ' + money(assetBal) },
       { name: 'Inventory Valuation TOTAL = Σ products', pass: valTot == null ? null : QB.near(valTot, QB.sum(vrows.map(function (l) { return ai >= 0 ? l.values[ai] : 0; }))), detail: vrows.length + ' products' }];

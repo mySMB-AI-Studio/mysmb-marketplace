@@ -218,7 +218,7 @@ QB.app({
     var hd = QB.header(rep), checks = [
       { name: '1A − 1B = 9', pass: b.a1 == null || b.b1 == null || b.nine == null ? null : QB.near(b.a1 - b.b1, b.nine), detail: money(b.a1) + ' − ' + money(b.b1) + ' = ' + money(b.nine) },
       { name: 'G1 = net amount + tax amount + GST-free sales', pass: b.g1 == null || b.net == null || b.tax == null ? null : QB.near(b.g1, b.net + b.tax + (b.free || 0)), detail: money(b.g1) },
-      { name: 'GST Liabilities on the balance sheet at period end (information)', pass: null, detail: gstLiab == null ? (c.errors.bs_end ? c.err('bs_end') : 'N/A — not in source') : gstRow.label + ' ' + money(gstLiab) + ' — includes unpaid prior periods, so it need not equal label 9' },
+      { name: 'GST Liabilities on the balance sheet at period end (information)', pass: null, info: true, detail: gstLiab == null ? (c.errors.bs_end ? c.err('bs_end') : 'N/A — not in source') : gstRow.label + ' ' + money(gstLiab) + ' — includes unpaid prior periods, so it need not equal label 9' },
       { name: 'QuickBooks returned the requested period', pass: !c.live ? null : hd.StartPeriod === c.inputs.start_date && hd.EndPeriod === c.inputs.end_date, detail: (hd.StartPeriod || '?') + ' to ' + (hd.EndPeriod || '?') + ', ' + (hd.ReportBasis || '?') + ' basis' }];
     this._x = b;
     return { checks: checks, notes: ['GST Agency: Australian Tax Office. Decision support for BAS preparation — not lodgement advice.'],
