@@ -177,7 +177,8 @@ QB.app({
     var bank = accts.filter(function (a) { return a.AccountType === 'Bank' || a.AccountType === 'Credit Card'; });
     var find = function (re, sub) { return accts.filter(function (a) { return re.test(a.Name) || (sub && a.AccountSubType === sub); }); };
     var undep = find(/^undeposited funds$/i, 'UndepositedFunds'), uncat = find(/^uncategori[sz]ed (asset|income|expense)/i), obe = find(/^opening balance equity$/i), gst = find(/gst (liabilities|payable)/i);
-    var negAL = accts.filter(function (a) { return (a.Classification === 'Asset' || a.Classification === 'Liability') && a.AccountType !== 'Credit Card' && Number(a.CurrentBalance) < 0; });
+    var contra = function (a) { return /^(Accumulated|AllowanceForBadDebts)/.test(a.AccountSubType || '') || /^(accumulated (depreciation|amorti[sz]ation|depletion)|allowance for (bad|doubtful) debts|provision for (bad|doubtful) debts)/i.test(a.Name || ''); }, // contra-asset accounts are negative by design
+      negAL = accts.filter(function (a) { return (a.Classification === 'Asset' || a.Classification === 'Liability') && a.AccountType !== 'Credit Card' && !contra(a) && Number(a.CurrentBalance) < 0; });
     var bal = function (list) { return QB.sum(list.map(function (a) { return Number(a.CurrentBalance) || 0; })); };
     var issues = [
       { issue: 'Undeposited funds', detail: undep.length ? money(bal(undep)) + ' waiting to be deposited' : 'No Undeposited Funds account', flag: bal(undep) !== 0 },
