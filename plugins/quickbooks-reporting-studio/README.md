@@ -2,12 +2,12 @@
 
 Live, validated QuickBooks Online reports in QuickBooks styling — statements, ageing, GST/BAS, dashboards and management packs — with a specialist reporting agent.
 
-Reporting Library: QuickBooks Reports Prompt Library v1.1 (Q00–Q39). This version delivers **Waves 1 and 2** (31 families).
+Reporting Library: QuickBooks Reports Prompt Library v1.1 (Q00–Q39). This version delivers **Waves 1–4** (35 families). The payroll families (Q32–Q34) wait on an Employment Hero payroll connector.
 
 ## What's in the box
 
 - **Agent:** QuickBooks Reporting Specialist (AGT-003), on Sonnet, with the `quickbooks-accounting` connector.
-- **Skills:** 1 foundation (build recipe, controls contract, validation rules, the tested report kit and stylesheet) + 31 family skills:
+- **Skills:** 1 foundation (build recipe, controls contract, validation rules, the tested report kit and stylesheet) + 35 family skills:
   - Q17 Profit and Loss family — `quickbooks-profit-and-loss`
   - Q18 Balance Sheet family — `quickbooks-balance-sheet`
   - Q19 Statement of Cash Flows — `quickbooks-statement-of-cash-flows`
@@ -39,6 +39,10 @@ Reporting Library: QuickBooks Reports Prompt Library v1.1 (Q00–Q39). This vers
   - Q35 Custom report builder — `quickbooks-custom-report-builder`
   - Q21 Audit Log — `quickbooks-audit-log`
   - Q37 Ask a question — `quickbooks-ask-a-question`
+  - Q09 Forecasts — `quickbooks-forecasts`
+  - Q31 Employees and time family — `quickbooks-employees-and-time`
+  - Q03 Custom reports (saved customisations) — `quickbooks-custom-reports`
+  - Q05 Spreadsheet Sync (Excel / Google Sheets) — `quickbooks-spreadsheet-sync`
 - **Every report:** live data, client selector (one company per connection), period presets that roll forward, Cash/Accrual, Display columns by, Compare to, Customise (cents, divide by 1000, zero rows, negatives, header/footer), persona modes, QuickBooks look with a mySMB house-style toggle, light and dark themes, a validation banner, Download PDF and Download Excel (.xlsx), and Open in QuickBooks where a deep link exists.
 
 Connect QuickBooks under Settings → Connections (OAuth) before asking for a report.
@@ -48,7 +52,7 @@ Connect QuickBooks under Settings → Connections (OAuth) before asking for a re
 - One QuickBooks company per connection.
 - Ageing reports age as of today: `report_date`, `aging_period`, `num_periods`, `aging_method` and `past_due` are not passed by the connector yet.
 - `get_report_tax_summary` has returned no rows on a live company; the GST reports then say "unavailable — not zero".
-- PAYG, payroll, employee and ATO reports live in Employment Hero.
+- PAYG, payroll, leave and ATO reports live in Employment Hero. QuickBooks time activities and the employee contact list are in Q31.
 - `get_company_info` looks CompanyInfo up by realm id and returns "not found". The reports read CompanyInfo through `qbo_query` instead.
 
 ## Maintenance
