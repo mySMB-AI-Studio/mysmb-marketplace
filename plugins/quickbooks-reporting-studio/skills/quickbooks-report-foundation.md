@@ -130,7 +130,7 @@ a{color:var(--accent)}
 .btns button#qb-xlsx{background:var(--btn);color:var(--btn-ink)}
 #qb-status{font-size:12px;color:var(--muted);min-height:16px;margin:0 0 6px}
 .qb-banner{border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;border:1px solid var(--line)}
-.qb-banner.pass{background:var(--pass-bg)}.qb-banner.fail{background:var(--fail-bg);border-color:var(--neg)}
+.qb-banner.pass{background:var(--pass-bg)}.qb-banner.na{border-color:var(--muted)}.qb-banner.fail{background:var(--fail-bg);border-color:var(--neg)}
 .qb-banner ul{margin:6px 0 0;padding-left:18px}.qb-banner li.bad{color:var(--neg);font-weight:600}.qb-banner li.na{color:var(--muted)}
 .qb-card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:20px 24px;margin-bottom:12px}
 #qb-head{text-align:center;padding:8px 0 16px;background:var(--band);color:var(--band-ink);border-radius:6px}
@@ -779,8 +779,9 @@ banner(c); sources(c);
 }
 function banner(c) {
 var el = $('qb-banner'); if (!el) return; var ch = last.checks, fails = ch.filter(function (k) { return k.pass === false; }), done = ch.filter(function (k) { return k.pass === true; });
-el.className = 'qb-banner ' + (fails.length ? 'fail' : 'pass');
-el.innerHTML = '<strong>' + (fails.length ? '⚠ Validation: ' + fails.length + ' check' + (fails.length > 1 ? 's' : '') + ' failed' : '✓ Validation: ' + done.length + '/' + ch.length + ' checks passed') + '</strong>' +
+var none = !fails.length && !done.length && ch.length > 0; // every check N/A: say so, never a green tick
+el.className = 'qb-banner ' + (fails.length ? 'fail' : none ? 'na' : 'pass');
+el.innerHTML = '<strong>' + (fails.length ? '⚠ Validation: ' + fails.length + ' check' + (fails.length > 1 ? 's' : '') + ' failed' : none ? '– Validation: no check could run (' + ch.length + ' N/A)' : '✓ Validation: ' + done.length + '/' + ch.length + ' checks passed') + '</strong>' +
 ' · Data as of ' + h(S.fetchedAt ? new Date(S.fetchedAt).toLocaleString('en-AU') : '—') + (live ? '' : ' · Snapshot: figures frozen at capture time') +
 ' · Financial year starts ' + h(MONTHS[c.fy.month - 1]) + ' (' + h(c.fy.source) + ')' +
 '<ul>' + ch.map(function (k) { return '<li class="' + (k.pass === false ? 'bad' : k.pass === true ? 'ok' : 'na') + '">' + (k.pass === false ? '✗ ' : k.pass === true ? '✓ ' : '– ') + h(k.name) + (k.detail ? ' — ' + h(k.detail) : '') + '</li>'; }).join('') + '</ul>';

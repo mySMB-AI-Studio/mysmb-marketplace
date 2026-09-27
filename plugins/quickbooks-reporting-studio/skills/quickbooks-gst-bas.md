@@ -179,7 +179,7 @@ QB.app({
     if (c.errors.gst_summary) { body.innerHTML = '<p class="qb-err">' + QB.h(c.err('gst_summary')) + '</p>'; return { checks: [{ name: 'GST Summary loaded', pass: false, detail: c.err('gst_summary') }] }; }
     if (!rep) return {};
     if (QB.noData(rep)) {
-      body.innerHTML = '<div class="qb-banner fail"><strong>QuickBooks returned no GST rows for this period.</strong> GST figures are unavailable — not zero. (Known connector behaviour: the Tax Summary report has returned no rows on a live company even with GST codes configured.) Use QuickBooks › Reports › GST Summary › Export to Excel as the fallback.</div>';
+      body.innerHTML = '<div class="qb-banner na"><strong>QuickBooks returned no GST rows for this period.</strong> GST figures are unavailable — not zero. Either there were no GST transactions in ' + QB.h(QB.periodLine(c.inputs.start_date, c.inputs.end_date)) + ', or the connector\'s Tax Summary returned nothing (this has happened on a live company that had GST transactions). Try a period you know has GST activity; if it is still empty, export QuickBooks › Reports › GST Summary to Excel and attach it.</div>';
       return { checks: [{ name: 'QuickBooks returned GST rows for the period', pass: null, detail: 'NoReportData' }], na: ['All BAS labels for this period (Tax Summary returned no rows)'] };
     }
     var b = QB.bas(rep), refund = b.nine != null && b.nine < 0;
