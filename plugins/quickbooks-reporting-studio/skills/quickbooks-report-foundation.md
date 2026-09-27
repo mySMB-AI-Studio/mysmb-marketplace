@@ -7,7 +7,7 @@ description: Shared build recipe, controls contract, validation rules, QuickBook
 
 Use when you build any QuickBooks Online report, dashboard or report pack. Load this skill first, then the family skill (for example `quickbooks-profit-and-loss`). This file carries the tested report kit and stylesheet, and every family skill carries its own tested `dataBindings` and report config. You assemble them. You do not write report code from scratch.
 
-Spec: QuickBooks Reports Prompt Library v1.1 (Q00–Q39, Reporting Library Catalogue RPT/LIB rows, Operating Model v0.1). Waves 1 and 2 are built. Each family skill traces its FULL PROMPT sections to this build.
+Spec: QuickBooks Reports Prompt Library v1.1 (Q00–Q39, Reporting Library Catalogue RPT/LIB rows, Operating Model v0.1). Waves 1–4 are built; the payroll families (Q32–Q34) wait on an Employment Hero payroll connector. Each family skill traces its FULL PROMPT sections to this build.
 
 ## Build a report (every family)
 
@@ -19,7 +19,7 @@ Spec: QuickBooks Reports Prompt Library v1.1 (Q00–Q39, Reporting Library Catal
 3. **dataBindings.** Copy the family's `dataBindings` JSON exactly. Change only the `default` values of date inputs, as the family skill's *Date defaults* line says. A date default is `YYYY-MM-DD` or `"today"`. Keep every input name, option, binding id, tool name and param. The `display` default is a JSON string: set `p` (period preset), `a` (as-of preset), `c` (compare mode) and `v` (report view or member) to match the request. **Branding:** set `b` to a brand colour (`#rrggbb`) only when the user asks for their own or their customer's branding in chat ("use our brand colour #1a4d8f", "match Acme's navy"); otherwise leave `b` empty and the report uses QuickBooks branding, because the data comes from QuickBooks. Keep every other key.
 4. **Report config.** Copy the family's report config JS exactly. Change only the `defaults` object so that it equals the manifest defaults, with `"today"` written as today's date (`YYYY-MM-DD`). If the discovery call showed a label or group the config does not recognise, you may widen the matching regular expression in `render`. Change nothing else.
 5. **Assemble** one HTML document from the skeleton below. Replace `{{TITLE}}` with the report title, `{{CSS}}` with the stylesheet, `{{KIT}}` with the report kit and `{{CFG}}` with the report config, all verbatim. Never edit, shorten, reformat or "improve" the kit or the stylesheet: they are tested as one unit, and the platform validates the document against the bindings.
-6. **Save** with `artifact_save`: `title` = "<Company> — <Report name>" — no period, because the reader can change the period and the saved title cannot follow; the report header always shows the current period. Put the opening period in the one-line `description` instead ("Opened on August 2026, accrual basis"). Use `fileName` from the family skill, the family `tags`, the family `tags`, `content` = the document and `dataBindings` = the manifest. Do not pass `connectors`, because a live report derives them. Never paste the HTML into chat.
+6. **Save** with `artifact_save`: `title` = "<Company> — <Report name>" — no period, because the reader can change the period and the saved title cannot follow; the report header always shows the current period. Put the opening period in the one-line `description` instead ("Opened on August 2026, accrual basis"). Use `fileName` from the family skill, the family `tags`, `content` = the document and `dataBindings` = the manifest. Do not pass `connectors`, because a live report derives them. Never paste the HTML into chat.
 7. **Completion note.** Keep it to 3–6 lines:
    - that the report is live and refreshes on open;
    - the controls the reader can change;
@@ -47,7 +47,7 @@ The kit renders the control row from the config, so every report has the same gr
 - Only `quickbooks-accounting` tools. Never invent, estimate or reuse example figures. Anything missing is "N/A — not in source" and is listed under Sources & limitations. A tool that returns no rows is *unavailable*, not zero.
 - Every family has STEP 4 checks. The kit recomputes them on every load and every control change and shows them in the validation banner: Pass, Fail (red, listed first) or N/A (cannot be computed), with the data timestamp, the financial-year source and the mechanism used.
 - Sign and classification: QuickBooks can return credits where you expect debits (for example a negative Cost of Sales). The report shows the figures as QuickBooks returned them and adds a note. It never silently flips a sign.
-- Connector limits that the reports state rather than work around: one company per connection; the ageing reports age as of today (`report_date`, `aging_period`, `num_periods`, `aging_method` and `past_due` are not passed by the connector yet); the Tax Summary has returned no rows on a live company; PAYG, payroll, employee and ATO reports live in Employment Hero; the Audit Log is UI-only.
+- Connector limits that the reports state rather than work around: one company per connection; the ageing reports age as of today (`report_date`, `aging_period`, `num_periods`, `aging_method` and `past_due` are not passed by the connector yet); the Tax Summary has returned no rows on a live company; PAYG, payroll, leave and ATO reports live in Employment Hero (QuickBooks time activities and the employee contact list are in Q31); the Audit Log is UI-only; a forecast (Q09) is an estimate projected from actuals, never a QuickBooks figure.
 - If the user needs data the connector does not expose, ask them for the QuickBooks export (Reports › open the report › set the controls › Export › Excel). Read the company, report name, period and basis from the export header and confirm them. Then save a STATIC report (no `dataBindings`) with `connectors: ["quickbooks-accounting"]` and say it is frozen.
 - Financial output is decision support, not audit, tax or legal advice.
 
@@ -61,7 +61,7 @@ The kit renders the control row from the config, so every report has the same gr
 | (d) Layout, charts, appearance | Family config `render` + stylesheet (QuickBooks look; mySMB house-style toggle; light and dark themes) |
 | (e) Source & connection mechanisms | Mechanism 4 only: the mySMB custom MCP on the Accounting API v3 (`quickbooks-accounting`). Mechanisms 1–3 (Intuit connector, Intuit open-source MCP, CData) and 5 (Spreadsheet Sync) do not exist inside a workspace; 6 = export fallback (above); 7 = Open in QuickBooks |
 | (f) Screenshots | QA compares the report against the Shots tabs (family QA script) |
-| (g) Priority / delivery order | Per family skill (Wave 1: Trains 01–02; Wave 2: Trains 03–04) |
+| (g) Priority / delivery order | Per family skill (Wave 1: Trains 01–02; Wave 2: Trains 03–04; Wave 3: Trains 05–06; Wave 4: Feature F6) |
 | STEP 1 Confirm inputs | Declared inputs with defaults. Ask only for what cannot be defaulted, never for the output format |
 | STEP 2 Get data | Live bindings, re-run as the viewer on every open |
 | STEP 3 Build per layout spec | Family config `render` (QuickBooks row order, indented sub-accounts, bold "Total for" rows, header block, footer) |
@@ -70,11 +70,11 @@ The kit renders the control row from the config, so every report has the same gr
 
 ## Kit reference (for adapting a config after discovery)
 
-`QB.app(cfg)` config keys: `title`, `token` / `route` (deep link), `primary` (binding whose Header gives the period in snapshots), `company` / `prefs` (binding ids), `inputs` (role → declared input name: start, end, asAt, basis, columnsBy, cmpStart, cmpEnd, cmpAsAt, persona, display), `defaults`, `uses` (binding id → the declared inputs it consumes; drives which bindings refetch), `tools` (shown in Sources), `columnsBy`, `compare`, `views`, `derive(inputs, fyMonth)`, `roll(inputs, fyMonth, display)`, `noHead`, `render(ctx)` → `{checks:[{name, pass:true|false|null, detail}], na:[], notes:[], title, period}`, `excel(ctx)` → sheets.
+`QB.app(cfg)` config keys: `title`, `token` / `route` (deep link), `primary` (binding whose Header gives the period in snapshots), `company` / `prefs` (binding ids), `inputs` (role → declared input name: start, end, asAt, basis, columnsBy, cmpStart, cmpEnd, cmpAsAt, persona, display), `defaults`, `uses` (binding id → the declared inputs it consumes; drives which bindings refetch), `tools` (shown in Sources), `columnsBy`, `compare`, `enums` (`[{input, label, options:[[value, label]]}]` — extra declared inputs as selects), `presets` (period preset list override), `headerEnd` (false keeps the declared end date in snapshots), `views`, `derive(inputs, fyMonth)`, `roll(inputs, fyMonth, display)`, `noHead`, `render(ctx)` → `{checks:[{name, pass:true|false|null, detail}], na:[], notes:[], title, period}`, `excel(ctx)` → sheets.
 
 The `ctx` passed to `render` has: `data`, `errors`, `err(id)`, `inputs`, `display`, `view`, `compareMode`, `persona`, `company`, `fy`, `currency`, `live`, `today`, `body`, `change(patch, displayPatch)`.
 
-Helpers: `QB.walk` / `find(lines, group, labelRegex, kind)` / `val` / `cols` / `header` / `noData` / `sectionTies` / `mergeCompare` / `compareCols` / `bas`; `money` / `pct` / `periodLine` / `asOfLine` / `footerStamp`; `statement` / `grid` / `kpis` / `bars` / `line` / `donut` / `waterfall`; `preset` / `asAt` / `compare` / `fyStartOf`; `xlsx` / `sheetFromLines`.
+Helpers: `QB.walk` / `find(lines, group, labelRegex, kind)` / `val` / `cols` / `header` / `noData` / `sectionTies` / `mergeCompare` / `compareCols` / `bas`; `money` / `pct` / `periodLine` / `asOfLine` / `footerStamp`; `statement` / `grid` / `kpis` / `bars` / `line` (optional `band`) / `donut` / `waterfall`; `preset` / `asAt` / `compare` / `fyStartOf`; `xlsx` / `sheetFromLines`.
 
 ## Skeleton
 
@@ -335,6 +335,8 @@ case 'last_30': r = [addDays(t, -29), t]; break;
 case 'since_60': r = [addDays(t, -60), t]; break;
 case 'since_90': r = [addDays(t, -90), t]; break;
 case 'since_365': r = [addDays(t, -365), t]; break;
+case 'last_12m': r = [D(y, m - 12, 1), eom(y, m - 1)]; break;
+case 'last_24m': r = [D(y, m - 24, 1), eom(y, m - 1)]; break;
 default: return null;
 }
 return { start: iso(r[0]), end: iso(r[1]) };
@@ -544,18 +546,20 @@ el.innerHTML = svg + '</svg>' + legend(o.series);
 }
 function line(el, o, ctx) {
 var W = 640, H = 220, P = 28, all = []; o.series.forEach(function (s) { all = all.concat(s.values.filter(function (v) { return v != null; })); });
+if (o.band) all = all.concat(o.band.low.filter(function (v) { return v != null; }), o.band.high.filter(function (v) { return v != null; }));
 if (!all.length) { el.innerHTML = '<p class="muted">Data appears once it\'s available.</p>'; return; }
 var sc = scale(all), n = o.labels.length, step = (W - P * 2) / Math.max(n - 1, 1);
 function y(v) { return P + (H - P * 2) * (1 - (v - sc.mn) / (sc.mx - sc.mn)); }
 var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + h(o.title || 'Line chart') + '"><line x1="' + P + '" x2="' + (W - P) + '" y1="' + y(0) + '" y2="' + y(0) + '" class="axis"/>';
 o.series.forEach(function (s, j) {
 var pts = s.values.map(function (v, i) { return v == null ? null : (P + step * i).toFixed(1) + ',' + y(v).toFixed(1); }).filter(Boolean);
+if (j === 0 && o.band) { var up = [], dn = []; o.band.high.forEach(function (v, i) { if (v != null && o.band.low[i] != null) { up.push((P + step * i).toFixed(1) + ',' + y(v).toFixed(1)); dn.unshift((P + step * i).toFixed(1) + ',' + y(o.band.low[i]).toFixed(1)); } }); if (up.length) svg += '<polygon points="' + up.concat(dn).join(' ') + '" fill="var(--c2)" opacity=".16"><title>' + h(o.band.name || 'Range') + '</title></polygon>'; }
 if (o.area && j === 0 && pts.length) svg += '<polygon points="' + (P).toFixed(1) + ',' + y(0).toFixed(1) + ' ' + pts.join(' ') + ' ' + (P + step * (n - 1)).toFixed(1) + ',' + y(0).toFixed(1) + '" fill="var(--c1)" opacity=".18"/>';
 svg += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="var(--c' + (j + 1) + ')" stroke-width="2.5"' + (j ? ' stroke-dasharray="5 4"' : '') + '/>';
 s.values.forEach(function (v, i) { if (v != null) svg += '<circle cx="' + (P + step * i).toFixed(1) + '" cy="' + y(v).toFixed(1) + '" r="3" fill="var(--c' + (j + 1) + ')"><title>' + h(s.name + ' · ' + o.labels[i] + ': ' + money(v, ctx.currency, ctx.display)) + '</title></circle>'; });
 });
 o.labels.forEach(function (lb, i) { if (n <= 13 || i % Math.ceil(n / 12) === 0) svg += '<text x="' + (P + step * i).toFixed(1) + '" y="' + (H - 8) + '" class="tick" text-anchor="middle">' + h(lb) + '</text>'; });
-el.innerHTML = svg + '</svg>' + legend(o.series);
+el.innerHTML = svg + '</svg>' + legend(o.series) + (o.band ? '<div class="qb-legend"><span><i style="background:var(--c2);opacity:.3"></i>' + h(o.band.name || 'Range') + '</span></div>' : '');
 }
 function donut(el, o, ctx) {
 var items = o.items.filter(function (i) { return i.value > 0; }).sort(function (a, b) { return b.value - a.value; });
@@ -638,7 +642,7 @@ function err(id) { var e = S.errors[id]; return e ? (FRIENDLY[e.code] || e.messa
 function announce() { if (MH && live) MH.setInputs(Object.assign({}, S.inputs)); }
 function status(t) { var el = $('qb-status'); if (el) el.textContent = t || ''; }
 function requery(changed) {
-if (!MH || !live) return Promise.resolve();
+if (!MH || !live) { render(); return Promise.resolve(); } // snapshot: display-only inputs still redraw
 var ids = Object.keys(cfg.uses || {}).filter(function (id) { return !changed || (cfg.uses[id] || []).some(function (n) { return changed.indexOf(n) >= 0; }); });
 if (!ids.length) { render(); return Promise.resolve(); }
 S.busy++; status('Loading…'); var inputs = Object.assign({}, S.inputs);
@@ -672,7 +676,7 @@ function adoptHeader() {
 var hd = header(S.data[cfg.primary]); if (!hd || !hd.ReportName) return;
 if (!live) {
 if (I.start && hd.StartPeriod) S.inputs[I.start] = hd.StartPeriod;
-if (I.end && hd.EndPeriod) S.inputs[I.end] = hd.EndPeriod;
+if (I.end && hd.EndPeriod && cfg.headerEnd !== false) S.inputs[I.end] = hd.EndPeriod;
 if (I.asAt && hd.EndPeriod) S.inputs[I.asAt] = hd.EndPeriod;
 if (I.basis && (hd.ReportBasis === 'Cash' || hd.ReportBasis === 'Accrual')) S.inputs[I.basis] = hd.ReportBasis;
 }
@@ -681,7 +685,7 @@ function opt(list, cur) { return list.map(function (o) { return '<option value="
 function controls() {
 var el = $('qb-controls'); if (!el) return; var d = disp(), ci = companyInfo(S.data[cfg.company]), dis = live ? '' : ' disabled', x = '';
 x += '<label class="ctl">Client<select id="qb-client" title="One QuickBooks company per connection — connect another company under Settings → Connections to switch."><option>' + h((ci && ci.name) || 'Connected QuickBooks company') + '</option></select></label>';
-if (I.start) x += '<label class="ctl">Report period<select id="qb-preset"' + dis + '>' + opt(PRESETS, d.p) + '</select></label><label class="ctl">From<input type="date" id="qb-from" value="' + h(S.inputs[I.start]) + '"' + dis + '></label><label class="ctl">To<input type="date" id="qb-to" value="' + h(S.inputs[I.end]) + '"' + dis + '></label>';
+if (I.start) x += '<label class="ctl">Report period<select id="qb-preset"' + dis + '>' + opt(cfg.presets || PRESETS, d.p) + '</select></label><label class="ctl">From<input type="date" id="qb-from" value="' + h(S.inputs[I.start]) + '"' + dis + '></label><label class="ctl">To<input type="date" id="qb-to" value="' + h(S.inputs[I.end]) + '"' + dis + '></label>';
 if (I.asAt) x += '<label class="ctl">As of<select id="qb-asat-preset"' + dis + '>' + opt(ASAT, d.a) + '</select></label><label class="ctl">Date<input type="date" id="qb-asat" value="' + h(S.inputs[I.asAt]) + '"' + dis + '></label>';
 if (I.basis) x += '<fieldset class="ctl seg"' + dis + '><legend>Accounting method</legend>' + ['Cash', 'Accrual'].map(function (b) { return '<label><input type="radio" name="qb-basis" value="' + b + '"' + (S.inputs[I.basis] === b ? ' checked' : '') + dis + '>' + b + '</label>'; }).join('') + '</fieldset>';
 if (I.columnsBy && cfg.columnsBy) x += '<label class="ctl">Display columns by<select id="qb-cols"' + dis + '>' + opt(cfg.columnsBy, S.inputs[I.columnsBy]) + '</select></label>';

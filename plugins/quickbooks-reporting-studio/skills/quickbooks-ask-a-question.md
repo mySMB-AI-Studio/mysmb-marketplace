@@ -72,6 +72,8 @@ Use when the user asks a plain-English question about their QuickBooks figures, 
 | Q29 Projects family | `quickbooks-reporting-studio:quickbooks-projects` |
 | Q36 Exchange gains and losses (multi-currency) | `quickbooks-reporting-studio:quickbooks-exchange-gains-losses` |
 | Q35 Custom report builder | `quickbooks-reporting-studio:quickbooks-custom-report-builder` |
+| Q09 Forecasts | `quickbooks-reporting-studio:quickbooks-forecasts` |
+| Q31 Employees and time family | `quickbooks-reporting-studio:quickbooks-employees-and-time` |
 
 ## QA test script
 
