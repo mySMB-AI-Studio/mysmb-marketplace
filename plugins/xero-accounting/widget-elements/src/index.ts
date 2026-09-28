@@ -253,6 +253,46 @@ const remittance_breakdown: ComputedFunction = (args) => {
   };
 };
 
+/**
+ * Flattens a `list_receipts` response (already filtered to Status=="DRAFT")
+ * into rows for the Reimbursement Drafts tile. A Receipt is the Xero
+ * object an employee fills in before it's grouped into an ExpenseClaim
+ * for approval — "DRAFT" only exists at this level (ExpenseClaim itself
+ * starts at SUBMITTED), so this is genuinely "things not yet submitted
+ * for reimbursement", not an approximation.
+ *
+ * `isEmpty` flags a receipt with no line items / zero total — i.e.
+ * someone started it in Xero and never finished — which is the real
+ * actionable signal for this tile (a stale, abandoned draft vs. one
+ * that's filled in and just needs submitting).
+ *
+ * Args: { receipts: array }
+ * Returns: array of { id, userName, payee, amount, currencyCode, lineItemCount, isEmpty, updatedDate }
+ */
+const reimbursement_draft_rows: ComputedFunction = (args) => {
+  const receipts = Array.isArray(args.receipts) ? (args.receipts as Record<string, unknown>[]) : [];
+
+  return receipts.map((receipt) => {
+    const user = receipt.User as { FirstName?: string; LastName?: string } | undefined;
+    const contact = receipt.Contact as { Name?: string } | undefined;
+    const lineItems = Array.isArray(receipt.LineItems) ? receipt.LineItems : [];
+    const total = Number(receipt.Total) || 0;
+
+    const userName = [user?.FirstName, user?.LastName].filter(Boolean).join(' ') || 'Unknown';
+
+    return {
+      id: receipt.ReceiptID,
+      userName,
+      payee: contact?.Name || '—',
+      amount: total,
+      currencyCode: (receipt.CurrencyCode as string) || 'AUD',
+      lineItemCount: lineItems.length,
+      isEmpty: lineItems.length === 0 && total === 0,
+      updatedDate: receipt.UpdatedDateUTC ?? null,
+    };
+  });
+};
+
 // ── flatten_report_rows ──────────────────────────────────────────────
 // Walks a Xero Report tree (`Reports[0].Rows`) and returns a flat list
 // of `{ title, rowType, depth, sectionTitle, c0..c4 }` objects suitable
@@ -529,6 +569,7 @@ const elements: PluginElementsModule = {
     reconciliation_breakdown,
     remittance_rows,
     remittance_breakdown,
+    reimbursement_draft_rows,
     days_overdue,
     overdue_label,
     overdue_only,
