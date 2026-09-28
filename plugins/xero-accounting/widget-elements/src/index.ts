@@ -141,6 +141,158 @@ const reconciliation_breakdown: ComputedFunction = (args) => {
   };
 };
 
+// Supplier is a portal-defined, open-ended label with no inherent
+// good/bad meaning — a categorical (non-status) case per
+// TILE-DISPLAY-STANDARDS.md §7, so it gets the `chart-1..5` palette.
+// Only the top 5 suppliers by total amount paid get a distinct color;
+// everyone else falls back to `muted` rather than reusing a color,
+// which would falsely imply they're grouped with a top-5 supplier.
+const REMITTANCE_CHART_TONES = ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5'];
+
+function rankSuppliersByTotalPaid(payments: Record<string, unknown>[]): Map<string, string> {
+  const totals = new Map<string, number>();
+  for (const payment of payments) {
+    const invoice = payment.Invoice as { Contact?: { Name?: string } } | undefined;
+    const supplier = invoice?.Contact?.Name || 'Unknown supplier';
+    const amount = Number(payment.Amount) || 0;
+    totals.set(supplier, (totals.get(supplier) ?? 0) + amount);
+  }
+  const toneBySupplier = new Map<string, string>();
+  [...totals.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .forEach(([supplier], i) => {
+      toneBySupplier.set(supplier, i < REMITTANCE_CHART_TONES.length ? REMITTANCE_CHART_TONES[i] : 'muted');
+    });
+  return toneBySupplier;
+}
+
+/**
+ * Flattens a `list_payments` response (already filtered to
+ * PaymentType=="ACCPAYPAYMENT") into rows for the Remittance tile — an
+ * approximation of Xero's own remittance advice document (which invoices
+ * were paid, to whom, how much, when), since Xero's public API has no
+ * dedicated remittance-advice resource of its own.
+ *
+ * Each row carries `supplierTone` (chart-1..5 for the top 5 suppliers by
+ * total amount paid, muted for the rest) so a row's supplier badge and
+ * `xero-accounting_remittance_breakdown`'s bar segment for that same
+ * supplier always share one color — the breakdown function reads this
+ * same field rather than re-ranking independently.
+ *
+ * Args: { payments: array }
+ * Returns: array of { id, supplier, supplierTone, invoiceId, invoiceNumber, amount, currencyCode, date }
+ *
+ * Spec example:
+ *   {
+ *     "$computed": "xero-accounting_remittance_rows",
+ *     "args": { "payments": { "$state": "/xero-accounting/list_payments/Payments" } }
+ *   }
+ */
+const remittance_rows: ComputedFunction = (args) => {
+  const payments = Array.isArray(args.payments) ? (args.payments as Record<string, unknown>[]) : [];
+  const toneBySupplier = rankSuppliersByTotalPaid(payments);
+
+  return payments.map((payment) => {
+    const invoice = payment.Invoice as
+      | { InvoiceID?: string; InvoiceNumber?: string; Contact?: { Name?: string } }
+      | undefined;
+    const account = payment.Account as { CurrencyCode?: string } | undefined;
+    const supplier = invoice?.Contact?.Name || 'Unknown supplier';
+
+    return {
+      id: payment.PaymentID,
+      supplier,
+      supplierTone: toneBySupplier.get(supplier) ?? 'muted',
+      invoiceId: invoice?.InvoiceID ?? null,
+      invoiceNumber: invoice?.InvoiceNumber || '—',
+      amount: Number(payment.Amount) || 0,
+      currencyCode: account?.CurrencyCode || 'AUD',
+      date: payment.Date ?? null,
+    };
+  });
+};
+
+/**
+ * Groups Remittance rows (from `xero-accounting_remittance_rows`) into a
+ * top-5-suppliers-by-amount-paid breakdown, reading each row's
+ * already-assigned `supplierTone` rather than re-ranking, so the bar's
+ * segment colors always match the row badges for the same supplier.
+ * Segment width is proportional to amount paid (not row count), so the
+ * bar visually communicates "who got paid the most", not just "who has
+ * the most transactions".
+ *
+ * Args: { rows: array }
+ * Returns: { total, segments: [{ supplier, amount, tone }], template }
+ *
+ * Spec example:
+ *   {
+ *     "$computed": "xero-accounting_remittance_breakdown",
+ *     "args": { "rows": { "$state": "/ui/rows" } }
+ *   }
+ */
+const remittance_breakdown: ComputedFunction = (args) => {
+  const rows = Array.isArray(args.rows) ? (args.rows as Record<string, unknown>[]) : [];
+
+  const totals = new Map<string, { supplier: string; amount: number; tone: string }>();
+  for (const row of rows) {
+    const supplier = typeof row.supplier === 'string' && row.supplier ? row.supplier : 'Unknown supplier';
+    const entry = totals.get(supplier) ?? { supplier, amount: 0, tone: (row.supplierTone as string) ?? 'muted' };
+    entry.amount += Number(row.amount) || 0;
+    totals.set(supplier, entry);
+  }
+
+  const segments = [...totals.values()]
+    .filter((s) => s.tone !== 'muted')
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 5);
+
+  return {
+    total: rows.length,
+    segments,
+    template: segments.length ? segments.map((s) => `${Math.max(1, Math.round(s.amount))}fr`).join(' ') : '1fr',
+  };
+};
+
+/**
+ * Flattens a `list_receipts` response (already filtered to Status=="DRAFT")
+ * into rows for the Reimbursement Drafts tile. A Receipt is the Xero
+ * object an employee fills in before it's grouped into an ExpenseClaim
+ * for approval — "DRAFT" only exists at this level (ExpenseClaim itself
+ * starts at SUBMITTED), so this is genuinely "things not yet submitted
+ * for reimbursement", not an approximation.
+ *
+ * `isEmpty` flags a receipt with no line items / zero total — i.e.
+ * someone started it in Xero and never finished — which is the real
+ * actionable signal for this tile (a stale, abandoned draft vs. one
+ * that's filled in and just needs submitting).
+ *
+ * Args: { receipts: array }
+ * Returns: array of { id, userName, payee, amount, currencyCode, lineItemCount, isEmpty, updatedDate }
+ */
+const reimbursement_draft_rows: ComputedFunction = (args) => {
+  const receipts = Array.isArray(args.receipts) ? (args.receipts as Record<string, unknown>[]) : [];
+
+  return receipts.map((receipt) => {
+    const user = receipt.User as { FirstName?: string; LastName?: string } | undefined;
+    const contact = receipt.Contact as { Name?: string } | undefined;
+    const lineItems = Array.isArray(receipt.LineItems) ? receipt.LineItems : [];
+    const total = Number(receipt.Total) || 0;
+
+    const userName = [user?.FirstName, user?.LastName].filter(Boolean).join(' ') || 'Unknown';
+
+    return {
+      id: receipt.ReceiptID,
+      userName,
+      payee: contact?.Name || '—',
+      amount: total,
+      currencyCode: (receipt.CurrencyCode as string) || 'AUD',
+      lineItemCount: lineItems.length,
+      isEmpty: lineItems.length === 0 && total === 0,
+      updatedDate: receipt.UpdatedDateUTC ?? null,
+    };
+  });
+};
+
 // ── flatten_report_rows ──────────────────────────────────────────────
 // Walks a Xero Report tree (`Reports[0].Rows`) and returns a flat list
 // of `{ title, rowType, depth, sectionTitle, c0..c4 }` objects suitable
@@ -415,6 +567,9 @@ const elements: PluginElementsModule = {
     bank_tx_tone,
     bank_tx_label,
     reconciliation_breakdown,
+    remittance_rows,
+    remittance_breakdown,
+    reimbursement_draft_rows,
     days_overdue,
     overdue_label,
     overdue_only,
