@@ -7,21 +7,18 @@ description: Company-wide totals for salary and wages, taxes, deductions, leave,
 
 Prompt ID M20 · MYOB menu: Reporting › Reports › Payroll › Payroll summary. MYOB's own description: "A summary displaying total values for salary and wages, taxes, deductions, leave, and expenses."
 
-Call `list_employees` (`is_active: true`) to get the employee roster. Then call `get_employee_payroll_advice` once per active employee (bounded, small N for an SMB — the same acceptable per-entity-call pattern already used for per-contact aged reports elsewhere in this library), passing `from_date`/`to_date` for the selected period.
-
-**Critical unconfirmed point — resolve live, not from docs:** whether `from_date`/`to_date` actually filter `get_employee_payroll_advice` to multiple pay periods, or whether MYOB ignores them and this endpoint always returns just the employee's single most recent advice, is NOT confirmed by MYOB's documentation. You cannot resolve this by reading docs further — only by a live call. During generation, call it once for one employee and inspect the shape:
-- **If the response is (or contains) multiple advices spanning the requested range:** aggregate properly — sum every wage/deduction/tax/expense line by `PayrollCategory` type, across all returned advices, across all employees, into one company-wide total per category.
-- **If it only ever returns the one most recent advice regardless of the date range requested:** disclose plainly, in the header and in Sources & limitations, that this report can currently only show the latest pay period per employee, not a true date-range aggregate — do not silently mislabel a single-period snapshot as a period total.
+Bind `list_employees` (`is_active: true`) for the roster. `get_employee_payroll_advice` requires `employee_uid`, so declare ONE advice binding whose `employee_uid` maps a `string` `employee` input (defaulting to a real employee UID found during generation — never `""`), plus `from_date`/`to_date`, and call it once per active employee in a client-side loop with `await MyHubReport.getData(<advice binding>, { ...inputs, employee: uid })` — a bounded fan-out per the foundation skill (small N for an SMB; state the cap, show progress, say so if it's hit). MYOB ignores the dates, but the connector filters advices by pay-period overlap with the range itself, so each call returns every advice in range: sum every wage/deduction/tax/expense line by `PayrollCategory` type, across all returned advices, across all employees, into one company-wide total per category.
 
 Render one number per category, company-wide: total wages, total tax, total deductions, total leave accrued (from entitlement-type lines' `Hours`/`YearToDate`), total expenses.
 
-Validate: the sum of all per-employee category totals (before company-wide collapse) reconciles to the rendered company-wide totals — this is a construction-guaranteed tie-out, so a mismatch would indicate a real aggregation bug, not a data-quality issue.
+Validate (0.01 tolerance): the sum of all per-employee category totals (before company-wide collapse) reconciles to the rendered company-wide totals — this is a construction-guaranteed tie-out, so a mismatch would indicate a real aggregation bug, not a data-quality issue. If any employee's call failed, name them as "not loaded" and mark the totals' completeness check N/A — never present a partial total as complete.
 
 ## Interactivity
 
-* Declare `from_date`/`to_date` inputs with a client-side preset picker (this pay period, this quarter, YTD).
-* Declare `persona` per the foundation skill — Client/Executive show only the company-wide totals; Bookkeeper/Practitioner also show the per-employee breakdown feeding those totals (`detail-block`).
+* Declare `from_date`/`to_date` inputs with a client-side preset picker (this pay period, this quarter, FY to date).
+* Declare the `employee` `string` UID input (maxLength 36) used by the loop — no enum.
+* Declare `persona` and `company_file` per the foundation skill — Client/Executive show only the company-wide totals; Bookkeeper/Practitioner also show the per-employee breakdown feeding those totals (`detail-block`).
 
 ## Sources & limitations
 
-Tools used: `list_employees` (is_active=true) for the roster; `get_employee_payroll_advice` called once per active employee, aggregated client-side. State clearly whether the date-range aggregation above resolved to the multi-advice or single-latest-advice branch for this generation. No employer-side payroll tax (state-based) figure is included unless it surfaces as its own `PayrollCategory` line — don't invent one if absent.
+Tools used: `list_employees` (is_active=true) for the roster; `get_employee_payroll_advice` called once per active employee (bounded client-side loop; the connector applies the date range by pay-period overlap), aggregated client-side. No employer-side payroll tax (state-based) figure is included unless it surfaces as its own `PayrollCategory` line — don't invent one if absent. Snapshots keep only the bundle data, so looped employees aren't in a downloaded or shared snapshot — say so in snapshot mode.
