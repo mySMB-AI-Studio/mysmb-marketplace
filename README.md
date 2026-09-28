@@ -12,7 +12,7 @@ Accounting, CRM, HR, payroll, community, productivity — wrapped as Model Conte
 
 **New here?** → [ONBOARDING.md](./ONBOARDING.md) · [CONTRIBUTING.md](./CONTRIBUTING.md) · [CREATING_PLUGINS.md](./CREATING_PLUGINS.md)
 
-**One repo, branch tiers:** `feature/* → dev → staging → main`. Plugin `.mcp.json` URLs use the **production** MCP host on every branch — myHub routes per-environment at runtime. See [CONTRIBUTING.md](./CONTRIBUTING.md#the-one-hard-rule-about-urls).
+**One repo, four branch tiers:** `dev → qa → uat → main`. Work lands on `dev`; the mySMB.com Admin Center's AI Studio publishes and promotes each extension up the tiers. Plugin `.mcp.json` URLs use the **production** MCP host on every branch — myHub routes per-environment at runtime. See [Branch tiers & promotion](#branch-tiers--promotion) and [CONTRIBUTING.md](./CONTRIBUTING.md#the-one-hard-rule-about-urls).
 
 </div>
 
@@ -142,12 +142,31 @@ Every `${VAR}` you reference in `.mcp.json` must also appear in `plugin/README.m
 
 When the plugin works the way you want:
 
-1. Copy `plugin/` into the marketplace repo at `Plugins/plugins/<your-slug>/`.
-2. Add an entry to `.claude-plugin/marketplace.json`.
-3. From the marketplace root: `npx tsx scripts/validate.ts` — it must report `validate: OK`.
-4. Open a PR.
+1. Clone this repo and switch to the `dev` branch: `git checkout dev && git pull`.
+2. Copy `plugin/` into `plugins/<your-slug>/`.
+3. Add an entry to `.claude-plugin/marketplace.json` — optionally with store [`branding` and `listing`](CREATING_PLUGINS.md#store-branding-and-listing-optional) (logo, colour, tagline, screenshots).
+4. From the repo root: `npx tsx scripts/validate.ts` — it must report `validate: OK`.
+5. Commit and `git push origin dev` (or open a PR into `dev`).
+6. In the mySMB.com Admin Center → **AI Studio → Extensions**: **Pull**, then **Publish** to QA.
 
 Full reference: [`CREATING_PLUGINS.md`](CREATING_PLUGINS.md).
+
+---
+
+## Branch tiers & promotion
+
+```
+dev ──publish──► qa ──promote──► uat ──promote──► main (production)
+```
+
+| Branch | Installed by | Written by |
+| --- | --- | --- |
+| `dev` | Local Claude Code / local MyHub | AI Studio Developer Instance auto-commits on every save; code-driven pushes |
+| `qa` | QA tenants | AI Studio **Publish** (version patch + 1) |
+| `uat` | UAT tenants | AI Studio **Promote to UAT** (version major + 1, patch kept) |
+| `main` | Production tenants | AI Studio **Promote to Production** (same version) |
+
+Promotion is **per extension**: AI Studio copies `plugins/<slug>/` and its `marketplace.json` entry from the tier below, writes the new version into `plugin.json` and the entry, commits onto the target branch, and refreshes that environment's marketplace so tenants see it in the store straight away. Nobody commits to `qa`, `uat` or `main` by hand, and nobody bumps `version` by hand. CI validates every push to every tier. Full rules: [CONTRIBUTING.md](./CONTRIBUTING.md#branch-tiers).
 
 ---
 
@@ -164,7 +183,7 @@ Each plugin's README lists the env vars it needs under `## Configuration`.
 
 ### In a MyHub tenant
 
-Tenants pick up new plugins automatically — MyHub clones this repo at provisioning time and installs every plugin a tenant has subscribed to. See the [MyHub repo](https://github.com/mySMB-AI-Studio/myHubV2) for the consumer-side wiring.
+Each MyHub environment reads the branch that matches it (QA → `qa`, UAT → `uat`, production → `main`). Tenant admins install extensions from the **Workspace Extensions** store and apply new versions with **Update** (or automatically, if the tenant opts into auto-update). See the [MyHub repo](https://github.com/mySMB-AI-Studio/myHubV2) for the consumer-side wiring.
 
 ---
 

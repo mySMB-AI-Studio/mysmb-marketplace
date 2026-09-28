@@ -371,6 +371,176 @@ const flatten_tickets: ComputedFunction = (args) => {
   });
 };
 
+/**
+ * Maps the `get_humanitix_sales_snapshot` tool result — already an aggregate
+ * `{ ticketsSold, ordersCount, totalEarnings, currency, channelScope,
+ * timeWindow }` object, not a list — into display-ready row fields for the
+ * Sales Snapshot tile.
+ *
+ * `avg_per_order` is derived here (totalEarnings / ordersCount), not returned
+ * by the tool itself — plain arithmetic on two fields already in the result,
+ * so no backend change was needed for it. 0 when there are no orders yet.
+ *
+ * `total_earnings_formatted`/`avg_per_order_formatted` are pre-formatted
+ * plain-`$` strings (no currency-code prefix), by explicit request — this
+ * deliberately diverges from both the system `format_currency` computed
+ * (hardcoded `en-US` locale, e.g. "A$545" for AUD) and this same file's own
+ * `formatMoney` helper above (which follows the platform's documented
+ * currency standard of always prefixing the code, e.g. "A$1,234.56"). Not a
+ * bug — a one-off deviation for this tile specifically.
+ *
+ * Args: { value: { ticketsSold, ordersCount, totalEarnings, currency, channelScope, timeWindow } }
+ *
+ * Spec example:
+ *   { "$computed": "humanitix_flatten_sales_snapshot", "args": { "value": { "$state": "/humanitix/get_humanitix_sales_snapshot" } } }
+ */
+function formatPlainDollar(amount: number, fractionDigits: number): string {
+  return `$${amount.toLocaleString('en-US', { minimumFractionDigits: fractionDigits, maximumFractionDigits: fractionDigits })}`;
+}
+
+const flatten_sales_snapshot: ComputedFunction = (args) => {
+  const raw = (args.value ?? {}) as AnyRecord;
+  const ordersCount = Number(raw.ordersCount ?? 0);
+  const totalEarnings = Number(raw.totalEarnings ?? 0);
+  const avgPerOrder = ordersCount > 0 ? totalEarnings / ordersCount : 0;
+  return [
+    {
+      tickets_sold: String(Number(raw.ticketsSold ?? 0)),
+      orders_count: String(ordersCount),
+      total_earnings_formatted: formatPlainDollar(totalEarnings, 0),
+      avg_per_order_formatted: formatPlainDollar(avgPerOrder, 2),
+      channel_scope: String(raw.channelScope ?? 'All channels'),
+      time_window: String(raw.timeWindow ?? 'Today'),
+      last_updated_iso: typeof raw.lastUpdatedIso === 'string' ? raw.lastUpdatedIso : '',
+    },
+  ];
+};
+
+/**
+ * Maps the `get_humanitix_live_checkin` tool result — already an aggregate
+ * `{ hasLiveEvent, eventName, overallCheckedIn, overallTotal, ticketTypes,
+ * lastUpdatedIso }` object — into display-ready row fields for the Live
+ * Check-in tile.
+ *
+ * `ticketTypes` stays an array (for the widget spec's `repeat` binding), each
+ * item pre-computed with a `pct` (0-100, rounded) alongside its raw
+ * checked-in/total counts. `overall_pct_label` is pre-formatted as a plain
+ * "NN%" string since `Stat`'s own `tone` prop is a no-op — no reason to push
+ * percent-sign formatting into the widget spec when it's simple string work
+ * here.
+ *
+ * Args: { value: { hasLiveEvent, eventName, overallCheckedIn, overallTotal, ticketTypes: Array<{id,name,checkedIn,total}>, lastUpdatedIso } }
+ *
+ * Spec example:
+ *   { "$computed": "humanitix_flatten_live_checkin", "args": { "value": { "$state": "/humanitix/get_humanitix_live_checkin" } } }
+ */
+function pct(numerator: number, denominator: number): number {
+  return denominator > 0 ? Math.round((numerator / denominator) * 100) : 0;
+}
+
+const TICKET_TYPE_TONES = ['success', 'warning', 'destructive'] as const;
+
+const flatten_live_checkin: ComputedFunction = (args) => {
+  const raw = (args.value ?? {}) as AnyRecord;
+  const hasLiveEvent = Boolean(raw.hasLiveEvent);
+  const overallCheckedIn = Number(raw.overallCheckedIn ?? 0);
+  const overallTotal = Number(raw.overallTotal ?? 0);
+  const ticketTypes = Array.isArray(raw.ticketTypes) ? (raw.ticketTypes as AnyRecord[]) : [];
+
+  return [
+    {
+      has_live_event: hasLiveEvent,
+      event_name: String(raw.eventName ?? ''),
+      overall_pct_label: `${pct(overallCheckedIn, overallTotal)}%`,
+      overall_checked_in: String(overallCheckedIn),
+      overall_total: String(overallTotal),
+      ticket_types: ticketTypes.map((tt, i) => {
+        const checkedIn = Number(tt.checkedIn ?? 0);
+        const total = Number(tt.total ?? 0);
+        const p = pct(checkedIn, total);
+        return {
+          id: String(tt.id ?? ''),
+          name: String(tt.name ?? ''),
+          checked_in: String(checkedIn),
+          total: String(total),
+          pct: p,
+          pct_label: `${p}%`,
+          // Real, visually-distinct Text/ProgressBar tones cycled per row —
+          // decorative differentiation between ticket types, not literal
+          // status semantics (same tradeoff as Sales Snapshot's card colors).
+          row_tone: TICKET_TYPE_TONES[i % TICKET_TYPE_TONES.length],
+        };
+      }),
+      last_updated_iso: typeof raw.lastUpdatedIso === 'string' ? raw.lastUpdatedIso : '',
+    },
+  ];
+};
+
+/**
+ * Maps the `get_humanitix_revenue_trend` tool result — already an aggregate
+ * `{ dailyTotals, dayLabels, total, currency, vsLastWeekPct, bestDayLabel,
+ * lastUpdatedIso }` object — into display-ready row fields for the Revenue
+ * Trend tile.
+ *
+ * `daily_totals`/`day_labels` stay raw (bound straight to the system
+ * `Sparkline` component's `values` prop, matching Webhook Activity's own
+ * pattern, for the trend-chart layout). `daily_breakdown` is a parallel,
+ * pre-computed per-day array (label, formatted $ value, bar fill % relative
+ * to the week's max day, and a bold/regular weight flag for the best day)
+ * for the alternate "Daily breakdown" list layout — built with plain
+ * Row+ProgressBar+Text rather than the real `BarChart` component, since
+ * BarChart's own built-in currency formatting hardcodes "A$" (confirmed in
+ * its source), which would be inconsistent with this tile's established
+ * plain-"$" style everywhere else.
+ *
+ * `vs_last_week_pct` is `null` when there's no prior-week revenue to
+ * meaningfully compare against — `has_comparison` gates the Delta's
+ * visibility so nothing renders a misleading "0%"/"flat" in that case.
+ *
+ * Args: { value: { dailyTotals: number[], dayLabels: string[], total, currency, vsLastWeekPct: number | null, bestDayLabel, lastUpdatedIso } }
+ *
+ * Spec example:
+ *   { "$computed": "humanitix_flatten_revenue_trend", "args": { "value": { "$state": "/humanitix/get_humanitix_revenue_trend" } } }
+ */
+const flatten_revenue_trend: ComputedFunction = (args) => {
+  const raw = (args.value ?? {}) as AnyRecord;
+  const dailyTotals = Array.isArray(raw.dailyTotals) ? (raw.dailyTotals as number[]) : [];
+  const dayLabels = Array.isArray(raw.dayLabels) ? (raw.dayLabels as string[]) : [];
+  const total = Number(raw.total ?? 0);
+  const vsLastWeekPct = raw.vsLastWeekPct === null || raw.vsLastWeekPct === undefined ? null : Number(raw.vsLastWeekPct);
+  const bestDayLabel = String(raw.bestDayLabel ?? '');
+  const maxDay = Math.max(1, ...dailyTotals);
+
+  return [
+    {
+      total_formatted: formatPlainDollar(total, 0),
+      daily_totals: dailyTotals,
+      day_labels: dayLabels,
+      daily_breakdown: dayLabels.map((label, i) => ({
+        id: String(i),
+        label,
+        value_formatted: formatPlainDollar(dailyTotals[i] ?? 0, 0),
+        bar_pct: pct(dailyTotals[i] ?? 0, maxDay),
+        weight: label === bestDayLabel ? 'semibold' : 'regular',
+        // Real, visibly-distinct tone (green) shared by the bar and its
+        // label/value text so a day with actual revenue stands out — days
+        // with no revenue yet (future days this week, or a genuinely quiet
+        // day) stay muted rather than rendering a misleadingly "positive"
+        // green $0.
+        row_tone: (dailyTotals[i] ?? 0) > 0 ? 'success' : 'muted',
+      })),
+      has_comparison: vsLastWeekPct !== null,
+      vs_last_week_label: vsLastWeekPct !== null ? `${Math.abs(vsLastWeekPct)}%` : '',
+      vs_last_week_direction: vsLastWeekPct === null || vsLastWeekPct === 0 ? 'flat' : vsLastWeekPct > 0 ? 'up' : 'down',
+      // Matches the Delta's own tone semantics, for the Badge pill wrapping it.
+      vs_last_week_badge_tone:
+        vsLastWeekPct === null || vsLastWeekPct === 0 ? 'muted' : vsLastWeekPct > 0 ? 'success' : 'destructive',
+      best_day_label: String(raw.bestDayLabel ?? ''),
+      last_updated_iso: typeof raw.lastUpdatedIso === 'string' ? raw.lastUpdatedIso : '',
+    },
+  ];
+};
+
 const elements: PluginElementsModule = {
   slug: 'humanitix',
   functions: {
@@ -379,6 +549,9 @@ const elements: PluginElementsModule = {
     next_upcoming_event_id,
     next_upcoming_event_label,
     flatten_tickets,
+    flatten_sales_snapshot,
+    flatten_live_checkin,
+    flatten_revenue_trend,
   },
 };
 

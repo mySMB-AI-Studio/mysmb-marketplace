@@ -1,162 +1,859 @@
 {
-  "id": "humanitix-upcoming-events-demo",
-  "title": "Upcoming Events (Demo)",
-  "description": "Sample upcoming events — click a row to see how it opens the event's own Humanitix page.",
   "category": "operations",
-  "tags": ["humanitix", "events", "ticketing", "tickets", "demo"],
-  "keywords": ["events", "upcoming", "tickets", "ticketing", "humanitix", "demo", "capacity"],
   "connectorsUsed": [],
+  "description": "Sample upcoming events — click a row to see how it opens the event's own Humanitix page.",
+  "id": "humanitix-upcoming-events-demo",
+  "keywords": [
+    "events",
+    "upcoming",
+    "tickets",
+    "ticketing",
+    "humanitix",
+    "demo",
+    "capacity"
+  ],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 7 },
-    "min":       { "colSpan": 4, "rowSpan": 5 },
-    "max":       { "colSpan": 8, "rowSpan": 12 }
-  },
-  "spec": {
-    "root": "card",
-    "elements": {
-
-      "card": {
-        "type": "Card",
-        "props": {},
-        "children": ["headerRow", "divider1", "body", "footerRow"]
-      },
-
-      "headerRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
-      },
-      "titleIcon": { "type": "Icon", "props": { "name": "CalendarDays", "tone": "chart-1", "size": "sm" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Upcoming Events", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Humanitix" } },
-
-      "divider1": { "type": "Divider", "props": {} },
-
-      "body": { "type": "Body", "props": {}, "children": ["list"] },
-      "list": { "type": "Stack", "props": { "gap": "none" }, "children": ["row1Wrap", "row2Wrap", "row3Wrap", "row4Wrap", "row5Wrap"] },
-
-      "row1Wrap": { "type": "Stack", "props": { "gap": "xs" }, "children": ["row1", "row1Divider"] },
-      "row1": {
-        "type": "Row",
-        "props": { "gap": "md", "align": "center", "padded": true, "clickable": true, "hover": true },
-        "children": ["r1badge", "r1main", "r1chev"],
-        "on": { "click": { "action": "open_url", "params": { "url": "https://events.humanitix.com/annual-conference-agm-2026" } } }
-      },
-      "r1badge": { "type": "Stack", "props": { "gap": "xs", "align": "center" }, "children": ["r1dayAvatar", "r1month"] },
-      "r1dayAvatar": { "type": "Avatar", "props": { "initials": "23", "tone": "chart-1", "size": "lg" } },
-      "r1month": { "type": "Caption", "props": { "text": "SEP", "tone": "chart-1", "weight": "medium" } },
-      "r1main": { "type": "Stack", "props": { "gap": "xs", "grow": true }, "children": ["r1name", "r1meta"] },
-      "r1name": { "type": "Text", "props": { "text": "Annual Conference & AGM 2026", "size": "sm", "weight": "semibold", "truncate": true } },
-      "r1meta": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["r1time", "r1sep1", "r1loc", "r1sep2", "r1cap"] },
-      "r1time": { "type": "Caption", "props": { "text": "9:00 AM", "tone": "muted" } },
-      "r1sep1": { "type": "Caption", "props": { "text": "·", "tone": "muted" } },
-      "r1loc": { "type": "Caption", "props": { "text": "Perth, AU", "tone": "muted" } },
-      "r1sep2": { "type": "Caption", "props": { "text": "·", "tone": "muted" } },
-      "r1cap": { "type": "Caption", "props": { "text": "142/500", "tone": "warning", "weight": "medium" } },
-      "r1chev": { "type": "Icon", "props": { "name": "ChevronRight", "tone": "muted", "size": "md" } },
-
-      "row2Wrap": { "type": "Stack", "props": { "gap": "xs" }, "children": ["row2", "row2Divider"] },
-      "row2": {
-        "type": "Row",
-        "props": { "gap": "md", "align": "center", "padded": true, "clickable": true, "hover": true },
-        "children": ["r2badge", "r2main", "r2chev"],
-        "on": { "click": { "action": "open_url", "params": { "url": "https://events.humanitix.com/cpd-professional-development" } } }
-      },
-      "r2badge": { "type": "Stack", "props": { "gap": "xs", "align": "center" }, "children": ["r2dayAvatar", "r2month"] },
-      "r2dayAvatar": { "type": "Avatar", "props": { "initials": "02", "tone": "chart-1", "size": "lg" } },
-      "r2month": { "type": "Caption", "props": { "text": "OCT", "tone": "chart-1", "weight": "medium" } },
-      "r2main": { "type": "Stack", "props": { "gap": "xs", "grow": true }, "children": ["r2name", "r2meta"] },
-      "r2name": { "type": "Text", "props": { "text": "CPD Professional Development", "size": "sm", "weight": "semibold", "truncate": true } },
-      "r2meta": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["r2time", "r2sep1", "r2loc", "r2sep2", "r2cap"] },
-      "r2time": { "type": "Caption", "props": { "text": "1:00 PM", "tone": "muted" } },
-      "r2sep1": { "type": "Caption", "props": { "text": "·", "tone": "muted" } },
-      "r2loc": { "type": "Caption", "props": { "text": "Online", "tone": "muted" } },
-      "r2sep2": { "type": "Caption", "props": { "text": "·", "tone": "muted" } },
-      "r2cap": { "type": "Caption", "props": { "text": "18/20", "tone": "warning", "weight": "medium" } },
-      "r2chev": { "type": "Icon", "props": { "name": "ChevronRight", "tone": "muted", "size": "md" } },
-
-      "row3Wrap": { "type": "Stack", "props": { "gap": "xs" }, "children": ["row3", "row3Divider"] },
-      "row3": {
-        "type": "Row",
-        "props": { "gap": "md", "align": "center", "padded": true, "clickable": true, "hover": true },
-        "children": ["r3badge", "r3main", "r3chev"],
-        "on": { "click": { "action": "open_url", "params": { "url": "https://events.humanitix.com/community-food-market" } } }
-      },
-      "r3badge": { "type": "Stack", "props": { "gap": "xs", "align": "center" }, "children": ["r3dayAvatar", "r3month"] },
-      "r3dayAvatar": { "type": "Avatar", "props": { "initials": "11", "tone": "chart-1", "size": "lg" } },
-      "r3month": { "type": "Caption", "props": { "text": "OCT", "tone": "chart-1", "weight": "medium" } },
-      "r3main": { "type": "Stack", "props": { "gap": "xs", "grow": true }, "children": ["r3name", "r3meta"] },
-      "r3name": { "type": "Text", "props": { "text": "Community Food Market", "size": "sm", "weight": "semibold", "truncate": true } },
-      "r3meta": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["r3time", "r3sep1", "r3loc", "r3sep2", "r3cap"] },
-      "r3time": { "type": "Caption", "props": { "text": "8:00 AM", "tone": "muted" } },
-      "r3sep1": { "type": "Caption", "props": { "text": "·", "tone": "muted" } },
-      "r3loc": { "type": "Caption", "props": { "text": "Fremantle, AU", "tone": "muted" } },
-      "r3sep2": { "type": "Caption", "props": { "text": "·", "tone": "muted" } },
-      "r3cap": { "type": "Caption", "props": { "text": "Free", "tone": "success", "weight": "medium" } },
-      "r3chev": { "type": "Icon", "props": { "name": "ChevronRight", "tone": "muted", "size": "md" } },
-
-      "row4Wrap": { "type": "Stack", "props": { "gap": "xs" }, "children": ["row4", "row4Divider"] },
-      "row4": {
-        "type": "Row",
-        "props": { "gap": "md", "align": "center", "padded": true, "clickable": true, "hover": true },
-        "children": ["r4badge", "r4main", "r4chev"],
-        "on": { "click": { "action": "open_url", "params": { "url": "https://events.humanitix.com/industry-awards-gala-dinner" } } }
-      },
-      "r4badge": { "type": "Stack", "props": { "gap": "xs", "align": "center" }, "children": ["r4dayAvatar", "r4month"] },
-      "r4dayAvatar": { "type": "Avatar", "props": { "initials": "24", "tone": "chart-1", "size": "lg" } },
-      "r4month": { "type": "Caption", "props": { "text": "OCT", "tone": "chart-1", "weight": "medium" } },
-      "r4main": { "type": "Stack", "props": { "gap": "xs", "grow": true }, "children": ["r4name", "r4meta"] },
-      "r4name": { "type": "Text", "props": { "text": "Industry Awards & Gala Dinner", "size": "sm", "weight": "semibold", "truncate": true } },
-      "r4meta": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["r4time", "r4sep1", "r4loc", "r4sep2", "r4cap"] },
-      "r4time": { "type": "Caption", "props": { "text": "6:30 PM", "tone": "muted" } },
-      "r4sep1": { "type": "Caption", "props": { "text": "·", "tone": "muted" } },
-      "r4loc": { "type": "Caption", "props": { "text": "Perth, AU", "tone": "muted" } },
-      "r4sep2": { "type": "Caption", "props": { "text": "·", "tone": "muted" } },
-      "r4cap": { "type": "Caption", "props": { "text": "96/240", "tone": "warning", "weight": "medium" } },
-      "r4chev": { "type": "Icon", "props": { "name": "ChevronRight", "tone": "muted", "size": "md" } },
-
-      "row5Wrap": { "type": "Stack", "props": { "gap": "xs" }, "children": ["row5", "row5Divider"] },
-      "row5": {
-        "type": "Row",
-        "props": { "gap": "md", "align": "center", "padded": true, "clickable": true, "hover": true },
-        "children": ["r5badge", "r5main", "r5chev"],
-        "on": { "click": { "action": "open_url", "params": { "url": "https://events.humanitix.com/live-music-night" } } }
-      },
-      "r5badge": { "type": "Stack", "props": { "gap": "xs", "align": "center" }, "children": ["r5dayAvatar", "r5month"] },
-      "r5dayAvatar": { "type": "Avatar", "props": { "initials": "07", "tone": "chart-1", "size": "lg" } },
-      "r5month": { "type": "Caption", "props": { "text": "NOV", "tone": "chart-1", "weight": "medium" } },
-      "r5main": { "type": "Stack", "props": { "gap": "xs", "grow": true }, "children": ["r5name", "r5meta"] },
-      "r5name": { "type": "Text", "props": { "text": "Live Music Night", "size": "sm", "weight": "semibold", "truncate": true } },
-      "r5meta": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["r5time", "r5sep1", "r5loc", "r5sep2", "r5cap"] },
-      "r5time": { "type": "Caption", "props": { "text": "7:00 PM", "tone": "muted" } },
-      "r5sep1": { "type": "Caption", "props": { "text": "·", "tone": "muted" } },
-      "r5loc": { "type": "Caption", "props": { "text": "Perth, AU", "tone": "muted" } },
-      "r5sep2": { "type": "Caption", "props": { "text": "·", "tone": "muted" } },
-      "r5cap": { "type": "Caption", "props": { "text": "210/300", "tone": "warning", "weight": "medium" } },
-      "r5chev": { "type": "Icon", "props": { "name": "ChevronRight", "tone": "muted", "size": "md" } },
-
-      "row1Divider": { "type": "Divider", "props": {} },
-      "row2Divider": { "type": "Divider", "props": {} },
-      "row3Divider": { "type": "Divider", "props": {} },
-      "row4Divider": { "type": "Divider", "props": {} },
-      "row5Divider": { "type": "Divider", "props": {} },
-
-      "footerRow": {
-        "type": "Row",
-        "props": { "justify": "center", "align": "center", "clickable": true, "hover": true },
-        "children": ["footerLink"],
-        "on": {
-          "click": { "action": "open_url", "params": { "url": "https://events.humanitix.com", "target": "_blank" } }
-        }
-      },
-      "footerLink": {
-        "type": "Text",
-        "props": { "text": "View all 20 events →", "size": "sm", "weight": "medium", "tone": "chart-1" }
-      }
-
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 12
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 5
+    },
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 7
     }
   },
-  "status": "published"
+  "spec": {
+    "elements": {
+      "body": {
+        "children": [
+          "list"
+        ],
+        "props": {},
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "headerRow",
+          "divider1",
+          "body",
+          "footerRow"
+        ],
+        "props": {},
+        "type": "Card"
+      },
+      "divider1": {
+        "props": {},
+        "type": "Divider"
+      },
+      "eyebrow": {
+        "props": {
+          "text": "Humanitix"
+        },
+        "type": "Eyebrow"
+      },
+      "footerLink": {
+        "props": {
+          "size": "sm",
+          "text": "View all 20 events →",
+          "tone": "chart-1",
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "footerRow": {
+        "children": [
+          "footerLink"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": "https://events.humanitix.com"
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "hover": true,
+          "justify": "center"
+        },
+        "type": "Row"
+      },
+      "headerRow": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "list": {
+        "children": [
+          "row1Wrap",
+          "row2Wrap",
+          "row3Wrap",
+          "row4Wrap",
+          "row5Wrap"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "r1badge": {
+        "children": [
+          "r1dayAvatar",
+          "r1month"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "r1cap": {
+        "props": {
+          "text": "142/500",
+          "tone": "warning",
+          "weight": "medium"
+        },
+        "type": "Caption"
+      },
+      "r1chev": {
+        "props": {
+          "name": "ChevronRight",
+          "size": "md",
+          "tone": "muted"
+        },
+        "type": "Icon"
+      },
+      "r1dayAvatar": {
+        "props": {
+          "initials": "23",
+          "size": "lg",
+          "tone": "chart-1"
+        },
+        "type": "Avatar"
+      },
+      "r1loc": {
+        "props": {
+          "text": "Perth, AU",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "r1main": {
+        "children": [
+          "r1name",
+          "r1meta"
+        ],
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "r1meta": {
+        "children": [
+          "r1time",
+          "r1sep1",
+          "r1loc",
+          "r1sep2",
+          "r1cap"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "r1month": {
+        "props": {
+          "text": "SEP",
+          "tone": "chart-1",
+          "weight": "medium"
+        },
+        "type": "Caption"
+      },
+      "r1name": {
+        "props": {
+          "size": "sm",
+          "text": "Annual Conference & AGM 2026",
+          "truncate": true,
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "r1sep1": {
+        "props": {
+          "text": "·",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "r1sep2": {
+        "props": {
+          "text": "·",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "r1time": {
+        "props": {
+          "text": "9:00 AM",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "r2badge": {
+        "children": [
+          "r2dayAvatar",
+          "r2month"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "r2cap": {
+        "props": {
+          "text": "18/20",
+          "tone": "warning",
+          "weight": "medium"
+        },
+        "type": "Caption"
+      },
+      "r2chev": {
+        "props": {
+          "name": "ChevronRight",
+          "size": "md",
+          "tone": "muted"
+        },
+        "type": "Icon"
+      },
+      "r2dayAvatar": {
+        "props": {
+          "initials": "02",
+          "size": "lg",
+          "tone": "chart-1"
+        },
+        "type": "Avatar"
+      },
+      "r2loc": {
+        "props": {
+          "text": "Online",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "r2main": {
+        "children": [
+          "r2name",
+          "r2meta"
+        ],
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "r2meta": {
+        "children": [
+          "r2time",
+          "r2sep1",
+          "r2loc",
+          "r2sep2",
+          "r2cap"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "r2month": {
+        "props": {
+          "text": "OCT",
+          "tone": "chart-1",
+          "weight": "medium"
+        },
+        "type": "Caption"
+      },
+      "r2name": {
+        "props": {
+          "size": "sm",
+          "text": "CPD Professional Development",
+          "truncate": true,
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "r2sep1": {
+        "props": {
+          "text": "·",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "r2sep2": {
+        "props": {
+          "text": "·",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "r2time": {
+        "props": {
+          "text": "1:00 PM",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "r3badge": {
+        "children": [
+          "r3dayAvatar",
+          "r3month"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "r3cap": {
+        "props": {
+          "text": "Free",
+          "tone": "success",
+          "weight": "medium"
+        },
+        "type": "Caption"
+      },
+      "r3chev": {
+        "props": {
+          "name": "ChevronRight",
+          "size": "md",
+          "tone": "muted"
+        },
+        "type": "Icon"
+      },
+      "r3dayAvatar": {
+        "props": {
+          "initials": "11",
+          "size": "lg",
+          "tone": "chart-1"
+        },
+        "type": "Avatar"
+      },
+      "r3loc": {
+        "props": {
+          "text": "Fremantle, AU",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "r3main": {
+        "children": [
+          "r3name",
+          "r3meta"
+        ],
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "r3meta": {
+        "children": [
+          "r3time",
+          "r3sep1",
+          "r3loc",
+          "r3sep2",
+          "r3cap"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "r3month": {
+        "props": {
+          "text": "OCT",
+          "tone": "chart-1",
+          "weight": "medium"
+        },
+        "type": "Caption"
+      },
+      "r3name": {
+        "props": {
+          "size": "sm",
+          "text": "Community Food Market",
+          "truncate": true,
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "r3sep1": {
+        "props": {
+          "text": "·",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "r3sep2": {
+        "props": {
+          "text": "·",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "r3time": {
+        "props": {
+          "text": "8:00 AM",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "r4badge": {
+        "children": [
+          "r4dayAvatar",
+          "r4month"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "r4cap": {
+        "props": {
+          "text": "96/240",
+          "tone": "warning",
+          "weight": "medium"
+        },
+        "type": "Caption"
+      },
+      "r4chev": {
+        "props": {
+          "name": "ChevronRight",
+          "size": "md",
+          "tone": "muted"
+        },
+        "type": "Icon"
+      },
+      "r4dayAvatar": {
+        "props": {
+          "initials": "24",
+          "size": "lg",
+          "tone": "chart-1"
+        },
+        "type": "Avatar"
+      },
+      "r4loc": {
+        "props": {
+          "text": "Perth, AU",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "r4main": {
+        "children": [
+          "r4name",
+          "r4meta"
+        ],
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "r4meta": {
+        "children": [
+          "r4time",
+          "r4sep1",
+          "r4loc",
+          "r4sep2",
+          "r4cap"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "r4month": {
+        "props": {
+          "text": "OCT",
+          "tone": "chart-1",
+          "weight": "medium"
+        },
+        "type": "Caption"
+      },
+      "r4name": {
+        "props": {
+          "size": "sm",
+          "text": "Industry Awards & Gala Dinner",
+          "truncate": true,
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "r4sep1": {
+        "props": {
+          "text": "·",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "r4sep2": {
+        "props": {
+          "text": "·",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "r4time": {
+        "props": {
+          "text": "6:30 PM",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "r5badge": {
+        "children": [
+          "r5dayAvatar",
+          "r5month"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "r5cap": {
+        "props": {
+          "text": "210/300",
+          "tone": "warning",
+          "weight": "medium"
+        },
+        "type": "Caption"
+      },
+      "r5chev": {
+        "props": {
+          "name": "ChevronRight",
+          "size": "md",
+          "tone": "muted"
+        },
+        "type": "Icon"
+      },
+      "r5dayAvatar": {
+        "props": {
+          "initials": "07",
+          "size": "lg",
+          "tone": "chart-1"
+        },
+        "type": "Avatar"
+      },
+      "r5loc": {
+        "props": {
+          "text": "Perth, AU",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "r5main": {
+        "children": [
+          "r5name",
+          "r5meta"
+        ],
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "r5meta": {
+        "children": [
+          "r5time",
+          "r5sep1",
+          "r5loc",
+          "r5sep2",
+          "r5cap"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "r5month": {
+        "props": {
+          "text": "NOV",
+          "tone": "chart-1",
+          "weight": "medium"
+        },
+        "type": "Caption"
+      },
+      "r5name": {
+        "props": {
+          "size": "sm",
+          "text": "Live Music Night",
+          "truncate": true,
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "r5sep1": {
+        "props": {
+          "text": "·",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "r5sep2": {
+        "props": {
+          "text": "·",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "r5time": {
+        "props": {
+          "text": "7:00 PM",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "row1": {
+        "children": [
+          "r1badge",
+          "r1main",
+          "r1chev"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://events.humanitix.com/annual-conference-agm-2026"
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "md",
+          "hover": true,
+          "padded": true
+        },
+        "type": "Row"
+      },
+      "row1Divider": {
+        "props": {},
+        "type": "Divider"
+      },
+      "row1Wrap": {
+        "children": [
+          "row1",
+          "row1Divider"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "row2": {
+        "children": [
+          "r2badge",
+          "r2main",
+          "r2chev"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://events.humanitix.com/cpd-professional-development"
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "md",
+          "hover": true,
+          "padded": true
+        },
+        "type": "Row"
+      },
+      "row2Divider": {
+        "props": {},
+        "type": "Divider"
+      },
+      "row2Wrap": {
+        "children": [
+          "row2",
+          "row2Divider"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "row3": {
+        "children": [
+          "r3badge",
+          "r3main",
+          "r3chev"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://events.humanitix.com/community-food-market"
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "md",
+          "hover": true,
+          "padded": true
+        },
+        "type": "Row"
+      },
+      "row3Divider": {
+        "props": {},
+        "type": "Divider"
+      },
+      "row3Wrap": {
+        "children": [
+          "row3",
+          "row3Divider"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "row4": {
+        "children": [
+          "r4badge",
+          "r4main",
+          "r4chev"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://events.humanitix.com/industry-awards-gala-dinner"
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "md",
+          "hover": true,
+          "padded": true
+        },
+        "type": "Row"
+      },
+      "row4Divider": {
+        "props": {},
+        "type": "Divider"
+      },
+      "row4Wrap": {
+        "children": [
+          "row4",
+          "row4Divider"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "row5": {
+        "children": [
+          "r5badge",
+          "r5main",
+          "r5chev"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://events.humanitix.com/live-music-night"
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "md",
+          "hover": true,
+          "padded": true
+        },
+        "type": "Row"
+      },
+      "row5Divider": {
+        "props": {},
+        "type": "Divider"
+      },
+      "row5Wrap": {
+        "children": [
+          "row5",
+          "row5Divider"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Upcoming Events"
+        },
+        "type": "Heading"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "CalendarDays",
+          "size": "sm",
+          "tone": "chart-1"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "humanitix",
+    "events",
+    "ticketing",
+    "tickets",
+    "demo"
+  ],
+  "title": "Upcoming Events (Demo)"
 }

@@ -1,0 +1,252 @@
+{
+  "id": "sinch-registration-status-overview",
+  "title": "Sender ID Registrations",
+  "description": "Status breakdown of all Sinch sender-ID registrations — approved, pending, in queue, rejected, and draft — shown as progress bars with counts and percentages.",
+  "category": "messaging",
+  "tags": ["sinch", "sms", "sender-id", "registration", "status", "overview"],
+  "keywords": ["sinch", "sender id", "registration", "approved", "pending", "rejected", "draft", "in queue", "status", "overview"],
+  "connectorsUsed": ["sinch"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "min":       { "colSpan": 4, "rowSpan": 4 },
+    "max":       { "colSpan": 10, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "sinch",
+    "tool": "list_sinch_registrations",
+    "params": { "page_size": 100 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"],
+        "watch": {
+          "/sinch/list_sinch_registrations/registrations": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sinchRegCounts",
+              "value": {
+                "$computed": "sinch_registration_counts",
+                "args": { "value": { "$state": "/sinch/list_sinch_registrations/registrations" } }
+              }
+            }
+          }
+        }
+      },
+
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "ShieldCheck", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Sender ID Registrations", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Sinch · {n} registrations · first 100",
+              "n": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/sinch/list_sinch_registrations/registrations" } }
+              }
+            }
+          }
+        }
+      },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "content"]
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4", "sk5"],
+        "visible": { "$state": "/_loading/sinch.list_sinch_registrations" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "sk5": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No sender-ID registrations found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/sinch.list_sinch_registrations", "not": true },
+            { "$state": "/sinch/list_sinch_registrations/registrations/0", "not": true }
+          ]
+        }
+      },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["statBlock", "divider", "bars"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/sinch.list_sinch_registrations", "not": true },
+            { "$state": "/sinch/list_sinch_registrations/registrations/0" }
+          ]
+        }
+      },
+
+      "statBlock": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["statVal", "statLbl"]
+      },
+      "statVal": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/ui/sinchRegCounts/total" } }
+      },
+      "statLbl": {
+        "type": "Caption",
+        "props": { "text": "Registrations" }
+      },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "bars": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["rowApproved", "rowPending", "rowInQueue", "rowRejected", "rowDraft"]
+      },
+
+      "rowApproved": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["lblApproved", "barApproved", "cntApproved"]
+      },
+      "lblApproved": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["dotApproved", "txtApproved"]
+      },
+      "dotApproved": { "type": "Dot", "props": { "size": "sm", "tone": "success" } },
+      "txtApproved":  { "type": "Text", "props": { "text": "Approved", "size": "xs" } },
+      "barApproved": {
+        "type": "ProgressBar",
+        "props": { "value": { "$state": "/ui/sinchRegCounts/approvedPct" }, "tone": "success" }
+      },
+      "cntApproved": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/sinchRegCounts/approvedLabel" }, "size": "xs", "tone": "muted" }
+      },
+
+      "rowPending": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["lblPending", "barPending", "cntPending"]
+      },
+      "lblPending": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["dotPending", "txtPending"]
+      },
+      "dotPending": { "type": "Dot", "props": { "size": "sm", "tone": "warning" } },
+      "txtPending":  { "type": "Text", "props": { "text": "Pending", "size": "xs" } },
+      "barPending": {
+        "type": "ProgressBar",
+        "props": { "value": { "$state": "/ui/sinchRegCounts/pendingPct" }, "tone": "warning" }
+      },
+      "cntPending": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/sinchRegCounts/pendingLabel" }, "size": "xs", "tone": "muted" }
+      },
+
+      "rowInQueue": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["lblInQueue", "barInQueue", "cntInQueue"]
+      },
+      "lblInQueue": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["dotInQueue", "txtInQueue"]
+      },
+      "dotInQueue": { "type": "Dot", "props": { "size": "sm", "tone": "info" } },
+      "txtInQueue":  { "type": "Text", "props": { "text": "In Queue", "size": "xs" } },
+      "barInQueue": {
+        "type": "ProgressBar",
+        "props": { "value": { "$state": "/ui/sinchRegCounts/inQueuePct" }, "tone": "info" }
+      },
+      "cntInQueue": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/sinchRegCounts/inQueueLabel" }, "size": "xs", "tone": "muted" }
+      },
+
+      "rowRejected": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["lblRejected", "barRejected", "cntRejected"]
+      },
+      "lblRejected": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["dotRejected", "txtRejected"]
+      },
+      "dotRejected": { "type": "Dot", "props": { "size": "sm", "tone": "destructive" } },
+      "txtRejected":  { "type": "Text", "props": { "text": "Rejected", "size": "xs" } },
+      "barRejected": {
+        "type": "ProgressBar",
+        "props": { "value": { "$state": "/ui/sinchRegCounts/rejectedPct" }, "tone": "destructive" }
+      },
+      "cntRejected": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/sinchRegCounts/rejectedLabel" }, "size": "xs", "tone": "muted" }
+      },
+
+      "rowDraft": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["lblDraft", "barDraft", "cntDraft"]
+      },
+      "lblDraft": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["dotDraft", "txtDraft"]
+      },
+      "dotDraft": { "type": "Dot", "props": { "size": "sm", "tone": "muted" } },
+      "txtDraft":  { "type": "Text", "props": { "text": "Draft", "size": "xs" } },
+      "barDraft": {
+        "type": "ProgressBar",
+        "props": { "value": { "$state": "/ui/sinchRegCounts/draftPct" }, "tone": "muted" }
+      },
+      "cntDraft": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/sinchRegCounts/draftLabel" }, "size": "xs", "tone": "muted" }
+      }
+
+    }
+  },
+  "status": "published"
+}

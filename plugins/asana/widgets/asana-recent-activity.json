@@ -1,31 +1,165 @@
 {
-  "id": "asana-recent-activity",
-  "title": "Recent Activity",
-  "description": "Recent completions and updates in one Asana project, with each task's assignee shown by name and colored initials avatar -- built to match a reference mockup as closely as this platform's components allow. Approximation: the Asana MCP gateway has no stories/events tool yet, so comments, status-column moves, and bulk-add events aren't shown, only real task-level fields (completed/completed_at, modified_at, assignee). Scoped to a single hardcoded project_gid (see dataProvider.params) since this platform has no per-installation widget config mechanism to let an installer pick their own project. The assignee shown is a proxy for who performed the row's action, not a confirmed per-action actor. The header icon is an approximation too: the system Icon component has no solid-fill background, so it can't reproduce the mockup's solid orange rounded-square badge -- only a tone-colored line icon.",
-  "category": "tasks",
-  "tags": ["asana", "activity", "feed", "recent", "tasks"],
-  "keywords": ["recent activity", "activity feed", "asana activity", "completed tasks", "updated tasks"],
-  "connectorsUsed": ["asana"],
-  "popularity": 0,
   "brandColor": "#F2994A",
-  "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 4 },
-    "min": { "colSpan": 3, "rowSpan": 4 },
-    "max": { "colSpan": 8, "rowSpan": 12 }
-  },
+  "category": "tasks",
+  "connectorsUsed": [
+    "asana"
+  ],
   "dataProvider": {
+    "kind": "tool",
     "mcp": "asana",
-    "tool": "list_tasks",
-    "params": { "project_gid": "1218344654321276", "completed_since": "2026-01-01T00:00:00.000Z", "limit": 50 }
+    "params": {
+      "completed_since": "2026-01-01T00:00:00.000Z",
+      "limit": 50,
+      "project_gid": "1218344654321276"
+    },
+    "tool": "list_tasks"
+  },
+  "description": "Recent completions and updates in one Asana project, with each task's assignee shown by name and colored initials avatar -- built to match a reference mockup as closely as this platform's components allow. Approximation: the Asana MCP gateway has no stories/events tool yet, so comments, status-column moves, and bulk-add events aren't shown, only real task-level fields (completed/completed_at, modified_at, assignee). Scoped to a single hardcoded project_gid (see dataProvider.params) since this platform has no per-installation widget config mechanism to let an installer pick their own project. The assignee shown is a proxy for who performed the row's action, not a confirmed per-action actor. The header icon is an approximation too: the system Icon component has no solid-fill background, so it can't reproduce the mockup's solid orange rounded-square badge -- only a tone-colored line icon.",
+  "id": "asana-recent-activity",
+  "keywords": [
+    "recent activity",
+    "activity feed",
+    "asana activity",
+    "completed tasks",
+    "updated tasks"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 12
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 4
+    },
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 4
+    }
   },
   "spec": {
-    "root": "card",
     "elements": {
-
-      "card": {
-        "type": "Card",
+      "activityAvatar": {
+        "props": {
+          "initials": {
+            "$item": "initials"
+          },
+          "size": "sm",
+          "tone": {
+            "$item": "avatar_tone"
+          }
+        },
+        "type": "Avatar"
+      },
+      "activityBody": {
+        "children": [
+          "activityTitle",
+          "activityTimestamp"
+        ],
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "activityList": {
+        "children": [
+          "activityRowLink"
+        ],
+        "props": {
+          "gap": "xs",
+          "pt": "sm"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/rows"
+        },
+        "type": "Stack",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/asana.list_tasks",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0"
+            }
+          ]
+        }
+      },
+      "activityRowLink": {
+        "children": [
+          "activityAvatar",
+          "activityBody"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "url"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "props": {
+          "align": "start",
+          "clickable": true,
+          "gap": "sm",
+          "hover": true
+        },
+        "type": "Row"
+      },
+      "activityTimestamp": {
+        "props": {
+          "text": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "activity_at"
+              }
+            }
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "activityTitle": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "title"
+          },
+          "truncate": true,
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "activityList",
+          "footerLabel"
+        ],
         "props": {},
-        "children": ["headerRow", "div0", "body"],
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "headerRow",
+          "div0",
+          "body"
+        ],
+        "props": {},
+        "type": "Card",
         "watch": {
           "/asana/list_tasks/data": [
             {
@@ -34,130 +168,153 @@
                 "statePath": "/ui/rows",
                 "value": {
                   "$computed": "asana_flatten_recent_activity",
-                  "args": { "value": { "$state": "/asana/list_tasks/data" } }
+                  "args": {
+                    "value": {
+                      "$state": "/asana/list_tasks/data"
+                    }
+                  }
                 }
               }
             }
           ]
         }
       },
-
-      "headerRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["titleGroup"]
-      },
-      "titleGroup": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
-      },
-      "titleIcon": { "type": "Icon", "props": { "name": "Clock", "tone": "brand", "size": "lg" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Recent Activity", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Asana" } },
-
-      "div0": { "type": "Divider", "props": {} },
-
-      "body": {
-        "type": "Body",
+      "div0": {
         "props": {},
-        "children": ["loading", "empty", "activityList", "footerLabel"]
+        "type": "Divider"
       },
-
-      "loading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3"],
-        "visible": { "$state": "/_loading/asana.list_tasks" }
-      },
-      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-
       "empty": {
-        "type": "Empty",
-        "props": { "message": "No recent activity in this project." },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/asana.list_tasks", "not": true },
-            { "$state": "/ui/rows/0", "not": true }
-          ]
-        }
-      },
-
-      "activityList": {
-        "type": "Stack",
-        "props": { "gap": "xs", "pt": "sm" },
-        "children": ["activityRowLink"],
-        "repeat": { "statePath": "/ui/rows", "key": "id" },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/asana.list_tasks", "not": true },
-            { "$state": "/ui/rows/0" }
-          ]
-        }
-      },
-
-      "activityRowLink": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "start", "hover": true, "clickable": true },
-        "on": {
-          "click": {
-            "action": "open_url",
-            "params": {
-              "url": { "$computed": "identity", "args": { "value": { "$item": "url" } } },
-              "target": "_blank"
-            }
-          }
+        "props": {
+          "message": "No recent activity in this project."
         },
-        "children": ["activityAvatar", "activityBody"]
-      },
-
-      "activityAvatar": {
-        "type": "Avatar",
-        "props": {
-          "initials": { "$item": "initials" },
-          "tone": { "$item": "avatar_tone" },
-          "size": "sm"
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/asana.list_tasks",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0",
+              "not": true
+            }
+          ]
         }
       },
-
-      "activityBody": {
-        "type": "Stack",
-        "props": { "gap": "none", "grow": true },
-        "children": ["activityTitle", "activityTimestamp"]
-      },
-      "activityTitle": {
-        "type": "Text",
-        "props": { "text": { "$item": "title" }, "size": "sm", "weight": "medium", "truncate": true }
-      },
-      "activityTimestamp": {
-        "type": "Caption",
+      "eyebrow": {
         "props": {
-          "text": {
-            "$computed": "relative_time",
-            "args": { "value": { "$item": "activity_at" } }
-          },
-          "tone": "muted"
-        }
+          "text": "Asana"
+        },
+        "type": "Eyebrow"
       },
-
       "footerLabel": {
-        "type": "Caption",
         "props": {
           "text": "Shows completions and edits in this project, by assignee — comments and status-column moves aren't available yet.",
           "tone": "muted"
         },
+        "type": "Caption",
         "visible": {
           "$and": [
-            { "$state": "/_loading/asana.list_tasks", "not": true },
-            { "$state": "/ui/rows/0" }
+            {
+              "$state": "/_loading/asana.list_tasks",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0"
+            }
           ]
         }
+      },
+      "headerRow": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/asana.list_tasks"
+        }
+      },
+      "sk1": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Recent Activity"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Clock",
+          "size": "lg",
+          "tone": "brand"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
       }
-
-    }
+    },
+    "root": "card"
   },
-  "status": "published"
+  "tags": [
+    "asana",
+    "activity",
+    "feed",
+    "recent",
+    "tasks"
+  ],
+  "title": "Recent Activity"
 }

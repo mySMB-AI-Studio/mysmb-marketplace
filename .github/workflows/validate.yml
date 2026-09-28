@@ -1,11 +1,15 @@
 name: validate
 
-# Runs on every PR (any target) and on pushes to each long-lived branch tier so
-# main, staging, and dev all stay valid — including the env-agnostic-URL rule.
+# Runs on every PR (any target, so PRs into dev/qa/uat/main are all covered) and
+# on pushes to each branch tier — dev → qa → uat → main — so every tier stays
+# valid, including the env-agnostic-URL rule. Pushes include the AI Studio's
+# auto-commits to dev and its publish/promote commits to qa/uat/main; a failure
+# on those surfaces in the AI Studio promotion log. `staging` is retired but
+# kept here until the branch is archived (rollback only).
 on:
   pull_request:
   push:
-    branches: [main, staging, dev]
+    branches: [main, uat, qa, dev, staging]
 
 jobs:
   validate:

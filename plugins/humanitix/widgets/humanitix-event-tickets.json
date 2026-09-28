@@ -1,30 +1,60 @@
 {
-  "id": "humanitix-event-tickets",
-  "title": "Event Ticket Sales",
-  "description": "Ticket sales for the soonest upcoming Humanitix event — attendee, ticket type, amount, and check-in status.",
   "category": "operations",
-  "tags": ["humanitix", "events", "ticketing", "tickets", "orders"],
-  "keywords": ["tickets", "ticket sales", "attendees", "check-in", "humanitix"],
-  "connectorsUsed": ["humanitix"],
+  "connectorsUsed": [
+    "humanitix"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "humanitix",
+    "params": {
+      "pageSize": 100
+    },
+    "tool": "list_events"
+  },
+  "description": "Ticket sales for the soonest upcoming Humanitix event — attendee, ticket type, amount, and check-in status.",
+  "id": "humanitix-event-tickets",
+  "keywords": [
+    "tickets",
+    "ticket sales",
+    "attendees",
+    "check-in",
+    "humanitix"
+  ],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 6 },
-    "min": { "colSpan": 4, "rowSpan": 4 },
-    "max": { "colSpan": 10, "rowSpan": 12 }
-  },
-  "dataProvider": {
-    "mcp": "humanitix",
-    "tool": "list_events",
-    "params": { "pageSize": 100 }
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 12
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 6
+    }
   },
   "spec": {
-    "root": "card",
     "elements": {
-
-      "card": {
-        "type": "Card",
+      "body": {
+        "children": [
+          "noEvent",
+          "empty",
+          "table"
+        ],
         "props": {},
-        "children": ["titleRow", "eventLabelRow", "divider", "body"],
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "titleRow",
+          "eventLabelRow",
+          "divider",
+          "body"
+        ],
+        "props": {},
+        "type": "Card",
         "watch": {
           "/humanitix/list_events": [
             {
@@ -33,7 +63,11 @@
                 "statePath": "/ui/eventId",
                 "value": {
                   "$computed": "humanitix_next_upcoming_event_id",
-                  "args": { "value": { "$state": "/humanitix/list_events" } }
+                  "args": {
+                    "value": {
+                      "$state": "/humanitix/list_events"
+                    }
+                  }
                 }
               }
             },
@@ -43,15 +77,13 @@
                 "statePath": "/ui/eventLabel",
                 "value": {
                   "$computed": "humanitix_next_upcoming_event_label",
-                  "args": { "value": { "$state": "/humanitix/list_events" } }
+                  "args": {
+                    "value": {
+                      "$state": "/humanitix/list_events"
+                    }
+                  }
                 }
               }
-            }
-          ],
-          "/ui/eventId": [
-            {
-              "action": "humanitix.list_tickets",
-              "params": { "eventId": { "$state": "/ui/eventId" }, "pageSize": 20 }
             }
           ],
           "/humanitix/list_tickets": [
@@ -61,113 +93,212 @@
                 "statePath": "/ui/rows",
                 "value": {
                   "$computed": "humanitix_flatten_tickets",
-                  "args": { "value": { "$state": "/humanitix/list_tickets" } }
+                  "args": {
+                    "value": {
+                      "$state": "/humanitix/list_tickets"
+                    }
+                  }
                 }
+              }
+            }
+          ],
+          "/ui/eventId": [
+            {
+              "action": "humanitix.list_tickets",
+              "params": {
+                "eventId": {
+                  "$state": "/ui/eventId"
+                },
+                "pageSize": 20
               }
             }
           ]
         }
       },
-
-      "titleRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
+      "divider": {
+        "props": {},
+        "type": "Divider"
       },
-      "titleIcon": {
-        "type": "Icon",
-        "props": { "name": "Ticket", "tone": "info", "size": "sm" }
+      "empty": {
+        "props": {
+          "message": "No tickets sold yet for this event."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/eventId"
+            },
+            {
+              "$state": "/_loading/humanitix.list_tickets",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0",
+              "not": true
+            }
+          ]
+        }
       },
-      "titleStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["title", "eyebrow"]
-      },
-      "title": {
-        "type": "Heading",
-        "props": { "text": "Event Ticket Sales", "level": "h2" }
+      "eventLabelRow": {
+        "props": {
+          "text": {
+            "$state": "/ui/eventLabel"
+          },
+          "tone": "muted",
+          "truncate": true
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/eventLabel"
+        }
       },
       "eyebrow": {
-        "type": "Eyebrow",
-        "props": { "text": "Humanitix · next event, up to 20 tickets" }
-      },
-
-      "eventLabelRow": {
-        "type": "Caption",
-        "props": { "text": { "$state": "/ui/eventLabel" }, "tone": "muted", "truncate": true },
-        "visible": { "$state": "/ui/eventLabel" }
-      },
-
-      "divider": { "type": "Divider", "props": {} },
-
-      "body": {
-        "type": "Body",
-        "props": {},
-        "children": ["noEvent", "empty", "table"]
-      },
-
-      "noEvent": {
-        "type": "Empty",
-        "props": { "message": "No upcoming events on Humanitix." },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/humanitix.list_events", "not": true },
-            { "$state": "/ui/eventId", "not": true }
-          ]
-        }
-      },
-
-      "empty": {
-        "type": "Empty",
-        "props": { "message": "No tickets sold yet for this event." },
-        "visible": {
-          "$and": [
-            { "$state": "/ui/eventId" },
-            { "$state": "/_loading/humanitix.list_tickets", "not": true },
-            { "$state": "/ui/rows/0", "not": true }
-          ]
-        }
-      },
-
-      "table": {
-        "type": "Table",
         "props": {
-          "loading": {
-            "$or": [
-              { "$state": "/_loading/humanitix.list_events" },
-              { "$state": "/_loading/humanitix.list_tickets" }
-            ]
-          },
-          "skeletonRows": 5,
-          "rows": { "$state": "/ui/rows" },
-          "columns": [
-            { "id": "attendee", "header": "Attendee", "field": "attendee", "priority": 1 },
-            { "id": "type", "header": "Ticket Type", "field": "ticket_type", "width": 130, "priority": 2 },
-            { "id": "amount", "header": "Amount", "field": "amount_label", "width": 100, "align": "right", "priority": 1 },
+          "text": "Humanitix · next event, up to 20 tickets"
+        },
+        "type": "Eyebrow"
+      },
+      "noEvent": {
+        "props": {
+          "message": "No upcoming events on Humanitix."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
             {
-              "id": "status",
-              "header": "Status",
-              "field": "status_label",
-              "variant": "badge",
-              "tone": { "$computed": "identity", "args": { "value": { "$item": "status_tone" } } },
-              "width": 110,
+              "$state": "/_loading/humanitix.list_events",
+              "not": true
+            },
+            {
+              "$state": "/ui/eventId",
+              "not": true
+            }
+          ]
+        }
+      },
+      "table": {
+        "props": {
+          "columns": [
+            {
+              "field": "attendee",
+              "header": "Attendee",
+              "id": "attendee",
               "priority": 1
             },
             {
-              "id": "checkedIn",
-              "header": "Checked In",
-              "field": "checked_in_label",
+              "field": "ticket_type",
+              "header": "Ticket Type",
+              "id": "type",
+              "priority": 2,
+              "width": 130
+            },
+            {
+              "align": "right",
+              "field": "amount_label",
+              "header": "Amount",
+              "id": "amount",
+              "priority": 1,
+              "width": 100
+            },
+            {
+              "field": "status_label",
+              "header": "Status",
+              "id": "status",
+              "priority": 1,
+              "tone": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "status_tone"
+                  }
+                }
+              },
               "variant": "badge",
-              "tone": { "$computed": "identity", "args": { "value": { "$item": "checked_in_tone" } } },
-              "width": 120,
-              "priority": 2
+              "width": 110
+            },
+            {
+              "field": "checked_in_label",
+              "header": "Checked In",
+              "id": "checkedIn",
+              "priority": 2,
+              "tone": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "checked_in_tone"
+                  }
+                }
+              },
+              "variant": "badge",
+              "width": 120
             }
-          ]
+          ],
+          "loading": {
+            "$or": [
+              {
+                "$state": "/_loading/humanitix.list_events"
+              },
+              {
+                "$state": "/_loading/humanitix.list_tickets"
+              }
+            ]
+          },
+          "rows": {
+            "$state": "/ui/rows"
+          },
+          "skeletonRows": 5
         },
-        "visible": { "$state": "/ui/rows/0" }
+        "type": "Table",
+        "visible": {
+          "$state": "/ui/rows/0"
+        }
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Event Ticket Sales"
+        },
+        "type": "Heading"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Ticket",
+          "size": "sm",
+          "tone": "info"
+        },
+        "type": "Icon"
+      },
+      "titleRow": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
       }
-
-    }
+    },
+    "root": "card"
   },
-  "status": "published"
+  "tags": [
+    "humanitix",
+    "events",
+    "ticketing",
+    "tickets",
+    "orders"
+  ],
+  "title": "Event Ticket Sales"
 }

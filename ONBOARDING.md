@@ -19,16 +19,22 @@ user prompt ─► MyHub agent ─► MCP tool ─► your hosted MCP server ─
                   └── plugin (.mcp.json + skills + widgets)  (this repo)
 ```
 
-## Branch model (both repos)
+## Branch tiers (this repo)
 
 ```
-feature/* ──► dev ──► staging ──► main/master (production)
+dev ──publish──► qa ──promote──► uat ──promote──► main (production)
 ```
 
-Cut `feature/*` from `dev`, PR into `dev`, promote up the tiers. The production
-branch is `main` in this repo and `master` in `myhub-mcp-servers` (historical;
-mapped in each repo's README). MyHub installs the branch matching the tenant's
-environment automatically.
+All work lands on `dev` — saves in the AI Studio Developer Instance
+auto-commit there, and code changes are pushed there. The mySMB.com Admin
+Center's **AI Studio** then publishes each extension to `qa` and promotes it to
+`uat` and `main`, bumping the version as it goes; nobody commits to `qa`,
+`uat` or `main` by hand. MyHub installs the branch matching the tenant's
+environment (QA → `qa`, UAT → `uat`, production → `main`). Details:
+[CONTRIBUTING.md](./CONTRIBUTING.md#branch-tiers).
+
+`myhub-mcp-servers` has its own deploy branches (production is `master`) — see
+that repo's README.
 
 ## Day 1 — run things locally
 
@@ -47,21 +53,26 @@ npx tsx scripts/validate.ts       # validates the whole marketplace
 
 ## Day 1 — build your first plugin
 
-1. Read **[CREATING_PLUGINS.md](./CREATING_PLUGINS.md)** and scaffold under
-   `plugins/<name>/`.
+1. `git checkout dev && git pull`, read **[CREATING_PLUGINS.md](./CREATING_PLUGINS.md)**
+   and scaffold under `plugins/<name>/`.
 2. Point `.mcp.json` at the **production** server route
-   (`…/<server>/mcp`) — never a staging host (the validator enforces this).
-3. Register it in `.claude-plugin/marketplace.json`.
+   (`…/<server>/mcp`) — never a dev/QA/UAT host (the validator enforces this).
+3. Register it in `.claude-plugin/marketplace.json` (optionally with store
+   `branding` / `listing` — see CREATING_PLUGINS.md).
 4. `npx tsx scripts/validate.ts` until green.
-5. Open a PR into `dev` (see [CONTRIBUTING.md](./CONTRIBUTING.md)).
+5. Push to `dev` (or open a PR into `dev`), then in AI Studio → Extensions press
+   **Pull** and **Publish** (see [CONTRIBUTING.md](./CONTRIBUTING.md)).
 
 ## How environments work (read this once)
 
-- One repo, branch tiers. `main`=prod, `staging`, `dev`.
+- One repo, four branch tiers: `dev` (unpublished) → `qa` → `uat` → `main` (prod).
 - `.mcp.json` URLs are **environment-agnostic** (always production host).
 - MyHub redirects to the right environment's servers at runtime via
   `MCP_SERVERS_BASE_URL` — you never encode environment in the repo.
-- A tenant's marketplace install is pinned to a branch (`ref`); the MyHub admin
-  form pre-fills it per environment.
+- A tenant's marketplace install is pinned to a branch (`ref`); MyHub pre-fills
+  it per environment (`MARKETPLACE_DEFAULT_REF`: local `dev`, QA `qa`, UAT `uat`,
+  production `main`).
+- Versions are AI Studio's job: publish = patch + 1, promote to UAT = major + 1,
+  promote to production = unchanged.
 
 That's it. Ask in the team channel if `/health` or the validator surprises you.

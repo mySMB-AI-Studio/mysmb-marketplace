@@ -1,30 +1,56 @@
 {
-  "id": "asana-project-progress",
-  "title": "Project Progress",
-  "description": "Task completion progress for your active Asana projects with at-risk and behind counts.",
   "category": "projects",
-  "tags": ["asana", "projects", "progress", "completion", "at risk"],
-  "keywords": ["asana projects", "project progress", "task completion", "at risk", "behind"],
-  "connectorsUsed": ["asana"],
+  "connectorsUsed": [
+    "asana"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "asana",
+    "params": {
+      "archived": false,
+      "limit": 10
+    },
+    "tool": "list_projects"
+  },
+  "description": "Task completion progress for your active Asana projects with at-risk and behind counts.",
+  "id": "asana-project-progress",
+  "keywords": [
+    "asana projects",
+    "project progress",
+    "task completion",
+    "at risk",
+    "behind"
+  ],
   "popularity": 65,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 6 },
-    "min": { "colSpan": 3, "rowSpan": 4 },
-    "max": { "colSpan": 8, "rowSpan": 12 }
-  },
-  "dataProvider": {
-    "mcp": "asana",
-    "tool": "list_projects",
-    "params": { "archived": false, "limit": 10 }
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 12
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 4
+    },
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 6
+    }
   },
   "spec": {
-    "root": "card",
     "elements": {
-
       "card": {
-        "type": "Card",
+        "children": [
+          "headerRow",
+          "div0",
+          "loading",
+          "empty",
+          "kpiGrid",
+          "div1",
+          "projectList",
+          "projectFooter"
+        ],
         "props": {},
-        "children": ["headerRow", "div0", "loading", "empty", "kpiGrid", "div1", "projectList", "projectFooter"],
+        "type": "Card",
         "watch": {
           "/asana/list_projects/data": [
             {
@@ -33,139 +59,379 @@
                 "statePath": "/ui/rows",
                 "value": {
                   "$computed": "asana_flatten_project_progress",
-                  "args": { "value": { "$state": "/asana/list_projects/data" } }
+                  "args": {
+                    "value": {
+                      "$state": "/asana/list_projects/data"
+                    }
+                  }
                 }
               }
             }
           ]
         }
       },
-
-      "headerRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["titleGroup"]
-      },
-      "titleGroup": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
-      },
-      "titleIcon": { "type": "Icon", "props": { "name": "TrendingUp", "tone": "success", "size": "sm" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Project Progress", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Asana" } },
-
-      "div0": { "type": "Divider", "props": {} },
-
-      "loading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3"],
-        "visible": { "$state": "/_loading/asana.list_projects" }
-      },
-      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-
-      "empty": {
-        "type": "Empty",
-        "props": { "message": "No active projects found." },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/asana.list_projects", "not": true },
-            { "$state": "/ui/rows/0", "not": true }
-          ]
-        }
-      },
-
-      "kpiGrid": {
-        "type": "Grid",
-        "props": { "cols": 3, "gap": "sm" },
-        "children": ["tileActive", "tileAtRisk", "tileBehind"],
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/asana.list_projects", "not": true },
-            { "$state": "/ui/rows/0" }
-          ]
-        }
-      },
-
-      "tileActive": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackActive"] },
-      "stackActive": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valActive", "lblActive"] },
-      "valActive": { "type": "Stat", "props": { "value": { "$state": "/ui/rows/0/stat_active" }, "size": "md" } },
-      "lblActive": { "type": "Caption", "props": { "text": "Active", "tone": "muted" } },
-
-      "tileAtRisk": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackAtRisk"] },
-      "stackAtRisk": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valAtRisk", "lblAtRisk"] },
-      "valAtRisk": { "type": "Stat", "props": { "value": { "$state": "/ui/rows/0/stat_at_risk" }, "size": "md" } },
-      "lblAtRisk": { "type": "Caption", "props": { "text": "At Risk", "tone": "warning" } },
-
-      "tileBehind": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackBehind"] },
-      "stackBehind": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valBehind", "lblBehind"] },
-      "valBehind": { "type": "Stat", "props": { "value": { "$state": "/ui/rows/0/stat_behind" }, "size": "md" } },
-      "lblBehind": { "type": "Caption", "props": { "text": "Behind", "tone": "destructive" } },
-
-      "div1": {
-        "type": "Divider",
+      "div0": {
         "props": {},
+        "type": "Divider"
+      },
+      "div1": {
+        "props": {},
+        "type": "Divider",
         "visible": {
           "$and": [
-            { "$state": "/_loading/asana.list_projects", "not": true },
-            { "$state": "/ui/rows/0" }
+            {
+              "$state": "/_loading/asana.list_projects",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0"
+            }
           ]
         }
       },
-
-      "projectList": {
-        "type": "Stack",
-        "props": { "gap": "md" },
-        "children": ["projectRow"],
-        "repeat": { "statePath": "/ui/rows", "key": "id" },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/asana.list_projects", "not": true },
-            { "$state": "/ui/rows/0" }
-          ]
-        }
-      },
-
-      "projectRow": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["projectHeader", "projectBarRow"]
-      },
-      "projectBarRow": { "type": "Row", "props": {}, "children": ["projectBar"] },
-      "projectHeader": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["projectName", "projectPct"]
-      },
-      "projectName": {
-        "type": "Text",
-        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "semibold" }
-      },
-      "projectPct": {
-        "type": "Text",
+      "empty": {
         "props": {
-          "text": { "$item": "pct_label" },
-          "size": "sm",
-          "weight": "semibold",
-          "tone": { "$item": "tone" }
+          "message": "No active projects found."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/asana.list_projects",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "eyebrow": {
+        "props": {
+          "text": "Asana"
+        },
+        "type": "Eyebrow"
+      },
+      "headerRow": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "kpiGrid": {
+        "children": [
+          "tileActive",
+          "tileAtRisk",
+          "tileBehind"
+        ],
+        "props": {
+          "cols": 3,
+          "gap": "sm"
+        },
+        "type": "Grid",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/asana.list_projects",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0"
+            }
+          ]
+        }
+      },
+      "lblActive": {
+        "props": {
+          "text": "Active",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "lblAtRisk": {
+        "props": {
+          "text": "At Risk",
+          "tone": "warning"
+        },
+        "type": "Caption"
+      },
+      "lblBehind": {
+        "props": {
+          "text": "Behind",
+          "tone": "destructive"
+        },
+        "type": "Caption"
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/asana.list_projects"
         }
       },
       "projectBar": {
-        "type": "ProgressBar",
-        "props": { "value": { "$item": "pct" }, "tone": { "$item": "tone" } }
+        "props": {
+          "tone": {
+            "$item": "tone"
+          },
+          "value": {
+            "$item": "pct"
+          }
+        },
+        "type": "ProgressBar"
       },
-
+      "projectBarRow": {
+        "children": [
+          "projectBar"
+        ],
+        "props": {},
+        "type": "Row"
+      },
       "projectFooter": {
+        "props": {
+          "text": {
+            "$state": "/ui/rows/0/footer_label"
+          },
+          "tone": "muted"
+        },
         "type": "Caption",
-        "props": { "text": { "$state": "/ui/rows/0/footer_label" }, "tone": "muted" },
-        "visible": { "$state": "/ui/rows/0/footer_label" }
+        "visible": {
+          "$state": "/ui/rows/0/footer_label"
+        }
+      },
+      "projectHeader": {
+        "children": [
+          "projectName",
+          "projectPct"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "projectList": {
+        "children": [
+          "projectRow"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/rows"
+        },
+        "type": "Stack",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/asana.list_projects",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0"
+            }
+          ]
+        }
+      },
+      "projectName": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "name"
+          },
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "projectPct": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "pct_label"
+          },
+          "tone": {
+            "$item": "tone"
+          },
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "projectRow": {
+        "children": [
+          "projectHeader",
+          "projectBarRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "sk1": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "stackActive": {
+        "children": [
+          "valActive",
+          "lblActive"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "stackAtRisk": {
+        "children": [
+          "valAtRisk",
+          "lblAtRisk"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "stackBehind": {
+        "children": [
+          "valBehind",
+          "lblBehind"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "tileActive": {
+        "children": [
+          "stackActive"
+        ],
+        "props": {
+          "variant": "muted"
+        },
+        "type": "Section"
+      },
+      "tileAtRisk": {
+        "children": [
+          "stackAtRisk"
+        ],
+        "props": {
+          "variant": "muted"
+        },
+        "type": "Section"
+      },
+      "tileBehind": {
+        "children": [
+          "stackBehind"
+        ],
+        "props": {
+          "variant": "muted"
+        },
+        "type": "Section"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Project Progress"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "TrendingUp",
+          "size": "sm",
+          "tone": "success"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "valActive": {
+        "props": {
+          "size": "md",
+          "value": {
+            "$state": "/ui/rows/0/stat_active"
+          }
+        },
+        "type": "Stat"
+      },
+      "valAtRisk": {
+        "props": {
+          "size": "md",
+          "value": {
+            "$state": "/ui/rows/0/stat_at_risk"
+          }
+        },
+        "type": "Stat"
+      },
+      "valBehind": {
+        "props": {
+          "size": "md",
+          "value": {
+            "$state": "/ui/rows/0/stat_behind"
+          }
+        },
+        "type": "Stat"
       }
-
-    }
+    },
+    "root": "card"
   },
-  "status": "published"
+  "tags": [
+    "asana",
+    "projects",
+    "progress",
+    "completion",
+    "at risk"
+  ],
+  "title": "Project Progress"
 }

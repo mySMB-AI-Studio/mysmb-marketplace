@@ -1,52 +1,187 @@
 {
-  "id": "eventbrite-guest-list",
-  "title": "Guest List",
-  "description": "Browse your Eventbrite organization's events and pull up the full guest roster for whichever one you select — every registrant, not just a check-in percentage — split into All / Checked In / Not Checked In / Cancelled tabs. Zero-config: auto-resolves your organization, defaulting to the FIRST organization on the connected account if there is more than one (see this plugin's README). Complements the Check-In Progress tile: that one answers \"how full is the room right now\", this one answers \"who exactly is on the list\" (search a name, see who's cancelled/refunded, etc.).",
-  "category": "marketing",
-  "tags": ["eventbrite", "events", "attendees", "guest list", "directory"],
-  "keywords": ["eventbrite guest list", "attendee directory", "guest roster", "event attendees", "registration list", "who's coming"],
-  "connectorsUsed": ["eventbrite"],
-  "popularity": 0,
   "brandColor": "#34DFBA",
-  "sizing": {
-    "preferred": { "colSpan": 6, "rowSpan": 9 },
-    "min": { "colSpan": 5, "rowSpan": 7 },
-    "max": { "colSpan": 10, "rowSpan": 14 }
-  },
+  "category": "marketing",
+  "connectorsUsed": [
+    "eventbrite"
+  ],
   "dataProvider": {
+    "kind": "tool",
     "mcp": "eventbrite",
-    "tool": "list_organizations",
-    "params": {}
+    "params": {},
+    "tool": "list_organizations"
+  },
+  "description": "Browse your Eventbrite organization's events and pull up the full guest roster for whichever one you select — every registrant, not just a check-in percentage — split into All / Checked In / Not Checked In / Cancelled tabs. Zero-config: auto-resolves your organization, defaulting to the FIRST organization on the connected account if there is more than one (see this plugin's README). Complements the Check-In Progress tile: that one answers \"how full is the room right now\", this one answers \"who exactly is on the list\" (search a name, see who's cancelled/refunded, etc.).",
+  "id": "eventbrite-guest-list",
+  "keywords": [
+    "eventbrite guest list",
+    "attendee directory",
+    "guest roster",
+    "event attendees",
+    "registration list",
+    "who's coming"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 14
+    },
+    "min": {
+      "colSpan": 5,
+      "rowSpan": 7
+    },
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 9
+    }
   },
   "spec": {
-    "root": "card",
     "elements": {
-      "card": {
-        "type": "Card",
-        "props": {},
-        "children": ["header", "divider0", "body"],
-        "watch": {
-          "/eventbrite/list_organizations/organizations/0/id": {
-            "action": "eventbrite.list_events",
-            "params": {
-              "organization_id": { "$state": "/eventbrite/list_organizations/organizations/0/id" },
-              "time_filter": "all",
-              "order_by": "start_desc",
-              "page_size": 20
+      "allContent": {
+        "children": [
+          "allEmpty",
+          "allList",
+          "allTruncation"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/ui/tab",
+          "eq": "all"
+        }
+      },
+      "allEmpty": {
+        "props": {
+          "message": "No registrations for this event yet."
+        },
+        "type": "Empty",
+        "visible": {
+          "$state": "/ui/guests/all/0",
+          "not": true
+        }
+      },
+      "allList": {
+        "children": [
+          "guestRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/guests/all"
+        },
+        "type": "Stack"
+      },
+      "allTruncation": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/guests/all_total"
+              },
+              "pattern": "Showing 20 of {n}"
             }
           },
-          "/eventbrite/list_events/events": [
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/rows",
-                "value": {
-                  "$computed": "eventbrite_flatten_upcoming_events",
-                  "args": { "value": { "$state": "/eventbrite/list_events/events" } }
-                }
-              }
+          "tone": "muted"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/guests/all_total",
+          "gt": 20
+        }
+      },
+      "attendeeLoading": {
+        "children": [
+          "sk4",
+          "sk5"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/eventbrite.list_attendees"
+        }
+      },
+      "body": {
+        "children": [
+          "loadingEvents",
+          "emptyEvents",
+          "mainContent"
+        ],
+        "props": {},
+        "type": "Body"
+      },
+      "cancelledContent": {
+        "children": [
+          "cancelledEmpty",
+          "cancelledList",
+          "cancelledTruncation"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/ui/tab",
+          "eq": "cancelled"
+        }
+      },
+      "cancelledEmpty": {
+        "props": {
+          "message": "No cancelled or refunded registrations."
+        },
+        "type": "Empty",
+        "visible": {
+          "$state": "/ui/guests/cancelled/0",
+          "not": true
+        }
+      },
+      "cancelledList": {
+        "children": [
+          "guestRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/guests/cancelled"
+        },
+        "type": "Stack"
+      },
+      "cancelledTruncation": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/guests/cancelled_total"
+              },
+              "pattern": "Showing 20 of {n}"
             }
-          ],
+          },
+          "tone": "muted"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/guests/cancelled_total",
+          "gt": 20
+        }
+      },
+      "card": {
+        "children": [
+          "header",
+          "divider0",
+          "body"
+        ],
+        "props": {},
+        "type": "Card",
+        "watch": {
           "/eventbrite/list_attendees/attendees": [
             {
               "action": "setState",
@@ -54,156 +189,321 @@
                 "statePath": "/ui/guests",
                 "value": {
                   "$computed": "eventbrite_flatten_guest_list",
-                  "args": { "value": { "$state": "/eventbrite/list_attendees/attendees" } }
+                  "args": {
+                    "value": {
+                      "$state": "/eventbrite/list_attendees/attendees"
+                    }
+                  }
                 }
               }
             },
-            { "action": "setState", "params": { "statePath": "/ui/tab", "value": "all" } }
-          ]
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/tab",
+                "value": "all"
+              }
+            }
+          ],
+          "/eventbrite/list_events/events": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "eventbrite_flatten_upcoming_events",
+                  "args": {
+                    "value": {
+                      "$state": "/eventbrite/list_events/events"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "/eventbrite/list_organizations/organizations/0/id": {
+            "action": "eventbrite.list_events",
+            "params": {
+              "order_by": "start_desc",
+              "organization_id": {
+                "$state": "/eventbrite/list_organizations/organizations/0/id"
+              },
+              "page_size": 20,
+              "time_filter": "all"
+            }
+          }
         }
       },
-
-      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
-      "titleGroup": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
-      },
-      "titleIcon": { "type": "Icon", "props": { "name": "BookUser", "tone": "accent", "size": "sm" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Guest List", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Eventbrite · Select an event" } },
-
-      "divider0": { "type": "Divider", "props": {} },
-
-      "body": { "type": "Body", "props": {}, "children": ["loadingEvents", "emptyEvents", "mainContent"] },
-
-      "loadingEvents": {
+      "checkedInContent": {
+        "children": [
+          "checkedInEmpty",
+          "checkedInList",
+          "checkedInTruncation"
+        ],
+        "props": {
+          "gap": "xs"
+        },
         "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3"],
         "visible": {
-          "$or": [
-            { "$state": "/_loading/eventbrite.list_organizations" },
-            { "$state": "/_loading/eventbrite.list_events" }
-          ]
+          "$state": "/ui/tab",
+          "eq": "checked_in"
         }
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-
-      "emptyEvents": {
+      "checkedInEmpty": {
+        "props": {
+          "message": "No one has checked in yet."
+        },
         "type": "Empty",
-        "props": { "message": "No events found for this organization." },
         "visible": {
-          "$and": [
-            { "$state": "/_loading/eventbrite.list_organizations", "not": true },
-            { "$state": "/_loading/eventbrite.list_events", "not": true },
-            { "$state": "/ui/rows/0", "not": true }
-          ]
+          "$state": "/ui/guests/checked_in/0",
+          "not": true
         }
       },
-
-      "mainContent": {
+      "checkedInList": {
+        "children": [
+          "guestRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/guests/checked_in"
+        },
+        "type": "Stack"
+      },
+      "checkedInTruncation": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/guests/checked_in_total"
+              },
+              "pattern": "Showing 20 of {n}"
+            }
+          },
+          "tone": "muted"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/guests/checked_in_total",
+          "gt": 20
+        }
+      },
+      "detailArea": {
+        "children": [
+          "detailDivider",
+          "selectedEventInfo",
+          "attendeeLoading",
+          "guestListDetail"
+        ],
+        "props": {
+          "gap": "sm"
+        },
         "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["eventsCaption", "eventList", "noSelectionHint", "detailArea"],
+        "visible": {
+          "$state": "/ui/selectedEvent/id"
+        }
+      },
+      "detailDivider": {
+        "props": {},
+        "type": "Divider"
+      },
+      "divider0": {
+        "props": {},
+        "type": "Divider"
+      },
+      "emptyEvents": {
+        "props": {
+          "message": "No events found for this organization."
+        },
+        "type": "Empty",
         "visible": {
           "$and": [
-            { "$state": "/_loading/eventbrite.list_events", "not": true },
-            { "$state": "/ui/rows/0" }
+            {
+              "$state": "/_loading/eventbrite.list_organizations",
+              "not": true
+            },
+            {
+              "$state": "/_loading/eventbrite.list_events",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0",
+              "not": true
+            }
           ]
         }
       },
-
-      "eventsCaption": { "type": "Caption", "props": { "text": "Events", "tone": "muted" } },
       "eventList": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["eventRow"],
-        "repeat": { "statePath": "/ui/rows", "key": "id" }
+        "children": [
+          "eventRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/rows"
+        },
+        "type": "Stack"
       },
       "eventRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true, "clickable": true },
+        "children": [
+          "eventRowIcon",
+          "eventRowInfo",
+          "eventRowBadge"
+        ],
         "on": {
           "click": [
             {
               "action": "setState",
-              "params": { "statePath": "/ui/selectedEvent", "value": { "$bindItem": "" } }
+              "params": {
+                "statePath": "/ui/selectedEvent",
+                "value": {
+                  "$bindItem": ""
+                }
+              }
             },
             {
               "action": "eventbrite.list_attendees",
-              "params": { "event_id": { "$bindItem": "id" }, "page_size": 200 }
+              "params": {
+                "event_id": {
+                  "$bindItem": "id"
+                },
+                "page_size": 200
+              }
             }
           ]
         },
-        "children": ["eventRowIcon", "eventRowInfo", "eventRowBadge"]
-      },
-      "eventRowIcon": {
-        "type": "Icon",
-        "props": { "name": "Calendar", "tone": { "$item": "status_tone" }, "size": "sm" }
-      },
-      "eventRowInfo": {
-        "type": "Stack",
-        "props": { "gap": "none", "grow": true },
-        "children": ["eventRowName", "eventRowDate"]
-      },
-      "eventRowName": {
-        "type": "Text",
-        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "semibold", "truncate": true }
-      },
-      "eventRowDate": {
-        "type": "Caption",
-        "props": { "text": { "$item": "date_label" }, "tone": "muted" }
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "sm",
+          "hover": true,
+          "justify": "between"
+        },
+        "type": "Row"
       },
       "eventRowBadge": {
-        "type": "Badge",
-        "props": { "text": { "$item": "status_label" }, "tone": { "$item": "status_tone" }, "variant": "soft" }
+        "props": {
+          "text": {
+            "$item": "status_label"
+          },
+          "tone": {
+            "$item": "status_tone"
+          },
+          "variant": "soft"
+        },
+        "type": "Badge"
       },
-
-      "noSelectionHint": {
-        "type": "Caption",
-        "props": { "text": "Select an event above to see its guest list.", "tone": "muted" },
-        "visible": { "$state": "/ui/selectedEvent/id", "not": true }
+      "eventRowDate": {
+        "props": {
+          "text": {
+            "$item": "date_label"
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
       },
-
-      "detailArea": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["detailDivider", "selectedEventInfo", "attendeeLoading", "guestListDetail"],
-        "visible": { "$state": "/ui/selectedEvent/id" }
+      "eventRowIcon": {
+        "props": {
+          "name": "Calendar",
+          "size": "sm",
+          "tone": {
+            "$item": "status_tone"
+          }
+        },
+        "type": "Icon"
       },
-
-      "detailDivider": { "type": "Divider", "props": {} },
-
-      "selectedEventInfo": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["selectedEventName", "selectedEventDate"]
+      "eventRowInfo": {
+        "children": [
+          "eventRowName",
+          "eventRowDate"
+        ],
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "type": "Stack"
       },
-      "selectedEventName": {
-        "type": "Heading",
-        "props": { "text": { "$state": "/ui/selectedEvent/name" }, "level": "h3" }
+      "eventRowName": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "name"
+          },
+          "truncate": true,
+          "weight": "semibold"
+        },
+        "type": "Text"
       },
-      "selectedEventDate": {
-        "type": "Caption",
-        "props": { "text": { "$state": "/ui/selectedEvent/date_label" }, "tone": "muted" }
+      "eventsCaption": {
+        "props": {
+          "text": "Events",
+          "tone": "muted"
+        },
+        "type": "Caption"
       },
-
-      "attendeeLoading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk4", "sk5"],
-        "visible": { "$state": "/_loading/eventbrite.list_attendees" }
+      "eyebrow": {
+        "props": {
+          "text": "Eventbrite · Select an event"
+        },
+        "type": "Eyebrow"
       },
-      "sk4": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
-      "sk5": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
-
+      "guestAvatar": {
+        "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$item": "name"
+              }
+            }
+          },
+          "size": "sm",
+          "tone": {
+            "$item": "status_tone"
+          }
+        },
+        "type": "Avatar"
+      },
+      "guestBadge": {
+        "props": {
+          "text": {
+            "$item": "status_label"
+          },
+          "tone": {
+            "$item": "status_tone"
+          },
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "guestEmail": {
+        "props": {
+          "text": {
+            "$item": "email"
+          },
+          "tone": "muted",
+          "truncate": true
+        },
+        "type": "Caption"
+      },
+      "guestInfo": {
+        "children": [
+          "guestName",
+          "guestEmail",
+          "guestTicket"
+        ],
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "type": "Stack"
+      },
       "guestListDetail": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
         "children": [
           "tabRow",
           "allContent",
@@ -212,253 +512,526 @@
           "cancelledContent",
           "openBtnRow"
         ],
-        "visible": { "$state": "/_loading/eventbrite.list_attendees", "not": true }
-      },
-
-      "tabRow": {
-        "type": "Row",
-        "props": { "gap": "xs", "wrap": true },
-        "children": ["tabAllOn", "tabAllOff", "tabCheckedInOn", "tabCheckedInOff", "tabNotCheckedInOn", "tabNotCheckedInOff", "tabCancelledOn", "tabCancelledOff"]
-      },
-
-      "tabAllOn": {
-        "type": "Button",
         "props": {
-          "label": { "$computed": "fmt", "args": { "pattern": "All ({n})", "n": { "$state": "/ui/guests/all_total" } } },
-          "variant": "primary",
-          "tone": "brand",
-          "size": "sm"
+          "gap": "sm"
         },
-        "visible": { "$state": "/ui/tab", "eq": "all" }
-      },
-      "tabAllOff": {
-        "type": "Button",
-        "props": {
-          "label": { "$computed": "fmt", "args": { "pattern": "All ({n})", "n": { "$state": "/ui/guests/all_total" } } },
-          "variant": "ghost",
-          "size": "sm"
-        },
-        "visible": { "$state": "/ui/tab", "eq": "all", "not": true },
-        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/tab", "value": "all" } } }
-      },
-
-      "tabCheckedInOn": {
-        "type": "Button",
-        "props": {
-          "label": { "$computed": "fmt", "args": { "pattern": "Checked In ({n})", "n": { "$state": "/ui/guests/checked_in_total" } } },
-          "variant": "primary",
-          "tone": "success",
-          "size": "sm"
-        },
-        "visible": { "$state": "/ui/tab", "eq": "checked_in" }
-      },
-      "tabCheckedInOff": {
-        "type": "Button",
-        "props": {
-          "label": { "$computed": "fmt", "args": { "pattern": "Checked In ({n})", "n": { "$state": "/ui/guests/checked_in_total" } } },
-          "variant": "ghost",
-          "size": "sm"
-        },
-        "visible": { "$state": "/ui/tab", "eq": "checked_in", "not": true },
-        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/tab", "value": "checked_in" } } }
-      },
-
-      "tabNotCheckedInOn": {
-        "type": "Button",
-        "props": {
-          "label": { "$computed": "fmt", "args": { "pattern": "Not Checked In ({n})", "n": { "$state": "/ui/guests/not_checked_in_total" } } },
-          "variant": "primary",
-          "size": "sm"
-        },
-        "visible": { "$state": "/ui/tab", "eq": "not_checked_in" }
-      },
-      "tabNotCheckedInOff": {
-        "type": "Button",
-        "props": {
-          "label": { "$computed": "fmt", "args": { "pattern": "Not Checked In ({n})", "n": { "$state": "/ui/guests/not_checked_in_total" } } },
-          "variant": "ghost",
-          "size": "sm"
-        },
-        "visible": { "$state": "/ui/tab", "eq": "not_checked_in", "not": true },
-        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/tab", "value": "not_checked_in" } } }
-      },
-
-      "tabCancelledOn": {
-        "type": "Button",
-        "props": {
-          "label": { "$computed": "fmt", "args": { "pattern": "Cancelled ({n})", "n": { "$state": "/ui/guests/cancelled_total" } } },
-          "variant": "primary",
-          "tone": "destructive",
-          "size": "sm"
-        },
-        "visible": { "$state": "/ui/tab", "eq": "cancelled" }
-      },
-      "tabCancelledOff": {
-        "type": "Button",
-        "props": {
-          "label": { "$computed": "fmt", "args": { "pattern": "Cancelled ({n})", "n": { "$state": "/ui/guests/cancelled_total" } } },
-          "variant": "ghost",
-          "size": "sm"
-        },
-        "visible": { "$state": "/ui/tab", "eq": "cancelled", "not": true },
-        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/tab", "value": "cancelled" } } }
-      },
-
-      "allContent": {
         "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["allEmpty", "allList", "allTruncation"],
-        "visible": { "$state": "/ui/tab", "eq": "all" }
-      },
-      "allEmpty": {
-        "type": "Empty",
-        "props": { "message": "No registrations for this event yet." },
-        "visible": { "$state": "/ui/guests/all/0", "not": true }
-      },
-      "allList": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["guestRow"],
-        "repeat": { "statePath": "/ui/guests/all", "key": "id" }
-      },
-      "allTruncation": {
-        "type": "Caption",
-        "props": {
-          "text": { "$computed": "fmt", "args": { "pattern": "Showing 20 of {n}", "n": { "$state": "/ui/guests/all_total" } } },
-          "tone": "muted"
-        },
-        "visible": { "$state": "/ui/guests/all_total", "gt": 20 }
-      },
-
-      "checkedInContent": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["checkedInEmpty", "checkedInList", "checkedInTruncation"],
-        "visible": { "$state": "/ui/tab", "eq": "checked_in" }
-      },
-      "checkedInEmpty": {
-        "type": "Empty",
-        "props": { "message": "No one has checked in yet." },
-        "visible": { "$state": "/ui/guests/checked_in/0", "not": true }
-      },
-      "checkedInList": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["guestRow"],
-        "repeat": { "statePath": "/ui/guests/checked_in", "key": "id" }
-      },
-      "checkedInTruncation": {
-        "type": "Caption",
-        "props": {
-          "text": { "$computed": "fmt", "args": { "pattern": "Showing 20 of {n}", "n": { "$state": "/ui/guests/checked_in_total" } } },
-          "tone": "muted"
-        },
-        "visible": { "$state": "/ui/guests/checked_in_total", "gt": 20 }
-      },
-
-      "notCheckedInContent": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["notCheckedInEmpty", "notCheckedInList", "notCheckedInTruncation"],
-        "visible": { "$state": "/ui/tab", "eq": "not_checked_in" }
-      },
-      "notCheckedInEmpty": {
-        "type": "Empty",
-        "props": { "message": "Everyone registered has checked in." },
-        "visible": { "$state": "/ui/guests/not_checked_in/0", "not": true }
-      },
-      "notCheckedInList": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["guestRow"],
-        "repeat": { "statePath": "/ui/guests/not_checked_in", "key": "id" }
-      },
-      "notCheckedInTruncation": {
-        "type": "Caption",
-        "props": {
-          "text": { "$computed": "fmt", "args": { "pattern": "Showing 20 of {n}", "n": { "$state": "/ui/guests/not_checked_in_total" } } },
-          "tone": "muted"
-        },
-        "visible": { "$state": "/ui/guests/not_checked_in_total", "gt": 20 }
-      },
-
-      "cancelledContent": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["cancelledEmpty", "cancelledList", "cancelledTruncation"],
-        "visible": { "$state": "/ui/tab", "eq": "cancelled" }
-      },
-      "cancelledEmpty": {
-        "type": "Empty",
-        "props": { "message": "No cancelled or refunded registrations." },
-        "visible": { "$state": "/ui/guests/cancelled/0", "not": true }
-      },
-      "cancelledList": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["guestRow"],
-        "repeat": { "statePath": "/ui/guests/cancelled", "key": "id" }
-      },
-      "cancelledTruncation": {
-        "type": "Caption",
-        "props": {
-          "text": { "$computed": "fmt", "args": { "pattern": "Showing 20 of {n}", "n": { "$state": "/ui/guests/cancelled_total" } } },
-          "tone": "muted"
-        },
-        "visible": { "$state": "/ui/guests/cancelled_total", "gt": 20 }
-      },
-
-      "guestRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center", "gap": "sm" },
-        "children": ["guestAvatar", "guestInfo", "guestBadge"]
-      },
-      "guestAvatar": {
-        "type": "Avatar",
-        "props": {
-          "initials": { "$computed": "initials", "args": { "value": { "$item": "name" } } },
-          "tone": { "$item": "status_tone" },
-          "size": "sm"
+        "visible": {
+          "$state": "/_loading/eventbrite.list_attendees",
+          "not": true
         }
       },
-      "guestInfo": {
-        "type": "Stack",
-        "props": { "gap": "none", "grow": true },
-        "children": ["guestName", "guestEmail", "guestTicket"]
-      },
       "guestName": {
-        "type": "Text",
-        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "truncate": true }
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "name"
+          },
+          "truncate": true,
+          "weight": "medium"
+        },
+        "type": "Text"
       },
-      "guestEmail": {
-        "type": "Caption",
-        "props": { "text": { "$item": "email" }, "tone": "muted", "truncate": true }
+      "guestRow": {
+        "children": [
+          "guestAvatar",
+          "guestInfo",
+          "guestBadge"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
       },
       "guestTicket": {
+        "props": {
+          "text": {
+            "$item": "ticket_label"
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {},
+        "type": "Header"
+      },
+      "loadingEvents": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$or": [
+            {
+              "$state": "/_loading/eventbrite.list_organizations"
+            },
+            {
+              "$state": "/_loading/eventbrite.list_events"
+            }
+          ]
+        }
+      },
+      "mainContent": {
+        "children": [
+          "eventsCaption",
+          "eventList",
+          "noSelectionHint",
+          "detailArea"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/eventbrite.list_events",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0"
+            }
+          ]
+        }
+      },
+      "noSelectionHint": {
+        "props": {
+          "text": "Select an event above to see its guest list.",
+          "tone": "muted"
+        },
         "type": "Caption",
-        "props": { "text": { "$item": "ticket_label" }, "tone": "muted" }
+        "visible": {
+          "$state": "/ui/selectedEvent/id",
+          "not": true
+        }
       },
-      "guestBadge": {
-        "type": "Badge",
-        "props": { "text": { "$item": "status_label" }, "tone": { "$item": "status_tone" }, "variant": "soft" }
+      "notCheckedInContent": {
+        "children": [
+          "notCheckedInEmpty",
+          "notCheckedInList",
+          "notCheckedInTruncation"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/ui/tab",
+          "eq": "not_checked_in"
+        }
       },
-
-      "openBtnRow": {
-        "type": "Row",
-        "props": { "justify": "end", "pt": "sm" },
-        "children": ["openBtn"]
+      "notCheckedInEmpty": {
+        "props": {
+          "message": "Everyone registered has checked in."
+        },
+        "type": "Empty",
+        "visible": {
+          "$state": "/ui/guests/not_checked_in/0",
+          "not": true
+        }
+      },
+      "notCheckedInList": {
+        "children": [
+          "guestRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/guests/not_checked_in"
+        },
+        "type": "Stack"
+      },
+      "notCheckedInTruncation": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/guests/not_checked_in_total"
+              },
+              "pattern": "Showing 20 of {n}"
+            }
+          },
+          "tone": "muted"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/guests/not_checked_in_total",
+          "gt": 20
+        }
       },
       "openBtn": {
-        "type": "Button",
-        "props": { "label": "Open Eventbrite", "variant": "primary", "tone": "brand", "size": "sm", "leadingIcon": "ExternalLink" },
         "on": {
           "click": {
             "action": "open_url",
-            "params": { "url": { "$state": "/ui/selectedEvent/url" }, "target": "_blank" }
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$state": "/ui/selectedEvent/url"
+              }
+            }
           }
+        },
+        "props": {
+          "label": "Open Eventbrite",
+          "leadingIcon": "ExternalLink",
+          "size": "sm",
+          "tone": "brand",
+          "variant": "primary"
+        },
+        "type": "Button"
+      },
+      "openBtnRow": {
+        "children": [
+          "openBtn"
+        ],
+        "props": {
+          "justify": "end",
+          "pt": "sm"
+        },
+        "type": "Row"
+      },
+      "selectedEventDate": {
+        "props": {
+          "text": {
+            "$state": "/ui/selectedEvent/date_label"
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "selectedEventInfo": {
+        "children": [
+          "selectedEventName",
+          "selectedEventDate"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "selectedEventName": {
+        "props": {
+          "level": "h3",
+          "text": {
+            "$state": "/ui/selectedEvent/name"
+          }
+        },
+        "type": "Heading"
+      },
+      "sk1": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk4": {
+        "props": {
+          "height": "1.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk5": {
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "tabAllOff": {
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/tab",
+              "value": "all"
+            }
+          }
+        },
+        "props": {
+          "label": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/guests/all_total"
+              },
+              "pattern": "All ({n})"
+            }
+          },
+          "size": "sm",
+          "variant": "ghost"
+        },
+        "type": "Button",
+        "visible": {
+          "$state": "/ui/tab",
+          "eq": "all",
+          "not": true
         }
+      },
+      "tabAllOn": {
+        "props": {
+          "label": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/guests/all_total"
+              },
+              "pattern": "All ({n})"
+            }
+          },
+          "size": "sm",
+          "tone": "brand",
+          "variant": "primary"
+        },
+        "type": "Button",
+        "visible": {
+          "$state": "/ui/tab",
+          "eq": "all"
+        }
+      },
+      "tabCancelledOff": {
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/tab",
+              "value": "cancelled"
+            }
+          }
+        },
+        "props": {
+          "label": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/guests/cancelled_total"
+              },
+              "pattern": "Cancelled ({n})"
+            }
+          },
+          "size": "sm",
+          "variant": "ghost"
+        },
+        "type": "Button",
+        "visible": {
+          "$state": "/ui/tab",
+          "eq": "cancelled",
+          "not": true
+        }
+      },
+      "tabCancelledOn": {
+        "props": {
+          "label": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/guests/cancelled_total"
+              },
+              "pattern": "Cancelled ({n})"
+            }
+          },
+          "size": "sm",
+          "tone": "destructive",
+          "variant": "primary"
+        },
+        "type": "Button",
+        "visible": {
+          "$state": "/ui/tab",
+          "eq": "cancelled"
+        }
+      },
+      "tabCheckedInOff": {
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/tab",
+              "value": "checked_in"
+            }
+          }
+        },
+        "props": {
+          "label": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/guests/checked_in_total"
+              },
+              "pattern": "Checked In ({n})"
+            }
+          },
+          "size": "sm",
+          "variant": "ghost"
+        },
+        "type": "Button",
+        "visible": {
+          "$state": "/ui/tab",
+          "eq": "checked_in",
+          "not": true
+        }
+      },
+      "tabCheckedInOn": {
+        "props": {
+          "label": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/guests/checked_in_total"
+              },
+              "pattern": "Checked In ({n})"
+            }
+          },
+          "size": "sm",
+          "tone": "success",
+          "variant": "primary"
+        },
+        "type": "Button",
+        "visible": {
+          "$state": "/ui/tab",
+          "eq": "checked_in"
+        }
+      },
+      "tabNotCheckedInOff": {
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/tab",
+              "value": "not_checked_in"
+            }
+          }
+        },
+        "props": {
+          "label": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/guests/not_checked_in_total"
+              },
+              "pattern": "Not Checked In ({n})"
+            }
+          },
+          "size": "sm",
+          "variant": "ghost"
+        },
+        "type": "Button",
+        "visible": {
+          "$state": "/ui/tab",
+          "eq": "not_checked_in",
+          "not": true
+        }
+      },
+      "tabNotCheckedInOn": {
+        "props": {
+          "label": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/guests/not_checked_in_total"
+              },
+              "pattern": "Not Checked In ({n})"
+            }
+          },
+          "size": "sm",
+          "variant": "primary"
+        },
+        "type": "Button",
+        "visible": {
+          "$state": "/ui/tab",
+          "eq": "not_checked_in"
+        }
+      },
+      "tabRow": {
+        "children": [
+          "tabAllOn",
+          "tabAllOff",
+          "tabCheckedInOn",
+          "tabCheckedInOff",
+          "tabNotCheckedInOn",
+          "tabNotCheckedInOff",
+          "tabCancelledOn",
+          "tabCancelledOff"
+        ],
+        "props": {
+          "gap": "xs",
+          "wrap": true
+        },
+        "type": "Row"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Guest List"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "BookUser",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
       }
-    }
+    },
+    "root": "card"
   },
-  "status": "published"
+  "tags": [
+    "eventbrite",
+    "events",
+    "attendees",
+    "guest list",
+    "directory"
+  ],
+  "title": "Guest List"
 }

@@ -12,11 +12,7 @@ Eventbrite has no granular OAuth scopes for standard apps: connecting grants ful
 
 ## Configuration
 
-This plugin uses OAuth. No environment variables or manual credentials are required.
-
-| Variable | Description |
-|---|---|
-| _(none)_ | OAuth tokens are managed automatically by MyHub after you click Connect. |
+No configuration variables are required.
 
 ## Tools & resources
 

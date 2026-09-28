@@ -1,0 +1,225 @@
+{
+  "id": "lightspeed-product-catalog",
+  "title": "Lightspeed — Product Catalog",
+  "description": "A live table of every product/variant in your Lightspeed Retail (X-Series) catalog — Product, Category, Brand, and Price — with a colored breakdown of how your catalog splits across categories. Excludes Lightspeed's own system-generated Discount line item, which isn't a real catalog product.",
+  "category": "ecommerce",
+  "tags": ["lightspeed", "retail", "pos", "products", "catalog", "inventory", "ecommerce"],
+  "keywords": ["products", "catalog", "inventory", "retail", "pos", "lightspeed", "vend", "x-series"],
+  "connectorsUsed": ["lightspeed"],
+  "popularity": 0,
+  "brandColor": "#34DFBA",
+  "sizing": {
+    "preferred": { "colSpan": 8, "rowSpan": 9 },
+    "min": { "colSpan": 6, "rowSpan": 5 },
+    "max": { "colSpan": 12, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "lightspeed",
+    "tool": "list_products",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "breakdownSection", "breakdownDivider", "colHeader", "colDivider", "body"],
+        "watch": {
+          "/lightspeed/list_products/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "lightspeed_catalog_rows",
+                  "args": { "products": { "$state": "/lightspeed/list_products/data" } }
+                }
+              }
+            }
+          ],
+          "/ui/rows": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/breakdown",
+                "value": {
+                  "$computed": "lightspeed_category_breakdown",
+                  "args": { "rows": { "$state": "/ui/rows" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleRow"] },
+      "titleRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Package", "tone": "brand", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Product Catalog", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Lightspeed" }
+      },
+
+      "breakdownSection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["breakdownHeaderRow", "breakdownBar", "breakdownLegend"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/lightspeed.list_products", "not": true },
+            { "$state": "/ui/rows/0" }
+          ]
+        }
+      },
+      "breakdownHeaderRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["breakdownCaption", "breakdownTotalCaption"]
+      },
+      "breakdownCaption": {
+        "type": "Caption",
+        "props": { "text": "Category Breakdown", "tone": "muted" }
+      },
+      "breakdownTotalCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{total} products", "total": { "$state": "/ui/breakdown/total" } }
+          },
+          "tone": "muted"
+        }
+      },
+      "breakdownBar": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "template": { "$state": "/ui/breakdown/template" } },
+        "children": ["breakdownSegment"],
+        "repeat": { "statePath": "/ui/breakdown/segments", "key": "category" }
+      },
+      "breakdownSegment": {
+        "type": "ProgressBar",
+        "props": { "value": 100, "tone": { "$item": "tone" } }
+      },
+      "breakdownLegend": {
+        "type": "Row",
+        "props": { "gap": "md", "align": "center", "wrap": true },
+        "children": ["legendItem"],
+        "repeat": { "statePath": "/ui/breakdown/segments", "key": "category" }
+      },
+      "legendItem": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["legendDot", "legendLabel"]
+      },
+      "legendDot": {
+        "type": "Dot",
+        "props": { "tone": { "$item": "tone" }, "size": "sm" }
+      },
+      "legendLabel": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{category} ({count})", "category": { "$item": "category" }, "count": { "$item": "count" } }
+          },
+          "tone": "muted"
+        }
+      },
+
+      "breakdownDivider": { "type": "Divider", "props": {} },
+
+      "colHeader": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "template": "minmax(0, 1.4fr) 7rem 7.5rem 8rem 6rem" },
+        "children": ["colName", "colCategory", "colBrand", "colSupplier", "colPrice"]
+      },
+      "colName": { "type": "Caption", "props": { "text": "Product" } },
+      "colCategory": { "type": "Caption", "props": { "text": "Category" } },
+      "colBrand": { "type": "Caption", "props": { "text": "Brand" } },
+      "colSupplier": { "type": "Caption", "props": { "text": "Supplier" } },
+      "colPrice": { "type": "Caption", "props": { "text": "Price" } },
+
+      "colDivider": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "list"] },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "visible": { "$state": "/_loading/lightspeed.list_products" },
+        "children": ["sk1", "sk2", "sk3", "sk4"]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No products found in this Lightspeed catalog." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/lightspeed.list_products", "not": true },
+            { "$state": "/ui/rows/0", "not": true }
+          ]
+        }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": { "statePath": "/ui/rows", "key": "id" },
+        "limit": 30,
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/lightspeed.list_products", "not": true },
+            { "$state": "/ui/rows/0" }
+          ]
+        }
+      },
+      "row": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "template": "minmax(0, 1.4fr) 7rem 7.5rem 8rem 6rem" },
+        "children": ["rowName", "rowCategory", "rowBrand", "rowSupplier", "rowPrice"]
+      },
+      "rowName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "rowCategory": {
+        "type": "Badge",
+        "props": { "text": { "$item": "category" }, "tone": { "$item": "categoryTone" } }
+      },
+      "rowBrand": {
+        "type": "Text",
+        "props": { "text": { "$item": "brand" }, "size": "sm", "truncate": true }
+      },
+      "rowSupplier": {
+        "type": "Text",
+        "props": { "text": { "$item": "supplier" }, "size": "sm", "truncate": true }
+      },
+      "rowPrice": {
+        "type": "Text",
+        "props": { "text": { "$item": "price" }, "size": "sm", "weight": "medium", "tone": "brand" }
+      }
+    }
+  },
+  "status": "published"
+}

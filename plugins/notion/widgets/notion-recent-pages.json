@@ -25,15 +25,15 @@
   "sizing": {
     "preferred": {
       "colSpan": 6,
-      "rowSpan": 6
+      "rowSpan": 7
     },
     "min": {
       "colSpan": 4,
-      "rowSpan": 4
+      "rowSpan": 5
     },
     "max": {
       "colSpan": 12,
-      "rowSpan": 12
+      "rowSpan": 13
     }
   },
   "dataProvider": {
@@ -51,8 +51,25 @@
         "type": "Card",
         "children": [
           "header",
+          "recencyBreakdownSection",
+          "colHeader",
+          "divider0",
           "body"
-        ]
+        ],
+        "watch": {
+          "/notion/search/results": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/recencyBreakdown",
+                "value": {
+                  "$computed": "notion_recency_breakdown",
+                  "args": { "results": { "$state": "/notion/search/results" } }
+                }
+              }
+            }
+          ]
+        }
       },
       "header": {
         "type": "Header",
@@ -115,6 +132,79 @@
           }
         }
       },
+      "recencyBreakdownSection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["recencyBreakdownHeaderRow", "recencyBreakdownBar", "recencyBreakdownLegend"],
+        "visible": { "$state": "/notion/search/results/0" }
+      },
+      "recencyBreakdownHeaderRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["recencyBreakdownCaption", "recencyBreakdownTotalCaption"]
+      },
+      "recencyBreakdownCaption": {
+        "type": "Caption",
+        "props": { "text": "Last Edited Breakdown", "tone": "muted" }
+      },
+      "recencyBreakdownTotalCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{total} pages", "total": { "$state": "/ui/recencyBreakdown/total" } }
+          },
+          "tone": "muted"
+        }
+      },
+      "recencyBreakdownBar": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "template": { "$state": "/ui/recencyBreakdown/template" } },
+        "children": ["recencySegment"],
+        "repeat": { "statePath": "/ui/recencyBreakdown/segments", "key": "status" }
+      },
+      "recencySegment": {
+        "type": "ProgressBar",
+        "props": { "value": 100, "tone": { "$item": "tone" } }
+      },
+      "recencyBreakdownLegend": {
+        "type": "Row",
+        "props": { "gap": "md", "align": "center" },
+        "children": ["recencyLegendItem"],
+        "repeat": { "statePath": "/ui/recencyBreakdown/segments", "key": "status" }
+      },
+      "recencyLegendItem": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["recencyLegendDot", "recencyLegendLabel"]
+      },
+      "recencyLegendDot": {
+        "type": "Dot",
+        "props": { "tone": { "$item": "tone" }, "size": "sm" }
+      },
+      "recencyLegendLabel": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{status} ({count})", "status": { "$item": "status" }, "count": { "$item": "count" } }
+          },
+          "tone": "muted"
+        }
+      },
+
+      "colHeader": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "template": "auto minmax(0, 1fr) auto" },
+        "visible": { "$state": "/notion/search/results/0" },
+        "children": ["colIconSpacer", "colPage", "colEdited"]
+      },
+      "colIconSpacer": { "type": "Caption", "props": { "text": "" } },
+      "colPage": { "type": "Caption", "props": { "text": "Page" } },
+      "colEdited": { "type": "Caption", "props": { "text": "Last Edited" } },
+
+      "divider0": { "type": "Divider", "props": {} },
+
       "body": {
         "type": "Body",
         "children": [
@@ -182,17 +272,18 @@
         "props": {
           "gap": "sm",
           "align": "center",
+          "template": "auto minmax(0, 1fr) auto",
           "hover": true,
-          "clickable": true,
-          "justify": "between"
+          "clickable": true
         },
         "on": {
           "click": {
             "action": "open_url",
             "params": {
               "url": {
-                "$item": "url"
-              }
+                "$bindItem": "url"
+              },
+              "target": "_blank"
             }
           }
         },
@@ -206,7 +297,14 @@
         "type": "Icon",
         "props": {
           "name": "FileText",
-          "tone": "muted",
+          "tone": {
+            "$computed": "notion_page_recency_tone",
+            "args": {
+              "value": {
+                "$item": "last_edited_time"
+              }
+            }
+          },
           "size": "sm"
         }
       },
@@ -224,7 +322,12 @@
         "type": "Text",
         "props": {
           "text": {
-            "$item": "properties/title/title/0/plain_text"
+            "$computed": "notion_result_title",
+            "args": {
+              "item": {
+                "$item": ""
+              }
+            }
           },
           "size": "md",
           "weight": "medium",

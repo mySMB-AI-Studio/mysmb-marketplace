@@ -1,137 +1,353 @@
 {
-  "id": "humanitix-event-tickets-demo",
-  "title": "Event Ticket Sales (Demo)",
-  "description": "Sample ticket sales for an upcoming event — attendee, ticket type, amount, and check-in status.",
   "category": "operations",
-  "tags": ["humanitix", "events", "ticketing", "tickets", "orders", "demo"],
-  "keywords": ["tickets", "ticket sales", "attendees", "check-in", "humanitix", "demo"],
   "connectorsUsed": [],
+  "description": "Sample ticket sales for an upcoming event — attendee, ticket type, amount, and check-in status.",
+  "id": "humanitix-event-tickets-demo",
+  "keywords": [
+    "tickets",
+    "ticket sales",
+    "attendees",
+    "check-in",
+    "humanitix",
+    "demo"
+  ],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 6 },
-    "min": { "colSpan": 4, "rowSpan": 4 },
-    "max": { "colSpan": 8, "rowSpan": 10 }
-  },
-  "spec": {
-    "root": "card",
-    "elements": {
-
-      "card": {
-        "type": "Card",
-        "props": {},
-        "children": ["titleRow", "eventLabelRow", "divider", "body"]
-      },
-
-      "titleRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
-      },
-      "titleIcon": {
-        "type": "Icon",
-        "props": { "name": "Ticket", "tone": "info", "size": "sm" }
-      },
-      "titleStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["title", "eyebrow"]
-      },
-      "title": {
-        "type": "Heading",
-        "props": { "text": "Event Ticket Sales", "level": "h2" }
-      },
-      "eyebrow": {
-        "type": "Eyebrow",
-        "props": { "text": "Humanitix · next event, up to 20 tickets" }
-      },
-
-      "eventLabelRow": {
-        "type": "Caption",
-        "props": { "text": "Winter Gala (12-Oct-26)", "tone": "muted" }
-      },
-
-      "divider": { "type": "Divider", "props": {} },
-
-      "body": {
-        "type": "Body",
-        "props": {},
-        "children": ["rows"]
-      },
-
-      "rows": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["row1", "div1", "row2", "div2", "row3"]
-      },
-
-      "row1": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["r1left", "r1right"]
-      },
-      "r1left": {
-        "type": "Stack",
-        "props": { "gap": "none", "grow": true },
-        "children": ["r1name", "r1type"]
-      },
-      "r1name": { "type": "Text", "props": { "text": "Jane Doe", "size": "sm", "weight": "medium" } },
-      "r1type": { "type": "Text", "props": { "text": "General Admission", "size": "xs", "tone": "muted" } },
-      "r1right": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["r1amount", "r1status", "r1checkin"]
-      },
-      "r1amount": { "type": "Text", "props": { "text": "A$55.00", "size": "sm" } },
-      "r1status": { "type": "Badge", "props": { "text": "Complete", "tone": "success", "variant": "soft" } },
-      "r1checkin": { "type": "Badge", "props": { "text": "Checked In", "tone": "success", "variant": "soft" } },
-
-      "div1": { "type": "Divider", "props": {} },
-
-      "row2": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["r2left", "r2right"]
-      },
-      "r2left": {
-        "type": "Stack",
-        "props": { "gap": "none", "grow": true },
-        "children": ["r2name", "r2type"]
-      },
-      "r2name": { "type": "Text", "props": { "text": "Sam Lee", "size": "sm", "weight": "medium" } },
-      "r2type": { "type": "Text", "props": { "text": "VIP", "size": "xs", "tone": "muted" } },
-      "r2right": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["r2amount", "r2status", "r2checkin"]
-      },
-      "r2amount": { "type": "Text", "props": { "text": "A$120.00", "size": "sm" } },
-      "r2status": { "type": "Badge", "props": { "text": "Complete", "tone": "success", "variant": "soft" } },
-      "r2checkin": { "type": "Badge", "props": { "text": "Not Checked In", "tone": "muted", "variant": "soft" } },
-
-      "div2": { "type": "Divider", "props": {} },
-
-      "row3": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["r3left", "r3right"]
-      },
-      "r3left": {
-        "type": "Stack",
-        "props": { "gap": "none", "grow": true },
-        "children": ["r3name", "r3type"]
-      },
-      "r3name": { "type": "Text", "props": { "text": "Alex Chen", "size": "sm", "weight": "medium" } },
-      "r3type": { "type": "Text", "props": { "text": "General Admission", "size": "xs", "tone": "muted" } },
-      "r3right": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["r3amount", "r3status", "r3checkin"]
-      },
-      "r3amount": { "type": "Text", "props": { "text": "A$55.00", "size": "sm" } },
-      "r3status": { "type": "Badge", "props": { "text": "Cancelled", "tone": "destructive", "variant": "soft" } },
-      "r3checkin": { "type": "Badge", "props": { "text": "Not Checked In", "tone": "muted", "variant": "soft" } }
-
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 10
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 6
     }
   },
-  "status": "published"
+  "spec": {
+    "elements": {
+      "body": {
+        "children": [
+          "rows"
+        ],
+        "props": {},
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "titleRow",
+          "eventLabelRow",
+          "divider",
+          "body"
+        ],
+        "props": {},
+        "type": "Card"
+      },
+      "div1": {
+        "props": {},
+        "type": "Divider"
+      },
+      "div2": {
+        "props": {},
+        "type": "Divider"
+      },
+      "divider": {
+        "props": {},
+        "type": "Divider"
+      },
+      "eventLabelRow": {
+        "props": {
+          "text": "Winter Gala (12-Oct-26)",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "eyebrow": {
+        "props": {
+          "text": "Humanitix · next event, up to 20 tickets"
+        },
+        "type": "Eyebrow"
+      },
+      "r1amount": {
+        "props": {
+          "size": "sm",
+          "text": "A$55.00"
+        },
+        "type": "Text"
+      },
+      "r1checkin": {
+        "props": {
+          "text": "Checked In",
+          "tone": "success",
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "r1left": {
+        "children": [
+          "r1name",
+          "r1type"
+        ],
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "r1name": {
+        "props": {
+          "size": "sm",
+          "text": "Jane Doe",
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "r1right": {
+        "children": [
+          "r1amount",
+          "r1status",
+          "r1checkin"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "r1status": {
+        "props": {
+          "text": "Complete",
+          "tone": "success",
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "r1type": {
+        "props": {
+          "size": "xs",
+          "text": "General Admission",
+          "tone": "muted"
+        },
+        "type": "Text"
+      },
+      "r2amount": {
+        "props": {
+          "size": "sm",
+          "text": "A$120.00"
+        },
+        "type": "Text"
+      },
+      "r2checkin": {
+        "props": {
+          "text": "Not Checked In",
+          "tone": "muted",
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "r2left": {
+        "children": [
+          "r2name",
+          "r2type"
+        ],
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "r2name": {
+        "props": {
+          "size": "sm",
+          "text": "Sam Lee",
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "r2right": {
+        "children": [
+          "r2amount",
+          "r2status",
+          "r2checkin"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "r2status": {
+        "props": {
+          "text": "Complete",
+          "tone": "success",
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "r2type": {
+        "props": {
+          "size": "xs",
+          "text": "VIP",
+          "tone": "muted"
+        },
+        "type": "Text"
+      },
+      "r3amount": {
+        "props": {
+          "size": "sm",
+          "text": "A$55.00"
+        },
+        "type": "Text"
+      },
+      "r3checkin": {
+        "props": {
+          "text": "Not Checked In",
+          "tone": "muted",
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "r3left": {
+        "children": [
+          "r3name",
+          "r3type"
+        ],
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "r3name": {
+        "props": {
+          "size": "sm",
+          "text": "Alex Chen",
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "r3right": {
+        "children": [
+          "r3amount",
+          "r3status",
+          "r3checkin"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "r3status": {
+        "props": {
+          "text": "Cancelled",
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "r3type": {
+        "props": {
+          "size": "xs",
+          "text": "General Admission",
+          "tone": "muted"
+        },
+        "type": "Text"
+      },
+      "row1": {
+        "children": [
+          "r1left",
+          "r1right"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "row2": {
+        "children": [
+          "r2left",
+          "r2right"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "row3": {
+        "children": [
+          "r3left",
+          "r3right"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "rows": {
+        "children": [
+          "row1",
+          "div1",
+          "row2",
+          "div2",
+          "row3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Event Ticket Sales"
+        },
+        "type": "Heading"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Ticket",
+          "size": "sm",
+          "tone": "info"
+        },
+        "type": "Icon"
+      },
+      "titleRow": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "humanitix",
+    "events",
+    "ticketing",
+    "tickets",
+    "orders",
+    "demo"
+  ],
+  "title": "Event Ticket Sales (Demo)"
 }

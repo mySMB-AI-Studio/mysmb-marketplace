@@ -1,30 +1,56 @@
 {
-  "id": "asana-overdue-tasks",
-  "title": "Overdue Tasks",
-  "description": "Tasks assigned to you in Asana that are past their due date, with per-task overdue badges and summary stats.",
   "category": "tasks",
-  "tags": ["asana", "tasks", "overdue", "due dates", "at risk"],
-  "keywords": ["asana overdue", "overdue tasks", "past due", "late tasks", "asana"],
-  "connectorsUsed": ["asana"],
+  "connectorsUsed": [
+    "asana"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "asana",
+    "params": {
+      "assignee": "me",
+      "completed_since": "now",
+      "limit": 50
+    },
+    "tool": "list_tasks"
+  },
+  "description": "Tasks assigned to you in Asana that are past their due date, with per-task overdue badges and summary stats.",
+  "id": "asana-overdue-tasks",
+  "keywords": [
+    "asana overdue",
+    "overdue tasks",
+    "past due",
+    "late tasks",
+    "asana"
+  ],
   "popularity": 65,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 6 },
-    "min": { "colSpan": 3, "rowSpan": 4 },
-    "max": { "colSpan": 8, "rowSpan": 12 }
-  },
-  "dataProvider": {
-    "mcp": "asana",
-    "tool": "list_tasks",
-    "params": { "assignee": "me", "completed_since": "now", "limit": 50 }
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 12
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 4
+    },
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 6
+    }
   },
   "spec": {
-    "root": "card",
     "elements": {
-
       "card": {
-        "type": "Card",
+        "children": [
+          "headerRow",
+          "div0",
+          "loading",
+          "empty",
+          "kpiGrid",
+          "div1",
+          "taskList"
+        ],
         "props": {},
-        "children": ["headerRow", "div0", "loading", "empty", "kpiGrid", "div1", "taskList"],
+        "type": "Card",
         "watch": {
           "/asana/list_tasks/data": [
             {
@@ -33,132 +59,361 @@
                 "statePath": "/ui/rows",
                 "value": {
                   "$computed": "asana_flatten_overdue_tasks",
-                  "args": { "value": { "$state": "/asana/list_tasks/data" } }
+                  "args": {
+                    "value": {
+                      "$state": "/asana/list_tasks/data"
+                    }
+                  }
                 }
               }
             }
           ]
         }
       },
-
-      "headerRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["titleGroup"]
-      },
-      "titleGroup": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
-      },
-      "titleIcon": { "type": "Icon", "props": { "name": "TriangleAlert", "tone": "destructive", "size": "sm" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Overdue Tasks", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Asana" } },
-
-      "div0": { "type": "Divider", "props": {} },
-
-      "loading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3"],
-        "visible": { "$state": "/_loading/asana.list_tasks" }
-      },
-      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-
-      "empty": {
-        "type": "Empty",
-        "props": { "message": "No overdue tasks. You're all caught up!" },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/asana.list_tasks", "not": true },
-            { "$state": "/ui/rows/0", "not": true }
-          ]
-        }
-      },
-
-      "kpiGrid": {
-        "type": "Grid",
-        "props": { "cols": 3, "gap": "sm" },
-        "children": ["tileOverdue", "tileProjects", "tileLongest"],
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/asana.list_tasks", "not": true },
-            { "$state": "/ui/rows/0" }
-          ]
-        }
-      },
-
-      "tileOverdue": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackOverdue"] },
-      "stackOverdue": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valOverdue", "lblOverdue"] },
-      "valOverdue": { "type": "Stat", "props": { "value": { "$state": "/ui/rows/0/stat_overdue" }, "size": "md" } },
-      "lblOverdue": { "type": "Caption", "props": { "text": "Overdue", "tone": "destructive" } },
-
-      "tileProjects": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackProjects"] },
-      "stackProjects": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valProjects", "lblProjects"] },
-      "valProjects": { "type": "Stat", "props": { "value": { "$state": "/ui/rows/0/stat_projects" }, "size": "md" } },
-      "lblProjects": { "type": "Caption", "props": { "text": "Projects", "tone": "muted" } },
-
-      "tileLongest": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackLongest"] },
-      "stackLongest": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valLongest", "lblLongest"] },
-      "valLongest": { "type": "Stat", "props": { "value": { "$state": "/ui/rows/0/stat_longest" }, "size": "md" } },
-      "lblLongest": { "type": "Caption", "props": { "text": "Longest", "tone": "destructive" } },
-
-      "div1": {
-        "type": "Divider",
+      "div0": {
         "props": {},
+        "type": "Divider"
+      },
+      "div1": {
+        "props": {},
+        "type": "Divider",
         "visible": {
           "$and": [
-            { "$state": "/_loading/asana.list_tasks", "not": true },
-            { "$state": "/ui/rows/0" }
+            {
+              "$state": "/_loading/asana.list_tasks",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0"
+            }
           ]
         }
       },
-
-      "taskList": {
+      "empty": {
+        "props": {
+          "message": "No overdue tasks. You're all caught up!"
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/asana.list_tasks",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "eyebrow": {
+        "props": {
+          "text": "Asana"
+        },
+        "type": "Eyebrow"
+      },
+      "headerRow": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "kpiGrid": {
+        "children": [
+          "tileOverdue",
+          "tileProjects",
+          "tileLongest"
+        ],
+        "props": {
+          "cols": 3,
+          "gap": "sm"
+        },
+        "type": "Grid",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/asana.list_tasks",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0"
+            }
+          ]
+        }
+      },
+      "lblLongest": {
+        "props": {
+          "text": "Longest",
+          "tone": "destructive"
+        },
+        "type": "Caption"
+      },
+      "lblOverdue": {
+        "props": {
+          "text": "Overdue",
+          "tone": "destructive"
+        },
+        "type": "Caption"
+      },
+      "lblProjects": {
+        "props": {
+          "text": "Projects",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
         "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["taskRow"],
-        "repeat": { "statePath": "/ui/rows", "key": "id" },
         "visible": {
-          "$and": [
-            { "$state": "/_loading/asana.list_tasks", "not": true },
-            { "$state": "/ui/rows/0" }
-          ]
+          "$state": "/_loading/asana.list_tasks"
         }
       },
-
-      "taskRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["taskInfo", "taskOverdueBadge"]
+      "sk1": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "stackLongest": {
+        "children": [
+          "valLongest",
+          "lblLongest"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "stackOverdue": {
+        "children": [
+          "valOverdue",
+          "lblOverdue"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "stackProjects": {
+        "children": [
+          "valProjects",
+          "lblProjects"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "none"
+        },
+        "type": "Stack"
       },
       "taskInfo": {
+        "children": [
+          "taskTitle",
+          "taskProject"
+        ],
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "taskList": {
+        "children": [
+          "taskRow"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/rows"
+        },
         "type": "Stack",
-        "props": { "gap": "none", "grow": true },
-        "children": ["taskTitle", "taskProject"]
-      },
-      "taskTitle": {
-        "type": "Text",
-        "props": { "text": { "$item": "title" }, "size": "sm", "weight": "semibold", "truncate": true }
-      },
-      "taskProject": {
-        "type": "Caption",
-        "props": { "text": { "$item": "project_label" }, "tone": "muted", "truncate": true },
-        "visible": { "$item": "project_label" }
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/asana.list_tasks",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0"
+            }
+          ]
+        }
       },
       "taskOverdueBadge": {
-        "type": "Badge",
         "props": {
-          "text": { "$item": "overdue_label" },
+          "text": {
+            "$item": "overdue_label"
+          },
           "tone": "destructive",
           "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "taskProject": {
+        "props": {
+          "text": {
+            "$item": "project_label"
+          },
+          "tone": "muted",
+          "truncate": true
+        },
+        "type": "Caption",
+        "visible": {
+          "$item": "project_label"
         }
+      },
+      "taskRow": {
+        "children": [
+          "taskInfo",
+          "taskOverdueBadge"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "taskTitle": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "title"
+          },
+          "truncate": true,
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "tileLongest": {
+        "children": [
+          "stackLongest"
+        ],
+        "props": {
+          "variant": "muted"
+        },
+        "type": "Section"
+      },
+      "tileOverdue": {
+        "children": [
+          "stackOverdue"
+        ],
+        "props": {
+          "variant": "muted"
+        },
+        "type": "Section"
+      },
+      "tileProjects": {
+        "children": [
+          "stackProjects"
+        ],
+        "props": {
+          "variant": "muted"
+        },
+        "type": "Section"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Overdue Tasks"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "TriangleAlert",
+          "size": "sm",
+          "tone": "destructive"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "valLongest": {
+        "props": {
+          "size": "md",
+          "value": {
+            "$state": "/ui/rows/0/stat_longest"
+          }
+        },
+        "type": "Stat"
+      },
+      "valOverdue": {
+        "props": {
+          "size": "md",
+          "value": {
+            "$state": "/ui/rows/0/stat_overdue"
+          }
+        },
+        "type": "Stat"
+      },
+      "valProjects": {
+        "props": {
+          "size": "md",
+          "value": {
+            "$state": "/ui/rows/0/stat_projects"
+          }
+        },
+        "type": "Stat"
       }
-
-    }
+    },
+    "root": "card"
   },
-  "status": "published"
+  "tags": [
+    "asana",
+    "tasks",
+    "overdue",
+    "due dates",
+    "at risk"
+  ],
+  "title": "Overdue Tasks"
 }

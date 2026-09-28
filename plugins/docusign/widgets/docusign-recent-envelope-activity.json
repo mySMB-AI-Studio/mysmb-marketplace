@@ -1,0 +1,168 @@
+{
+  "id": "docusign-recent-envelope-activity",
+  "title": "Recent Envelope Activity",
+  "description": "A live activity feed of the most recent DocuSign envelope status changes — completions, views, sends, and declines — with coloured dots and relative timestamps.",
+  "category": "documents",
+  "tags": ["docusign", "esignature", "envelopes", "activity", "contracts", "signing"],
+  "keywords": ["recent activity", "envelope activity", "docusign", "envelopes", "signed", "viewed", "sent", "completed", "declined", "activity feed"],
+  "connectorsUsed": ["docusign"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 6 },
+    "min":       { "colSpan": 4, "rowSpan": 4 },
+    "max":       { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "docusign",
+    "tool": "list_envelopes",
+    "params": {
+      "count": 20,
+      "include": "recipients"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"]
+      },
+
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Activity", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Recent Envelope Activity", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Latest Status Change" }
+      },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "list"]
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/docusign.list_envelopes" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No recent envelope activity." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/docusign.list_envelopes", "not": true },
+            { "$state": "/docusign/list_envelopes/envelopes/0", "not": true }
+          ]
+        }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["row"],
+        "repeat": {
+          "statePath": "/docusign/list_envelopes/envelopes",
+          "key": "envelopeId"
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/docusign.list_envelopes", "not": true },
+            { "$state": "/docusign/list_envelopes/envelopes/0" }
+          ]
+        }
+      },
+
+      "row": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["rowContent", "rowDivider"]
+      },
+
+      "rowContent": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["rowDot", "rowTextStack"]
+      },
+
+      "rowDot": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": {
+            "$computed": "docusign_activity_dot_tone",
+            "args": { "value": { "$item": "status" } }
+          }
+        }
+      },
+
+      "rowTextStack": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["rowLine", "rowTime"]
+      },
+
+      "rowLine": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "docusign_activity_line",
+            "args": {
+              "status":     { "$item": "status" },
+              "subject":    { "$item": "emailSubject" },
+              "recipients": { "$item": "recipients" }
+            }
+          },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+
+      "rowTime": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "docusign_relative_time",
+            "args": { "value": { "$item": "statusChangedDateTime" } }
+          }
+        }
+      },
+
+      "rowDivider": {
+        "type": "Divider",
+        "props": {}
+      }
+
+    }
+  },
+  "status": "published"
+}

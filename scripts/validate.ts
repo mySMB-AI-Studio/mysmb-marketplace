@@ -33,6 +33,23 @@
  *      an existing widget not already on the baseline) fails. Retrofitting the
  *      baseline is the separate, deliberately-scoped initiative §14 describes —
  *      remove a file from the baseline once it's actually fixed.
+ *   9. Every myhub-hosted MCP URL in .mcp.json uses the PRODUCTION
+ *      myhub-mcp-servers host on every branch tier (dev, qa, uat, main).
+ *      Per-environment routing is myHub's job at runtime (MCP_SERVERS_BASE_URL).
+ *  10. If a marketplace.json entry declares Workspace Extensions store
+ *      `branding` / `listing` blocks: branding.color is #rgb/#rrggbb, tagline
+ *      ≤ 90 chars, highlights ≤ 4 × ≤ 120 chars, screenshots ≤ 6, publisher /
+ *      support URLs parse, and every asset (branding.logo, branding.logoDark,
+ *      listing.screenshots[]) is an https URL, a data:image URI, or a
+ *      bundle-relative path to an existing svg/png/jpg/webp/gif of ≤ 96 KB
+ *      inside the plugin dir (marketplace sync inlines those as data URIs and
+ *      silently drops anything else). Entries without the blocks are unaffected.
+ *
+ * Branch tiers: dev → qa → uat → main. CI (.github/workflows/validate.yml)
+ * runs this on every PR and on every push to each tier — including the
+ * mySMB.com Admin Center AI Studio's publish (dev → qa) and promote
+ * (qa → uat → main) commits, so a promotion that breaks a rule shows up in
+ * the AI Studio promotion log.
  *
  * Exits 1 on any failure.
  */
@@ -56,8 +73,9 @@ const RESERVED_VARS = new Set(["CLAUDE_PLUGIN_ROOT"]);
 
 /**
  * The canonical production myhub-mcp-servers host. Every myhub-hosted plugin
- * `.mcp.json` URL must use this host on ALL branches — staging/dev routing is
- * applied at runtime by myHub (MCP_SERVERS_BASE_URL), never baked into the repo.
+ * `.mcp.json` URL must use this host on ALL branch tiers (dev, qa, uat, main) —
+ * non-production routing is applied at runtime by myHub (MCP_SERVERS_BASE_URL),
+ * never baked into the repo.
  * Overridable via env for a future FQDN change without editing the validator.
  */
 const PROD_MCP_HOST =
@@ -67,6 +85,8 @@ const PROD_MCP_HOST =
 interface MarketplacePlugin {
   name: string;
   source?: string | { type?: string; path?: string; source?: string };
+  branding?: unknown;
+  listing?: unknown;
 }
 
 interface Marketplace {
@@ -463,7 +483,8 @@ function validateBriefingEmailSources(
     // Path containment: a declared path must not escape the plugin directory,
     // or one plugin could serve another's source file and borrow its credential.
     const filePath = resolve(pluginDir, entry);
-    if (filePath !== pluginDir && !filePath.startsWith(pluginDir + "/")) {
+    // `sep`, not "/": resolve() yields backslash paths on Windows.
+    if (filePath !== pluginDir && !filePath.startsWith(pluginDir + sep)) {
       fail(`${where}: briefingEmailSources entry "${entry}" escapes the plugin directory`);
       continue;
     }
@@ -588,6 +609,193 @@ function validateBriefingEmailSources(
   }
 }
 
+// ── Workspace Extensions store branding + listing ─────────────────────────────
+//
+// A marketplace.json entry may carry optional `branding` and `listing` blocks
+// that drive the Workspace Extensions store card and detail page. The
+// authoritative schema lives in myHubV2
+// (packages/shared/src/plugins/marketplace-manifest.ts — pluginBrandingSchema /
+// pluginListingSchema); this mirrors its limits so a bad entry fails here, in
+// CI, rather than failing the manifest parse at marketplace sync. The asset
+// rules mirror the sync's inliner (packages/shared/src/plugins/
+// marketplace-fetcher.ts, fetchMarketplaceAssetAsDataUri): a bundle-relative
+// asset that is missing, oversized, or not an image type it knows is silently
+// dropped there, so it is a hard failure here.
+
+const HEX_COLOR_RE = /^#(?:[0-9a-fA-F]{3}){1,2}$/;
+const STORE_ASSET_EXTENSIONS = new Set(["svg", "png", "jpg", "jpeg", "webp", "gif"]);
+const STORE_ASSET_MAX_BYTES = 96 * 1024;
+const STORE_ASSET_REF_MAX_CHARS = 200_000;
+const TAGLINE_MAX_CHARS = 90;
+const HIGHLIGHTS_MAX = 4;
+const HIGHLIGHT_MAX_CHARS = 120;
+const SCREENSHOTS_MAX = 6;
+const LONG_DESCRIPTION_MAX_CHARS = 20_000;
+const PUBLISHER_NAME_MAX_CHARS = 80;
+
+function isParsableUrl(value: string): boolean {
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function validateStoreAsset(where: string, field: string, pluginDirName: string, value: unknown) {
+  if (typeof value !== "string" || value.length === 0) {
+    fail(`${where} ${field} must be a non-empty string`);
+    return;
+  }
+  if (value.length > STORE_ASSET_REF_MAX_CHARS) {
+    fail(
+      `${where} ${field} is ${value.length} characters (max ${STORE_ASSET_REF_MAX_CHARS}) — ship the image in the bundle and reference it by path instead of inlining it`,
+    );
+    return;
+  }
+  if (/^data:/i.test(value)) {
+    if (!/^data:image\//i.test(value)) {
+      fail(`${where} ${field} is a data URI but not a data:image/… URI`);
+    }
+    return;
+  }
+  if (/^[a-z][a-z0-9+.-]*:/i.test(value)) {
+    // Any scheme other than https (http:, ftp:, a Windows drive letter "C:") —
+    // the store only renders https assets.
+    let protocol = "";
+    try {
+      protocol = new URL(value).protocol;
+    } catch {
+      // reported below
+    }
+    if (protocol !== "https:") {
+      fail(
+        `${where} ${field} "${value}" must be an https URL, a data:image URI, or a bundle-relative path (e.g. "assets/logo.svg")`,
+      );
+    }
+    return;
+  }
+  // Bundle-relative path: marketplace sync strips a leading "./" or "/" and
+  // reads the file from plugins/<name>/ on the same branch.
+  const rel = value.replace(/^\.?\//, "");
+  if (rel.includes("..") || rel.includes("\\")) {
+    fail(
+      `${where} ${field} "${value}" must be a forward-slash path inside plugins/${pluginDirName}/ (no ".." or "\\")`,
+    );
+    return;
+  }
+  const ext = (rel.split(".").pop() ?? "").toLowerCase();
+  if (!STORE_ASSET_EXTENSIONS.has(ext)) {
+    fail(
+      `${where} ${field} "${value}" must be one of ${[...STORE_ASSET_EXTENSIONS].join(", ")} (SVG preferred)`,
+    );
+    return;
+  }
+  const filePath = join(repoRoot, "plugins", pluginDirName, rel);
+  if (!existsSync(filePath) || !statSync(filePath).isFile()) {
+    fail(`${where} ${field} "${value}" does not exist in plugins/${pluginDirName}/`);
+    return;
+  }
+  const size = statSync(filePath).size;
+  if (size === 0 || size > STORE_ASSET_MAX_BYTES) {
+    fail(
+      `${where} ${field} "${value}" is ${size} bytes — store assets must be non-empty and at most ${STORE_ASSET_MAX_BYTES / 1024} KB (marketplace sync drops anything larger)`,
+    );
+  }
+}
+
+function validateStoreListing(pluginDirName: string, entry: MarketplacePlugin) {
+  const { branding, listing } = entry;
+  if (branding === undefined && listing === undefined) return;
+  // A missing plugin dir is already reported by validatePlugin; asset paths
+  // cannot be resolved without it.
+  const pluginDir = join(repoRoot, "plugins", pluginDirName);
+  if (!existsSync(pluginDir) || !statSync(pluginDir).isDirectory()) return;
+  const where = `marketplace.json: plugin "${entry.name}"`;
+
+  if (branding !== undefined) {
+    if (!isRecord(branding)) {
+      fail(`${where} branding must be an object`);
+    } else {
+      for (const key of ["logo", "logoDark"] as const) {
+        if (branding[key] !== undefined) {
+          validateStoreAsset(where, `branding.${key}`, pluginDirName, branding[key]);
+        }
+      }
+      if (branding.color !== undefined && (typeof branding.color !== "string" || !HEX_COLOR_RE.test(branding.color))) {
+        fail(`${where} branding.color "${String(branding.color)}" must be a #rgb or #rrggbb colour`);
+      }
+      if (branding.tagline !== undefined && (typeof branding.tagline !== "string" || branding.tagline.length > TAGLINE_MAX_CHARS)) {
+        fail(`${where} branding.tagline must be a string of at most ${TAGLINE_MAX_CHARS} characters`);
+      }
+    }
+  }
+
+  if (listing !== undefined) {
+    if (!isRecord(listing)) {
+      fail(`${where} listing must be an object`);
+      return;
+    }
+    if (
+      listing.longDescription !== undefined &&
+      (typeof listing.longDescription !== "string" || listing.longDescription.length > LONG_DESCRIPTION_MAX_CHARS)
+    ) {
+      fail(`${where} listing.longDescription must be a Markdown string of at most ${LONG_DESCRIPTION_MAX_CHARS} characters`);
+    }
+    if (listing.highlights !== undefined) {
+      if (!Array.isArray(listing.highlights) || listing.highlights.length > HIGHLIGHTS_MAX) {
+        fail(`${where} listing.highlights must be an array of at most ${HIGHLIGHTS_MAX} strings`);
+      } else {
+        listing.highlights.forEach((line, i) => {
+          if (typeof line !== "string" || line.length > HIGHLIGHT_MAX_CHARS) {
+            fail(`${where} listing.highlights[${i}] must be a string of at most ${HIGHLIGHT_MAX_CHARS} characters`);
+          }
+        });
+      }
+    }
+    if (listing.screenshots !== undefined) {
+      if (!Array.isArray(listing.screenshots) || listing.screenshots.length > SCREENSHOTS_MAX) {
+        fail(`${where} listing.screenshots must be an array of at most ${SCREENSHOTS_MAX} assets`);
+      } else {
+        listing.screenshots.forEach((shot, i) => {
+          validateStoreAsset(where, `listing.screenshots[${i}]`, pluginDirName, shot);
+        });
+      }
+    }
+    const publisher = listing.publisher;
+    if (publisher !== undefined) {
+      if (
+        !isRecord(publisher) ||
+        typeof publisher.name !== "string" ||
+        publisher.name.length === 0 ||
+        publisher.name.length > PUBLISHER_NAME_MAX_CHARS
+      ) {
+        fail(`${where} listing.publisher must be { name (1–${PUBLISHER_NAME_MAX_CHARS} characters), url?, verified? }`);
+      } else {
+        if (publisher.url !== undefined && (typeof publisher.url !== "string" || !isParsableUrl(publisher.url))) {
+          fail(`${where} listing.publisher.url "${String(publisher.url)}" is not a valid URL`);
+        }
+        if (publisher.verified !== undefined && typeof publisher.verified !== "boolean") {
+          fail(`${where} listing.publisher.verified must be a boolean`);
+        }
+      }
+    }
+    const support = listing.support;
+    if (support !== undefined) {
+      if (!isRecord(support)) {
+        fail(`${where} listing.support must be an object`);
+      } else {
+        for (const key of ["url", "privacyUrl"] as const) {
+          const value = support[key];
+          if (value !== undefined && (typeof value !== "string" || !isParsableUrl(value))) {
+            fail(`${where} listing.support.${key} "${String(value)}" is not a valid URL`);
+          }
+        }
+      }
+    }
+  }
+}
+
 function validatePlugin(pluginDirName: string, expectedName: string) {
   const pluginDir = join(repoRoot, "plugins", pluginDirName);
   if (!existsSync(pluginDir) || !statSync(pluginDir).isDirectory()) {
@@ -666,10 +874,10 @@ function validatePlugin(pluginDirName: string, expectedName: string) {
       );
     }
     // Env-agnostic-URL invariant: any myhub-hosted MCP URL must use the
-    // PRODUCTION FQDN on every branch. Per-environment routing is handled at
-    // runtime by myHub's MCP_SERVERS_BASE_URL host-rewrite — branches must NOT
-    // bake in staging/dev hosts. (Third-party hosts like mcp.monday.com are
-    // unaffected; stdio servers have no URL.)
+    // PRODUCTION FQDN on every branch tier (dev, qa, uat, main). Per-environment
+    // routing is handled at runtime by myHub's MCP_SERVERS_BASE_URL host-rewrite
+    // — branches must NOT bake in non-production MCP hosts. (Third-party hosts
+    // like mcp.monday.com are unaffected; stdio servers have no URL.)
     if (typeof server.url === "string" && server.url.length > 0) {
       let host = "";
       try {
@@ -734,6 +942,7 @@ function main() {
     }
     const relPath = sourcePath.replace(/^\.\//, "").replace(/^plugins\//, "");
     validatePlugin(relPath, p.name);
+    validateStoreListing(relPath, p);
   }
 
   report();

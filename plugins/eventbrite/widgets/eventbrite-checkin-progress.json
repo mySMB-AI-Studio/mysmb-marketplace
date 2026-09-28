@@ -1,52 +1,165 @@
 {
-  "id": "eventbrite-checkin-progress",
-  "title": "Check-In Progress",
-  "description": "Browse your Eventbrite organization's events and view live check-in progress — checked-in count, percentage, and the attendee list — for whichever one you select. Zero-config: auto-resolves your organization, defaulting to the FIRST organization on the connected account if there is more than one (see this plugin's README).",
-  "category": "marketing",
-  "tags": ["eventbrite", "events", "attendees", "check-in"],
-  "keywords": ["eventbrite check-in", "attendee check-in", "event day", "registration", "attendees", "event lookup"],
-  "connectorsUsed": ["eventbrite"],
-  "popularity": 0,
   "brandColor": "#34DFBA",
-  "sizing": {
-    "preferred": { "colSpan": 6, "rowSpan": 9 },
-    "min": { "colSpan": 5, "rowSpan": 7 },
-    "max": { "colSpan": 10, "rowSpan": 14 }
-  },
+  "category": "marketing",
+  "connectorsUsed": [
+    "eventbrite"
+  ],
   "dataProvider": {
+    "kind": "tool",
     "mcp": "eventbrite",
-    "tool": "list_organizations",
-    "params": {}
+    "params": {},
+    "tool": "list_organizations"
+  },
+  "description": "Browse your Eventbrite organization's events and view live check-in progress — checked-in count, percentage, and the attendee list — for whichever one you select. Zero-config: auto-resolves your organization, defaulting to the FIRST organization on the connected account if there is more than one (see this plugin's README).",
+  "id": "eventbrite-checkin-progress",
+  "keywords": [
+    "eventbrite check-in",
+    "attendee check-in",
+    "event day",
+    "registration",
+    "attendees",
+    "event lookup"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 14
+    },
+    "min": {
+      "colSpan": 5,
+      "rowSpan": 7
+    },
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 9
+    }
   },
   "spec": {
-    "root": "card",
     "elements": {
-      "card": {
-        "type": "Card",
-        "props": {},
-        "children": ["header", "divider0", "body"],
-        "watch": {
-          "/eventbrite/list_organizations/organizations/0/id": {
-            "action": "eventbrite.list_events",
-            "params": {
-              "organization_id": { "$state": "/eventbrite/list_organizations/organizations/0/id" },
-              "time_filter": "all",
-              "order_by": "start_desc",
-              "page_size": 20
-            }
+      "attendeeBadge": {
+        "props": {
+          "text": {
+            "$item": "checkin_label"
           },
-          "/eventbrite/list_events/events": [
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/rows",
-                "value": {
-                  "$computed": "eventbrite_flatten_upcoming_events",
-                  "args": { "value": { "$state": "/eventbrite/list_events/events" } }
-                }
-              }
-            }
-          ],
+          "tone": {
+            "$item": "checkin_tone"
+          },
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "attendeeEmail": {
+        "props": {
+          "text": {
+            "$item": "email"
+          },
+          "tone": "muted",
+          "truncate": true
+        },
+        "type": "Caption"
+      },
+      "attendeeInfo": {
+        "children": [
+          "attendeeName",
+          "attendeeEmail",
+          "attendeeTicket"
+        ],
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "attendeeList": {
+        "children": [
+          "attendeeRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/attendeeRows"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/ui/attendeeRows/0"
+        }
+      },
+      "attendeeLoading": {
+        "children": [
+          "sk4",
+          "sk5"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/eventbrite.list_attendees"
+        }
+      },
+      "attendeeName": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "name"
+          },
+          "truncate": true,
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "attendeeRow": {
+        "children": [
+          "attendeeInfo",
+          "attendeeBadge"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "attendeeTicket": {
+        "props": {
+          "text": {
+            "$item": "ticket_label"
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "attendeesHeading": {
+        "props": {
+          "text": "Attendees",
+          "tone": "muted"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/attendeeRows/0"
+        }
+      },
+      "body": {
+        "children": [
+          "loadingEvents",
+          "emptyEvents",
+          "mainContent"
+        ],
+        "props": {},
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "header",
+          "divider0",
+          "body"
+        ],
+        "props": {},
+        "type": "Card",
+        "watch": {
           "/eventbrite/list_attendees/attendees": [
             {
               "action": "setState",
@@ -55,8 +168,12 @@
                 "value": {
                   "$computed": "eventbrite_checkin_summary",
                   "args": {
-                    "attendees": { "$state": "/eventbrite/list_attendees/attendees" },
-                    "capacity": { "$state": "/ui/selectedEvent/capacity" }
+                    "attendees": {
+                      "$state": "/eventbrite/list_attendees/attendees"
+                    },
+                    "capacity": {
+                      "$state": "/ui/selectedEvent/capacity"
+                    }
                   }
                 }
               }
@@ -67,171 +184,78 @@
                 "statePath": "/ui/attendeeRows",
                 "value": {
                   "$computed": "eventbrite_flatten_attendees",
-                  "args": { "value": { "$state": "/eventbrite/list_attendees/attendees" } }
+                  "args": {
+                    "value": {
+                      "$state": "/eventbrite/list_attendees/attendees"
+                    }
+                  }
                 }
               }
             }
-          ]
-        }
-      },
-
-      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
-      "titleGroup": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
-      },
-      "titleIcon": { "type": "Icon", "props": { "name": "UserCheck", "tone": "accent", "size": "sm" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Check-In Progress", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Eventbrite · Select an event" } },
-
-      "divider0": { "type": "Divider", "props": {} },
-
-      "body": { "type": "Body", "props": {}, "children": ["loadingEvents", "emptyEvents", "mainContent"] },
-
-      "loadingEvents": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3"],
-        "visible": {
-          "$or": [
-            { "$state": "/_loading/eventbrite.list_organizations" },
-            { "$state": "/_loading/eventbrite.list_events" }
-          ]
-        }
-      },
-      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-
-      "emptyEvents": {
-        "type": "Empty",
-        "props": { "message": "No events found for this organization." },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/eventbrite.list_organizations", "not": true },
-            { "$state": "/_loading/eventbrite.list_events", "not": true },
-            { "$state": "/ui/rows/0", "not": true }
-          ]
-        }
-      },
-
-      "mainContent": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["eventsCaption", "eventList", "noSelectionHint", "detailArea"],
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/eventbrite.list_events", "not": true },
-            { "$state": "/ui/rows/0" }
-          ]
-        }
-      },
-
-      "eventsCaption": { "type": "Caption", "props": { "text": "Events", "tone": "muted" } },
-      "eventList": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["eventRow"],
-        "repeat": { "statePath": "/ui/rows", "key": "id" }
-      },
-      "eventRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true, "clickable": true },
-        "on": {
-          "click": [
+          ],
+          "/eventbrite/list_events/events": [
             {
               "action": "setState",
-              "params": { "statePath": "/ui/selectedEvent", "value": { "$bindItem": "" } }
-            },
-            {
-              "action": "eventbrite.list_attendees",
-              "params": { "event_id": { "$bindItem": "id" }, "page_size": 200 }
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "eventbrite_flatten_upcoming_events",
+                  "args": {
+                    "value": {
+                      "$state": "/eventbrite/list_events/events"
+                    }
+                  }
+                }
+              }
             }
-          ]
-        },
-        "children": ["eventRowInfo", "eventRowBadge"]
-      },
-      "eventRowInfo": {
-        "type": "Stack",
-        "props": { "gap": "none", "grow": true },
-        "children": ["eventRowName", "eventRowDate"]
-      },
-      "eventRowName": {
-        "type": "Text",
-        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "semibold", "truncate": true }
-      },
-      "eventRowDate": {
-        "type": "Caption",
-        "props": { "text": { "$item": "date_label" }, "tone": "muted" }
-      },
-      "eventRowBadge": {
-        "type": "Badge",
-        "props": { "text": { "$item": "status_label" }, "tone": { "$item": "status_tone" }, "variant": "soft" }
-      },
-
-      "noSelectionHint": {
-        "type": "Caption",
-        "props": { "text": "Select an event above to see its check-in details.", "tone": "muted" },
-        "visible": { "$state": "/ui/selectedEvent/id", "not": true }
-      },
-
-      "detailArea": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": [
-          "detailDivider",
-          "selectedEventInfo",
-          "attendeeLoading",
-          "checkinDetail"
-        ],
-        "visible": { "$state": "/ui/selectedEvent/id" }
-      },
-
-      "detailDivider": { "type": "Divider", "props": {} },
-
-      "selectedEventInfo": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["selectedEventName", "selectedEventDate"]
-      },
-      "selectedEventName": {
-        "type": "Heading",
-        "props": { "text": { "$state": "/ui/selectedEvent/name" }, "level": "h3" }
-      },
-      "selectedEventDate": {
-        "type": "Caption",
-        "props": { "text": { "$state": "/ui/selectedEvent/date_label" }, "tone": "muted" }
-      },
-      "openBtnRow": {
-        "type": "Row",
-        "props": { "justify": "end", "pt": "sm" },
-        "children": ["openBtn"]
-      },
-      "openBtn": {
-        "type": "Button",
-        "props": { "label": "Open Eventbrite", "variant": "primary", "tone": "brand", "size": "sm", "leadingIcon": "ExternalLink" },
-        "on": {
-          "click": {
-            "action": "open_url",
-            "params": { "url": { "$state": "/ui/selectedEvent/url" }, "target": "_blank" }
+          ],
+          "/eventbrite/list_organizations/organizations/0/id": {
+            "action": "eventbrite.list_events",
+            "params": {
+              "order_by": "start_desc",
+              "organization_id": {
+                "$state": "/eventbrite/list_organizations/organizations/0/id"
+              },
+              "page_size": 20,
+              "time_filter": "all"
+            }
           }
         }
       },
-
-      "attendeeLoading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk4", "sk5"],
-        "visible": { "$state": "/_loading/eventbrite.list_attendees" }
+      "checkedInLine": {
+        "children": [
+          "checkedInText",
+          "percentBadge"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row",
+        "visible": {
+          "$state": "/ui/checkin/total"
+        }
       },
-      "sk4": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
-      "sk5": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
-
+      "checkedInText": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "checked": {
+                "$state": "/ui/checkin/checked_in"
+              },
+              "pattern": "{checked} of {total} checked in",
+              "total": {
+                "$state": "/ui/checkin/total"
+              }
+            }
+          },
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
       "checkinDetail": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
         "children": [
           "seatsLine",
           "unlimitedCaption",
@@ -244,164 +268,509 @@
           "truncationNote",
           "openBtnRow"
         ],
-        "visible": { "$state": "/_loading/eventbrite.list_attendees", "not": true }
-      },
-
-      "seatsLine": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["seatsText", "filledBadge"],
-        "visible": { "$state": "/ui/checkin/capacity" }
-      },
-      "seatsText": {
-        "type": "Text",
         "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{total} of {capacity} seats",
-              "total": { "$state": "/ui/checkin/total" },
-              "capacity": { "$state": "/ui/checkin/capacity" }
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/eventbrite.list_attendees",
+          "not": true
+        }
+      },
+      "detailArea": {
+        "children": [
+          "detailDivider",
+          "selectedEventInfo",
+          "attendeeLoading",
+          "checkinDetail"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/ui/selectedEvent/id"
+        }
+      },
+      "detailDivider": {
+        "props": {},
+        "type": "Divider"
+      },
+      "divider0": {
+        "props": {},
+        "type": "Divider"
+      },
+      "emptyEvents": {
+        "props": {
+          "message": "No events found for this organization."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/eventbrite.list_organizations",
+              "not": true
+            },
+            {
+              "$state": "/_loading/eventbrite.list_events",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0",
+              "not": true
             }
-          },
-          "size": "sm",
-          "weight": "semibold"
+          ]
         }
       },
-      "filledBadge": {
-        "type": "Badge",
+      "eventList": {
+        "children": [
+          "eventRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/rows"
+        },
+        "type": "Stack"
+      },
+      "eventRow": {
+        "children": [
+          "eventRowInfo",
+          "eventRowBadge"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedEvent",
+                "value": {
+                  "$bindItem": ""
+                }
+              }
+            },
+            {
+              "action": "eventbrite.list_attendees",
+              "params": {
+                "event_id": {
+                  "$bindItem": "id"
+                },
+                "page_size": 200
+              }
+            }
+          ]
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "sm",
+          "hover": true,
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "eventRowBadge": {
         "props": {
           "text": {
-            "$computed": "fmt",
-            "args": { "pattern": "{pct}% filled", "pct": { "$state": "/ui/checkin/filled_percent" } }
+            "$item": "status_label"
           },
-          "tone": "brand",
+          "tone": {
+            "$item": "status_tone"
+          },
           "variant": "soft"
-        }
+        },
+        "type": "Badge"
       },
-      "unlimitedCaption": {
-        "type": "Caption",
+      "eventRowDate": {
         "props": {
           "text": {
-            "$computed": "fmt",
-            "args": { "pattern": "{total} registered · unlimited capacity", "total": { "$state": "/ui/checkin/total" } }
+            "$item": "date_label"
           },
           "tone": "muted"
         },
-        "visible": { "$state": "/ui/checkin/capacity", "not": true }
+        "type": "Caption"
       },
-
-      "noAttendeesCaption": {
-        "type": "Caption",
-        "props": { "text": "No attendees registered for this event yet.", "tone": "muted" },
-        "visible": { "$state": "/ui/checkin/total", "not": true }
+      "eventRowInfo": {
+        "children": [
+          "eventRowName",
+          "eventRowDate"
+        ],
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "type": "Stack"
       },
-
-      "checkedInLine": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["checkedInText", "percentBadge"],
-        "visible": { "$state": "/ui/checkin/total" }
+      "eventRowName": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "name"
+          },
+          "truncate": true,
+          "weight": "semibold"
+        },
+        "type": "Text"
       },
-      "checkedInText": {
-        "type": "Text",
+      "eventsCaption": {
+        "props": {
+          "text": "Events",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "eyebrow": {
+        "props": {
+          "text": "Eventbrite · Select an event"
+        },
+        "type": "Eyebrow"
+      },
+      "filledBadge": {
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{checked} of {total} checked in",
-              "checked": { "$state": "/ui/checkin/checked_in" },
-              "total": { "$state": "/ui/checkin/total" }
+              "pattern": "{pct}% filled",
+              "pct": {
+                "$state": "/ui/checkin/filled_percent"
+              }
             }
-          },
-          "size": "sm",
-          "weight": "semibold"
-        }
-      },
-      "percentBadge": {
-        "type": "Badge",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": { "pattern": "{pct}%", "pct": { "$state": "/ui/checkin/percent" } }
           },
           "tone": "brand",
           "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {},
+        "type": "Header"
+      },
+      "loadingEvents": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$or": [
+            {
+              "$state": "/_loading/eventbrite.list_organizations"
+            },
+            {
+              "$state": "/_loading/eventbrite.list_events"
+            }
+          ]
         }
       },
-
-      "progressBar": {
-        "type": "ProgressBar",
-        "props": { "value": { "$state": "/ui/checkin/percent" }, "tone": "brand" },
-        "visible": { "$state": "/ui/checkin/total" }
+      "mainContent": {
+        "children": [
+          "eventsCaption",
+          "eventList",
+          "noSelectionHint",
+          "detailArea"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/eventbrite.list_events",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0"
+            }
+          ]
+        }
       },
-
-      "remainingCaption": {
+      "noAttendeesCaption": {
+        "props": {
+          "text": "No attendees registered for this event yet.",
+          "tone": "muted"
+        },
         "type": "Caption",
+        "visible": {
+          "$state": "/ui/checkin/total",
+          "not": true
+        }
+      },
+      "noSelectionHint": {
+        "props": {
+          "text": "Select an event above to see its check-in details.",
+          "tone": "muted"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/selectedEvent/id",
+          "not": true
+        }
+      },
+      "openBtn": {
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$state": "/ui/selectedEvent/url"
+              }
+            }
+          }
+        },
+        "props": {
+          "label": "Open Eventbrite",
+          "leadingIcon": "ExternalLink",
+          "size": "sm",
+          "tone": "brand",
+          "variant": "primary"
+        },
+        "type": "Button"
+      },
+      "openBtnRow": {
+        "children": [
+          "openBtn"
+        ],
+        "props": {
+          "justify": "end",
+          "pt": "sm"
+        },
+        "type": "Row"
+      },
+      "percentBadge": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{pct}%",
+              "pct": {
+                "$state": "/ui/checkin/percent"
+              }
+            }
+          },
+          "tone": "brand",
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "progressBar": {
+        "props": {
+          "tone": "brand",
+          "value": {
+            "$state": "/ui/checkin/percent"
+          }
+        },
+        "type": "ProgressBar",
+        "visible": {
+          "$state": "/ui/checkin/total"
+        }
+      },
+      "remainingCaption": {
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
               "pattern": "{remaining} not yet checked in",
-              "remaining": { "$state": "/ui/checkin/remaining" }
+              "remaining": {
+                "$state": "/ui/checkin/remaining"
+              }
             }
           },
           "tone": "muted"
         },
-        "visible": { "$state": "/ui/checkin/total" }
-      },
-
-      "attendeesHeading": {
         "type": "Caption",
-        "props": { "text": "Attendees", "tone": "muted" },
-        "visible": { "$state": "/ui/attendeeRows/0" }
+        "visible": {
+          "$state": "/ui/checkin/total"
+        }
       },
-      "attendeeList": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["attendeeRow"],
-        "repeat": { "statePath": "/ui/attendeeRows", "key": "id" },
-        "visible": { "$state": "/ui/attendeeRows/0" }
-      },
-      "attendeeRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center", "gap": "sm" },
-        "children": ["attendeeInfo", "attendeeBadge"]
-      },
-      "attendeeInfo": {
-        "type": "Stack",
-        "props": { "gap": "none", "grow": true },
-        "children": ["attendeeName", "attendeeEmail", "attendeeTicket"]
-      },
-      "attendeeName": {
-        "type": "Text",
-        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "truncate": true }
-      },
-      "attendeeEmail": {
-        "type": "Caption",
-        "props": { "text": { "$item": "email" }, "tone": "muted", "truncate": true }
-      },
-      "attendeeTicket": {
-        "type": "Caption",
-        "props": { "text": { "$item": "ticket_label" }, "tone": "muted" }
-      },
-      "attendeeBadge": {
-        "type": "Badge",
-        "props": { "text": { "$item": "checkin_label" }, "tone": { "$item": "checkin_tone" }, "variant": "soft" }
-      },
-
-      "truncationNote": {
-        "type": "Caption",
+      "seatsLine": {
+        "children": [
+          "seatsText",
+          "filledBadge"
+        ],
         "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row",
+        "visible": {
+          "$state": "/ui/checkin/capacity"
+        }
+      },
+      "seatsText": {
+        "props": {
+          "size": "sm",
           "text": {
             "$computed": "fmt",
-            "args": { "pattern": "Showing 20 of {total} attendees", "total": { "$state": "/ui/checkin/total" } }
+            "args": {
+              "capacity": {
+                "$state": "/ui/checkin/capacity"
+              },
+              "pattern": "{total} of {capacity} seats",
+              "total": {
+                "$state": "/ui/checkin/total"
+              }
+            }
+          },
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "selectedEventDate": {
+        "props": {
+          "text": {
+            "$state": "/ui/selectedEvent/date_label"
           },
           "tone": "muted"
         },
-        "visible": { "$state": "/ui/checkin/total", "gt": 20 }
+        "type": "Caption"
+      },
+      "selectedEventInfo": {
+        "children": [
+          "selectedEventName",
+          "selectedEventDate"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "selectedEventName": {
+        "props": {
+          "level": "h3",
+          "text": {
+            "$state": "/ui/selectedEvent/name"
+          }
+        },
+        "type": "Heading"
+      },
+      "sk1": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk4": {
+        "props": {
+          "height": "1.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk5": {
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Check-In Progress"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "UserCheck",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "truncationNote": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Showing 20 of {total} attendees",
+              "total": {
+                "$state": "/ui/checkin/total"
+              }
+            }
+          },
+          "tone": "muted"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/checkin/total",
+          "gt": 20
+        }
+      },
+      "unlimitedCaption": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{total} registered · unlimited capacity",
+              "total": {
+                "$state": "/ui/checkin/total"
+              }
+            }
+          },
+          "tone": "muted"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/checkin/capacity",
+          "not": true
+        }
       }
-    }
+    },
+    "root": "card"
   },
-  "status": "published"
+  "tags": [
+    "eventbrite",
+    "events",
+    "attendees",
+    "check-in"
+  ],
+  "title": "Check-In Progress"
 }

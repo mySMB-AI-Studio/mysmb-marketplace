@@ -4,11 +4,7 @@ Event ticketing via [Humanitix](https://humanitix.com) — events, orders, ticke
 
 ## Configuration
 
-| Variable | Description |
-|---|---|
-| (none — tenant-level) | Humanitix authenticates with a single, account-level static API key held server-side on `myhub-mcp-servers` (`HUMANITIX_API_KEY`, sourced from the `HUMANITIX_CLIENT_SECRET_STAGING` / production secret). There is no per-tenant credential to configure in this plugin — every tenant that installs it shares the one mySMB-managed Humanitix account. |
-
-Unlike an OAuth or per-user API-key integration, `.mcp.json` carries no `${VAR}` placeholder — the credential never passes through MyHub's per-tenant secret store. See `myhub-mcp-servers/docs/HUMANITIX.md` for how the server-side key is wired.
+No configuration variables are required.
 
 ## Tools
 

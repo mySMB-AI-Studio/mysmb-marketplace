@@ -1,30 +1,62 @@
 {
-  "id": "humanitix-upcoming-events",
-  "title": "Upcoming Events",
-  "description": "Events on Humanitix that haven't ended yet, soonest first. Click a row to open that event's own page on Humanitix.",
   "category": "operations",
-  "tags": ["humanitix", "events", "ticketing", "tickets"],
-  "keywords": ["events", "upcoming", "tickets", "ticketing", "humanitix", "schedule", "capacity"],
-  "connectorsUsed": ["humanitix"],
+  "connectorsUsed": [
+    "humanitix"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "humanitix",
+    "params": {
+      "pageSize": 20
+    },
+    "tool": "list_events"
+  },
+  "description": "Events on Humanitix that haven't ended yet, soonest first. Click a row to open that event's own page on Humanitix.",
+  "id": "humanitix-upcoming-events",
+  "keywords": [
+    "events",
+    "upcoming",
+    "tickets",
+    "ticketing",
+    "humanitix",
+    "schedule",
+    "capacity"
+  ],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 7 },
-    "min":       { "colSpan": 4, "rowSpan": 5 },
-    "max":       { "colSpan": 8, "rowSpan": 12 }
-  },
-  "dataProvider": {
-    "mcp": "humanitix",
-    "tool": "list_events",
-    "params": { "pageSize": 20 }
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 12
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 5
+    },
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 7
+    }
   },
   "spec": {
-    "root": "card",
     "elements": {
-
-      "card": {
-        "type": "Card",
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ],
         "props": {},
-        "children": ["headerRow", "divider1", "body", "footerRow"],
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "headerRow",
+          "divider1",
+          "body",
+          "footerRow"
+        ],
+        "props": {},
+        "type": "Card",
         "watch": {
           "/humanitix/list_events": [
             {
@@ -33,7 +65,12 @@
                 "statePath": "/ui/rows",
                 "value": {
                   "$computed": "humanitix_flatten_upcoming_events_compact",
-                  "args": { "value": { "$state": "/humanitix/list_events" }, "displayLimit": 5 }
+                  "args": {
+                    "displayLimit": 5,
+                    "value": {
+                      "$state": "/humanitix/list_events"
+                    }
+                  }
                 }
               }
             },
@@ -43,128 +80,348 @@
                 "statePath": "/ui/counts",
                 "value": {
                   "$computed": "humanitix_upcoming_events_counts",
-                  "args": { "value": { "$state": "/humanitix/list_events" }, "displayLimit": 5 }
+                  "args": {
+                    "displayLimit": 5,
+                    "value": {
+                      "$state": "/humanitix/list_events"
+                    }
+                  }
                 }
               }
             }
           ]
         }
       },
-
-      "headerRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
-      },
-      "titleIcon": { "type": "Icon", "props": { "name": "CalendarDays", "tone": "chart-1", "size": "sm" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Upcoming Events", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Humanitix" } },
-
-      "divider1": { "type": "Divider", "props": {} },
-
-      "body": {
-        "type": "Body",
+      "divider1": {
         "props": {},
-        "children": ["loading", "empty", "list"]
+        "type": "Divider"
       },
-      "loading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "visible": { "$state": "/_loading/humanitix.list_events" },
-        "children": ["sk1", "sk2", "sk3"]
-      },
-      "sk1": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
-
       "empty": {
+        "props": {
+          "message": "No upcoming events on Humanitix."
+        },
         "type": "Empty",
-        "props": { "message": "No upcoming events on Humanitix." },
         "visible": {
           "$and": [
-            { "$state": "/_loading/humanitix.list_events", "not": true },
-            { "$state": "/ui/rows/0", "not": true }
+            {
+              "$state": "/_loading/humanitix.list_events",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0",
+              "not": true
+            }
           ]
         }
       },
-
-      "list": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "visible": { "$state": "/_loading/humanitix.list_events", "not": true },
-        "repeat": { "statePath": "/ui/rows", "key": "id" },
-        "children": ["rowWrap"]
-      },
-
-      "rowWrap": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["row", "rowDivider"]
-      },
-      "rowDivider": { "type": "Divider", "props": {} },
-
-      "row": {
-        "type": "Row",
+      "eyebrow": {
         "props": {
-          "gap": "md",
-          "align": "center",
-          "padded": true,
-          "clickable": { "$item": "has_url" },
-          "hover": { "$item": "has_url" }
+          "text": "Humanitix"
         },
-        "children": ["rowDateBadge", "rowMain", "rowChevron"],
-        "on": {
-          "click": { "action": "open_url", "params": { "url": { "$bindItem": "event_url" }, "target": "_blank" } }
-        }
-      },
-
-      "rowDateBadge": {
-        "type": "Stack",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["rowDayAvatar", "rowMonth"]
-      },
-      "rowDayAvatar": { "type": "Avatar", "props": { "initials": { "$item": "start_day_label" }, "tone": { "$item": "category_tone" }, "size": "lg" } },
-      "rowMonth": { "type": "Caption", "props": { "text": { "$item": "start_month_label" }, "tone": { "$item": "category_tone" }, "weight": "medium" } },
-
-      "rowMain": {
-        "type": "Stack",
-        "props": { "gap": "xs", "grow": true },
-        "children": ["rowName", "rowMeta"]
-      },
-      "rowName": { "type": "Text", "props": { "text": { "$item": "name" }, "size": "sm", "weight": "semibold", "truncate": true } },
-      "rowMeta": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["rowMetaTime", "rowMetaSep1", "rowMetaLocation", "rowMetaSep2", "rowMetaCapacity"]
-      },
-      "rowMetaTime":     { "type": "Caption", "props": { "text": { "$item": "start_time_label" }, "tone": "muted" } },
-      "rowMetaSep1":     { "type": "Caption", "props": { "text": "·", "tone": "muted" } },
-      "rowMetaLocation": { "type": "Caption", "props": { "text": { "$item": "location_label" }, "tone": "muted", "truncate": true } },
-      "rowMetaSep2":     { "type": "Caption", "props": { "text": "·", "tone": "muted" } },
-      "rowMetaCapacity": { "type": "Caption", "props": { "text": { "$item": "capacity_label" }, "tone": { "$item": "capacity_tone" }, "weight": "medium" } },
-
-      "rowChevron": { "type": "Icon", "props": { "name": "ChevronRight", "tone": "muted", "size": "md" } },
-
-      "footerRow": {
-        "type": "Row",
-        "props": { "justify": "center", "align": "center", "clickable": true, "hover": true },
-        "children": ["footerLink"],
-        "on": {
-          "click": { "action": "open_url", "params": { "url": "https://events.humanitix.com", "target": "_blank" } }
-        }
+        "type": "Eyebrow"
       },
       "footerLink": {
-        "type": "Text",
         "props": {
-          "text": { "$computed": "fmt", "args": { "pattern": "View all {n} events →", "n": { "$state": "/ui/counts/total" } } },
           "size": "sm",
-          "weight": "medium",
-          "tone": "chart-1"
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/counts/total"
+              },
+              "pattern": "View all {n} events →"
+            }
+          },
+          "tone": "chart-1",
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "footerRow": {
+        "children": [
+          "footerLink"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": "https://events.humanitix.com"
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "hover": true,
+          "justify": "center"
+        },
+        "type": "Row"
+      },
+      "headerRow": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "list": {
+        "children": [
+          "rowWrap"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/rows"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/humanitix.list_events",
+          "not": true
         }
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/humanitix.list_events"
+        }
+      },
+      "row": {
+        "children": [
+          "rowDateBadge",
+          "rowMain",
+          "rowChevron"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$bindItem": "event_url"
+              }
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": {
+            "$item": "has_url"
+          },
+          "gap": "md",
+          "hover": {
+            "$item": "has_url"
+          },
+          "padded": true
+        },
+        "type": "Row"
+      },
+      "rowChevron": {
+        "props": {
+          "name": "ChevronRight",
+          "size": "md",
+          "tone": "muted"
+        },
+        "type": "Icon"
+      },
+      "rowDateBadge": {
+        "children": [
+          "rowDayAvatar",
+          "rowMonth"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "rowDayAvatar": {
+        "props": {
+          "initials": {
+            "$item": "start_day_label"
+          },
+          "size": "lg",
+          "tone": {
+            "$item": "category_tone"
+          }
+        },
+        "type": "Avatar"
+      },
+      "rowDivider": {
+        "props": {},
+        "type": "Divider"
+      },
+      "rowMain": {
+        "children": [
+          "rowName",
+          "rowMeta"
+        ],
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "rowMeta": {
+        "children": [
+          "rowMetaTime",
+          "rowMetaSep1",
+          "rowMetaLocation",
+          "rowMetaSep2",
+          "rowMetaCapacity"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "rowMetaCapacity": {
+        "props": {
+          "text": {
+            "$item": "capacity_label"
+          },
+          "tone": {
+            "$item": "capacity_tone"
+          },
+          "weight": "medium"
+        },
+        "type": "Caption"
+      },
+      "rowMetaLocation": {
+        "props": {
+          "text": {
+            "$item": "location_label"
+          },
+          "tone": "muted",
+          "truncate": true
+        },
+        "type": "Caption"
+      },
+      "rowMetaSep1": {
+        "props": {
+          "text": "·",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "rowMetaSep2": {
+        "props": {
+          "text": "·",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "rowMetaTime": {
+        "props": {
+          "text": {
+            "$item": "start_time_label"
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "rowMonth": {
+        "props": {
+          "text": {
+            "$item": "start_month_label"
+          },
+          "tone": {
+            "$item": "category_tone"
+          },
+          "weight": "medium"
+        },
+        "type": "Caption"
+      },
+      "rowName": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "name"
+          },
+          "truncate": true,
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "rowWrap": {
+        "children": [
+          "row",
+          "rowDivider"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "sk1": {
+        "props": {
+          "height": "3.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "3.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "3.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Upcoming Events"
+        },
+        "type": "Heading"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "CalendarDays",
+          "size": "sm",
+          "tone": "chart-1"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
       }
-
-    }
+    },
+    "root": "card"
   },
-  "status": "published"
+  "tags": [
+    "humanitix",
+    "events",
+    "ticketing",
+    "tickets"
+  ],
+  "title": "Upcoming Events"
 }

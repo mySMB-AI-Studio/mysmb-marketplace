@@ -84,9 +84,12 @@ plugins/<your-plugin>/
 │       ├── index.ts          → dist/index.js (commit dist/)
 │       └── types.ts
 │
-└── widgets/                   ← OPTIONAL: dashboard tiles
-    ├── <plugin>-thing.json
-    └── <plugin>-other.json
+├── widgets/                   ← OPTIONAL: dashboard tiles
+│   ├── <plugin>-thing.json
+│   └── <plugin>-other.json
+│
+└── assets/                    ← OPTIONAL: store logo / screenshots (SVG preferred, ≤ 96 KB each)
+    └── logo.svg
 ```
 
 ---
@@ -550,12 +553,77 @@ Add an entry to `.claude-plugin/marketplace.json` at the marketplace root:
 
 Drop the `widgets` / `widgetElements` keys if your plugin doesn't ship them.
 
+### Store branding and listing (optional)
+
+Two optional blocks on the same `marketplace.json` entry dress the extension up
+in the MyHub **Workspace Extensions** store — the card and the detail page.
+They live on the marketplace entry (not in `plugin.json`), Claude Code ignores
+them, and AI Studio's extension metadata form edits the same fields. Without
+them the store falls back to `icon`, then a monogram, and to `description`.
+
+```json
+{
+  "name": "acme-billing",
+  "displayName": "Acme Billing",
+  "description": "Acme billing — invoices, customers, payments. Stdio MCP server, bearer-token auth.",
+  "source": "./plugins/acme-billing",
+  "icon": "Receipt",
+  "branding": {
+    "logo": "assets/logo.svg",
+    "logoDark": "assets/logo-dark.svg",
+    "color": "#0f766e",
+    "tagline": "Invoices, customers and payments without leaving your workspace."
+  },
+  "listing": {
+    "longDescription": "## What it does\n\nAcme Billing puts your receivables on the dashboard and lets the assistant draft invoices for you.",
+    "highlights": [
+      "Overdue invoices on your dashboard",
+      "Draft invoices from chat",
+      "Record payments in one step"
+    ],
+    "screenshots": ["assets/screenshot-dashboard.png"],
+    "publisher": { "name": "Acme Inc.", "url": "https://acme.com" },
+    "support": { "url": "https://acme.com/support", "privacyUrl": "https://acme.com/privacy" }
+  }
+}
+```
+
+| Field | Limit | What it drives |
+|---|---|---|
+| `branding.logo` | asset | Primary mark, rendered on a white tile. |
+| `branding.logoDark` | asset | Variant for dark surfaces; falls back to `logo`. |
+| `branding.color` | `#rgb` / `#rrggbb` | Accent — a soft wash behind the detail-page hero. |
+| `branding.tagline` | ≤ 90 chars | One line under the name on cards and the hero. |
+| `listing.longDescription` | Markdown, ≤ 20,000 chars | The detail page's Overview section. |
+| `listing.highlights` | ≤ 4 lines, ≤ 120 chars each | Short selling points, rendered as a plain list. |
+| `listing.screenshots` | ≤ 6 assets | Detail-page gallery. |
+| `listing.publisher` | `{ name (≤ 80 chars), url?, verified? }` | The organisation behind the extension — distinct from `author` (the maintainer). `verified` is set by marketplace maintainers only. |
+| `listing.support` | `{ url?, privacyUrl? }` | Support and privacy-policy links. |
+
+**Images** (`branding.logo`, `branding.logoDark`, `listing.screenshots[]`):
+
+- Each is a **bundle-relative path** (`assets/logo.svg`, relative to
+  `plugins/<slug>/`), an `https://` URL, or a `data:image/…` URI. Prefer
+  bundle-relative paths: marketplace sync reads the file from the same branch
+  and **inlines it as a data URI** into the tenant's catalog snapshot, so the
+  store never fetches from GitHub at render time — and the file travels with the
+  extension when AI Studio promotes `plugins/<slug>/` up the tiers.
+- **SVG preferred** (crisp at every size, tiny); PNG, JPEG, WebP and GIF also
+  work. **≤ 96 KB per file** — sync drops anything larger (the store falls back
+  to `icon`), so the validator fails it.
+- A logo should be a square mark that reads on a white tile; add `logoDark` if it
+  disappears on dark surfaces.
+
 ---
 
 ## 10. Step 8 — Validate, commit, ship
 
+All work lands on the **`dev`** branch; QA, UAT and production get it through
+AI Studio. (Branch tiers and versioning: [CONTRIBUTING.md](CONTRIBUTING.md#branch-tiers).)
+
 ```bash
 # from the marketplace repo root
+git checkout dev && git pull
 npx tsx scripts/validate.ts
 ```
 
@@ -564,11 +632,19 @@ Fix anything it complains about, then:
 ```bash
 git add plugins/acme-billing .claude-plugin/marketplace.json
 git commit -m "feat(plugins): add acme-billing"
-git push origin feature/acme-billing
-gh pr create
+git push origin dev
 ```
 
-CI runs the same validator. Once merged, MyHub picks the plugin up at the next tenant provisioning / refresh.
+CI runs the same validator on the push. Then ship it from the mySMB.com Admin
+Center → **AI Studio → Extensions**:
+
+1. **Pull** — brings your `dev` commit into the Developer Instance.
+2. **Publish** (`dev → qa`, patch + 1) — QA tenants see it in the store straight away.
+3. **Promote to UAT** (`qa → uat`, major + 1), then **Promote to Production**
+   (`uat → main`, same version).
+
+Leave `version` alone — AI Studio writes it into `plugin.json` and the
+`marketplace.json` entry on every publish and promotion.
 
 ---
 
@@ -630,6 +706,11 @@ From `scripts/validate.ts`:
 3. Every plugin directory has `.claude-plugin/plugin.json`, `.mcp.json`, and `README.md`.
 4. Every MCP server declares a recognised `type` — `stdio`, `sse`, or `http`.
 5. Every `${VAR}` placeholder in `.mcp.json` (env or headers) is either `CLAUDE_PLUGIN_ROOT` or appears under a `## Configuration` heading in the plugin README.
+6. A `content` section in `plugin.json` lists files that exist, parse, match their `originKey` / `kind`, and whose automation dependencies are bundled in the same plugin.
+7. `briefingEmailSources` files exist, match the email-source schema, and name only MCP servers this plugin declares.
+8. No new widget uses `"gap": "xxs"` ([`TILE-DISPLAY-STANDARDS.md`](TILE-DISPLAY-STANDARDS.md) §5; pre-existing files are grandfathered in `scripts/xxs-baseline.json`).
+9. Every myhub-hosted MCP URL uses the **production** host, on every branch tier.
+10. Store `branding` / `listing` on a `marketplace.json` entry (when present): `color` is `#rgb`/`#rrggbb`, `tagline` ≤ 90 chars, `highlights` ≤ 4 × ≤ 120 chars, `screenshots` ≤ 6, publisher/support URLs parse, and every image is an https URL, a `data:image/…` URI, or a bundle-relative svg/png/jpg/webp/gif that exists in the plugin dir and is ≤ 96 KB — see [Store branding and listing](#store-branding-and-listing-optional).
 
 Other rules enforced by convention (and reviewed in PR):
 
@@ -670,6 +751,9 @@ Install the marketplace into Claude Code:
 
 Set the env vars in your shell, then talk to the plugin from a Claude Code session.
 
+**I pushed to `dev` — why don't QA tenants see it?**
+`dev` is unpublished work. QA tenants install the `qa` branch, UAT the `uat` branch, production `main`. Publish the extension from AI Studio (after **Pull**) to put it on `qa`.
+
 ---
 
-*Last updated: May 2026.*
+*Last updated: September 2026.*
