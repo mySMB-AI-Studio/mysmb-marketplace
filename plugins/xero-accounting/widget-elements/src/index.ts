@@ -102,6 +102,45 @@ const bank_tx_tone: ComputedFunction = (args) => {
   return 'muted';
 };
 
+// ── bank_tx_label ────────────────────────────────────────────────────
+// TILE-DISPLAY-STANDARDS.md §3: never show a raw connector enum. Xero's
+// real Type values include suffixed variants (SPEND-OVERPAYMENT,
+// RECEIVE-TRANSFER, etc.) — this collapses all of them to the plain
+// direction word, same grouping bank_tx_icon/bank_tx_tone already use.
+const bank_tx_label: ComputedFunction = (args) => {
+  const t = String(args.value ?? '');
+  if (t.startsWith('RECEIVE')) return 'Receive';
+  if (t.startsWith('SPEND')) return 'Spend';
+  return t;
+};
+
+// ── reconciliation_breakdown ─────────────────────────────────────────
+// Reconciled/unreconciled is a real binary status (TILE-DISPLAY-STANDARDS.md
+// §7's restraint model applies, not the categorical chart palette) —
+// "success" always means done/paid/completed, matching a reconciled
+// transaction; "warning" for unreconciled since it's a real pending
+// action item, not a no-news-is-good-news default.
+// Args: { transactions: array }
+// Returns: { total, reconciled, unreconciled, segments: [{ status, count, tone }], template }
+const reconciliation_breakdown: ComputedFunction = (args) => {
+  const transactions = Array.isArray(args.transactions) ? (args.transactions as Record<string, unknown>[]) : [];
+  const reconciled = transactions.filter((t) => t.IsReconciled === true).length;
+  const unreconciled = transactions.length - reconciled;
+
+  const segments = [
+    { status: 'Reconciled', count: reconciled, tone: 'success' },
+    { status: 'Unreconciled', count: unreconciled, tone: 'warning' },
+  ].filter((s) => s.count > 0);
+
+  return {
+    total: transactions.length,
+    reconciled,
+    unreconciled,
+    segments,
+    template: segments.length ? segments.map((s) => `${s.count}fr`).join(' ') : '1fr',
+  };
+};
+
 // ── flatten_report_rows ──────────────────────────────────────────────
 // Walks a Xero Report tree (`Reports[0].Rows`) and returns a flat list
 // of `{ title, rowType, depth, sectionTitle, c0..c4 }` objects suitable
@@ -374,6 +413,8 @@ const elements: PluginElementsModule = {
     invoices_in_bucket,
     bank_tx_icon,
     bank_tx_tone,
+    bank_tx_label,
+    reconciliation_breakdown,
     days_overdue,
     overdue_label,
     overdue_only,
