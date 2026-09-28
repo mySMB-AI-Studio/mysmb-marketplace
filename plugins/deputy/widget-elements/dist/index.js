@@ -21,7 +21,7 @@ const CHART_TONES = ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5'];
  * Spec example:
  *   {
  *     "$computed": "deputy_department_rows",
- *     "args": { "departments": { "$state": "/deputy-token/list_departments/data" } }
+ *     "args": { "departments": { "$state": "/deputy-token/list_departments" } }
  *   }
  */
 const department_rows = (args) => {
@@ -51,7 +51,7 @@ const department_rows = (args) => {
  * Spec example:
  *   {
  *     "$computed": "deputy_timesheet_rows",
- *     "args": { "timesheets": { "$state": "/deputy-token/list_timesheets/data" } }
+ *     "args": { "timesheets": { "$state": "/deputy-token/list_timesheets" } }
  *   }
  */
 const timesheet_rows = (args) => {
@@ -71,11 +71,46 @@ const timesheet_rows = (args) => {
         };
     });
 };
+/**
+ * Flattens a `get_my_tasks` response into rows for the My Tasks tile.
+ * Deputy nests the assignee's name under `_DPMetaData.UserResponsibleInfo.
+ * DisplayName` rather than as a flat field — flattened here for the same
+ * reason as `deputy_timesheet_rows`. `dueDate` and `completed` are kept
+ * as their own fields (raw ISO date, plain boolean) rather than
+ * pre-formatted, since the widget spec drives the due-date label/tone
+ * per row via the system's own `due_date_au`/`is_overdue` — connector-
+ * agnostic date logic that belongs in the system, not duplicated here.
+ *
+ * Args: { tasks: array }
+ * Returns: array of { id, title, comment, assignee, dueDate, completed }
+ *
+ * Spec example:
+ *   {
+ *     "$computed": "deputy_my_task_rows",
+ *     "args": { "tasks": { "$state": "/deputy-token/get_my_tasks" } }
+ *   }
+ */
+const my_task_rows = (args) => {
+    const tasks = Array.isArray(args.tasks) ? args.tasks : [];
+    return tasks.map((task) => {
+        const meta = task._DPMetaData;
+        const responsibleInfo = meta?.UserResponsibleInfo;
+        return {
+            id: task.Id,
+            title: task.Question || 'Untitled task',
+            comment: task.Comment || '—',
+            assignee: responsibleInfo?.DisplayName ?? '—',
+            dueDate: task.DueDate ?? null,
+            completed: task.TsCompleted != null,
+        };
+    });
+};
 const elements = {
     slug: 'deputy',
     functions: {
         department_rows,
         timesheet_rows,
+        my_task_rows,
     },
 };
 export default elements;
