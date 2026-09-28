@@ -261,8 +261,9 @@ QB.app({
     var upOut = QB.sum(bills.filter(function (x) { return x.DueDate >= today && x.DueDate <= mEnd; }).map(function (x) { return x.Balance; }));
     var paidOut = QB.sum(q('bill_payments', 'BillPayment').filter(function (x) { return inMonth(x.TxnDate); }).map(function (x) { return x.TotalAmt; })) + QB.sum(q('expenses_paid', 'Purchase').filter(function (x) { return inMonth(x.TxnDate); }).map(function (x) { return x.TotalAmt; }));
     paidOut = Math.round(paidOut * 100) / 100;
-    var cf = c.data.cash_flow_12m, cfc = cf ? QB.cols(cf) : [], cfL = cf ? QB.walk(cf) : [], endL = QB.find(cfL, 'EndingCash', QB.CF_END_RE), incL = QB.find(cfL, 'CashIncrease', QB.CF_INC_RE);
+    var cf = c.data.cash_flow_12m, cfc = cf ? QB.cols(cf) : [], cfL = cf ? QB.walk(cf) : [], incL = QB.find(cfL, 'CashIncrease', QB.CF_INC_RE);
     var months = cfc.slice(1).filter(function (x) { return !/^total$/i.test(x.title); }), idx = months.map(function (x) { return x.i - 1; });
+    var endL = QB.cashEnd(cfL, idx, bank.length ? bankTot : null); // AU: no closing-cash line — worked back from today's bank balances
     var due30 = QB.iso(QB.addDays(QB.parse(today), 30));
     var proj = Math.round((bankTot + QB.sum(inv.filter(function (x) { return x.DueDate <= due30; }).map(function (x) { return x.Balance; })) - QB.sum(bills.filter(function (x) { return x.DueDate <= due30; }).map(function (x) { return x.Balance; }))) * 100) / 100;
     var tab = d.x === 'paid' ? 'paid' : 'upcoming';
@@ -282,6 +283,7 @@ QB.app({
     var checks = [
       { name: 'All accounts = bank accounts − credit card balances', pass: accts.length ? QB.near(all, bankTot - cardTot) : null, detail: money(bankTot) + ' − ' + money(cardTot) },
       { name: 'Upcoming + paid = month totals (information — the totals are built from the same documents)', pass: null, info: true, detail: 'In ' + money(upIn + paidIn) + ', out ' + money(-(upOut + paidOut)) },
+      endL && endL.derived ? { name: "Cash balance chart worked back from today's bank balances (information)", pass: null, info: true, detail: "QuickBooks' cash flow report has no closing-cash line; " + money(bankTot) + ' today, less each month\'s net change' } :
       { name: 'Cash balance chart ends at the bank balance in QuickBooks', pass: cfEnd == null || !bank.length ? null : QB.near(cfEnd, bankTot, 1), detail: money(cfEnd) + ' vs ' + money(bankTot) },
       { name: 'All data sources loaded', pass: errs.length ? false : true, detail: errs.length ? errs.map(function (id) { return id + ': ' + c.err(id); }).join('; ') : '' }];
     this._x = { accts: accts, months: months, idx: idx, endL: endL, incL: incL, upIn: upIn, paidIn: paidIn, upOut: upOut, paidOut: paidOut, inv: inv, bills: bills };
