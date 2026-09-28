@@ -1,7 +1,7 @@
 {
   "id": "servicem8-job-list",
   "title": "ServiceM8 — Job list",
-  "description": "A live list of jobs from ServiceM8, showing job description/number, address, status, and an Active/Inactive badge. Filter by Active/Inactive/All jobs (defaults to All). Click an active job's row to open it in the ServiceM8 web app in a new tab; clicking an inactive (archived) job shows a notice instead, since ServiceM8's own web app refuses to open an inactive job's page directly. \"Open Dispatch Board\" opens ServiceM8's app home page (there is no separate documented Dispatch Board URL — it's the default view after login). Client name is not shown — ServiceM8's raw API only exposes a company id on the job record, with no tool to resolve it to a name.",
+  "description": "A live list of jobs from ServiceM8, showing job description (falling back to the client's name, then the job number, when there's no description), address, status, and an Active/Inactive badge. The client name is resolved from the job's raw company_uuid via a separate list_companies call (ServiceM8 has no combined job+client endpoint), same cross-referencing pattern as the Staff Roster tile's security-role lookup — a company_uuid that doesn't resolve (deleted client, or the companies call hasn't landed yet) falls through to the job number instead of showing a placeholder. Filter by Active/Inactive/All jobs (defaults to All). Click an active job's row to open it in the ServiceM8 web app in a new tab; clicking an inactive (archived) job shows a notice instead, since ServiceM8's own web app refuses to open an inactive job's page directly. \"Open Dispatch Board\" opens ServiceM8's app home page (there is no separate documented Dispatch Board URL — it's the default view after login).",
   "category": "field-service",
   "tags": ["servicem8", "jobs", "field-service", "trades", "operations"],
   "keywords": ["jobs", "work orders", "field service", "trades", "clients", "servicem8"],
@@ -21,7 +21,47 @@
   "spec": {
     "root": "card",
     "elements": {
-      "card": { "type": "Card", "props": {}, "children": ["header", "body", "footer"] },
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body", "footer"],
+        "watch": {
+          "/servicem8/list_jobs/jobs": [
+            {
+              "action": "servicem8.list_companies",
+              "params": {}
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "servicem8_join_job_companies",
+                  "args": {
+                    "jobs": { "$state": "/servicem8/list_jobs/jobs" },
+                    "companies": { "$state": "/servicem8/list_companies/companies" }
+                  }
+                }
+              }
+            }
+          ],
+          "/servicem8/list_companies/companies": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "servicem8_join_job_companies",
+                  "args": {
+                    "jobs": { "$state": "/servicem8/list_jobs/jobs" },
+                    "companies": { "$state": "/servicem8/list_companies/companies" }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
       "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
       "headerRow": {
         "type": "Row",
@@ -122,7 +162,12 @@
         "type": "Stack",
         "props": { "gap": "xs" },
         "children": ["lk1", "lk2", "lk3", "lk4"],
-        "visible": { "$state": "/_loading/servicem8.list_jobs" }
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/servicem8.list_jobs" },
+            { "$state": "/ui/rows/0", "not": true }
+          ]
+        }
       },
       "lk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
       "lk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
@@ -134,7 +179,7 @@
         "visible": {
           "$and": [
             { "$state": "/_loading/servicem8.list_jobs", "not": true },
-            { "$state": "/servicem8/list_jobs/jobs/0", "not": true }
+            { "$state": "/ui/rows/0", "not": true }
           ]
         }
       },
@@ -143,11 +188,16 @@
         "props": { "gap": "xs" },
         "children": ["row"],
         "repeat": {
-          "statePath": "/servicem8/list_jobs/jobs",
+          "statePath": "/ui/rows",
           "key": "uuid"
         },
         "limit": 20,
-        "visible": { "$state": "/_loading/servicem8.list_jobs", "not": true }
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/servicem8.list_jobs", "not": true },
+            { "$state": "/ui/rows/0" }
+          ]
+        }
       },
       "row": {
         "type": "Row",
@@ -198,7 +248,11 @@
           "text": {
             "$cond": { "$item": "job_description" },
             "$then": { "$item": "job_description" },
-            "$else": { "$item": "generated_job_id" }
+            "$else": {
+              "$cond": { "$item": "company_name" },
+              "$then": { "$item": "company_name" },
+              "$else": { "$item": "generated_job_id" }
+            }
           },
           "size": "sm",
           "weight": "medium",
