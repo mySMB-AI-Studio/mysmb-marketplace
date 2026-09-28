@@ -1,11 +1,11 @@
 {
-  "id": "xero-bank-detail-check",
+  "id": "myob-bank-detail-check",
   "title": "Bank-Detail Check",
-  "description": "Cross-references unpaid Xero bills against bank account details stored on supplier contacts — surfaces missing or unverifiable bank details before batch payment runs.",
+  "description": "Cross-references open MYOB purchase bills against bank account details stored on supplier contacts — surfaces missing or unverifiable bank details before batch payment runs.",
   "category": "finance",
-  "tags": ["xero", "bills", "bank", "payments", "fraud", "verification", "accounts-payable"],
-  "keywords": ["xero", "bank detail", "check", "verify", "verified", "can't verify", "missing", "bills", "accounts payable", "batch payment", "supplier", "contact", "fraud"],
-  "connectorsUsed": ["xero-accounting"],
+  "tags": ["myob", "bills", "bank", "payments", "fraud", "verification", "accounts-payable"],
+  "keywords": ["myob", "bank detail", "check", "verify", "verified", "can't verify", "missing", "bills", "accounts payable", "batch payment", "supplier", "contact", "fraud"],
+  "connectorsUsed": ["myob-accounting"],
   "popularity": 0,
   "sizing": {
     "preferred": { "colSpan": 5, "rowSpan": 7 },
@@ -13,8 +13,8 @@
     "max":       { "colSpan": 10, "rowSpan": 14 }
   },
   "dataProvider": {
-    "mcp": "xero-accounting",
-    "tool": "list_xero_bank_detail_check",
+    "mcp": "myob-accounting",
+    "tool": "list_myob_bank_detail_check",
     "params": {}
   },
   "spec": {
@@ -56,8 +56,8 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "Xero · {n} bills · first 100",
-              "n": { "$state": "/xero-accounting/list_xero_bank_detail_check/summary/total" }
+              "pattern": "MYOB · {n} bills · first 100",
+              "n": { "$state": "/myob-accounting/list_myob_bank_detail_check/summary/total" }
             }
           }
         }
@@ -73,7 +73,7 @@
         "type": "Stack",
         "props": { "gap": "sm" },
         "children": ["sk1", "sk2", "sk3", "sk4", "sk5"],
-        "visible": { "$state": "/_loading/xero-accounting.list_xero_bank_detail_check" }
+        "visible": { "$state": "/_loading/myob-accounting.list_myob_bank_detail_check" }
       },
       "sk1": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
       "sk2": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
@@ -83,11 +83,11 @@
 
       "empty": {
         "type": "Empty",
-        "props": { "message": "No unpaid bills found." },
+        "props": { "message": "No open bills found." },
         "visible": {
           "$and": [
-            { "$state": "/_loading/xero-accounting.list_xero_bank_detail_check", "not": true },
-            { "$state": "/xero-accounting/list_xero_bank_detail_check/bills/0", "not": true }
+            { "$state": "/_loading/myob-accounting.list_myob_bank_detail_check", "not": true },
+            { "$state": "/myob-accounting/list_myob_bank_detail_check/bills/0", "not": true }
           ]
         }
       },
@@ -97,8 +97,8 @@
         "props": { "gap": "md" },
         "visible": {
           "$and": [
-            { "$state": "/_loading/xero-accounting.list_xero_bank_detail_check", "not": true },
-            { "$state": "/xero-accounting/list_xero_bank_detail_check/bills/0" }
+            { "$state": "/_loading/myob-accounting.list_myob_bank_detail_check", "not": true },
+            { "$state": "/myob-accounting/list_myob_bank_detail_check/bills/0" }
           ]
         },
         "children": ["statsGrid", "divider", "billList", "footerRow"]
@@ -118,7 +118,7 @@
       "valCantVerify": {
         "type": "Stat",
         "props": {
-          "value": { "$state": "/xero-accounting/list_xero_bank_detail_check/summary/cantVerify" },
+          "value": { "$state": "/myob-accounting/list_myob_bank_detail_check/summary/cantVerify" },
           "tone": "warning"
         }
       },
@@ -135,7 +135,7 @@
       "valVerified": {
         "type": "Stat",
         "props": {
-          "value": { "$state": "/xero-accounting/list_xero_bank_detail_check/summary/verified" },
+          "value": { "$state": "/myob-accounting/list_myob_bank_detail_check/summary/verified" },
           "tone": "success"
         }
       },
@@ -150,7 +150,7 @@
         "type": "Stack",
         "props": { "gap": "none" },
         "repeat": {
-          "statePath": "/xero-accounting/list_xero_bank_detail_check/bills",
+          "statePath": "/myob-accounting/list_myob_bank_detail_check/bills",
           "key": "id"
         },
         "children": ["billRow"]
@@ -226,8 +226,8 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{n} unpaid bills scanned",
-              "n": { "$state": "/xero-accounting/list_xero_bank_detail_check/summary/total" }
+              "pattern": "{n} open bills scanned",
+              "n": { "$state": "/myob-accounting/list_myob_bank_detail_check/summary/total" }
             }
           },
           "tone": "muted"
@@ -240,7 +240,7 @@
             "$computed": "fmt",
             "args": {
               "pattern": "Updated {t}",
-              "t": { "$state": "/xero-accounting/list_xero_bank_detail_check/updatedTime" }
+              "t": { "$state": "/myob-accounting/list_myob_bank_detail_check/updatedTime" }
             }
           },
           "tone": "muted"
