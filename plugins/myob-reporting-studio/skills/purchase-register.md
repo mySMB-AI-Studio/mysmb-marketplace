@@ -1,3 +1,8 @@
+---
+name: MYOB Purchase Register (Bills)
+description: Generate a MYOB Purchase Register — a chronological list of all bills for a period. Bills only; quotes and orders are not covered (see limitations).
+---
+
 # Purchase Register (Bills)
 
 Prompt ID M46 · Reporting › Reports › Purchases › Purchase register. MYOB's own report covers "all quotes, orders and bills within the specified date range" — this connector has no confirmed tool for `Purchase/Order` or `Purchase/Quote`, only `Purchase/Bill` (via `list_bills`). Build this as a **Bills register**, an honest named subset, the same precedent `myob-sales-register` set by covering invoices only (not sales quotes/orders) rather than inventing calls to entities this connector doesn't expose.

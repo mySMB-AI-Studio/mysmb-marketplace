@@ -1,3 +1,8 @@
+---
+name: MYOB Coding
+description: Bank transactions grouped by coding status (coded vs uncoded), from the bank-feed statement.
+---
+
 # Coding
 
 Prompt ID M18. Menu: Reporting › Reports › Banking › Coding.

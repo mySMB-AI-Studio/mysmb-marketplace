@@ -1,3 +1,8 @@
+---
+name: MYOB Bank Transactions
+description: Bank-feed deposits and withdrawals for an account, with a running balance — sourced from MYOB's bank-feed statement lines, not the general ledger.
+---
+
 # Bank Transactions
 
 Prompt ID M16. Menu: Reporting › Reports › Banking › Bank transactions.

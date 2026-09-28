@@ -8,7 +8,7 @@ Load this skill with the specific report skill.
 
 Resolve the MYOB company file, period or as-at date, and accounting basis (accrual/cash, where the underlying tool supports it) — but prefer declaring them as report inputs with sensible defaults over asking the user up front; ask only when a required choice genuinely cannot be defaulted. Do not ask for an output format: every report is a single self-contained HTML document saved through artifact_save with a .html filename.
 
-Before starting any report, confirm the tool it needs actually exists in the current myob-accounting connector. All Wave 1 report types now have a backing tool or composite of tools; several Wave 2/3 report types (banking, budgets, payroll, inventory, jobs) do not yet — check the connector-map review before assuming a tool exists. If the data isn't exposed, say so plainly and suggest a MYOB export as a fallback — never approximate a report from adjacent data just because the real tool is missing.
+Before starting any report, confirm the tool it needs actually exists in the current myob-accounting connector. All Wave 1 and Wave 2 report types now have a backing tool or composite of tools; Wave 3 report types (payroll, inventory, jobs) do not yet — check the connector-map review before assuming a tool exists. If the data isn't exposed, say so plainly and suggest a MYOB export as a fallback — never approximate a report from adjacent data just because the real tool is missing.
 
 Use the connected MYOB tools for live data. Never invent, estimate, silently substitute, or reuse illustrative workbook values. Mark unavailable figures N/A — not in source — and include a Sources & limitations section naming tool calls, report dates, basis, and assumptions explicitly approved by the user.
 
