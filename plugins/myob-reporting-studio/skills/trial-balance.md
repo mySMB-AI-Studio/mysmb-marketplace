@@ -5,9 +5,9 @@ description: Generate a MYOB Trial Balance — every account's current balance, 
 
 # Trial Balance
 
-Use `list_accounts` (filter to `is_active: true` unless told otherwise — inactive accounts are typically excluded from a trial balance). There is no trial-balance tool and no as-of-date parameter on this one. This report can only reflect current account balances, not a specific past date. If asked for a trial balance "as at [past date]," say plainly that the connected data source doesn't support that and this report will show current balances instead — don't silently substitute one for the other.
+Use `list_accounts` with **no `is_active` parameter**, so every account comes back: an inactive account that still carries a balance must stay in the trial balance or debits won't equal credits. Hide inactive accounts only when their balance is zero, client-side. There is no trial-balance tool and no as-of-date parameter on this one. This report can only reflect current account balances, not a specific past date. If asked for a trial balance "as at [past date]," say plainly that the connected data source doesn't support that and this report will show current balances instead — don't silently substitute one for the other.
 
-The row shape is known: `UID`, `DisplayID`, `Name`, `Type`, `Classification`, `IsHeader`, `CurrentBalance`. Exclude every `IsHeader: true` account (a grouping account, not a postable one) from the body and totals. Call the tool once during generation to confirm the balances look as expected before writing render code.
+The row shape is known: `UID`, `DisplayID`, `Name`, `Type`, `Classification`, `IsHeader`, `IsActive`, `CurrentBalance` (MYOB: `CurrentBalance` includes all future-dated activity). Exclude every `IsHeader: true` account (a grouping account, not a postable one) from the body and totals. Call the tool once during generation to confirm the balances look as expected before writing render code.
 
 **Current Year Earnings may double count.** MYOB's current-year-earnings equity account is a computed roll-up of the P&L accounts' balances. If it carries a non-zero `CurrentBalance`, including it alongside the Income/Expense accounts can count the same profit twice. Verify on the live data: if debits equal credits only when that account is excluded (or its balance equals the net of the P&L accounts), exclude it and disclose that in Sources & limitations; otherwise keep it.
 
@@ -24,6 +24,7 @@ Show the actual computed totals and Pass/Fail, not just an assertion. Disclose i
 ## Interactivity
 
 * Declare a `classification` presentation input (enum: `All`, `Asset`, `Liability`, `Equity`, `Income`, `CostOfSales`, `Expense`, `OtherIncome`, `OtherExpense`; default `All`) that filters the displayed rows client-side. The binding always fetches every account so the Debits = Credits check always runs on the full set.
+* An optional "Active accounts only" toggle is a `boolean` presentation input that hides inactive accounts with a zero balance, client-side. It is never bound to `list_accounts` (the tool's `is_active` is a JSON boolean; an enum or string input sends `"true"` and MYOB rejects the call).
 * Declare `persona` and `company_file` per the foundation skill.
 * Table is sortable by account ID, name, or balance, and filterable by name/ID, per the shared foundation skill's rules.
 * No date input — see the limitation above.
