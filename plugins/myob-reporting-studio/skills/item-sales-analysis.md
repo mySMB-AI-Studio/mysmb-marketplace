@@ -5,9 +5,9 @@ description: Use when the user wants MARGIN or trend analysis per item — gross
 
 # Item Sales Analysis
 
-Prompt ID M49 · Reporting › Reports › Inventory › Item sales analysis. MYOB's description: "Analyse your items' sales performance over time." Extends Wave 2's Item Sales skill (`myob-item-sales.md`) with margin analysis — reuse its exact aggregation approach rather than redesigning it.
+Prompt ID M49 · Reporting › Reports › Inventory › Item sales analysis. MYOB's description: "Analyse your items' sales performance over time." Extends the Item Sales skill (`myob-reporting-studio:item-sales`) with margin analysis — reuse its exact aggregation approach rather than redesigning it.
 
-Use `list_items` for item master data (`Number`, `Name`, `AverageCost`). Use `list_invoices` (status=All, date-ranged), then during generation call `get_invoice` once to discover whether the response includes a `Lines` array with an item reference — same Lines-discovery-with-honest-fallback rule as `myob-item-sales.md`. If `Lines` is absent, say plainly that item-level sales analysis cannot be built from this connector today and point to the MYOB export fallback — do not approximate.
+Use `list_items` for item master data (`Number`, `Name`, `AverageCost`). Use `list_invoices` (status=All, date-ranged), then during generation call `get_invoice` once to discover whether the response includes a `Lines` array with an item reference — same Lines-discovery-with-honest-fallback rule (and the same bounded `get_invoice` loop when the list rows carry no `Lines`) as `myob-reporting-studio:item-sales`. If `Lines` is absent, say plainly that item-level sales analysis cannot be built from this connector today and point to the MYOB export fallback — do not approximate.
 
 If `Lines` is present: aggregate quantity and revenue per item across invoices in range, join to `list_items` by item UID/Number, and compute gross margin per item as `revenue − (quantity × AverageCost)`, plus margin % (`margin / revenue`). If the date range spans multiple calendar months, group the aggregation by month for a trend view (quantity/revenue/margin per item per month); for a single-month or shorter range, show one flat table instead.
 
@@ -17,7 +17,7 @@ If `Lines` is present: aggregate quantity and revenue per item across invoices i
 
 * Declare `from_date`/`to_date` inputs mapped to `list_invoices`.
 * Declare an optional `item` filter (client-side, over already-hydrated data).
-* `persona` input per the foundation skill — Client/Executive personas show top-N items by revenue/margin only; Bookkeeper/Practitioner show the full per-item (or per-item-per-month) breakdown.
+* `persona` and `company_file` inputs per the foundation skill — Client/Executive personas show top-N items by revenue/margin only; Bookkeeper/Practitioner show the full per-item (or per-item-per-month) breakdown.
 
 ## Sources & limitations
 
