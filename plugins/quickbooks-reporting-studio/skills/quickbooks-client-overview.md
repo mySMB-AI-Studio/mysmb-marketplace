@@ -22,7 +22,7 @@ No manual dates: the transaction-volume window (last 30 days) is set on every op
 | Member / view | How |
 |---|---|
 | Banking activity | 'In QuickBooks' balances per bank and card account; bank balance, unaccepted, unreconciled and reconciled-through are N/A (not in the Accounting API) |
-| Common issues | Undeposited funds, uncategorised asset/income/expense, A/R and A/P ageing over 90 days, opening balance equity, negative asset and liability accounts, GST liabilities payable |
+| Common issues | Undeposited funds, uncategorised asset/income/expense, A/R and A/P ageing over 90 days, opening balance equity, negative asset and liability accounts (owed liabilities, contra assets and GST/BAS accounts are normal), GST / BAS payable and suspense balances |
 | Transaction volume | Last 30 days by transaction type |
 | Books review, Prep for taxes | N/A — QuickBooks Accountant workflows |
 
@@ -189,7 +189,7 @@ QB.app({
     var ar = aged('aged_receivables'), ap = aged('aged_payables');
     var bank = accts.filter(function (a) { return a.AccountType === 'Bank' || a.AccountType === 'Credit Card'; });
     var find = function (re, sub) { return accts.filter(function (a) { return re.test(a.Name) || (sub && a.AccountSubType === sub); }); };
-    var undep = find(/^undeposited funds$/i, 'UndepositedFunds'), uncat = find(/^uncategori[sz]ed (asset|income|expense)/i), obe = find(/^opening balance equity$/i), gst = find(QB.GST_LIAB_RE, 'GlobalTaxPayable');
+    var undep = find(/^undeposited funds$/i, 'UndepositedFunds'), uncat = find(/^uncategori[sz]ed (asset|income|expense)/i), obe = find(/^opening balance equity$/i), taxAcct = function (a) { return /^GlobalTax(Payable|Suspense)$/.test(a.AccountSubType || '') || QB.GST_LIAB_RE.test(a.Name || '') || /^(gst|bas)\b.*\bsuspense\b/i.test(a.Name || ''); }, gst = accts.filter(taxAcct);
     var contra = function (a) { return /^(Accumulated|AllowanceForBadDebts)/.test(a.AccountSubType || '') || /^(accumulated (depreciation|amorti[sz]ation|depletion)|allowance for (bad|doubtful) debts|provision for (bad|doubtful) debts)/i.test(a.Name || ''); }, // contra-asset accounts are negative by design
       credit = function (a) { return a.Classification === 'Liability' || a.Classification === 'Equity'; },
       credNeg = (function () { // does the account list show money owed as negative? (it does in the AU sandbox)
@@ -197,7 +197,7 @@ QB.app({
         accts.forEach(function (a) { var v = Number(a.CurrentBalance) || 0, b = bsv[String(a.Id)]; if (!credit(a) || !v) return; if (b) { if ((b > 0) === (v > 0)) agree++; else flip++; } if (a.Classification === 'Liability') { if (v < 0) neg++; else pos++; } });
         return agree || flip ? flip >= agree : neg >= pos; })(),
       sb = function (a) { var v = Number(a.CurrentBalance) || 0; return credit(a) && credNeg ? -v : v; }, // balance-sheet sign: owed liabilities positive
-      negAL = accts.filter(function (a) { return (a.Classification === 'Asset' || a.Classification === 'Liability') && !contra(a) && sb(a) < 0; });
+      negAL = accts.filter(function (a) { return (a.Classification === 'Asset' || a.Classification === 'Liability') && !contra(a) && !taxAcct(a) && sb(a) < 0; }); // GST/BAS accounts go either way (refund position)
     var bal = function (list) { return QB.sum(list.map(sb)); };
     var issues = [
       { issue: 'Undeposited funds', detail: undep.length ? money(bal(undep)) + ' waiting to be deposited' : 'No Undeposited Funds account', flag: bal(undep) !== 0 },
@@ -206,7 +206,7 @@ QB.app({
       { issue: 'A/P ageing over 90 days', detail: ap ? money(ap.over90) + ' (' + ap.rowsOver + ' supplier' + (ap.rowsOver === 1 ? '' : 's') + ')' : c.err('aged_payables') || '', flag: ap && ap.over90 > 0 },
       { issue: 'Opening balance equity', detail: obe.length ? money(bal(obe)) : 'No Opening Balance Equity account', flag: bal(obe) !== 0 },
       { issue: 'Negative asset and liability accounts', detail: negAL.length ? negAL.length + ': ' + negAL.map(function (a) { return a.Name + ' ' + money(sb(a)); }).join(' · ') : 'None', flag: negAL.length > 0 },
-      { issue: 'GST liability account', detail: gst.length ? gst.map(function (a) { return a.Name; }).join(' · ') + ' ' + money(bal(gst)) : 'No GST liability account', flag: false }];
+      { issue: 'GST / BAS accounts', detail: gst.length ? gst.map(function (a) { return a.Name + ' ' + money(sb(a)); }).join(' · ') : 'No GST liability account', flag: false }];
     var tl = c.data.transactions_30d, tc = tl ? QB.cols(tl).map(function (x) { return x.title; }) : [], ti = tc.indexOf('Transaction Type') - 1, byType = {};
     var txRows = tl ? QB.walk(tl).filter(function (l) { return l.kind === 'row'; }) : [];
     txRows.forEach(function (r) { var k = ti >= 0 ? r.raw[ti] : 'Transaction'; byType[k] = (byType[k] || 0) + 1; });

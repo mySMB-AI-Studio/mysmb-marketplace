@@ -5,13 +5,13 @@ description: QuickBooks Online Statement of Cash Flows (Q19) as a live, validate
 
 # Statement of Cash Flows (Q19)
 
-Use when the user asks for a statement of cash flows, cash flow statement, where the cash went, operating / investing / financing cash flow, or a cash waterfall. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_cash_flow`, `qbo_query`, `get_preferences`).
+Use when the user asks for a statement of cash flows, cash flow statement, where the cash went, operating / investing / financing cash flow, or a cash waterfall. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_cash_flow`, `get_report_balance_sheet`, `list_account`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports › Business overview › Statement of Cash Flows. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q19. Delivery: Wave 1.
 
 ## Discovery call
 
-`get_report_cash_flow` with `start_date`, `end_date` — expect `group` OperatingActivities (with a Net Income row and an OperatingAdjustments section), InvestingActivities, FinancingActivities, CashIncrease, BeginningCash, EndingCash.
+`get_report_cash_flow` with `start_date`, `end_date` — expect `group` OperatingActivities (with a Net Income row and an OperatingAdjustments section), InvestingActivities, FinancingActivities, CashIncrease, BeginningCash, EndingCash. AU / IFRS companies may return NO BeginningCash or EndingCash rows at all — only CashIncrease ("Net increase (decrease) in cash and cash equivalents"); the report then takes closing cash from the bank accounts on a balance sheet at the end date (`QB.bankCash`) and works opening cash back.
 
 ## Date defaults
 
@@ -153,6 +153,36 @@ Preset `this_fy_td`: `start_date` = FY start, `end_date` = `"today"`; compare da
       }
     },
     {
+      "id": "bs_end",
+      "tool": {
+        "mcp": "quickbooks-accounting",
+        "name": "get_report_balance_sheet"
+      },
+      "params": {
+        "end_date": {
+          "kind": "input",
+          "input": "end_date"
+        }
+      }
+    },
+    {
+      "id": "bank_accounts",
+      "tool": {
+        "mcp": "quickbooks-accounting",
+        "name": "list_account"
+      },
+      "params": {
+        "where": {
+          "kind": "static",
+          "value": "AccountType = 'Bank'"
+        },
+        "maxResults": {
+          "kind": "static",
+          "value": 200
+        }
+      }
+    },
+    {
       "id": "company_info",
       "tool": {
         "mcp": "quickbooks-accounting",
@@ -185,8 +215,8 @@ QB.app({
   inputs: { start: 'start_date', end: 'end_date', columnsBy: 'columns_by', cmpStart: 'compare_start', cmpEnd: 'compare_end', persona: 'persona', display: 'display' },
   defaults: { start_date: '2026-07-01', end_date: '2026-09-25', columns_by: 'Total', compare_start: '2025-07-01', compare_end: '2026-06-30', persona: 'Executive',
     display: '{"cents":1,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":""}' },
-  uses: { cash_flow: ['start_date', 'end_date', 'columns_by'], cash_flow_compare: ['compare_start', 'compare_end'], company_info: [], prefs: [] },
-  tools: { cash_flow: 'get_report_cash_flow', cash_flow_compare: 'get_report_cash_flow (comparison period)', company_info: 'qbo_query (CompanyInfo)', prefs: 'get_preferences' },
+  uses: { cash_flow: ['start_date', 'end_date', 'columns_by'], cash_flow_compare: ['compare_start', 'compare_end'], bs_end: ['end_date'], bank_accounts: [], company_info: [], prefs: [] },
+  tools: { cash_flow: 'get_report_cash_flow', cash_flow_compare: 'get_report_cash_flow (comparison period)', bs_end: 'get_report_balance_sheet (closing cash when the cash flow has no closing-cash line)', bank_accounts: 'list_account (Bank)', company_info: 'qbo_query (CompanyInfo)', prefs: 'get_preferences' },
   columnsBy: [['Total', 'Total only'], ['Month', 'Months'], ['Quarter', 'Quarters'], ['Year', 'Years']],
   compare: true,
   render: function (c) {
@@ -198,7 +228,11 @@ QB.app({
     var m = QB.mergeCompare(rep, cmpOn ? c.data.cash_flow_compare : null), lines = m.lines;
     var T = function (g, re) { return QB.val(QB.find(lines, g, re)); };
     var op = T('OperatingActivities', /^net cash provided by operating activities$/i), inv = T('InvestingActivities', /^net cash provided by investing activities$/i) || 0, fin = T('FinancingActivities', /^net cash provided by financing activities$/i) || 0;
-    var inc = T('CashIncrease', QB.CF_INC_RE), beg = T('BeginningCash', QB.CF_BEG_RE), end = T('EndingCash', QB.CF_END_RE);
+    var inc = T('CashIncrease', QB.CF_INC_RE), beg = T('BeginningCash', QB.CF_BEG_RE), end = T('EndingCash', QB.CF_END_RE), derived = false;
+    if (end == null && beg == null && inc != null) { // AU / IFRS: no opening or closing lines — closing cash = bank accounts on the balance sheet at the end date
+      var bc = QB.bankCash(c.data.bs_end, ((c.data.bank_accounts || {}).QueryResponse || {}).Account);
+      if (bc != null) { end = bc; beg = Math.round((bc - inc) * 100) / 100; derived = true; }
+    }
     var ni = QB.val(QB.find(lines, null, QB.NI_RE, 'row')), adj = T('OperatingAdjustments', /^total adjustments/i) || 0;
     lines.forEach(function (l) { if (l.kind === 'row' && /^net income$/i.test(l.label)) l.label = 'Net Earnings'; });
     var extra = cmpOn ? QB.compareCols({ prev_period: 'Previous period', prev_year: 'Previous year', ytd: 'Year-to-date' }[c.compareMode]) : [];
@@ -208,6 +242,7 @@ QB.app({
     QB.waterfall(document.getElementById('ch1'), { title: 'Cash waterfall', steps: [{ label: 'Opening cash', value: beg, total: true }, { label: 'Operating', value: op }, { label: 'Investing', value: inv }, { label: 'Financing', value: fin }, { label: 'Closing cash', value: end, total: true }] }, c);
     var ties = QB.sectionTies(rep), hd = QB.header(rep);
     var checks = [
+      derived ? { name: 'Opening cash worked back from the balance sheet (information)', pass: null, info: true, detail: "QuickBooks' cash flow report has no opening or closing cash lines; closing cash " + QB.money(end, c.currency, c.display) + ' = bank accounts on the balance sheet at ' + c.inputs.end_date + ', less the net increase' } :
       { name: 'Cash at end = Cash at beginning + Net cash increase', pass: end == null || beg == null || inc == null ? null : QB.near(end, beg + inc), detail: QB.money(end, c.currency, c.display) },
       { name: 'Net cash increase = Operating + Investing + Financing', pass: inc == null || op == null ? null : QB.near(inc, op + inv + fin), detail: QB.money(inc, c.currency, c.display) },
       { name: 'Operating = Net Earnings + Σ adjustments', pass: op == null || ni == null ? null : QB.near(op, ni + adj), detail: QB.money(ni, c.currency, c.display) + ' + ' + QB.money(adj, c.currency, c.display) },
