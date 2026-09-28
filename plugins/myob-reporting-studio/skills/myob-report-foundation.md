@@ -249,6 +249,12 @@ if (labelRe) for (i = 0; i < lines.length; i++) if (lines[i].kind === kinds[j] &
 return null;
 }
 function val(line, col) { return line ? line.values[col == null ? line.values.length - 1 : col] : null; }
+var SECTION_LABEL = { Asset: 'Total Assets', Liability: 'Total Liabilities', Equity: 'Total Equity', Income: 'Total Income', CostOfSales: 'Total Cost of Sales', Expense: 'Total Expenses', OtherIncome: 'Total Other Income', OtherExpense: 'Total Other Expenses' };
+function signNotes(totals, col) {
+var out = [], i = col || 0, credit = { Income: 1, OtherIncome: 1 }, what = function (k) { return /Income/.test(k) ? 'income' : /Expense|CostOfSales/.test(k) ? 'expense' : 'account'; };
+Object.keys(totals).forEach(function (k) { var v = totals[k][i]; if (v < -0.005) out.push(SECTION_LABEL[k] + ' is negative (' + (credit[k] || k === 'Asset' ? 'a net debit' : k === 'Liability' || k === 'Equity' ? 'a net debit' : 'a net credit') + ') — review the ' + what(k) + ' postings.'); });
+return out;
+}
 function linesTies(lines, tol) {
 var res = { checked: 0, failed: [] };
 lines.forEach(function (t) {
@@ -778,7 +784,7 @@ if (MH.onRefresh) MH.onRefresh(function () { status('Refreshing…'); });
 if (MH.onThemeChange) MH.onThemeChange(function () { render(); });
 return { state: S, change: change, render: render, exportXlsx: exportXlsx, ctx: ctx };
 }
-return { errorOf: errorOf, items: items, isoDate: isoDate, accounts: accounts, classOf: classOf, breakdown: breakdown, PL_LAYOUT: PL_LAYOUT, BS_LAYOUT: BS_LAYOUT, PL_CLASSES: PL_CLASSES, BS_CLASSES: BS_CLASSES,
+return { signNotes: signNotes, errorOf: errorOf, items: items, isoDate: isoDate, accounts: accounts, classOf: classOf, breakdown: breakdown, PL_LAYOUT: PL_LAYOUT, BS_LAYOUT: BS_LAYOUT, PL_CLASSES: PL_CLASSES, BS_CLASSES: BS_CLASSES,
 CYE_RE: CYE_RE, currentYearEarnings: currentYearEarnings, linesTies: linesTies, companyFiles: companyFiles, companyOf: companyOf, fiscalStart: fiscalStart, homeCurrency: homeCurrency,
 applyBrand: applyBrand, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app,
 MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays, num: num, find: find, val: val, totalFor: totalFor, near: near, sum: sum, symbol: symbol,

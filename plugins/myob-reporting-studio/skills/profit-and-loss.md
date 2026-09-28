@@ -260,7 +260,7 @@ MK.app({
     var notes = [];
     if (b.byCode) notes.push(b.byCode + ' account(s) were classified by account number because the chart of accounts did not list them.');
     if (b.headersSkipped.length) notes.push(b.headersSkipped.length + ' header account(s) returned by MYOB were left out so their totals are not counted twice.');
-    if (cos < 0) notes.push('Cost of Sales is negative (a net credit) — review the Cost of Sales postings.');
+    MK.signNotes(b.totals).forEach(function (n) { notes.push(n); });
     this._lines = lines; this._extra = extra;
     return { checks: checks, notes: notes, na: ['Monthly or periodic breakdown columns (the MYOB API P&L summary returns one total per account)', 'Category (tracking) and job splits'],
       title: c.view === 'pct' ? 'Profit and Loss as % of income' : cmpOn ? 'Profit and Loss Comparison' : 'Profit and Loss' };
