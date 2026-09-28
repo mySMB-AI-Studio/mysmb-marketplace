@@ -682,9 +682,10 @@ function requery(changed) {
 if (!MH || !live) { render(); return Promise.resolve(); } // snapshot: display-only inputs still redraw
 var ids = Object.keys(cfg.uses || {}).filter(function (id) { return !changed || (cfg.uses[id] || []).some(function (n) { return changed.indexOf(n) >= 0; }); });
 if (!ids.length) { render(); return Promise.resolve(); }
-S.busy++; status('Loading…'); var inputs = Object.assign({}, S.inputs);
+S.busy++; status('Loading…'); var inputs = Object.assign({}, S.inputs); S.req = S.req || {};
 return Promise.all(ids.map(function (id) {
-return MH.getData(id, inputs).then(function (v) { S.data[id] = v; delete S.errors[id]; }, function (e) { S.errors[id] = { code: (e && e.code) || 'tool_error', message: (e && e.message) || String(e) }; });
+var tok = S.req[id] = (S.req[id] || 0) + 1, latest = function () { return S.req[id] === tok; }; // a slower, older reload never overwrites a newer one
+return MH.getData(id, inputs).then(function (v) { if (latest()) { S.data[id] = v; delete S.errors[id]; } }, function (e) { if (latest()) S.errors[id] = { code: (e && e.code) || 'tool_error', message: (e && e.message) || String(e) }; });
 })).then(function () { S.fetchedAt = new Date().toISOString(); S.busy--; status(''); render(); });
 }
 function change(patch, dispPatch) {
