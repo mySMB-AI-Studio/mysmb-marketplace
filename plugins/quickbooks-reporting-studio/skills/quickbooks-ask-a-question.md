@@ -23,7 +23,7 @@ Use when the user asks a plain-English question about their QuickBooks figures, 
 | Who we owe / bills due | `get_report_aged_payables` | Rows and bands; TOTAL |
 | Bank or card balances | `list_account` (where "AccountType IN ('Bank', 'Credit Card')") | CurrentBalance ("In QuickBooks") |
 | Assets, liabilities, equity at a date | `get_report_balance_sheet` (end_date) | Groups TotalAssets, Liabilities, Equity |
-| GST for a quarter | `list_tax_agency`, then `get_report_tax_summary` with `agency_id` = the Australian Tax Office's Id | BAS labels 1A, 1B, 9 (no rows = no GST transactions for that agency in the period — a nil period, every label A$0; with no tax agency set up, say GST is unavailable, not zero) |
+| GST for a quarter | `list_tax_agency`, then `get_report_tax_summary` with `agency_id` = the Australian Tax Office's Id | BAS labels 1A, 1B, 9 (no rows = no GST transactions for that agency in the period — a nil period, every label A$0 — but only if the agency has GST rows over a longer history; if it never does, or no tax agency is set up, say GST is unavailable, not zero) |
 | A specific invoice or bill | `list_invoice` / `list_bill` (where "DocNumber = '…'") | Balance, DueDate |
 
 4. **Answer** in one to three sentences: the figure (QuickBooks format, e.g. -A$175,286.75), the period, the basis, and the source — "from the QuickBooks Profit and Loss, 1 August 2026 to 31 August 2026, accrual basis, line Net Income". If you added lines together, list them.

@@ -228,6 +228,31 @@ Custom period — the pack period the user asks for (default: financial year to 
       }
     },
     {
+      "id": "gst_probe",
+      "tool": {
+        "mcp": "quickbooks-accounting",
+        "name": "get_report_tax_summary"
+      },
+      "params": {
+        "start_date": {
+          "kind": "static",
+          "value": "2000-01-01"
+        },
+        "end_date": {
+          "kind": "context",
+          "source": "now.date"
+        },
+        "accounting_method": {
+          "kind": "input",
+          "input": "basis"
+        },
+        "agency_id": {
+          "kind": "input",
+          "input": "agency_id"
+        }
+      }
+    },
+    {
       "id": "company_info",
       "tool": {
         "mcp": "quickbooks-accounting",
@@ -260,8 +285,8 @@ QB.app({
   inputs: { start: 'start_date', end: 'end_date', basis: 'basis', persona: 'persona', display: 'display' },
   defaults: { start_date: '2026-07-01', end_date: '2026-08-31', basis: 'Accrual', agency_id: '', persona: 'Executive',
     display: '{"cents":1,"k":0,"zeros":0,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"custom","a":"custom","c":"none","v":"basic","x":""}' },
-  uses: { pnl: ['start_date', 'end_date', 'basis'], balance_sheet: ['end_date', 'basis'], cash_flow: ['start_date', 'end_date'], gst_summary: ['start_date', 'end_date', 'basis', 'agency_id'], tax_agencies: [], aged_receivables: [], aged_payables: [], company_info: [], prefs: [] },
-  tools: { pnl: 'get_report_profit_and_loss', balance_sheet: 'get_report_balance_sheet', cash_flow: 'get_report_cash_flow', aged_receivables: 'get_report_aged_receivables', aged_payables: 'get_report_aged_payables', gst_summary: 'get_report_tax_summary', company_info: 'qbo_query (CompanyInfo)', prefs: 'get_preferences' },
+  uses: { pnl: ['start_date', 'end_date', 'basis'], balance_sheet: ['end_date', 'basis'], cash_flow: ['start_date', 'end_date'], gst_summary: ['start_date', 'end_date', 'basis', 'agency_id'], gst_probe: ['basis', 'agency_id'], tax_agencies: [], aged_receivables: [], aged_payables: [], company_info: [], prefs: [] },
+  tools: { pnl: 'get_report_profit_and_loss', balance_sheet: 'get_report_balance_sheet', cash_flow: 'get_report_cash_flow', aged_receivables: 'get_report_aged_receivables', aged_payables: 'get_report_aged_payables', gst_summary: 'get_report_tax_summary', gst_probe: 'get_report_tax_summary (all history — confirms a nil period)', company_info: 'qbo_query (CompanyInfo)', prefs: 'get_preferences' },
   views: [['basic', 'Basic Company Financials'], ['expanded', 'Expanded Company Financials'], ['bas', 'BAS workpapers']],
   render: function (c) {
     var body = c.body, money = function (v) { return QB.money(v, c.currency, c.display); }, tpl = c.view || 'basic';
@@ -278,8 +303,8 @@ QB.app({
     var pages = [['Executive summary', function () { var inc = T(pl, 'Income'), ni = T(pl, 'NetIncome'); return QB.kpis([{ label: 'Total for Income', value: inc }, { label: 'Gross Profit', value: T(pl, 'GrossProfit') }, { label: 'Net Earnings', value: ni }, { label: 'Net margin', text: inc ? QB.pct(ni / inc) : 'N/A — not in source' }, { label: 'Total for Assets', value: T(bs, 'TotalAssets') }, { label: 'Total for Equity', value: T(bs, 'Equity') }, { label: 'Cash at end of period', value: T(cf, 'EndingCash') }], c); }]];
     if (tpl !== 'bas') pages.push(['Profit and Loss', function () { return stmt('pnl', pl); }], ['Balance Sheet', function () { return stmt('balance_sheet', bs); }]);
     if (tpl === 'expanded') pages.push(['Statement of Cash Flows', function () { return stmt('cash_flow', cf); }], ['A/R Ageing Summary', function () { return ageTable('aged_receivables', 'Customer'); }], ['A/P Ageing Summary', function () { return ageTable('aged_payables', 'Supplier'); }]);
-    var basNil = !!(c.data.gst_summary && QB.noData(c.data.gst_summary) && ag.id), basB = c.data.gst_summary && !QB.noData(c.data.gst_summary) ? QB.bas(c.data.gst_summary) : null;
-    if (tpl === 'bas') pages.push(['GST Summary', function () { return c.errors.gst_summary ? '<p class="qb-err">' + QB.h(c.err('gst_summary')) + '</p>' : basB ? QB.statement(basB.lines, ['', 'TOTAL'], c) : basNil ? '<div class="qb-card detail-block"><h3>Nil period</h3><p>QuickBooks has no GST transactions for <strong>' + QB.h(ag.name) + '</strong> in this period, so every BAS label is ' + QB.h(money(0)) + '.</p></div>' : '<p class="qb-err">' + (ag.id ? 'QuickBooks returned no GST rows for this period' : 'No tax agency is set up in QuickBooks') + ' — GST is unavailable, not zero.</p>'; }], ['Profit and Loss', function () { return stmt('pnl', pl); }]);
+    var basNil = !!(c.data.gst_summary && QB.noData(c.data.gst_summary) && ag.id && QB.gstConfirmed(c, 'gst_probe')), basB = c.data.gst_summary && !QB.noData(c.data.gst_summary) ? QB.bas(c.data.gst_summary) : null;
+    if (tpl === 'bas') pages.push(['GST Summary', function () { return c.errors.gst_summary ? '<p class="qb-err">' + QB.h(c.err('gst_summary')) + '</p>' : basB ? QB.statement(basB.lines, ['', 'TOTAL'], c) : basNil ? '<div class="qb-card detail-block"><h3>Nil period</h3><p>QuickBooks has no GST transactions for <strong>' + QB.h(ag.name) + '</strong> in this period, so every BAS label is ' + QB.h(money(0)) + '.</p></div>' : '<p class="qb-err">' + (ag.id ? QB.h(QB.GST_UNCONFIRMED) : 'No tax agency is set up in QuickBooks — GST is unavailable, not zero.') + '</p>'; }], ['Profit and Loss', function () { return stmt('pnl', pl); }]);
     pages.push(['End notes', function () { return '<p>Prepared from QuickBooks Online via the ' + QB.h('quickbooks-accounting') + ' connector on ' + QB.h(new Date(c.fetchedAt || Date.now()).toLocaleString('en-AU')) + '. ' + QB.h(c.inputs.basis) + ' basis. Amounts in ' + QB.h(c.currency) + '.</p><p>These reports are decision support. They have not been audited or reviewed.</p>'; }]);
     var cover = '<section class="page mr-cover" style="background:var(--cover);color:var(--cover-ink);border-radius:8px;padding:72px 40px;margin-bottom:16px"><div style="font-size:30px;font-weight:700">Management Report</div><div style="font-size:20px;margin-top:12px">' + QB.h(c.company || 'N/A — not in source') + '</div><div style="margin-top:8px">For the period ended ' + QB.h(ended) + '</div><div style="margin-top:24px;opacity:.8">' + QB.h({ basic: 'Basic Company Financials', expanded: 'Expanded Company Financials', bas: 'BAS workpapers' }[tpl]) + '</div></section>';
     var toc = '<section class="page qb-card"><h2>Table of contents</h2><ol>' + pages.map(function (p, i) { return '<li>' + QB.h(p[0]) + ' <span class="muted">— page ' + (i + 3) + '</span></li>'; }).join('') + '</ol></section>';
