@@ -20,9 +20,9 @@ Validate: sum of `Entries[].Hours` per line should equal any week-level hours to
 ## Interactivity
 
 * Declare `from_date`/`to_date` with a client-side preset picker (this month, last quarter).
-* Declare an optional `employee` enum input (from `list_employees`) mapped to `employee_uid`.
-* Declare `persona` per the foundation skill — Client/Executive show weekly totals only; Bookkeeper/Practitioner show daily entry detail.
+* Declare an optional `employee` `string` UID input (maxLength 36), a presentation filter: bind `list_timesheets` without `employee_uid` (all employees) and filter client-side, filling the dropdown from `list_employees` or the employees in the returned timesheets. Never pass `""`.
+* Declare `persona` and `company_file` per the foundation skill — Client/Executive show weekly totals only; Bookkeeper/Practitioner show daily entry detail.
 
 ## Sources & limitations
 
-Tool used: `list_timesheets`. Date-range params are sent to MYOB and also re-applied client-side, since a sibling payroll endpoint (`get_employee_payroll_advice`) was confirmed live to silently ignore identically-named date params — don't assume this one's server-side filtering works until confirmed live the same way.
+Tool used: `list_timesheets`. Date-range params are sent to MYOB and also re-applied client-side (on `Entries[].Date`), since MYOB ignores identically-named date params on the sibling payroll-advice endpoint (the connector filters those itself) — don't assume this one's server-side filtering works until confirmed live.
