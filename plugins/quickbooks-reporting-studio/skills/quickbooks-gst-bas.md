@@ -11,7 +11,7 @@ QuickBooks location: Reports › Standard reports › Manage Taxes › GST Summa
 
 ## Discovery call
 
-`get_report_tax_summary` with `start_date`, `end_date`, `accounting_method` — for an AU company expect rows labelled Net amount for G1 · Tax amount for G1 · GST-Free sales · G1 TOTAL SALES · 1A GST ON SALES · 1B GST ON PURCHASES · 8A · 8B · 9 REFUND OR PAYMENT DUE. QuickBooks returns BAS figures only when `agency_id` names the tax agency: call `list_tax_agency` too and set the `agency_id` default to the Australian Tax Office's `Id` (the report also finds the ATO itself on open). With the agency, NoReportData means no GST transactions in the period — a nil period, shown as A$0 (not unavailable).
+`get_report_tax_summary` with `start_date`, `end_date`, `accounting_method` — for an AU company expect rows labelled Net amount for G1 · Tax amount for G1 · GST-Free sales · G1 TOTAL SALES · 1A GST ON SALES · 1B GST ON PURCHASES · 8A · 8B · 9 REFUND OR PAYMENT DUE. QuickBooks returns BAS figures only when `agency_id` names the tax agency: call `list_tax_agency` too and set the `agency_id` default to the Australian Tax Office's `Id` (the report also finds the ATO itself on open). With the agency, NoReportData means no GST transactions in the period — a nil period, shown as A$0, but only when a history-wide Tax Summary for the agency (gst_probe) has data; if the agency has no GST at any time, say GST is unavailable (the connector may not be passing agency_id).
 
 ## Date defaults
 
@@ -159,6 +159,31 @@ Preset `this_quarter` (current BAS quarter) or `last_quarter` when the user is p
       }
     },
     {
+      "id": "gst_probe",
+      "tool": {
+        "mcp": "quickbooks-accounting",
+        "name": "get_report_tax_summary"
+      },
+      "params": {
+        "start_date": {
+          "kind": "static",
+          "value": "2000-01-01"
+        },
+        "end_date": {
+          "kind": "context",
+          "source": "now.date"
+        },
+        "accounting_method": {
+          "kind": "input",
+          "input": "basis"
+        },
+        "agency_id": {
+          "kind": "input",
+          "input": "agency_id"
+        }
+      }
+    },
+    {
       "id": "company_info",
       "tool": {
         "mcp": "quickbooks-accounting",
@@ -191,8 +216,8 @@ QB.app({
   inputs: { start: 'start_date', end: 'end_date', basis: 'basis', persona: 'persona', display: 'display' },
   defaults: { start_date: '2026-07-01', end_date: '2026-09-30', basis: 'Accrual', agency_id: '', persona: 'Bookkeeper',
     display: '{"cents":1,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"this_quarter","a":"custom","c":"none","v":"summary","x":""}' },
-  uses: { gst_summary: ['start_date', 'end_date', 'basis', 'agency_id'], bs_end: ['end_date', 'basis'], tax_agencies: [], company_info: [], prefs: [] },
-  tools: { gst_summary: 'get_report_tax_summary (GST Summary, for the tax agency)', tax_agencies: 'list_tax_agency', bs_end: 'get_report_balance_sheet (GST Liabilities at period end)', company_info: 'qbo_query (CompanyInfo)', prefs: 'get_preferences' },
+  uses: { gst_summary: ['start_date', 'end_date', 'basis', 'agency_id'], gst_probe: ['basis', 'agency_id'], bs_end: ['end_date', 'basis'], tax_agencies: [], company_info: [], prefs: [] },
+  tools: { gst_summary: 'get_report_tax_summary (GST Summary, for the tax agency)', gst_probe: 'get_report_tax_summary (all history — confirms a nil period)', tax_agencies: 'list_tax_agency', bs_end: 'get_report_balance_sheet (GST Liabilities at period end)', company_info: 'qbo_query (CompanyInfo)', prefs: 'get_preferences' },
   views: [['summary', 'GST Summary'], ['payg', 'PAYG Withholding Summary']],
   render: function (c) {
     var body = c.body, rep = c.data.gst_summary, money = function (v) { return QB.money(v, c.currency, c.display); };
@@ -211,7 +236,11 @@ QB.app({
       body.innerHTML = '<div class="qb-banner na"><strong>No tax agency is set up in QuickBooks.</strong> The GST Summary needs one (QuickBooks › Taxes › GST). GST figures are unavailable — not zero.</div>';
       this._x = null; return { checks: [{ name: 'QuickBooks returned GST rows for the period', pass: null, detail: 'No tax agency in QuickBooks' }], na: ['All BAS labels for this period (no tax agency in QuickBooks)'] };
     }
-    if (QB.noData(rep)) { // agency known: QuickBooks has no GST transactions for it in the period, i.e. a nil period
+    if (QB.noData(rep) && !QB.gstConfirmed(c, 'gst_probe')) { // no GST ever for this agency: could be a connector without agency_id
+      body.innerHTML = '<div class="qb-banner na"><strong>No GST figures from QuickBooks for ' + QB.h(ag.name) + '.</strong> ' + QB.h(QB.GST_UNCONFIRMED) + '</div>';
+      this._x = null; return { checks: [{ name: 'QuickBooks returned GST rows for the period', pass: null, detail: 'None for ' + ag.name + ' in this or any earlier period' }], na: ['All BAS labels for this period (no GST figures from QuickBooks)'] };
+    }
+    if (QB.noData(rep)) { // agency known and honoured: QuickBooks has no GST transactions for it in the period, i.e. a nil period
       var pl = QB.periodLine(c.inputs.start_date, c.inputs.end_date);
       body.innerHTML = QB.kpis([{ label: 'G1 Total sales', value: 0 }, { label: '1A GST on sales', value: 0 }, { label: '1B GST on purchases', value: 0 }, { label: '9 Payment due to the ATO', value: 0 }], c) +
         '<div class="qb-card detail-block" style="margin-top:16px"><h3>Nil period</h3><p>QuickBooks has no GST transactions for <strong>' + QB.h(ag.name) + '</strong> in <strong>' + QB.h(pl) + '</strong>, so every BAS label is ' + QB.h(money(0)) + '. Choose another period to see GST activity.</p></div>';

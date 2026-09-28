@@ -195,6 +195,31 @@ Preset `this_quarter`; compare = previous quarter (`c` = `prev_period`).
       }
     },
     {
+      "id": "gst_probe",
+      "tool": {
+        "mcp": "quickbooks-accounting",
+        "name": "get_report_tax_summary"
+      },
+      "params": {
+        "start_date": {
+          "kind": "static",
+          "value": "2000-01-01"
+        },
+        "end_date": {
+          "kind": "context",
+          "source": "now.date"
+        },
+        "accounting_method": {
+          "kind": "input",
+          "input": "basis"
+        },
+        "agency_id": {
+          "kind": "input",
+          "input": "agency_id"
+        }
+      }
+    },
+    {
       "id": "company_info",
       "tool": {
         "mcp": "quickbooks-accounting",
@@ -227,8 +252,8 @@ QB.app({
   inputs: { start: 'start_date', end: 'end_date', cmpStart: 'compare_start', cmpEnd: 'compare_end', basis: 'basis', persona: 'persona', display: 'display' },
   defaults: { start_date: '2026-07-01', end_date: '2026-09-30', compare_start: '2026-04-01', compare_end: '2026-06-30', basis: 'Accrual', agency_id: '', persona: 'Bookkeeper',
     display: '{"cents":0,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"this_quarter","a":"custom","c":"prev_period","v":"","x":""}' },
-  uses: { gst_current: ['start_date', 'end_date', 'basis', 'agency_id'], gst_previous: ['compare_start', 'compare_end', 'basis', 'agency_id'], bs_end: ['end_date', 'basis'], tax_agencies: [], company_info: [], prefs: [] },
-  tools: { tax_agencies: 'list_tax_agency', gst_current: 'get_report_tax_summary (this period, for the tax agency)', gst_previous: 'get_report_tax_summary (previous period)', bs_end: 'get_report_balance_sheet (GST Liabilities)', company_info: 'qbo_query (CompanyInfo)', prefs: 'get_preferences' },
+  uses: { gst_current: ['start_date', 'end_date', 'basis', 'agency_id'], gst_probe: ['basis', 'agency_id'], gst_previous: ['compare_start', 'compare_end', 'basis', 'agency_id'], bs_end: ['end_date', 'basis'], tax_agencies: [], company_info: [], prefs: [] },
+  tools: { tax_agencies: 'list_tax_agency', gst_probe: 'get_report_tax_summary (all history — confirms a nil period)', gst_current: 'get_report_tax_summary (this period, for the tax agency)', gst_previous: 'get_report_tax_summary (previous period)', bs_end: 'get_report_balance_sheet (GST Liabilities)', company_info: 'qbo_query (CompanyInfo)', prefs: 'get_preferences' },
   compare: true,
   render: function (c) {
     var body = c.body, money = function (v) { return QB.money(v, c.currency, c.display); };
@@ -238,6 +263,7 @@ QB.app({
     if (!c.data.gst_current) return {};
     var NIL = { a1: 0, b1: 0, nine: 0, found: true, nil: true }, bas = function (id) { var r = c.data[id]; return !r ? null : QB.noData(r) ? NIL : QB.bas(r); }; // agency known + no rows = nil period
     if (!ag.id) { body.innerHTML = '<div class="qb-banner na"><strong>No tax agency is set up in QuickBooks.</strong> The GST position is unavailable — not zero. Set one up in QuickBooks › Taxes › GST.</div>'; this._x = null; return { checks: [{ name: 'QuickBooks returned GST rows for the period', pass: null, detail: 'No tax agency in QuickBooks' }] }; }
+    if (QB.noData(c.data.gst_current) && !QB.gstConfirmed(c, 'gst_probe')) { body.innerHTML = '<div class="qb-banner na"><strong>No GST figures from QuickBooks for ' + QB.h(ag.name) + '.</strong> ' + QB.h(QB.GST_UNCONFIRMED) + '</div>'; this._x = null; return { checks: [{ name: 'QuickBooks returned GST rows for the period', pass: null, detail: 'None for ' + ag.name + ' in this or any earlier period' }] }; }
     var cur = bas('gst_current'), prev = c.errors.gst_previous ? null : bas('gst_previous');
     var net = function (b) { return b && b.a1 != null && b.b1 != null ? Math.round((b.a1 - b.b1) * 100) / 100 : null; }, n = net(cur), refund = n != null && n < 0;
     var bsl = c.data.bs_end ? QB.walk(c.data.bs_end) : [], liab = QB.val(QB.find(bsl, null, QB.GST_LIAB_RE, 'row'));
