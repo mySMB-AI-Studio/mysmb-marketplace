@@ -248,6 +248,8 @@ var ids = {}, hit = false, tot = 0; (accounts || []).forEach(function (a) { if (
 if (!bsRep) return null; walk(bsRep).forEach(function (l) { if (l.kind === 'row' && l.id && ids[String(l.id)]) { hit = true; tot += val(l) || 0; } });
 return hit ? Math.round(tot * 100) / 100 : null;
 }
+function gstConfirmed(ctx, probeId) { var p = ctx.data[probeId]; return !!(p && !ctx.errors[probeId] && !noData(p)); }
+var GST_UNCONFIRMED = 'QuickBooks returned no GST figures for this tax agency in this period or at any time before it, so GST is unavailable, not zero. If this company records GST, the QuickBooks connector may not be passing the tax agency (agency_id).';
 var GST_LIAB_RE = /^(gst|bas)\b.*\b(liabilit(y|ies)|payable|control)\b|^tax (payable|control)$/i;
 var ATO_RE = /australian tax(ation)? office|^ato$/i;
 function taxAgency(ctx, listId, input) {
@@ -850,7 +852,7 @@ if (MH.onRefresh) MH.onRefresh(function () { status('Refreshing…'); });
 if (MH.onThemeChange) MH.onThemeChange(function () { render(); });
 return { state: S, change: change, render: render, exportXlsx: exportXlsx, ctx: ctx };
 }
-return { cashEnd: cashEnd, bankCash: bankCash, GST_LIAB_RE: GST_LIAB_RE, taxAgency: taxAgency, CF_END_RE: CF_END_RE, CF_BEG_RE: CF_BEG_RE, CF_INC_RE: CF_INC_RE, NI_RE: NI_RE, bsParts: bsParts, applyBrand: applyBrand, bas: bas, sectionTies: sectionTies, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, mergeCompare: mergeCompare, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app, MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays,
+return { gstConfirmed: gstConfirmed, GST_UNCONFIRMED: GST_UNCONFIRMED, cashEnd: cashEnd, bankCash: bankCash, GST_LIAB_RE: GST_LIAB_RE, taxAgency: taxAgency, CF_END_RE: CF_END_RE, CF_BEG_RE: CF_BEG_RE, CF_INC_RE: CF_INC_RE, NI_RE: NI_RE, bsParts: bsParts, applyBrand: applyBrand, bas: bas, sectionTies: sectionTies, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, mergeCompare: mergeCompare, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app, MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays,
 num: num, cols: cols, walk: walk, find: find, val: val, header: header, noData: noData, totalFor: totalFor, near: near, sum: sum,
 companyInfo: companyInfo, fiscalStart: fiscalStart, homeCurrency: homeCurrency, symbol: symbol,
 DISPLAY_DEFAULT: DISPLAY_DEFAULT, readDisplay: readDisplay, writeDisplay: writeDisplay, money: money, pct: pct, isNeg: isNeg,
