@@ -1,0 +1,211 @@
+{
+  "id": "xero-reimbursement-drafts",
+  "title": "Xero — Reimbursement Drafts",
+  "description": "Employee expense receipts started in Xero but not yet submitted for reimbursement (Receipt Status==\"DRAFT\" — the draft stage sits one level below ExpenseClaim, which always starts at SUBMITTED). Flags receipts with no line items and a $0 total as empty — someone opened it and never finished — since that's the real action item, not just \"still a draft\".",
+  "category": "finance",
+  "tags": [
+    "xero",
+    "reimbursement",
+    "expenses",
+    "receipts",
+    "expense claims",
+    "finance"
+  ],
+  "keywords": [
+    "reimbursement",
+    "reimbursement draft",
+    "expense claim",
+    "receipts",
+    "employee expenses",
+    "draft"
+  ],
+  "connectorsUsed": [
+    "xero-accounting"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 6 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
+    "max": { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "xero-accounting",
+    "tool": "list_receipts",
+    "params": {
+      "where": "Status==\"DRAFT\"",
+      "order": "UpdatedDateUTC DESC"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["header", "body"],
+        "watch": {
+          "/xero-accounting/list_receipts/Receipts": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "xero-accounting_reimbursement_draft_rows",
+                  "args": { "receipts": { "$state": "/xero-accounting/list_receipts/Receipts" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "header": {
+        "type": "Header",
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Receipt", "tone": "info", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "count"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Reimbursement Drafts", "level": "h2" }
+      },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} Drafts",
+              "n": { "$computed": "count", "args": { "value": { "$state": "/ui/rows" } } }
+            }
+          }
+        }
+      },
+
+      "body": {
+        "type": "Body",
+        "children": ["loading", "empty", "list"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/xero-accounting.list_receipts" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No draft reimbursements — all caught up." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/xero-accounting.list_receipts", "not": true },
+            { "$state": "/ui/rows/0", "not": true }
+          ]
+        }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": { "statePath": "/ui/rows", "key": "id" },
+        "visible": { "$state": "/_loading/xero-accounting.list_receipts", "not": true }
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true,
+          "template": "auto minmax(0, 1fr) 5rem 5.5rem"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "https://go.xero.com/Expenses/EditReceipt.aspx?ReceiptID={id}",
+                  "id": { "$item": "id" }
+                }
+              },
+              "target": "_blank"
+            }
+          }
+        },
+        "children": ["priority", "identity", "amount", "statusBadge"]
+      },
+      "priority": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$cond": { "$item": "isEmpty" },
+            "$then": "warning",
+            "$else": "info"
+          },
+          "size": "sm"
+        }
+      },
+      "identity": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["idTop", "idBottom"]
+      },
+      "idTop": {
+        "type": "Text",
+        "props": { "text": { "$item": "payee" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "idBottom": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{user} · {age}", "user": { "$item": "userName" }, "age": { "$computed": "relative_time", "args": { "value": { "$item": "updatedDate" } } } }
+          }
+        }
+      },
+      "amount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": { "value": { "$item": "amount" }, "currency": { "$item": "currencyCode" } }
+          },
+          "weight": "semibold",
+          "size": "sm"
+        }
+      },
+      "statusBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$cond": { "$item": "isEmpty" },
+            "$then": "Empty draft",
+            "$else": "Draft"
+          },
+          "tone": {
+            "$cond": { "$item": "isEmpty" },
+            "$then": "warning",
+            "$else": "muted"
+          },
+          "variant": "soft"
+        }
+      }
+    }
+  }
+}

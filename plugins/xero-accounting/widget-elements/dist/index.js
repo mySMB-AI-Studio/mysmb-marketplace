@@ -245,6 +245,42 @@ const remittance_breakdown = (args) => {
         template: segments.length ? segments.map((s) => `${Math.max(1, Math.round(s.amount))}fr`).join(' ') : '1fr',
     };
 };
+/**
+ * Flattens a `list_receipts` response (already filtered to Status=="DRAFT")
+ * into rows for the Reimbursement Drafts tile. A Receipt is the Xero
+ * object an employee fills in before it's grouped into an ExpenseClaim
+ * for approval — "DRAFT" only exists at this level (ExpenseClaim itself
+ * starts at SUBMITTED), so this is genuinely "things not yet submitted
+ * for reimbursement", not an approximation.
+ *
+ * `isEmpty` flags a receipt with no line items / zero total — i.e.
+ * someone started it in Xero and never finished — which is the real
+ * actionable signal for this tile (a stale, abandoned draft vs. one
+ * that's filled in and just needs submitting).
+ *
+ * Args: { receipts: array }
+ * Returns: array of { id, userName, payee, amount, currencyCode, lineItemCount, isEmpty, updatedDate }
+ */
+const reimbursement_draft_rows = (args) => {
+    const receipts = Array.isArray(args.receipts) ? args.receipts : [];
+    return receipts.map((receipt) => {
+        const user = receipt.User;
+        const contact = receipt.Contact;
+        const lineItems = Array.isArray(receipt.LineItems) ? receipt.LineItems : [];
+        const total = Number(receipt.Total) || 0;
+        const userName = [user?.FirstName, user?.LastName].filter(Boolean).join(' ') || 'Unknown';
+        return {
+            id: receipt.ReceiptID,
+            userName,
+            payee: contact?.Name || '—',
+            amount: total,
+            currencyCode: receipt.CurrencyCode || 'AUD',
+            lineItemCount: lineItems.length,
+            isEmpty: lineItems.length === 0 && total === 0,
+            updatedDate: receipt.UpdatedDateUTC ?? null,
+        };
+    });
+};
 const flatten_report_rows = (args) => {
     const include = Array.isArray(args.includeTypes)
         ? new Set(args.includeTypes.map(String))
@@ -523,6 +559,7 @@ const elements = {
         reconciliation_breakdown,
         remittance_rows,
         remittance_breakdown,
+        reimbursement_draft_rows,
         days_overdue,
         overdue_label,
         overdue_only,
