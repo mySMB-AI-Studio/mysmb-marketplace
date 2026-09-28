@@ -89,16 +89,33 @@
               }
             },
             {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/teamsActiveAccountId",
+                "value": { "$computed": "identity", "args": { "value": { "$item": "_account/accountId" } } }
+              }
+            },
+            {
+              "action": "list_update_by_id",
+              "params": {
+                "listPath": "/m365-teams/list_chats",
+                "id": { "$computed": "identity", "args": { "value": { "$item": "id" } } },
+                "changes": { "unread": false }
+              }
+            },
+            {
               "action": "m365-teams.list_messages",
               "params": {
                 "chatId": { "$computed": "identity", "args": { "value": { "$item": "id" } } },
-                "limit": 15
+                "limit": 15,
+                "_accountId": { "$computed": "identity", "args": { "value": { "$item": "_account/accountId" } } }
               }
             },
             {
               "action": "m365-teams.mark_chat_read",
               "params": {
-                "chatId": { "$computed": "identity", "args": { "value": { "$item": "id" } } }
+                "chatId": { "$computed": "identity", "args": { "value": { "$item": "id" } } },
+                "_accountId": { "$computed": "identity", "args": { "value": { "$item": "_account/accountId" } } }
               }
             }
           ]
@@ -214,8 +231,8 @@
           "backdropClick": [
             { "action": "setState", "params": { "statePath": "/ui/teamsActiveChatId", "value": "" } },
             { "action": "setState", "params": { "statePath": "/ui/teamsReplyText", "value": "" } },
-            { "action": "bust_tool_cache", "params": { "mcp": "m365-teams", "tool": "list_chats" } },
-            { "action": "m365-teams.list_chats", "params": { "limit": 25, "sort": "recency" } }
+            { "action": "setState", "params": { "statePath": "/ui/teamsActiveAccountId", "value": "" } },
+            { "action": "bust_tool_cache", "params": { "mcp": "m365-teams", "tool": "list_chats" } }
           ]
         }
       },
@@ -240,8 +257,8 @@
           "click": [
             { "action": "setState", "params": { "statePath": "/ui/teamsActiveChatId", "value": "" } },
             { "action": "setState", "params": { "statePath": "/ui/teamsReplyText", "value": "" } },
-            { "action": "bust_tool_cache", "params": { "mcp": "m365-teams", "tool": "list_chats" } },
-            { "action": "m365-teams.list_chats", "params": { "limit": 25, "sort": "recency" } }
+            { "action": "setState", "params": { "statePath": "/ui/teamsActiveAccountId", "value": "" } },
+            { "action": "bust_tool_cache", "params": { "mcp": "m365-teams", "tool": "list_chats" } }
           ]
         }
       },
@@ -359,14 +376,19 @@
               "action": "m365-teams.send_message",
               "params": {
                 "chatId": { "$state": "/ui/teamsActiveChatId" },
-                "content": { "$state": "/ui/teamsReplyText" }
+                "content": { "$state": "/ui/teamsReplyText" },
+                "_accountId": { "$state": "/ui/teamsActiveAccountId" }
               }
             },
             { "action": "setState", "params": { "statePath": "/ui/teamsReplyText", "value": "" } },
             { "action": "bust_tool_cache", "params": { "mcp": "m365-teams", "tool": "list_messages" } },
             {
               "action": "m365-teams.list_messages",
-              "params": { "chatId": { "$state": "/ui/teamsActiveChatId" }, "limit": 15 }
+              "params": {
+                "chatId": { "$state": "/ui/teamsActiveChatId" },
+                "limit": 15,
+                "_accountId": { "$state": "/ui/teamsActiveAccountId" }
+              }
             }
           ]
         }

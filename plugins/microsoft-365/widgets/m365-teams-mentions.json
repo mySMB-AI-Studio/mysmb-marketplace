@@ -454,6 +454,37 @@
               }
             },
             {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/teamsActiveAccountId",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "_account/accountId"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "list_update_by_id",
+              "params": {
+                "listPath": "/m365-teams/list_chats",
+                "id": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "id"
+                    }
+                  }
+                },
+                "changes": {
+                  "unread": false
+                }
+              }
+            },
+            {
               "action": "m365-teams.list_messages",
               "params": {
                 "chatId": {
@@ -464,7 +495,15 @@
                     }
                   }
                 },
-                "limit": 15
+                "limit": 15,
+                "_accountId": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "_account/accountId"
+                    }
+                  }
+                }
               }
             },
             {
@@ -475,6 +514,14 @@
                   "args": {
                     "value": {
                       "$item": "id"
+                    }
+                  }
+                },
+                "_accountId": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "_account/accountId"
                     }
                   }
                 }
@@ -712,9 +759,10 @@
               }
             },
             {
-              "action": "m365-teams.list_chats",
+              "action": "setState",
               "params": {
-                "limit": 25
+                "statePath": "/ui/teamsActiveAccountId",
+                "value": ""
               }
             }
           ]
@@ -779,9 +827,10 @@
               }
             },
             {
-              "action": "m365-teams.list_chats",
+              "action": "setState",
               "params": {
-                "limit": 25
+                "statePath": "/ui/teamsActiveAccountId",
+                "value": ""
               }
             }
           ]
@@ -1048,6 +1097,9 @@
                 },
                 "content": {
                   "$state": "/ui/teamsReplyText"
+                },
+                "_accountId": {
+                  "$state": "/ui/teamsActiveAccountId"
                 }
               }
             },
@@ -1064,7 +1116,10 @@
                 "chatId": {
                   "$state": "/ui/teamsActiveChatId"
                 },
-                "limit": 15
+                "limit": 15,
+                "_accountId": {
+                  "$state": "/ui/teamsActiveAccountId"
+                }
               }
             }
           ]
