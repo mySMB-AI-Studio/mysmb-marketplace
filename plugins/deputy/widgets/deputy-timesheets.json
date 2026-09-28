@@ -1,0 +1,112 @@
+{
+  "id": "deputy-timesheets",
+  "title": "Deputy — Recent Timesheets",
+  "description": "A live table of recent timesheets from your connected Deputy business — Employee, Department, Date, Hours, and any employee comment left on the entry.",
+  "category": "hr",
+  "tags": ["deputy", "workforce", "timesheets", "hr", "attendance"],
+  "keywords": ["timesheets", "attendance", "hours", "clock in", "clock out", "workforce", "deputy", "hr"],
+  "connectorsUsed": ["deputy"],
+  "popularity": 0,
+  "brandColor": "#34DFBA",
+  "sizing": {
+    "preferred": { "colSpan": 8, "rowSpan": 8 },
+    "min": { "colSpan": 6, "rowSpan": 5 },
+    "max": { "colSpan": 12, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "deputy-token",
+    "tool": "list_timesheets",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"],
+        "watch": {
+          "/deputy-token/list_timesheets/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "deputy_timesheet_rows",
+                  "args": { "timesheets": { "$state": "/deputy-token/list_timesheets/data" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleRow"] },
+      "titleRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Clock", "tone": "brand", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Recent Timesheets", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Deputy" }
+      },
+
+      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "table"] },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$state": "/_loading/deputy-token.list_timesheets" },
+        "children": ["sk1", "sk2", "sk3"]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No timesheets found in this Deputy business." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/deputy-token.list_timesheets", "not": true },
+            { "$state": "/ui/rows/0", "not": true }
+          ]
+        }
+      },
+
+      "table": {
+        "type": "Table",
+        "props": {
+          "rows": { "$state": "/ui/rows" },
+          "columns": [
+            { "id": "employee", "header": "Employee", "field": "employee", "priority": 1 },
+            { "id": "department", "header": "Department", "field": "department", "width": 130, "priority": 2 },
+            { "id": "date", "header": "Date", "field": "date", "format": "dd_mmm_yy", "width": 100, "priority": 1 },
+            { "id": "hours", "header": "Hours", "field": "hours", "width": 90, "priority": 1 },
+            { "id": "comment", "header": "Comment", "field": "comment", "priority": 3 }
+          ]
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/deputy-token.list_timesheets", "not": true },
+            { "$state": "/ui/rows/0" }
+          ]
+        }
+      }
+    }
+  },
+  "status": "published"
+}
