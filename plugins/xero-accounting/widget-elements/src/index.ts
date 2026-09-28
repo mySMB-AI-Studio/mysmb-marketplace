@@ -72,6 +72,17 @@ const status_tone: ComputedFunction = (args) => {
   return 'default';
 };
 
+// ── status_label ─────────────────────────────────────────────────────
+// TILE-DISPLAY-STANDARDS.md §3: never pass a raw connector enum straight
+// to a Badge — Title Case the Xero status string (e.g. "AUTHORISED" →
+// "Authorised") rather than showing the raw SCREAMING_CASE enum. Tone
+// alone (status_tone) only controls color, not casing.
+const status_label: ComputedFunction = (args) => {
+  const s = String(args.value ?? '');
+  if (!s) return '';
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+};
+
 // ── bank_tx_icon ─────────────────────────────────────────────────────
 // Lucide icon name for a bank-transaction Type. RECEIVE* → down-arrow,
 // SPEND* → up-arrow, anything else → neutral receipt.
@@ -356,6 +367,7 @@ const elements: PluginElementsModule = {
   functions: {
     format_date,
     status_tone,
+    status_label,
     age_bucket,
     age_bucket_tone,
     age_buckets,
