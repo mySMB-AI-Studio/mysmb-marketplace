@@ -1,253 +1,432 @@
 {
-  "id": "xero-bank-detail-check",
-  "title": "Bank-Detail Check",
-  "description": "Cross-references unpaid Xero bills against bank account details stored on supplier contacts — surfaces missing or unverifiable bank details before batch payment runs.",
   "category": "finance",
-  "tags": ["xero", "bills", "bank", "payments", "fraud", "verification", "accounts-payable"],
-  "keywords": ["xero", "bank detail", "check", "verify", "verified", "can't verify", "missing", "bills", "accounts payable", "batch payment", "supplier", "contact", "fraud"],
-  "connectorsUsed": ["xero-accounting"],
+  "connectorsUsed": [
+    "xero-accounting"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-accounting",
+    "params": {},
+    "tool": "list_xero_bank_detail_check"
+  },
+  "description": "Cross-references unpaid Xero bills against bank account details stored on supplier contacts — surfaces missing or unverifiable bank details before batch payment runs.",
+  "id": "xero-bank-detail-check",
+  "keywords": [
+    "xero",
+    "bank detail",
+    "check",
+    "verify",
+    "verified",
+    "can't verify",
+    "missing",
+    "bills",
+    "accounts payable",
+    "batch payment",
+    "supplier",
+    "contact",
+    "fraud"
+  ],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 7 },
-    "min":       { "colSpan": 4, "rowSpan": 5 },
-    "max":       { "colSpan": 10, "rowSpan": 14 }
-  },
-  "dataProvider": {
-    "mcp": "xero-accounting",
-    "tool": "list_xero_bank_detail_check",
-    "params": {}
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 14
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 5
+    },
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 7
+    }
   },
   "spec": {
-    "root": "card",
     "elements": {
-
-      "card": {
-        "type": "Card",
-        "props": {},
-        "children": ["header", "body"]
-      },
-
-      "header": {
-        "type": "Header",
-        "props": {},
-        "children": ["titleGroup"]
-      },
-      "titleGroup": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
-      },
-      "titleIcon": {
-        "type": "Icon",
-        "props": { "name": "ShieldCheck", "tone": "accent", "size": "sm" }
-      },
-      "titleStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["title", "eyebrow"]
-      },
-      "title": {
-        "type": "Heading",
-        "props": { "text": "Bank-Detail Check", "level": "h2" }
-      },
-      "eyebrow": {
-        "type": "Eyebrow",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "Xero · {n} bills · first 100",
-              "n": { "$state": "/xero-accounting/list_xero_bank_detail_check/summary/total" }
-            }
-          }
-        }
-      },
-
-      "body": {
-        "type": "Body",
-        "props": {},
-        "children": ["loading", "empty", "content"]
-      },
-
-      "loading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3", "sk4", "sk5"],
-        "visible": { "$state": "/_loading/xero-accounting.list_xero_bank_detail_check" }
-      },
-      "sk1": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
-      "sk4": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
-      "sk5": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
-
-      "empty": {
-        "type": "Empty",
-        "props": { "message": "No unpaid bills found." },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/xero-accounting.list_xero_bank_detail_check", "not": true },
-            { "$state": "/xero-accounting/list_xero_bank_detail_check/bills/0", "not": true }
-          ]
-        }
-      },
-
-      "content": {
-        "type": "Stack",
-        "props": { "gap": "md" },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/xero-accounting.list_xero_bank_detail_check", "not": true },
-            { "$state": "/xero-accounting/list_xero_bank_detail_check/bills/0" }
-          ]
-        },
-        "children": ["statsGrid", "divider", "billList", "footerRow"]
-      },
-
-      "statsGrid": {
-        "type": "Grid",
-        "props": { "cols": 2, "gap": "sm" },
-        "children": ["statCantVerify", "statVerified"]
-      },
-
-      "statCantVerify": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["valCantVerify", "lblCantVerify"]
-      },
-      "valCantVerify": {
-        "type": "Stat",
-        "props": {
-          "value": { "$state": "/xero-accounting/list_xero_bank_detail_check/summary/cantVerify" },
-          "tone": "warning"
-        }
-      },
-      "lblCantVerify": {
-        "type": "Caption",
-        "props": { "text": "CAN'T VERIFY", "tone": "muted" }
-      },
-
-      "statVerified": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["valVerified", "lblVerified"]
-      },
-      "valVerified": {
-        "type": "Stat",
-        "props": {
-          "value": { "$state": "/xero-accounting/list_xero_bank_detail_check/summary/verified" },
-          "tone": "success"
-        }
-      },
-      "lblVerified": {
-        "type": "Caption",
-        "props": { "text": "VERIFIED", "tone": "muted" }
-      },
-
-      "divider": { "type": "Divider", "props": {} },
-
-      "billList": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "repeat": {
-          "statePath": "/xero-accounting/list_xero_bank_detail_check/bills",
-          "key": "id"
-        },
-        "children": ["billRow"]
-      },
-
-      "billRow": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["billRowContent", "billDivider"]
-      },
-
-      "billRowContent": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "start", "template": "auto minmax(0,1fr) auto" },
-        "children": ["billDot", "billInfo", "billAmount"]
-      },
-
-      "billDot": {
-        "type": "Dot",
-        "props": { "size": "sm", "tone": { "$item": "tone" } }
-      },
-
-      "billInfo": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["billName", "billMeta"]
-      },
-
-      "billName": {
-        "type": "Text",
-        "props": {
-          "text": { "$item": "contactName" },
-          "size": "sm",
-          "weight": "semibold",
-          "truncate": true
-        }
-      },
-
-      "billMeta": {
-        "type": "Caption",
-        "props": {
-          "text": { "$item": "metaLine" },
-          "tone": "muted",
-          "truncate": true
-        }
-      },
-
       "billAmount": {
-        "type": "Text",
         "props": {
+          "size": "sm",
           "text": {
             "$computed": "format_currency",
             "args": {
-              "value":    { "$item": "amountDue" },
-              "currency": { "$item": "currencyCode" }
+              "currency": {
+                "$item": "currencyCode"
+              },
+              "value": {
+                "$item": "amountDue"
+              }
             }
           },
-          "size": "sm",
           "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "billDivider": {
+        "props": {},
+        "type": "Divider"
+      },
+      "billDot": {
+        "props": {
+          "size": "sm",
+          "tone": {
+            "$item": "tone"
+          }
+        },
+        "type": "Dot"
+      },
+      "billInfo": {
+        "children": [
+          "billName",
+          "billMeta"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "billList": {
+        "children": [
+          "billRow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/xero-accounting/list_xero_bank_detail_check/bills"
+        },
+        "type": "Stack"
+      },
+      "billMeta": {
+        "props": {
+          "text": {
+            "$item": "metaLine"
+          },
+          "tone": "muted",
+          "truncate": true
+        },
+        "type": "Caption"
+      },
+      "billName": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "contactName"
+          },
+          "truncate": true,
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "billRow": {
+        "children": [
+          "billRowContent",
+          "billDivider"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "billRowContent": {
+        "children": [
+          "billDot",
+          "billInfo",
+          "billAmount"
+        ],
+        "props": {
+          "align": "start",
+          "gap": "sm",
+          "template": "auto minmax(0,1fr) auto"
+        },
+        "type": "Row"
+      },
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "content"
+        ],
+        "props": {},
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "header",
+          "body"
+        ],
+        "props": {},
+        "type": "Card"
+      },
+      "content": {
+        "children": [
+          "statsGrid",
+          "divider",
+          "billList",
+          "footerRow"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "type": "Stack",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_xero_bank_detail_check",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_xero_bank_detail_check/bills/0"
+            }
+          ]
         }
       },
-
-      "billDivider": { "type": "Divider", "props": {} },
-
-      "footerRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "justify": "between", "align": "center" },
-        "children": ["footerLeft", "footerRight"]
+      "divider": {
+        "props": {},
+        "type": "Divider"
       },
-      "footerLeft": {
-        "type": "Caption",
+      "empty": {
+        "props": {
+          "message": "No unpaid bills found."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_xero_bank_detail_check",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_xero_bank_detail_check/bills/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "eyebrow": {
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{n} unpaid bills scanned",
-              "n": { "$state": "/xero-accounting/list_xero_bank_detail_check/summary/total" }
+              "n": {
+                "$state": "/xero-accounting/list_xero_bank_detail_check/summary/total"
+              },
+              "pattern": "Xero · {n} bills · first 100"
+            }
+          }
+        },
+        "type": "Eyebrow"
+      },
+      "footerLeft": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/xero-accounting/list_xero_bank_detail_check/summary/total"
+              },
+              "pattern": "{n} unpaid bills scanned"
             }
           },
           "tone": "muted"
-        }
+        },
+        "type": "Caption"
       },
       "footerRight": {
-        "type": "Caption",
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
               "pattern": "Updated {t}",
-              "t": { "$state": "/xero-accounting/list_xero_bank_detail_check/updatedTime" }
+              "t": {
+                "$state": "/xero-accounting/list_xero_bank_detail_check/updatedTime"
+              }
             }
           },
           "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "footerRow": {
+        "children": [
+          "footerLeft",
+          "footerRight"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {},
+        "type": "Header"
+      },
+      "lblCantVerify": {
+        "props": {
+          "text": "CAN'T VERIFY",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "lblVerified": {
+        "props": {
+          "text": "VERIFIED",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3",
+          "sk4",
+          "sk5"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_xero_bank_detail_check"
         }
+      },
+      "sk1": {
+        "props": {
+          "height": "3.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2.75rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2.75rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk4": {
+        "props": {
+          "height": "2.75rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk5": {
+        "props": {
+          "height": "2.75rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "statCantVerify": {
+        "children": [
+          "valCantVerify",
+          "lblCantVerify"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "statVerified": {
+        "children": [
+          "valVerified",
+          "lblVerified"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "statsGrid": {
+        "children": [
+          "statCantVerify",
+          "statVerified"
+        ],
+        "props": {
+          "cols": 2,
+          "gap": "sm"
+        },
+        "type": "Grid"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Bank-Detail Check"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "ShieldCheck",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "valCantVerify": {
+        "props": {
+          "tone": "warning",
+          "value": {
+            "$state": "/xero-accounting/list_xero_bank_detail_check/summary/cantVerify"
+          }
+        },
+        "type": "Stat"
+      },
+      "valVerified": {
+        "props": {
+          "tone": "success",
+          "value": {
+            "$state": "/xero-accounting/list_xero_bank_detail_check/summary/verified"
+          }
+        },
+        "type": "Stat"
       }
-
-    }
+    },
+    "root": "card"
   },
-  "status": "published"
+  "tags": [
+    "xero",
+    "bills",
+    "bank",
+    "payments",
+    "fraud",
+    "verification",
+    "accounts-payable"
+  ],
+  "title": "Bank-Detail Check"
 }

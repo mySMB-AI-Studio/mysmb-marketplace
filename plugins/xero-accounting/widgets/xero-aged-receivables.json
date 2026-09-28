@@ -1,16 +1,20 @@
 {
-  "id": "xero-aged-receivables",
-  "title": "Aged Receivables",
-  "description": "Outstanding AR distributed across aging buckets — click any bucket to see the invoices in it.",
   "category": "finance",
-  "tags": [
-    "xero",
-    "receivables",
-    "aging",
-    "ar",
-    "finance",
-    "report"
+  "connectorsUsed": [
+    "xero-accounting"
   ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-accounting",
+    "params": {
+      "order": "DueDate ASC",
+      "statuses": "AUTHORISED",
+      "where": "Type==\"ACCREC\""
+    },
+    "tool": "list_invoices"
+  },
+  "description": "Outstanding AR distributed across aging buckets — click any bucket to see the invoices in it.",
+  "id": "xero-aged-receivables",
   "keywords": [
     "aged",
     "aging",
@@ -20,243 +24,250 @@
     "buckets",
     "overdue"
   ],
-  "connectorsUsed": [
-    "xero-accounting"
-  ],
+  "pluginIcon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAUVBMVEUTter///8AsukAsOk2vu2Q1/PN6/n3/f+D0vIduOtFwO3Z8vtqyvCL1vMvuetLxO7A6PjW7vpcyO/u+v6b2/Sl3vVzzvGv4fbn9/3I7Pm45ffIjQMeAAAB6UlEQVRYhe1X25KDIAyFgCBi1XWtrf3/D92TYEer3YfKy86O58HRSE5uRIzSjOnSBvURQltMoqpYvTL0mTqDTDUlgk4dUBcK1TFBPKadEEFQHbQvPlRaTSbHAzOpMsMBuFAqm6OvoP5h/bfIVD9x4sQfBNH2lhgr0fy0Fq/1C9fOYrp8VfzJHjvnhiRs3JXC7asmRU3hnLs0OwrjtU+LqdD6QdR/y7mDQ4MptQ53raOhwovUF1sGKiHlD7zBYm2px/V7wrmhIwnnDbelGVg5MsWw/ZgbMOCIYGMgamBoNMbQQ9wpmK43TOtZXMO9fueDqCZ9umIBmyDj2B8QeGTFRLEBWI94dnlk5TmQqO/BCmr2HAQXNohIiOpuFAv784DzoL3FyjBnMOHKBLy8QlzUQBIIvPWuEguBWhP4nkNongThV4JVCLSEYG2gJ8EqhGEfwksS8b6WJJGqUhmZ4CWJ940DUv+5jFbKWKKKpr3D6yeBlLFHGXmXja8E7zaSdxPnYiFQtGykx6aKr1v5tmxlj+Of3WqSnXkr62GXwWHdTC2uoUQzuau0DZrpuU6aaXjzV/NLO9Obt2/b+cSJE/8A2b/72QNH9siTPXRlj335g6d+HHegS8N3tMeGbxvn6R3z+2g/Hf/t6ET1B2OKEUfIJyqhAAAAAElFTkSuQmCC",
   "popularity": 66,
   "sizing": {
-    "preferred": {
-      "colSpan": 4,
-      "rowSpan": 5
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 10
     },
     "min": {
       "colSpan": 3,
       "rowSpan": 4
     },
-    "max": {
-      "colSpan": 10,
-      "rowSpan": 10
-    }
-  },
-  "dataProvider": {
-    "mcp": "xero-accounting",
-    "tool": "list_invoices",
-    "params": {
-      "where": "Type==\"ACCREC\"",
-      "statuses": "AUTHORISED",
-      "order": "DueDate ASC"
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 5
     }
   },
   "spec": {
-    "root": "card",
     "elements": {
-      "card": {
-        "type": "Card",
-        "children": [
-          "header",
-          "body"
-        ],
-        "watch": {
-          "/xero-accounting/list_invoices/Invoices": {
-            "action": "setState",
-            "params": {
-              "statePath": "/ui/aged/buckets",
+      "bdAmount": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "currency": {
+                "$item": "CurrencyCode"
+              },
               "value": {
-                "$computed": "xero-accounting_age_buckets",
-                "args": {
-                  "value": {
-                    "$state": "/xero-accounting/list_invoices/Invoices"
-                  }
-                }
+                "$item": "AmountDue"
               }
             }
           },
-          "/ui/aged/selectedBucket": {
-            "action": "setState",
-            "params": {
-              "statePath": "/ui/aged/breakdown",
-              "value": {
-                "$computed": "xero-accounting_invoices_in_bucket",
-                "args": {
-                  "value": {
-                    "$state": "/xero-accounting/list_invoices/Invoices"
-                  },
-                  "bucket": {
-                    "$state": "/ui/aged/selectedBucket"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "header": {
-        "type": "Header",
-        "children": [
-          "titleGroup"
-        ]
-      },
-      "titleGroup": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "start"
+          "weight": "semibold"
         },
+        "type": "Text"
+      },
+      "bdContact": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "Contact/Name"
+          },
+          "truncate": true,
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "bdLeft": {
         "children": [
-          "titleIcon",
-          "titleStack"
-        ]
-      },
-      "titleIcon": {
-        "type": "Icon",
+          "bdContact",
+          "bdMeta"
+        ],
         "props": {
-          "name": "CalendarClock",
-          "tone": "warning",
-          "size": "sm"
-        }
+          "gap": "none"
+        },
+        "type": "Stack"
       },
-      "title": {
-        "type": "Heading",
-        "props": {
-          "text": "Aged Receivables",
-          "level": "h2"
-        }
-      },
-      "totalEyebrow": {
-        "type": "Eyebrow",
+      "bdMeta": {
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{n} Open · {amount}",
-              "n": {
-                "$computed": "count",
+              "label": {
+                "$computed": "xero-accounting_overdue_label",
                 "args": {
                   "value": {
-                    "$state": "/xero-accounting/list_invoices/Invoices"
+                    "$item": "DueDate"
                   }
                 }
               },
-              "amount": {
-                "$computed": "format_currency",
+              "num": {
+                "$item": "InvoiceNumber"
+              },
+              "pattern": "{num} · {label}"
+            }
+          }
+        },
+        "type": "Caption"
+      },
+      "bdRow": {
+        "children": [
+          "bdLeft",
+          "bdAmount"
+        ],
+        "on": {
+          "click": {
+            "action": "open_invoice_modal",
+            "params": {
+              "invoiceId": {
+                "$computed": "identity",
                 "args": {
                   "value": {
-                    "$computed": "sum",
-                    "args": {
-                      "value": {
-                        "$state": "/xero-accounting/list_invoices/Invoices"
-                      },
-                      "field": "AmountDue"
-                    }
+                    "$item": "InvoiceID"
                   }
                 }
               }
             }
           }
-        }
-      },
-      "titleStack": {
-        "type": "Stack",
-        "props": {
-          "gap": "none"
         },
-        "children": [
-          "title",
-          "totalEyebrow"
-        ]
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "sm",
+          "hover": true,
+          "justify": "between"
+        },
+        "type": "Row"
       },
       "body": {
-        "type": "Body",
         "children": [
           "loading",
           "empty",
           "buckets",
           "breakdown"
-        ]
-      },
-      "loading": {
-        "type": "Stack",
-        "props": {
-          "gap": "sm"
-        },
-        "children": [
-          "sk1",
-          "sk2",
-          "sk3",
-          "sk4",
-          "sk5"
         ],
-        "visible": {
-          "$state": "/_loading/xero-accounting.list_invoices"
-        }
+        "type": "Body"
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
-      "sk4": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
-      "sk5": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
-      "empty": {
-        "type": "Empty",
-        "props": {
-          "message": "No outstanding invoices — you're all caught up."
-        },
-        "visible": {
-          "$and": [
-            {
-              "$state": "/_loading/xero-accounting.list_invoices",
-              "not": true
-            },
-            {
-              "$state": "/xero-accounting/list_invoices/Invoices/0",
-              "not": true
-            }
-          ]
-        }
-      },
-      "buckets": {
-        "type": "Stack",
+      "breakdown": {
+        "children": [
+          "breakdownHeader",
+          "breakdownDivider",
+          "breakdownList",
+          "breakdownEmpty"
+        ],
         "props": {
           "gap": "xs"
         },
-        "children": [
-          "bucketRow"
-        ],
-        "repeat": {
-          "statePath": "/ui/aged/buckets",
-          "key": "key"
-        },
+        "type": "Stack",
         "visible": {
-          "$and": [
-            {
-              "$state": "/_loading/xero-accounting.list_invoices",
-              "not": true
-            },
-            {
-              "$state": "/xero-accounting/list_invoices/Invoices/0"
-            }
-          ]
+          "$state": "/ui/aged/selectedBucket"
         }
       },
-      "bucketRow": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "center",
-          "justify": "between",
-          "hover": true,
-          "clickable": true,
-          "selected": {
-            "$computed": "equals",
-            "args": {
-              "a": {
-                "$item": "key"
-              },
-              "b": {
-                "$state": "/ui/aged/selectedBucket"
-              }
+      "breakdownClose": {
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/aged/selectedBucket",
+              "value": ""
             }
           }
         },
+        "props": {
+          "ariaLabel": "Close breakdown",
+          "icon": "X",
+          "size": "sm",
+          "tone": "muted"
+        },
+        "type": "IconButton"
+      },
+      "breakdownDivider": {
+        "type": "Divider"
+      },
+      "breakdownEmpty": {
+        "props": {
+          "text": "No invoices in this bucket."
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/aged/breakdown/0",
+          "not": true
+        }
+      },
+      "breakdownHeader": {
+        "children": [
+          "breakdownTitle",
+          "breakdownClose"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "breakdownList": {
+        "children": [
+          "bdRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "InvoiceID",
+          "statePath": "/ui/aged/breakdown"
+        },
+        "type": "Stack"
+      },
+      "breakdownTitle": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "bucket": {
+                "$state": "/ui/aged/selectedBucket"
+              },
+              "pattern": "{bucket} breakdown"
+            }
+          }
+        },
+        "type": "Caption"
+      },
+      "bucketDot": {
+        "props": {
+          "size": "sm",
+          "tone": {
+            "$item": "tone"
+          }
+        },
+        "type": "Dot"
+      },
+      "bucketLabel": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "key"
+          },
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "bucketLeft": {
+        "children": [
+          "bucketDot",
+          "bucketTextStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "grow": true
+        },
+        "type": "Row"
+      },
+      "bucketRight": {
+        "children": [
+          "bucketTotal"
+        ],
+        "props": {
+          "align": "end",
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "bucketRow": {
         "children": [
           "bucketLeft",
           "bucketRight"
@@ -276,76 +287,54 @@
               }
             }
           }
-        }
-      },
-      "bucketLeft": {
-        "type": "Row",
+        },
         "props": {
-          "gap": "sm",
           "align": "center",
-          "grow": true
+          "clickable": true,
+          "gap": "sm",
+          "hover": true,
+          "justify": "between",
+          "selected": {
+            "$computed": "equals",
+            "args": {
+              "a": {
+                "$item": "key"
+              },
+              "b": {
+                "$state": "/ui/aged/selectedBucket"
+              }
+            }
+          }
         },
-        "children": [
-          "bucketDot",
-          "bucketTextStack"
-        ]
-      },
-      "bucketDot": {
-        "type": "Dot",
-        "props": {
-          "tone": {
-            "$item": "tone"
-          },
-          "size": "sm"
-        }
-      },
-      "bucketTextStack": {
-        "type": "Stack",
-        "props": {
-          "gap": "none"
-        },
-        "children": [
-          "bucketLabel",
-          "bucketSublabel"
-        ]
-      },
-      "bucketLabel": {
-        "type": "Text",
-        "props": {
-          "text": {
-            "$item": "key"
-          },
-          "size": "sm",
-          "weight": "medium"
-        }
+        "type": "Row"
       },
       "bucketSublabel": {
-        "type": "Caption",
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{n} invoices",
               "n": {
                 "$item": "count"
-              }
+              },
+              "pattern": "{n} invoices"
             }
           }
-        }
-      },
-      "bucketRight": {
-        "type": "Stack",
-        "props": {
-          "gap": "none",
-          "align": "end"
         },
+        "type": "Caption"
+      },
+      "bucketTextStack": {
         "children": [
-          "bucketTotal"
-        ]
+          "bucketLabel",
+          "bucketSublabel"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
       },
       "bucketTotal": {
-        "type": "Text",
         "props": {
+          "size": "sm",
           "text": {
             "$computed": "format_currency",
             "args": {
@@ -354,117 +343,67 @@
               }
             }
           },
-          "size": "sm",
           "weight": "semibold"
-        }
+        },
+        "type": "Text"
       },
-      "breakdown": {
-        "type": "Stack",
+      "buckets": {
+        "children": [
+          "bucketRow"
+        ],
         "props": {
           "gap": "xs"
         },
-        "children": [
-          "breakdownHeader",
-          "breakdownDivider",
-          "breakdownList",
-          "breakdownEmpty"
-        ],
+        "repeat": {
+          "key": "key",
+          "statePath": "/ui/aged/buckets"
+        },
+        "type": "Stack",
         "visible": {
-          "$state": "/ui/aged/selectedBucket"
-        }
-      },
-      "breakdownDivider": {
-        "type": "Divider"
-      },
-      "breakdownHeader": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "center",
-          "justify": "between"
-        },
-        "children": [
-          "breakdownTitle",
-          "breakdownClose"
-        ]
-      },
-      "breakdownTitle": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{bucket} breakdown",
-              "bucket": {
-                "$state": "/ui/aged/selectedBucket"
-              }
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_invoices",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_invoices/Invoices/0"
             }
-          }
+          ]
         }
       },
-      "breakdownClose": {
-        "type": "IconButton",
-        "props": {
-          "icon": "X",
-          "tone": "muted",
-          "ariaLabel": "Close breakdown",
-          "size": "sm"
-        },
-        "on": {
-          "click": {
+      "card": {
+        "children": [
+          "header",
+          "body"
+        ],
+        "type": "Card",
+        "watch": {
+          "/ui/aged/selectedBucket": {
             "action": "setState",
             "params": {
-              "statePath": "/ui/aged/selectedBucket",
-              "value": ""
+              "statePath": "/ui/aged/breakdown",
+              "value": {
+                "$computed": "xero-accounting_invoices_in_bucket",
+                "args": {
+                  "bucket": {
+                    "$state": "/ui/aged/selectedBucket"
+                  },
+                  "value": {
+                    "$state": "/xero-accounting/list_invoices/Invoices"
+                  }
+                }
+              }
             }
-          }
-        }
-      },
-      "breakdownList": {
-        "type": "Stack",
-        "props": {
-          "gap": "xs"
-        },
-        "children": [
-          "bdRow"
-        ],
-        "repeat": {
-          "statePath": "/ui/aged/breakdown",
-          "key": "InvoiceID"
-        }
-      },
-      "breakdownEmpty": {
-        "type": "Caption",
-        "props": {
-          "text": "No invoices in this bucket."
-        },
-        "visible": {
-          "$state": "/ui/aged/breakdown/0",
-          "not": true
-        }
-      },
-      "bdRow": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "center",
-          "justify": "between",
-          "hover": true,
-          "clickable": true
-        },
-        "children": [
-          "bdLeft",
-          "bdAmount"
-        ],
-        "on": {
-          "click": {
-            "action": "open_invoice_modal",
+          },
+          "/xero-accounting/list_invoices/Invoices": {
+            "action": "setState",
             "params": {
-              "invoiceId": {
-                "$computed": "identity",
+              "statePath": "/ui/aged/buckets",
+              "value": {
+                "$computed": "xero-accounting_age_buckets",
                 "args": {
                   "value": {
-                    "$item": "InvoiceID"
+                    "$state": "/xero-accounting/list_invoices/Invoices"
                   }
                 }
               }
@@ -472,67 +411,160 @@
           }
         }
       },
-      "bdLeft": {
+      "empty": {
+        "props": {
+          "message": "No outstanding invoices — you're all caught up."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_invoices",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_invoices/Invoices/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "type": "Header"
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3",
+          "sk4",
+          "sk5"
+        ],
+        "props": {
+          "gap": "sm"
+        },
         "type": "Stack",
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_invoices"
+        }
+      },
+      "sk1": {
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk4": {
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk5": {
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Aged Receivables"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "start",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "CalendarClock",
+          "size": "sm",
+          "tone": "warning"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "totalEyebrow"
+        ],
         "props": {
           "gap": "none"
         },
-        "children": [
-          "bdContact",
-          "bdMeta"
-        ]
+        "type": "Stack"
       },
-      "bdContact": {
-        "type": "Text",
-        "props": {
-          "text": {
-            "$item": "Contact/Name"
-          },
-          "size": "sm",
-          "weight": "medium",
-          "truncate": true
-        }
-      },
-      "bdMeta": {
-        "type": "Caption",
+      "totalEyebrow": {
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{num} · {label}",
-              "num": {
-                "$item": "InvoiceNumber"
-              },
-              "label": {
-                "$computed": "xero-accounting_overdue_label",
+              "amount": {
+                "$computed": "format_currency",
                 "args": {
                   "value": {
-                    "$item": "DueDate"
+                    "$computed": "sum",
+                    "args": {
+                      "field": "AmountDue",
+                      "value": {
+                        "$state": "/xero-accounting/list_invoices/Invoices"
+                      }
+                    }
                   }
                 }
-              }
+              },
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/xero-accounting/list_invoices/Invoices"
+                  }
+                }
+              },
+              "pattern": "{n} Open · {amount}"
             }
           }
-        }
-      },
-      "bdAmount": {
-        "type": "Text",
-        "props": {
-          "text": {
-            "$computed": "format_currency",
-            "args": {
-              "value": {
-                "$item": "AmountDue"
-              },
-              "currency": {
-                "$item": "CurrencyCode"
-              }
-            }
-          },
-          "size": "sm",
-          "weight": "semibold"
-        }
+        },
+        "type": "Eyebrow"
       }
-    }
-  }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "xero",
+    "receivables",
+    "aging",
+    "ar",
+    "finance",
+    "report"
+  ],
+  "title": "Aged Receivables"
 }
