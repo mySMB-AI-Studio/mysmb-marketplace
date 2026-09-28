@@ -1,3 +1,8 @@
+---
+name: MYOB Categories Transactions
+description: Use when the user wants ONLY the single debit or credit line touching one selected category/account — not the whole transaction and not a full account ledger. If they want the complete journal entry (all lines together), use MYOB Journal Entries; for a full account-by-account ledger, use MYOB General Ledger.
+---
+
 # Categories Transactions
 
 Prompt ID M11 · Reporting › Reports › Business › Categories transactions. MYOB's description: "Displays either the debit or credit side of any transactions attached to the selected categories. It does not display the entire transactions." Use `list_journal_transactions` with `account_uid` set to the selected category, plus `from_date`/`to_date`.

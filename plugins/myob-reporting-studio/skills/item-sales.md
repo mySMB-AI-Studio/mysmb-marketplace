@@ -1,3 +1,8 @@
+---
+name: MYOB Item Sales
+description: Sales quantity and revenue per inventory item, for a date range.
+---
+
 # Item Sales
 
 Prompt ID M39. Menu: Reporting › Reports › Sales › Item sales.

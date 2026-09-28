@@ -1,3 +1,8 @@
+---
+name: MYOB Bank Activity
+description: Generate a MYOB Bank Activity report — chronological transaction ledger per bank account with a running balance.
+---
+
 # Bank Activity (Prompt ID M15 — Reporting › Reports › Banking › Bank activity)
 
 Use `list_accounts` (check the actual `Type` value used for bank accounts — likely "Bank", confirm against the data rather than assuming, same discovery step Cash Movement already does) to get the set of cash accounts for the account selector. Then use `list_journal_transactions` with `from_date`/`to_date` and `account_uid` set to the selected bank account to get its transaction lines for the period.

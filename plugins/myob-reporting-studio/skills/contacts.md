@@ -1,3 +1,8 @@
+---
+name: MYOB Contacts
+description: Generate a MYOB Contacts report — customer and supplier directory with type, status, and contact details.
+---
+
 # Contacts (Prompt ID M12 — Reporting › Reports › Business › Contacts)
 
 Use `list_contacts` (`type: "All"` unless the reader narrows it) for the directory. Per the foundation skill's discovery rule, call `get_contact` once during generation against a real contact UID to confirm exactly where email/phone live in the READ response before writing render code — do not assume the `Addresses: [{Email, Phone1}]` shape from `create_contact`'s write schema applies identically to reads; MYOB's read and write shapes are not guaranteed to match. Render defensively (`contact?.Addresses?.[0]?.Email ?? "N/A"` style) so a shape mismatch degrades to "N/A" rather than a broken page.

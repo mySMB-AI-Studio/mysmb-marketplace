@@ -1,3 +1,8 @@
+---
+name: MYOB Journal Entries
+description: Use when the user wants the COMPLETE journal entry — every debit/credit line of a transaction together — for transactions in a date range. If they only want one account's side of each transaction, use MYOB Categories Transactions; for an account-centric ledger view instead, use MYOB General Ledger.
+---
+
 # Journal Entries
 
 Prompt ID M09 · Reporting › Reports › Business › Journal entries. MYOB's description: "All the transactions within a specified date range in the form of journal entries." Use `list_journal_transactions` with `from_date`/`to_date` and no `account_uid` — a full, unscoped range.
