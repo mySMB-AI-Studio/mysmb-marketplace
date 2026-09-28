@@ -14,7 +14,7 @@ Spec: MYOB Reports Prompt Library v1.2 (M00–M63) with the v1.2 patch (one agen
 ## Build a kit report
 
 1. **Discovery call.** Call the report's primary tool once with its default inputs (the report skill says which), and `list_company_files` once. Confirm MYOB is connected (a connection error → tell the user to connect MYOB under Settings → Connections and stop). A result of `{"__error": "…"}` is a failed call, not data: report the message, and if it says the token is invalid for one tool while others work, say the tool failed — do not tell the user their session expired. Read the company file name from `list_company_files` (it can be empty for newer MYOB keys; the report then says so). Never copy a returned figure into the document.
-2. **dataBindings.** Copy the report skill's `dataBindings` JSON exactly. Change only the `default` values of date inputs, as its *Date defaults* line says (`YYYY-MM-DD` or `"today"`), and the `display` JSON string's `p` (period preset), `a` (as-at preset), `c` (compare: `none` | `prev_period` | `prev_year` | `ytd`) and `v` (report view) to match the request. Leave `company_file` empty (the connection's file) unless the user names another file that `list_company_files` returned — then use its `Id`. **Branding:** set `b` to `#rrggbb` only when the user asks for their own or their customer's branding; otherwise the report uses MYOB branding. Keep every other key, input name, option, binding id, tool name and param.
+2. **dataBindings.** Copy the report skill's `dataBindings` JSON exactly. Change only the `default` values of date inputs, as its *Date defaults* line says (`YYYY-MM-DD` or `"today"`), and the `display` JSON string's `p` (period preset), `a` (as-at preset), `c` (compare: `none` | `prev_period` | `prev_year` | `ytd`) and `v` (report view) to match the request. Leave `company_file` empty (the connection's file) unless the user names another file that `list_company_files` returned — then use its `Id`. **Branding:** leave `style` = `myob` (MYOB branding, the default). Set `style` = `mysmb` when the user asks for mySMB branding or the mySMB report template. Set `b` to `#rrggbb` only when the user asks for their own or their customer's colour. Keep every other key, input name, option, binding id, tool name and param.
 3. **Report config.** Copy the report config JS exactly. Change only its `defaults` object so it equals the manifest defaults, with `"today"` written as today's date. Change nothing else.
 4. **Assemble** one HTML document from the skeleton below: replace `{{TITLE}}` with the report title, `{{CSS}}` with the stylesheet, `{{KIT}}` with the report kit and `{{CFG}}` with the report config, all verbatim. Never edit, shorten, reformat or "improve" the kit or the stylesheet — they are tested as one unit and the platform validates the document against the bindings.
 5. **Save** with `artifact_save`: `title` = "<Company file> — <Report name>" (no period — the reader can change it; put the opening period in the one-line `description`), `fileName` and `tags` from the report skill, `content` = the document, `dataBindings` = the manifest. Do not pass `connectors` (a live report derives them). Never paste the HTML into chat.
@@ -26,8 +26,9 @@ The user never has to choose an output format: every report is HTML with Downloa
 
 - **Client (LIB-002).** The company files this MYOB connection can access (`list_company_files`). With one file the box shows its name. With several it is a picker bound to `company_file`, which every binding sends as `myob_company_file_id` — switching refetches everything for that file only. Never type or guess a client name; when MYOB returns no file list the header says so.
 - **Period.** A preset (Today … Last financial year, Custom) next to editable From / To dates, or As at with presets. The **financial year is assumed to start 1 July** (NZ files: 1 April) because the MYOB API does not expose it; the banner says "assumed". **Relative presets roll forward**: a saved "This financial year to date" report is recomputed to today's window each time it opens.
+- **Branding** (main control row, display only — never refetches): **MYOB** (default: purple accents and charts, MYOB badge, "Prepared from MYOB Business") or **mySMB** (the mySMB Reporting template: teal header band with a white title, white-on-teal table headers, light-teal alternating rows, teal / accent / purple / grey charts, mySMB badge, and the footer "Business | Report | Generated"). It is stored in the `display` input as `style`, so downloads and snapshots keep it.
 - Accounting method (Cash | Accrual) where MYOB offers it; Compare to (previous period / previous year / year to date, with $ and % change); Report (the members); View as (persona).
-- **Customise** (display only, never refetches): Show cents, Divide by 1000, Except zero amounts (on by default — zero rows and all-zero sections are hidden), negatives (-100 / **(100)** / 100-), Show in red, Header, Footer, Compact | 100%, Style (**MYOB look** by default or the **mySMB house style**) and Brand colour ("Use MYOB branding" resets it).
+- **Customise** (display only, never refetches): Show cents, Divide by 1000, Except zero amounts (on by default — zero rows and all-zero sections are hidden), negatives (-100 / **(100)** / 100-), Show in red, Header, Footer, Compact | 100%, and Brand colour for a client's own colour ("Use MYOB branding" resets it; not used under mySMB branding).
 - **Delivery.** Download PDF (print stylesheet), Download Excel (a real .xlsx: a sheet per table with a header block, number format, bold totals, a Validation sheet and a Parameters sheet). Host Download and Share produce a self-contained snapshot.
 - **Personas.** Client and Executive = summary mode (account lines hidden; totals, charts and validation kept). Bookkeeper and Practitioner = detail mode. A failed check is never hidden.
 - **Snapshots** freeze the data; the report reads its period and basis from the MYOB report itself and disables the controls that refetch.
@@ -78,8 +79,8 @@ Helpers: `MK.errorOf` / `items` / `isoDate`; `accounts(list)` / `classOf` / `bre
 ```css
 :root{--accent:#6F2CBA;--btn:#5A1F9E;--btn-ink:#FFFFFF;--ink:#393A3D;--muted:#6B6C72;--line:#E3E5E8;--canvas:#F4F5F8;--card:#FFFFFF;--th:#6B6C72;--zebra:transparent;--neg:#D52B1E;--pos:#1B7F4B;--pass-bg:#EAF6E8;--fail-bg:#FDECEA;--band:#FFFFFF;--band-ink:#393A3D;--cover:#1B2A4A;--cover-ink:#FFFFFF;--c1:#6F2CBA;--c2:#9E9E9E;--c3:#00B0A0;--c4:#007A6E;--c5:#E0457B;--c6:#0077C5;--d1:#6F2CBA;--d2:#00B0A0;--d3:#B28DE6;--d4:#E0457B;--d5:#0077C5;--d6:#9E9E9E}
 :root[data-myhub-theme='dark']{--accent:#A77BE8;--btn:#7A45C9;--btn-ink:#FFFFFF;--ink:#E6E8EB;--muted:#A3A7AE;--line:#33363C;--canvas:#16181B;--card:#1F2226;--th:#A3A7AE;--neg:#FF6B5E;--pos:#4CC38A;--pass-bg:#18301A;--fail-bg:#3A1B19;--band:#1F2226;--band-ink:#E6E8EB;--cover:#22324F;--cover-ink:#FFFFFF;--c1:#A77BE8;--c2:#80858D;--c3:#2BC4B3;--c4:#3CCFBF;--c5:#F06A96;--c6:#3FA2E8;--d1:#A77BE8;--d2:#2BC4B3;--d3:#CDB4F2;--d4:#F06A96;--d5:#3FA2E8;--d6:#80858D}
-:root.style-mysmb{--accent:#007A6E;--btn:#007A6E;--zebra:#E6F7F5;--band:#007A6E;--band-ink:#FFFFFF;--cover:#007A6E;--c1:#007A6E;--c3:#00B0A0;--d1:#007A6E;--d2:#00B0A0;--pos:#007A6E}
-:root[data-myhub-theme='dark'].style-mysmb{--accent:#2BB3A3;--btn:#138A7D;--zebra:#15302D;--band:#0E5A52;--band-ink:#FFFFFF;--cover:#0E5A52;--c1:#2BB3A3;--c3:#3CCFBF;--d1:#2BB3A3;--d2:#3CCFBF;--pos:#2BB3A3}
+:root.style-mysmb{--accent:#00B0A0;--btn:#007A6E;--zebra:#E6F7F5;--band:#007A6E;--band-ink:#FFFFFF;--cover:#007A6E;--th-bg:#007A6E;--th-ink:#FFFFFF;--c1:#007A6E;--c2:#00B0A0;--c3:#6F2CBA;--c4:#9E9E9E;--c5:#1B7F4B;--c6:#C8102E;--d1:#007A6E;--d2:#00B0A0;--d3:#6F2CBA;--d4:#9E9E9E;--d5:#1B7F4B;--d6:#C8102E;--pos:#1B7F4B;--neg:#C8102E}
+:root[data-myhub-theme='dark'].style-mysmb{--accent:#2BC4B3;--btn:#138A7D;--zebra:#15302D;--band:#0E5A52;--band-ink:#FFFFFF;--cover:#0E5A52;--th-bg:#0E5A52;--th-ink:#FFFFFF;--c1:#2BB3A3;--c2:#3CCFBF;--c3:#A77BE8;--c4:#80858D;--c5:#4CC38A;--c6:#FF6B5E;--d1:#2BB3A3;--d2:#3CCFBF;--d3:#A77BE8;--d4:#80858D;--d5:#4CC38A;--d6:#FF6B5E;--pos:#4CC38A;--neg:#FF6B5E}
 *{box-sizing:border-box}
 body{margin:0;padding:16px;background:var(--canvas);color:var(--ink);font:14px/1.45 "Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif;font-variant-numeric:tabular-nums}
 a{color:var(--accent)}
@@ -149,6 +150,9 @@ main.mk-card{border-top:4px solid var(--accent)}
 /* keep the right-hand amounts clear of the workspace's floating chat button */
 @media (min-width:900px){body{padding-right:64px}}
 @media print{body{padding-right:0}}
+.mk-badge{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.06em;border-radius:10px;padding:1px 8px;margin-right:6px;vertical-align:middle;background:var(--accent);color:#FFFFFF}.mk-src .mk-badge+*{vertical-align:middle}
+:root.style-mysmb .mk-stmt thead th,:root.style-mysmb .mk-grid thead th{background:var(--th-bg);color:var(--th-ink);border-bottom:0}
+:root.style-mysmb #mk-head .ti{font-size:18px;font-weight:700}:root.style-mysmb #mk-head .co{font-size:14px}:root.style-mysmb .mk-badge{background:var(--band-ink);color:var(--band)}:root.style-mysmb .mk-kpi{border-left-color:var(--band)}
 ```
 
 ## Report kit ({{KIT}}) — copy verbatim
@@ -664,12 +668,13 @@ if (I.columnsBy && cfg.columnsBy) x += '<label class="ctl">Display columns by<se
 if (cfg.compare) x += '<label class="ctl">Compare to<select id="mk-cmp"' + dis + '>' + opt(I.asAt ? [['none', 'None'], ['prev_period', 'Previous month end'], ['prev_year', 'Previous year']] : [['none', 'None'], ['prev_period', 'Previous period'], ['prev_year', 'Previous year'], ['ytd', 'Year-to-date']], d.c) + '</select></label>';
 (cfg.enums || []).forEach(function (e, i) { var rq = Object.keys(cfg.uses || {}).some(function (id) { return (cfg.uses[id] || []).indexOf(e.input) >= 0; }); x += '<label class="ctl">' + h(e.label) + '<select id="mk-enum-' + i + '"' + (rq ? dis : '') + '>' + opt(e.options, S.inputs[e.input]) + '</select></label>'; });
 if (cfg.views) x += '<label class="ctl">Report<select id="mk-view">' + opt(cfg.views, d.v || cfg.views[0][0]) + '</select></label>';
+x += '<label class="ctl">Branding<select id="mk-branding" title="MYOB branding (default) or the mySMB Reporting template — display only, the data does not change">' + opt([['myob', 'MYOB'], ['mysmb', 'mySMB']], d.style === 'mysmb' ? 'mysmb' : 'myob') + '</select></label>';
 if (I.persona) x += '<label class="ctl">View as<select id="mk-persona">' + opt([['Client', 'Client'], ['Bookkeeper', 'Bookkeeper'], ['Practitioner', 'Practitioner'], ['Executive', 'Executive']], S.inputs[I.persona]) + '</select></label>';
 x += '<details class="ctl customise"><summary>Customise</summary><div class="cz">' +
 '<label><input type="checkbox" id="mk-cents"' + (d.cents ? ' checked' : '') + '> Show cents</label><label><input type="checkbox" id="mk-k"' + (d.k ? ' checked' : '') + '> Divide by 1000</label>' +
 '<label><input type="checkbox" id="mk-zeros"' + (d.zeros ? '' : ' checked') + '> Except zero amounts</label><label>Negative numbers<select id="mk-neg">' + opt([['minus', '-100'], ['paren', '(100)'], ['trail', '100-']], d.neg) + '</select></label>' +
 '<label><input type="checkbox" id="mk-red"' + (d.red ? ' checked' : '') + '> Show in red</label><label><input type="checkbox" id="mk-hdr"' + (d.hdr ? ' checked' : '') + '> Header</label><label><input type="checkbox" id="mk-ftr"' + (d.ftr ? ' checked' : '') + '> Footer</label>' +
-'<label>View<select id="mk-dens">' + opt([['compact', 'Compact'], ['100', '100%']], d.dens) + '</select></label><label>Style<select id="mk-style">' + opt([['myob', 'MYOB look'], ['mysmb', 'mySMB house style']], d.style) + '</select></label>' +
+'<label>View<select id="mk-dens">' + opt([['compact', 'Compact'], ['100', '100%']], d.dens) + '</select></label>' +
 '<label>Brand colour<input type="color" id="mk-brand" value="' + h(HEX.test(d.b) ? d.b : '#6f2cba') + '"></label><label>&nbsp;<button type="button" id="mk-brand-reset"' + (HEX.test(d.b) ? '' : ' disabled') + '>Use MYOB branding</button></label></div></details>';
 x += '<div class="ctl btns"><button type="button" id="mk-pdf">Download PDF</button><button type="button" id="mk-xlsx">Download Excel</button>' + '</div>';
 el.innerHTML = x; wire();
@@ -692,7 +697,7 @@ on('mk-persona', 'change', function () { var p = {}; p[I.persona] = this.value; 
 on('mk-zeros', 'change', function () { change({}, { zeros: this.checked ? 0 : 1 }); });
 on('mk-neg', 'change', function () { change({}, { neg: this.value }); });
 on('mk-dens', 'change', function () { change({}, { dens: this.value }); });
-on('mk-style', 'change', function () { change({}, { style: this.value }); });
+on('mk-branding', 'change', function () { change({}, { style: this.value }); });
 on('mk-brand', 'change', function () { if (HEX.test(this.value)) change({}, { b: this.value.toLowerCase() }); });
 on('mk-brand-reset', 'click', function () { change({}, { b: '' }); });
 on('mk-pdf', 'click', function () { window.print(); });
@@ -724,8 +729,8 @@ if (last.checks.some(function (k) { return k.pass === false && k.detail === msg;
 last.checks.unshift({ name: 'Data loaded: ' + ((cfg.tools || {})[id] || id), pass: false, detail: msg });
 });
 var hd = $('mk-head');
-if (hd) { hd.hidden = !d.hdr || !!cfg.noHead; var per = out.period || (I.start ? periodLine(S.inputs[I.start], S.inputs[I.end]) : I.asAt ? asOfLine(S.inputs[I.asAt]) : ''); hd.innerHTML = '<div class="co">' + h(c.company || 'N/A — not in source') + '</div><div class="ti">' + h(out.title || cfg.title) + '</div><div class="pe">' + h(per) + '</div><div class="mk-src"><i aria-hidden="true"></i>Prepared from MYOB Business</div>'; }
-var ft = $('mk-foot'); if (ft) { ft.hidden = !d.ftr; ft.textContent = footerStamp(I.basis ? S.inputs[I.basis] : ((S.data[cfg.primary] || {}).ReportingBasis || 'Accrual'), S.fetchedAt); }
+if (hd) { hd.hidden = !d.hdr || !!cfg.noHead; var per = out.period || (I.start ? periodLine(S.inputs[I.start], S.inputs[I.end]) : I.asAt ? asOfLine(S.inputs[I.asAt]) : ''); hd.innerHTML = '<div class="co">' + h(c.company || 'N/A — not in source') + '</div><div class="ti">' + h(out.title || cfg.title) + '</div><div class="pe">' + h(per) + '</div><div class="mk-src">' + (d.style === 'mysmb' ? '<span class="mk-badge">mySMB</span>mySMB Reporting · data from MYOB Business' : '<span class="mk-badge">MYOB</span>Prepared from MYOB Business') + '</div>'; }
+var ft = $('mk-foot'); if (ft) { ft.hidden = !d.ftr; var stamp = footerStamp(I.basis ? S.inputs[I.basis] : ((S.data[cfg.primary] || {}).ReportingBasis || 'Accrual'), S.fetchedAt); ft.textContent = d.style === 'mysmb' ? [c.company || 'MYOB company file', out.title || cfg.title, stamp].join(' | ') : stamp; }
 banner(c); sources(c);
 }
 function banner(c) {
