@@ -5,7 +5,7 @@ description: QuickBooks Online Client overview (accountant-only) (Q16) as a live
 
 # Client overview (accountant-only) (Q16)
 
-Use when the user (an accountant or bookkeeper) asks for the client overview, a books health check, common issues, undeposited funds, uncategorised transactions, negative accounts, opening balance equity or transaction volume. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`list_account`, `get_report_aged_receivables`, `get_report_aged_payables`, `get_report_transaction_list`, `qbo_query`, `get_preferences`).
+Use when the user (an accountant or bookkeeper) asks for the client overview, a books health check, common issues, undeposited funds, uncategorised transactions, negative accounts, opening balance equity or transaction volume. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`list_account`, `get_report_aged_receivables`, `get_report_aged_payables`, `get_report_transaction_list`, `get_report_balance_sheet`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: All apps › Accounting › Client overview. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q16. Delivery: Wave 2 (Train 03).
 
@@ -132,6 +132,19 @@ No manual dates: the transaction-volume window (last 30 days) is set on every op
       }
     },
     {
+      "id": "balance_sheet",
+      "tool": {
+        "mcp": "quickbooks-accounting",
+        "name": "get_report_balance_sheet"
+      },
+      "params": {
+        "end_date": {
+          "kind": "context",
+          "source": "now.date"
+        }
+      }
+    },
+    {
       "id": "company_info",
       "tool": {
         "mcp": "quickbooks-accounting",
@@ -164,8 +177,8 @@ QB.app({
   inputs: { persona: 'persona', display: 'display' },
   defaults: { tx_start: '2026-08-27', persona: 'Practitioner',
     display: '{"cents":1,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"custom","a":"custom","c":"none","v":"","x":""}' },
-  uses: { transactions_30d: ['tx_start'], accounts: [], aged_receivables: [], aged_payables: [], company_info: [], prefs: [] },
-  tools: { accounts: 'list_account (active)', aged_receivables: 'get_report_aged_receivables', aged_payables: 'get_report_aged_payables', transactions_30d: 'get_report_transaction_list (last 30 days)', company_info: 'qbo_query (CompanyInfo)', prefs: 'get_preferences' },
+  uses: { transactions_30d: ['tx_start'], accounts: [], aged_receivables: [], aged_payables: [], balance_sheet: [], company_info: [], prefs: [] },
+  tools: { accounts: 'list_account (active)', aged_receivables: 'get_report_aged_receivables', aged_payables: 'get_report_aged_payables', transactions_30d: 'get_report_transaction_list (last 30 days)', balance_sheet: 'get_report_balance_sheet (today — sign of each balance)', company_info: 'qbo_query (CompanyInfo)', prefs: 'get_preferences' },
   roll: function () { return { tx_start: QB.preset('last_30', 7).start }; },
   render: function (c) {
     var body = c.body, money = function (v) { return QB.money(v, c.currency, c.display); };
@@ -178,15 +191,21 @@ QB.app({
     var find = function (re, sub) { return accts.filter(function (a) { return re.test(a.Name) || (sub && a.AccountSubType === sub); }); };
     var undep = find(/^undeposited funds$/i, 'UndepositedFunds'), uncat = find(/^uncategori[sz]ed (asset|income|expense)/i), obe = find(/^opening balance equity$/i), gst = find(QB.GST_LIAB_RE, 'GlobalTaxPayable');
     var contra = function (a) { return /^(Accumulated|AllowanceForBadDebts)/.test(a.AccountSubType || '') || /^(accumulated (depreciation|amorti[sz]ation|depletion)|allowance for (bad|doubtful) debts|provision for (bad|doubtful) debts)/i.test(a.Name || ''); }, // contra-asset accounts are negative by design
-      negAL = accts.filter(function (a) { return (a.Classification === 'Asset' || a.Classification === 'Liability') && a.AccountType !== 'Credit Card' && !contra(a) && Number(a.CurrentBalance) < 0; });
-    var bal = function (list) { return QB.sum(list.map(function (a) { return Number(a.CurrentBalance) || 0; })); };
+      credit = function (a) { return a.Classification === 'Liability' || a.Classification === 'Equity'; },
+      credNeg = (function () { // does the account list show money owed as negative? (it does in the AU sandbox)
+        var bsv = {}, agree = 0, flip = 0, neg = 0, pos = 0; if (c.data.balance_sheet) QB.walk(c.data.balance_sheet).forEach(function (l) { if (l.kind === 'row' && l.id) bsv[String(l.id)] = QB.val(l); });
+        accts.forEach(function (a) { var v = Number(a.CurrentBalance) || 0, b = bsv[String(a.Id)]; if (!credit(a) || !v) return; if (b) { if ((b > 0) === (v > 0)) agree++; else flip++; } if (a.Classification === 'Liability') { if (v < 0) neg++; else pos++; } });
+        return agree || flip ? flip >= agree : neg >= pos; })(),
+      sb = function (a) { var v = Number(a.CurrentBalance) || 0; return credit(a) && credNeg ? -v : v; }, // balance-sheet sign: owed liabilities positive
+      negAL = accts.filter(function (a) { return (a.Classification === 'Asset' || a.Classification === 'Liability') && !contra(a) && sb(a) < 0; });
+    var bal = function (list) { return QB.sum(list.map(sb)); };
     var issues = [
       { issue: 'Undeposited funds', detail: undep.length ? money(bal(undep)) + ' waiting to be deposited' : 'No Undeposited Funds account', flag: bal(undep) !== 0 },
       { issue: 'Uncategorised asset / income / expense', detail: uncat.map(function (a) { return a.Name + ' ' + money(a.CurrentBalance); }).join(' · ') || 'None', flag: uncat.some(function (a) { return Number(a.CurrentBalance); }) },
       { issue: 'A/R ageing over 90 days', detail: ar ? money(ar.over90) + ' (' + ar.rowsOver + ' customer' + (ar.rowsOver === 1 ? '' : 's') + ')' : c.err('aged_receivables') || '', flag: ar && ar.over90 > 0 },
       { issue: 'A/P ageing over 90 days', detail: ap ? money(ap.over90) + ' (' + ap.rowsOver + ' supplier' + (ap.rowsOver === 1 ? '' : 's') + ')' : c.err('aged_payables') || '', flag: ap && ap.over90 > 0 },
       { issue: 'Opening balance equity', detail: obe.length ? money(bal(obe)) : 'No Opening Balance Equity account', flag: bal(obe) !== 0 },
-      { issue: 'Negative asset and liability accounts', detail: negAL.length ? negAL.length + ': ' + negAL.map(function (a) { return a.Name + ' ' + money(a.CurrentBalance); }).join(' · ') : 'None', flag: negAL.length > 0 },
+      { issue: 'Negative asset and liability accounts', detail: negAL.length ? negAL.length + ': ' + negAL.map(function (a) { return a.Name + ' ' + money(sb(a)); }).join(' · ') : 'None', flag: negAL.length > 0 },
       { issue: 'GST liability account', detail: gst.length ? gst.map(function (a) { return a.Name; }).join(' · ') + ' ' + money(bal(gst)) : 'No GST liability account', flag: false }];
     var tl = c.data.transactions_30d, tc = tl ? QB.cols(tl).map(function (x) { return x.title; }) : [], ti = tc.indexOf('Transaction Type') - 1, byType = {};
     var txRows = tl ? QB.walk(tl).filter(function (l) { return l.kind === 'row'; }) : [];

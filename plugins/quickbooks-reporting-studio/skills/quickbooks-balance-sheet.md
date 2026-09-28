@@ -239,9 +239,9 @@ QB.app({
     var m = QB.mergeCompare(rep, cmpOn ? c.data.bs_compare : null), lines = m.lines;
     if (c.view === 'summary') lines = lines.filter(function (l) { return l.kind !== 'row' || l.depth <= 1; });
     var P = QB.bsParts(m.lines), A = QB.val(P.A), L = QB.val(P.L), E = QB.val(P.E), LE = QB.val(P.LE), CA = QB.val(P.CA), CL = QB.val(P.CL);
-    var niRow = P.ni, niBS = QB.val(niRow), niLabel = niRow ? niRow.label : 'Net Earnings';
+    var niRow = P.ni, niBS = niRow ? (QB.val(niRow) == null ? 0 : QB.val(niRow)) : null, niLabel = niRow ? niRow.label : 'Net Earnings';
     m.lines.forEach(function (l) { if (l === niRow && /^net income$/i.test(l.label)) l.label = 'Net Earnings'; });
-    var pl = c.data.pnl_ytd, niPL = pl ? QB.val(QB.find(QB.walk(pl), 'NetIncome', QB.NI_RE)) : null;
+    var pl = c.data.pnl_ytd, niPL = !pl ? null : QB.noData(pl) ? 0 : QB.val(QB.find(QB.walk(pl), 'NetIncome', QB.NI_RE)); // no transactions this year = A$0
     var extra = cmpOn ? QB.compareCols(c.compareMode === 'prev_year' ? 'Previous year' : 'Previous month end') : [];
     var titles = [''].concat(cols.slice(1).map(function (x) { return x.title || 'Total'; }));
     var html = QB.kpis([{ label: 'Total for Assets', value: A }, { label: 'Total for Liabilities', value: L }, { label: 'Total for Equity', value: E },
@@ -259,7 +259,7 @@ QB.app({
     var checks = [
       { name: 'Total for Assets = Total for Liabilities + Equity', pass: A == null || LE == null ? null : QB.near(A, LE) && (L == null || E == null || QB.near(A, L + E)), detail: QB.money(A, c.currency, c.display) + ' vs ' + QB.money(LE, c.currency, c.display) },
       { name: "Each 'Total for' = Σ its rows", pass: ties.checked ? ties.failed.length === 0 : null, detail: ties.failed.length ? 'Mismatch: ' + ties.failed.join(', ') : ties.checked + ' sections' },
-      { name: 'Net Earnings = P&L financial year to date', pass: niBS == null || niPL == null ? null : QB.near(niBS, niPL), detail: c.errors.pnl_ytd ? c.err('pnl_ytd') : niRow == null ? 'No current-year profit line in equity' : niLabel + ' ' + QB.money(niBS, c.currency, c.display) + ' vs P&L ' + QB.money(niPL, c.currency, c.display) + ' (' + c.inputs.fy_start + ' to ' + c.inputs.as_at + ')' },
+      { name: 'Net Earnings = P&L financial year to date', pass: niPL == null ? null : niBS == null ? (niPL === 0 ? true : null) : QB.near(niBS, niPL), detail: c.errors.pnl_ytd ? c.err('pnl_ytd') : niRow == null ? (niPL === 0 ? 'No activity this financial year — A$0 on both' : 'No current-year profit line in equity') : niLabel + ' ' + QB.money(niBS, c.currency, c.display) + ' vs P&L ' + QB.money(niPL, c.currency, c.display) + ' (' + c.inputs.fy_start + ' to ' + c.inputs.as_at + ')' },
       { name: 'QuickBooks returned the requested date', pass: !c.live ? null : hd.EndPeriod === c.inputs.as_at, detail: 'As of ' + (hd.EndPeriod || '?') + ', ' + (hd.ReportBasis || '?') + ' basis' }
     ];
     if (cmpOn) { var ch = QB.header(c.data.bs_compare); checks.push({ name: 'Comparison deltas recomputed from the comparison date', pass: c.errors.bs_compare ? false : !c.live ? null : ch.EndPeriod === c.inputs.compare_as_at, detail: c.errors.bs_compare ? c.err('bs_compare') : 'As of ' + (ch.EndPeriod || '?') }); }
