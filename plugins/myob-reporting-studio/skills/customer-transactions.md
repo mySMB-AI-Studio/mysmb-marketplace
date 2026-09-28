@@ -1,3 +1,8 @@
+---
+name: MYOB Customer Transactions
+description: Generate a MYOB Customer Transactions report — invoices and payments merged into one chronological ledger per customer.
+---
+
 # Customer Transactions
 
 Prompt ID M37 · MYOB menu: Reporting › Reports › Sales › Customer transactions. MYOB's own description: "All invoices, payments and credits within the specified date range."

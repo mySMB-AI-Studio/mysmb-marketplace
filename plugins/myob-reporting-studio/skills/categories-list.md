@@ -1,3 +1,8 @@
+---
+name: MYOB Categories List
+description: Generate a MYOB Categories List report — chart of accounts with balances, grouped by type.
+---
+
 # Categories List (Prompt ID M10 — Reporting › Reports › Business › Categories list)
 
 Use `list_accounts` with no filter (or `type`/`classification` when the reader narrows it) to pull the full chart of accounts. Group rows by `Classification` (Asset, Liability, Equity, Income, Cost of Sales, Expense, Other Income, Other Expense) with a subtotal per group, then a grand total. Show `DisplayID`, `Name`, `Type`, `IsActive`, and `CurrentBalance` per account.

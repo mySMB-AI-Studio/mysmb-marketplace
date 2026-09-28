@@ -1,3 +1,8 @@
+---
+name: MYOB Budget Management
+description: View GL account budgets by month for the current or next financial year.
+---
+
 # Budget Management
 
 Prompt ID M01. Menu: Reporting › Reports › Business › Budget management.

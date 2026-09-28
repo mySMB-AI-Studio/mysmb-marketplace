@@ -1,3 +1,8 @@
+---
+name: MYOB Taxable Payments Annual Report
+description: Aggregate reportable contractor payments by supplier for TPAR — if the underlying data is actually available; otherwise say so and point to export.
+---
+
 # Taxable Payments Annual Report (Prompt ID M14 — Reporting › Reports › Business › Taxable payments annual report)
 
 **This report is conditional on a live field check — do not assume it exists.** MYOB's real API is documented to carry an AU-specific `IsReportable` flag on `Purchase/Bill`, but this connector's `list_bills`/`get_bill` just proxy MYOB's raw JSON through unmodified — the field has never been confirmed present in this connector's actual output. Before building anything else, call `list_bills` (or `get_bill` on one real bill) during the generation turn and check whether `IsReportable` appears on a returned item.

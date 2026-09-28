@@ -1,3 +1,8 @@
+---
+name: MYOB Supplier Transactions
+description: All bills and supplier payments within a date range, per supplier.
+---
+
 # Supplier Transactions
 
 Prompt ID M45. Menu: Reporting › Reports › Purchases › Supplier transactions.

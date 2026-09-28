@@ -1,3 +1,8 @@
+---
+name: MYOB Unpaid Bills
+description: Generate a MYOB Unpaid Bills report — outstanding supplier bills with ageing, by supplier.
+---
+
 # Unpaid Bills
 
 Prompt ID M40 · Reporting › Reports › Purchases › Unpaid bills. Mirrors `myob-unpaid-invoices`' pattern for the payables side.
