@@ -1,12 +1,20 @@
 # Deputy
 
-Manage your **Deputy** workforce scheduling via the myHub-hosted Deputy MCP gateway — a self-hosted connector (`myhub-mcp-servers/src/integrations/deputy`) that talks to Deputy's own REST API on your behalf. Covers companies, departments, teams, employees, timesheets, shifts (roster), and leave requests, all through a single OAuth-authenticated endpoint.
+Manage your **Deputy** workforce scheduling via the myHub-hosted Deputy MCP gateway — a self-hosted connector (`myhub-mcp-servers/src/integrations/deputy`) that talks to Deputy's own REST API on your behalf. Covers companies, departments, teams, employees, timesheets, shifts (roster), and leave requests.
 
-Browser OAuth through myHub — no API keys, no env vars. Click Connect, sign in to your Deputy account, authorize access, and you're done.
+Two ways to connect, matching Deputy's own two supported auth modes:
+
+- **`deputy` (OAuth, recommended)** — Browser OAuth through myHub, no API keys, no env vars. Click Connect, sign in to your Deputy account, authorize access, and you're done. Tokens auto-refresh.
+- **`deputy-token` (permanent access token)** — for a long-lived token that doesn't need re-authorising, generated directly from Deputy's own developer portal. Requires two values (below). This is also Deputy's own recommended path for first-time development/testing — see [Deputy's "Hello World" guide](https://developer.deputy.com/docs/the-hello-world-of-deputy).
 
 ## Configuration
 
-No configuration variables are required.
+Only needed if you're using the `deputy-token` server — `deputy` (OAuth) needs no configuration.
+
+| Variable | Required for | Description |
+|---|---|---|
+| `DEPUTY_TOKEN` | `deputy-token` | A permanent access token from Deputy's own OAuth clients admin page (`https://{installname}.{geo}.deputy.com/exec/devapp/oauth_clients` — create a client, then generate a permanent token from it). Deputy quotes these as lasting ~10 years. |
+| `DEPUTY_INSTALL_URL` | `deputy-token` | Your Deputy business's own install URL, e.g. `https://simonssambos.au.deputy.com` — the `{geo}` segment (`au`, `uk`, `na`, …) is part of the real domain, not optional. This is the same URL shown in your browser's address bar once logged into Deputy. |
 
 ## Tools & resources
 
