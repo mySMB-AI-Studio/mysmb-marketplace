@@ -1,0 +1,81 @@
+{
+  "contentHash": "b7d61dd4b85d1128680627f7ac4d486818d1dcb277db9b853ff03ee93ab375a7",
+  "kind": "form",
+  "originKey": "e2c78a13-1ad5-43e0-bb97-a5c214b9b84e",
+  "schema": {
+    "description": "Settings for one business whose books you keep. Submit it once per business, and again whenever something changes.",
+    "sections": [
+      {
+        "id": "business",
+        "questions": [
+          {
+            "id": "q_client_name",
+            "label": "Business name",
+            "maxLength": 120,
+            "required": true,
+            "type": "short_text"
+          },
+          {
+            "id": "q_xero_org",
+            "label": "Xero organisation name (exactly as it appears in Xero)",
+            "maxLength": 200,
+            "required": true,
+            "type": "short_text"
+          },
+          {
+            "id": "q_gst",
+            "label": "Is this business registered for GST?",
+            "required": true,
+            "type": "yes_no"
+          }
+        ],
+        "title": "The business"
+      },
+      {
+        "id": "approvals",
+        "questions": [
+          {
+            "entity": "user",
+            "id": "q_reviewer",
+            "label": "Who reviews this business's bills? (leave blank to use the default reviewer)",
+            "type": "lookup"
+          },
+          {
+            "id": "q_client_above",
+            "label": "Bills above this amount need the business owner's approval (leave blank to use the default)",
+            "maxLength": 20,
+            "type": "short_text"
+          },
+          {
+            "id": "q_contact_name",
+            "label": "Who approves bills at the business? (name)",
+            "maxLength": 120,
+            "type": "short_text"
+          },
+          {
+            "id": "q_contact_email",
+            "label": "Their email address",
+            "maxLength": 200,
+            "type": "short_text"
+          }
+        ],
+        "title": "Reviews and approvals"
+      },
+      {
+        "id": "coding",
+        "questions": [
+          {
+            "id": "q_notes",
+            "label": "Coding notes for the AI (e.g. \"Bunnings is always 449 Repairs and Maintenance\")",
+            "maxLength": 4000,
+            "type": "long_text"
+          }
+        ],
+        "title": "Coding"
+      }
+    ],
+    "title": "Client bookkeeping settings",
+    "version": 1
+  },
+  "title": "Client bookkeeping settings"
+}
