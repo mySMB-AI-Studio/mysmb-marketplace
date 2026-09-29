@@ -249,18 +249,25 @@
       "billDivider": { "type": "Divider", "props": {} },
 
       "moreReady": {
-        "type": "Caption",
+        "type": "Button",
         "props": {
-          "text": {
+          "label": {
             "$computed": "fmt",
             "args": {
               "pattern": "+ {n} more ready",
               "n": { "$state": "/xero-accounting/list_xero_batch_payment_bills/summary/hiddenReadyCount" }
             }
           },
-          "tone": "muted"
+          "variant": "link",
+          "size": "sm"
         },
-        "visible": { "$state": "/xero-accounting/list_xero_batch_payment_bills/summary/hiddenReadyCount" }
+        "visible": { "$state": "/xero-accounting/list_xero_batch_payment_bills/summary/hiddenReadyCount" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": { "$state": "/xero-accounting/list_xero_batch_payment_bills/billsUrl" } }
+          }
+        }
       },
 
       "divider2": { "type": "Divider", "props": {} },
