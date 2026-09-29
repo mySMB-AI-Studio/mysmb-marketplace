@@ -52,7 +52,15 @@
       },
       "eyebrow": {
         "type": "Eyebrow",
-        "props": { "text": "Simpro" }
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Simpro · {n} invoices",
+              "n": { "$computed": "count", "args": { "value": { "$state": "/simpro/list_invoices/invoices" } } }
+            }
+          }
+        }
       },
 
       "colHeader": {
@@ -106,7 +114,22 @@
 
       "row": {
         "type": "Row",
-        "props": { "align": "start" },
+        "props": { "align": "start", "hover": true, "clickable": true },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "simpro_build_record_url",
+                "args": {
+                  "build_domain": { "$state": "/simpro/list_invoices/buildDomain" },
+                  "kind": "invoice",
+                  "id": { "$item": "ID" }
+                }
+              }
+            }
+          }
+        },
         "children": ["rowLeft", "rowRight"]
       },
       "rowLeft": {

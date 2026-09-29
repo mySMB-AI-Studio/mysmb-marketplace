@@ -79,6 +79,32 @@ const job_status_tone = (args) => {
         return 'success';
     return 'muted';
 };
+/**
+ * Build a deep link to a specific quote/job/invoice in the Simpro web app.
+ * Confirmed against the real sandbox (2026-08-25) — Simpro's row-level links
+ * carry extra params (openDepSecID, openHash) that look session/record-scoped
+ * and aren't returned by any list/get endpoint, but the bare ID param alone
+ * is sufficient (Simpro resolves the record without them, given an active
+ * browser session). Requires the viewer to already be logged into that
+ * Simpro Build in their browser, same as any other vendor dashboard deep link.
+ *
+ * Args: { build_domain: string, kind: 'quote' | 'job' | 'invoice', id: number }
+ * Returns: string URL, or '' if build_domain/id is missing
+ */
+const build_record_url = (args) => {
+    const buildDomain = String(args.build_domain ?? '');
+    const id = args.id;
+    if (!buildDomain || id === undefined || id === null || id === '')
+        return '';
+    const kind = String(args.kind ?? '');
+    if (kind === 'quote')
+        return `https://${buildDomain}/staff/editCostCentre.php?quoteID=${id}`;
+    if (kind === 'job')
+        return `https://${buildDomain}/staff/editCostCentre.php?jobID=${id}`;
+    if (kind === 'invoice')
+        return `https://${buildDomain}/staff/editInvoice.php?invoiceID=${id}`;
+    return '';
+};
 // ─── Composite components ─────────────────────────────────────────────────────
 /**
  * Two-line time pill showing scheduled start and end time.
@@ -102,7 +128,7 @@ const TimePill = {
 // ─── Module export ────────────────────────────────────────────────────────────
 const elements = {
     slug: 'simpro',
-    functions: { invoice_tone, job_status_tone, quote_status_tone },
+    functions: { invoice_tone, job_status_tone, quote_status_tone, build_record_url },
     components: { TimePill },
 };
 export default elements;
