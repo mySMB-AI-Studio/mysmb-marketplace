@@ -17,14 +17,14 @@ Your FileMaker account needs the `fmrest` extended privilege enabled (**File →
 
 ## Configuration
 
-| Variable | Required | Description |
-|---|---|---|
-| `FILEMAKER_HOST` | ✅ | Your FileMaker Server or FileMaker Cloud host URL, no trailing slash (e.g. `https://myfmserver.example.com`). |
-| `FILEMAKER_DATABASE` | ✅ | The FileMaker file/database name, exactly as hosted (no `.fmp12` extension). |
-| `FILEMAKER_USERNAME` | ✅ | A FileMaker account with the `fmrest` extended privilege enabled. |
-| `FILEMAKER_PASSWORD` | ✅ | Password for the account above. Stored encrypted. |
-| `FILEMAKER_COGNITO_USER_POOL_ID` | Cloud only | Claris ID Cognito User Pool ID. Leave blank for FileMaker Server. |
-| `FILEMAKER_COGNITO_CLIENT_ID` | Cloud only | Claris ID Cognito Client ID, paired with the User Pool ID above. Leave blank for FileMaker Server. |
+| Variable | Used by |
+|---|---|
+| `FILEMAKER_COGNITO_CLIENT_ID` | `filemaker` MCP server |
+| `FILEMAKER_COGNITO_USER_POOL_ID` | `filemaker` MCP server |
+| `FILEMAKER_DATABASE` | `filemaker` MCP server |
+| `FILEMAKER_HOST` | `filemaker` MCP server |
+| `FILEMAKER_PASSWORD` | `filemaker` MCP server |
+| `FILEMAKER_USERNAME` | `filemaker` MCP server |
 
 ## Tools
 

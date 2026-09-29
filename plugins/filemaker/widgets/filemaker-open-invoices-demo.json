@@ -1,49 +1,171 @@
 {
-  "id": "filemaker-open-invoices-demo",
-  "title": "Open Invoices",
-  "description": "Invoices with an Open status from a FileMaker layout, found via a filtered find request. Demo version with static data.",
   "category": "finance",
-  "tags": ["filemaker", "claris", "invoices", "find", "demo"],
-  "keywords": ["invoices", "open", "overdue", "find", "filemaker"],
-  "connectorsUsed": ["filemaker"],
+  "connectorsUsed": [
+    "filemaker"
+  ],
+  "description": "Invoices with an Open status from a FileMaker layout, found via a filtered find request. Demo version with static data.",
+  "id": "filemaker-open-invoices-demo",
+  "keywords": [
+    "invoices",
+    "open",
+    "overdue",
+    "find",
+    "filemaker"
+  ],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 6, "rowSpan": 5 },
-    "min": { "colSpan": 4, "rowSpan": 4 },
-    "max": { "colSpan": 12, "rowSpan": 10 }
-  },
-  "spec": {
-    "root": "card",
-    "elements": {
-      "card": { "type": "Card", "props": {}, "children": ["titleRow", "div0", "body"] },
-      "titleRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["titleGroup"] },
-      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
-      "titleIcon": { "type": "Icon", "props": { "name": "FileText", "tone": "accent", "size": "sm" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Open Invoices", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "FileMaker · 3 open invoices" } },
-
-      "div0": { "type": "Divider", "props": {} },
-
-      "body": { "type": "Body", "props": {}, "children": ["table"] },
-      "table": {
-        "type": "Table",
-        "props": {
-          "rows": [
-            { "invoice": "INV-2216", "customer": "Northbridge Timber Co", "due": "20-Sep-26", "amount": "2350.00", "status": "Open" },
-            { "invoice": "INV-2219", "customer": "Harlow Fit-Out Group", "due": "22-Sep-26", "amount": "980.50", "status": "Open" },
-            { "invoice": "INV-2224", "customer": "Coastal Retail Partners", "due": "27-Sep-26", "amount": "5640.00", "status": "Overdue" }
-          ],
-          "columns": [
-            { "id": "invoice", "header": "Invoice", "field": "invoice" },
-            { "id": "customer", "header": "Customer", "field": "customer" },
-            { "id": "due", "header": "Due Date", "field": "due" },
-            { "id": "amount", "header": "Amount", "field": "amount", "align": "right" },
-            { "id": "status", "header": "Status", "field": "status" }
-          ]
-        }
-      }
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 10
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 5
     }
   },
-  "status": "published"
+  "spec": {
+    "elements": {
+      "body": {
+        "children": [
+          "table"
+        ],
+        "props": {},
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "titleRow",
+          "div0",
+          "body"
+        ],
+        "props": {},
+        "type": "Card"
+      },
+      "div0": {
+        "props": {},
+        "type": "Divider"
+      },
+      "eyebrow": {
+        "props": {
+          "text": "FileMaker · 3 open invoices"
+        },
+        "type": "Eyebrow"
+      },
+      "table": {
+        "props": {
+          "columns": [
+            {
+              "field": "invoice",
+              "header": "Invoice",
+              "id": "invoice"
+            },
+            {
+              "field": "customer",
+              "header": "Customer",
+              "id": "customer"
+            },
+            {
+              "field": "due",
+              "header": "Due Date",
+              "id": "due"
+            },
+            {
+              "align": "right",
+              "field": "amount",
+              "header": "Amount",
+              "id": "amount"
+            },
+            {
+              "field": "status",
+              "header": "Status",
+              "id": "status"
+            }
+          ],
+          "rows": [
+            {
+              "amount": "2350.00",
+              "customer": "Northbridge Timber Co",
+              "due": "20-Sep-26",
+              "invoice": "INV-2216",
+              "status": "Open"
+            },
+            {
+              "amount": "980.50",
+              "customer": "Harlow Fit-Out Group",
+              "due": "22-Sep-26",
+              "invoice": "INV-2219",
+              "status": "Open"
+            },
+            {
+              "amount": "5640.00",
+              "customer": "Coastal Retail Partners",
+              "due": "27-Sep-26",
+              "invoice": "INV-2224",
+              "status": "Overdue"
+            }
+          ]
+        },
+        "type": "Table"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Open Invoices"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "FileText",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleRow": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "filemaker",
+    "claris",
+    "invoices",
+    "find",
+    "demo"
+  ],
+  "title": "Open Invoices"
 }

@@ -1,41 +1,170 @@
 {
-  "id": "filemaker-record-detail-demo",
-  "title": "Record Detail",
-  "description": "A single record's key fields, fetched by record ID from a FileMaker layout. Demo version with static data.",
   "category": "operations",
-  "tags": ["filemaker", "claris", "records", "detail", "demo"],
-  "keywords": ["record", "detail", "lookup", "filemaker", "database"],
-  "connectorsUsed": ["filemaker"],
+  "connectorsUsed": [
+    "filemaker"
+  ],
+  "description": "A single record's key fields, fetched by record ID from a FileMaker layout. Demo version with static data.",
+  "id": "filemaker-record-detail-demo",
+  "keywords": [
+    "record",
+    "detail",
+    "lookup",
+    "filemaker",
+    "database"
+  ],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 4, "rowSpan": 6 },
-    "min": { "colSpan": 3, "rowSpan": 5 },
-    "max": { "colSpan": 6, "rowSpan": 8 }
-  },
-  "spec": {
-    "root": "card",
-    "elements": {
-      "card": { "type": "Card", "props": {}, "children": ["titleRow", "div0", "fields", "div1", "statusRow"] },
-      "titleRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["titleGroup"] },
-      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
-      "titleIcon": { "type": "Icon", "props": { "name": "User", "tone": "accent", "size": "sm" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Alcott & Reeve Pty Ltd", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "FileMaker · Customers layout, record 1042" } },
-
-      "div0": { "type": "Divider", "props": {} },
-
-      "fields": { "type": "Stack", "props": { "gap": "sm" }, "children": ["contact", "phone", "balance"] },
-      "contact": { "type": "KeyValue", "props": { "label": "Primary Contact", "value": "Dana Alcott" } },
-      "phone": { "type": "KeyValue", "props": { "label": "Phone", "value": "(02) 5550 1284" } },
-      "balance": { "type": "KeyValue", "props": { "label": "Balance Owing", "value": "4210.00" } },
-
-      "div1": { "type": "Divider", "props": {} },
-
-      "statusRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["statusLabel", "statusBadge"] },
-      "statusLabel": { "type": "Text", "props": { "text": "Account Status", "size": "sm" } },
-      "statusBadge": { "type": "Badge", "props": { "text": "Active" } }
+    "max": {
+      "colSpan": 6,
+      "rowSpan": 8
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 5
+    },
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 6
     }
   },
-  "status": "published"
+  "spec": {
+    "elements": {
+      "balance": {
+        "props": {
+          "label": "Balance Owing",
+          "value": "4210.00"
+        },
+        "type": "KeyValue"
+      },
+      "card": {
+        "children": [
+          "titleRow",
+          "div0",
+          "fields",
+          "div1",
+          "statusRow"
+        ],
+        "props": {},
+        "type": "Card"
+      },
+      "contact": {
+        "props": {
+          "label": "Primary Contact",
+          "value": "Dana Alcott"
+        },
+        "type": "KeyValue"
+      },
+      "div0": {
+        "props": {},
+        "type": "Divider"
+      },
+      "div1": {
+        "props": {},
+        "type": "Divider"
+      },
+      "eyebrow": {
+        "props": {
+          "text": "FileMaker · Customers layout, record 1042"
+        },
+        "type": "Eyebrow"
+      },
+      "fields": {
+        "children": [
+          "contact",
+          "phone",
+          "balance"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack"
+      },
+      "phone": {
+        "props": {
+          "label": "Phone",
+          "value": "(02) 5550 1284"
+        },
+        "type": "KeyValue"
+      },
+      "statusBadge": {
+        "props": {
+          "text": "Active"
+        },
+        "type": "Badge"
+      },
+      "statusLabel": {
+        "props": {
+          "size": "sm",
+          "text": "Account Status"
+        },
+        "type": "Text"
+      },
+      "statusRow": {
+        "children": [
+          "statusLabel",
+          "statusBadge"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Alcott & Reeve Pty Ltd"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "User",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleRow": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "filemaker",
+    "claris",
+    "records",
+    "detail",
+    "demo"
+  ],
+  "title": "Record Detail"
 }

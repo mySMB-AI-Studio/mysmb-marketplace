@@ -1,77 +1,219 @@
 {
-  "id": "filemaker-project-tasks",
-  "title": "Project Tasks",
-  "description": "A parent FileMaker record's related child rows, pulled from embedded portal data. Edit the layout name, record ID, portal name, and field bindings below to match your own FileMaker solution.",
   "category": "operations",
-  "tags": ["filemaker", "claris", "portal", "related-records"],
-  "keywords": ["tasks", "portal", "related records", "project", "filemaker"],
-  "connectorsUsed": ["filemaker"],
+  "connectorsUsed": [
+    "filemaker"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "filemaker",
+    "params": {
+      "layout": "Projects",
+      "portal": [
+        "Tasks"
+      ],
+      "recordId": "308"
+    },
+    "tool": "get_record"
+  },
+  "description": "A parent FileMaker record's related child rows, pulled from embedded portal data. Edit the layout name, record ID, portal name, and field bindings below to match your own FileMaker solution.",
+  "id": "filemaker-project-tasks",
+  "keywords": [
+    "tasks",
+    "portal",
+    "related records",
+    "project",
+    "filemaker"
+  ],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 6 },
-    "min": { "colSpan": 3, "rowSpan": 4 },
-    "max": { "colSpan": 8, "rowSpan": 10 }
-  },
-  "dataProvider": {
-    "mcp": "filemaker",
-    "tool": "get_record",
-    "params": { "layout": "Projects", "recordId": "308", "portal": ["Tasks"] }
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 10
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 4
+    },
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 6
+    }
   },
   "spec": {
-    "root": "card",
     "elements": {
-      "card": { "type": "Card", "props": {}, "children": ["titleRow", "div0", "body"] },
-      "titleRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["titleGroup"] },
-      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
-      "titleIcon": { "type": "Icon", "props": { "name": "ListChecks", "tone": "accent", "size": "sm" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": { "$state": "/filemaker/get_record/fieldData/ProjectName" }, "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "FileMaker · Tasks portal on Projects layout" } },
-
-      "div0": { "type": "Divider", "props": {} },
-
-      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "list"] },
-
-      "loading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3"],
-        "visible": { "$state": "/_loading/filemaker.get_record" }
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ],
+        "props": {},
+        "type": "Body"
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-
+      "card": {
+        "children": [
+          "titleRow",
+          "div0",
+          "body"
+        ],
+        "props": {},
+        "type": "Card"
+      },
+      "div0": {
+        "props": {},
+        "type": "Divider"
+      },
       "empty": {
+        "props": {
+          "message": "No related tasks found for this project."
+        },
         "type": "Empty",
-        "props": { "message": "No related tasks found for this project." },
         "visible": {
           "$and": [
-            { "$state": "/_loading/filemaker.get_record", "not": true },
-            { "$state": "/filemaker/get_record/portalData/Tasks/0", "not": true }
+            {
+              "$state": "/_loading/filemaker.get_record",
+              "not": true
+            },
+            {
+              "$state": "/filemaker/get_record/portalData/Tasks/0",
+              "not": true
+            }
           ]
         }
       },
-
+      "eyebrow": {
+        "props": {
+          "text": "FileMaker · Tasks portal on Projects layout"
+        },
+        "type": "Eyebrow"
+      },
       "list": {
+        "children": [
+          "taskItem"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "recordId",
+          "statePath": "/filemaker/get_record/portalData/Tasks"
+        },
         "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["taskItem"],
-        "repeat": { "statePath": "/filemaker/get_record/portalData/Tasks", "key": "recordId" },
-        "visible": { "$state": "/filemaker/get_record/portalData/Tasks/0" }
+        "visible": {
+          "$state": "/filemaker/get_record/portalData/Tasks/0"
+        }
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/filemaker.get_record"
+        }
+      },
+      "sk1": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
       },
       "taskItem": {
-        "type": "ActivityItem",
         "props": {
-          "title": { "$item": "Tasks::TaskTitle" },
           "subtitle": {
             "$computed": "fmt",
-            "args": { "pattern": "Assigned to {who}", "who": { "$item": "Tasks::AssignedTo" } }
+            "args": {
+              "pattern": "Assigned to {who}",
+              "who": {
+                "$item": "Tasks::AssignedTo"
+              }
+            }
           },
-          "timestamp": { "$item": "Tasks::DueDate" }
-        }
+          "timestamp": {
+            "$item": "Tasks::DueDate"
+          },
+          "title": {
+            "$item": "Tasks::TaskTitle"
+          }
+        },
+        "type": "ActivityItem"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": {
+            "$state": "/filemaker/get_record/fieldData/ProjectName"
+          }
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "ListChecks",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleRow": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
       }
-    }
+    },
+    "root": "card"
   },
-  "status": "published"
+  "tags": [
+    "filemaker",
+    "claris",
+    "portal",
+    "related-records"
+  ],
+  "title": "Project Tasks"
 }
