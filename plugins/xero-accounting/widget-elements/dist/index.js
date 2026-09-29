@@ -1195,6 +1195,60 @@ const analyze_duplicates = (args) => {
         lastScannedAt,
     };
 };
+// ── analyze_excluded_documents ─────────────────────────────────────────
+// Flags Xero invoices/bills that sit outside standard P&L reporting:
+// Voided, Deleted, or a Draft older than `staleDraftDays` (default 30).
+// Unlike Sales Invoice/Bill duplicate matching elsewhere in this file, all
+// three signals here are real Status/Date fields on Xero's list-level
+// Invoice payload — no per-line LineItems limitation applies to this check.
+//
+// detailRows is sorted most-recent-Date-first; detailRowCount lets the
+// spec conditionally show/hide preview rows without a $computed inside a
+// `visible` condition (not supported — visible only reads a literal
+// $state value with eq/gt/etc modifiers).
+//
+// Args: { invoices?: Invoice[], staleDraftDays?: number }
+const analyze_excluded_documents = (args) => {
+    const staleDraftDays = Number(args.staleDraftDays) > 0 ? Number(args.staleDraftDays) : 30;
+    const invoices = Array.isArray(args.invoices) ? args.invoices : [];
+    const now = Date.now();
+    const ageDays = (raw) => {
+        const ms = toEpochMs(raw);
+        return ms == null ? 0 : (now - ms) / 86_400_000;
+    };
+    const voided = invoices.filter((inv) => inv.Status === 'VOIDED');
+    const deleted = invoices.filter((inv) => inv.Status === 'DELETED');
+    const staleDrafts = invoices.filter((inv) => inv.Status === 'DRAFT' && ageDays(inv.Date) > staleDraftDays);
+    const label = (inv) => {
+        const contact = inv.Contact;
+        const contactName = String(contact?.Name ?? 'Unknown');
+        const num = String(inv.InvoiceNumber ?? '').trim();
+        if (num)
+            return `${num} · ${contactName}`;
+        return `${inv.Type === 'ACCPAY' ? 'Bill' : 'Invoice'} · ${contactName}`;
+    };
+    const tagged = [
+        ...voided.map((inv) => ({ label: label(inv), badgeText: 'Voided', badgeTone: 'destructive', date: inv.Date })),
+        ...deleted.map((inv) => ({ label: label(inv), badgeText: 'Deleted', badgeTone: 'muted', date: inv.Date })),
+        ...staleDrafts.map((inv) => ({
+            label: label(inv),
+            badgeText: `Draft ${Math.round(ageDays(inv.Date))}d`,
+            badgeTone: 'warning',
+            date: inv.Date,
+        })),
+    ];
+    tagged.sort((a, b) => (toEpochMs(b.date) ?? 0) - (toEpochMs(a.date) ?? 0));
+    const totalValue = [...voided, ...deleted, ...staleDrafts].reduce((sum, inv) => sum + (Number(inv.Total) || 0), 0);
+    return {
+        voidedCount: voided.length,
+        deletedCount: deleted.length,
+        staleCount: staleDrafts.length,
+        totalCount: voided.length + deleted.length + staleDrafts.length,
+        totalValue,
+        detailRowCount: tagged.length,
+        detailRows: tagged.map(({ label: l, badgeText, badgeTone }) => ({ label: l, badgeText, badgeTone })),
+    };
+};
 const elements = {
     slug: 'xero-accounting',
     functions: {
@@ -1224,6 +1278,7 @@ const elements = {
         flatten_report_rows,
         report_find_row,
         analyze_duplicates,
+        analyze_excluded_documents,
     },
 };
 export default elements;
