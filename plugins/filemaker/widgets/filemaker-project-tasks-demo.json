@@ -1,0 +1,36 @@
+{
+  "id": "filemaker-project-tasks-demo",
+  "title": "Project Tasks",
+  "description": "A project record's related Tasks, pulled from the portal data embedded in a FileMaker record response. Demo version with static data.",
+  "category": "operations",
+  "tags": ["filemaker", "claris", "portal", "related-records", "demo"],
+  "keywords": ["tasks", "portal", "related records", "project", "filemaker"],
+  "connectorsUsed": ["filemaker"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 6 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 8, "rowSpan": 10 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["titleRow", "div0", "body"] },
+      "titleRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "ListChecks", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Meridian Facilities Fit-Out — Tasks", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "FileMaker · Tasks portal on Projects layout" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["list"] },
+      "list": { "type": "Stack", "props": { "gap": "xs" }, "children": ["task1", "task2", "task3"] },
+      "task1": { "type": "ActivityItem", "props": { "title": "Site electrical inspection", "subtitle": "Assigned to J. Ferris", "timestamp": "18-Sep-26", "status": "medium" } },
+      "task2": { "type": "ActivityItem", "props": { "title": "Confirm fixture delivery window", "subtitle": "Assigned to R. Okafor", "timestamp": "19-Sep-26", "status": "unread" } },
+      "task3": { "type": "ActivityItem", "props": { "title": "Client sign-off walkthrough", "subtitle": "Assigned to D. Alcott", "timestamp": "24-Sep-26", "status": "read" } }
+    }
+  },
+  "status": "published"
+}

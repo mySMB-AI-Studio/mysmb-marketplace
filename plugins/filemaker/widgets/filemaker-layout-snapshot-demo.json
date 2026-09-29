@@ -1,0 +1,38 @@
+{
+  "id": "filemaker-layout-snapshot-demo",
+  "title": "Layout Field Snapshot",
+  "description": "An admin/dev-facing view of what's queryable on a FileMaker layout, sourced from Data API layout metadata. Demo version with static data.",
+  "category": "operations",
+  "tags": ["filemaker", "claris", "metadata", "schema", "admin", "demo"],
+  "keywords": ["layout", "metadata", "schema", "fields", "portals", "filemaker"],
+  "connectorsUsed": ["filemaker"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 5 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 6, "rowSpan": 8 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["titleRow", "div0", "fields", "div1", "note"] },
+      "titleRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "Database", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Customers — Layout Snapshot", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "FileMaker · schema metadata, dev/admin view" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "fields": { "type": "Stack", "props": { "gap": "sm" }, "children": ["fieldCount", "portalCount"] },
+      "fieldCount": { "type": "KeyValue", "props": { "label": "Fields on this layout", "value": "18" } },
+      "portalCount": { "type": "KeyValue", "props": { "label": "Related portals", "value": "Invoices, Notes" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "note": { "type": "Caption", "props": { "text": "Write-eligible fields excluded — this server is read-only." } }
+    }
+  },
+  "status": "published"
+}

@@ -1,0 +1,49 @@
+{
+  "id": "filemaker-recent-records-demo",
+  "title": "Recent Records",
+  "description": "Most recently created records from a FileMaker layout, sorted newest first. Demo version with static data.",
+  "category": "operations",
+  "tags": ["filemaker", "claris", "records", "database", "demo"],
+  "keywords": ["records", "recent", "layout", "filemaker", "database"],
+  "connectorsUsed": ["filemaker"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 10, "rowSpan": 10 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["titleRow", "div0", "body"] },
+      "titleRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "Database", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Recent Records", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "FileMaker · Customers layout" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["table"] },
+      "table": {
+        "type": "Table",
+        "props": {
+          "rows": [
+            { "name": "Alcott & Reeve Pty Ltd", "created": "12-Sep-26", "status": "Active" },
+            { "name": "Northbridge Timber Co", "created": "10-Sep-26", "status": "Active" },
+            { "name": "Harlow Fit-Out Group", "created": "08-Sep-26", "status": "On Hold" },
+            { "name": "Meridian Facilities", "created": "05-Sep-26", "status": "Active" },
+            { "name": "Coastal Retail Partners", "created": "01-Sep-26", "status": "Active" }
+          ],
+          "columns": [
+            { "id": "name", "header": "Customer", "field": "name" },
+            { "id": "created", "header": "Created", "field": "created" },
+            { "id": "status", "header": "Status", "field": "status" }
+          ]
+        }
+      }
+    }
+  },
+  "status": "published"
+}

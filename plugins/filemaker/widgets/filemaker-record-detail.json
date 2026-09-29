@@ -1,0 +1,89 @@
+{
+  "id": "filemaker-record-detail",
+  "title": "Record Detail",
+  "description": "A single FileMaker record's key fields, fetched by record ID. Edit the layout name, record ID, and field bindings below to match your own FileMaker solution.",
+  "category": "operations",
+  "tags": ["filemaker", "claris", "records", "detail"],
+  "keywords": ["record", "detail", "lookup", "filemaker", "database"],
+  "connectorsUsed": ["filemaker"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 6 },
+    "min": { "colSpan": 3, "rowSpan": 5 },
+    "max": { "colSpan": 6, "rowSpan": 8 }
+  },
+  "dataProvider": {
+    "mcp": "filemaker",
+    "tool": "get_record",
+    "params": { "layout": "Customers", "recordId": "1042" }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["titleRow", "div0", "loading", "fields", "div1", "statusRow"] },
+      "titleRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "User", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": { "$state": "/filemaker/get_record/fieldData/CustomerName" }, "level": "h2" } },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "FileMaker · Customers layout, record {id}",
+              "id": { "$state": "/filemaker/get_record/recordId" }
+            }
+          }
+        }
+      },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/filemaker.get_record" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+
+      "fields": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["contact", "phone", "balance"],
+        "visible": { "$state": "/_loading/filemaker.get_record", "not": true }
+      },
+      "contact": {
+        "type": "KeyValue",
+        "props": { "label": "Primary Contact", "value": { "$state": "/filemaker/get_record/fieldData/PrimaryContact" } }
+      },
+      "phone": {
+        "type": "KeyValue",
+        "props": { "label": "Phone", "value": { "$state": "/filemaker/get_record/fieldData/Phone" } }
+      },
+      "balance": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Balance Owing",
+          "value": { "$state": "/filemaker/get_record/fieldData/BalanceOwing" }
+        }
+      },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "statusRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["statusLabel", "statusBadge"],
+        "visible": { "$state": "/_loading/filemaker.get_record", "not": true }
+      },
+      "statusLabel": { "type": "Text", "props": { "text": "Account Status", "size": "sm" } },
+      "statusBadge": { "type": "Badge", "props": { "text": { "$state": "/filemaker/get_record/fieldData/Status" } } }
+    }
+  },
+  "status": "published"
+}

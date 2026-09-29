@@ -1,0 +1,52 @@
+{
+  "id": "filemaker-record-count",
+  "title": "Record Count",
+  "description": "Total record count on a FileMaker layout. Unlike this connector's other tiles, this one needs no field-name editing — it only reads the layout's record count, which is schema-agnostic.",
+  "category": "operations",
+  "tags": ["filemaker", "claris", "records", "stat", "count"],
+  "keywords": ["total", "count", "record count", "filemaker"],
+  "connectorsUsed": ["filemaker"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 2 },
+    "min": { "colSpan": 2, "rowSpan": 2 },
+    "max": { "colSpan": 6, "rowSpan": 4 }
+  },
+  "dataProvider": {
+    "mcp": "filemaker",
+    "tool": "get_records",
+    "params": { "layout": "Customers", "limit": 1 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["header", "statSection"] },
+      "header": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "Database", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Record Count", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "FileMaker · Customers layout, live count" } },
+
+      "statSection": { "type": "Section", "props": { "variant": "muted" }, "children": ["loading", "statStack"] },
+
+      "loading": {
+        "type": "Skeleton",
+        "props": { "height": "2.5rem", "rounded": "md" },
+        "visible": { "$state": "/_loading/filemaker.get_records" }
+      },
+
+      "statStack": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["statVal", "statCaption"],
+        "visible": { "$state": "/_loading/filemaker.get_records", "not": true }
+      },
+      "statVal": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/filemaker/get_records/dataInfo/foundCount" } }
+      },
+      "statCaption": { "type": "Caption", "props": { "text": "records" } }
+    }
+  },
+  "status": "published"
+}
