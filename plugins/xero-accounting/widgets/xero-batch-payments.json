@@ -10,42 +10,58 @@
     "kind": "tool",
     "mcp": "xero-accounting",
     "params": {},
-    "tool": "list_xero_bank_detail_check"
+    "tool": "list_xero_batch_payment_bills"
   },
-  "description": "Cross-references unpaid Xero bills against bank account details stored on supplier contacts — surfaces missing or unverifiable bank details before batch payment runs.",
-  "id": "xero-bank-detail-check",
+  "description": "Lists outstanding Xero supplier bills pre-classified for a batch payment run — ready (valid BSB + account on file) vs excluded (missing or invalid bank details) — and generates a downloadable ABA file for the ready bills.",
+  "id": "xero-batch-payments",
   "keywords": [
     "xero",
-    "bank detail",
-    "check",
-    "verify",
-    "verified",
-    "can't verify",
-    "missing",
-    "bills",
-    "accounts payable",
     "batch payment",
+    "aba",
+    "file",
+    "generate",
     "supplier",
-    "contact",
-    "fraud"
+    "bills",
+    "bank details",
+    "bsb",
+    "accounts payable",
+    "pay run"
   ],
   "popularity": 0,
   "sizing": {
     "max": {
       "colSpan": 10,
-      "rowSpan": 14
+      "rowSpan": 16
     },
     "min": {
       "colSpan": 4,
-      "rowSpan": 5
+      "rowSpan": 7
     },
     "preferred": {
       "colSpan": 5,
-      "rowSpan": 7
+      "rowSpan": 9
     }
   },
   "spec": {
     "elements": {
+      "bankName": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "masked": {
+                "$state": "/xero-accounting/list_xero_batch_payment_bills/bankAccount/masked"
+              },
+              "name": {
+                "$state": "/xero-accounting/list_xero_batch_payment_bills/bankAccount/name"
+              },
+              "pattern": "{name} {masked}"
+            }
+          },
+          "weight": "semibold"
+        },
+        "type": "Caption"
+      },
       "billAmount": {
         "props": {
           "size": "sm",
@@ -64,6 +80,27 @@
         },
         "type": "Text"
       },
+      "billBadge": {
+        "props": {
+          "label": {
+            "$item": "bankBadge"
+          },
+          "tone": "warning"
+        },
+        "type": "Badge"
+      },
+      "billBadgeWrap": {
+        "children": [
+          "billBadge"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Row",
+        "visible": {
+          "$item": "bankBadge"
+        }
+      },
       "billDivider": {
         "props": {},
         "type": "Divider"
@@ -80,7 +117,8 @@
       "billInfo": {
         "children": [
           "billName",
-          "billMeta"
+          "billMeta",
+          "billBadgeWrap"
         ],
         "props": {
           "gap": "none"
@@ -96,7 +134,7 @@
         },
         "repeat": {
           "key": "id",
-          "statePath": "/xero-accounting/list_xero_bank_detail_check/bills"
+          "statePath": "/xero-accounting/list_xero_batch_payment_bills/bills"
         },
         "type": "Stack"
       },
@@ -151,7 +189,21 @@
           "content"
         ],
         "props": {},
-        "type": "Body"
+        "type": "Body",
+        "watch": {
+          "/xero-accounting/generate_xero_aba/aba_base64": {
+            "action": "download_base64",
+            "params": {
+              "data": {
+                "$state": "/xero-accounting/generate_xero_aba/aba_base64"
+              },
+              "filename": {
+                "$state": "/xero-accounting/generate_xero_aba/filename"
+              },
+              "mimeType": "text/plain"
+            }
+          }
+        }
       },
       "card": {
         "children": [
@@ -163,9 +215,10 @@
       },
       "content": {
         "children": [
-          "statsGrid",
-          "divider",
+          "summarySection",
+          "divider1",
           "billList",
+          "divider2",
           "footerRow"
         ],
         "props": {
@@ -175,32 +228,36 @@
         "visible": {
           "$and": [
             {
-              "$state": "/_loading/xero-accounting.list_xero_bank_detail_check",
+              "$state": "/_loading/xero-accounting.list_xero_batch_payment_bills",
               "not": true
             },
             {
-              "$state": "/xero-accounting/list_xero_bank_detail_check/bills/0"
+              "$state": "/xero-accounting/list_xero_batch_payment_bills/bills/0"
             }
           ]
         }
       },
-      "divider": {
+      "divider1": {
+        "props": {},
+        "type": "Divider"
+      },
+      "divider2": {
         "props": {},
         "type": "Divider"
       },
       "empty": {
         "props": {
-          "message": "No unpaid bills found."
+          "message": "No outstanding bills found."
         },
         "type": "Empty",
         "visible": {
           "$and": [
             {
-              "$state": "/_loading/xero-accounting.list_xero_bank_detail_check",
+              "$state": "/_loading/xero-accounting.list_xero_batch_payment_bills",
               "not": true
             },
             {
-              "$state": "/xero-accounting/list_xero_bank_detail_check/bills/0",
+              "$state": "/xero-accounting/list_xero_batch_payment_bills/bills/0",
               "not": true
             }
           ]
@@ -212,43 +269,82 @@
             "$computed": "fmt",
             "args": {
               "n": {
-                "$state": "/xero-accounting/list_xero_bank_detail_check/summary/total"
+                "$state": "/xero-accounting/list_xero_batch_payment_bills/summary/total"
               },
-              "pattern": "Xero · {n} bills · first 100"
+              "pattern": "Xero · {n} bills"
             }
           }
         },
         "type": "Eyebrow"
       },
-      "footerLeft": {
+      "footerAmount": {
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "currency": "AUD",
+              "value": {
+                "$state": "/xero-accounting/list_xero_batch_payment_bills/summary/readyAmount"
+              }
+            }
+          },
+          "weight": "semibold"
+        },
+        "type": "Caption"
+      },
+      "footerCount": {
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
               "n": {
-                "$state": "/xero-accounting/list_xero_bank_detail_check/summary/total"
+                "$state": "/xero-accounting/list_xero_batch_payment_bills/summary/readyCount"
               },
-              "pattern": "{n} unpaid bills scanned"
+              "pattern": "{n} bills"
             }
           },
+          "weight": "semibold"
+        },
+        "type": "Caption"
+      },
+      "footerDetail": {
+        "children": [
+          "footerCount",
+          "footerSep",
+          "footerAmount"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "footerLabel": {
+        "props": {
+          "text": "Selected",
           "tone": "muted"
         },
         "type": "Caption"
       },
-      "footerRight": {
+      "footerLeft": {
+        "children": [
+          "footerLabel",
+          "footerDetail"
+        ],
         "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "Updated {t}",
-              "t": {
-                "$state": "/xero-accounting/list_xero_bank_detail_check/updatedTime"
-              }
-            }
-          },
-          "tone": "muted"
+          "gap": "none"
         },
-        "type": "Caption"
+        "type": "Stack"
+      },
+      "footerRight": {
+        "children": [
+          "validateBtn",
+          "generateBtn"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Row"
       },
       "footerRow": {
         "children": [
@@ -262,6 +358,34 @@
         },
         "type": "Row"
       },
+      "footerSep": {
+        "props": {
+          "text": "·",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "fromLabel": {
+        "props": {
+          "text": "From:",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "generateBtn": {
+        "on": {
+          "click": {
+            "action": "xero-accounting.generate_xero_aba",
+            "params": {}
+          }
+        },
+        "props": {
+          "label": "Generate ABA",
+          "size": "sm",
+          "variant": "primary"
+        },
+        "type": "Button"
+      },
       "header": {
         "children": [
           "titleGroup"
@@ -269,39 +393,55 @@
         "props": {},
         "type": "Header"
       },
-      "lblCantVerify": {
-        "props": {
-          "text": "CAN'T VERIFY",
-          "tone": "muted"
-        },
-        "type": "Caption"
-      },
-      "lblVerified": {
-        "props": {
-          "text": "VERIFIED",
-          "tone": "muted"
-        },
-        "type": "Caption"
-      },
       "loading": {
         "children": [
           "sk1",
           "sk2",
           "sk3",
           "sk4",
-          "sk5"
+          "sk5",
+          "sk6"
         ],
         "props": {
           "gap": "sm"
         },
         "type": "Stack",
         "visible": {
-          "$state": "/_loading/xero-accounting.list_xero_bank_detail_check"
+          "$state": "/_loading/xero-accounting.list_xero_batch_payment_bills"
         }
+      },
+      "payDateLabel": {
+        "props": {
+          "text": "Pay date:",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "payDateValue": {
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/list_xero_batch_payment_bills/summary/payDate"
+          },
+          "weight": "semibold"
+        },
+        "type": "Caption"
+      },
+      "payInfoRow": {
+        "children": [
+          "payDateLabel",
+          "payDateValue",
+          "fromLabel",
+          "bankName"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
       },
       "sk1": {
         "props": {
-          "height": "3.5rem",
+          "height": "4rem",
           "rounded": "md"
         },
         "type": "Skeleton"
@@ -334,41 +474,27 @@
         },
         "type": "Skeleton"
       },
-      "statCantVerify": {
+      "sk6": {
+        "props": {
+          "height": "2.75rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "summarySection": {
         "children": [
-          "valCantVerify",
-          "lblCantVerify"
+          "totalAmountText",
+          "payInfoRow"
         ],
         "props": {
-          "gap": "none"
+          "gap": "xs"
         },
         "type": "Stack"
-      },
-      "statVerified": {
-        "children": [
-          "valVerified",
-          "lblVerified"
-        ],
-        "props": {
-          "gap": "none"
-        },
-        "type": "Stack"
-      },
-      "statsGrid": {
-        "children": [
-          "statCantVerify",
-          "statVerified"
-        ],
-        "props": {
-          "cols": 2,
-          "gap": "sm"
-        },
-        "type": "Grid"
       },
       "title": {
         "props": {
           "level": "h2",
-          "text": "Bank-Detail Check"
+          "text": "Batch Payments"
         },
         "type": "Heading"
       },
@@ -385,7 +511,7 @@
       },
       "titleIcon": {
         "props": {
-          "name": "ShieldCheck",
+          "name": "Banknote",
           "size": "sm",
           "tone": "accent"
         },
@@ -401,23 +527,36 @@
         },
         "type": "Stack"
       },
-      "valCantVerify": {
+      "totalAmountText": {
         "props": {
-          "tone": "warning",
           "value": {
-            "$state": "/xero-accounting/list_xero_bank_detail_check/summary/cantVerify"
+            "$state": "/xero-accounting/list_xero_batch_payment_bills/summary/totalAmount"
           }
         },
         "type": "Stat"
       },
-      "valVerified": {
-        "props": {
-          "tone": "success",
-          "value": {
-            "$state": "/xero-accounting/list_xero_bank_detail_check/summary/verified"
-          }
+      "validateBtn": {
+        "on": {
+          "click": [
+            {
+              "action": "bust_tool_cache",
+              "params": {
+                "mcp": "xero-accounting",
+                "tool": "list_xero_batch_payment_bills"
+              }
+            },
+            {
+              "action": "xero-accounting.list_xero_batch_payment_bills",
+              "params": {}
+            }
+          ]
         },
-        "type": "Stat"
+        "props": {
+          "label": "Validate",
+          "size": "sm",
+          "variant": "secondary"
+        },
+        "type": "Button"
       }
     },
     "root": "card"
@@ -425,11 +564,11 @@
   "tags": [
     "xero",
     "bills",
-    "bank",
+    "batch",
     "payments",
-    "fraud",
-    "verification",
+    "aba",
+    "bank",
     "accounts-payable"
   ],
-  "title": "Bank-Detail Check"
+  "title": "Batch Payments"
 }

@@ -1,35 +1,104 @@
 {
-  "id": "xero-duplicate-check",
-  "title": "Duplicate Check",
-  "description": "Cross-checks Xero contacts, invoices (bills + sales), and bank transactions for likely duplicates, split into exact vs. likely matches. Live-wired to xero-accounting: list_contacts fires on mount, fans out to list_invoices / list_bank_transactions / list_payments, and a combined analyze_duplicates computation converges as each result arrives. Compact layout: hero total + exact/likely split bar, 4 category rows (Contacts, Sales invoices, Bills, Spend & receive money — Payments dropped from this view per the reference mockup). Clicking a category, or the Review duplicates button, opens an in-tile detail table listing the underlying duplicate records (filtered to that category, or all of them). Rescan re-fetches live data and updates the Last Scanned timestamp. The underlying analyze_duplicates defaults to a 90-day, exact+fuzzy, open-status scan.",
   "category": "finance",
-  "tags": ["xero", "duplicates", "data-quality", "deduplication", "contacts", "invoices", "bank-transactions"],
-  "keywords": ["duplicate", "duplicates", "dedupe", "dedup", "data quality", "cleanup", "reconciliation", "xero"],
-  "connectorsUsed": ["xero-accounting"],
+  "connectorsUsed": [
+    "xero-accounting"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-accounting",
+    "params": {
+      "includeArchived": false,
+      "order": "Name ASC",
+      "xero_tenant_id": "fb48e700-fb7b-4bec-b82c-4a84d3daf864"
+    },
+    "tool": "list_contacts"
+  },
+  "description": "Cross-checks Xero contacts, invoices (bills + sales), and bank transactions for likely duplicates, split into exact vs. likely matches. Live-wired to xero-accounting: list_contacts fires on mount, fans out to list_invoices / list_bank_transactions / list_payments, and a combined analyze_duplicates computation converges as each result arrives. Compact layout: hero total + exact/likely split bar, 4 category rows (Contacts, Sales invoices, Bills, Spend & receive money — Payments dropped from this view per the reference mockup). Clicking a category, or the Review duplicates button, opens an in-tile detail table listing the underlying duplicate records (filtered to that category, or all of them). Rescan re-fetches live data and updates the Last Scanned timestamp. The underlying analyze_duplicates defaults to a 90-day, exact+fuzzy, open-status scan.",
+  "id": "xero-duplicate-check",
+  "keywords": [
+    "duplicate",
+    "duplicates",
+    "dedupe",
+    "dedup",
+    "data quality",
+    "cleanup",
+    "reconciliation",
+    "xero"
+  ],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 8 },
-    "min":       { "colSpan": 4, "rowSpan": 7 },
-    "max":       { "colSpan": 8, "rowSpan": 12 }
-  },
-  "dataProvider": {
-    "mcp": "xero-accounting",
-    "tool": "list_contacts",
-    "params": { "order": "Name ASC", "includeArchived": false, "xero_tenant_id": "fb48e700-fb7b-4bec-b82c-4a84d3daf864" }
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 12
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 7
+    },
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 8
+    }
   },
   "spec": {
-    "root": "card",
     "elements": {
-
-      "card": {
-        "type": "Card",
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "content"
+        ],
         "props": {},
-        "children": ["header", "div0", "body"],
+        "type": "Body",
+        "watch": {
+          "/xero-accounting/list_contacts/Contacts": {
+            "action": "xero-accounting.list_payments",
+            "params": {
+              "order": "Date DESC",
+              "xero_tenant_id": "fb48e700-fb7b-4bec-b82c-4a84d3daf864"
+            }
+          },
+          "/xero-accounting/list_payments/Payments": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/dup",
+              "value": {
+                "$computed": "xero-accounting_analyze_duplicates",
+                "args": {
+                  "bankTransactions": {
+                    "$state": "/xero-accounting/list_bank_transactions/BankTransactions"
+                  },
+                  "contacts": {
+                    "$state": "/xero-accounting/list_contacts/Contacts"
+                  },
+                  "invoices": {
+                    "$state": "/xero-accounting/list_invoices/Invoices"
+                  },
+                  "payments": {
+                    "$state": "/xero-accounting/list_payments/Payments"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "card": {
+        "children": [
+          "header",
+          "div0",
+          "body"
+        ],
+        "props": {},
+        "type": "Card",
         "watch": {
           "/xero-accounting/list_contacts/Contacts": [
             {
               "action": "xero-accounting.list_invoices",
-              "params": { "order": "Date DESC", "xero_tenant_id": "fb48e700-fb7b-4bec-b82c-4a84d3daf864" }
+              "params": {
+                "order": "Date DESC",
+                "xero_tenant_id": "fb48e700-fb7b-4bec-b82c-4a84d3daf864"
+              }
             },
             {
               "action": "setState",
@@ -38,10 +107,18 @@
                 "value": {
                   "$computed": "xero-accounting_analyze_duplicates",
                   "args": {
-                    "contacts": { "$state": "/xero-accounting/list_contacts/Contacts" },
-                    "invoices": { "$state": "/xero-accounting/list_invoices/Invoices" },
-                    "bankTransactions": { "$state": "/xero-accounting/list_bank_transactions/BankTransactions" },
-                    "payments": { "$state": "/xero-accounting/list_payments/Payments" }
+                    "bankTransactions": {
+                      "$state": "/xero-accounting/list_bank_transactions/BankTransactions"
+                    },
+                    "contacts": {
+                      "$state": "/xero-accounting/list_contacts/Contacts"
+                    },
+                    "invoices": {
+                      "$state": "/xero-accounting/list_invoices/Invoices"
+                    },
+                    "payments": {
+                      "$state": "/xero-accounting/list_payments/Payments"
+                    }
                   }
                 }
               }
@@ -54,26 +131,698 @@
               "value": {
                 "$computed": "xero-accounting_analyze_duplicates",
                 "args": {
-                  "contacts": { "$state": "/xero-accounting/list_contacts/Contacts" },
-                  "invoices": { "$state": "/xero-accounting/list_invoices/Invoices" },
-                  "bankTransactions": { "$state": "/xero-accounting/list_bank_transactions/BankTransactions" },
-                  "payments": { "$state": "/xero-accounting/list_payments/Payments" }
+                  "bankTransactions": {
+                    "$state": "/xero-accounting/list_bank_transactions/BankTransactions"
+                  },
+                  "contacts": {
+                    "$state": "/xero-accounting/list_contacts/Contacts"
+                  },
+                  "invoices": {
+                    "$state": "/xero-accounting/list_invoices/Invoices"
+                  },
+                  "payments": {
+                    "$state": "/xero-accounting/list_payments/Payments"
+                  }
                 }
               }
             }
           }
         }
       },
-
-      "header": {
-        "type": "Header",
-        "props": {},
-        "children": ["headerRow"],
-        "watch": {
-          "/xero-accounting/list_contacts/Contacts": {
-            "action": "xero-accounting.list_bank_transactions",
-            "params": { "order": "Date DESC", "xero_tenant_id": "fb48e700-fb7b-4bec-b82c-4a84d3daf864" }
+      "catExactBadge1": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/dup/contacts/exactCount"
+              },
+              "pattern": "{n} exact"
+            }
           },
+          "tone": "warning",
+          "variant": "soft"
+        },
+        "type": "Badge",
+        "visible": {
+          "$state": "/ui/dup/contacts/exactCount"
+        }
+      },
+      "catExactBadge2": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/dup/salesInvoices/exactCount"
+              },
+              "pattern": "{n} exact"
+            }
+          },
+          "tone": "warning",
+          "variant": "soft"
+        },
+        "type": "Badge",
+        "visible": {
+          "$state": "/ui/dup/salesInvoices/exactCount"
+        }
+      },
+      "catExactBadge3": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/dup/supplierBills/exactCount"
+              },
+              "pattern": "{n} exact"
+            }
+          },
+          "tone": "warning",
+          "variant": "soft"
+        },
+        "type": "Badge",
+        "visible": {
+          "$state": "/ui/dup/supplierBills/exactCount"
+        }
+      },
+      "catExactBadge4": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/dup/bankTx/exactCount"
+              },
+              "pattern": "{n} exact"
+            }
+          },
+          "tone": "warning",
+          "variant": "soft"
+        },
+        "type": "Badge",
+        "visible": {
+          "$state": "/ui/dup/bankTx/exactCount"
+        }
+      },
+      "catLikelyBadge1": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/dup/contacts/likelyCount"
+              },
+              "pattern": "{n} likely"
+            }
+          },
+          "tone": "info",
+          "variant": "soft"
+        },
+        "type": "Badge",
+        "visible": {
+          "$state": "/ui/dup/contacts/likelyCount"
+        }
+      },
+      "catLikelyBadge2": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/dup/salesInvoices/likelyCount"
+              },
+              "pattern": "{n} likely"
+            }
+          },
+          "tone": "info",
+          "variant": "soft"
+        },
+        "type": "Badge",
+        "visible": {
+          "$state": "/ui/dup/salesInvoices/likelyCount"
+        }
+      },
+      "catLikelyBadge3": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/dup/supplierBills/likelyCount"
+              },
+              "pattern": "{n} likely"
+            }
+          },
+          "tone": "info",
+          "variant": "soft"
+        },
+        "type": "Badge",
+        "visible": {
+          "$state": "/ui/dup/supplierBills/likelyCount"
+        }
+      },
+      "catLikelyBadge4": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/dup/bankTx/likelyCount"
+              },
+              "pattern": "{n} likely"
+            }
+          },
+          "tone": "info",
+          "variant": "soft"
+        },
+        "type": "Badge",
+        "visible": {
+          "$state": "/ui/dup/bankTx/likelyCount"
+        }
+      },
+      "catName1": {
+        "props": {
+          "size": "md",
+          "text": "Contacts"
+        },
+        "type": "Text"
+      },
+      "catName2": {
+        "props": {
+          "size": "md",
+          "text": "Sales invoices"
+        },
+        "type": "Text"
+      },
+      "catName3": {
+        "props": {
+          "size": "md",
+          "text": "Bills"
+        },
+        "type": "Text"
+      },
+      "catName4": {
+        "props": {
+          "size": "md",
+          "text": "Spend & receive money"
+        },
+        "type": "Text"
+      },
+      "catRight1": {
+        "children": [
+          "catExactBadge1",
+          "catLikelyBadge1",
+          "chevron1"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "catRight2": {
+        "children": [
+          "catExactBadge2",
+          "catLikelyBadge2",
+          "chevron2"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "catRight3": {
+        "children": [
+          "catExactBadge3",
+          "catLikelyBadge3",
+          "chevron3"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "catRight4": {
+        "children": [
+          "catExactBadge4",
+          "catLikelyBadge4",
+          "chevron4"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "catRow1": {
+        "children": [
+          "catName1",
+          "catRight1"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedCategory",
+                "value": "Contacts"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/showDetail",
+                "value": true
+              }
+            }
+          ]
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "hover": true,
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "catRow2": {
+        "children": [
+          "catName2",
+          "catRight2"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedCategory",
+                "value": "Sales Invoices"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/showDetail",
+                "value": true
+              }
+            }
+          ]
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "hover": true,
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "catRow3": {
+        "children": [
+          "catName3",
+          "catRight3"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedCategory",
+                "value": "Supplier Bills"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/showDetail",
+                "value": true
+              }
+            }
+          ]
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "hover": true,
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "catRow4": {
+        "children": [
+          "catName4",
+          "catRight4"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedCategory",
+                "value": "Spend / Receive Money"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/showDetail",
+                "value": true
+              }
+            }
+          ]
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "hover": true,
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "categoryStack": {
+        "children": [
+          "catRow1",
+          "divA",
+          "catRow2",
+          "divB",
+          "catRow3",
+          "divC",
+          "catRow4"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "chevron1": {
+        "props": {
+          "name": "ChevronRight",
+          "size": "sm",
+          "tone": "muted"
+        },
+        "type": "Icon"
+      },
+      "chevron2": {
+        "props": {
+          "name": "ChevronRight",
+          "size": "sm",
+          "tone": "muted"
+        },
+        "type": "Icon"
+      },
+      "chevron3": {
+        "props": {
+          "name": "ChevronRight",
+          "size": "sm",
+          "tone": "muted"
+        },
+        "type": "Icon"
+      },
+      "chevron4": {
+        "props": {
+          "name": "ChevronRight",
+          "size": "sm",
+          "tone": "muted"
+        },
+        "type": "Icon"
+      },
+      "content": {
+        "children": [
+          "heroRow",
+          "heroBar",
+          "legendRow",
+          "div1",
+          "categoryStack",
+          "div2",
+          "detailSection",
+          "footerRow"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "type": "Stack",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_contacts",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_invoices/Invoices"
+            },
+            {
+              "$state": "/xero-accounting/list_bank_transactions/BankTransactions"
+            },
+            {
+              "$state": "/xero-accounting/list_payments/Payments"
+            },
+            {
+              "$state": "/ui/dup/recordsScanned"
+            }
+          ]
+        }
+      },
+      "copyIcon": {
+        "props": {
+          "name": "Copy",
+          "size": "md",
+          "tone": "info",
+          "variant": "soft"
+        },
+        "type": "Icon"
+      },
+      "detailCloseBtn": {
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/showDetail",
+              "value": false
+            }
+          }
+        },
+        "props": {
+          "ariaLabel": "Close",
+          "icon": "X",
+          "size": "sm",
+          "tone": "muted"
+        },
+        "type": "IconButton"
+      },
+      "detailHeaderRow": {
+        "children": [
+          "detailHeading",
+          "detailCloseBtn"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "detailHeading": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "c": {
+                "$cond": {
+                  "$state": "/ui/selectedCategory"
+                },
+                "$else": "All duplicates",
+                "$then": {
+                  "$state": "/ui/selectedCategory"
+                }
+              },
+              "pattern": "Reviewing: {c}"
+            }
+          },
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "detailSection": {
+        "children": [
+          "detailHeaderRow",
+          "detailTable"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/ui/showDetail"
+        }
+      },
+      "detailTable": {
+        "props": {
+          "columns": [
+            {
+              "field": "category",
+              "header": "Category",
+              "id": "category",
+              "priority": 2
+            },
+            {
+              "field": "label",
+              "header": "Record",
+              "id": "label",
+              "priority": 1
+            },
+            {
+              "field": "detail",
+              "header": "Detail",
+              "id": "detail",
+              "priority": 2
+            },
+            {
+              "field": "severity",
+              "header": "Severity",
+              "id": "severity",
+              "priority": 1,
+              "width": 90
+            }
+          ],
+          "rows": {
+            "$computed": "top_n",
+            "args": {
+              "limit": 20,
+              "value": {
+                "$cond": {
+                  "$state": "/ui/selectedCategory",
+                  "eq": ""
+                },
+                "$else": {
+                  "$computed": "filter_by",
+                  "args": {
+                    "equals": {
+                      "$state": "/ui/selectedCategory"
+                    },
+                    "field": "category",
+                    "value": {
+                      "$state": "/ui/dup/detailRows"
+                    }
+                  }
+                },
+                "$then": {
+                  "$state": "/ui/dup/detailRows"
+                }
+              }
+            }
+          }
+        },
+        "type": "Table"
+      },
+      "div0": {
+        "props": {},
+        "type": "Divider"
+      },
+      "div1": {
+        "props": {},
+        "type": "Divider"
+      },
+      "div2": {
+        "props": {},
+        "type": "Divider"
+      },
+      "divA": {
+        "props": {},
+        "type": "Divider"
+      },
+      "divB": {
+        "props": {},
+        "type": "Divider"
+      },
+      "divC": {
+        "props": {},
+        "type": "Divider"
+      },
+      "empty": {
+        "props": {
+          "message": "No records available to scan yet."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_contacts",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_invoices/Invoices"
+            },
+            {
+              "$state": "/xero-accounting/list_bank_transactions/BankTransactions"
+            },
+            {
+              "$state": "/xero-accounting/list_payments/Payments"
+            },
+            {
+              "$state": "/ui/dup/recordsScanned",
+              "not": true
+            }
+          ]
+        }
+      },
+      "exactDot": {
+        "props": {
+          "size": "xs",
+          "tone": "warning"
+        },
+        "type": "Dot"
+      },
+      "exactLegend": {
+        "children": [
+          "exactDot",
+          "exactLegendCaption"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "exactLegendCaption": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/dup/exactCount"
+              },
+              "pattern": "{n} exact"
+            }
+          }
+        },
+        "type": "Caption"
+      },
+      "eyebrow": {
+        "props": {
+          "text": "Xero"
+        },
+        "type": "Eyebrow"
+      },
+      "footerRow": {
+        "children": [
+          "reviewBtnWrap",
+          "rescanBtn"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "header": {
+        "children": [
+          "headerRow"
+        ],
+        "props": {},
+        "type": "Header",
+        "watch": {
           "/xero-accounting/list_bank_transactions/BankTransactions": {
             "action": "setState",
             "params": {
@@ -81,345 +830,340 @@
               "value": {
                 "$computed": "xero-accounting_analyze_duplicates",
                 "args": {
-                  "contacts": { "$state": "/xero-accounting/list_contacts/Contacts" },
-                  "invoices": { "$state": "/xero-accounting/list_invoices/Invoices" },
-                  "bankTransactions": { "$state": "/xero-accounting/list_bank_transactions/BankTransactions" },
-                  "payments": { "$state": "/xero-accounting/list_payments/Payments" }
+                  "bankTransactions": {
+                    "$state": "/xero-accounting/list_bank_transactions/BankTransactions"
+                  },
+                  "contacts": {
+                    "$state": "/xero-accounting/list_contacts/Contacts"
+                  },
+                  "invoices": {
+                    "$state": "/xero-accounting/list_invoices/Invoices"
+                  },
+                  "payments": {
+                    "$state": "/xero-accounting/list_payments/Payments"
+                  }
                 }
               }
             }
-          }
-        }
-      },
-      "headerRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["titleGroup", "moreBtn"] },
-      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["copyIcon", "titleStack"] },
-      "copyIcon": { "type": "Icon", "props": { "name": "Copy", "tone": "info", "variant": "soft", "size": "md" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Duplicate Check", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Xero" } },
-      "moreBtn": { "type": "IconButton", "props": { "name": "MoreVertical", "tone": "muted", "ariaLabel": "More options" } },
-
-      "div0": { "type": "Divider", "props": {} },
-
-      "body": {
-        "type": "Body",
-        "props": {},
-        "children": ["loading", "empty", "content"],
-        "watch": {
-          "/xero-accounting/list_contacts/Contacts": {
-            "action": "xero-accounting.list_payments",
-            "params": { "order": "Date DESC", "xero_tenant_id": "fb48e700-fb7b-4bec-b82c-4a84d3daf864" }
           },
-          "/xero-accounting/list_payments/Payments": {
-            "action": "setState",
+          "/xero-accounting/list_contacts/Contacts": {
+            "action": "xero-accounting.list_bank_transactions",
             "params": {
-              "statePath": "/ui/dup",
-              "value": {
-                "$computed": "xero-accounting_analyze_duplicates",
-                "args": {
-                  "contacts": { "$state": "/xero-accounting/list_contacts/Contacts" },
-                  "invoices": { "$state": "/xero-accounting/list_invoices/Invoices" },
-                  "bankTransactions": { "$state": "/xero-accounting/list_bank_transactions/BankTransactions" },
-                  "payments": { "$state": "/xero-accounting/list_payments/Payments" }
-                }
-              }
+              "order": "Date DESC",
+              "xero_tenant_id": "fb48e700-fb7b-4bec-b82c-4a84d3daf864"
             }
           }
         }
       },
-
-      "loading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3", "sk4"],
-        "visible": {
-          "$or": [
-            { "$state": "/_loading/xero-accounting.list_contacts" },
-            { "$state": "/xero-accounting/list_invoices/Invoices", "not": true },
-            { "$state": "/xero-accounting/list_bank_transactions/BankTransactions", "not": true },
-            { "$state": "/xero-accounting/list_payments/Payments", "not": true }
-          ]
-        }
+      "headerRow": {
+        "children": [
+          "titleGroup",
+          "moreBtn"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-
-      "empty": {
-        "type": "Empty",
-        "props": { "message": "No records available to scan yet." },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/xero-accounting.list_contacts", "not": true },
-            { "$state": "/xero-accounting/list_invoices/Invoices" },
-            { "$state": "/xero-accounting/list_bank_transactions/BankTransactions" },
-            { "$state": "/xero-accounting/list_payments/Payments" },
-            { "$state": "/ui/dup/recordsScanned", "not": true }
-          ]
-        }
-      },
-
-      "content": {
-        "type": "Stack",
-        "props": { "gap": "md" },
-        "children": ["heroRow", "heroBar", "legendRow", "div1", "categoryStack", "div2", "detailSection", "footerRow"],
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/xero-accounting.list_contacts", "not": true },
-            { "$state": "/xero-accounting/list_invoices/Invoices" },
-            { "$state": "/xero-accounting/list_bank_transactions/BankTransactions" },
-            { "$state": "/xero-accounting/list_payments/Payments" },
-            { "$state": "/ui/dup/recordsScanned" }
-          ]
-        }
-      },
-
-      "heroRow": { "type": "Row", "props": { "gap": "xs", "align": "baseline" }, "children": ["heroValue", "heroLabel"] },
-      "heroValue": { "type": "Stat", "props": { "value": { "$state": "/ui/dup/totalDuplicates" } } },
-      "heroLabel": { "type": "Text", "props": { "text": "possible duplicates", "size": "lg", "tone": "warning" } },
-
       "heroBar": {
-        "type": "Row",
+        "children": [
+          "heroBarExact",
+          "heroBarLikely"
+        ],
         "props": {
           "gap": "none",
           "template": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{e}fr {l}fr",
-              "e": { "$state": "/ui/dup/exactCount" },
-              "l": { "$state": "/ui/dup/likelyCount" }
+              "e": {
+                "$state": "/ui/dup/exactCount"
+              },
+              "l": {
+                "$state": "/ui/dup/likelyCount"
+              },
+              "pattern": "{e}fr {l}fr"
             }
           }
         },
-        "children": ["heroBarExact", "heroBarLikely"]
+        "type": "Row"
       },
-      "heroBarExact": { "type": "ProgressBar", "props": { "value": 100, "tone": "warning" } },
-      "heroBarLikely": { "type": "ProgressBar", "props": { "value": 100, "tone": "info" } },
-
-      "legendRow": { "type": "Row", "props": { "gap": "md", "align": "center", "justify": "between" }, "children": ["legendDots", "scannedCaption"] },
-      "legendDots": { "type": "Row", "props": { "gap": "md", "align": "center" }, "children": ["exactLegend", "likelyLegend"] },
-      "exactLegend": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["exactDot", "exactLegendCaption"] },
-      "exactDot": { "type": "Dot", "props": { "tone": "warning", "size": "xs" } },
-      "exactLegendCaption": {
-        "type": "Caption",
-        "props": { "text": { "$computed": "fmt", "args": { "pattern": "{n} exact", "n": { "$state": "/ui/dup/exactCount" } } } }
+      "heroBarExact": {
+        "props": {
+          "tone": "warning",
+          "value": 100
+        },
+        "type": "ProgressBar"
       },
-      "likelyLegend": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["likelyDot", "likelyLegendCaption"] },
-      "likelyDot": { "type": "Dot", "props": { "tone": "info", "size": "xs" } },
+      "heroBarLikely": {
+        "props": {
+          "tone": "info",
+          "value": 100
+        },
+        "type": "ProgressBar"
+      },
+      "heroLabel": {
+        "props": {
+          "size": "lg",
+          "text": "possible duplicates",
+          "tone": "warning"
+        },
+        "type": "Text"
+      },
+      "heroRow": {
+        "children": [
+          "heroValue",
+          "heroLabel"
+        ],
+        "props": {
+          "align": "baseline",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "heroValue": {
+        "props": {
+          "value": {
+            "$state": "/ui/dup/totalDuplicates"
+          }
+        },
+        "type": "Stat"
+      },
+      "legendDots": {
+        "children": [
+          "exactLegend",
+          "likelyLegend"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "md"
+        },
+        "type": "Row"
+      },
+      "legendRow": {
+        "children": [
+          "legendDots",
+          "scannedCaption"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "md",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "likelyDot": {
+        "props": {
+          "size": "xs",
+          "tone": "info"
+        },
+        "type": "Dot"
+      },
+      "likelyLegend": {
+        "children": [
+          "likelyDot",
+          "likelyLegendCaption"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
       "likelyLegendCaption": {
-        "type": "Caption",
-        "props": { "text": { "$computed": "fmt", "args": { "pattern": "{n} likely", "n": { "$state": "/ui/dup/likelyCount" } } } }
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/dup/likelyCount"
+              },
+              "pattern": "{n} likely"
+            }
+          }
+        },
+        "type": "Caption"
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3",
+          "sk4"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$or": [
+            {
+              "$state": "/_loading/xero-accounting.list_contacts"
+            },
+            {
+              "$state": "/xero-accounting/list_invoices/Invoices",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_bank_transactions/BankTransactions",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_payments/Payments",
+              "not": true
+            }
+          ]
+        }
+      },
+      "moreBtn": {
+        "props": {
+          "ariaLabel": "More options",
+          "name": "MoreVertical",
+          "tone": "muted"
+        },
+        "type": "IconButton"
+      },
+      "rescanBtn": {
+        "on": {
+          "click": {
+            "action": "xero-accounting.list_contacts",
+            "params": {
+              "includeArchived": false,
+              "order": "Name ASC",
+              "xero_tenant_id": "fb48e700-fb7b-4bec-b82c-4a84d3daf864"
+            }
+          }
+        },
+        "props": {
+          "label": "Rescan",
+          "leadingIcon": "RotateCcw",
+          "size": "md",
+          "variant": "secondary"
+        },
+        "type": "Button"
+      },
+      "reviewBtn": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedCategory",
+                "value": ""
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/showDetail",
+                "value": true
+              }
+            }
+          ]
+        },
+        "props": {
+          "label": "Review duplicates",
+          "size": "md",
+          "variant": "primary"
+        },
+        "type": "Button"
+      },
+      "reviewBtnWrap": {
+        "children": [
+          "reviewBtn"
+        ],
+        "props": {
+          "grow": true
+        },
+        "type": "Stack"
       },
       "scannedCaption": {
-        "type": "Caption",
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
               "pattern": "Scanned {t}",
-              "t": { "$computed": "relative_time", "args": { "value": { "$state": "/ui/dup/lastScannedAt" } } }
-            }
-          },
-          "tone": "muted"
-        }
-      },
-
-      "div1": { "type": "Divider", "props": {} },
-
-      "categoryStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["catRow1", "divA", "catRow2", "divB", "catRow3", "divC", "catRow4"]
-      },
-
-      "catRow1": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center", "clickable": true, "hover": true },
-        "children": ["catName1", "catRight1"],
-        "on": {
-          "click": [
-            { "action": "setState", "params": { "statePath": "/ui/selectedCategory", "value": "Contacts" } },
-            { "action": "setState", "params": { "statePath": "/ui/showDetail", "value": true } }
-          ]
-        }
-      },
-      "catName1": { "type": "Text", "props": { "text": "Contacts", "size": "md" } },
-      "catRight1": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["catExactBadge1", "catLikelyBadge1", "chevron1"] },
-      "catExactBadge1": {
-        "type": "Badge",
-        "props": { "text": { "$computed": "fmt", "args": { "pattern": "{n} exact", "n": { "$state": "/ui/dup/contacts/exactCount" } } }, "tone": "warning", "variant": "soft" },
-        "visible": { "$state": "/ui/dup/contacts/exactCount" }
-      },
-      "catLikelyBadge1": {
-        "type": "Badge",
-        "props": { "text": { "$computed": "fmt", "args": { "pattern": "{n} likely", "n": { "$state": "/ui/dup/contacts/likelyCount" } } }, "tone": "info", "variant": "soft" },
-        "visible": { "$state": "/ui/dup/contacts/likelyCount" }
-      },
-      "chevron1": { "type": "Icon", "props": { "name": "ChevronRight", "tone": "muted", "size": "sm" } },
-
-      "divA": { "type": "Divider", "props": {} },
-
-      "catRow2": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center", "clickable": true, "hover": true },
-        "children": ["catName2", "catRight2"],
-        "on": {
-          "click": [
-            { "action": "setState", "params": { "statePath": "/ui/selectedCategory", "value": "Sales Invoices" } },
-            { "action": "setState", "params": { "statePath": "/ui/showDetail", "value": true } }
-          ]
-        }
-      },
-      "catName2": { "type": "Text", "props": { "text": "Sales invoices", "size": "md" } },
-      "catRight2": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["catExactBadge2", "catLikelyBadge2", "chevron2"] },
-      "catExactBadge2": {
-        "type": "Badge",
-        "props": { "text": { "$computed": "fmt", "args": { "pattern": "{n} exact", "n": { "$state": "/ui/dup/salesInvoices/exactCount" } } }, "tone": "warning", "variant": "soft" },
-        "visible": { "$state": "/ui/dup/salesInvoices/exactCount" }
-      },
-      "catLikelyBadge2": {
-        "type": "Badge",
-        "props": { "text": { "$computed": "fmt", "args": { "pattern": "{n} likely", "n": { "$state": "/ui/dup/salesInvoices/likelyCount" } } }, "tone": "info", "variant": "soft" },
-        "visible": { "$state": "/ui/dup/salesInvoices/likelyCount" }
-      },
-      "chevron2": { "type": "Icon", "props": { "name": "ChevronRight", "tone": "muted", "size": "sm" } },
-
-      "divB": { "type": "Divider", "props": {} },
-
-      "catRow3": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center", "clickable": true, "hover": true },
-        "children": ["catName3", "catRight3"],
-        "on": {
-          "click": [
-            { "action": "setState", "params": { "statePath": "/ui/selectedCategory", "value": "Supplier Bills" } },
-            { "action": "setState", "params": { "statePath": "/ui/showDetail", "value": true } }
-          ]
-        }
-      },
-      "catName3": { "type": "Text", "props": { "text": "Bills", "size": "md" } },
-      "catRight3": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["catExactBadge3", "catLikelyBadge3", "chevron3"] },
-      "catExactBadge3": {
-        "type": "Badge",
-        "props": { "text": { "$computed": "fmt", "args": { "pattern": "{n} exact", "n": { "$state": "/ui/dup/supplierBills/exactCount" } } }, "tone": "warning", "variant": "soft" },
-        "visible": { "$state": "/ui/dup/supplierBills/exactCount" }
-      },
-      "catLikelyBadge3": {
-        "type": "Badge",
-        "props": { "text": { "$computed": "fmt", "args": { "pattern": "{n} likely", "n": { "$state": "/ui/dup/supplierBills/likelyCount" } } }, "tone": "info", "variant": "soft" },
-        "visible": { "$state": "/ui/dup/supplierBills/likelyCount" }
-      },
-      "chevron3": { "type": "Icon", "props": { "name": "ChevronRight", "tone": "muted", "size": "sm" } },
-
-      "divC": { "type": "Divider", "props": {} },
-
-      "catRow4": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center", "clickable": true, "hover": true },
-        "children": ["catName4", "catRight4"],
-        "on": {
-          "click": [
-            { "action": "setState", "params": { "statePath": "/ui/selectedCategory", "value": "Spend / Receive Money" } },
-            { "action": "setState", "params": { "statePath": "/ui/showDetail", "value": true } }
-          ]
-        }
-      },
-      "catName4": { "type": "Text", "props": { "text": "Spend & receive money", "size": "md" } },
-      "catRight4": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["catExactBadge4", "catLikelyBadge4", "chevron4"] },
-      "catExactBadge4": {
-        "type": "Badge",
-        "props": { "text": { "$computed": "fmt", "args": { "pattern": "{n} exact", "n": { "$state": "/ui/dup/bankTx/exactCount" } } }, "tone": "warning", "variant": "soft" },
-        "visible": { "$state": "/ui/dup/bankTx/exactCount" }
-      },
-      "catLikelyBadge4": {
-        "type": "Badge",
-        "props": { "text": { "$computed": "fmt", "args": { "pattern": "{n} likely", "n": { "$state": "/ui/dup/bankTx/likelyCount" } } }, "tone": "info", "variant": "soft" },
-        "visible": { "$state": "/ui/dup/bankTx/likelyCount" }
-      },
-      "chevron4": { "type": "Icon", "props": { "name": "ChevronRight", "tone": "muted", "size": "sm" } },
-
-      "div2": { "type": "Divider", "props": {} },
-
-      "detailSection": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["detailHeaderRow", "detailTable"],
-        "visible": { "$state": "/ui/showDetail" }
-      },
-      "detailHeaderRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["detailHeading", "detailCloseBtn"] },
-      "detailHeading": {
-        "type": "Text",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "Reviewing: {c}",
-              "c": {
-                "$cond": { "$state": "/ui/selectedCategory" },
-                "$then": { "$state": "/ui/selectedCategory" },
-                "$else": "All duplicates"
+              "t": {
+                "$computed": "relative_time",
+                "args": {
+                  "value": {
+                    "$state": "/ui/dup/lastScannedAt"
+                  }
+                }
               }
             }
           },
-          "size": "sm",
-          "weight": "semibold"
-        }
+          "tone": "muted"
+        },
+        "type": "Caption"
       },
-      "detailCloseBtn": { "type": "IconButton", "props": { "icon": "X", "tone": "muted", "size": "sm", "ariaLabel": "Close" }, "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showDetail", "value": false } } } },
-      "detailTable": {
-        "type": "Table",
+      "sk1": {
         "props": {
-          "rows": {
-            "$computed": "top_n",
-            "args": {
-              "value": {
-                "$cond": { "$state": "/ui/selectedCategory", "eq": "" },
-                "$then": { "$state": "/ui/dup/detailRows" },
-                "$else": {
-                  "$computed": "filter_by",
-                  "args": {
-                    "value": { "$state": "/ui/dup/detailRows" },
-                    "field": "category",
-                    "equals": { "$state": "/ui/selectedCategory" }
-                  }
-                }
-              },
-              "limit": 20
-            }
-          },
-          "columns": [
-            { "id": "category", "header": "Category", "field": "category", "priority": 2 },
-            { "id": "label", "header": "Record", "field": "label", "priority": 1 },
-            { "id": "detail", "header": "Detail", "field": "detail", "priority": 2 },
-            { "id": "severity", "header": "Severity", "field": "severity", "priority": 1, "width": 90 }
-          ]
-        }
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
       },
-
-      "footerRow": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["reviewBtnWrap", "rescanBtn"] },
-      "reviewBtnWrap": { "type": "Stack", "props": { "grow": true }, "children": ["reviewBtn"] },
-      "reviewBtn": {
-        "type": "Button",
-        "props": { "label": "Review duplicates", "variant": "primary", "size": "md" },
-        "on": {
-          "click": [
-            { "action": "setState", "params": { "statePath": "/ui/selectedCategory", "value": "" } },
-            { "action": "setState", "params": { "statePath": "/ui/showDetail", "value": true } }
-          ]
-        }
+      "sk2": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
       },
-      "rescanBtn": {
-        "type": "Button",
-        "props": { "label": "Rescan", "variant": "secondary", "size": "md", "leadingIcon": "RotateCcw" },
-        "on": {
-          "click": {
-            "action": "xero-accounting.list_contacts",
-            "params": { "order": "Name ASC", "includeArchived": false, "xero_tenant_id": "fb48e700-fb7b-4bec-b82c-4a84d3daf864" }
-          }
-        }
+      "sk3": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk4": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Duplicate Check"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "copyIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
       }
-    }
+    },
+    "root": "card"
   },
-  "status": "draft"
+  "tags": [
+    "xero",
+    "duplicates",
+    "data-quality",
+    "deduplication",
+    "contacts",
+    "invoices",
+    "bank-transactions"
+  ],
+  "title": "Duplicate Check"
 }
