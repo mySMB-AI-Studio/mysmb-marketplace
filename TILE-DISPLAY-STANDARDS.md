@@ -160,6 +160,18 @@ This standard's tone rules will sometimes disagree with the exact colors a conne
 
 **Platform-adjacent fix, same audit (2026-08-12):** the local tile-harness never rendered this chip at all — the same class of fidelity gap as the earlier `--widget-brand` CSS variable issue (§7's Decorative color section). Fixed in `tile-harness` (PR #7, `fix/harness-connector-logos`): aliases `brand-mark.ts` live from MyHub and serves `/logos/*` from MyHub's real asset directory, so both shapes now render correctly there too — verified against Simpro's wordmark and Salesforce's square mark directly.
 
+### A separate, different logo field: the extension's store-listing branding (found 2026-09-29, still an open item)
+
+**Everything above governs the tile-corner chip. The Admin Center's own "Branding" panel (AI Studio → Extensions → `<plugin>` → Logo / Logo on dark) is a different field entirely** — `branding.logo`/`branding.logoDark` in `plugin.json` (schema: `myHubV2/packages/shared/src/plugins/marketplace-manifest.ts:207-231`), which controls how the extension's card looks in the workspace store, not the tile chip. No dimension/aspect-ratio constraint exists in that schema or in `scripts/validate.ts` — this section is about a size problem that isn't, and this doc doesn't otherwise cover.
+
+**Real incident:** publishing the FileMaker connector to QA failed (`Unexpected end of JSON input`, "the dev catalogue could not be read"). Root cause, confirmed via a teammate's own investigation: **`branding.logo`/`logoDark` get inlined as base64 inside the published catalogue** (not referenced by path at publish time), and base64 encoding inflates raw file size by ~37%. FileMaker's original pair — full-resolution 1859×744 PNGs exported at ~99KB/123KB raw — encoded to **295KB combined, by far the single largest contributor among every extension in the catalogue** (next-highest was 167KB; most successful ones sit at 83–112KB), pushing the whole catalogue to 1.09MB and breaking the publish step.
+
+**No confirmed hard limit exists yet** — this is a genuinely open question, not yet answered by whoever owns the Admin Center's publish-to-QA pipeline. Until it is:
+
+- **Provisional target: keep Logo + Logo on dark combined well under 100KB raw** (before base64 inflation), based on the smallest currently-successful real uploads in the catalogue (Geotab 90KB, Airwallex 89KB, Asana 83KB combined).
+- **Concretely: resize the source image and let a palette PNG do the rest** — a chip/store logo never renders larger than the tile-corner chip's 28px or the store card's own small square, so there's no reason to ship a raster at 1859px wide. FileMaker's replacement pair (`plugins/filemaker/assets/logo.png`/`logo-dark.png`) — same 1859×744 canvas resized to 600px wide, exported as a palette PNG — came out to **10.4KB + 10.4KB (20.8KB raw, ~28KB base64)**, with no visible quality loss checked against both light and dark backgrounds. Use this as the working reference size until a real number is confirmed.
+- **Still needs doing:** get the actual hard limit (a catalogue size cap, or a per-field size cap) from whoever owns that publish pipeline, and update this section with the real number once known — the same "doc first, then confirm" gap this file has flagged elsewhere (§1, §5, §7).
+
 ## 9. Tile subtitle (Eyebrow)
 
 **Every tile places an `Eyebrow` directly below its `Heading`** — this is already universal across every shipped widget, but the convention had never been written down anywhere until now (confirmed absent from this doc when asked directly, 2026-08-13).
