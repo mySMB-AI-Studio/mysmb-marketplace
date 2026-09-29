@@ -1,0 +1,336 @@
+{
+  "id": "xero-payroll-au-fortnightly",
+  "title": "Xero Payroll — Fortnightly",
+  "description": "Recent fortnightly pay runs — pay period, payment date, wages/tax/super/net pay, and whether each run is posted or still a draft. Filtered to fortnightly-cadence pay runs only (resolved from the org's own payroll calendars, not a hardcoded calendar ID), since a Xero organisation can run more than one pay frequency at once. Always targets the connection's actual active Xero organisation (resolved dynamically, no picker shown), since xero-payroll-au's own default tenant can silently point at an organisation without Payroll provisioned.",
+  "category": "hr",
+  "tags": [
+    "xero",
+    "payroll",
+    "fortnightly",
+    "pay run",
+    "wages",
+    "hr"
+  ],
+  "keywords": [
+    "payroll",
+    "fortnightly",
+    "pay run",
+    "pay runs",
+    "wages",
+    "super",
+    "superannuation",
+    "net pay",
+    "xero payroll"
+  ],
+  "connectorsUsed": [
+    "xero-payroll-au",
+    "xero-accounting"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 7 },
+    "min": { "colSpan": 4, "rowSpan": 5 },
+    "max": { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-accounting",
+    "tool": "list_connections",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["header", "breakdownSection", "breakdownDivider", "colHeader", "colDivider", "body", "footer"],
+        "watch": {
+          "/xero-accounting/list_connections/activeTenantId": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedTenantId",
+                "value": { "$state": "/xero-accounting/list_connections/activeTenantId" }
+              }
+            }
+          ],
+          "/ui/selectedTenantId": [
+            {
+              "action": "bust_tool_cache",
+              "params": { "mcp": "xero-payroll-au", "tool": "list_pay_runs" }
+            },
+            {
+              "action": "xero-payroll-au.list_pay_runs",
+              "params": { "xero_tenant_id": { "$state": "/ui/selectedTenantId" } }
+            }
+          ],
+          "/xero-payroll-au/list_pay_runs/PayRuns": [
+            {
+              "action": "bust_tool_cache",
+              "params": { "mcp": "xero-payroll-au", "tool": "list_payroll_calendars" }
+            },
+            {
+              "action": "xero-payroll-au.list_payroll_calendars",
+              "params": { "xero_tenant_id": { "$state": "/ui/selectedTenantId" } }
+            }
+          ],
+          "/xero-payroll-au/list_payroll_calendars/PayrollCalendars": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "xero-payroll-au_fortnightly_pay_run_rows",
+                  "args": {
+                    "payRuns": { "$state": "/xero-payroll-au/list_pay_runs/PayRuns" },
+                    "payrollCalendars": { "$state": "/xero-payroll-au/list_payroll_calendars/PayrollCalendars" }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/rows": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/breakdown",
+                "value": {
+                  "$computed": "xero-payroll-au_pay_run_breakdown",
+                  "args": { "rows": { "$state": "/ui/rows" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "header": {
+        "type": "Header",
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Wallet", "tone": "info", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Fortnightly Payroll", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Xero Payroll AU" }
+      },
+
+      "breakdownSection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["breakdownHeaderRow", "breakdownBar", "breakdownLegend"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/xero-accounting.list_connections", "not": true },
+            { "$state": "/ui/breakdown/segments/0" }
+          ]
+        }
+      },
+      "breakdownHeaderRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["breakdownCaption", "breakdownTotalCaption"]
+      },
+      "breakdownCaption": {
+        "type": "Caption",
+        "props": { "text": "Pay Run Status", "tone": "muted" }
+      },
+      "breakdownTotalCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{n} fortnightly runs", "n": { "$state": "/ui/breakdown/total" } }
+          },
+          "tone": "muted"
+        }
+      },
+      "breakdownBar": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "template": { "$state": "/ui/breakdown/template" } },
+        "children": ["breakdownSegment"],
+        "repeat": { "statePath": "/ui/breakdown/segments", "key": "status" }
+      },
+      "breakdownSegment": {
+        "type": "ProgressBar",
+        "props": { "value": 100, "tone": { "$item": "tone" } }
+      },
+      "breakdownLegend": {
+        "type": "Row",
+        "props": { "gap": "md", "align": "center" },
+        "children": ["legendItem"],
+        "repeat": { "statePath": "/ui/breakdown/segments", "key": "status" }
+      },
+      "legendItem": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["legendDot", "legendLabel"]
+      },
+      "legendDot": {
+        "type": "Dot",
+        "props": { "tone": { "$item": "tone" }, "size": "sm" }
+      },
+      "legendLabel": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{status} ({count})", "status": { "$item": "status" }, "count": { "$item": "count" } }
+          },
+          "tone": "muted"
+        }
+      },
+
+      "breakdownDivider": { "type": "Divider", "props": {} },
+
+      "colHeader": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "padded": true, "template": "8.5rem minmax(0, 1fr) 5.5rem 5.5rem 6rem 5.5rem" },
+        "children": ["colPeriod", "colStatus", "colWages", "colTax", "colSuper", "colNet"]
+      },
+      "colPeriod": { "type": "Caption", "props": { "text": "Pay Period" } },
+      "colStatus": { "type": "Caption", "props": { "text": "Status" } },
+      "colWages": { "type": "Caption", "props": { "text": "Wages" } },
+      "colTax": { "type": "Caption", "props": { "text": "Tax" } },
+      "colSuper": { "type": "Caption", "props": { "text": "Super" } },
+      "colNet": { "type": "Caption", "props": { "text": "Net Pay" } },
+
+      "colDivider": { "type": "Divider", "props": {} },
+
+      "body": {
+        "type": "Body",
+        "children": ["loading", "empty", "list"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/xero-accounting.list_connections" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No fortnightly pay runs found for this organisation." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/xero-accounting.list_connections", "not": true },
+            { "$state": "/ui/rows/0", "not": true }
+          ]
+        }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": { "statePath": "/ui/rows", "key": "id" },
+        "visible": { "$state": "/_loading/xero-accounting.list_connections", "not": true }
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "template": "8.5rem minmax(0, 1fr) 5.5rem 5.5rem 6rem 5.5rem"
+        },
+        "children": ["period", "status", "wages", "tax", "superAmount", "net"]
+      },
+      "period": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["periodRange", "paymentDate"]
+      },
+      "periodRange": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{start} – {end}", "start": { "$item": "periodStart" }, "end": { "$item": "periodEnd" } }
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "paymentDate": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Paid {date}", "date": { "$item": "paymentDate" } }
+          }
+        }
+      },
+      "status": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "status" },
+          "tone": { "$item": "statusTone" },
+          "variant": "soft"
+        }
+      },
+      "wages": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "xero-payroll-au_format_dollars", "args": { "value": { "$item": "wages" } } },
+          "size": "sm"
+        }
+      },
+      "tax": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "xero-payroll-au_format_dollars", "args": { "value": { "$item": "tax" } } }
+        }
+      },
+      "superAmount": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "xero-payroll-au_format_dollars", "args": { "value": { "$item": "superAmount" } } }
+        }
+      },
+      "net": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "xero-payroll-au_format_dollars", "args": { "value": { "$item": "netPay" } } },
+          "weight": "semibold",
+          "size": "sm"
+        }
+      },
+
+      "footer": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["openXeroBtn"]
+      },
+      "openXeroBtn": {
+        "type": "Button",
+        "props": { "label": "Open Payroll in Xero", "tone": "brand", "variant": "primary", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": "https://payroll.xero.com/", "target": "_blank" }
+          }
+        }
+      }
+    }
+  }
+}

@@ -8,6 +8,8 @@ Access Xero Payroll (Australia) via the myHub-hosted OAuth MCP gateway. Manage e
 
 No environment variables required. Browser OAuth — click Connect in MyHub to sign in and pick an AU Xero org.
 
+The Fortnightly Payroll tile also uses the Xero Accounting connection (`xero-accounting`) to follow the organisation picked in the Xero connector dock.
+
 Scopes requested:
 ```
 offline_access openid profile email
