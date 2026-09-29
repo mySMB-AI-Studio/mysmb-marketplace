@@ -108,7 +108,7 @@
       "summarySection": {
         "type": "Stack",
         "props": { "gap": "xs" },
-        "children": ["totalAmountText", "metaRow"]
+        "children": ["totalAmountText", "metaRow", "blockedReasonRow"]
       },
       "totalAmountText": {
         "type": "Heading",
@@ -154,27 +154,16 @@
         "visible": { "$state": "/xero-accounting/list_xero_batch_payment_bills/summary/excludedCount" }
       },
 
-      "divider1": { "type": "Divider", "props": {} },
+      "blockedReasonRow": {
+        "type": "Caption",
+        "props": {
+          "text": { "$state": "/xero-accounting/list_xero_batch_payment_bills/summary/blockedReason" },
+          "tone": "warning"
+        },
+        "visible": { "$state": "/xero-accounting/list_xero_batch_payment_bills/summary/blockedReason" }
+      },
 
-      "dotLegend": {
-        "type": "Row",
-        "props": { "gap": "md", "align": "center" },
-        "children": ["legendReady", "legendExcluded"]
-      },
-      "legendReady": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["legendDotReady", "legendLabelReady"]
-      },
-      "legendDotReady":    { "type": "Dot",     "props": { "size": "sm", "tone": "success" } },
-      "legendLabelReady":  { "type": "Caption", "props": { "text": "Included in ABA", "tone": "muted" } },
-      "legendExcluded": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["legendDotExcluded", "legendLabelExcluded"]
-      },
-      "legendDotExcluded":    { "type": "Dot",     "props": { "size": "sm", "tone": "warning" } },
-      "legendLabelExcluded":  { "type": "Caption", "props": { "text": "Missing bank details", "tone": "muted" } },
+      "divider1": { "type": "Divider", "props": {} },
 
       "billList": {
         "type": "Stack",
