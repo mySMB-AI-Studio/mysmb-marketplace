@@ -286,7 +286,7 @@ Call `get_organisation` once (the organisation's `Name`, `BaseCurrency`, `Financ
 
 ```js
 XK.app({
-  title: 'Profit and Loss', primary: 'pnl', org: 'org', conns: 'connections',
+  title: 'Profit and Loss', primary: 'pnl', dated: ['pnl', 'pnl_cash'], org: 'org', conns: 'connections',
   inputs: { start: 'from_date', end: 'to_date', basis: 'basis', cmpStart: 'compare_from', cmpEnd: 'compare_to', org: 'org', persona: 'persona', display: 'display' },
   defaults: { from_date: '2026-07-01', to_date: '2026-09-25', basis: 'Accrual', compare_from: '2025-07-01', compare_to: '2025-09-25', org: '', persona: 'Bookkeeper',
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":"pl"}' },

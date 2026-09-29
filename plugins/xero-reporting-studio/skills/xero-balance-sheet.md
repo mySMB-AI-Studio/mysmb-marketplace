@@ -270,7 +270,7 @@ Call `get_organisation` once, `list_connections` once, and `get_balance_sheet` o
 
 ```js
 XK.app({
-  title: 'Balance Sheet', primary: 'bs', org: 'org', conns: 'connections',
+  title: 'Balance Sheet', primary: 'bs', dated: ['bs', 'bs_cash'], org: 'org', conns: 'connections',
   inputs: { asAt: 'as_at', basis: 'basis', cmpAsAt: 'compare_as_at', org: 'org', persona: 'persona', display: 'display' },
   defaults: { as_at: '2026-09-25', basis: 'Accrual', compare_as_at: '2025-09-25', fy_start: '2026-07-01', org: '', persona: 'Bookkeeper',
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"today","c":"none","v":"bs"}' },

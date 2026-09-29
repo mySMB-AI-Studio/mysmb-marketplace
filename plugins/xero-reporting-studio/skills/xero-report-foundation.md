@@ -15,7 +15,7 @@ Spec: Xero Reports Prompt Library v1.2 (P01–P15) with the v1.2 patch (one agen
 
 1. **Discovery call.** Call the report's primary tool once with its default inputs (the report skill says which), plus `get_organisation` and `list_connections` once each. Confirm Xero is connected (a connection error → tell the user to connect Xero under Settings → Connections and stop). A failed call is an error message, not data: report it. Read the organisation's name from `get_organisation`. Never copy a returned figure into the document.
 2. **dataBindings.** Copy the report skill's `dataBindings` JSON exactly. Change only the `default` values of date inputs, as its *Date defaults* line says (`YYYY-MM-DD` or `"today"`), and the `display` JSON string's `p` (period preset), `a` (as-at preset), `c` (compare: `none` | `prev_period` | `prev_year` | `ytd`) and `v` (report view) to match the request. Leave `org` empty (the connection's default organisation) unless the user names another organisation that `list_connections` returned — then use its `tenantId`. For a cash-basis request set the `basis` default to `Cash`. **Branding:** leave `style` = `xero` (Xero branding, the default). Set `style` = `mysmb` when the user asks for mySMB branding or the mySMB report template. Set `b` to `#rrggbb` only when the user asks for their own or their customer's colour. Keep every other key, input name, option, binding id, tool name and param.
-3. **Report config.** Copy the report config JS exactly. Change only its `defaults` object so it equals the manifest defaults, with `"today"` written as today's date. Change nothing else.
+3. **Report config.** Copy the report config JS exactly. Change only its `defaults` object so it equals the manifest defaults **exactly** (the same dates — the platform opens the report with the manifest defaults), with `"today"` written as today's date. Change nothing else. (If the two ever differ, the kit sees it in Xero's report title and refetches at the dates the controls show.)
 4. **Assemble** one HTML document from the skeleton below: replace `{{TITLE}}` with the report title, `{{CSS}}` with the stylesheet, `{{KIT}}` with the report kit and `{{CFG}}` with the report config, all verbatim. Never edit, shorten, reformat or "improve" the kit or the stylesheet — they are tested as one unit and the platform validates the document against the bindings.
 5. **Save** with `artifact_save`: `title` = "<Organisation> — <Report name>" (no period — the reader can change it; put the opening period in the one-line `description`), `fileName` and `tags` from the report skill, `content` = the document, `dataBindings` = the manifest. Do not pass `connectors` (a live report derives them). Never paste the HTML into chat.
 6. **Completion note** (3–6 lines): the report is live and refreshes on open; the controls the reader can change; the validation checks and whether they passed on the discovery data; any N/A items (the report skill lists them); Download PDF / Download Excel are in the report, and the report window's Download and Share save a frozen snapshot.
@@ -43,7 +43,7 @@ The user never has to choose an output format: every report is HTML with Downloa
 
 ## Kit reference (for adapting a config after discovery)
 
-`XK.app(cfg)` keys: `title`, `primary` (binding whose title a snapshot reads), `org` (the `get_organisation` binding id), `conns` (the `list_connections` binding id), `fyMonth` (override the organisation's financial-year start), `retryMs`, `inputs` (role → declared input: start, end, asAt, basis, cmpStart, cmpEnd, cmpAsAt, org, persona, display), `defaults`, `uses` (binding id → the declared inputs it consumes; drives refetching), `tools`, `compare`, `enums`, `views`, `derive(inputs, fyMonth)` (applied on open and on every change), `roll`, `render(ctx)` → `{checks:[{name, pass:true|false|null, info?, detail}], na, notes, title, period}`, `excel(ctx)`.
+`XK.app(cfg)` keys: `title`, `primary` (binding whose title a snapshot reads), `dated` (bindings whose Xero report title must name the selected dates — checked on open and after each refetch), `org` (the `get_organisation` binding id), `conns` (the `list_connections` binding id), `fyMonth` (override the organisation's financial-year start), `retryMs`, `inputs` (role → declared input: start, end, asAt, basis, cmpStart, cmpEnd, cmpAsAt, org, persona, display), `defaults`, `uses` (binding id → the declared inputs it consumes; drives refetching), `tools`, `compare`, `enums`, `views`, `derive(inputs, fyMonth)` (applied on open and on every change), `roll`, `render(ctx)` → `{checks:[{name, pass:true|false|null, info?, detail}], na, notes, title, period}`, `excel(ctx)`.
 
 Helpers: `XK.walk(report)` → `{lines:[{kind:'header'|'row'|'total', depth, label, id, group, parent, calc, closes, values}], sections, columns, titles}`; `sectionTotal` / `sectionBy(walked, /title/)`; `linesTies` (SummaryRow = Σ rows) / `parentTies` (Total Assets = Σ sections) / `runningTies` (Gross / Net Profit = running Σ); `currentYearEarnings(lines)`; `orgOf` / `connections` / `companyOf` / `fiscalStart`; `find` / `val`; `money` / `pct` / `periodLine` / `rangeLabel` / `asOfLine` / `footerStamp`; `statement` / `grid` / `kpis` / `bars` / `line` / `donut` / `waterfall`; `preset` / `asAt` / `compare` / `fyStartOf`; `xlsx` / `sheetFromLines`.
 
@@ -649,11 +649,12 @@ return Promise.all(ids.map(function (id) { return fetchOne(id, inputs); }))
 .then(function () {
 S.fetchedAt = new Date().toISOString(); S.busy--; status('');
 var roll = rollPresets(); if (roll) return change(roll); // e.g. another organisation's financial year moves 'This financial year to date'
+var hl = heal(); if (hl) return hl; // figures for other dates than the controls show → refetch once at the controls' dates
 render(); return retryLimited(1);
 });
 }
 function change(patch, dispPatch) {
-var changed = [], k;
+var changed = [], k; S.healed = false;
 for (k in patch) if (k && S.inputs[k] !== patch[k]) { S.inputs[k] = patch[k]; changed.push(k); }
 if (dispPatch) setDisp(dispPatch);
 if (cfg.derive) { var dv = cfg.derive(Object.assign({}, S.inputs), fy().month, disp()) || {}; for (k in dv) if (S.inputs[k] !== dv[k]) { S.inputs[k] = dv[k]; changed.push(k); } }
@@ -681,6 +682,16 @@ var ds = titleDates((r.ReportTitles || []).slice(2).join(' '));
 if (I.start && ds.length >= 2) { S.inputs[I.start] = ds[0]; if (I.end && cfg.headerEnd !== false) S.inputs[I.end] = ds[1]; }
 if (I.asAt && ds.length) S.inputs[I.asAt] = ds[ds.length - 1];
 }
+function stale() {
+var want = I.start ? [S.inputs[I.start], S.inputs[I.end]] : I.asAt ? [S.inputs[I.asAt]] : null; if (!want) return [];
+return (cfg.dated || [cfg.primary]).filter(function (id) {
+var r = reportOf(S.data[id]); if (!r) return false;
+var ds = titleDates((r.ReportTitles || []).slice(2).join(' ')); if (!ds.length) return false;
+return want.length === 2 ? (ds.length >= 2 ? !(ds[0] === want[0] && ds[ds.length - 1] === want[1]) : ds[0] !== want[1]) : ds[ds.length - 1] !== want[0]; // a title with one date is compared on the end date
+}).map(function (id) { var r = reportOf(S.data[id]); return { id: id, title: String((r.ReportTitles || []).slice(2).join(' ')) }; });
+}
+function dateKeys() { return Object.keys(S.inputs).filter(function (k) { return k !== I.org && k !== I.persona && k !== I.display && k !== I.basis; }); }
+function heal() { if (!live || S.healed || !stale().length) return null; S.healed = true; return requery(dateKeys()); }
 function opt(list, cur) { return list.map(function (o) { return '<option value="' + h(o[0]) + '"' + (String(o[0]) === String(cur) ? ' selected' : '') + '>' + h(o[1]) + '</option>'; }).join(''); }
 function controls() {
 var el = $('xk-controls'); if (!el) return; var d = disp(), c0 = co(), dis = live ? '' : ' disabled', x = '';
@@ -745,6 +756,7 @@ controls();
 var out = {};
 try { out = cfg.render(c) || {}; } catch (e) { if (c.body) c.body.innerHTML = '<p class="xk-err">This report could not render: ' + h(e.message) + '</p>'; out = { checks: [{ name: 'Report rendered', pass: false, detail: e.message }] }; }
 last = { checks: out.checks || [], na: out.na || [], notes: out.notes || [] };
+stale().forEach(function (x) { last.checks.unshift({ name: 'Xero report dates = the selected dates', pass: false, detail: (cfg.tools || {})[x.id] + ' returned "' + x.title + '" — press Refresh' }); });
 var nc = Object.keys(S.errors).some(function (id) { return S.errors[id] && S.errors[id].code === 'needs_connection'; });
 if (nc && c.body && c.body.textContent.indexOf(FRIENDLY.needs_connection) < 0) { var dv = document.createElement('div'); dv.className = 'xk-banner fail'; dv.textContent = FRIENDLY.needs_connection; c.body.insertBefore(dv, c.body.firstChild); }
 Object.keys(S.errors).forEach(function (id) {
@@ -794,7 +806,7 @@ function boot(bundle) {
 S.data = {}; S.errors = Object.assign({}, bundle.errors || {}); S.fetchedAt = bundle.fetchedAt || null;
 Object.keys(bundle.data || {}).forEach(function (id) { if (!S.errors[id]) absorb(id, bundle.data[id]); });
 adoptHeader(); status('');
-if (S.first) { S.first = false; var roll = rollPresets(); if (roll) { change(roll); return; } announce(); }
+if (S.first) { S.first = false; var roll = rollPresets(); if (roll) { change(roll); return; } announce(); if (heal()) return; }
 render(); retryLimited(1);
 }
 if (!MH) { status('Open this report in mySMB to load Xero data.'); return { state: S }; }
