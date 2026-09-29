@@ -1,0 +1,108 @@
+{
+  "attachments": [],
+  "contentHash": "ad555362e805ad93e3d5b0cce896e0ebc8a634b833ffd18793d058f744c5e852",
+  "declaredScopes": [
+    "files:read",
+    "workq:write"
+  ],
+  "dependencies": [
+    {
+      "entityKind": "form",
+      "originKey": "4c76d1cd-fabe-45ba-8212-658060f0bb2b",
+      "sourceId": "8e0ede72-87ca-419f-a5ca-ba8b756ae699"
+    },
+    {
+      "entityKind": "form",
+      "originKey": "e2c78a13-1ad5-43e0-bb97-a5c214b9b84e",
+      "sourceId": "011e6b35-9d4f-485d-b81b-c8e4c1286bae"
+    }
+  ],
+  "description": "Creates the WorkQ items that set up bookkeeping: the Bookkeeping setup form (first run only) and one Client bookkeeping settings form per business you list. Run it again any time to add businesses.",
+  "flowIr": {
+    "description": "Creates the WorkQ items that set up bookkeeping: the Bookkeeping setup form (first run only) and one Client bookkeeping settings form per business you list. Run it again any time to add businesses.",
+    "irVersion": 1,
+    "name": "Bookkeeping: Start setup",
+    "nodes": [
+      {
+        "code": "# ── bookkeeping kit: shared helpers (inlined into each node by gen-ext.js) ──\nimport json\nimport re\nimport datetime\nfrom zoneinfo import ZoneInfo\n\n# Knowledge layout. Folders may nest at most 2 levels, so inbox folders are top-level.\nBK_SETTINGS = \"Bookkeeping/settings.json\"\nBK_CLIENTS = \"Bookkeeping/Clients\"\nBK_RULES = \"Bookkeeping/Rules\"\nBK_BILLS = \"Bookkeeping/Bills\"\nBK_INBOX = \"Bookkeeping Inbox\"\nBK_PROCESSED = \"Bookkeeping Processed\"\nBK_FAILED = \"Bookkeeping Failed\"\n\n\ndef bk_slug(name):\n    s = re.sub(r\"[^a-z0-9]+\", \"-\", str(name or \"\").lower()).strip(\"-\")\n    return s[:40].strip(\"-\") or \"client\"\n\n\ndef bk_read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\n\n# ── Create setup items ──\n\n\nsettings = bk_read_json(BK_SETTINGS)\nactor = params.get(\"actor\") or \"\"\nassignees = [actor] if actor else None\ncreated = []\n\nif not settings:\n    item = api.workq.create(\n        title=\"Set up Bookkeeping for Xero\",\n        scope=\"org\",\n        description=(\n            \"Fill in the **Bookkeeping setup** form attached to this item. It tells the bookkeeping \"\n            \"automations who reviews bills, who handles exceptions and when a bill needs the client's approval.\\n\\n\"\n            \"When it's saved, this item gets a checklist of the next steps.\"\n        ),\n        priority=\"high\",\n        assignee_ids=assignees,\n        labels=[\"bookkeeping\", \"setup\"],\n    )\n    api.workq.attach_form(todo_id=item[\"id\"], form_id=params[\"setup_form\"])\n    created.append(item[\"id\"])\n\nnames = [n.strip() for n in re.split(r\"[\\n,;]+\", params.get(\"client_names\") or \"\") if n.strip()]\nfor name in names:\n    item = api.workq.create(\n        title=\"Bookkeeping settings for \" + name,\n        scope=\"org\",\n        description=(\n            \"Fill in the **Client bookkeeping settings** form for **\" + name + \"**: its Xero organisation, \"\n            \"who reviews its bills and when the business owner must approve a bill.\\n\\n\"\n            \"When it's saved, bills for this business can be dropped into the `\" + BK_INBOX + \"/\" + bk_slug(name)\n            + \"` folder in Knowledge.\"\n        ),\n        priority=\"medium\",\n        assignee_ids=assignees,\n        labels=[\"bookkeeping\", \"setup\", bk_slug(name)],\n    )\n    api.workq.attach_form(todo_id=item[\"id\"], form_id=params[\"client_form\"])\n    created.append(item[\"id\"])\n\ncreated_count = len(created)\nif created_count == 0:\n    summary = \"Nothing to do: Bookkeeping is already set up and no client names were given. Run again with client names to add businesses.\"\nelse:\n    summary = \"Created \" + str(created_count) + \" setup item(s) in WorkQ.\"\n",
+        "id": "start_setup",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "How many setup items were created",
+            "name": "created_count",
+            "type": "int"
+          },
+          {
+            "description": "What happened",
+            "name": "summary",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "control": "form-picker",
+            "label": "Bookkeeping setup form",
+            "name": "setup_form",
+            "required": true,
+            "type": "uuid",
+            "value": "8e0ede72-87ca-419f-a5ca-ba8b756ae699"
+          },
+          {
+            "control": "form-picker",
+            "label": "Client bookkeeping settings form",
+            "name": "client_form",
+            "required": true,
+            "type": "uuid",
+            "value": "011e6b35-9d4f-485d-b81b-c8e4c1286bae"
+          },
+          {
+            "binding": "{{ params.client_names }}",
+            "control": "hidden",
+            "label": "Client names",
+            "name": "client_names",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ trigger.actor_user_id }}",
+            "control": "hidden",
+            "label": "Person who ran it",
+            "name": "actor",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Creates the Bookkeeping setup item if bookkeeping is not set up yet, and one client settings item per business listed, each with its form attached.",
+        "title": "Create setup items"
+      }
+    ],
+    "params": [
+      {
+        "control": "text",
+        "description": "Leave blank on the first run to create only the Bookkeeping setup item.",
+        "label": "Client businesses to set up (one per line)",
+        "name": "client_names",
+        "required": false,
+        "type": "str",
+        "value": ""
+      }
+    ],
+    "rootOrder": [
+      "start_setup"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "knowledgeFiles": [],
+  "level": "org",
+  "name": "Bookkeeping: Start setup",
+  "originKey": "80238aad-defb-48bd-9462-0bf5f0c3ebe3",
+  "tags": [
+    "bookkeeping"
+  ]
+}
