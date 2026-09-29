@@ -21,19 +21,11 @@ Connecting is a single form: your MyGeotab database name, your MyGeotab username
 
 ## Configuration
 
-This plugin requires three credentials, supplied once via the Connect modal and sent on every MCP request as headers:
-
-| Variable | Header sent to the server | Purpose |
-|----------|---------------------------|---------|
-| `GEOTAB_DATABASE` | `X-Geotab-Database` | The customer's MyGeotab database name -- the `<database>` segment of the MyGeotab sign-in URL, e.g. `my.geotab.com/<database>`. |
-| `GEOTAB_USERNAME` | `X-Geotab-Username` | The MyGeotab username (an email address) used to sign in. |
-| `GEOTAB_PASSWORD` | `X-Geotab-Password` | The MyGeotab password, or a Geotab API key used in the password field -- MyGeotab authenticates both identically. |
-
-All three are required. None are stored server-side -- the self-hosted MCP server is a per-tenant, bring-your-own-credentials connector with no server-side OAuth secret; credentials arrive per-request as headers and are only ever forwarded to the connected MyGeotab database.
-
-### Finding your database name
-
-Your MyGeotab database name is the path segment right after the host in the URL you use to sign in to MyGeotab, e.g. if you sign in at `my.geotab.com/acme-transport`, your database name is `acme-transport`.
+| Variable | Used by |
+|---|---|
+| `GEOTAB_DATABASE` | `geotab-direct` MCP server |
+| `GEOTAB_PASSWORD` | `geotab-direct` MCP server |
+| `GEOTAB_USERNAME` | `geotab-direct` MCP server |
 
 ## What this provides
 
