@@ -14,16 +14,17 @@ Call `get_organisation` once and `list_connections` once (bound the same way eve
 
 Build an interactive HTML index, grouped by category, with a search/filter box and one entry per report skill. Link every implemented skill by its real name so the reader can ask for it directly. Categories and entries, current as of this library:
 
-- **Financial statements**: Profit and Loss (`xero-profit-and-loss`, kit report) · Balance Sheet (`xero-balance-sheet`, kit report)
-- **Payables and receivables**: Aged Receivables (`xero-aged-receivables`) · Aged Payables (`xero-aged-payables`)
-- **Taxes and balances**: Activity Statement — a GST summary, not a lodgeable BAS (`xero-activity-statement`)
-- **Cash**: Cash Summary (`xero-cash-summary`) · Cash Position (`xero-cash-position`) · Cash Flow Manager (`xero-cash-flow-manager`)
-- **Dashboards / overviews**: Business Overview (`xero-business-overview`) · Sales Overview (`xero-sales-overview`) · Purchases Overview (`xero-purchases-overview`) · Performance Overview (`xero-performance-overview`)
-- **Planning and scoring**: Business Health Scorecard — an independently computed scorecard, not Xero's own score (`xero-business-health-scorecard`, kit report)
+- **Financial statements**: Profit and Loss (`xero-profit-and-loss`, kit report) · Balance Sheet (`xero-balance-sheet`, kit report) · Trial Balance (`xero-trial-balance`, kit report) · General Ledger — disclosed as scope-gated, may be unavailable on this connection (`xero-general-ledger`) · Tracking-Category Profit and Loss (`xero-tracking-category-pnl`)
+- **Payables and receivables**: Aged Receivables (`xero-aged-receivables`, kit report) · Aged Payables (`xero-aged-payables`, kit report) · Sales Register / Customer Sales (`xero-sales-register`)
+- **Reconciliations**: Bank Reconciliation Status — Reconciled vs Unreconciled only, no third "coded" state (`xero-bank-reconciliation-status`)
+- **Taxes and balances**: Activity Statement — a GST summary, not a lodgeable BAS (`xero-activity-statement`) · GST Reconciliation Detail — same non-BAS disclosure (`xero-gst-reconciliation-detail`)
+- **Cash**: Cash Summary (`xero-cash-summary`, kit report) · Cash Position (`xero-cash-position`, kit report) · Cash Flow Manager (`xero-cash-flow-manager`, kit report)
+- **Dashboards / overviews**: Business Overview (`xero-business-overview`, kit report) · Sales Overview (`xero-sales-overview`, kit report) · Purchases Overview (`xero-purchases-overview`, kit report) · Performance Overview (`xero-performance-overview`, kit report) · Exceptions Dashboard (`xero-exceptions-dashboard`)
+- **Planning and scoring**: Business Health Scorecard — an independently computed scorecard, not Xero's own score (`xero-business-health-scorecard`, kit report) · Budget vs Actual (`xero-budget-vs-actual`) · Month-End Task List — a checklist, not a WorkQ push (`xero-month-end-task-list`)
 - **Analytics**: Visualise — Profitability / Cash / Accounts / KPIs charts, plus an honest no-data state for External data and Industry benchmarks (`xero-visualise`, kit report)
-- **Library**: Reports Catalog (this skill)
+- **Library**: Reports Catalog (this skill) · Report Pack — bundles other report skills into one document, no data of its own (`xero-report-pack`)
 
-That is all sixteen skill files present in this plugin today (`plugins/xero-reporting-studio/skills/`, excluding the shared `xero-report-foundation`). If a future skill is added or removed, update this list from the actual directory contents — never guess or leave a stale entry, and never describe a skill this plugin doesn't actually carry.
+That is all twenty-six skill files present in this plugin today (`plugins/xero-reporting-studio/skills/`, excluding the shared `xero-report-foundation`). If a future skill is added or removed, update this list from the actual directory contents — never guess or leave a stale entry, and never describe a skill this plugin doesn't actually carry.
 
 Mark entries with no connector endpoint as such, not "coming soon": lodging an Activity Statement / BAS, a true cash-flow *statement* (as distinct from the Cash Flow Manager's short-term projection), Xero Analytics (Syft) widgets and AI insights, Xero's own Business Health Scorecard, and industry benchmarks. Say plainly that these have no data source on `xero-accounting` and are not planned as a "future update" — they would need a different connector or a different Xero product entirely.
 
