@@ -6,8 +6,6 @@ Global business banking & payments via [Airwallex](https://www.airwallex.com) �
 
 No configuration variables are required.
 
-Airwallex authenticates with a single account-level Client ID + API key pair, generated in the Airwallex web app under **Developer → API keys**. This is not a per-user credential — it is shared across the whole organisation and is already registered as the `AIRWALLEX_CLIENT_ID` / `AIRWALLEX_API_KEY` secrets on `myhub-mcp-servers`, which exchanges them server-side for a short-lived bearer token on every call. Nothing is configured from this plugin, and no `${VAR}` substitution happens on the plugin side — connecting it does not prompt for any credential.
-
 ## Tools
 
 All tools carry `readOnlyHint: true`. This is a deliberately read-only first cut — Airwallex's write endpoints (create a transfer, confirm/capture/cancel a payment intent, create a beneficiary, etc.) move real money or create real payment obligations, so they are out of scope until the read path has been exercised against a live account and the team has decided how a workspace tile should gate an action that moves money.
