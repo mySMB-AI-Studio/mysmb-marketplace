@@ -80,12 +80,33 @@
       "billInfo": {
         "children": [
           "billName",
-          "billMeta"
+          "billMeta",
+          "billBadgeWrap"
         ],
         "props": {
           "gap": "none"
         },
         "type": "Stack"
+      },
+      "billBadgeWrap": {
+        "children": [
+          "billBadge"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "billBadge": {
+        "props": {
+          "label": {
+            "$item": "bankBadge"
+          },
+          "tone": {
+            "$item": "badgeTone"
+          }
+        },
+        "type": "Badge"
       },
       "billList": {
         "children": [
@@ -135,7 +156,7 @@
         "children": [
           "billDot",
           "billInfo",
-          "billAmount"
+          "billRightCol"
         ],
         "props": {
           "align": "start",
@@ -143,6 +164,38 @@
           "template": "auto minmax(0,1fr) auto"
         },
         "type": "Row"
+      },
+      "billRightCol": {
+        "children": [
+          "billAmount",
+          "billReviewBtn"
+        ],
+        "props": {
+          "align": "end",
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "billReviewBtn": {
+        "props": {
+          "label": "Review",
+          "size": "sm",
+          "variant": "link"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$item": "reviewUrl"
+              }
+            }
+          }
+        },
+        "type": "Button",
+        "visible": {
+          "$item": "needsReview"
+        }
       },
       "body": {
         "children": [
@@ -356,14 +409,41 @@
       },
       "statsGrid": {
         "children": [
+          "statMismatch",
           "statCantVerify",
           "statVerified"
         ],
         "props": {
-          "cols": 2,
+          "cols": 3,
           "gap": "sm"
         },
         "type": "Grid"
+      },
+      "statMismatch": {
+        "children": [
+          "valMismatch",
+          "lblMismatch"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "valMismatch": {
+        "props": {
+          "tone": "danger",
+          "value": {
+            "$state": "/xero-accounting/list_xero_bank_detail_check/summary/mismatch"
+          }
+        },
+        "type": "Stat"
+      },
+      "lblMismatch": {
+        "props": {
+          "text": "MISMATCH",
+          "tone": "muted"
+        },
+        "type": "Caption"
       },
       "title": {
         "props": {
