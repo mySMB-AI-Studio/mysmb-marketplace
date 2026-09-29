@@ -459,6 +459,39 @@ const overdue_only = (args) => {
         return Number.isFinite(n) && n > 0;
     });
 };
+// ── awaiting_payment_breakdown ────────────────────────────────────────
+// Groups a list of AUTHORISED (not yet paid) invoices/bills by due-date
+// severity, using the exact same thresholds as `overdue_tone` so a
+// segment's color always matches what each row's own Dot/Badge already
+// shows — never a second, independently-derived color language for the
+// same underlying value.
+// Args: { invoices: array }
+// Returns: { total, segments: [{ status, count, tone }], template }
+const awaiting_payment_breakdown = (args) => {
+    const invoices = Array.isArray(args.invoices) ? args.invoices : [];
+    let notYetDue = 0;
+    let overdue = 0;
+    let wellOverdue = 0;
+    for (const inv of invoices) {
+        const n = Number(days_overdue({ value: inv.DueDate }));
+        if (!Number.isFinite(n) || n <= 0)
+            notYetDue += 1;
+        else if (n <= 30)
+            overdue += 1;
+        else
+            wellOverdue += 1;
+    }
+    const segments = [
+        { status: 'Not yet due', count: notYetDue, tone: 'muted' },
+        { status: 'Overdue', count: overdue, tone: 'warning' },
+        { status: 'Well overdue', count: wellOverdue, tone: 'destructive' },
+    ].filter((s) => s.count > 0);
+    return {
+        total: invoices.length,
+        segments,
+        template: segments.length ? segments.map((s) => `${s.count}fr`).join(' ') : '1fr',
+    };
+};
 // ── age_buckets ──────────────────────────────────────────────────────
 // Aggregate a list of invoices into the 5 standard aging buckets.
 // Returns a fixed-order array — always 5 entries, even buckets with no
@@ -1270,6 +1303,7 @@ const elements = {
         overdue_label,
         overdue_only,
         overdue_tone,
+        awaiting_payment_breakdown,
         po_status_tone,
         quote_status_tone,
         this_month_range,
