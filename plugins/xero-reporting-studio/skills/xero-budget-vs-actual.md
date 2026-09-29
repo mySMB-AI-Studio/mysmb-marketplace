@@ -1,0 +1,14 @@
+---
+name: xero-budget-vs-actual
+description: Build a live Xero Budget vs Actual comparison from list_budgets and get_budget_summary, composing Actual and Variance from get_profit_and_loss when the budget report itself doesn't return them. Use for "budget vs actual", "budget variance", "how are we tracking against budget", "budget report".
+---
+# Budget vs Actual
+
+Call `list_budgets` (`dateFrom` / `dateTo` bracketing the requested period) to find which budget(s) exist and their own date coverage and status — for context and disclosure only. `get_budget_summary` (`date` = the period's last month, `periods`, `timeframe`: an INTEGER `1` (monthly), `3` (quarterly) or `12` (yearly) column split — **not** the `MONTH`/`QUARTER`/`YEAR` string enum used by `get_profit_and_loss` / `get_balance_sheet`; do not conflate the two) has **no budget-selector parameter** — it always returns Xero's one overall budget. If `list_budgets` shows more than one budget, say so plainly and note the report can only show the overall figures Xero returns for `get_budget_summary`, never a figure picked out for one named budget. The response shape has not been exercised live: if its Rows already carry Budget, Actual and Variance columns (detect by header label, the same way the Trial Balance skill detects Debit/Credit), read them directly; if the Rows carry budget figures only, compose Actual from a parallel `get_profit_and_loss` call over the same date range and compute Variance = Actual − Budget per account line client-side, and disclose in Sources & limitations which path was used.
+
+Show budgeted, actual and variance ($ and %) per account line and section, grouped exactly as Xero returns the rows, with over/under highlighted as favourable or unfavourable per account type (a revenue shortfall and an expense overrun are both unfavourable).
+
+Validate every section total = Σ its account rows, Variance = Actual − Budget on every line, and — only when Actual was composed from `get_profit_and_loss` — that the composed Actual total ties to that report's own section total as an independent check. A line with no budget figure is N/A (a gap in the budget), never shown as 0.
+## Interactivity
+
+Declare `period_end` (date) mapped 1:1 to `get_budget_summary`'s `date`, `periods` (number) mapped 1:1, and `timeframe` (number, default `3`) mapped 1:1 to `get_budget_summary`'s integer `timeframe` — present it as a 1 / 3 / 12 picker, never a free-typed number. Declare `period_start` (date) and map it with `period_end` onto `list_budgets`' `dateFrom` / `dateTo` (context only). When Actual must be composed, add a `get_profit_and_loss` binding with `fromDate` / `toDate` mapped from the same two dates, `standardLayout` static `true`, `paymentsOnly` static `false`. Plus `organisation` per the foundation. Column split and highlight thresholds are client-side.
