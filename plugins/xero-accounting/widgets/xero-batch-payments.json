@@ -1,0 +1,334 @@
+{
+  "id": "xero-batch-payments",
+  "title": "Batch Payments",
+  "description": "Lists outstanding Xero supplier bills pre-classified for a batch payment run — ready (valid BSB + account on file) vs excluded (missing or invalid bank details) — and generates a downloadable ABA file for the ready bills.",
+  "category": "finance",
+  "tags": ["xero", "bills", "batch", "payments", "aba", "bank", "accounts-payable"],
+  "keywords": ["xero", "batch payment", "aba", "file", "generate", "supplier", "bills", "bank details", "bsb", "accounts payable", "pay run"],
+  "connectorsUsed": ["xero-accounting"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 9 },
+    "min":       { "colSpan": 4, "rowSpan": 7 },
+    "max":       { "colSpan": 10, "rowSpan": 16 }
+  },
+  "dataProvider": {
+    "mcp": "xero-accounting",
+    "tool": "list_xero_batch_payment_bills",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"]
+      },
+
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Banknote", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Batch Payments", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Xero · {n} bills",
+              "n": { "$state": "/xero-accounting/list_xero_batch_payment_bills/summary/total" }
+            }
+          }
+        }
+      },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "content"],
+        "watch": {
+          "/xero-accounting/generate_xero_aba/aba_base64": {
+            "action": "download_base64",
+            "params": {
+              "data":     { "$state": "/xero-accounting/generate_xero_aba/aba_base64" },
+              "filename": { "$state": "/xero-accounting/generate_xero_aba/filename" },
+              "mimeType": "text/plain"
+            }
+          }
+        }
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4", "sk5", "sk6"],
+        "visible": { "$state": "/_loading/xero-accounting.list_xero_batch_payment_bills" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "4rem",   "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk5": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk6": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No outstanding bills found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/xero-accounting.list_xero_batch_payment_bills", "not": true },
+            { "$state": "/xero-accounting/list_xero_batch_payment_bills/bills/0", "not": true }
+          ]
+        }
+      },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/xero-accounting.list_xero_batch_payment_bills", "not": true },
+            { "$state": "/xero-accounting/list_xero_batch_payment_bills/bills/0" }
+          ]
+        },
+        "children": ["summarySection", "divider1", "billList", "divider2", "footerRow"]
+      },
+
+      "summarySection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["totalAmountText", "payInfoRow"]
+      },
+      "totalAmountText": {
+        "type": "Stat",
+        "props": {
+          "value": { "$state": "/xero-accounting/list_xero_batch_payment_bills/summary/totalAmount" }
+        }
+      },
+      "payInfoRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["payDateLabel", "payDateValue", "fromLabel", "bankName"]
+      },
+      "payDateLabel": {
+        "type": "Caption",
+        "props": { "text": "Pay date:", "tone": "muted" }
+      },
+      "payDateValue": {
+        "type": "Caption",
+        "props": {
+          "text": { "$state": "/xero-accounting/list_xero_batch_payment_bills/summary/payDate" },
+          "weight": "semibold"
+        }
+      },
+      "fromLabel": {
+        "type": "Caption",
+        "props": { "text": "From:", "tone": "muted" }
+      },
+      "bankName": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{name} {masked}",
+              "name":   { "$state": "/xero-accounting/list_xero_batch_payment_bills/bankAccount/name" },
+              "masked": { "$state": "/xero-accounting/list_xero_batch_payment_bills/bankAccount/masked" }
+            }
+          },
+          "weight": "semibold"
+        }
+      },
+
+      "divider1": { "type": "Divider", "props": {} },
+
+      "billList": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "repeat": {
+          "statePath": "/xero-accounting/list_xero_batch_payment_bills/bills",
+          "key": "id"
+        },
+        "children": ["billRow"]
+      },
+
+      "billRow": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["billRowContent", "billDivider"]
+      },
+
+      "billRowContent": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "template": "auto minmax(0,1fr) auto" },
+        "children": ["billDot", "billInfo", "billAmount"]
+      },
+
+      "billDot": {
+        "type": "Dot",
+        "props": { "size": "sm", "tone": { "$item": "tone" } }
+      },
+
+      "billInfo": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["billName", "billMeta", "billBadgeWrap"]
+      },
+
+      "billName": {
+        "type": "Text",
+        "props": {
+          "text":     { "$item": "contactName" },
+          "size":     "sm",
+          "weight":   "semibold",
+          "truncate": true
+        }
+      },
+
+      "billMeta": {
+        "type": "Caption",
+        "props": {
+          "text":     { "$item": "metaLine" },
+          "tone":     "muted",
+          "truncate": true
+        }
+      },
+
+      "billBadgeWrap": {
+        "type": "Row",
+        "props": { "gap": "xs" },
+        "children": ["billBadge"],
+        "visible": { "$item": "bankBadge" }
+      },
+
+      "billBadge": {
+        "type": "Badge",
+        "props": {
+          "label": { "$item": "bankBadge" },
+          "tone":  "warning"
+        }
+      },
+
+      "billAmount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value":    { "$item": "amountDue" },
+              "currency": { "$item": "currencyCode" }
+            }
+          },
+          "size":   "sm",
+          "weight": "semibold"
+        }
+      },
+
+      "billDivider": { "type": "Divider", "props": {} },
+
+      "divider2": { "type": "Divider", "props": {} },
+
+      "footerRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "justify": "between", "align": "center" },
+        "children": ["footerLeft", "footerRight"]
+      },
+
+      "footerLeft": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["footerLabel", "footerDetail"]
+      },
+      "footerLabel": {
+        "type": "Caption",
+        "props": { "text": "Selected", "tone": "muted" }
+      },
+      "footerDetail": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["footerCount", "footerSep", "footerAmount"]
+      },
+      "footerCount": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} bills",
+              "n": { "$state": "/xero-accounting/list_xero_batch_payment_bills/summary/readyCount" }
+            }
+          },
+          "weight": "semibold"
+        }
+      },
+      "footerSep": {
+        "type": "Caption",
+        "props": { "text": "·", "tone": "muted" }
+      },
+      "footerAmount": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value":    { "$state": "/xero-accounting/list_xero_batch_payment_bills/summary/readyAmount" },
+              "currency": "AUD"
+            }
+          },
+          "weight": "semibold"
+        }
+      },
+
+      "footerRight": {
+        "type": "Row",
+        "props": { "gap": "sm" },
+        "children": ["validateBtn", "generateBtn"]
+      },
+
+      "validateBtn": {
+        "type": "Button",
+        "props": { "label": "Validate", "variant": "secondary", "size": "sm" },
+        "on": {
+          "click": [
+            { "action": "bust_tool_cache", "params": { "mcp": "xero-accounting", "tool": "list_xero_batch_payment_bills" } },
+            { "action": "xero-accounting.list_xero_batch_payment_bills", "params": {} }
+          ]
+        }
+      },
+
+      "generateBtn": {
+        "type": "Button",
+        "props": { "label": "Generate ABA", "variant": "primary", "size": "sm" },
+        "on": {
+          "click": {
+            "action": "xero-accounting.generate_xero_aba",
+            "params": {}
+          }
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}
