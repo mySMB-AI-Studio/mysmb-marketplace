@@ -102,7 +102,7 @@
             { "$state": "/xero-accounting/list_xero_batch_payment_bills/bills/0" }
           ]
         },
-        "children": ["summarySection", "divider1", "billList", "moreReady", "divider2", "footerRow"]
+        "children": ["summarySection", "divider1", "billList", "divider2", "footerRow"]
       },
 
       "summarySection": {
@@ -247,28 +247,6 @@
       },
 
       "billDivider": { "type": "Divider", "props": {} },
-
-      "moreReady": {
-        "type": "Button",
-        "props": {
-          "label": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "+ {n} more ready",
-              "n": { "$state": "/xero-accounting/list_xero_batch_payment_bills/summary/hiddenReadyCount" }
-            }
-          },
-          "variant": "link",
-          "size": "sm"
-        },
-        "visible": { "$state": "/xero-accounting/list_xero_batch_payment_bills/summary/hiddenReadyCount" },
-        "on": {
-          "click": {
-            "action": "open_url",
-            "params": { "url": { "$state": "/xero-accounting/list_xero_batch_payment_bills/billsUrl" } }
-          }
-        }
-      },
 
       "divider2": { "type": "Divider", "props": {} },
 
