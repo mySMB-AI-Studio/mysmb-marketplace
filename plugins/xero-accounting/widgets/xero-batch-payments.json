@@ -156,6 +156,26 @@
 
       "divider1": { "type": "Divider", "props": {} },
 
+      "dotLegend": {
+        "type": "Row",
+        "props": { "gap": "md", "align": "center" },
+        "children": ["legendReady", "legendExcluded"]
+      },
+      "legendReady": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["legendDotReady", "legendLabelReady"]
+      },
+      "legendDotReady":    { "type": "Dot",     "props": { "size": "sm", "tone": "success" } },
+      "legendLabelReady":  { "type": "Caption", "props": { "text": "Included in ABA", "tone": "muted" } },
+      "legendExcluded": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["legendDotExcluded", "legendLabelExcluded"]
+      },
+      "legendDotExcluded":    { "type": "Dot",     "props": { "size": "sm", "tone": "warning" } },
+      "legendLabelExcluded":  { "type": "Caption", "props": { "text": "Missing bank details", "tone": "muted" } },
+
       "billList": {
         "type": "Stack",
         "props": { "gap": "none" },

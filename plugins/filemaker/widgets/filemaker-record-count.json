@@ -1,0 +1,150 @@
+{
+  "category": "operations",
+  "connectorsUsed": [
+    "filemaker"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "filemaker",
+    "params": {
+      "layout": "Customers",
+      "limit": 1
+    },
+    "tool": "get_records"
+  },
+  "description": "Total record count on a FileMaker layout. Unlike this connector's other tiles, this one needs no field-name editing — it only reads the layout's record count, which is schema-agnostic.",
+  "id": "filemaker-record-count",
+  "keywords": [
+    "total",
+    "count",
+    "record count",
+    "filemaker"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 6,
+      "rowSpan": 4
+    },
+    "min": {
+      "colSpan": 2,
+      "rowSpan": 2
+    },
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 2
+    }
+  },
+  "spec": {
+    "elements": {
+      "card": {
+        "children": [
+          "header",
+          "statSection"
+        ],
+        "props": {},
+        "type": "Card"
+      },
+      "eyebrow": {
+        "props": {
+          "text": "FileMaker · Customers layout, live count"
+        },
+        "type": "Eyebrow"
+      },
+      "header": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "loading": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton",
+        "visible": {
+          "$state": "/_loading/filemaker.get_records"
+        }
+      },
+      "statCaption": {
+        "props": {
+          "text": "records"
+        },
+        "type": "Caption"
+      },
+      "statSection": {
+        "children": [
+          "loading",
+          "statStack"
+        ],
+        "props": {
+          "variant": "muted"
+        },
+        "type": "Section"
+      },
+      "statStack": {
+        "children": [
+          "statVal",
+          "statCaption"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/filemaker.get_records",
+          "not": true
+        }
+      },
+      "statVal": {
+        "props": {
+          "value": {
+            "$state": "/filemaker/get_records/dataInfo/foundCount"
+          }
+        },
+        "type": "Stat"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Record Count"
+        },
+        "type": "Heading"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Database",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "filemaker",
+    "claris",
+    "records",
+    "stat",
+    "count"
+  ],
+  "title": "Record Count"
+}
