@@ -1,0 +1,88 @@
+{
+  "author": {
+    "name": "mySMB AI Studio"
+  },
+  "branding": {
+    "logo": "assets/logo.png",
+    "logoDark": "assets/logo-dark.png"
+  },
+  "category": "operations",
+  "connection": {
+    "authType": "api_key",
+    "docUrl": "https://help.claris.com/en/data-api-guide/content/index.html",
+    "fields": [
+      {
+        "helpText": "Your FileMaker Server or FileMaker Cloud host URL, no trailing slash.",
+        "label": "Host",
+        "name": "FILEMAKER_HOST",
+        "placeholder": "https://myfmserver.example.com",
+        "required": true,
+        "type": "text"
+      },
+      {
+        "helpText": "The FileMaker file/database name, exactly as it appears when hosted (no .fmp12 extension).",
+        "label": "Database",
+        "name": "FILEMAKER_DATABASE",
+        "placeholder": "MyDatabase",
+        "required": true,
+        "type": "text"
+      },
+      {
+        "helpText": "A FileMaker account with the fmrest extended privilege enabled.",
+        "label": "Username",
+        "name": "FILEMAKER_USERNAME",
+        "placeholder": "api-user",
+        "required": true,
+        "type": "text"
+      },
+      {
+        "helpText": "Password for the account above. Stored encrypted.",
+        "label": "Password",
+        "name": "FILEMAKER_PASSWORD",
+        "placeholder": "",
+        "required": true,
+        "secret": true,
+        "type": "password"
+      },
+      {
+        "helpText": "FileMaker Cloud only — leave blank for FileMaker Server. Identifies your Claris ID Cognito user pool.",
+        "label": "Cognito User Pool ID (Cloud only)",
+        "name": "FILEMAKER_COGNITO_USER_POOL_ID",
+        "placeholder": "ap-southeast-2_xxxxxxxxx",
+        "required": false,
+        "type": "text"
+      },
+      {
+        "helpText": "FileMaker Cloud only — leave blank for FileMaker Server. Paired with the Cognito User Pool ID above.",
+        "label": "Cognito Client ID (Cloud only)",
+        "name": "FILEMAKER_COGNITO_CLIENT_ID",
+        "placeholder": "",
+        "required": false,
+        "type": "text"
+      }
+    ],
+    "instructions": "FileMaker can be hosted two different ways — which one you use determines which fields below you need.\n\n**FileMaker Server (self-hosted):** fill in Host, Database, Username, and Password. Leave the two Cognito fields blank.\n\n**FileMaker Cloud (Claris-managed):** fill in all six fields. The Cognito User Pool ID and Client ID identify your Claris ID user pool — ask whoever manages your FileMaker Cloud account for these if you don't have them.\n\nYour FileMaker account needs the `fmrest` extended privilege enabled (**File → Manage → Security** in FileMaker Pro), and the file must have the Data API enabled for its host.\n\nThis connector is read-only — it cannot create, edit, delete, or run scripts against your data."
+  },
+  "content": {
+    "agents": [],
+    "automations": [],
+    "formTemplates": [],
+    "forms": [],
+    "workqTemplates": []
+  },
+  "description": "Read-only access to a hosted FileMaker database via the Claris Data API, through the myHub-hosted FileMaker MCP gateway. Search layout metadata, fetch records by ID, browse or filter records, and pull related/portal data. Supports both FileMaker Server (direct login) and FileMaker Cloud (Cognito-authenticated) hosting.",
+  "displayName": "FileMaker",
+  "icon": "Database",
+  "keywords": [
+    "filemaker",
+    "claris",
+    "data-api",
+    "records",
+    "database",
+    "custom-app",
+    "operations"
+  ],
+  "name": "filemaker",
+  "version": "0.0.1",
+  "widgets": "widgets"
+}

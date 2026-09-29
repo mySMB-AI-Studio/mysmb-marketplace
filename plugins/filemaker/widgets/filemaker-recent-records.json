@@ -1,0 +1,235 @@
+{
+  "category": "operations",
+  "connectorsUsed": [
+    "filemaker"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "filemaker",
+    "params": {
+      "layout": "Customers",
+      "limit": 20,
+      "sort": [
+        {
+          "fieldName": "CreatedDate",
+          "sortOrder": "descend"
+        }
+      ]
+    },
+    "tool": "get_records"
+  },
+  "description": "Most recently created records on a FileMaker layout, sorted newest first. Edit the layout name and column field bindings below to match your own FileMaker solution.",
+  "id": "filemaker-recent-records",
+  "keywords": [
+    "records",
+    "recent",
+    "layout",
+    "filemaker",
+    "database"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 10
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 4
+    },
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 5
+    }
+  },
+  "spec": {
+    "elements": {
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "table"
+        ],
+        "props": {},
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "titleRow",
+          "div0",
+          "body"
+        ],
+        "props": {},
+        "type": "Card"
+      },
+      "div0": {
+        "props": {},
+        "type": "Divider"
+      },
+      "empty": {
+        "props": {
+          "message": "No records found on this layout."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/filemaker.get_records",
+              "not": true
+            },
+            {
+              "$state": "/filemaker/get_records/data/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "eyebrow": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/filemaker/get_records/data"
+                  }
+                }
+              },
+              "pattern": "FileMaker · Customers layout · {n} shown"
+            }
+          }
+        },
+        "type": "Eyebrow"
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/filemaker.get_records"
+        }
+      },
+      "sk1": {
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "table": {
+        "props": {
+          "columns": [
+            {
+              "field": "fieldData.CustomerName",
+              "header": "Customer",
+              "id": "name",
+              "priority": 1
+            },
+            {
+              "field": "fieldData.CreatedDate",
+              "format": "dd_mmm_yy",
+              "header": "Created",
+              "id": "created",
+              "priority": 2,
+              "width": 100
+            },
+            {
+              "field": "fieldData.Status",
+              "header": "Status",
+              "id": "status",
+              "priority": 2,
+              "width": 90
+            }
+          ],
+          "loading": {
+            "$state": "/_loading/filemaker.get_records"
+          },
+          "rows": {
+            "$state": "/filemaker/get_records/data"
+          },
+          "skeletonRows": 6
+        },
+        "type": "Table",
+        "visible": {
+          "$state": "/filemaker/get_records/data/0"
+        }
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Recent Records"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Database",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleRow": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "filemaker",
+    "claris",
+    "records",
+    "database"
+  ],
+  "title": "Recent Records"
+}

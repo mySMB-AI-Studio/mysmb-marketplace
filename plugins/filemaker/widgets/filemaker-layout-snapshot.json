@@ -1,0 +1,200 @@
+{
+  "category": "operations",
+  "connectorsUsed": [
+    "filemaker"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "filemaker",
+    "params": {
+      "layout": "Customers"
+    },
+    "tool": "get_layout_metadata"
+  },
+  "description": "An admin/dev-facing view of what's queryable on a FileMaker layout — field count and related portal names, sourced from Data API layout metadata.",
+  "id": "filemaker-layout-snapshot",
+  "keywords": [
+    "layout",
+    "metadata",
+    "schema",
+    "fields",
+    "portals",
+    "filemaker"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 6,
+      "rowSpan": 8
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 4
+    },
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 5
+    }
+  },
+  "spec": {
+    "elements": {
+      "card": {
+        "children": [
+          "titleRow",
+          "div0",
+          "loading",
+          "fields",
+          "div1",
+          "note"
+        ],
+        "props": {},
+        "type": "Card"
+      },
+      "div0": {
+        "props": {},
+        "type": "Divider"
+      },
+      "div1": {
+        "props": {},
+        "type": "Divider"
+      },
+      "eyebrow": {
+        "props": {
+          "text": "FileMaker · schema metadata, dev/admin view"
+        },
+        "type": "Eyebrow"
+      },
+      "fieldCount": {
+        "props": {
+          "label": "Fields on this layout",
+          "value": {
+            "$computed": "count",
+            "args": {
+              "value": {
+                "$state": "/filemaker/get_layout_metadata/fieldMetaData"
+              }
+            }
+          }
+        },
+        "type": "KeyValue"
+      },
+      "fields": {
+        "children": [
+          "fieldCount",
+          "portalNames"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/filemaker.get_layout_metadata",
+          "not": true
+        }
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/filemaker.get_layout_metadata"
+        }
+      },
+      "note": {
+        "props": {
+          "text": "Write-eligible fields excluded — this server is read-only."
+        },
+        "type": "Caption"
+      },
+      "portalNames": {
+        "props": {
+          "label": "Related portals",
+          "value": {
+            "$computed": "join_strings",
+            "args": {
+              "sep": ", ",
+              "value": {
+                "$state": "/filemaker/get_layout_metadata/portalNames"
+              }
+            }
+          }
+        },
+        "type": "KeyValue"
+      },
+      "sk1": {
+        "props": {
+          "height": "1.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "1.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Customers — Layout Snapshot"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Database",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleRow": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "filemaker",
+    "claris",
+    "metadata",
+    "schema",
+    "admin"
+  ],
+  "title": "Layout Field Snapshot"
+}

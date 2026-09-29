@@ -1,0 +1,254 @@
+{
+  "category": "finance",
+  "connectorsUsed": [
+    "filemaker"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "filemaker",
+    "params": {
+      "layout": "Invoices",
+      "limit": 20,
+      "query": [
+        {
+          "Status": "Open"
+        }
+      ],
+      "sort": [
+        {
+          "fieldName": "DueDate",
+          "sortOrder": "ascend"
+        }
+      ]
+    },
+    "tool": "find_records"
+  },
+  "description": "A filtered set of FileMaker records — by default, invoices with an Open status. Edit the layout name, find query, and field bindings below to match your own FileMaker solution.",
+  "id": "filemaker-open-invoices",
+  "keywords": [
+    "invoices",
+    "open",
+    "overdue",
+    "find",
+    "filemaker"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 10
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 5
+    }
+  },
+  "spec": {
+    "elements": {
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "table"
+        ],
+        "props": {},
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "titleRow",
+          "div0",
+          "body"
+        ],
+        "props": {},
+        "type": "Card"
+      },
+      "div0": {
+        "props": {},
+        "type": "Divider"
+      },
+      "empty": {
+        "props": {
+          "message": "No matching records found."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/filemaker.find_records",
+              "not": true
+            },
+            {
+              "$state": "/filemaker/find_records/data/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "eyebrow": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/filemaker/find_records/data"
+                  }
+                }
+              },
+              "pattern": "FileMaker · {n} open invoices"
+            }
+          }
+        },
+        "type": "Eyebrow"
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/filemaker.find_records"
+        }
+      },
+      "sk1": {
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "table": {
+        "props": {
+          "columns": [
+            {
+              "field": "fieldData.InvoiceNumber",
+              "header": "Invoice",
+              "id": "invoice",
+              "priority": 1
+            },
+            {
+              "field": "fieldData.CustomerName",
+              "header": "Customer",
+              "id": "customer",
+              "priority": 2
+            },
+            {
+              "field": "fieldData.DueDate",
+              "format": "dd_mmm_yy",
+              "header": "Due Date",
+              "id": "due",
+              "priority": 2,
+              "width": 100
+            },
+            {
+              "align": "right",
+              "field": "fieldData.Amount",
+              "header": "Amount",
+              "id": "amount",
+              "priority": 1,
+              "width": 100
+            },
+            {
+              "field": "fieldData.Status",
+              "header": "Status",
+              "id": "status",
+              "priority": 3,
+              "width": 90
+            }
+          ],
+          "loading": {
+            "$state": "/_loading/filemaker.find_records"
+          },
+          "rows": {
+            "$state": "/filemaker/find_records/data"
+          },
+          "skeletonRows": 6
+        },
+        "type": "Table",
+        "visible": {
+          "$state": "/filemaker/find_records/data/0"
+        }
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Open Invoices"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "FileText",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleRow": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "filemaker",
+    "claris",
+    "invoices",
+    "find"
+  ],
+  "title": "Open Invoices"
+}
