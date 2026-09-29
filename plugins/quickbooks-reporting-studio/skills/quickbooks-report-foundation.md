@@ -74,7 +74,7 @@ The kit renders the control row from the config, so every report has the same gr
 
 The `ctx` passed to `render` has: `data`, `errors`, `err(id)`, `inputs`, `display`, `view`, `compareMode`, `persona`, `company`, `fy`, `currency`, `live`, `today`, `body`, `change(patch, displayPatch)`.
 
-Helpers: `QB.walk` / `find(lines, group, labelRegex, kind)` / `val` / `cols` / `header` / `noData` / `sectionTies` / `mergeCompare` / `compareCols` / `bas`; `money` / `pct` / `periodLine` / `asOfLine` / `footerStamp`; `statement` / `grid` / `kpis` / `bars` / `line` (optional `band`) / `donut` / `waterfall`; `preset` / `asAt` / `compare` / `fyStartOf`; `xlsx` / `sheetFromLines`.
+Helpers: `QB.walk` / `find(lines, group, labelRegex, kind)` / `val` / `cols` / `header` / `noData` / `sectionTies` / `mergeCompare` / `compareCols` / `bas`; `cashEnd(lines, monthIdx, closing)` (month-end cash; worked back from a closing balance when the cash flow has no closing-cash line) / `bankCash(balanceSheet, accounts)` (bank-account rows on a balance sheet); `money` / `pct` / `periodLine` / `asOfLine` / `footerStamp`; `statement` / `grid` / `kpis` / `bars` / `line` (optional `band`) / `donut` / `waterfall`; `preset` / `asAt` / `compare` / `fyStartOf`; `xlsx` / `sheetFromLines`.
 
 ## Skeleton
 
@@ -235,6 +235,21 @@ return null;
 var CF_END_RE = /^(cash( and cash equivalents)? at (the )?end of (the )?(period|year|month)|closing cash( balance)?)$/i,
 CF_BEG_RE = /^(cash( and cash equivalents)? at (the )?beginning of (the )?(period|year|month)|opening cash( balance)?)$/i,
 CF_INC_RE = /^net (cash )?(increase|decrease|change)( \(decrease\))?( in cash( and cash equivalents)?)?( for (the )?(period|year))?$/i;
+function cashEnd(lines, idx, closing) {
+var endL = find(lines, 'EndingCash', CF_END_RE); if (endL) return endL;
+var incL = find(lines, 'CashIncrease', CF_INC_RE); if (!incL || closing == null || !idx.length) return null;
+var vals = incL.values.map(function () { return null; }), run = closing, r2 = function (v) { return Math.round(v * 100) / 100; };
+for (var j = idx.length - 1; j >= 0; j--) { vals[idx[j]] = r2(run); run -= incL.values[idx[j]] || 0; }
+if (idx.indexOf(vals.length - 1) < 0) vals[vals.length - 1] = r2(closing); // Total column = closing cash
+return { kind: 'row', label: 'Cash at end of period', values: vals, derived: true, open: r2(run) };
+}
+function bankCash(bsRep, accounts) {
+var ids = {}, hit = false, tot = 0; (accounts || []).forEach(function (a) { if (a.AccountType === 'Bank') ids[String(a.Id)] = 1; });
+if (!bsRep) return null; walk(bsRep).forEach(function (l) { if (l.kind === 'row' && l.id && ids[String(l.id)]) { hit = true; tot += val(l) || 0; } });
+return hit ? Math.round(tot * 100) / 100 : null;
+}
+function gstConfirmed(ctx, probeId) { var p = ctx.data[probeId]; return !!(p && !ctx.errors[probeId] && !noData(p)); }
+var GST_UNCONFIRMED = 'QuickBooks returned no GST figures for this tax agency in this period or at any time before it, so GST is unavailable, not zero. If this company records GST, the QuickBooks connector may not be passing the tax agency (agency_id).';
 var GST_LIAB_RE = /^(gst|bas)\b.*\b(liabilit(y|ies)|payable|control)\b|^tax (payable|control)$/i;
 var ATO_RE = /australian tax(ation)? office|^ato$/i;
 function taxAgency(ctx, listId, input) {
@@ -837,7 +852,7 @@ if (MH.onRefresh) MH.onRefresh(function () { status('Refreshing…'); });
 if (MH.onThemeChange) MH.onThemeChange(function () { render(); });
 return { state: S, change: change, render: render, exportXlsx: exportXlsx, ctx: ctx };
 }
-return { GST_LIAB_RE: GST_LIAB_RE, taxAgency: taxAgency, CF_END_RE: CF_END_RE, CF_BEG_RE: CF_BEG_RE, CF_INC_RE: CF_INC_RE, NI_RE: NI_RE, bsParts: bsParts, applyBrand: applyBrand, bas: bas, sectionTies: sectionTies, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, mergeCompare: mergeCompare, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app, MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays,
+return { gstConfirmed: gstConfirmed, GST_UNCONFIRMED: GST_UNCONFIRMED, cashEnd: cashEnd, bankCash: bankCash, GST_LIAB_RE: GST_LIAB_RE, taxAgency: taxAgency, CF_END_RE: CF_END_RE, CF_BEG_RE: CF_BEG_RE, CF_INC_RE: CF_INC_RE, NI_RE: NI_RE, bsParts: bsParts, applyBrand: applyBrand, bas: bas, sectionTies: sectionTies, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, mergeCompare: mergeCompare, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app, MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays,
 num: num, cols: cols, walk: walk, find: find, val: val, header: header, noData: noData, totalFor: totalFor, near: near, sum: sum,
 companyInfo: companyInfo, fiscalStart: fiscalStart, homeCurrency: homeCurrency, symbol: symbol,
 DISPLAY_DEFAULT: DISPLAY_DEFAULT, readDisplay: readDisplay, writeDisplay: writeDisplay, money: money, pct: pct, isNeg: isNeg,

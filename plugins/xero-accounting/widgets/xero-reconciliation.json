@@ -1,0 +1,590 @@
+{
+  "category": "finance",
+  "connectorsUsed": [
+    "xero-accounting"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-accounting",
+    "params": {
+      "order": "Date DESC",
+      "where": "Status==\"AUTHORISED\""
+    },
+    "tool": "list_bank_transactions"
+  },
+  "description": "All authorised bank transactions with their reconciliation status — a breakdown of reconciled vs. unreconciled, then every transaction (most recent first), each showing which bank account, who it's with, and the amount. A simpler, IsReconciled-flag view rather than Xero's dedicated Finance API bank-statement-matching view (see xero-finance's get_bank_statement_accounting for that, if that connector is ever usable). Click any row to open that exact transaction in Xero.",
+  "id": "xero-reconciliation",
+  "keywords": [
+    "reconciliation",
+    "reconciled",
+    "unreconciled",
+    "bank transactions",
+    "bank account",
+    "reconcile"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 12
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 5
+    },
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 8
+    }
+  },
+  "spec": {
+    "elements": {
+      "amount": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "currency": {
+                "$item": "CurrencyCode"
+              },
+              "value": {
+                "$item": "Total"
+              }
+            }
+          },
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "list",
+          "truncatedCaption"
+        ],
+        "type": "Body"
+      },
+      "breakdownBar": {
+        "children": [
+          "breakdownSegment"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs",
+          "template": {
+            "$state": "/ui/breakdown/template"
+          }
+        },
+        "repeat": {
+          "key": "status",
+          "statePath": "/ui/breakdown/segments"
+        },
+        "type": "Row"
+      },
+      "breakdownCaption": {
+        "props": {
+          "text": "Reconciliation Status",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "breakdownDivider": {
+        "props": {},
+        "type": "Divider"
+      },
+      "breakdownHeaderRow": {
+        "children": [
+          "breakdownCaption",
+          "breakdownTotalCaption"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "breakdownLegend": {
+        "children": [
+          "legendItem"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "md"
+        },
+        "repeat": {
+          "key": "status",
+          "statePath": "/ui/breakdown/segments"
+        },
+        "type": "Row"
+      },
+      "breakdownSection": {
+        "children": [
+          "breakdownHeaderRow",
+          "breakdownBar",
+          "breakdownLegend"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_bank_transactions",
+              "not": true
+            },
+            {
+              "$state": "/ui/breakdown/segments/0"
+            }
+          ]
+        }
+      },
+      "breakdownSegment": {
+        "props": {
+          "tone": {
+            "$item": "tone"
+          },
+          "value": 100
+        },
+        "type": "ProgressBar"
+      },
+      "breakdownTotalCaption": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{total} transactions",
+              "total": {
+                "$state": "/ui/breakdown/total"
+              }
+            }
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "card": {
+        "children": [
+          "header",
+          "breakdownSection",
+          "breakdownDivider",
+          "colHeader",
+          "colDivider",
+          "body",
+          "footer"
+        ],
+        "type": "Card",
+        "watch": {
+          "/xero-accounting/list_bank_transactions/BankTransactions": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/breakdown",
+                "value": {
+                  "$computed": "xero-accounting_reconciliation_breakdown",
+                  "args": {
+                    "transactions": {
+                      "$state": "/xero-accounting/list_bank_transactions/BankTransactions"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "colAmount": {
+        "props": {
+          "text": "Amount"
+        },
+        "type": "Caption"
+      },
+      "colDate": {
+        "props": {
+          "text": "Date"
+        },
+        "type": "Caption"
+      },
+      "colDivider": {
+        "props": {},
+        "type": "Divider"
+      },
+      "colHeader": {
+        "children": [
+          "colType",
+          "colIdentity",
+          "colAmount",
+          "colStatus",
+          "colDate"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "template": "4.5rem minmax(0, 1fr) 6rem 5rem 6.5rem"
+        },
+        "type": "Row"
+      },
+      "colIdentity": {
+        "props": {
+          "text": "Contact / Account"
+        },
+        "type": "Caption"
+      },
+      "colStatus": {
+        "props": {
+          "text": "Status"
+        },
+        "type": "Caption"
+      },
+      "colType": {
+        "props": {
+          "text": "Type"
+        },
+        "type": "Caption"
+      },
+      "date": {
+        "props": {
+          "text": {
+            "$computed": "xero-accounting_format_date",
+            "args": {
+              "format": "medium",
+              "value": {
+                "$item": "Date"
+              }
+            }
+          },
+          "tone": "muted",
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "empty": {
+        "props": {
+          "message": "No bank transactions found in Xero."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_bank_transactions",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_bank_transactions/BankTransactions/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "eyebrow": {
+        "props": {
+          "text": "Xero — authorised bank transactions"
+        },
+        "type": "Eyebrow"
+      },
+      "footer": {
+        "children": [
+          "openXeroBtn"
+        ],
+        "props": {
+          "justify": "end"
+        },
+        "type": "Row"
+      },
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "type": "Header"
+      },
+      "idBottom": {
+        "props": {
+          "text": {
+            "$item": "BankAccount/Name"
+          }
+        },
+        "type": "Caption"
+      },
+      "idTop": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$cond": {
+              "$item": "Contact/Name"
+            },
+            "$else": "—",
+            "$then": {
+              "$item": "Contact/Name"
+            }
+          },
+          "truncate": true,
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "identity": {
+        "children": [
+          "idTop",
+          "idBottom"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "legendDot": {
+        "props": {
+          "size": "sm",
+          "tone": {
+            "$item": "tone"
+          }
+        },
+        "type": "Dot"
+      },
+      "legendItem": {
+        "children": [
+          "legendDot",
+          "legendLabel"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "legendLabel": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "count": {
+                "$item": "count"
+              },
+              "pattern": "{status} ({count})",
+              "status": {
+                "$item": "status"
+              }
+            }
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "list": {
+        "children": [
+          "row"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "BankTransactionID",
+          "statePath": "/xero-accounting/list_bank_transactions/BankTransactions"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_bank_transactions",
+          "not": true
+        }
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_bank_transactions"
+        }
+      },
+      "openXeroBtn": {
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": "https://go.xero.com/Bank/BankAccounts.aspx"
+            }
+          }
+        },
+        "props": {
+          "label": "Open Bank Accounts in Xero",
+          "leadingIcon": "ExternalLink",
+          "size": "sm",
+          "tone": "brand",
+          "variant": "primary"
+        },
+        "type": "Button"
+      },
+      "row": {
+        "children": [
+          "typeIcon",
+          "identity",
+          "amount",
+          "status",
+          "date"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "id": {
+                    "$item": "BankTransactionID"
+                  },
+                  "pattern": "https://go.xero.com/Bank/ViewTransaction.aspx?bankTransactionID={id}"
+                }
+              }
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "sm",
+          "hover": true,
+          "template": "4.5rem minmax(0, 1fr) 6rem 5rem 6.5rem"
+        },
+        "type": "Row"
+      },
+      "sk1": {
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "status": {
+        "props": {
+          "text": {
+            "$cond": {
+              "$item": "IsReconciled"
+            },
+            "$else": "Unreconciled",
+            "$then": "Reconciled"
+          },
+          "tone": {
+            "$cond": {
+              "$item": "IsReconciled"
+            },
+            "$else": "warning",
+            "$then": "success"
+          }
+        },
+        "type": "Badge"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Reconciliation"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "start",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Landmark",
+          "size": "sm",
+          "tone": "info"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "truncatedCaption": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Showing 20 of {total}",
+              "total": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/xero-accounting/list_bank_transactions/BankTransactions"
+                  }
+                }
+              }
+            }
+          },
+          "tone": "muted"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/xero-accounting/list_bank_transactions/BankTransactions/20"
+        }
+      },
+      "typeIcon": {
+        "props": {
+          "text": {
+            "$computed": "xero-accounting_bank_tx_label",
+            "args": {
+              "value": {
+                "$item": "Type"
+              }
+            }
+          },
+          "tone": {
+            "$computed": "xero-accounting_bank_tx_tone",
+            "args": {
+              "value": {
+                "$item": "Type"
+              }
+            }
+          }
+        },
+        "type": "Badge"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "xero",
+    "bank",
+    "reconciliation",
+    "reconcile",
+    "finance"
+  ],
+  "title": "Xero — Reconciliation"
+}

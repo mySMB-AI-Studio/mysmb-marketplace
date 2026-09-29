@@ -1,0 +1,283 @@
+{
+  "attachments": [],
+  "contentHash": "82490e92427474e212e6d8bf4099a24c01034d614620177db0d90dfc42ddd758",
+  "declaredScopes": [
+    "ai:generate",
+    "connectors:xero-accounting",
+    "files:read",
+    "files:write",
+    "workq:write"
+  ],
+  "dependencies": [
+    {
+      "entityKind": "form",
+      "originKey": "c249353a-fce0-4d21-84a8-636e1ad8cfcc",
+      "sourceId": "fef31522-7bd0-4610-9e2a-3941cf0cb7f8"
+    },
+    {
+      "entityKind": "form",
+      "originKey": "e635fb97-abbc-42b5-b189-b3e989e93410",
+      "sourceId": "a49c82be-f9f7-419c-be73-d2e8cdc76421"
+    }
+  ],
+  "description": "When a Bill review or Client bill approval form is submitted, applies the decision in the client’s Xero organisation: approve (with any changes), reject, or ask the client. Bills over the client-approval limit get a follow-up item with a draft email. Coding changes are remembered for the supplier.",
+  "flowIr": {
+    "description": "When a Bill review or Client bill approval form is submitted, applies the decision in the client’s Xero organisation: approve (with any changes), reject, or ask the client. Bills over the client-approval limit get a follow-up item with a draft email. Coding changes are remembered for the supplier.",
+    "irVersion": 1,
+    "name": "Bookkeeping: Apply bill review (Xero)",
+    "nodes": [
+      {
+        "code": "# ── bookkeeping kit: shared helpers (inlined into each node by gen-ext.js) ──\nimport json\nimport re\nimport datetime\nfrom zoneinfo import ZoneInfo\n\n# Knowledge layout. Folders may nest at most 2 levels, so inbox folders are top-level.\nBK_SETTINGS = \"Bookkeeping/settings.json\"\nBK_CLIENTS = \"Bookkeeping/Clients\"\nBK_RULES = \"Bookkeeping/Rules\"\nBK_BILLS = \"Bookkeeping/Bills\"\nBK_INBOX = \"Bookkeeping Inbox\"\nBK_PROCESSED = \"Bookkeeping Processed\"\nBK_FAILED = \"Bookkeeping Failed\"\n\n\ndef bk_read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\n\ndef bk_answer(responses, qid):\n    \"\"\"A form answer: str, bool, list, or a lookup {id, label}.\"\"\"\n    return (responses or {}).get(qid)\n\n\ndef bk_client_for(settings, slug):\n    client = bk_read_json(BK_CLIENTS + \"/\" + slug + \".json\")\n    if not client:\n        return None\n    return client\n\n\n# ── Load the bill ──\n\n\ntodo_id = params.get(\"todo_id\") or \"\"\nform_id = params.get(\"form_id\") or \"\"\nresponses = params.get(\"responses\") or {}\nproblem = \"\"\nkind = \"\"\nif form_id == params[\"review_form\"]:\n    kind = \"review\"\nelif form_id == params[\"approval_form\"]:\n    kind = \"client\"\n\nrecord_todo = todo_id\nrecord = bk_read_json(BK_BILLS + \"/\" + todo_id + \".json\") or {}\nif record.get(\"link\"):\n    record_todo = record[\"link\"]\n    record = bk_read_json(BK_BILLS + \"/\" + record_todo + \".json\") or {}\nsettings = bk_read_json(BK_SETTINGS) or {}\nclient = bk_client_for(settings, record.get(\"client_slug\") or \"\") or {}\n\nif not kind or not todo_id or not record:\n    problem = \"ignored\"\nelif record.get(\"status\") in (\"approved\", \"rejected\"):\n    problem = \"This bill was already \" + record[\"status\"] + \", so nothing was changed.\"\n\nif kind == \"review\":\n    answer = str(bk_answer(responses, \"q_decision\") or \"\").lower()\n    action = (\"approve_changes\" if \"changes\" in answer else \"approve\" if answer.startswith(\"approve\")\n              else \"reject\" if answer.startswith(\"reject\") else \"ask\" if answer.startswith(\"ask\") else \"\")\nelse:\n    answer = str(bk_answer(responses, \"q_client_decision\") or \"\").lower()\n    action = (\"client_approved\" if \"approved\" in answer else \"client_rejected\" if \"rejected\" in answer\n              else \"client_question\" if \"question\" in answer else \"\")\nif not problem and not action:\n    problem = \"The form didn't say what to do with this bill.\"\n\ndecision = {\n    \"action\": action,\n    \"changes\": str(bk_answer(responses, \"q_changes\") or \"\").strip(),\n    \"remember\": bool(bk_answer(responses, \"q_remember\")),\n    \"notes\": str(bk_answer(responses, \"q_notes\") or bk_answer(responses, \"q_client_reply\") or \"\").strip(),\n    \"actor\": params.get(\"actor\") or \"\",\n}\nctx = {\"settings\": settings, \"client\": client, \"record\": record, \"record_todo\": record_todo, \"kind\": kind}\n",
+        "id": "load_review",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "Settings, client and bill record",
+            "name": "ctx",
+            "type": "dict"
+          },
+          {
+            "description": "What the reviewer decided",
+            "name": "decision",
+            "type": "dict"
+          },
+          {
+            "description": "Why nothing will be applied, or empty",
+            "name": "problem",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ trigger.event.subject.todo_id }}",
+            "control": "hidden",
+            "label": "Review item",
+            "name": "todo_id",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ trigger.event.subject.form_id }}",
+            "control": "hidden",
+            "label": "Submitted form",
+            "name": "form_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ trigger.event.payload.responses }}",
+            "control": "hidden",
+            "label": "Form answers",
+            "name": "responses",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ trigger.actor_user_id }}",
+            "control": "hidden",
+            "label": "Reviewer",
+            "name": "actor",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "control": "form-picker",
+            "label": "Bill review form",
+            "name": "review_form",
+            "required": true,
+            "type": "uuid",
+            "value": "fef31522-7bd0-4610-9e2a-3941cf0cb7f8"
+          },
+          {
+            "control": "form-picker",
+            "label": "Client bill approval form",
+            "name": "approval_form",
+            "required": true,
+            "type": "uuid",
+            "value": "a49c82be-f9f7-419c-be73-d2e8cdc76421"
+          }
+        ],
+        "summary": "Loads the bill record for the item and reads the decision from the form.",
+        "title": "Load the bill"
+      },
+      {
+        "code": "# ── bookkeeping kit: shared helpers (inlined into each node by gen-ext.js) ──\nimport json\nimport re\nimport datetime\nfrom zoneinfo import ZoneInfo\n\n# Knowledge layout. Folders may nest at most 2 levels, so inbox folders are top-level.\nBK_SETTINGS = \"Bookkeeping/settings.json\"\nBK_CLIENTS = \"Bookkeeping/Clients\"\nBK_RULES = \"Bookkeeping/Rules\"\nBK_BILLS = \"Bookkeeping/Bills\"\nBK_INBOX = \"Bookkeeping Inbox\"\nBK_PROCESSED = \"Bookkeeping Processed\"\nBK_FAILED = \"Bookkeeping Failed\"\n\n\ndef bk_write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True))\n\n\ndef bk_money(value):\n    \"\"\"Parse 1234.5, \"1,234.50\", \"$12\" or \"A$ 12.00\" into a float; None when blank or not a number.\"\"\"\n    if value is None or isinstance(value, bool):\n        return None\n    if isinstance(value, (int, float)):\n        return float(value)\n    s = re.sub(r\"[^0-9.\\-]\", \"\", str(value))\n    if s in (\"\", \"-\", \".\", \"-.\"):\n        return None\n    try:\n        return float(s)\n    except ValueError:\n        return None\n\n\ndef bk_fmt(amount, currency=\"\"):\n    if amount is None:\n        return \"—\"\n    return (currency + \" \" if currency else \"\") + \"{:,.2f}\".format(amount)\n\n\ndef bk_tz(settings):\n    # The sandbox may lack the tz database; fall back to AEST (UTC+10) rather than failing the run.\n    try:\n        return ZoneInfo((settings or {}).get(\"timezone\") or \"Australia/Sydney\")\n    except Exception:\n        return datetime.timezone(datetime.timedelta(hours=10))\n\n\ndef bk_today(settings):\n    return datetime.datetime.now(bk_tz(settings)).date()\n\n\ndef bk_now_iso(settings):\n    return datetime.datetime.now(bk_tz(settings)).replace(microsecond=0).isoformat()\n\n\ndef bk_add_business_days(day, n):\n    d = day\n    while n > 0:\n        d = d + datetime.timedelta(days=1)\n        if d.weekday() < 5:\n            n -= 1\n    return d\n\n\ndef bk_reviewer(settings, client):\n    return (client or {}).get(\"reviewer_id\") or (settings or {}).get(\"reviewer_id\")\n\n\n# ── bookkeeping kit: Xero ledger adapter (inlined into Xero nodes by gen-ext.js) ──\n# Every write passes xero_tenant_id so it lands in the client's own Xero organisation\n# (myhub-mcp-servers PR #558). Reads pass it too.\nimport base64\nfrom collections import Counter\n\nXERO = \"xero-accounting\"\nXERO_EXPENSE_TYPES = {\"EXPENSE\", \"DIRECTCOSTS\", \"OVERHEADS\", \"FIXED\", \"CURRENT\", \"INVENTORY\", \"PREPAYMENT\", \"NONCURRENT\"}\nXERO_DEAD = {\"DELETED\", \"VOIDED\"}\n\n\ndef xero_call(tool, tenant_id=None, **args):\n    if tenant_id:\n        args[\"xero_tenant_id\"] = tenant_id\n    return api.connectors.invoke(server=XERO, tool=tool, args=args)\n\n\ndef xero_rows(result, key):\n    if isinstance(result, dict):\n        return result.get(key) or []\n    if isinstance(result, list):\n        return result\n    return []\n\n\ndef xero_chart(tenant_id):\n    accounts = xero_rows(xero_call(\"list_accounts\", tenant_id, where='Status==\"ACTIVE\"'), \"Accounts\")\n    taxes = xero_rows(xero_call(\"list_tax_rates\", tenant_id), \"TaxRates\")\n    acc = [{\"code\": a.get(\"Code\"), \"name\": a.get(\"Name\"), \"type\": a.get(\"Type\"),\n            \"description\": (a.get(\"Description\") or \"\")[:120]}\n           for a in accounts if a.get(\"Code\") and a.get(\"Type\") in XERO_EXPENSE_TYPES]\n    tax = [{\"type\": t.get(\"TaxType\"), \"name\": t.get(\"Name\"), \"rate\": t.get(\"EffectiveRate\")}\n           for t in taxes if t.get(\"Status\", \"ACTIVE\") == \"ACTIVE\" and t.get(\"CanApplyToExpenses\", True)]\n    return acc, tax\n\n\ndef xero_bill_body(proposal, status):\n    lines = []\n    for ln in proposal.get(\"lines\") or []:\n        qty = ln.get(\"quantity\") or 1\n        unit = ln.get(\"unit_amount\")\n        if unit is None:\n            unit = round((ln.get(\"line_amount\") or 0) / qty, 4) if qty else (ln.get(\"line_amount\") or 0)\n        item = {\"Description\": (ln.get(\"description\") or \"\")[:4000], \"Quantity\": qty, \"UnitAmount\": unit}\n        if ln.get(\"account_code\"):\n            item[\"AccountCode\"] = ln[\"account_code\"]\n        if ln.get(\"tax_type\"):\n            item[\"TaxType\"] = ln[\"tax_type\"]\n        lines.append(item)\n    body = {\n        \"Type\": \"ACCPAY\",\n        \"Contact\": {\"ContactID\": proposal[\"contact\"][\"id\"]},\n        \"Date\": proposal.get(\"date\"),\n        \"LineAmountTypes\": proposal.get(\"line_amount_types\") or \"Exclusive\",\n        \"LineItems\": lines,\n        \"Status\": status,\n    }\n    for key, field in ((\"due_date\", \"DueDate\"), (\"invoice_number\", \"InvoiceNumber\"),\n                       (\"reference\", \"Reference\"), (\"currency\", \"CurrencyCode\")):\n        if proposal.get(key):\n            body[field] = proposal[key]\n    return body\n\n\ndef xero_ensure_contact(tenant_id, proposal):\n    contact = proposal.get(\"contact\") or {}\n    if contact.get(\"id\"):\n        return contact[\"id\"]\n    body = {\"Name\": contact.get(\"name\") or \"Unknown supplier\"}\n    if contact.get(\"abn\"):\n        body[\"TaxNumber\"] = contact[\"abn\"]\n    rows = xero_rows(xero_call(\"create_contact\", tenant_id, contact=body), \"Contacts\")\n    if not rows or not rows[0].get(\"ContactID\"):\n        raise RuntimeError(\"Xero did not return the new contact\")\n    proposal[\"contact\"][\"id\"] = rows[0][\"ContactID\"]\n    proposal[\"contact\"][\"is_new\"] = False\n    return rows[0][\"ContactID\"]\n\n\ndef xero_create_bill(tenant_id, proposal, status=\"DRAFT\"):\n    xero_ensure_contact(tenant_id, proposal)\n    rows = xero_rows(xero_call(\"create_invoice\", tenant_id, invoice=xero_bill_body(proposal, status)), \"Invoices\")\n    if not rows or not rows[0].get(\"InvoiceID\"):\n        raise RuntimeError(\"Xero did not return the new bill\")\n    return rows[0][\"InvoiceID\"]\n\n\ndef xero_update_bill_lines(tenant_id, bill_id, proposal):\n    body = xero_bill_body(proposal, \"DRAFT\")\n    patch = {k: v for k, v in body.items() if k not in (\"Type\", \"Status\")}\n    xero_call(\"update_invoice\", tenant_id, invoiceId=bill_id, patch=patch)\n\n\ndef xero_set_status(tenant_id, bill_id, status):\n    xero_call(\"update_invoice\", tenant_id, invoiceId=bill_id, patch={\"Status\": status})\n\n\ndef xero_attach_pdf(tenant_id, bill_id, knowledge_path):\n    \"\"\"Attach the knowledge file to the bill. Returns '' on success or the error text.\"\"\"\n    try:\n        local = api.files.get(file=knowledge_path)\n        with open(local, \"rb\") as fh:\n            content = base64.b64encode(fh.read()).decode(\"ascii\")\n        xero_call(\"upload_attachment\", tenant_id, hostType=\"Invoices\", hostId=bill_id,\n                  fileName=knowledge_path.split(\"/\")[-1], base64Content=content, mimeType=\"application/pdf\")\n        return \"\"\n    except Exception as exc:\n        return str(exc)[:300]\n\n\ndef xero_bill_link(bill_id):\n    return \"https://go.xero.com/AccountsPayable/Edit.aspx?InvoiceID=\" + str(bill_id)\n\n\ndef xero_bill_markdown(proposal, warnings=None, blocking=None, bill_id=\"\", file_path=\"\", client_name=\"\"):\n    \"\"\"The review item's description: what the AI read, how it coded it, and what to check.\"\"\"\n    p = proposal or {}\n    c = p.get(\"contact\") or {}\n    cur = p.get(\"currency\") or \"\"\n    out = []\n    out.append(\"**\" + (c.get(\"name\") or \"Unknown supplier\") + \"**\" + (\" (new supplier)\" if c.get(\"is_new\") else \"\")\n               + (\" for \" + client_name if client_name else \"\"))\n    out.append(\"\")\n    out.append(\"- Invoice \" + (p.get(\"invoice_number\") or \"—\") + \", dated \" + (p.get(\"date\") or \"—\")\n               + \", due \" + (p.get(\"due_date\") or \"—\"))\n    out.append(\"- Total \" + bk_fmt(p.get(\"total\"), cur) + \" (GST \" + bk_fmt(p.get(\"tax\"), cur) + \", amounts \"\n               + (\"include\" if p.get(\"line_amount_types\") == \"Inclusive\" else \"exclude\") + \" GST)\")\n    if bill_id:\n        out.append(\"- Draft bill in Xero: [open in Xero](\" + xero_bill_link(bill_id) + \")\")\n    else:\n        out.append(\"- Not in Xero yet: the bill is created when you approve\")\n    if file_path:\n        out.append(\"- PDF: `\" + file_path + \"` in Knowledge\")\n    out.append(\"\")\n    out.append(\"| # | Description | Amount | Account | Tax | Why |\")\n    out.append(\"|---|---|---|---|---|---|\")\n    for i, ln in enumerate(p.get(\"lines\") or []):\n        desc = str(ln.get(\"description\") or \"\").replace(\"|\", \"/\").replace(\"\\n\", \" \")[:80]\n        out.append(\"| \" + str(i + 1) + \" | \" + desc + \" | \" + bk_fmt(ln.get(\"line_amount\")) + \" | \"\n                   + (ln.get(\"account_code\") or \"**missing**\") + \" | \" + (ln.get(\"tax_type\") or \"—\") + \" | \"\n                   + str(ln.get(\"reason\") or \"\").replace(\"|\", \"/\")[:80] + \" (\" + str(ln.get(\"confidence\") or \"\") + \") |\")\n    if blocking:\n        out.append(\"\")\n        out.append(\"**Must fix before approving**\")\n        out.extend(\"- \" + b for b in blocking)\n    if warnings:\n        out.append(\"\")\n        out.append(\"**Check**\")\n        out.extend(\"- \" + w for w in warnings)\n    out.append(\"\")\n    out.append(\"Fill in the **Bill review** form on this item to approve, change, reject or ask the client.\")\n    return \"\\n\".join(out)\n\n\n# ── Apply the decision in Xero ──\n\n\nCHANGES_PROMPT = (\n    \"A bookkeeper reviewed a draft supplier bill and wrote the changes they want in plain words. Turn them into \"\n    \"structured edits against 'bill'. Line numbers in the text are 1-based; 'index' in your output is 0-based. \"\n    \"'all lines' means every line. Only use account codes from 'accounts' and tax types from 'tax_rates'. Leave out \"\n    \"anything the bookkeeper didn't ask to change.\"\n)\nCHANGES_HINT = ('{\"lines\": [{\"index\": 0, \"account_code\": \"449\", \"tax_type\": \"INPUT\", \"description\": null, '\n                '\"line_amount\": null}], \"due_date\": null, \"invoice_number\": null, \"date\": null, \"reference\": null}')\nEMAIL_PROMPT = (\n    \"Draft a short, friendly email from an Australian bookkeeper to a small-business owner. Plain text, no subject \"\n    \"line, sign off as the bookkeeping team. Use only the facts given. Purpose: \"\n)\n\nproblem = params.get(\"problem\") or \"\"\nctx = params.get(\"ctx\") or {}\ndecision = params.get(\"decision\") or {}\nsettings = ctx.get(\"settings\") or {}\nclient = ctx.get(\"client\") or {}\nrecord = dict(ctx.get(\"record\") or {})\nrecord_todo = ctx.get(\"record_todo\") or \"\"\noutcome = \"\"\nfollowup_id = \"\"\nchanged_coding = False\n\nif not problem:\n    try:\n        tenant = record[\"tenant_id\"]\n        proposal = record.get(\"proposal\") or {}\n        bill_id = record.get(\"bill_id\") or \"\"\n        action = decision.get(\"action\")\n        today = bk_today(settings)\n        actor = decision.get(\"actor\") or bk_reviewer(settings, client)\n        c = proposal.get(\"contact\") or {}\n        facts = {\n            \"business\": client.get(\"name\"), \"owner_name\": client.get(\"contact_name\"), \"supplier\": c.get(\"name\"),\n            \"invoice_number\": proposal.get(\"invoice_number\"), \"date\": proposal.get(\"date\"),\n            \"total\": bk_fmt(proposal.get(\"total\"), proposal.get(\"currency\") or \"\"), \"note\": decision.get(\"notes\"),\n        }\n\n        if action == \"approve_changes\" and decision.get(\"changes\"):\n            accounts, taxes = xero_chart(tenant)\n            codes = {a[\"code\"] for a in accounts}\n            tax_types = {t[\"type\"] for t in taxes}\n            edits = api.ai.extract(\n                prompt=CHANGES_PROMPT,\n                input=json.dumps({\"changes\": decision[\"changes\"], \"bill\": proposal, \"accounts\": accounts[:300],\n                                  \"tax_rates\": taxes})[:30000],\n                schema_hint=CHANGES_HINT,\n            )\n            edits = edits if isinstance(edits, dict) else {}\n            for e in edits.get(\"lines\") or []:\n                i = e.get(\"index\") if isinstance(e, dict) else None\n                if not isinstance(i, (int, float)) or not (0 <= int(i) < len(proposal.get(\"lines\") or [])):\n                    continue\n                ln = proposal[\"lines\"][int(i)]\n                if e.get(\"account_code\") and str(e[\"account_code\"]) in codes:\n                    ln[\"account_code\"] = str(e[\"account_code\"])\n                    changed_coding = True\n                if e.get(\"tax_type\") and str(e[\"tax_type\"]) in tax_types:\n                    ln[\"tax_type\"] = str(e[\"tax_type\"])\n                    changed_coding = True\n                if e.get(\"description\"):\n                    ln[\"description\"] = str(e[\"description\"])[:400]\n                amount = bk_money(e.get(\"line_amount\"))\n                if amount is not None:\n                    ln[\"line_amount\"] = amount\n                    ln[\"unit_amount\"] = round(amount / (ln.get(\"quantity\") or 1), 4)\n                ln[\"source\"] = \"reviewer\"\n                ln[\"reason\"] = \"Changed by the reviewer\"\n            for key in (\"due_date\", \"invoice_number\", \"date\", \"reference\"):\n                if edits.get(key):\n                    proposal[key] = str(edits[key])\n            record[\"proposal\"] = proposal\n            if bill_id:\n                xero_update_bill_lines(tenant, bill_id, proposal)\n\n        approving = action in (\"approve\", \"approve_changes\", \"client_approved\")\n        missing = [i + 1 for i, ln in enumerate(proposal.get(\"lines\") or []) if not ln.get(\"account_code\")]\n        if approving and missing:\n            raise RuntimeError(\"line(s) \" + \", \".join(str(m) for m in missing) + \" still have no account code. \"\n                               \"Submit the review again with \\\"Approve with changes\\\" and the account codes\")\n\n        if approving:\n            limit = bk_money(client.get(\"client_approval_above\"))\n            if limit is None:\n                limit = bk_money(settings.get(\"client_approval_above\"))\n            total = proposal.get(\"total\") or 0\n            if action == \"client_approved\":\n                record[\"client_approved\"] = True\n            if limit and total > limit and not record.get(\"client_approved\"):\n                email = api.ai.generate(prompt=EMAIL_PROMPT + \"ask them to approve this bill before it is approved in Xero.\",\n                                        input=json.dumps(facts))\n                item = api.workq.create(\n                    title=(\"Get approval from \" + (client.get(\"name\") or \"the client\") + \": \" + (c.get(\"name\") or \"bill\")\n                           + \" \" + facts[\"total\"])[:200],\n                    scope=\"org\",\n                    description=(\"This bill is over the client-approval limit (\" + bk_fmt(limit) + \").\\n\\n\"\n                                 \"1. Email \" + (client.get(\"contact_name\") or \"the business owner\")\n                                 + (\" (\" + client[\"contact_email\"] + \")\" if client.get(\"contact_email\") else \"\")\n                                 + \" using the draft below.\\n2. When they reply, fill in the **Client bill approval** form on this item.\\n\\n\"\n                                 \"**Draft email**\\n\\n\" + email),\n                    priority=\"high\",\n                    due_date=str(bk_add_business_days(today, 3)),\n                    assignee_ids=[actor] if actor else None,\n                    labels=[\"bookkeeping\", \"client-approval\", client.get(\"slug\", \"\")],\n                )\n                api.workq.attach_form(todo_id=item[\"id\"], form_id=params[\"approval_form\"])\n                bk_write_json(BK_BILLS + \"/\" + item[\"id\"] + \".json\", {\"link\": record_todo})\n                followup_id = item[\"id\"]\n                record[\"status\"] = \"awaiting_client\"\n                outcome = \"client_approval_requested\"\n            else:\n                status = settings.get(\"approved_status\") or \"SUBMITTED\"\n                if not bill_id:\n                    bill_id = xero_create_bill(tenant, proposal, status)\n                    record[\"bill_id\"] = bill_id\n                    record[\"attach_error\"] = xero_attach_pdf(tenant, bill_id, record.get(\"file\") or \"\")\n                else:\n                    xero_set_status(tenant, bill_id, status)\n                record[\"status\"] = \"approved\"\n                record[\"approved_by\"] = decision.get(\"actor\") or \"\"\n                outcome = \"approved\"\n\n        elif action in (\"reject\", \"client_rejected\"):\n            if bill_id:\n                xero_set_status(tenant, bill_id, \"DELETED\")\n            record[\"status\"] = \"rejected\"\n            outcome = \"rejected\"\n\n        elif action in (\"ask\", \"client_question\"):\n            if action == \"ask\":\n                purpose = \"ask them this question about a supplier bill: \" + (decision.get(\"notes\") or \"please confirm the bill\")\n            else:\n                purpose = (\"reply to their question about a supplier bill and confirm next steps. Their message: \"\n                           + (decision.get(\"notes\") or \"\"))\n            email = api.ai.generate(prompt=EMAIL_PROMPT + purpose, input=json.dumps(facts))\n            item = api.workq.create(\n                title=(\"Ask \" + (client.get(\"name\") or \"the client\") + \" about \" + (c.get(\"name\") or \"a bill\") + \" \"\n                       + (proposal.get(\"invoice_number\") or \"\"))[:200],\n                scope=\"org\",\n                description=(\"1. Email \" + (client.get(\"contact_name\") or \"the business owner\")\n                             + (\" (\" + client[\"contact_email\"] + \")\" if client.get(\"contact_email\") else \"\")\n                             + \" using the draft below.\\n2. When they answer, fill in the **Bill review** form on this item.\\n\\n\"\n                             \"**Draft email**\\n\\n\" + email + \"\\n\\n---\\n\\n\"\n                             + xero_bill_markdown(proposal, record.get(\"warnings\"), record.get(\"blocking\"), bill_id,\n                                                  record.get(\"file\") or \"\", client.get(\"name\", \"\"))),\n                priority=\"medium\",\n                due_date=str(bk_add_business_days(today, 3)),\n                assignee_ids=[actor] if actor else None,\n                labels=[\"bookkeeping\", \"client-query\", client.get(\"slug\", \"\")],\n            )\n            api.workq.attach_form(todo_id=item[\"id\"], form_id=params[\"review_form\"])\n            bk_write_json(BK_BILLS + \"/\" + item[\"id\"] + \".json\", {\"link\": record_todo})\n            followup_id = item[\"id\"]\n            record[\"status\"] = \"waiting_client\"\n            outcome = \"question_drafted\"\n\n        record.setdefault(\"history\", []).append({\"at\": bk_now_iso(settings), \"by\": decision.get(\"actor\") or \"\",\n                                                  \"action\": action, \"outcome\": outcome,\n                                                  \"notes\": decision.get(\"notes\") or \"\"})\n        bk_write_json(BK_BILLS + \"/\" + record_todo + \".json\", record)\n    except Exception as exc:\n        problem = \"Couldn't apply this review in Xero: \" + str(exc)[:400]\n",
+        "id": "apply_decision",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "approved, rejected, client_approval_requested or question_drafted",
+            "name": "outcome",
+            "type": "str"
+          },
+          {
+            "description": "Follow-up item, if any",
+            "name": "followup_id",
+            "type": "str"
+          },
+          {
+            "description": "True when the reviewer changed an account or tax code",
+            "name": "changed_coding",
+            "type": "bool"
+          },
+          {
+            "description": "The updated bill record",
+            "name": "record",
+            "type": "dict"
+          },
+          {
+            "description": "Why it failed, or empty",
+            "name": "problem",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ steps.load_review.outputs.problem }}",
+            "control": "hidden",
+            "label": "Problem so far",
+            "name": "problem",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.load_review.outputs.ctx }}",
+            "control": "hidden",
+            "label": "Context",
+            "name": "ctx",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ steps.load_review.outputs.decision }}",
+            "control": "hidden",
+            "label": "Decision",
+            "name": "decision",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "control": "form-picker",
+            "label": "Bill review form",
+            "name": "review_form",
+            "required": true,
+            "type": "uuid",
+            "value": "fef31522-7bd0-4610-9e2a-3941cf0cb7f8"
+          },
+          {
+            "control": "form-picker",
+            "label": "Client bill approval form",
+            "name": "approval_form",
+            "required": true,
+            "type": "uuid",
+            "value": "a49c82be-f9f7-419c-be73-d2e8cdc76421"
+          }
+        ],
+        "summary": "Applies changes, then approves, deletes, or creates the follow-up item for the client, in the client’s Xero organisation.",
+        "title": "Apply the decision in Xero"
+      },
+      {
+        "code": "# ── bookkeeping kit: shared helpers (inlined into each node by gen-ext.js) ──\nimport json\nimport re\nimport datetime\nfrom zoneinfo import ZoneInfo\n\n# Knowledge layout. Folders may nest at most 2 levels, so inbox folders are top-level.\nBK_SETTINGS = \"Bookkeeping/settings.json\"\nBK_CLIENTS = \"Bookkeeping/Clients\"\nBK_RULES = \"Bookkeeping/Rules\"\nBK_BILLS = \"Bookkeeping/Bills\"\nBK_INBOX = \"Bookkeeping Inbox\"\nBK_PROCESSED = \"Bookkeeping Processed\"\nBK_FAILED = \"Bookkeeping Failed\"\n\n\ndef bk_read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\n\ndef bk_write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True))\n\n\ndef bk_tz(settings):\n    # The sandbox may lack the tz database; fall back to AEST (UTC+10) rather than failing the run.\n    try:\n        return ZoneInfo((settings or {}).get(\"timezone\") or \"Australia/Sydney\")\n    except Exception:\n        return datetime.timezone(datetime.timedelta(hours=10))\n\n\ndef bk_now_iso(settings):\n    return datetime.datetime.now(bk_tz(settings)).replace(microsecond=0).isoformat()\n\n\ndef bk_norm(name):\n    s = re.sub(r\"[^a-z0-9 ]+\", \" \", str(name or \"\").lower())\n    s = re.sub(r\"\\b(pty|ltd|limited|p/l|the|inc|co)\\b\", \" \", s)\n    return re.sub(r\"\\s+\", \" \", s).strip()\n\n\n# ── bookkeeping kit: Xero ledger adapter (inlined into Xero nodes by gen-ext.js) ──\n# Every write passes xero_tenant_id so it lands in the client's own Xero organisation\n# (myhub-mcp-servers PR #558). Reads pass it too.\nimport base64\nfrom collections import Counter\n\nXERO = \"xero-accounting\"\nXERO_EXPENSE_TYPES = {\"EXPENSE\", \"DIRECTCOSTS\", \"OVERHEADS\", \"FIXED\", \"CURRENT\", \"INVENTORY\", \"PREPAYMENT\", \"NONCURRENT\"}\nXERO_DEAD = {\"DELETED\", \"VOIDED\"}\n\n\ndef xero_bill_link(bill_id):\n    return \"https://go.xero.com/AccountsPayable/Edit.aspx?InvoiceID=\" + str(bill_id)\n\n\n# ── Learn and close ──\n\n\nproblem = params.get(\"problem\") or \"\"\nctx = params.get(\"ctx\") or {}\ndecision = params.get(\"decision\") or {}\nrecord = params.get(\"record\") or ctx.get(\"record\") or {}\nclient = ctx.get(\"client\") or {}\nsettings = ctx.get(\"settings\") or {}\ntodo_id = params.get(\"todo_id\") or \"\"\noutcome = params.get(\"outcome\") or \"\"\nlearned = \"\"\n\nif problem == \"ignored\" or not todo_id:\n    pass\nelif problem:\n    api.workq.comment(todo_id=todo_id, body=problem)\n    api.workq.set_status(todo_id=todo_id, status=\"in_progress\")\nelse:\n    proposal = record.get(\"proposal\") or {}\n    c = proposal.get(\"contact\") or {}\n    lines = proposal.get(\"lines\") or []\n    wants_rule = decision.get(\"remember\") or (params.get(\"changed_coding\") and outcome == \"approved\")\n    if wants_rule and lines and lines[0].get(\"account_code\") and client.get(\"slug\"):\n        path = BK_RULES + \"/\" + client[\"slug\"] + \".json\"\n        rules = bk_read_json(path, {\"suppliers\": {}}) or {\"suppliers\": {}}\n        rule = {\"name\": c.get(\"name\"), \"account_code\": lines[0][\"account_code\"],\n                \"tax_type\": lines[0].get(\"tax_type\") or \"\", \"source\": \"reviewer\", \"updated_at\": bk_now_iso(settings)}\n        suppliers = rules.setdefault(\"suppliers\", {})\n        if c.get(\"id\"):\n            suppliers[c[\"id\"]] = rule\n        suppliers[\"name:\" + bk_norm(c.get(\"name\"))] = rule\n        bk_write_json(path, rules)\n        learned = c.get(\"name\") or \"\"\n    bill_id = record.get(\"bill_id\") or \"\"\n    status_word = \"Approved\" if settings.get(\"approved_status\") == \"AUTHORISED\" else \"Awaiting approval\"\n    messages = {\n        \"approved\": \"Done: the bill is **\" + status_word + \"** in Xero.\",\n        \"rejected\": (\"Rejected: the draft bill was deleted from Xero.\" if bill_id\n                     else \"Rejected: nothing was posted to Xero.\"),\n        \"client_approval_requested\": (\"This bill needs the business owner's approval first. \"\n                                      \"I've created a follow-up item with a draft email.\"),\n        \"question_drafted\": \"I've created a follow-up item with a draft email to the business owner.\",\n    }\n    body = messages.get(outcome, \"Review recorded.\")\n    if bill_id and outcome != \"rejected\":\n        body += \"\\n\\n[Open the bill in Xero](\" + xero_bill_link(bill_id) + \")\"\n    if record.get(\"attach_error\"):\n        body += \"\\n\\nThe PDF couldn't be attached in Xero: \" + record[\"attach_error\"]\n    if learned:\n        body += (\"\\n\\nRemembered: bills from **\" + learned + \"** will be coded to \" + lines[0][\"account_code\"]\n                 + \" from now on.\")\n    api.workq.comment(todo_id=todo_id, body=body)\n    api.workq.complete(todo_id=todo_id)\n",
+        "id": "close_review",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "Supplier whose coding was remembered, or empty",
+            "name": "learned",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ steps.apply_decision.outputs.problem }}",
+            "control": "hidden",
+            "label": "Problem",
+            "name": "problem",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.load_review.outputs.ctx }}",
+            "control": "hidden",
+            "label": "Context",
+            "name": "ctx",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ steps.load_review.outputs.decision }}",
+            "control": "hidden",
+            "label": "Decision",
+            "name": "decision",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ steps.apply_decision.outputs.record }}",
+            "control": "hidden",
+            "label": "Bill record",
+            "name": "record",
+            "required": false,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ steps.apply_decision.outputs.outcome }}",
+            "control": "hidden",
+            "label": "Outcome",
+            "name": "outcome",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.apply_decision.outputs.changed_coding }}",
+            "control": "hidden",
+            "label": "Coding changed",
+            "name": "changed_coding",
+            "required": false,
+            "type": "bool"
+          },
+          {
+            "binding": "{{ trigger.event.subject.todo_id }}",
+            "control": "hidden",
+            "label": "Item",
+            "name": "todo_id",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Remembers the coding for the supplier when asked, comments on the item with the result, and completes it.",
+        "title": "Learn and close"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "load_review",
+      "apply_decision",
+      "close_review"
+    ],
+    "triggers": [
+      {
+        "eventType": "form.response_submitted",
+        "filter": {
+          "form_id": "fef31522-7bd0-4610-9e2a-3941cf0cb7f8"
+        },
+        "kind": "event"
+      },
+      {
+        "eventType": "form.response_submitted",
+        "filter": {
+          "form_id": "a49c82be-f9f7-419c-be73-d2e8cdc76421"
+        },
+        "kind": "event"
+      }
+    ]
+  },
+  "kind": "automation",
+  "knowledgeFiles": [],
+  "level": "org",
+  "name": "Bookkeeping: Apply bill review (Xero)",
+  "originKey": "8d07b0d7-93af-4937-9b85-6b3d3b7de37d",
+  "tags": [
+    "bookkeeping"
+  ]
+}

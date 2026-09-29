@@ -1,0 +1,155 @@
+{
+  "id": "deputy-departments",
+  "title": "Deputy — Departments",
+  "description": "Every department (OperationalUnit) in your connected Deputy business, in Deputy's own roster display order, each colored distinctly. Includes inactive departments alongside active ones.",
+  "category": "hr",
+  "tags": ["deputy", "workforce", "departments", "roster", "hr"],
+  "keywords": ["departments", "operational units", "teams", "roster", "workforce", "deputy", "hr"],
+  "connectorsUsed": ["deputy"],
+  "popularity": 0,
+  "brandColor": "#34DFBA",
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 7 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
+    "max": { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "deputy-token",
+    "tool": "list_departments",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "colHeader", "colDivider", "body", "footer"],
+        "watch": {
+          "/deputy-token/list_departments": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "deputy_department_rows",
+                  "args": { "departments": { "$state": "/deputy-token/list_departments" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleRow"] },
+      "titleRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Building2", "tone": "brand", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Departments", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Deputy" }
+      },
+
+      "colHeader": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "padded": true, "template": "minmax(0, 1fr) minmax(0, 1fr) 5rem" },
+        "children": ["colDepartment", "colCompany", "colStatus"]
+      },
+      "colDepartment": { "type": "Caption", "props": { "text": "Department" } },
+      "colCompany": { "type": "Caption", "props": { "text": "Company" } },
+      "colStatus": { "type": "Caption", "props": { "text": "Status" } },
+      "colDivider": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "list"] },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "visible": { "$state": "/_loading/deputy-token.list_departments" },
+        "children": ["sk1", "sk2", "sk3"]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No departments found in this Deputy business." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/deputy-token.list_departments", "not": true },
+            { "$state": "/ui/rows/0", "not": true }
+          ]
+        }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": { "statePath": "/ui/rows", "key": "id" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/deputy-token.list_departments", "not": true },
+            { "$state": "/ui/rows/0" }
+          ]
+        }
+      },
+      "row": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "sm", "hover": true, "template": "minmax(0, 1fr) minmax(0, 1fr) 5rem" },
+        "children": ["rowBadge", "rowCompany", "rowStatus"]
+      },
+      "rowBadge": {
+        "type": "Badge",
+        "props": { "text": { "$item": "name" }, "tone": { "$item": "tone" } }
+      },
+      "rowCompany": {
+        "type": "Caption",
+        "props": { "text": { "$item": "company" }, "tone": "muted" }
+      },
+      "rowStatus": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$cond": { "$item": "active" },
+            "$then": "Active",
+            "$else": "Inactive"
+          },
+          "tone": "muted"
+        }
+      },
+
+      "footer": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["openDeputyBtn"]
+      },
+      "openDeputyBtn": {
+        "type": "Button",
+        "props": { "label": "Open in Deputy", "tone": "brand", "variant": "primary", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": "https://www.deputy.com/login", "target": "_blank" }
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}

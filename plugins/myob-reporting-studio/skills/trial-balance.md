@@ -5,21 +5,27 @@ description: Generate a MYOB Trial Balance — every account's current balance, 
 
 # Trial Balance
 
-Use `list_accounts` (filter to `is_active: true` unless told otherwise — inactive accounts are typically excluded from a trial balance). There is no as-of-date parameter on this tool. This report can only reflect current account balances, not a specific past date. If asked for a trial balance "as at [past date]," say plainly that the connected data source doesn't support that and this report will show current balances instead — don't silently substitute one for the other.
+Use `list_accounts` with **no `is_active` parameter**, so every account comes back: an inactive account that still carries a balance must stay in the trial balance or debits won't equal credits. Hide inactive accounts only when their balance is zero, client-side. There is no trial-balance tool and no as-of-date parameter on this one. This report can only reflect current account balances, not a specific past date. If asked for a trial balance "as at [past date]," say plainly that the connected data source doesn't support that and this report will show current balances instead — don't silently substitute one for the other.
 
-Discover the actual field shape before assuming anything. Call the tool once and confirm: which field holds each account's balance (don't assume a specific field name — verify it), whether MYOB flags header/summary accounts that shouldn't be included in totals (commonly a boolean field marking a grouping account rather than a postable one — exclude these from the trial balance body and totals if present), and what account-type values actually appear (cross-check against the classification/DisplayID-prefix convention already established in `myob-report-foundation` and used in Balance Sheet).
+The row shape is known: `UID`, `DisplayID`, `Name`, `Type`, `Classification`, `IsHeader`, `IsActive`, `CurrentBalance` (MYOB: `CurrentBalance` includes all future-dated activity). Exclude every `IsHeader: true` account (a grouping account, not a postable one) from the body and totals. Call the tool once during generation to confirm the balances look as expected before writing render code.
 
-Sign verification, same discipline as Balance Sheet: a trial balance's defining property is that total debits equal total credits (equivalently, signed balances sum to zero once debit-normal types are positive and credit-normal types are negative, or vice versa). Don't assume which sign convention the retrieved balances use — test both, and use whichever one actually makes debits equal credits. If neither does, say so plainly rather than forcing a false balance, exactly as the Balance Sheet skill does when the accounting equation doesn't resolve.
+**Always exclude Current Year Earnings.** MYOB's Current Year Earnings account (an Equity account, usually named "Current Year Earnings", often 3-9000) is not postable: its `CurrentBalance` is the running total of this financial year's Income, Cost of Sales and Expense accounts. A trial balance lists those P&L accounts themselves, so keeping Current Year Earnings counts this year's profit twice and debits miss credits by exactly the net profit (live on the mySMB.com file: Dr 6,463.45 vs Cr 8,646.21, difference 2,182.76 = the year-to-date net profit). Identify it by Classification `Equity` with the name matching /^current year('s)? earnings$/i; exclude it from the body and totals, show it once below the table as "Current Year Earnings (not listed — this year's profit, carried by the P&L accounts above)" with its balance, and add a check: Current Year Earnings = Σ Income + Σ OtherIncome − Σ CostOfSales − Σ Expense − Σ OtherExpense (from the listed accounts), 0.01 tolerance. Retained Earnings (prior years) stays in.
 
-Present one row per account: account ID, name, type, and the balance split into a Debit column and a Credit column (never a single signed number — that's what makes it recognizable as a trial balance). Group by account type in the standard order (Asset, Liability, Equity, Income, Cost of Sales, Expense) with subtotals per group.
+**Sign convention (fixed — confirmed live):** `CurrentBalance` is positive in each account's normal balance. So an `Asset`, `CostOfSales`, `Expense` or `OtherExpense` account's positive balance is a **Debit** and a negative one a Credit; a `Liability`, `Equity`, `Income` or `OtherIncome` account's positive balance is a **Credit** and a negative one a Debit (e.g. an overdrawn bank account, an Asset at −432.95, is a 432.95 Credit). Don't test alternative conventions. If debits still don't equal credits after excluding Current Year Earnings, show the difference plainly as a Fail — never force a balance.
 
-Validate:
-* Total Debits = Total Credits
+Present one row per account: account ID, name, type, and the balance split into a Debit column and a Credit column (never a single signed number — that's what makes it recognizable as a trial balance). Group by `Classification` in the standard order — `Asset`, `Liability`, `Equity`, `Income`, `CostOfSales`, `Expense`, `OtherIncome`, `OtherExpense` (display labels may add spaces, e.g. "Cost of Sales") — with subtotals per group.
 
-Show the actual computed totals and Pass/Fail, not just an assertion. Disclose in Sources & limitations whether balance/header-account/type fields were discovered as expected or required a fallback assumption, and restate clearly that this reflects current balances only, not a historical as-of date.
+Validate (0.01 tolerance):
+* Total Debits = Total Credits (after excluding Current Year Earnings)
+* Current Year Earnings = net of the listed P&L accounts
+* If `list_accounts` failed or returned no postable accounts, the check is N/A — an empty trial balance never "balances" to a Pass.
+
+Show the actual computed totals and Pass/Fail, not just an assertion. Disclose in Sources & limitations how the sign convention and the current-year-earnings question were resolved, and restate clearly that this reflects current balances only, not a historical as-of date.
 
 ## Interactivity
 
-* Declare a `type` filter as an optional input (`Asset`/`Liability`/`Equity`/`Income`/`Cost of Sales`/`Expense`) mapped to the tool's type parameter, for viewing one classification at a time. 
-* Table is sortable by account ID, name, or balance, and filterable by name/ID, per the shared foundation skill's rules. 
+* Declare a `classification` presentation input (enum: `All`, `Asset`, `Liability`, `Equity`, `Income`, `CostOfSales`, `Expense`, `OtherIncome`, `OtherExpense`; default `All`) that filters the displayed rows client-side. The binding always fetches every account so the Debits = Credits check always runs on the full set.
+* An optional "Active accounts only" toggle is a `boolean` presentation input that hides inactive accounts with a zero balance, client-side. It is never bound to `list_accounts` (the tool's `is_active` is a JSON boolean; an enum or string input sends `"true"` and MYOB rejects the call).
+* Declare `persona` and `company_file` per the foundation skill.
+* Table is sortable by account ID, name, or balance, and filterable by name/ID, per the shared foundation skill's rules.
 * No date input — see the limitation above.

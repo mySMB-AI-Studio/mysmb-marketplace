@@ -1,15 +1,19 @@
 {
-  "id": "xero-today-cash-flow",
-  "title": "Cash Flow",
-  "description": "Cash in vs cash out for a chosen period — sourced from Xero's Bank Summary report so the totals reconcile exactly with Xero.",
   "category": "finance",
-  "tags": [
-    "xero",
-    "cash-flow",
-    "finance",
-    "report",
-    "bank"
+  "connectorsUsed": [
+    "xero-accounting"
   ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-accounting",
+    "params": {
+      "fromDate": "$month_start_date",
+      "toDate": "$today_date"
+    },
+    "tool": "get_bank_summary"
+  },
+  "description": "Cash in vs cash out for a chosen period — sourced from Xero's Bank Summary report so the totals reconcile exactly with Xero.",
+  "id": "xero-today-cash-flow",
   "keywords": [
     "cash",
     "flow",
@@ -20,37 +24,31 @@
     "in",
     "out"
   ],
-  "connectorsUsed": [
-    "xero-accounting"
-  ],
   "popularity": 84,
   "sizing": {
-    "preferred": {
-      "colSpan": 4,
-      "rowSpan": 4
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 8
     },
     "min": {
       "colSpan": 4,
       "rowSpan": 4
     },
-    "max": {
-      "colSpan": 10,
-      "rowSpan": 8
-    }
-  },
-  "dataProvider": {
-    "mcp": "xero-accounting",
-    "tool": "get_bank_summary",
-    "params": {
-      "fromDate": "$month_start_date",
-      "toDate": "$today_date"
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 4
     }
   },
   "spec": {
-    "root": "card",
     "elements": {
+      "body": {
+        "children": [
+          "loadingList",
+          "table"
+        ],
+        "type": "Body"
+      },
       "card": {
-        "type": "Card",
         "children": [
           "header",
           "loadingStats",
@@ -58,6 +56,7 @@
           "divider",
           "body"
         ],
+        "type": "Card",
         "watch": {
           "/xero-accounting/get_bank_summary/Reports": {
             "action": "setState",
@@ -75,181 +74,7 @@
           }
         }
       },
-      "header": {
-        "type": "Header",
-        "children": [
-          "titleGroup",
-          "periodChips"
-        ]
-      },
-      "titleGroup": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "start"
-        },
-        "children": [
-          "titleIcon",
-          "titleStack"
-        ]
-      },
-      "titleIcon": {
-        "type": "Icon",
-        "props": {
-          "name": "Wallet",
-          "tone": "accent",
-          "size": "sm"
-        }
-      },
-      "titleStack": {
-        "type": "Stack",
-        "props": {
-          "gap": "none"
-        },
-        "children": [
-          "title",
-          "periodLabel"
-        ]
-      },
-      "title": {
-        "type": "Heading",
-        "props": {
-          "text": "Cash Flow",
-          "level": "h2"
-        }
-      },
-      "periodLabel": {
-        "type": "Eyebrow",
-        "props": {
-          "text": {
-            "$state": "/xero-accounting/get_bank_summary/Reports/0/ReportTitles/2"
-          }
-        }
-      },
-      "periodChips": {
-        "type": "Row",
-        "props": {
-          "gap": "xs",
-          "align": "center"
-        },
-        "children": [
-          "chipMonth",
-          "chipLastMonth",
-          "chip30",
-          "chipQuarter"
-        ]
-      },
-      "chipMonth": {
-        "type": "Row",
-        "props": {
-          "gap": "none",
-          "align": "center",
-          "hover": true,
-          "clickable": true,
-          "selected": {
-            "$computed": "equals",
-            "args": {
-              "a": "month",
-              "b": {
-                "$state": "/ui/cf/period"
-              }
-            }
-          }
-        },
-        "children": [
-          "chipMonthLabel"
-        ],
-        "on": {
-          "click": [
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/cf/period",
-                "value": "month"
-              }
-            },
-            {
-              "action": "xero-accounting.get_bank_summary",
-              "params": {
-                "fromDate": "$month_start_date",
-                "toDate": "$today_date"
-              }
-            }
-          ]
-        }
-      },
-      "chipMonthLabel": {
-        "type": "Text",
-        "props": {
-          "text": "This Month",
-          "size": "xs",
-          "weight": "medium"
-        }
-      },
-      "chipLastMonth": {
-        "type": "Row",
-        "props": {
-          "gap": "none",
-          "align": "center",
-          "hover": true,
-          "clickable": true,
-          "selected": {
-            "$computed": "equals",
-            "args": {
-              "a": "lastMonth",
-              "b": {
-                "$state": "/ui/cf/period"
-              }
-            }
-          }
-        },
-        "children": [
-          "chipLastMonthLabel"
-        ],
-        "on": {
-          "click": [
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/cf/period",
-                "value": "lastMonth"
-              }
-            },
-            {
-              "action": "xero-accounting.get_bank_summary",
-              "params": {
-                "fromDate": "$last_month_start_date",
-                "toDate": "$last_month_end_date"
-              }
-            }
-          ]
-        }
-      },
-      "chipLastMonthLabel": {
-        "type": "Text",
-        "props": {
-          "text": "Last Month",
-          "size": "xs",
-          "weight": "medium"
-        }
-      },
       "chip30": {
-        "type": "Row",
-        "props": {
-          "gap": "none",
-          "align": "center",
-          "hover": true,
-          "clickable": true,
-          "selected": {
-            "$computed": "equals",
-            "args": {
-              "a": "30d",
-              "b": {
-                "$state": "/ui/cf/period"
-              }
-            }
-          }
-        },
         "children": [
           "chip30Label"
         ],
@@ -270,33 +95,127 @@
               }
             }
           ]
-        }
-      },
-      "chip30Label": {
-        "type": "Text",
+        },
         "props": {
-          "text": "30 Days",
-          "size": "xs",
-          "weight": "medium"
-        }
-      },
-      "chipQuarter": {
-        "type": "Row",
-        "props": {
-          "gap": "none",
           "align": "center",
-          "hover": true,
           "clickable": true,
+          "gap": "none",
+          "hover": true,
           "selected": {
             "$computed": "equals",
             "args": {
-              "a": "quarter",
+              "a": "30d",
               "b": {
                 "$state": "/ui/cf/period"
               }
             }
           }
         },
+        "type": "Row"
+      },
+      "chip30Label": {
+        "props": {
+          "size": "xs",
+          "text": "30 Days",
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "chipLastMonth": {
+        "children": [
+          "chipLastMonthLabel"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/cf/period",
+                "value": "lastMonth"
+              }
+            },
+            {
+              "action": "xero-accounting.get_bank_summary",
+              "params": {
+                "fromDate": "$last_month_start_date",
+                "toDate": "$last_month_end_date"
+              }
+            }
+          ]
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "none",
+          "hover": true,
+          "selected": {
+            "$computed": "equals",
+            "args": {
+              "a": "lastMonth",
+              "b": {
+                "$state": "/ui/cf/period"
+              }
+            }
+          }
+        },
+        "type": "Row"
+      },
+      "chipLastMonthLabel": {
+        "props": {
+          "size": "xs",
+          "text": "Last Month",
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "chipMonth": {
+        "children": [
+          "chipMonthLabel"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/cf/period",
+                "value": "month"
+              }
+            },
+            {
+              "action": "xero-accounting.get_bank_summary",
+              "params": {
+                "fromDate": "$month_start_date",
+                "toDate": "$today_date"
+              }
+            }
+          ]
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "none",
+          "hover": true,
+          "selected": {
+            "$computed": "equals",
+            "args": {
+              "a": "month",
+              "b": {
+                "$state": "/ui/cf/period"
+              }
+            }
+          }
+        },
+        "type": "Row"
+      },
+      "chipMonthLabel": {
+        "props": {
+          "size": "xs",
+          "text": "This Month",
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "chipQuarter": {
         "children": [
           "chipQuarterLabel"
         ],
@@ -317,262 +236,344 @@
               }
             }
           ]
-        }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "none",
+          "hover": true,
+          "selected": {
+            "$computed": "equals",
+            "args": {
+              "a": "quarter",
+              "b": {
+                "$state": "/ui/cf/period"
+              }
+            }
+          }
+        },
+        "type": "Row"
       },
       "chipQuarterLabel": {
-        "type": "Text",
         "props": {
-          "text": "This Quarter",
           "size": "xs",
+          "text": "This Quarter",
           "weight": "medium"
-        }
-      },
-      "loadingStats": {
-        "type": "Grid",
-        "props": {
-          "cols": 2,
-          "gap": "md"
         },
-        "children": [
-          "loadStatA",
-          "loadStatB"
-        ],
-        "visible": {
-          "$state": "/_loading/xero-accounting.get_bank_summary"
-        }
-      },
-      "loadStatA": {
-        "type": "Skeleton",
-        "props": {
-          "height": "3rem",
-          "rounded": "md"
-        }
-      },
-      "loadStatB": {
-        "type": "Skeleton",
-        "props": {
-          "height": "3rem",
-          "rounded": "md"
-        }
-      },
-      "stats": {
-        "type": "Grid",
-        "props": {
-          "cols": 2,
-          "gap": "md"
-        },
-        "children": [
-          "inCell",
-          "outCell"
-        ],
-        "visible": {
-          "$state": "/_loading/xero-accounting.get_bank_summary",
-          "not": true
-        }
-      },
-      "inCell": {
-        "type": "Stack",
-        "props": {
-          "gap": "xs"
-        },
-        "children": [
-          "inLabelRow",
-          "inValue"
-        ]
-      },
-      "inLabelRow": {
-        "type": "Row",
-        "props": {
-          "gap": "xs",
-          "align": "center"
-        },
-        "children": [
-          "inIcon",
-          "inLabel"
-        ]
-      },
-      "inIcon": {
-        "type": "Icon",
-        "props": {
-          "name": "ArrowDownCircle",
-          "tone": "success",
-          "size": "xs"
-        }
-      },
-      "inLabel": {
-        "type": "Eyebrow",
-        "props": {
-          "text": "Cash In"
-        }
-      },
-      "inValue": {
-        "type": "Stat",
-        "props": {
-          "value": {
-            "$computed": "format_currency",
-            "args": {
-              "value": {
-                "$computed": "sum",
-                "args": {
-                  "value": {
-                    "$state": "/ui/cf/rows"
-                  },
-                  "field": "c2",
-                  "whereField": "rowType",
-                  "equals": "Row"
-                }
-              }
-            }
-          },
-          "tone": "success"
-        }
-      },
-      "outCell": {
-        "type": "Stack",
-        "props": {
-          "gap": "xs"
-        },
-        "children": [
-          "outLabelRow",
-          "outValue"
-        ]
-      },
-      "outLabelRow": {
-        "type": "Row",
-        "props": {
-          "gap": "xs",
-          "align": "center"
-        },
-        "children": [
-          "outIcon",
-          "outLabel"
-        ]
-      },
-      "outIcon": {
-        "type": "Icon",
-        "props": {
-          "name": "ArrowUpCircle",
-          "tone": "destructive",
-          "size": "xs"
-        }
-      },
-      "outLabel": {
-        "type": "Eyebrow",
-        "props": {
-          "text": "Cash Out"
-        }
-      },
-      "outValue": {
-        "type": "Stat",
-        "props": {
-          "value": {
-            "$computed": "format_currency",
-            "args": {
-              "value": {
-                "$computed": "sum",
-                "args": {
-                  "value": {
-                    "$state": "/ui/cf/rows"
-                  },
-                  "field": "c3",
-                  "whereField": "rowType",
-                  "equals": "Row"
-                }
-              }
-            }
-          },
-          "tone": "destructive"
-        }
+        "type": "Text"
       },
       "divider": {
         "type": "Divider"
       },
-      "body": {
-        "type": "Body",
+      "header": {
         "children": [
-          "loadingList",
-          "table"
-        ]
+          "titleGroup",
+          "periodChips"
+        ],
+        "type": "Header"
+      },
+      "inCell": {
+        "children": [
+          "inLabelRow",
+          "inValue"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "inIcon": {
+        "props": {
+          "name": "ArrowDownCircle",
+          "size": "xs",
+          "tone": "success"
+        },
+        "type": "Icon"
+      },
+      "inLabel": {
+        "props": {
+          "text": "Cash In"
+        },
+        "type": "Eyebrow"
+      },
+      "inLabelRow": {
+        "children": [
+          "inIcon",
+          "inLabel"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "inValue": {
+        "props": {
+          "tone": "success",
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "sum",
+                "args": {
+                  "equals": "Row",
+                  "field": "c2",
+                  "value": {
+                    "$state": "/ui/cf/rows"
+                  },
+                  "whereField": "rowType"
+                }
+              }
+            }
+          }
+        },
+        "type": "Stat"
+      },
+      "loadStatA": {
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "loadStatB": {
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
       },
       "loadingList": {
-        "type": "Stack",
-        "props": {
-          "gap": "sm"
-        },
         "children": [
           "ls1",
           "ls2",
           "ls3"
         ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/xero-accounting.get_bank_summary"
+        }
+      },
+      "loadingStats": {
+        "children": [
+          "loadStatA",
+          "loadStatB"
+        ],
+        "props": {
+          "cols": 2,
+          "gap": "md"
+        },
+        "type": "Grid",
         "visible": {
           "$state": "/_loading/xero-accounting.get_bank_summary"
         }
       },
       "ls1": {
-        "type": "Skeleton",
         "props": {
           "height": "2rem",
           "rounded": "md"
-        }
+        },
+        "type": "Skeleton"
       },
       "ls2": {
-        "type": "Skeleton",
         "props": {
           "height": "2rem",
           "rounded": "md"
-        }
+        },
+        "type": "Skeleton"
       },
       "ls3": {
-        "type": "Skeleton",
         "props": {
           "height": "2rem",
           "rounded": "md"
-        }
-      },
-      "table": {
-        "type": "Table",
-        "props": {
-          "rows": {
-            "$state": "/ui/cf/rows"
-          },
-          "columns": [
-            {
-              "id": "account",
-              "header": "Account",
-              "field": "c0",
-              "priority": 1
-            },
-            {
-              "id": "in",
-              "header": "Cash In",
-              "field": "c2",
-              "align": "right",
-              "format": "currency",
-              "priority": 1
-            },
-            {
-              "id": "out",
-              "header": "Cash Out",
-              "field": "c3",
-              "align": "right",
-              "format": "currency",
-              "priority": 1
-            },
-            {
-              "id": "balance",
-              "header": "Balance",
-              "field": "c4",
-              "align": "right",
-              "format": "currency",
-              "priority": 2
-            }
-          ]
         },
+        "type": "Skeleton"
+      },
+      "outCell": {
+        "children": [
+          "outLabelRow",
+          "outValue"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "outIcon": {
+        "props": {
+          "name": "ArrowUpCircle",
+          "size": "xs",
+          "tone": "destructive"
+        },
+        "type": "Icon"
+      },
+      "outLabel": {
+        "props": {
+          "text": "Cash Out"
+        },
+        "type": "Eyebrow"
+      },
+      "outLabelRow": {
+        "children": [
+          "outIcon",
+          "outLabel"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "outValue": {
+        "props": {
+          "tone": "destructive",
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "sum",
+                "args": {
+                  "equals": "Row",
+                  "field": "c3",
+                  "value": {
+                    "$state": "/ui/cf/rows"
+                  },
+                  "whereField": "rowType"
+                }
+              }
+            }
+          }
+        },
+        "type": "Stat"
+      },
+      "periodChips": {
+        "children": [
+          "chipMonth",
+          "chipLastMonth",
+          "chip30",
+          "chipQuarter"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "periodLabel": {
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/get_bank_summary/Reports/0/ReportTitles/2"
+          }
+        },
+        "type": "Eyebrow"
+      },
+      "stats": {
+        "children": [
+          "inCell",
+          "outCell"
+        ],
+        "props": {
+          "cols": 2,
+          "gap": "md"
+        },
+        "type": "Grid",
         "visible": {
           "$state": "/_loading/xero-accounting.get_bank_summary",
           "not": true
         }
+      },
+      "table": {
+        "props": {
+          "columns": [
+            {
+              "field": "c0",
+              "header": "Account",
+              "id": "account",
+              "priority": 1
+            },
+            {
+              "align": "right",
+              "field": "c2",
+              "format": "currency",
+              "header": "Cash In",
+              "id": "in",
+              "priority": 1
+            },
+            {
+              "align": "right",
+              "field": "c3",
+              "format": "currency",
+              "header": "Cash Out",
+              "id": "out",
+              "priority": 1
+            },
+            {
+              "align": "right",
+              "field": "c4",
+              "format": "currency",
+              "header": "Balance",
+              "id": "balance",
+              "priority": 2
+            }
+          ],
+          "rows": {
+            "$state": "/ui/cf/rows"
+          }
+        },
+        "type": "Table",
+        "visible": {
+          "$state": "/_loading/xero-accounting.get_bank_summary",
+          "not": true
+        }
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Cash Flow"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "start",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Wallet",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "periodLabel"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
       }
-    }
-  }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "xero",
+    "cash-flow",
+    "finance",
+    "report",
+    "bank"
+  ],
+  "title": "Cash Flow"
 }

@@ -1,40 +1,916 @@
 ---
 name: xero-report-foundation
-description: Apply the shared data, validation, visual, interactivity, and delivery rules for every Xero report.
+description: Shared build recipe, controls contract, validation rules, Xero styling and the tested report kit for every Xero report (AGT-001), plus the connector facts and rules for report skills not yet on the kit. Load it with the report skill.
 ---
 # Xero report foundation
+
+Use when you build any Xero report, dashboard or report pack. Load this skill first, then the report skill. Two kinds of report skill exist:
+
+- **Kit reports** — `xero-reporting-studio:xero-profit-and-loss` (P06), `xero-reporting-studio:xero-balance-sheet` (P07). The report skill carries a tested `dataBindings` manifest and a report config; this file carries the tested kit and stylesheet. **You assemble them — you do not write report code.** Follow *Build a kit report* below.
+- **Every other report skill** is still a written specification. Follow *Rules for report skills without a kit config* at the end of this file.
+
+Spec: Xero Reports Prompt Library v1.2 (P01–P15) with the v1.2 patch (one agent per platform; LIB-002 client selector; cross-client isolation). Connector: `xero-accounting` (the mySMB custom MCP on the Xero Accounting API). The library's Read Me names the claude.ai Xero connector's tools (get_financial_position, get_organisation_info and the like) — **those do not exist here**; use only the tools named in these skills.
+
+## Build a kit report
+
+1. **Discovery call.** Call the report's primary tool once with its default inputs (the report skill says which), plus `get_organisation` and `list_connections` once each. Confirm Xero is connected (a connection error → tell the user to connect Xero under Settings → Connections and stop). A failed call is an error message, not data: report it. Read the organisation's name from `get_organisation`. Never copy a returned figure into the document.
+2. **dataBindings.** Copy the report skill's `dataBindings` JSON exactly. Change only the `default` values of date inputs, as its *Date defaults* line says (`YYYY-MM-DD` or `"today"`), and the `display` JSON string's `p` (period preset), `a` (as-at preset), `c` (compare: `none` | `prev_period` | `prev_year` | `ytd`) and `v` (report view) to match the request. Leave `org` empty (the connection's default organisation) unless the user names another organisation that `list_connections` returned — then use its `tenantId`. For a cash-basis request set the `basis` default to `Cash`. **Branding:** leave `style` = `xero` (Xero branding, the default). Set `style` = `mysmb` when the user asks for mySMB branding or the mySMB report template. Set `b` to `#rrggbb` only when the user asks for their own or their customer's colour. Keep every other key, input name, option, binding id, tool name and param.
+3. **Report config.** Copy the report config JS exactly. Change only its `defaults` object so it equals the manifest defaults **exactly** (the same dates — the platform opens the report with the manifest defaults), with `"today"` written as today's date. Change nothing else. (If the two ever differ, the kit sees it in Xero's report title and refetches at the dates the controls show.)
+4. **Assemble** one HTML document from the skeleton below: replace `{{TITLE}}` with the report title, `{{CSS}}` with the stylesheet, `{{KIT}}` with the report kit and `{{CFG}}` with the report config, all verbatim. Never edit, shorten, reformat or "improve" the kit or the stylesheet — they are tested as one unit and the platform validates the document against the bindings.
+5. **Save** with `artifact_save`: `title` = "<Organisation> — <Report name>" (no period — the reader can change it; put the opening period in the one-line `description`), `fileName` and `tags` from the report skill, `content` = the document, `dataBindings` = the manifest. Do not pass `connectors` (a live report derives them). Never paste the HTML into chat.
+6. **Completion note** (3–6 lines): the report is live and refreshes on open; the controls the reader can change; the validation checks and whether they passed on the discovery data; any N/A items (the report skill lists them); Download PDF / Download Excel are in the report, and the report window's Download and Share save a frozen snapshot.
+
+The user never has to choose an output format: every report is HTML with Download PDF (print to PDF) and Download Excel (.xlsx). If they ask for Excel or PDF, build the report and point to those buttons.
+
+## Controls contract (kit reports)
+
+- **Organisation (LIB-002).** The organisations this Xero connection can access (`list_connections`). With one organisation the box shows its name. With several it is a picker bound to `org`, which every binding sends as `xero_tenant_id` — switching refetches everything for that organisation only, and its name, base currency and financial year come from `get_organisation`. Never type or guess a client name.
+- **Period.** A preset (Today … Last financial year, Custom) next to editable From / To dates, or As at with presets. The **financial year comes from the organisation's settings** (`FinancialYearEndMonth`); the banner names the source, and says "assumed" only if `get_organisation` failed. **Relative presets roll forward**: a saved "This financial year to date" report is recomputed to today's window each time it opens, and again when the reader switches to an organisation with a different year end. The header uses Xero's wording ("For the 3 months ended 30 September 2026", "As at 30 September 2026").
+- **Accounting method** (Accrual | Cash): both are loaded (`paymentsOnly` false / true), so switching never refetches. Compare to (previous period / previous year / year to date, with $ and % change); Report (the members); View as (persona).
+- **Branding** (under Customise; display only — never refetches): **Xero** (default: white cards, Xero blue #13B5EA accents and charts, navy ink, red negatives, Xero badge, "Prepared from Xero") or **mySMB** (the mySMB Reporting template: teal header band with a white title, white-on-teal table headers, light-teal alternating rows, mySMB badge, and the footer "Business | Report | Generated"). It is stored in the `display` input as `style`, so downloads and snapshots keep it.
+- **Customise** (display only, never refetches): Show cents, Divide by 1000, Except zero amounts (on by default — zero rows are hidden), negatives (-100 / **(100)** / 100-), Show in red (on by default, Xero style), Header, Footer, Compact | 100%, and Brand colour for a client's own colour ("Use Xero branding" resets it; not used under mySMB branding).
+- **Delivery.** Download PDF (print stylesheet), Download Excel (a real .xlsx: a sheet per table with a header block, number format, bold totals, a Validation sheet and a Parameters sheet). Host Download and Share produce a self-contained snapshot.
+- **Personas.** Client and Executive = summary mode (account lines hidden; totals, charts and validation kept). Bookkeeper and Practitioner = detail mode. A failed check is never hidden.
+- **Snapshots** freeze the data; the report reads its period from the Xero report's own title and disables the controls that refetch.
+
+## Data and validation rules (kit reports)
+
+- Only `xero-accounting` tools. Never invent, estimate or reuse example figures. Anything missing is "N/A — not in source" and listed under Sources & limitations.
+- A failed Xero call reaches the report as a binding error: the section shows the message, the banner turns red, and no check computed from it passes. **Xero allows 5 calls in progress per organisation** and the platform opens every binding at once, so the kit re-requests any HTTP 429 one at a time (3 rounds) before showing it as failed.
+- Xero report rows are shown in Xero's order and wording ("Less " prefixes on section titles dropped), with Xero's own section totals and computed lines. Every value is Xero's string parsed to a number — never re-signed.
+- Every report recomputes its checks on every load and change. Each report includes at least one **independent tie** — a figure matched against a different Xero report (e.g. P&L Net Profit = Balance Sheet Current Year Earnings) — so a check never just re-adds the report's own numbers. Only real checks count in "x/y passed"; N/A and information lines are counted separately.
+- Financial output is decision support, not audit, tax or legal advice.
+
+## Kit reference (for adapting a config after discovery)
+
+`XK.app(cfg)` keys: `title`, `primary` (binding whose title a snapshot reads), `dated` (bindings whose Xero report title must name the selected dates — checked on open and after each refetch), `org` (the `get_organisation` binding id), `conns` (the `list_connections` binding id), `fyMonth` (override the organisation's financial-year start), `retryMs`, `inputs` (role → declared input: start, end, asAt, basis, cmpStart, cmpEnd, cmpAsAt, org, persona, display), `defaults`, `uses` (binding id → the declared inputs it consumes; drives refetching), `tools`, `compare`, `enums`, `views`, `derive(inputs, fyMonth)` (applied on open and on every change), `roll`, `render(ctx)` → `{checks:[{name, pass:true|false|null, info?, detail}], na, notes, title, period}`, `excel(ctx)`.
+
+Helpers: `XK.walk(report)` → `{lines:[{kind:'header'|'row'|'total', depth, label, id, group, parent, calc, closes, values}], sections, columns, titles}`; `sectionTotal` / `sectionBy(walked, /title/)`; `linesTies` (SummaryRow = Σ rows) / `parentTies` (Total Assets = Σ sections) / `runningTies` (Gross / Net Profit = running Σ); `currentYearEarnings(lines)`; `orgOf` / `connections` / `companyOf` / `fiscalStart`; `find` / `val`; `money` / `pct` / `periodLine` / `rangeLabel` / `asOfLine` / `footerStamp`; `statement` / `grid` / `kpis` / `bars` / `line` / `donut` / `waterfall`; `preset` / `asAt` / `compare` / `fyStartOf`; `xlsx` / `sheetFromLines`.
+
+## Skeleton
+
+```html
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{TITLE}}</title>
+<style>{{CSS}}</style>
+</head>
+<body class="persona-detail">
+<div id="xk-controls" aria-label="Report controls"></div>
+<div id="xk-status" role="status" aria-live="polite">Loading Xero data…</div>
+<div id="xk-banner" class="xk-banner" role="region" aria-label="Validation"></div>
+<main class="xk-card">
+<header id="xk-head"></header>
+<div id="xk-body"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
+<footer id="xk-foot"></footer>
+</main>
+<section id="xk-sources" class="xk-card" aria-label="Sources and limitations"></section>
+<script>{{KIT}}</script>
+<script>{{CFG}}</script>
+</body>
+</html>
+```
+
+## Stylesheet ({{CSS}})
+
+```css
+:root{--accent:#13B5EA;--btn:#0078C8;--btn-ink:#FFFFFF;--ink:#393A3D;--muted:#6B6C72;--line:#E3E5E8;--canvas:#F4F5F8;--card:#FFFFFF;--th:#6B6C72;--zebra:transparent;--neg:#D52B1E;--pos:#1B7F4B;--pass-bg:#EAF6E8;--fail-bg:#FDECEA;--band:#FFFFFF;--band-ink:#393A3D;--cover:#1B2A4A;--cover-ink:#FFFFFF;--c1:#13B5EA;--c2:#9E9E9E;--c3:#172B4D;--c4:#00B0A0;--c5:#E0457B;--c6:#6F2CBA;--d1:#13B5EA;--d2:#172B4D;--d3:#00B0A0;--d4:#E0457B;--d5:#6F2CBA;--d6:#9E9E9E}
+:root[data-myhub-theme='dark']{--accent:#3CC4F0;--btn:#1590D4;--btn-ink:#FFFFFF;--ink:#E6E8EB;--muted:#A3A7AE;--line:#33363C;--canvas:#16181B;--card:#1F2226;--th:#A3A7AE;--neg:#FF6B5E;--pos:#4CC38A;--pass-bg:#18301A;--fail-bg:#3A1B19;--band:#1F2226;--band-ink:#E6E8EB;--cover:#22324F;--cover-ink:#FFFFFF;--c1:#3CC4F0;--c2:#80858D;--c3:#9FB3D1;--c4:#2BC4B3;--c5:#F06A96;--c6:#A77BE8;--d1:#3CC4F0;--d2:#9FB3D1;--d3:#2BC4B3;--d4:#F06A96;--d5:#A77BE8;--d6:#80858D}
+:root.style-mysmb{--accent:#00B0A0;--btn:#007A6E;--zebra:#E6F7F5;--band:#007A6E;--band-ink:#FFFFFF;--cover:#007A6E;--th-bg:#007A6E;--th-ink:#FFFFFF;--c1:#007A6E;--c2:#00B0A0;--c3:#6F2CBA;--c4:#9E9E9E;--c5:#1B7F4B;--c6:#C8102E;--d1:#007A6E;--d2:#00B0A0;--d3:#6F2CBA;--d4:#9E9E9E;--d5:#1B7F4B;--d6:#C8102E;--pos:#1B7F4B;--neg:#C8102E}
+:root[data-myhub-theme='dark'].style-mysmb{--accent:#2BC4B3;--btn:#138A7D;--zebra:#15302D;--band:#0E5A52;--band-ink:#FFFFFF;--cover:#0E5A52;--th-bg:#0E5A52;--th-ink:#FFFFFF;--c1:#2BB3A3;--c2:#3CCFBF;--c3:#A77BE8;--c4:#80858D;--c5:#4CC38A;--c6:#FF6B5E;--d1:#2BB3A3;--d2:#3CCFBF;--d3:#A77BE8;--d4:#80858D;--d5:#4CC38A;--d6:#FF6B5E;--pos:#4CC38A;--neg:#FF6B5E}
+*{box-sizing:border-box}
+body{margin:0;padding:16px;background:var(--canvas);color:var(--ink);font:14px/1.45 "Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif;font-variant-numeric:tabular-nums}
+a{color:var(--accent)}
+#xk-controls{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:flex-end;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin-bottom:12px}
+.ctl{display:flex;flex-direction:column;font-size:12px;color:var(--muted);gap:4px}
+.ctl select,.ctl input[type=date],.xk-filter{font:inherit;font-size:13px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:4px;padding:6px 8px}
+.ctl select:disabled,.ctl input:disabled{opacity:.6}
+.seg{border:0;padding:0;margin:0;flex-direction:row;gap:0}
+.seg legend{font-size:12px;color:var(--muted);padding:0 0 4px}
+.seg label{border:1px solid var(--line);padding:6px 12px;color:var(--ink);cursor:pointer;font-size:13px}
+.seg label:first-of-type{border-radius:4px 0 0 4px}.seg label:last-of-type{border-radius:0 4px 4px 0;border-left:0}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label:has(input:checked){background:var(--card);box-shadow:inset 0 0 0 2px var(--accent);font-weight:600}
+.customise summary{cursor:pointer;color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 10px;font-size:13px}
+.cz{display:grid;grid-template-columns:repeat(2,minmax(160px,1fr));gap:6px 16px;padding:8px 0;font-size:13px;color:var(--ink)}
+.btns{flex-direction:row;gap:8px;margin-left:auto}
+.btns button,.btns a{font:inherit;font-size:13px;font-weight:600;border-radius:4px;padding:7px 14px;cursor:pointer;text-decoration:none;border:1px solid var(--btn);background:var(--card);color:var(--btn)}
+.btns button#xk-xlsx{background:var(--btn);color:var(--btn-ink)}
+#xk-status{font-size:12px;color:var(--muted);min-height:16px;margin:0 0 6px}
+.xk-banner{border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;border:1px solid var(--line)}
+.xk-banner.pass{background:var(--pass-bg)}.xk-banner.na{border-color:var(--muted)}.xk-banner.fail{background:var(--fail-bg);border-color:var(--neg)}
+.xk-banner ul{margin:6px 0 0;padding-left:18px}.xk-banner li.bad{color:var(--neg);font-weight:600}.xk-banner li.na{color:var(--muted)}
+.xk-card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:20px 24px;margin-bottom:12px}
+#xk-head{text-align:center;padding:8px 0 16px;background:var(--band);color:var(--band-ink);border-radius:6px}
+:root.style-mysmb #xk-head{text-align:left;padding:14px 18px;margin-bottom:12px}
+#xk-head .co{font-size:18px;font-weight:700}#xk-head .ti{font-size:14px}#xk-head .pe{font-size:14px;font-weight:600}
+table{border-collapse:collapse;width:100%}
+th{font-size:11px;font-variant:small-caps;letter-spacing:.04em;text-transform:lowercase;color:var(--th);font-weight:600;text-align:left;padding:8px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--card)}
+.xk-grid th{cursor:pointer;user-select:none}
+td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+tbody tr:nth-child(even) td{background:var(--zebra)}
+.num{text-align:right;white-space:nowrap}
+.k-header td{font-weight:600;border-bottom:0}.k-total td{font-weight:700;border-top:1px solid var(--ink)}
+.neg{color:var(--neg)}
+.muted{color:var(--muted)}.xk-err{color:var(--neg)}
+.xk-scroll{overflow-x:auto}
+.xk-filter{margin:0 0 8px;min-width:220px}
+:root.dens-compact td{padding:3px 8px}:root.dens-compact body{font-size:12.5px}
+.xk-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:0 0 16px}
+.xk-kpi{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.xk-kpi .lbl{font-size:11px;font-variant:small-caps;text-transform:lowercase;letter-spacing:.04em;color:var(--muted);font-weight:600}
+.xk-kpi .val{font-size:22px;font-weight:700;margin-top:2px}.xk-kpi .sub{font-size:12px;color:var(--muted)}
+.chip{display:inline-block;font-size:11px;font-weight:700;border-radius:10px;padding:1px 8px;margin-top:4px}
+.chip.up{background:var(--pass-bg);color:var(--pos)}.chip.down{background:var(--fail-bg);color:var(--neg)}
+.xk-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.xk-card h2,.xk-card h3{font-size:15px;margin:0 0 10px}
+svg{width:100%;height:auto;max-height:300px;display:block;margin:0 auto}svg .axis{stroke:var(--line);stroke-width:1}svg .tick{fill:var(--muted);font-size:11px}
+svg .donut-c{fill:var(--ink);font-size:15px;font-weight:700}
+.xk-legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);margin-top:6px}
+.xk-legend i,.xk-donut li i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.xk-donut{display:flex;gap:16px;align-items:center}.xk-donut svg{max-width:180px}.xk-donut ul{list-style:none;padding:0;margin:0;font-size:13px}.xk-donut li{margin:3px 0}
+#xk-foot{color:var(--muted);font-size:12px;text-align:center;padding:12px 0 4px}
+#xk-sources{font-size:12.5px;color:var(--muted)}#xk-sources h2{font-size:13px;color:var(--ink)}
+.persona-summary .detail-block{display:none}
+.persona-summary .keep-detail tr.detail-block{display:table-row}
+.skel{height:14px;border-radius:4px;background:var(--line);margin:8px 0;opacity:.6}
+.page{break-after:page}
+@media (max-width:720px){.btns{margin-left:0}.cz{grid-template-columns:1fr}}
+@media print{body{background:var(--card);padding:0}#xk-controls,#xk-status,.no-print,.xk-filter{display:none!important}.xk-card{border:0;padding:0 0 12px}th{position:static}@page{size:A4 portrait;margin:14mm}}
+/* QuickBooks branding accents (the accent follows the house-style toggle and the optional brand colour) */
+#xk-controls{border-top:3px solid var(--accent)}
+main.xk-card{border-top:4px solid var(--accent)}
+.xk-kpi{border-left:4px solid var(--accent)}
+.xk-stmt thead th,.xk-grid thead th{border-bottom:2px solid var(--accent)}
+.xk-src{font-size:12px;color:var(--muted);margin-top:4px}.xk-src i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:6px;vertical-align:middle}
+:root.style-mysmb #xk-head .xk-src{color:var(--band-ink);opacity:.85}:root.style-mysmb #xk-head .xk-src i{background:var(--band-ink)}
+/* keep the right-hand amounts clear of the workspace's floating chat button */
+@media (min-width:900px){body{padding-right:64px}}
+@media print{body{padding-right:0}}
+.xk-badge{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.06em;border-radius:10px;padding:1px 8px;margin-right:6px;vertical-align:middle;background:var(--accent);color:#FFFFFF}.xk-src .xk-badge+*{vertical-align:middle}
+:root.style-mysmb .xk-stmt thead th,:root.style-mysmb .xk-grid thead th{background:var(--th-bg);color:var(--th-ink);border-bottom:0}
+:root.style-mysmb #xk-head .ti{font-size:18px;font-weight:700}:root.style-mysmb #xk-head .co{font-size:14px}:root.style-mysmb .xk-badge{background:var(--band-ink);color:var(--band)}:root.style-mysmb .xk-kpi{border-left-color:var(--band)}
+```
+
+## Report kit ({{KIT}}) — copy verbatim
+
+```js
+var XK = (function () {
+'use strict';
+function num(v) {
+if (v === null || v === undefined || v === '') return null;
+var n = Number(String(v).replace(/,/g, ''));
+return isFinite(n) ? n : null;
+}
+function totalFor(label) { return /^Total\s+(?!for\s)/i.test(label) ? label.replace(/^Total\s+/i, 'Total for ') : label; }
+function near(a, b, tol) { return a != null && b != null && Math.abs(a - b) <= (tol == null ? 0.01 : tol); }
+function sum(arr) { var s = 0; arr.forEach(function (v) { if (v != null) s += v; }); return Math.round(s * 100) / 100; }
+function errorOf(v) { return v && typeof v === 'object' && !Array.isArray(v) && v.__error != null ? String(v.__error) : null; }
+function isoDate(v) {
+if (v == null || v === '') return null;
+var m = /\/Date\((-?\d+)/.exec(String(v)); if (m) { var d = new Date(+m[1]); return iso(D(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate())); }
+return String(v).slice(0, 10);
+}
+function reportOf(v) { return !v || errorOf(v) ? null : Array.isArray(v.Reports) ? v.Reports[0] || null : Array.isArray(v.Rows) ? v : null; }
+function attr(cell, id) { var a = ((cell && cell.Attributes) || []).filter(function (x) { return x && x.Id === id; })[0]; return a ? a.Value : null; }
+function isDeduction(title) { return /^less\b/i.test(title || '') || /cost of sales|expense/i.test(title || ''); }
+function walk(v) {
+var rep = reportOf(v), out = { lines: [], columns: [], titles: [], date: null, name: null, sections: [] };
+if (!rep) return out;
+out.titles = rep.ReportTitles || []; out.date = rep.ReportDate || null; out.name = rep.ReportName || null;
+var parent = null, vals = function (c) { return c.slice(1).map(function (x) { return num(x && x.Value); }); }, lbl = function (c) { return String((c[0] || {}).Value || ''); };
+(rep.Rows || []).forEach(function (r) {
+if (!r) return;
+var c = r.Cells || [];
+if (r.RowType === 'Header') { out.columns = c.slice(1).map(function (x) { return (x && x.Value) || ''; }); return; }
+if (r.RowType !== 'Section') { if (c.length) out.lines.push({ kind: 'total', depth: 0, label: lbl(c), group: lbl(c), parent: null, calc: true, fixed: true, values: vals(c), path: [] }); return; }
+var title = String(r.Title || ''), kids = r.Rows || [];
+if (title && !kids.length) { parent = title; out.lines.push({ kind: 'header', depth: 0, label: title, group: title, parent: null, values: [], path: [] }); return; }
+if (!title) {
+kids.forEach(function (k) {
+var kc = k.Cells || [], label = lbl(kc), closes = parent && label.toLowerCase() === ('total ' + parent).toLowerCase() ? parent : null;
+out.lines.push({ kind: 'total', depth: 0, label: label, group: closes || label, parent: null, calc: !closes, closes: closes, fixed: true, values: vals(kc), path: [] });
+if (closes) parent = null;
+});
+return;
+}
+var d = parent ? 1 : 0, shown = title.replace(/^Less\s+/i, ''), sec = { title: title, label: shown, parent: parent, rows: [], summary: null };
+out.lines.push({ kind: 'header', depth: d, label: shown, group: title, parent: parent, values: [], path: parent ? [parent] : [] });
+kids.forEach(function (k) {
+var kc = k.Cells || [], label = lbl(kc), line;
+if (k.RowType === 'SummaryRow') { line = { kind: 'total', depth: d, label: label, group: title, parent: parent, fixed: true, values: vals(kc), path: [] }; sec.summary = line; }
+else { line = { kind: 'row', depth: d + 1, label: label, id: attr(kc[0], 'account') || attr(kc[1], 'account'), group: title, parent: parent, values: vals(kc), path: (parent ? [parent] : []).concat([shown]) }; sec.rows.push(line); }
+out.lines.push(line);
+});
+out.sections.push(sec);
+});
+return out;
+}
+function sectionTotal(sec, col) { var i = col || 0; return sec.summary ? sec.summary.values[i] : sum(sec.rows.map(function (l) { return l.values[i]; })); }
+function linesTies(lines, tol) {
+var res = { checked: 0, failed: [] };
+lines.forEach(function (t) {
+if (t.kind !== 'total' || t.calc || t.closes) return;
+var mem = lines.filter(function (l) { return l.kind === 'row' && l.group === t.group; });
+res.checked++;
+t.values.forEach(function (v, i) { if (!near(v, sum(mem.map(function (l) { return l.values[i]; })), tol)) { if (res.failed.indexOf(t.label) < 0) res.failed.push(t.label); } });
+});
+return res;
+}
+function parentTies(w, col, tol) {
+var res = { checked: 0, failed: [] }, i = col || 0;
+w.lines.forEach(function (t) {
+if (!t.closes) return;
+var s = sum(w.sections.filter(function (x) { return x.parent === t.closes; }).map(function (x) { return sectionTotal(x, i); }));
+res.checked++; if (!near(t.values[i], s, tol)) res.failed.push(t.label + ' ' + t.values[i] + ' vs Σ sections ' + s);
+});
+return res;
+}
+function runningTies(w, col, tol) {
+var res = { checked: 0, failed: [] }, i = col || 0, run = 0, bySum = {};
+w.sections.forEach(function (s) { bySum[s.title] = s; });
+w.lines.forEach(function (l) {
+if (l.kind === 'header' && bySum[l.group] && l.label === bySum[l.group].label) { var s = bySum[l.group]; run = Math.round((run + (isDeduction(s.title) ? -1 : 1) * (sectionTotal(s, i) || 0)) * 100) / 100; }
+else if (l.kind === 'total' && l.calc) { res.checked++; if (!near(l.values[i], run, tol)) res.failed.push(l.label + ' ' + l.values[i] + ' vs ' + run); }
+});
+return res;
+}
+var CYE_RE = /^current year('s)? earnings$|^current earnings$/i;
+function currentYearEarnings(bsLines) { var r = bsLines.filter(function (l) { return l.kind === 'row' && /^equity$/i.test(l.group) && CYE_RE.test(l.label); })[0]; return r || null; }
+function find(lines, group, labelRe, kind) {
+var kinds = kind ? [kind] : ['total', 'row'], i, j;
+for (j = 0; j < kinds.length; j++) {
+if (group) for (i = 0; i < lines.length; i++) if (lines[i].group === group && lines[i].kind === kinds[j]) return lines[i];
+if (labelRe) for (i = 0; i < lines.length; i++) if (lines[i].kind === kinds[j] && labelRe.test(lines[i].label)) return lines[i];
+}
+return null;
+}
+function val(line, col) { return line ? line.values[col == null ? 0 : col] : null; }
+function sectionBy(w, re, col) { var s = w.sections.filter(function (x) { return re.test(x.title); })[0]; return s ? sectionTotal(s, col) : null; }
+function orgOf(v) {
+var o = v && !errorOf(v) && Array.isArray(v.Organisations) ? v.Organisations[0] : null; if (!o) return null;
+return { name: o.Name || o.LegalName || null, currency: o.BaseCurrency || null, country: o.CountryCode || null, fyEndMonth: Number(o.FinancialYearEndMonth) || null, fyEndDay: Number(o.FinancialYearEndDay) || null, shortCode: o.ShortCode || null, id: o.OrganisationID || null };
+}
+function connections(v) {
+var t = !v || errorOf(v) ? [] : Array.isArray(v.tenants) ? v.tenants : Array.isArray(v) ? v : [];
+return { active: (v && v.activeTenantId) || null, list: t.map(function (x) { return { id: String(x.tenantId || ''), name: x.tenantName || '', type: x.tenantType || '' }; }).filter(function (x) { return x.id; }) };
+}
+function companyOf(orgResp, connResp, chosenId, titles) {
+var o = orgOf(orgResp), cn = connections(connResp), id = chosenId || cn.active || null, t = cn.list.filter(function (x) { return x.id === id; })[0];
+var fromTitle = titles && titles[1] ? String(titles[1]) : null;
+return { name: (o && o.name) || (t && t.name) || fromTitle, id: id, currency: o ? o.currency : null, country: o ? o.country : null, org: o, orgs: cn.list, active: cn.active,
+source: o ? 'get_organisation' : t ? 'list_connections' : fromTitle ? 'report title' : null };
+}
+var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+function fiscalStart(org, fyMonth) {
+if (fyMonth) return { month: fyMonth, source: 'report setting' };
+if (org && org.fyEndMonth >= 1 && org.fyEndMonth <= 12) return { month: org.fyEndMonth % 12 + 1, source: 'Xero organisation settings — year ends ' + (org.fyEndDay || eom(2026, org.fyEndMonth).getUTCDate()) + ' ' + MONTHS[org.fyEndMonth - 1] };
+if (org && /^nz/i.test(org.country || '')) return { month: 4, source: 'assumed — NZ default; Xero did not return the organisation\'s financial year' };
+return { month: 7, source: 'assumed — AU default; Xero did not return the organisation\'s financial year' };
+}
+function homeCurrency(org) { return (org && org.currency) || (org && /^nz/i.test(org.country || '') ? 'NZD' : 'AUD'); }
+function titleDates(s) {
+var out = [], re = /(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/g, m;
+while ((m = re.exec(String(s || '')))) out.push(iso(D(+m[3], MONTHS.indexOf(m[2]) + 1, +m[1])));
+return out;
+}
+var SYM = { AUD: '$', NZD: '$', USD: 'US$', CAD: 'C$', GBP: '£', EUR: '€', PHP: '₱', SGD: 'S$', HKD: 'HK$', JPY: '¥', INR: '₹' };
+function symbol(code) { return SYM[code] || (code ? code + ' ' : ''); }
+var DISPLAY_DEFAULT = { cents: 1, k: 0, zeros: 1, neg: 'minus', red: 0, hdr: 1, ftr: 1, style: 'xero', dens: '100', p: 'custom', a: 'custom', c: 'none', v: '', x: '', b: '' };
+var HEX = /^#[0-9a-f]{6}$/i;
+function shade(hex, f) { var n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255; var t = function (c) { return Math.max(0, Math.min(255, Math.round(f < 0 ? c * (1 + f) : c + (255 - c) * f))); }; return '#' + [t(r), t(g), t(b)].map(function (x) { return x.toString(16).padStart(2, '0'); }).join(''); }
+function applyBrand(root, hex) {
+var props = ['--accent', '--btn', '--c1', '--d1', '--pos'];
+if (!HEX.test(hex || '')) { props.forEach(function (p) { root.style.removeProperty(p); }); return false; }
+var dark = root.getAttribute('data-myhub-theme') === 'dark', a = dark ? shade(hex, 0.25) : hex;
+root.style.setProperty('--accent', a); root.style.setProperty('--btn', dark ? hex : shade(hex, -0.2)); root.style.setProperty('--c1', a); root.style.setProperty('--d1', a); root.style.setProperty('--pos', a);
+return true;
+}
+function readDisplay(str) {
+var d = {}, k, src = {};
+try { src = JSON.parse(str || '{}') || {}; } catch (e) { src = {}; }
+for (k in DISPLAY_DEFAULT) d[k] = src[k] != null ? src[k] : DISPLAY_DEFAULT[k];
+return d;
+}
+function writeDisplay(d) { var o = {}, k; for (k in DISPLAY_DEFAULT) o[k] = d[k]; return JSON.stringify(o); }
+function money(v, cur, d) {
+if (v === null || v === undefined || v === '') return '';
+d = d || DISPLAY_DEFAULT;
+var n = Number(v); if (!isFinite(n)) return String(v);
+if (d.k) n = n / 1000;
+var dp = d.cents && !d.k ? 2 : (d.k ? 1 : 0);
+var abs = Math.abs(n).toLocaleString('en-AU', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+var s = symbol(cur) + abs + (d.k ? 'k' : '');
+if (n < 0 && Number(abs.replace(/,/g, '')) !== 0) s = d.neg === 'paren' ? '(' + s + ')' : d.neg === 'trail' ? s + '-' : '-' + s;
+return s;
+}
+function pct(v, dp) { return v == null || !isFinite(v) ? '' : (v * 100).toFixed(dp == null ? 1 : dp) + '%'; }
+function isNeg(v) { return v != null && Number(v) < 0; }
+function iso(dt) { return dt.getUTCFullYear() + '-' + String(dt.getUTCMonth() + 1).padStart(2, '0') + '-' + String(dt.getUTCDate()).padStart(2, '0'); }
+function D(y, m, d) { return new Date(Date.UTC(y, m - 1, d)); }
+function parse(s) { var p = String(s).split('-'); return D(+p[0], +p[1], +p[2]); }
+function addDays(dt, n) { return new Date(dt.getTime() + n * 86400000); }
+function eom(y, m) { return D(y, m + 1, 0); }
+function today() { var t = new Date(); return D(t.getFullYear(), t.getMonth() + 1, t.getDate()); }
+function fyStartOf(dt, fyMonth) {
+var y = dt.getUTCFullYear(); if (dt.getUTCMonth() + 1 < fyMonth) y -= 1;
+return D(y, fyMonth, 1);
+}
+var PRESETS = [
+['today', 'Today'], ['this_week', 'This week'], ['this_week_td', 'This week to date'],
+['this_month', 'This month'], ['this_month_td', 'This month to date'],
+['this_quarter', 'This quarter'], ['this_quarter_td', 'This quarter to date'],
+['this_fy', 'This financial year'], ['this_fy_td', 'This financial year to date'],
+['last_week', 'Last week'], ['last_month', 'Last month'], ['last_quarter', 'Last quarter'], ['last_fy', 'Last financial year'],
+['last_30', 'Last 30 days'], ['since_60', 'Since 60 days ago'], ['since_90', 'Since 90 days ago'], ['since_365', 'Since 365 days ago'],
+['custom', 'Custom']
+];
+function preset(key, fyMonth, now) {
+var t = now ? parse(now) : today(), y = t.getUTCFullYear(), m = t.getUTCMonth() + 1, dow = (t.getUTCDay() + 6) % 7;
+var qs = Math.floor((m - 1) / 3) * 3 + 1, fs = fyStartOf(t, fyMonth || 7), r;
+switch (key) {
+case 'today': r = [t, t]; break;
+case 'this_week': r = [addDays(t, -dow), addDays(t, 6 - dow)]; break;
+case 'this_week_td': r = [addDays(t, -dow), t]; break;
+case 'this_month': r = [D(y, m, 1), eom(y, m)]; break;
+case 'this_month_td': r = [D(y, m, 1), t]; break;
+case 'this_quarter': r = [D(y, qs, 1), eom(y, qs + 2)]; break;
+case 'this_quarter_td': r = [D(y, qs, 1), t]; break;
+case 'this_fy': r = [fs, addDays(D(fs.getUTCFullYear() + 1, fs.getUTCMonth() + 1, 1), -1)]; break;
+case 'this_fy_td': r = [fs, t]; break;
+case 'last_week': r = [addDays(t, -dow - 7), addDays(t, -dow - 1)]; break;
+case 'last_month': r = [D(y, m - 1, 1), eom(y, m - 1)]; break;
+case 'last_quarter': r = [D(y, qs - 3, 1), eom(y, qs - 1)]; break;
+case 'last_fy': r = [D(fs.getUTCFullYear() - 1, fs.getUTCMonth() + 1, 1), addDays(fs, -1)]; break;
+case 'last_30': r = [addDays(t, -29), t]; break;
+case 'since_60': r = [addDays(t, -60), t]; break;
+case 'since_90': r = [addDays(t, -90), t]; break;
+case 'since_365': r = [addDays(t, -365), t]; break;
+case 'last_12m': r = [D(y, m - 12, 1), eom(y, m - 1)]; break;
+case 'last_24m': r = [D(y, m - 24, 1), eom(y, m - 1)]; break;
+default: return null;
+}
+return { start: iso(r[0]), end: iso(r[1]) };
+}
+var ASAT = [['today', 'Today'], ['end_last_month', 'End of last month'], ['end_last_quarter', 'End of last quarter'], ['end_last_fy', 'End of last financial year'], ['custom', 'Custom']];
+function asAt(key, fyMonth, now) {
+var t = now ? parse(now) : today(), y = t.getUTCFullYear(), m = t.getUTCMonth() + 1, qs = Math.floor((m - 1) / 3) * 3 + 1;
+switch (key) {
+case 'today': return iso(t);
+case 'end_last_month': return iso(eom(y, m - 1));
+case 'end_last_quarter': return iso(eom(y, qs - 1));
+case 'end_last_fy': return iso(addDays(fyStartOf(t, fyMonth || 7), -1));
+default: return null;
+}
+}
+function compare(start, end, mode, fyMonth) {
+var s = parse(start), e = parse(end), len;
+if (mode === 'prev_year') return { start: iso(D(s.getUTCFullYear() - 1, s.getUTCMonth() + 1, Math.min(s.getUTCDate(), eom(s.getUTCFullYear() - 1, s.getUTCMonth() + 1).getUTCDate()))), end: iso(D(e.getUTCFullYear() - 1, e.getUTCMonth() + 1, Math.min(e.getUTCDate(), eom(e.getUTCFullYear() - 1, e.getUTCMonth() + 1).getUTCDate()))) };
+if (mode === 'ytd') return { start: iso(fyStartOf(e, fyMonth || 7)), end: end };
+if (s.getUTCDate() === 1 && iso(e) === iso(eom(e.getUTCFullYear(), e.getUTCMonth() + 1))) {
+var months = (e.getUTCFullYear() - s.getUTCFullYear()) * 12 + (e.getUTCMonth() - s.getUTCMonth()) + 1;
+return { start: iso(D(s.getUTCFullYear(), s.getUTCMonth() + 1 - months, 1)), end: iso(addDays(s, -1)) };
+}
+len = Math.round((e - s) / 86400000);
+return { start: iso(addDays(s, -len - 1)), end: iso(addDays(s, -1)) };
+}
+var MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+function longDate(x) { return x.getUTCDate() + ' ' + MON[x.getUTCMonth()] + ' ' + x.getUTCFullYear(); }
+function periodLine(start, end) {
+var s = parse(start), e = parse(end), ey = e.getUTCFullYear();
+if (s.getUTCDate() === 1 && iso(e) === iso(eom(ey, e.getUTCMonth() + 1))) {
+var months = (ey - s.getUTCFullYear()) * 12 + (e.getUTCMonth() - s.getUTCMonth()) + 1;
+if (months === 1) return 'For the month ended ' + longDate(e);
+if (months === 12) return 'For the year ended ' + longDate(e);
+if (months > 1) return 'For the ' + months + ' months ended ' + longDate(e);
+}
+return 'For the period ' + longDate(s) + ' to ' + longDate(e);
+}
+function rangeLabel(start, end) {
+var s = parse(start), e = parse(end), m = function (x) { return MON[x.getUTCMonth()].slice(0, 3); }, sy = s.getUTCFullYear(), ey = e.getUTCFullYear();
+if (s.getUTCDate() === 1 && iso(e) === iso(eom(ey, e.getUTCMonth() + 1))) return sy === ey && s.getUTCMonth() === e.getUTCMonth() ? m(e) + ' ' + ey : sy === ey ? m(s) + '–' + m(e) + ' ' + ey : m(s) + ' ' + sy + '–' + m(e) + ' ' + ey;
+return s.getUTCDate() + ' ' + m(s) + ' ' + sy + '–' + e.getUTCDate() + ' ' + m(e) + ' ' + ey;
+}
+function asOfLine(d) { var x = parse(d); return 'As at ' + x.getUTCDate() + ' ' + MON[x.getUTCMonth()] + ' ' + x.getUTCFullYear(); } // Xero wording: 'As at 30 September 2026'
+function footerStamp(basis, fetchedAt, cur) {
+var t = fetchedAt ? new Date(fetchedAt) : new Date();
+var wd = t.toLocaleDateString('en-AU', { weekday: 'long' });
+var dm = t.getDate() + ' ' + MON[t.getMonth()] + ', ' + t.getFullYear();
+var hm = t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+var off = -t.getTimezoneOffset(), sign = off >= 0 ? '+' : '-', a = Math.abs(off);
+var tz = 'GMT' + sign + String(Math.floor(a / 60)).padStart(2, '0') + ':' + String(a % 60).padStart(2, '0');
+return (basis === 'Cash' ? 'Cash basis' : 'Accrual basis') + (cur ? ' · ' + cur : '') + ' | ' + wd + ', ' + dm + ' ' + hm + ' ' + tz;
+}
+function freshest(bundle) {
+var f = bundle && bundle.fetchedAt;
+if (f && typeof f === 'object') { var best = null, k; for (k in f) if (f[k] && (!best || f[k] > best)) best = f[k]; return best; }
+return f || null;
+}
+var CRC = (function () { var t = [], c, n, k; for (n = 0; n < 256; n++) { c = n; for (k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(b) { var c = 0xFFFFFFFF; for (var i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function utf8(s) { return new TextEncoder().encode(s); }
+function zip(files) {
+var parts = [], central = [], off = 0;
+function u16(v) { return [v & 255, (v >>> 8) & 255]; }
+function u32(v) { return [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255]; }
+files.forEach(function (f) {
+var name = utf8(f.name), data = utf8(f.data), crc = crc32(data);
+var head = [].concat([0x50, 0x4b, 0x03, 0x04], u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0));
+parts.push(new Uint8Array(head), name, data);
+central.push(new Uint8Array([].concat([0x50, 0x4b, 0x01, 0x02], u16(20), u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(off))), name);
+off += head.length + name.length + data.length;
+});
+var csize = 0; central.forEach(function (p) { csize += p.length; });
+var end = new Uint8Array([].concat([0x50, 0x4b, 0x05, 0x06], u16(0), u16(0), u16(files.length), u16(files.length), u32(csize), u32(off), u16(0)));
+var all = parts.concat(central, [end]), total = 0; all.forEach(function (p) { total += p.length; });
+var out = new Uint8Array(total), pos = 0; all.forEach(function (p) { out.set(p, pos); pos += p.length; });
+return out;
+}
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function colName(i) { var s = ''; i++; while (i > 0) { var m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
+function xlsx(sheets, cur) {
+var sym = esc(symbol(cur || 'AUD').trim()).replace(/"/g, '');
+var moneyFmt = '&quot;' + sym + '&quot;#,##0.00;-&quot;' + sym + '&quot;#,##0.00';
+var STY = { none: 0, bold: 1, money: 2, moneyBold: 3, title: 4, pct: 5, muted: 6 };
+var styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+'<numFmts count="1"><numFmt numFmtId="164" formatCode="' + moneyFmt + '"/></numFmts>' +
+'<fonts count="4"><font><sz val="10"/><name val="Arial"/></font><font><b/><sz val="10"/><name val="Arial"/></font><font><b/><sz val="12"/><name val="Arial"/></font><font><sz val="9"/><color rgb="FF6B6C72"/><name val="Arial"/></font></fonts>' +
+'<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>' +
+'<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
+'<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+'<cellXfs count="7"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
+'<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="164" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/>' +
+'<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="10" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
+'<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+var files = [], wbSheets = '', wbRels = '', ct = '';
+var used = {};
+sheets.forEach(function (sh, si) {
+var n = si + 1, rowsXml = '';
+var nm = String(sh.name || ('Sheet' + n)).replace(/[\\\/\?\*\[\]:]/g, ' ').slice(0, 31) || ('Sheet' + n);
+while (used[nm.toLowerCase()]) nm = nm.slice(0, 28) + ' ' + n;
+used[nm.toLowerCase()] = 1;
+(sh.rows || []).forEach(function (row, ri) {
+var cells = '';
+(row || []).forEach(function (c, ci) {
+if (c === null || c === undefined || c === '') return;
+var o = typeof c === 'object' ? c : { v: c }, ref = colName(ci) + (ri + 1), s = STY[o.s || (typeof o.v === 'number' ? 'money' : 'none')] || 0;
+if (o.f) cells += '<c r="' + ref + '" s="' + s + '"><f>' + esc(o.f) + '</f>' + (typeof o.v === 'number' ? '<v>' + o.v + '</v>' : '') + '</c>';
+else if (typeof o.v === 'number' && isFinite(o.v)) cells += '<c r="' + ref + '" s="' + s + '"><v>' + o.v + '</v></c>';
+else cells += '<c r="' + ref + '" s="' + s + '" t="inlineStr"><is><t xml:space="preserve">' + esc(new Array((o.indent || 0) + 1).join('   ') + (o.v == null ? '' : o.v)) + '</t></is></c>';
+});
+rowsXml += '<row r="' + (ri + 1) + '">' + cells + '</row>';
+});
+var colsXml = sh.widths ? '<cols>' + sh.widths.map(function (w, i) { return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>'; }).join('') + '</cols>' : '';
+files.push({ name: 'xl/worksheets/sheet' + n + '.xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' + colsXml + '<sheetData>' + rowsXml + '</sheetData></worksheet>' });
+wbSheets += '<sheet name="' + esc(nm) + '" sheetId="' + n + '" r:id="rId' + n + '"/>';
+wbRels += '<Relationship Id="rId' + n + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + n + '.xml"/>';
+ct += '<Override PartName="/xl/worksheets/sheet' + n + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
+});
+var k = sheets.length + 1;
+wbRels += '<Relationship Id="rId' + k + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>';
+files.unshift(
+{ name: '[Content_Types].xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' + ct + '</Types>' },
+{ name: '_rels/.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>' },
+{ name: 'xl/workbook.xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>' + wbSheets + '</sheets></workbook>' },
+{ name: 'xl/_rels/workbook.xml.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + wbRels + '</Relationships>' },
+{ name: 'xl/styles.xml', data: styles }
+);
+return zip(files);
+}
+function sheetFromLines(title, company, period, colTitles, lines, footer, fmts) {
+var rows = [[{ v: company || 'N/A — not in source', s: 'title' }], [{ v: title, s: 'bold' }], [period], [], colTitles.map(function (t) { return { v: t, s: 'bold' }; })];
+lines.forEach(function (l) {
+var bold = l.kind === 'total' || l.kind === 'header';
+var r = [{ v: l.label, s: bold ? 'bold' : 'none', indent: l.depth }];
+(l.values || []).forEach(function (v, i) { var f = fmts && fmts[i]; r.push(v == null ? null : { v: v, s: f === 'pct' ? 'pct' : bold ? 'moneyBold' : 'money' }); });
+rows.push(r);
+});
+if (footer) { rows.push([]); rows.push([{ v: footer, s: 'muted' }]); }
+var widths = [48]; colTitles.slice(1).forEach(function () { widths.push(18); });
+return { name: title, rows: rows, widths: widths };
+}
+function download(bytes, name, mime) {
+var blob = new Blob([bytes], { type: mime || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+var a = document.createElement('a');
+a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
+setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+function reportParams(v) {
+var d = v.display || DISPLAY_DEFAULT;
+var p = { from_date: v.start || null, to_date: v.end || null, as_at: v.asAt || null, accounting_basis: v.basis || null, xero_tenant_id: v.org || null,
+cents: d.cents ? 'shown' : 'hidden', divide_by_1000: d.k ? 'yes' : 'no', zero_rows: d.zeros ? 'shown' : 'hidden', negatives: d.neg, negatives_in_red: d.red ? 'yes' : 'no', header: d.hdr ? 'shown' : 'hidden', footer: d.ftr ? 'shown' : 'hidden' };
+Object.keys(p).forEach(function (k) { if (p[k] == null) delete p[k]; });
+return p;
+}
+function h(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function negCls(v, d) { return d && d.red && isNeg(v) ? ' neg' : ''; }
+function isZeroLine(l) { return l.kind === 'row' && !(l.values || []).some(function (v) { return v != null && Math.abs(v) >= 0.005; }); }
+function statement(lines, colTitles, ctx, extraCols) {
+var d = ctx.display, cur = ctx.currency, ex = extraCols || [];
+var th = colTitles.concat(ex.map(function (e) { return e.title; }));
+var out = '<table class="xk-stmt"><thead><tr>' + th.map(function (t, i) { return '<th' + (i ? ' class="num"' : '') + ' scope="col">' + h(t) + '</th>'; }).join('') + '</tr></thead><tbody>';
+lines.forEach(function (l) {
+if (!d.zeros && isZeroLine(l)) return;
+var label = l.kind === 'total' && !l.fixed ? totalFor(l.label) : l.label;
+out += '<tr class="k-' + l.kind + (l.kind === 'row' ? ' detail-block' : '') + '"><td style="padding-left:' + (8 + l.depth * 18) + 'px">' + h(label) + '</td>';
+for (var i = 0; i < colTitles.length - 1; i++) { var v = (l.values || [])[i]; out += '<td class="num' + negCls(v, d) + '">' + (l.kind === 'header' ? '' : money(v, cur, d)) + '</td>'; }
+ex.forEach(function (e) { var v = l.kind === 'header' ? null : e.value(l); out += '<td class="num' + negCls(v, d) + '">' + (v == null ? '' : e.fmt === 'pct' ? pct(v) : money(v, cur, d)) + '</td>'; });
+out += '</tr>';
+});
+return out + '</tbody></table>';
+}
+function grid(el, spec, ctx) {
+var st = { key: null, dir: 1, q: '' };
+function draw() {
+var rows = spec.rows.filter(function (r) { if (!st.q) return true; var q = st.q.toLowerCase(); return spec.columns.some(function (c) { return String(r[c.key] == null ? '' : r[c.key]).toLowerCase().indexOf(q) >= 0; }); });
+if (st.key) rows = rows.slice().sort(function (a, b) { var x = a[st.key], y = b[st.key]; if (x == null) return 1; if (y == null) return -1; return (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y))) * st.dir; });
+function cell(c, r, tag) {
+var v = r[c.key], txt = c.fmt ? c.fmt(v, r) : c.money ? money(v, ctx.currency, ctx.display) : (v == null ? '' : v);
+return '<' + tag + ' class="' + (c.num || c.money ? 'num' : '') + (c.money ? negCls(v, ctx.display) : '') + '">' + (c.html ? txt : h(txt)) + '</' + tag + '>';
+}
+var html = (spec.filter && spec.rows.length > 8 ? '<input class="xk-filter" type="search" placeholder="Filter…" aria-label="Filter rows" value="' + h(st.q) + '">' : '') +
+'<div class="xk-scroll"><table class="xk-grid"><thead><tr>' + spec.columns.map(function (c) { return '<th scope="col" data-k="' + h(c.key) + '" class="' + (c.num || c.money ? 'num' : '') + '" aria-sort="' + (st.key === c.key ? (st.dir > 0 ? 'ascending' : 'descending') : 'none') + '">' + h(c.title) + (st.key === c.key ? (st.dir > 0 ? ' ▲' : ' ▼') : '') + '</th>'; }).join('') + '</tr></thead><tbody>' +
+(rows.length ? rows.map(function (r) { return '<tr>' + spec.columns.map(function (c) { return cell(c, r, 'td'); }).join('') + '</tr>'; }).join('') : '<tr><td colspan="' + spec.columns.length + '" class="muted">' + h(spec.empty || "Data appears once it's available.") + '</td></tr>') +
+'</tbody>' + (spec.total ? '<tfoot><tr class="k-total">' + spec.columns.map(function (c) { return cell(c, spec.total, 'td'); }).join('') + '</tr></tfoot>' : '') + '</table></div>';
+el.innerHTML = html;
+el.querySelectorAll('th[data-k]').forEach(function (thEl) { thEl.addEventListener('click', function () { var k = thEl.getAttribute('data-k'); st.dir = st.key === k ? -st.dir : 1; st.key = k; draw(); }); });
+var f = el.querySelector('.xk-filter'); if (f) f.addEventListener('input', function () { st.q = f.value; var pos = f.selectionStart; draw(); var g = el.querySelector('.xk-filter'); g.focus(); g.setSelectionRange(pos, pos); });
+}
+draw();
+}
+function scale(vals) { var mn = Math.min(0, Math.min.apply(null, vals)), mx = Math.max(0, Math.max.apply(null, vals)); if (mn === mx) mx = mn + 1; return { mn: mn, mx: mx }; }
+function legend(series) { return '<div class="xk-legend">' + series.map(function (s, i) { return '<span><i style="background:var(--c' + (i + 1) + ')"></i>' + h(s.name) + '</span>'; }).join('') + '</div>'; }
+function bars(el, o, ctx) {
+var W = 640, H = 220, P = 28, all = []; o.series.forEach(function (s) { all = all.concat(s.values.filter(function (v) { return v != null; })); });
+if (!all.length) { el.innerHTML = '<p class="muted">Data appears once it\'s available.</p>'; return; }
+var sc = scale(all), n = o.labels.length, gw = (W - P * 2) / Math.max(n, 1), bw = Math.max(2, (gw * 0.7) / o.series.length);
+function y(v) { return P + (H - P * 2) * (1 - (v - sc.mn) / (sc.mx - sc.mn)); }
+var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + h(o.title || 'Bar chart') + '"><line x1="' + P + '" x2="' + (W - P) + '" y1="' + y(0) + '" y2="' + y(0) + '" class="axis"/>';
+o.labels.forEach(function (lb, i) {
+o.series.forEach(function (s, j) { var v = s.values[i]; if (v == null) return; var x = P + gw * i + gw * 0.15 + bw * j, y0 = y(0), y1 = y(v);
+svg += '<rect x="' + x.toFixed(1) + '" y="' + Math.min(y0, y1).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(1, Math.abs(y1 - y0)).toFixed(1) + '" fill="var(--c' + (j + 1) + ')"><title>' + h(s.name + ' · ' + lb + ': ' + money(v, ctx.currency, ctx.display)) + '</title></rect>'; });
+if (n <= 16) svg += '<text x="' + (P + gw * i + gw / 2).toFixed(1) + '" y="' + (H - 8) + '" class="tick" text-anchor="middle">' + h(lb) + '</text>';
+});
+el.innerHTML = svg + '</svg>' + legend(o.series);
+}
+function line(el, o, ctx) {
+var W = 640, H = 220, P = 28, all = []; o.series.forEach(function (s) { all = all.concat(s.values.filter(function (v) { return v != null; })); });
+if (o.band) all = all.concat(o.band.low.filter(function (v) { return v != null; }), o.band.high.filter(function (v) { return v != null; }));
+if (!all.length) { el.innerHTML = '<p class="muted">Data appears once it\'s available.</p>'; return; }
+var sc = scale(all), n = o.labels.length, step = (W - P * 2) / Math.max(n - 1, 1);
+function y(v) { return P + (H - P * 2) * (1 - (v - sc.mn) / (sc.mx - sc.mn)); }
+var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + h(o.title || 'Line chart') + '"><line x1="' + P + '" x2="' + (W - P) + '" y1="' + y(0) + '" y2="' + y(0) + '" class="axis"/>';
+o.series.forEach(function (s, j) {
+var pts = s.values.map(function (v, i) { return v == null ? null : (P + step * i).toFixed(1) + ',' + y(v).toFixed(1); }).filter(Boolean);
+if (j === 0 && o.band) { var up = [], dn = []; o.band.high.forEach(function (v, i) { if (v != null && o.band.low[i] != null) { up.push((P + step * i).toFixed(1) + ',' + y(v).toFixed(1)); dn.unshift((P + step * i).toFixed(1) + ',' + y(o.band.low[i]).toFixed(1)); } }); if (up.length) svg += '<polygon points="' + up.concat(dn).join(' ') + '" fill="var(--c2)" opacity=".16"><title>' + h(o.band.name || 'Range') + '</title></polygon>'; }
+if (o.area && j === 0 && pts.length) svg += '<polygon points="' + (P).toFixed(1) + ',' + y(0).toFixed(1) + ' ' + pts.join(' ') + ' ' + (P + step * (n - 1)).toFixed(1) + ',' + y(0).toFixed(1) + '" fill="var(--c1)" opacity=".18"/>';
+svg += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="var(--c' + (j + 1) + ')" stroke-width="2.5"' + (j ? ' stroke-dasharray="5 4"' : '') + '/>';
+s.values.forEach(function (v, i) { if (v != null) svg += '<circle cx="' + (P + step * i).toFixed(1) + '" cy="' + y(v).toFixed(1) + '" r="3" fill="var(--c' + (j + 1) + ')"><title>' + h(s.name + ' · ' + o.labels[i] + ': ' + money(v, ctx.currency, ctx.display)) + '</title></circle>'; });
+});
+o.labels.forEach(function (lb, i) { if (n <= 13 || i % Math.ceil(n / 12) === 0) svg += '<text x="' + (P + step * i).toFixed(1) + '" y="' + (H - 8) + '" class="tick" text-anchor="middle">' + h(lb) + '</text>'; });
+el.innerHTML = svg + '</svg>' + legend(o.series) + (o.band ? '<div class="xk-legend"><span><i style="background:var(--c2);opacity:.3"></i>' + h(o.band.name || 'Range') + '</span></div>' : '');
+}
+function donut(el, o, ctx) {
+var items = o.items.filter(function (i) { return i.value > 0; }).sort(function (a, b) { return b.value - a.value; });
+if (!items.length) { el.innerHTML = '<p class="muted">Data appears once it\'s available.</p>'; return; }
+if (items.length > 6) { var rest = items.slice(5); items = items.slice(0, 5).concat([{ label: '+' + rest.length + ' more', value: sum(rest.map(function (r) { return r.value; })) }]); }
+var tot = sum(items.map(function (i) { return i.value; })), a0 = -Math.PI / 2, R = 80, r = 50, cx = 100, cy = 100, svg = '<svg viewBox="0 0 200 200" role="img" aria-label="' + h(o.title || 'Donut chart') + '">';
+items.forEach(function (it, i) {
+if (it.value / tot > 0.9999) { // one slice: a full-circle arc starts and ends at the same point and draws nothing — draw a ring
+svg += '<path fill-rule="evenodd" d="M' + cx + ' ' + (cy - R) + ' A' + R + ' ' + R + ' 0 1 1 ' + cx + ' ' + (cy + R) + ' A' + R + ' ' + R + ' 0 1 1 ' + cx + ' ' + (cy - R) + 'Z M' + cx + ' ' + (cy - r) + ' A' + r + ' ' + r + ' 0 1 0 ' + cx + ' ' + (cy + r) + ' A' + r + ' ' + r + ' 0 1 0 ' + cx + ' ' + (cy - r) + 'Z" fill="var(--d' + (i + 1) + ')"><title>' + h(it.label + ': ' + money(it.value, ctx.currency, ctx.display)) + '</title></path>'; return;
+}
+var a1 = a0 + (it.value / tot) * Math.PI * 2 - 1e-6, lg = a1 - a0 > Math.PI ? 1 : 0;
+var p = [cx + R * Math.cos(a0), cy + R * Math.sin(a0), cx + R * Math.cos(a1), cy + R * Math.sin(a1), cx + r * Math.cos(a1), cy + r * Math.sin(a1), cx + r * Math.cos(a0), cy + r * Math.sin(a0)].map(function (v) { return v.toFixed(2); });
+svg += '<path d="M' + p[0] + ' ' + p[1] + ' A' + R + ' ' + R + ' 0 ' + lg + ' 1 ' + p[2] + ' ' + p[3] + ' L' + p[4] + ' ' + p[5] + ' A' + r + ' ' + r + ' 0 ' + lg + ' 0 ' + p[6] + ' ' + p[7] + 'Z" fill="var(--d' + (i + 1) + ')"><title>' + h(it.label + ': ' + money(it.value, ctx.currency, ctx.display)) + '</title></path>';
+a0 = a1 + 1e-6;
+});
+el.innerHTML = '<div class="xk-donut">' + svg + '<text x="100" y="106" text-anchor="middle" class="donut-c">' + h(o.centre || '') + '</text></svg><ul>' +
+items.map(function (it, i) { return '<li><i style="background:var(--d' + (i + 1) + ')"></i>' + h(it.label) + ': ' + money(it.value, ctx.currency, Object.assign({}, ctx.display, { cents: 0 })) + '</li>'; }).join('') + '</ul></div>';
+}
+function waterfall(el, o, ctx) {
+var run = 0, bars2 = o.steps.map(function (s) { var from = s.total ? 0 : run, to = s.total ? s.value : run + s.value; run = to; return { label: s.label, from: from, to: to, total: s.total, v: s.value }; });
+var vals = []; bars2.forEach(function (b) { vals.push(b.from, b.to); });
+if (!vals.length) { el.innerHTML = '<p class="muted">Data appears once it\'s available.</p>'; return; }
+var W = 640, H = 220, P = 28, sc = scale(vals), gw = (W - P * 2) / bars2.length;
+function y(v) { return P + (H - P * 2) * (1 - (v - sc.mn) / (sc.mx - sc.mn)); }
+var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + h(o.title || 'Waterfall') + '"><line x1="' + P + '" x2="' + (W - P) + '" y1="' + y(0) + '" y2="' + y(0) + '" class="axis"/>';
+bars2.forEach(function (b, i) { var x = P + gw * i + gw * 0.2, y0 = y(b.from), y1 = y(b.to), c = b.total ? (b.v < 0 ? 'var(--neg)' : 'var(--c1)') : b.v < 0 ? 'var(--neg)' : 'var(--c2)';
+svg += '<rect x="' + x.toFixed(1) + '" y="' + Math.min(y0, y1).toFixed(1) + '" width="' + (gw * 0.6).toFixed(1) + '" height="' + Math.max(1, Math.abs(y1 - y0)).toFixed(1) + '" fill="' + c + '"><title>' + h(b.label + ': ' + money(b.v, ctx.currency, ctx.display)) + '</title></rect><text x="' + (x + gw * 0.3).toFixed(1) + '" y="' + (H - 8) + '" class="tick" text-anchor="middle">' + h(b.label) + '</text>'; });
+el.innerHTML = svg + '</svg>';
+}
+function compareCols(title) {
+return [{ title: title || 'Comparison', value: function (l) { return l.cmp; } },
+{ title: '$ Change', value: function (l) { return l.cmp == null ? null : Math.round((val(l) - l.cmp) * 100) / 100; } },
+{ title: '% Change', fmt: 'pct', value: function (l) { return l.cmp ? (val(l) - l.cmp) / Math.abs(l.cmp) : null; } }];
+}
+function kpis(items, ctx) { // [{label, value, delta:number|null (fraction), money:true|false, text}]
+return '<div class="xk-kpis">' + items.map(function (k) {
+var v = k.text != null ? h(k.text) : k.money === false ? h(k.value == null ? 'N/A' : k.value) : (k.value == null ? 'N/A — not in source' : money(k.value, ctx.currency, ctx.display));
+var chip = k.delta == null || !isFinite(k.delta) ? '' : '<span class="chip ' + (k.delta >= 0 ? 'up' : 'down') + '">' + (k.delta >= 0 ? '▲ ' : '▼ ') + pct(Math.abs(k.delta), 0) + '</span>';
+return '<div class="xk-kpi"><div class="lbl">' + h(k.label) + '</div><div class="val' + negCls(k.value, ctx.display) + '">' + v + '</div>' + chip + (k.sub ? '<div class="sub">' + h(k.sub) + '</div>' : '') + '</div>';
+}).join('') + '</div>';
+}
+var FRIENDLY = { needs_connection: 'Connect Xero (Settings → Connections) to see this data.', connection_unavailable: 'Xero is temporarily unavailable — press Refresh to try again.', tool_not_found: 'This Xero report is not available on the connected connector.', tool_error: 'Xero returned an error for this section.', invalid_inputs: 'One of the report controls has an invalid value.' };
+var MECHANISM = 'xero-accounting connector — mySMB custom MCP on the Xero Accounting API (AGT-001)';
+function app(cfg) {
+var MH = window.MyHubReport, live = !!(MH && MH.mode !== 'snapshot');
+var I = cfg.inputs || {}, S = { inputs: Object.assign({}, cfg.defaults), data: {}, errors: {}, fetchedAt: null, first: true, busy: 0 };
+var $ = function (id) { return document.getElementById(id); };
+function disp() { return readDisplay(I.display ? S.inputs[I.display] : ''); }
+function setDisp(patch) { if (!I.display) return; var d = disp(), k; for (k in patch) d[k] = patch[k]; S.inputs[I.display] = writeDisplay(d); }
+function co() { return companyOf(S.data[cfg.org], S.data[cfg.conns], I.org ? S.inputs[I.org] : '', (reportOf(S.data[cfg.primary]) || {}).ReportTitles); }
+function fy() { return fiscalStart(co().org, cfg.fyMonth); }
+function absorb(id, v) { var e = errorOf(v); if (e) { delete S.data[id]; S.errors[id] = { code: 'tool_error', message: e }; } else { S.data[id] = v; delete S.errors[id]; } }
+function err(id) { var e = S.errors[id]; return e ? (FRIENDLY[e.code] || e.message || 'Unavailable') + (e.code === 'tool_error' && e.message ? ' (' + e.message + ')' : '') : null; }
+function announce() { if (MH && live) MH.setInputs(Object.assign({}, S.inputs)); }
+function status(t) { var el = $('xk-status'); if (el) el.textContent = t || ''; }
+var RATE = /\b429\b|rate.?limit|too many requests/i;
+function limited() { return Object.keys(S.errors).filter(function (id) { var e = S.errors[id]; return e && RATE.test(String(e.message || '')); }); }
+function fetchOne(id, inputs) {
+S.req = S.req || {}; var tok = S.req[id] = (S.req[id] || 0) + 1, latest = function () { return S.req[id] === tok; }; // a slower, older reload never overwrites a newer one
+return MH.getData(id, inputs).then(function (v) { if (latest()) absorb(id, v); }, function (e) { if (latest()) S.errors[id] = { code: (e && e.code) || 'tool_error', message: (e && e.message) || String(e) }; });
+}
+function retryLimited(round) {
+var ids = limited(); if (!MH || !live || !ids.length || round > 3) return Promise.resolve(false);
+S.busy++; status('Xero is busy — loading ' + ids.length + ' more section' + (ids.length > 1 ? 's' : '') + '…');
+var inputs = Object.assign({}, S.inputs), wait = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+return ids.reduce(function (p, id) { return p.then(function () { return wait(round * (cfg.retryMs == null ? 700 : cfg.retryMs)); }).then(function () { return fetchOne(id, inputs); }); }, Promise.resolve())
+.then(function () { S.busy--; status(''); S.fetchedAt = new Date().toISOString(); render(); return retryLimited(round + 1); });
+}
+function requery(changed) {
+if (!MH || !live) { render(); return Promise.resolve(); } // snapshot: display-only inputs still redraw
+var ids = Object.keys(cfg.uses || {}).filter(function (id) { return !changed || (cfg.uses[id] || []).some(function (n) { return changed.indexOf(n) >= 0; }); });
+if (!ids.length) { render(); return Promise.resolve(); }
+S.busy++; status('Loading…'); var inputs = Object.assign({}, S.inputs);
+return Promise.all(ids.map(function (id) { return fetchOne(id, inputs); }))
+.then(function () {
+S.fetchedAt = new Date().toISOString(); S.busy--; status('');
+var roll = rollPresets(); if (roll) return change(roll); // e.g. another organisation's financial year moves 'This financial year to date'
+var hl = heal(); if (hl) return hl; // figures for other dates than the controls show → refetch once at the controls' dates
+render(); return retryLimited(1);
+});
+}
+function change(patch, dispPatch) {
+var changed = [], k; S.healed = false;
+for (k in patch) if (k && S.inputs[k] !== patch[k]) { S.inputs[k] = patch[k]; changed.push(k); }
+if (dispPatch) setDisp(dispPatch);
+if (cfg.derive) { var dv = cfg.derive(Object.assign({}, S.inputs), fy().month, disp()) || {}; for (k in dv) if (S.inputs[k] !== dv[k]) { S.inputs[k] = dv[k]; changed.push(k); } }
+var d = disp();
+if (cfg.compare && d.c !== 'none') { // keep the comparison window aligned with the main window
+if (I.cmpStart && I.start) { var c = compare(S.inputs[I.start], S.inputs[I.end], d.c, fy().month); if (S.inputs[I.cmpStart] !== c.start || S.inputs[I.cmpEnd] !== c.end) { S.inputs[I.cmpStart] = c.start; S.inputs[I.cmpEnd] = c.end; changed.push(I.cmpStart, I.cmpEnd); } }
+if (I.cmpAsAt && I.asAt) { var ca = compareAsAt(S.inputs[I.asAt], d.c); if (S.inputs[I.cmpAsAt] !== ca) { S.inputs[I.cmpAsAt] = ca; changed.push(I.cmpAsAt); } }
+}
+announce();
+if (changed.length) return requery(changed);
+render(); return Promise.resolve();
+}
+function compareAsAt(asAtIso, mode) { var x = parse(asAtIso); return mode === 'prev_year' ? iso(D(x.getUTCFullYear() - 1, x.getUTCMonth() + 1, Math.min(x.getUTCDate(), eom(x.getUTCFullYear() - 1, x.getUTCMonth() + 1).getUTCDate()))) : iso(eom(x.getUTCFullYear(), x.getUTCMonth())); }
+function rollPresets() {
+if (!live) return null; var d = disp(), p = {}, f = fy().month;
+if (I.start && d.p && d.p !== 'custom') { var r = preset(d.p, f); if (r && (r.start !== S.inputs[I.start] || r.end !== S.inputs[I.end])) { p[I.start] = r.start; p[I.end] = r.end; } }
+if (I.asAt && d.a && d.a !== 'custom') { var a = asAt(d.a, f); if (a && a !== S.inputs[I.asAt]) p[I.asAt] = a; }
+if (cfg.roll) { var cr = cfg.roll(Object.assign({}, S.inputs), f, d) || {}, k2; for (k2 in cr) if (cr[k2] !== S.inputs[k2]) p[k2] = cr[k2]; }
+if (cfg.derive) { var dv = cfg.derive(Object.assign({}, S.inputs, p), f, d) || {}, k3; for (k3 in dv) if (dv[k3] !== S.inputs[k3]) p[k3] = dv[k3]; } // derived inputs (e.g. fy_start) are right on first open, not only after a change
+return Object.keys(p).length ? p : null;
+}
+function adoptHeader() {
+var r = reportOf(S.data[cfg.primary]); if (live || !r) return;
+var ds = titleDates((r.ReportTitles || []).slice(2).join(' '));
+if (I.start && ds.length >= 2) { S.inputs[I.start] = ds[0]; if (I.end && cfg.headerEnd !== false) S.inputs[I.end] = ds[1]; }
+if (I.asAt && ds.length) S.inputs[I.asAt] = ds[ds.length - 1];
+}
+function stale() {
+var want = I.start ? [S.inputs[I.start], S.inputs[I.end]] : I.asAt ? [S.inputs[I.asAt]] : null; if (!want) return [];
+return (cfg.dated || [cfg.primary]).filter(function (id) {
+var r = reportOf(S.data[id]); if (!r) return false;
+var ds = titleDates((r.ReportTitles || []).slice(2).join(' ')); if (!ds.length) return false;
+return want.length === 2 ? (ds.length >= 2 ? !(ds[0] === want[0] && ds[ds.length - 1] === want[1]) : ds[0] !== want[1]) : ds[ds.length - 1] !== want[0]; // a title with one date is compared on the end date
+}).map(function (id) { var r = reportOf(S.data[id]); return { id: id, title: String((r.ReportTitles || []).slice(2).join(' ')) }; });
+}
+function dateKeys() { return Object.keys(S.inputs).filter(function (k) { return k !== I.org && k !== I.persona && k !== I.display && k !== I.basis; }); }
+function heal() { if (!live || S.healed || !stale().length) return null; S.healed = true; return requery(dateKeys()); }
+function opt(list, cur) { return list.map(function (o) { return '<option value="' + h(o[0]) + '"' + (String(o[0]) === String(cur) ? ' selected' : '') + '>' + h(o[1]) + '</option>'; }).join(''); }
+function controls() {
+var el = $('xk-controls'); if (!el) return; var d = disp(), c0 = co(), dis = live ? '' : ' disabled', x = '';
+if (I.org && c0.orgs.length > 1) x += '<label class="ctl">Organisation<select id="xk-client"' + dis + ' title="The Xero organisations this connection can access — one organisation per report.">' + opt(c0.orgs.map(function (f) { return [f.id, f.name || f.id]; }), S.inputs[I.org] || c0.active || '') + '</select></label>';
+else x += '<label class="ctl">Organisation<select id="xk-client" title="The Xero organisation this connection uses."><option>' + h(c0.name || 'Connected Xero organisation') + '</option></select></label>';
+if (I.start) x += '<label class="ctl">Report period<select id="xk-preset"' + dis + '>' + opt(cfg.presets || PRESETS, d.p) + '</select></label><label class="ctl">From<input type="date" id="xk-from" value="' + h(S.inputs[I.start]) + '"' + dis + '></label><label class="ctl">To<input type="date" id="xk-to" value="' + h(S.inputs[I.end]) + '"' + dis + '></label>';
+if (I.asAt) x += '<label class="ctl">As at<select id="xk-asat-preset"' + dis + '>' + opt(ASAT, d.a) + '</select></label><label class="ctl">Date<input type="date" id="xk-asat" value="' + h(S.inputs[I.asAt]) + '"' + dis + '></label>';
+if (I.basis) x += '<fieldset class="ctl seg"' + dis + '><legend>Accounting method</legend>' + ['Cash', 'Accrual'].map(function (b) { return '<label><input type="radio" name="xk-basis" value="' + b + '"' + (S.inputs[I.basis] === b ? ' checked' : '') + dis + '>' + b + '</label>'; }).join('') + '</fieldset>';
+if (I.columnsBy && cfg.columnsBy) x += '<label class="ctl">Display columns by<select id="xk-cols"' + dis + '>' + opt(cfg.columnsBy, S.inputs[I.columnsBy]) + '</select></label>';
+if (cfg.compare) x += '<label class="ctl">Compare to<select id="xk-cmp"' + dis + '>' + opt(I.asAt ? [['none', 'None'], ['prev_period', 'Previous month end'], ['prev_year', 'Previous year']] : [['none', 'None'], ['prev_period', 'Previous period'], ['prev_year', 'Previous year'], ['ytd', 'Year-to-date']], d.c) + '</select></label>';
+(cfg.enums || []).forEach(function (e, i) { var rq = Object.keys(cfg.uses || {}).some(function (id) { return (cfg.uses[id] || []).indexOf(e.input) >= 0; }); x += '<label class="ctl">' + h(e.label) + '<select id="xk-enum-' + i + '"' + (rq ? dis : '') + '>' + opt(e.options, S.inputs[e.input]) + '</select></label>'; });
+if (cfg.views) x += '<label class="ctl">Report<select id="xk-view">' + opt(cfg.views, d.v || cfg.views[0][0]) + '</select></label>';
+if (I.persona) x += '<label class="ctl">View as<select id="xk-persona">' + opt([['Client', 'Client'], ['Bookkeeper', 'Bookkeeper'], ['Practitioner', 'Practitioner'], ['Executive', 'Executive']], S.inputs[I.persona]) + '</select></label>';
+x += '<details class="ctl customise"><summary>Customise</summary><div class="cz">' +
+'<label><input type="checkbox" id="xk-cents"' + (d.cents ? ' checked' : '') + '> Show cents</label><label><input type="checkbox" id="xk-k"' + (d.k ? ' checked' : '') + '> Divide by 1000</label>' +
+'<label><input type="checkbox" id="xk-zeros"' + (d.zeros ? '' : ' checked') + '> Except zero amounts</label><label>Negative numbers<select id="xk-neg">' + opt([['minus', '-100'], ['paren', '(100)'], ['trail', '100-']], d.neg) + '</select></label>' +
+'<label><input type="checkbox" id="xk-red"' + (d.red ? ' checked' : '') + '> Show in red</label><label><input type="checkbox" id="xk-hdr"' + (d.hdr ? ' checked' : '') + '> Header</label><label><input type="checkbox" id="xk-ftr"' + (d.ftr ? ' checked' : '') + '> Footer</label>' +
+'<label>View<select id="xk-dens">' + opt([['compact', 'Compact'], ['100', '100%']], d.dens) + '</select></label>' +
+'<label>Branding<select id="xk-branding" title="Xero branding (default) or the mySMB Reporting template — display only, the data does not change">' + opt([['xero', 'Xero'], ['mysmb', 'mySMB']], d.style === 'mysmb' ? 'mysmb' : 'xero') + '</select></label>' +
+'<label>Brand colour<input type="color" id="xk-brand" value="' + h(HEX.test(d.b) ? d.b : '#13b5ea') + '"></label><label>&nbsp;<button type="button" id="xk-brand-reset"' + (HEX.test(d.b) ? '' : ' disabled') + '>Use Xero branding</button></label></div></details>';
+x += '<div class="ctl btns"><button type="button" id="xk-pdf">Download PDF</button><button type="button" id="xk-xlsx">Download Excel</button>' + '</div>';
+el.innerHTML = x; wire();
+}
+function on(id, ev, fn) { var e = $(id); if (e) e.addEventListener(ev, fn); }
+function wire() {
+on('xk-client', 'change', function () { if (!I.org) return; var p = {}; p[I.org] = this.value; change(p); });
+on('xk-preset', 'change', function () { var k = this.value, r = preset(k, fy().month), p = {}; if (r) { p[I.start] = r.start; p[I.end] = r.end; } change(p, { p: k }); });
+on('xk-from', 'change', function () { var p = {}; p[I.start] = this.value; change(p, { p: 'custom' }); });
+on('xk-to', 'change', function () { var p = {}; p[I.end] = this.value; change(p, { p: 'custom' }); });
+on('xk-asat-preset', 'change', function () { var k = this.value, a = asAt(k, fy().month), p = {}; if (a) p[I.asAt] = a; change(p, { a: k }); });
+on('xk-asat', 'change', function () { var p = {}; p[I.asAt] = this.value; change(p, { a: 'custom' }); });
+document.querySelectorAll('input[name="xk-basis"]').forEach(function (r) { r.addEventListener('change', function () { var p = {}; p[I.basis] = this.value; change(p); }); });
+on('xk-cols', 'change', function () { var p = {}; p[I.columnsBy] = this.value; change(p); });
+on('xk-cmp', 'change', function () { change({}, { c: this.value }); });
+(cfg.enums || []).forEach(function (e, i) { on('xk-enum-' + i, 'change', function () { var p = {}; p[e.input] = this.value; change(p); }); });
+on('xk-view', 'change', function () { change({}, { v: this.value }); });
+on('xk-persona', 'change', function () { var p = {}; p[I.persona] = this.value; change(p); });
+[['xk-cents', 'cents'], ['xk-k', 'k'], ['xk-red', 'red'], ['xk-hdr', 'hdr'], ['xk-ftr', 'ftr']].forEach(function (c) { on(c[0], 'change', function () { var p = {}; p[c[1]] = this.checked ? 1 : 0; change({}, p); }); });
+on('xk-zeros', 'change', function () { change({}, { zeros: this.checked ? 0 : 1 }); });
+on('xk-neg', 'change', function () { change({}, { neg: this.value }); });
+on('xk-dens', 'change', function () { change({}, { dens: this.value }); });
+on('xk-branding', 'change', function () { change({}, { style: this.value }); });
+on('xk-brand', 'change', function () { if (HEX.test(this.value)) change({}, { b: this.value.toLowerCase() }); });
+on('xk-brand-reset', 'click', function () { change({}, { b: '' }); });
+on('xk-pdf', 'click', function () { window.print(); });
+on('xk-xlsx', 'click', function () { exportXlsx(); });
+}
+function ctx() {
+var d = disp(), c0 = co(), f = fy();
+return { data: S.data, errors: S.errors, err: err, inputs: S.inputs, I: I, display: d, view: d.v || (cfg.views ? cfg.views[0][0] : ''), compareMode: cfg.compare ? d.c : 'none',
+persona: I.persona ? S.inputs[I.persona] : 'Bookkeeper', company: c0.name, organisation: c0, fy: f, currency: homeCurrency(c0.org), live: live,
+fetchedAt: S.fetchedAt, body: $('xk-body'), change: change, disp: disp, today: iso(today()) };
+}
+var last = { checks: [], na: [], notes: [] };
+function render() {
+var c = ctx(), d = c.display, root = document.documentElement;
+root.classList.toggle('style-mysmb', d.style === 'mysmb'); root.classList.toggle('dens-compact', d.dens === 'compact');
+root.classList.toggle('brand-custom', applyBrand(root, d.style === 'mysmb' ? '' : d.b));
+document.body.classList.toggle('persona-summary', c.persona === 'Client' || c.persona === 'Executive');
+document.body.classList.toggle('persona-detail', !(c.persona === 'Client' || c.persona === 'Executive'));
+controls();
+var out = {};
+try { out = cfg.render(c) || {}; } catch (e) { if (c.body) c.body.innerHTML = '<p class="xk-err">This report could not render: ' + h(e.message) + '</p>'; out = { checks: [{ name: 'Report rendered', pass: false, detail: e.message }] }; }
+last = { checks: out.checks || [], na: out.na || [], notes: out.notes || [] };
+stale().forEach(function (x) { last.checks.unshift({ name: 'Xero report dates = the selected dates', pass: false, detail: (cfg.tools || {})[x.id] + ' returned "' + x.title + '" — press Refresh' }); });
+var nc = Object.keys(S.errors).some(function (id) { return S.errors[id] && S.errors[id].code === 'needs_connection'; });
+if (nc && c.body && c.body.textContent.indexOf(FRIENDLY.needs_connection) < 0) { var dv = document.createElement('div'); dv.className = 'xk-banner fail'; dv.textContent = FRIENDLY.needs_connection; c.body.insertBefore(dv, c.body.firstChild); }
+Object.keys(S.errors).forEach(function (id) {
+if (id === cfg.conns && S.data[cfg.org]) return; // the organisation list is only needed for the picker
+var msg = err(id);
+if (last.checks.some(function (k) { return k.pass === false && k.detail === msg; })) return;
+last.checks.unshift({ name: 'Data loaded: ' + ((cfg.tools || {})[id] || id), pass: false, detail: msg });
+});
+var hd = $('xk-head');
+if (hd) { hd.hidden = !d.hdr || !!cfg.noHead; var per = out.period || (I.start ? periodLine(S.inputs[I.start], S.inputs[I.end]) : I.asAt ? asOfLine(S.inputs[I.asAt]) : ''); hd.innerHTML = '<div class="co">' + h(c.company || 'N/A — not in source') + '</div><div class="ti">' + h(out.title || cfg.title) + '</div><div class="pe">' + h(per) + '</div><div class="xk-src">' + (d.style === 'mysmb' ? '<span class="xk-badge">mySMB</span>mySMB Reporting · data from Xero' : '<span class="xk-badge">Xero</span>Prepared from Xero') + '</div>'; }
+var ft = $('xk-foot'); if (ft) { ft.hidden = !d.ftr; var stamp = footerStamp(I.basis ? S.inputs[I.basis] : 'Accrual', S.fetchedAt, c.currency); ft.textContent = d.style === 'mysmb' ? [c.company || 'Xero organisation', out.title || cfg.title, stamp].join(' | ') : stamp; }
+banner(c); sources(c);
+}
+function banner(c) {
+var el = $('xk-banner'); if (!el) return; var ch = last.checks, isInfo = function (k) { return !!k.info; }, fails = ch.filter(function (k) { return k.pass === false; }), done = ch.filter(function (k) { return k.pass === true; });
+var nInfo = ch.filter(isInfo).length, nNA = ch.filter(function (k) { return k.pass == null && !isInfo(k); }).length, real = ch.length - nInfo;
+var none = !fails.length && !done.length && ch.length > 0; // nothing could be checked: say so, never a green tick
+var extra = (nNA ? ' · ' + nNA + ' N/A' : '') + (nInfo ? ' · ' + nInfo + ' for information' : '');
+el.className = 'xk-banner ' + (fails.length ? 'fail' : none ? 'na' : 'pass');
+el.innerHTML = '<strong>' + (fails.length ? '⚠ Validation: ' + fails.length + ' check' + (fails.length > 1 ? 's' : '') + ' failed' + (done.length ? ' · ' + done.length + ' passed' : '') + extra :
+none ? (real ? '– Validation: no check could run (' + nNA + ' N/A' + (nInfo ? ' · ' + nInfo + ' for information' : '') + ')' : 'ℹ Validation: ' + nInfo + ' line' + (nInfo > 1 ? 's' : '') + ' for information') :
+'✓ Validation: ' + done.length + '/' + done.length + ' check' + (done.length > 1 ? 's' : '') + ' passed' + extra) + '</strong>' +
+' · Data as of ' + h(S.fetchedAt ? new Date(S.fetchedAt).toLocaleString('en-AU') : '—') + (live ? '' : ' · Snapshot: figures frozen at capture time') +
+' · Financial year starts ' + h(MONTHS[c.fy.month - 1]) + ' (' + h(c.fy.source) + ')' +
+'<ul>' + ch.map(function (k) { return '<li class="' + (k.pass === false ? 'bad' : k.pass === true ? 'ok' : isInfo(k) ? 'na info' : 'na') + '">' + (k.pass === false ? '✗ ' : k.pass === true ? '✓ ' : isInfo(k) ? 'ℹ ' : '– ') + h(k.name) + (k.detail ? ' — ' + h(k.detail) : '') + '</li>'; }).join('') + '</ul>';
+}
+function sources(c) {
+var el = $('xk-sources'); if (!el) return; var t = cfg.tools || {};
+var items = Object.keys(t).map(function (id) { return h(t[id]) + (S.errors[id] ? ' — <span class="xk-err">' + h(err(id)) + '</span>' : ''); });
+var na = last.na.slice(); if (!c.company) na.unshift('Organisation name (Xero returned no organisation details)');
+el.innerHTML = '<h2>Sources &amp; limitations</h2><ul><li>Mechanism: ' + h(MECHANISM) + '</li><li>Tool calls: ' + items.join(' · ') + '</li>' +
+'<li>Basis: ' + h(I.basis ? S.inputs[I.basis] : 'n/a') + ' · Currency: ' + h(c.currency) + ' · Organisation: ' + h(c.company || 'N/A — not in source') + ' (one Xero organisation per report)</li>' +
+(/^assumed/.test(c.fy.source) ? '<li>Financial year: ' + h(c.fy.source) + ' (starts ' + h(MONTHS[c.fy.month - 1]) + '). Adjust the dates if this organisation uses a different year.</li>' : '') +
+last.notes.map(function (n) { return '<li>' + h(n) + '</li>'; }).join('') +
+(na.length ? '<li>N/A — not in source: ' + na.map(h).join('; ') + '</li>' : '') + '<li>Decision support only — not audit, tax or legal advice.</li></ul>';
+}
+function exportXlsx() {
+var c = ctx(), sheets = [];
+try { sheets = (cfg.excel && cfg.excel(c)) || []; } catch (e) { sheets = [{ name: 'Error', rows: [['Excel export failed: ' + e.message]] }]; }
+sheets.push({ name: 'Validation', rows: [[{ v: 'Check', s: 'bold' }, { v: 'Result', s: 'bold' }, { v: 'Detail', s: 'bold' }]].concat(last.checks.map(function (k) { return [k.name, k.pass === true ? 'Pass' : k.pass === false ? 'FAIL' : 'N/A', k.detail || '']; })), widths: [60, 10, 60] });
+var pr = reportParams({ start: I.start && S.inputs[I.start], end: I.end && S.inputs[I.end], asAt: I.asAt && S.inputs[I.asAt], basis: I.basis && S.inputs[I.basis], org: I.org && (S.inputs[I.org] || c.organisation.active || ''), display: c.display });
+sheets.push({ name: 'Parameters', rows: [[{ v: 'Parameter', s: 'bold' }, { v: 'Value', s: 'bold' }]].concat(Object.keys(pr).map(function (k) { return [k, String(pr[k])]; })).concat([[], ['Data as of', S.fetchedAt || ''], ['Source', MECHANISM]]), widths: [28, 60] });
+var name = [(c.company || 'Xero'), cfg.title, (I.start ? S.inputs[I.start] + ' to ' + S.inputs[I.end] : I.asAt ? 'as at ' + S.inputs[I.asAt] : '')].join(' - ').replace(/[\\\/:*?"<>|]+/g, ' ');
+download(xlsx(sheets, c.currency), name + '.xlsx');
+}
+function boot(bundle) {
+S.data = {}; S.errors = Object.assign({}, bundle.errors || {}); S.fetchedAt = bundle.fetchedAt || null;
+Object.keys(bundle.data || {}).forEach(function (id) { if (!S.errors[id]) absorb(id, bundle.data[id]); });
+adoptHeader(); status('');
+if (S.first) { S.first = false; var roll = rollPresets(); if (roll) { change(roll); return; } announce(); if (heal()) return; }
+render(); retryLimited(1);
+}
+if (!MH) { status('Open this report in mySMB to load Xero data.'); return { state: S }; }
+MyHubReport.onData(boot);
+if (MH.onRefresh) MH.onRefresh(function () { status('Refreshing…'); });
+if (MH.onThemeChange) MH.onThemeChange(function () { render(); });
+return { state: S, change: change, render: render, exportXlsx: exportXlsx, ctx: ctx, retryLimited: retryLimited };
+}
+return { errorOf: errorOf, isoDate: isoDate, reportOf: reportOf, walk: walk, isDeduction: isDeduction, sectionTotal: sectionTotal, sectionBy: sectionBy, parentTies: parentTies, runningTies: runningTies,
+CYE_RE: CYE_RE, currentYearEarnings: currentYearEarnings, linesTies: linesTies, orgOf: orgOf, connections: connections, companyOf: companyOf, fiscalStart: fiscalStart, homeCurrency: homeCurrency, titleDates: titleDates,
+applyBrand: applyBrand, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app,
+MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays, num: num, find: find, val: val, totalFor: totalFor, near: near, sum: sum, symbol: symbol,
+DISPLAY_DEFAULT: DISPLAY_DEFAULT, readDisplay: readDisplay, writeDisplay: writeDisplay, money: money, pct: pct, isNeg: isNeg,
+PRESETS: PRESETS, preset: preset, ASAT: ASAT, asAt: asAt, compare: compare, periodLine: periodLine, rangeLabel: rangeLabel, asOfLine: asOfLine, footerStamp: footerStamp, freshest: freshest,
+xlsx: xlsx, sheetFromLines: sheetFromLines, download: download, reportParams: reportParams };
+})();
+```
+
+## Rules for report skills without a kit config
+
+These rules apply to every report skill that is still a written specification (all except `xero-reporting-studio:xero-profit-and-loss` (P06), `xero-reporting-studio:xero-balance-sheet` (P07)). When you build one of those, write the report yourself following these rules.
 
 Load this skill with the specific report skill.
 
 Resolve the Xero organisation, period or as-at date, accounting basis, and presentation currency — but prefer declaring them as report inputs with sensible defaults (see Live reports below) over asking the user up front; ask only when a required choice genuinely cannot be defaulted. Do not ask for an output format: every report is a single self-contained HTML document saved through `artifact_save` with a `.html` filename.
 
-Use the connected Xero tools for live data. Never invent, estimate, silently substitute, or reuse illustrative workbook values. Mark unavailable figures N/A - not in source and include a Sources & limitations section naming tool calls, report dates, basis, currency, missing inputs, and assumptions explicitly approved by the user.
+Before building, confirm every tool the report needs exists on the `xero-accounting` connector (see Connector facts). If a dataset has no endpoint, say so plainly and mark it N/A — not in source; never approximate a report from adjacent data because the real tool is missing, and never use tool names from other Xero connectors.
 
-Perform every tie-out required by the report skill. Show a compact Validation section with each equation and Pass/Fail. If a material check fails, explain the discrepancy prominently.
+Use the connected Xero tools for live data. Never invent, estimate, silently substitute, or reuse illustrative workbook values. Mark unavailable figures N/A — not in source — and include a Sources & limitations section naming tool calls, report dates, basis, currency, missing inputs, and assumptions explicitly approved by the user.
+
+Perform every tie-out required by the report skill. Show a compact Validation section with each equation and Pass/Fail. If a material check fails, explain the discrepancy prominently. **A check is Pass only when every figure it uses was actually returned.** A check computed from missing, errored, truncated or empty data renders N/A (or Fail when the missing data is itself the problem) — never Pass. Compare money with a tolerance of 0.01 everywhere (`Math.abs(a - b) < 0.01`).
+
+## Connector facts (xero-accounting)
+
+- **Organisation:** every read tool accepts an optional `xero_tenant_id` (string). It must be one of the organisations the user authorised; omitted or `""` means the connection's default organisation. `list_connections` (no params) returns `{ activeTenantId, tenants: [{ tenantId, tenantName, tenantType }] }` — the organisation picker source. `get_organisation` (no params besides `xero_tenant_id`) returns `{ Organisations: [{ Name, LegalName, BaseCurrency, CountryCode, FinancialYearEndDay, FinancialYearEndMonth, … }] }` — the organisation name, base currency and financial year end.
+- **Parameters** are sent to Xero as query-string values (typed per the rule below); dates are `YYYY-MM-DD`. Unknown params are silently dropped, so a misspelt param fails quietly — use exactly the names below.
+- **Reports** (all return the Reports shape described in *Reading Xero reports*):
+  - `get_profit_and_loss`: `fromDate`, `toDate`, `periods` (integer), `timeframe` (`MONTH` | `QUARTER` | `YEAR`), `trackingCategoryID`, `trackingOptionID`, `trackingCategoryID2`, `trackingOptionID2`, `standardLayout` (boolean), `paymentsOnly` (boolean — `true` = cash basis).
+  - `get_balance_sheet`: `date`, `periods` (integer), `timeframe` (`MONTH` | `QUARTER` | `YEAR`), `trackingOptionID1`, `trackingOptionID2`, `standardLayout` (boolean), `paymentsOnly` (boolean).
+  - `get_trial_balance`: `date`, `paymentsOnly` (boolean).
+  - `get_bank_summary`: `fromDate`, `toDate` — per bank account Opening balance, Cash received, Cash spent, Closing balance. No periods param: one call per date range.
+  - `get_executive_summary`: `date` — cash, profitability and balance-sheet ratios for the month, including debtor and creditor days.
+  - `get_budget_summary`: `date`, `periods` (integer), `timeframe` (INTEGER `1` | `3` | `12` — not the MONTH/QUARTER/YEAR enum).
+  - `get_aged_receivables_by_contact` / `get_aged_payables_by_contact`: `contactID`, `date`, `fromDate`, `toDate`. ONE contact per call, and Xero REQUIRES `contactID` even though the schema marks it optional. **There is no all-contacts ageing report** — build all-contacts ageing from `list_invoices` (see the Aged Receivables skill); use these two only for a single-contact drill-down.
+- **Lists** return 100 rows per page (`page` integer, starting at 1; there is no page-size param):
+  - `list_invoices`: `where` (e.g. `Type=="ACCREC"` for sales invoices, `Type=="ACCPAY"` for bills — there is no separate bills tool), `order` (e.g. `DueDate ASC`), `ids`, `invoiceNumbers`, `contactIDs`, `statuses` (comma-separated, e.g. `AUTHORISED` or `DRAFT,SUBMITTED,AUTHORISED`), `includeArchived` (boolean), `createdByMyApp` (boolean), `summaryOnly` (boolean), `page`, `searchTerm`. Rows: `{ InvoiceID, InvoiceNumber, Type, Contact{ContactID, Name}, Date, DueDate, Status, SubTotal, TotalTax, Total, AmountDue, AmountPaid, CurrencyCode, CurrencyRate, … }`. Dates arrive as `/Date(ms+0000)/` plus `DateString` / `DueDateString` (ISO — use the first 10 characters). `AmountDue` is the balance as of now, not as of an earlier as-at date.
+  - `list_payments` (`where`, `order`, `page`), `list_bank_transactions` (`where`, `order`, `page`, `unitdp`), `list_credit_notes` (`where`, `order`, `page`), `list_contacts` (`where`, `order`, `ids`, `page`, `includeArchived`, `summaryOnly`, `searchTerm`), `list_purchase_orders` (`where`, `order`, `status`, `dateFrom`, `dateTo`, `page`), `list_linked_transactions` (`status` = `APPROVED` | `DRAFT` | `ONDRAFT` | `BILLED` | `VOIDED`, `page`), `list_budgets` (`dateFrom`, `dateTo`).
+  - `list_accounts` (`where`, `order`) — chart of accounts only, **no balances**; balances come from `get_balance_sheet`, `get_trial_balance` or `get_bank_summary`.
+  - `list_tax_rates` (`where`, `order`), `list_tracking_categories` (`TrackingCategories[].TrackingCategoryID`, `.Options[].TrackingOptionID`).
+  - `list_journals` (`offset`) may fail as unauthorised — the connector does not hold the journals scope. Do not depend on it.
+- **No endpoint** exists for: Activity Statement / BAS, the Cash Summary report, a cash-flow statement, Xero Analytics (Syft) widgets and AI insights, the Business Health Scorecard, industry benchmarks, and bank-feed statement balances. Say so as N/A — not in source.
+- Reports never write. Do not call any create, update, delete, archive, email or void tool.
+
+## Reading Xero reports
+
+Every report tool returns `{ Reports: [{ ReportName, ReportTitles[], ReportDate, Rows: [...] }] }`. Each row has `RowType` of `Header`, `Section`, `Row` or `SummaryRow`, an optional `Title`, nested `Rows` (sections), and `Cells: [{ Value, Attributes? }]`.
+
+- The `Header` row's cells are the column labels (first cell is the label column; the rest are periods or comparison dates).
+- A `Section` has a `Title` (e.g. Income, Less Cost of Sales, Bank, Current Assets) and child rows. A `Row` is an account line: `Cells[0].Value` is the account name and `Cells[0].Attributes` may carry `{ Id: 'account', Value: '<AccountID>' }`. A `SummaryRow` is the section total. Computed lines such as Gross Profit or Net Profit usually sit in a Section with an empty `Title`.
+- **Cell values are strings.** Parse to numbers (`parseFloat(v.replace(/,/g, ''))`); an empty cell on an account row is 0, but a missing total is N/A — never 0.
+- Find sections by `Title` (case-insensitive, tolerant of "Less "/"Plus " prefixes) as discovered on the generation call — never by position; layouts differ per organisation.
+- Take section totals from the `SummaryRow`, then recompute them from the account rows as a validation.
+
+## Error contract
+
+In `onData`, treat a source as FAILED when `bundle.errors[id]` is set (codes `tool_error`, `tool_not_found`, `invalid_inputs`, `needs_connection`, `connection_unavailable`, `unknown_binding`); after `getData`, a rejected promise is the same failure. Write one helper and use it for every section. For a failed source:
+
+- Show the error message in that section. For `needs_connection`, say this viewer has not connected Xero — offer nothing else. For an organisation the viewer is not authorised for (a `tool_error` naming `xero_tenant_id`), say so and offer the organisation picker.
+- Never render $0, an empty table, or "no items" as if it were real data.
+- Mark every check that uses it N/A or Fail — never Pass.
+- Keep rendering every other section.
 
 ## Live reports (the default)
 
 A report over connected Xero data is LIVE: never bake retrieved rows or computed figures into the HTML. Pass `dataBindings` to `artifact_save` and write the document to render everything from hydrated data through the injected `MyHubReport` SDK. The platform injects the SDK at serve time — never include, stub, or fetch it yourself.
 
-- Declare one binding per Xero dataset the report shows, targeting the `xero-accounting` MCP server's tools, e.g. `{ "id": "aged_receivables", "tool": { "mcp": "xero-accounting", "name": "get_aged_receivables_by_contact" }, "params": { "date": { "kind": "input", "input": "as_at_date" } } }`. Param kinds: `{"kind":"static","value":…}` for choices fixed at authoring, `{"kind":"context","source":"now.date"}` for server-resolved values, `{"kind":"input","input":"…"}` for anything a reader may change.
+- Declare one binding per Xero dataset the report shows, targeting the `xero-accounting` MCP server's tools, e.g. `{ "id": "profit_and_loss", "tool": { "mcp": "xero-accounting", "name": "get_profit_and_loss" }, "params": { "fromDate": { "kind": "input", "input": "from_date" }, "toDate": { "kind": "input", "input": "to_date" }, "xero_tenant_id": { "kind": "input", "input": "organisation" } } }`. Param kinds: `{"kind":"static","value":…}` for choices fixed at authoring, `{"kind":"context","source":"now.date"}` for today, `{"kind":"input","input":"…"}` for anything a reader may change.
+- **Limits:** at most 8 declared inputs and 12 bindings. Input types are `string`, `date`, `enum` and `number` only — there is **no boolean input type**. Every binding id must be read somewhere in the HTML.
+- **Typed parameters:** a boolean tool param (`paymentsOnly`, `standardLayout`, `summaryOnly`, `includeArchived`) is always a static JSON boolean (`{ "kind": "static", "value": true }`) — never an input (an `enum` or `string` value "true" is rejected by the connector). For a reader-switchable accrual / cash basis, declare two bindings (`paymentsOnly` `false` and `true`) and let the report show the one the basis control selects. A number param (`periods`, `page`, and `get_budget_summary`'s `timeframe`) is a static JSON number or a `number` input. `timeframe` on `get_profit_and_loss` / `get_balance_sheet` is a static string or an `enum` input with options `MONTH`, `QUARTER`, `YEAR`.
 - Declare `inputs` for the report's controls instead of interrogating the user:
-  - `organisation` — when the connector exposes more than one organisation (`get_organisation`), an enum input rendered as a selector in the report header; default to the organisation in play.
-  - Date range / as-at — declare `date` inputs that map 1:1 onto the tool's REAL date parameters (for example `from_date`, `to_date`, `as_at_date`; a date default may be `"today"`). Period presets (this month, last quarter, YTD) are a CLIENT-SIDE picker that computes and sets the declared date inputs — never an input of their own, unless the tool itself takes a preset parameter.
-  - `basis` or comparison controls — only when the tool takes an equivalent parameter (accrual/cash toggle, `periods`, `timeframe`, `paymentsOnly`, …), each declared as its own input mapped 1:1.
+  - `organisation` — ALWAYS declared: a `string` input (maxLength 64, default `""` = the connection's default organisation) holding a tenantId. Bind it to `xero_tenant_id` on EVERY binding except `list_connections`. Add a `connections` binding to `list_connections` and fill the header selector from its `tenants` client-side (hide the selector when there is only one). Add an `organisation` binding to `get_organisation`; the header shows ITS `Name` and `BaseCurrency` — the organisation actually queried — never a hardcoded label. Switching organisation re-queries every other binding for that organisation only.
+  - Date range / as-at — declare `date` inputs that map 1:1 onto the tool's REAL date parameters (for example `from_date` → `fromDate`, `to_date` → `toDate`, `as_at_date` → `date`; a date default may be `"today"`). Period presets (this month, last month, this quarter, last quarter, YTD, last financial year) are a CLIENT-SIDE picker that computes and sets the declared date inputs — never an input of their own.
+  - **Financial-year presets** come from `get_organisation`'s `FinancialYearEndMonth` / `FinancialYearEndDay`: the current FY ends on the next occurrence of that month/day on or after today (clamp the day to the month's length), and starts the day after the previous FY end. Recompute when the organisation changes. For a relative default (FY to date, last month), compute the dates on first load, then re-query with `getData` and call `setInputs` so the view and share links agree; skip this in snapshot mode.
+  - `basis` — `get_profit_and_loss`, `get_balance_sheet` and `get_trial_balance` take `paymentsOnly` (a boolean, so never an input): declare an `enum` input `basis` (`Accrual` | `Cash`, default `Accrual`) that no binding consumes, plus two bindings per report (`paymentsOnly` static `false` and static `true`); the control switches which one is shown, without refetching. `periods` is a `number` input and `timeframe` an `enum` input, each mapped 1:1.
   - The report skill names which of these (and any report-specific inputs) apply.
-- THE MAPPING LAW: every declared input must be consumed by some binding's `params`, and each binding param maps ONE declared input (or static/context value) onto ONE parameter the tool actually accepts — discover the tool's real parameters during generation and declare nothing the manifest does not use. The keys passed to `MyHubReport.getData(...)` and `MyHubReport.setInputs(...)` are the DECLARED INPUT NAMES exactly as written in `inputs` — never the tool's parameter names. The platform rejects any undeclared key at hydration (`invalid_inputs` / "unknown input"), so a control wired to a tool parameter name will always fail.
+- **Enum inputs** hold 1–12 options fixed at authoring. Never declare an enum "populated from" a list (contacts, accounts, tracking options, organisations). An entity picker (contact, account, tracking option) is a `string` input holding the ID, filled client-side from a list binding or rows the report already has. For "all", OMIT the param — filter client-side over an unfiltered binding, or call a second, filtered binding with `getData` only once a real ID is chosen. Never send `""` for an entity ID (the organisation input is the one exception, because the connector treats `""` as the default organisation).
+- **Paging:** lists return 100 rows per page. Declare a `number` input `page` (default 1, min 1) and bind it to `page` on every list binding. After the bundle arrives, while the last page returned exactly 100 rows, fetch the next with `await MyHubReport.getData(id, { ...currentInputs, page: n })` and append. Bound the loop (state the cap, e.g. 20 pages = 2,000 rows), show progress, and when the cap is hit show a "may be truncated" banner and mark completeness checks N/A. Never pass `page` other than 1 to `setInputs`. Snapshots keep only the bundle data (page 1), so in snapshot mode say which totals need the live report. `where`, `order` and `statuses` are static strings fixed at authoring — they cannot embed a reader-changeable date. Filter date windows client-side (on `DateString` / `DueDateString`); with `order: Date DESC` you may stop paging once a page's rows all predate the window.
+- **Xero allows 5 calls in progress per organisation**, and the platform runs every binding at once when a report opens. With more than 5 Xero bindings, some can fail with HTTP 429 (`… 429: …` in the error message): re-request those one at a time with `getData` (a short back-off, at most 3 rounds) before treating them as failed.
+- **Fan-out:** when a section needs one call per range or entity (e.g. `get_bank_summary` per month), declare ONE binding whose params map declared inputs, and loop client-side with `getData(id, { ...currentInputs, from_date, to_date })`. Keep it bounded (e.g. 12 calls), show progress, disclose it in Sources & limitations, and never pass loop values to `setInputs`; the same snapshot caveat applies.
+- THE MAPPING LAW: every declared input must be consumed by some binding's `params` (the one exception is the `basis` selector above, which picks between two bindings), and each binding param maps ONE declared input (or static/context value) onto ONE parameter the tool actually accepts — discover the tool's real parameters during generation and declare nothing the manifest does not use. The keys passed to `MyHubReport.getData(...)` and `MyHubReport.setInputs(...)` are the DECLARED INPUT NAMES exactly as written in `inputs` — never the tool's parameter names. The platform rejects any undeclared key at hydration (`invalid_inputs` / "unknown input"), so a control wired to a tool parameter name will always fail. Controls that only change the view (ageing by due or invoice date, filters, tabs) are client-side state, not inputs.
 - During the generation turn call each tool ONCE to learn its response shape, then write mapping and rendering JavaScript against that shape. Do not paste the discovered values into the document.
-- Render from `MyHubReport.onData(bundle => …)`: read `bundle.data[bindingId]` per section; for `bundle.errors[bindingId]` render a friendly per-section notice (`needs_connection` means this viewer has not connected Xero — say that, offer nothing else). Show a loading skeleton until the first bundle arrives; never a permanently empty section.
-- When a control changes, re-query just that data with `MyHubReport.getData(bindingId, { input: value })` and re-render the affected sections. Call `MyHubReport.setInputs({...})` on every control change so downloads and share links capture the reader's current view.
+- Render from `MyHubReport.onData(bundle => …)`: read `bundle.data[bindingId]` per section and apply the error contract above. Show a loading skeleton until the first bundle arrives; never a permanently empty section.
+- When a control changes, re-query just the affected bindings with `MyHubReport.getData(bindingId, { ...currentInputs, changed: value })` and re-render the affected sections. Call `MyHubReport.setInputs({...})` on every control change so downloads and share links capture the reader's current view.
 - Interactivity that does NOT need new data is client-side JavaScript over already-hydrated data — column sorting on every table, a text filter box on any long table (contacts, invoices, line items), tab or segment switches between report views. Never add a binding for sorting, filtering, or aggregation of data you already have.
 - Recompute the Validation section's tie-outs in JavaScript on every hydration, against the numbers actually rendered. A Pass baked at generation time is meaningless once the data refreshes.
 - Snapshot mode: when `MyHubReport.mode === 'snapshot'` (downloads and share links serve frozen data), disable or hide controls that would re-query, keep client-side sorting and filtering working against the embedded data, and state clearly that figures are frozen as of the captured time.
 - Data freshness in the header comes from `bundle.fetchedAt`, never the generation timestamp.
 
-Reserve a STATIC report (no `dataBindings`, data baked in, today's older rules) for the one case it is right: the user explicitly wants a frozen, point-in-time analysis. Then pass `connectors: ["xero-accounting"]` to `artifact_save` so the library still shows the data source.
+Reserve a STATIC report (no `dataBindings`, data baked in) for the one case it is right: the user explicitly wants a frozen, point-in-time analysis. Then pass `connectors: ["xero-accounting"]` to `artifact_save` so the library still shows the data source.
 
 ## Consistent visual system
 
 Build accessible semantic HTML with all CSS and optional lightweight JavaScript inline; do not fetch external libraries. Use a calm Xero-inspired system: #13B5EA accent, navy #172B4D text, #F5F7FA canvas, white cards, #D8E1E8 borders, green #168A52 positive, red #C9362B overdue/negative. Use a responsive 12-column card grid, 8px spacing rhythm, system sans-serif, strong hierarchy, tabular numerals, bracketed negatives, and clear print styles. Prefer SVG/CSS charts with legends and accessible labels; charts re-render from hydrated data like every other section. Tables need sticky headers when useful, right-aligned numbers, visible totals, sortable columns, and horizontal overflow on small screens. Render input controls (organisation selector, period picker, basis toggle) as a compact control row in the header area, styled with the same system.
 
-The header must show report name, organisation, period, basis, currency, and data freshness (from `bundle.fetchedAt`). Add an executive summary, then detail, validation, and sources. Save the final document with `artifact_save`; do not paste HTML into chat.
+**Dark mode:** define every colour as a CSS custom property on `:root` and override them under `:root[data-myhub-theme='dark']` (canvas, cards, text, borders, muted text, chart colours). The host sets that attribute; never use `prefers-color-scheme`.
+
+The header must show report name, organisation (the one actually queried), period, basis, currency (`BaseCurrency`), and data freshness (from `bundle.fetchedAt`). Add an executive summary, then detail, validation, and sources. Save the final document with `artifact_save`; do not paste HTML into chat.

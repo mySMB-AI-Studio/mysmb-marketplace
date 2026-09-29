@@ -245,8 +245,9 @@ QB.app({
     var bank = accts.filter(function (a) { return a.AccountType === 'Bank'; }), cards = accts.filter(function (a) { return a.AccountType === 'Credit Card'; });
     var bankTot = QB.sum(bank.map(function (a) { return a.CurrentBalance; }));
     // --- Cash flow widget: month-end cash balance from the Statement of Cash Flows
-    var cf = c.data.cash_flow_12m, cfc = cf ? QB.cols(cf) : [], cfL = cf ? QB.walk(cf) : [], endL = QB.find(cfL, 'EndingCash', QB.CF_END_RE), incL = QB.find(cfL, 'CashIncrease', QB.CF_INC_RE);
+    var cf = c.data.cash_flow_12m, cfc = cf ? QB.cols(cf) : [], cfL = cf ? QB.walk(cf) : [], incL = QB.find(cfL, 'CashIncrease', QB.CF_INC_RE);
     var months = cfc.slice(1).filter(function (x) { return !/^total$/i.test(x.title); }), idx = months.map(function (x) { return x.i - 1; });
+    var endL = QB.cashEnd(cfL, idx, bank.length ? bankTot : null); // AU: no closing-cash line — worked back from today's bank balances
     var cashNow = null; if (endL) { var lastV = endL.values[endL.values.length - 1]; for (var ci = idx.length - 1; ci >= 0 && cashNow == null; ci--) cashNow = endL.values[idx[ci]] == null ? null : endL.values[idx[ci]]; if (cashNow == null) cashNow = lastV == null ? null : lastV; } // latest month-end first; Total column may be blank
     var opt = [['last_month', 'Last month'], ['this_month', 'This month'], ['last_quarter', 'Last quarter'], ['this_quarter', 'This quarter']];
     body.innerHTML = '<div class="qb-grid2">' +
@@ -267,6 +268,7 @@ QB.app({
       { name: 'Net profit = Income − Expenses', pass: pl ? QB.near(w.ni, w.inc - w.exp) && QB.near(windowSum('NetIncome', sel.start, sel.end), windowSum('Income', sel.start, sel.end) - windowSum('COGS', sel.start, sel.end) + windowSum('OtherIncome', sel.start, sel.end) - windowSum('Expenses', sel.start, sel.end) - windowSum('OtherExpenses', sel.start, sel.end)) : null, detail: money(w.ni) },
       ex && !cats.length && !spend ? { name: 'Category shares sum to the spending total (information)', pass: null, info: true, detail: 'No spending in the last 30 days — nothing to split' } :
       { name: 'Category shares sum to the spending total', pass: ex && cats.length ? QB.near(catSum, spend) : null, detail: money(catSum) + ' vs ' + money(spend) },
+      endL && endL.derived ? { name: "Month-end cash worked back from today's bank balances (information)", pass: null, info: true, detail: "QuickBooks' cash flow report has no closing-cash line; " + money(bankTot) + ' in bank accounts today, less each month\'s net change' } :
       { name: "Bank 'In QuickBooks' = ledger cash (Cash at end of period today)", pass: cfEnd == null || !bank.length ? null : QB.near(bankTot, cfEnd, 1), detail: money(bankTot) + ' vs ' + money(cfEnd) }];
     this._x = { w: w, wp: wp, sel: sel, cats: cats, spend: spend, accts: accts, months: months, idx: idx, endL: endL };
     return { checks: checks, period: QB.asOfLine(c.today),
