@@ -135,7 +135,7 @@
         "children": [
           "billDot",
           "billInfo",
-          "billAmount"
+          "billRightCol"
         ],
         "props": {
           "align": "start",
@@ -143,6 +143,40 @@
           "template": "auto minmax(0,1fr) auto"
         },
         "type": "Row"
+      },
+      "billRightCol": {
+        "children": [
+          "billAmount",
+          "billReviewBtn"
+        ],
+        "props": {
+          "align": "end",
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "billReviewBtn": {
+        "props": {
+          "label": "Review",
+          "size": "sm",
+          "tone": "brand",
+          "variant": "primary",
+          "trailingIcon": "ArrowRight"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$item": "reviewUrl"
+              }
+            }
+          }
+        },
+        "type": "Button",
+        "visible": {
+          "$item": "needsReview"
+        }
       },
       "body": {
         "children": [
@@ -269,20 +303,6 @@
         "props": {},
         "type": "Header"
       },
-      "lblCantVerify": {
-        "props": {
-          "text": "CAN'T VERIFY",
-          "tone": "muted"
-        },
-        "type": "Caption"
-      },
-      "lblVerified": {
-        "props": {
-          "text": "VERIFIED",
-          "tone": "muted"
-        },
-        "type": "Caption"
-      },
       "loading": {
         "children": [
           "sk1",
@@ -335,35 +355,73 @@
         "type": "Skeleton"
       },
       "statCantVerify": {
-        "children": [
-          "valCantVerify",
-          "lblCantVerify"
-        ],
         "props": {
-          "gap": "none"
+          "label": "CAN'T VERIFY",
+          "tone": "warning",
+          "value": {
+            "$state": "/xero-accounting/list_xero_bank_detail_check/summary/cantVerify"
+          }
         },
-        "type": "Stack"
+        "type": "Stat"
       },
       "statVerified": {
-        "children": [
-          "valVerified",
-          "lblVerified"
-        ],
         "props": {
-          "gap": "none"
+          "label": "VERIFIED",
+          "tone": "success",
+          "value": {
+            "$state": "/xero-accounting/list_xero_bank_detail_check/summary/verified"
+          }
         },
-        "type": "Stack"
+        "type": "Stat"
       },
       "statsGrid": {
         "children": [
-          "statCantVerify",
-          "statVerified"
+          "statMismatchCard",
+          "statCantVerifyCard",
+          "statVerifiedCard"
         ],
         "props": {
-          "cols": 2,
+          "cols": 3,
           "gap": "sm"
         },
         "type": "Grid"
+      },
+      "statMismatchCard": {
+        "children": [
+          "statMismatch"
+        ],
+        "props": {
+          "variant": "bordered"
+        },
+        "type": "Section"
+      },
+      "statCantVerifyCard": {
+        "children": [
+          "statCantVerify"
+        ],
+        "props": {
+          "variant": "bordered"
+        },
+        "type": "Section"
+      },
+      "statVerifiedCard": {
+        "children": [
+          "statVerified"
+        ],
+        "props": {
+          "variant": "bordered"
+        },
+        "type": "Section"
+      },
+      "statMismatch": {
+        "props": {
+          "label": "MISMATCH",
+          "tone": "destructive",
+          "value": {
+            "$state": "/xero-accounting/list_xero_bank_detail_check/summary/mismatch"
+          }
+        },
+        "type": "Stat"
       },
       "title": {
         "props": {
@@ -400,24 +458,6 @@
           "gap": "none"
         },
         "type": "Stack"
-      },
-      "valCantVerify": {
-        "props": {
-          "tone": "warning",
-          "value": {
-            "$state": "/xero-accounting/list_xero_bank_detail_check/summary/cantVerify"
-          }
-        },
-        "type": "Stat"
-      },
-      "valVerified": {
-        "props": {
-          "tone": "success",
-          "value": {
-            "$state": "/xero-accounting/list_xero_bank_detail_check/summary/verified"
-          }
-        },
-        "type": "Stat"
       }
     },
     "root": "card"
