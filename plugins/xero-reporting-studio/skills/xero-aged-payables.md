@@ -244,7 +244,7 @@ This report has not been exercised against a live Xero connection yet. Someone w
       rows.forEach(function (inv) {
         if (!inv || inv.AmountDue == null) return;
         var d = refDate(inv); if (!d) { skipped++; return; }
-        if (d > asAt) return;
+        if (basis === 'invoice' && d > asAt) return; // Bill date: not yet raised as at this date, exclude. Due date: a not-yet-due bill still belongs in Current (bucketOf handles days<=0).
         var days = Math.round((asAtDt - XK.parse(d)) / 86400000);
         var amt = XK.num(inv.AmountDue) || 0, rate = Number(inv.CurrencyRate), fx = !!(inv.CurrencyCode && inv.CurrencyCode !== c.currency && rate);
         if (fx) amt = amt / rate;
