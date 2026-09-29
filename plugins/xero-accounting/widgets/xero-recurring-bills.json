@@ -11,7 +11,7 @@
     },
     "tool": "list_repeating_invoices"
   },
-  "description": "Repeating bill templates (Type==ACCPAY repeating invoices) — who they're billed to, the amount, when the next one fires, and the template's own status. Switch organisation from the tile itself if more than one Xero org is connected.",
+  "description": "Repeating bill templates (Type==ACCPAY repeating invoices) — who they're billed to, the amount, when the next one fires, and the template's own status. Deliberately never passes xero_tenant_id itself — myHub's own dashboard-level Xero org switcher auto-injects the active tenant into every xero-* call as long as the call doesn't already specify one (see call-tool.ts's injectConnectorContext); resolving the tenant here too would only fight that and lock the tile onto the wrong org.",
   "id": "xero-recurring-bills",
   "keywords": [
     "recurring bill",
@@ -67,59 +67,14 @@
       "card": {
         "children": [
           "header",
-          "orgRow",
           "body",
           "footer"
         ],
         "type": "Card",
         "watch": {
-          "/ui/selectedTenantId": [
-            {
-              "action": "bust_tool_cache",
-              "params": {
-                "mcp": "xero-accounting",
-                "tool": "list_repeating_invoices"
-              }
-            },
-            {
-              "action": "xero-accounting.list_repeating_invoices",
-              "params": {
-                "where": "Type==\"ACCPAY\"",
-                "xero_tenant_id": {
-                  "$state": "/ui/selectedTenantId"
-                }
-              }
-            },
-            {
-              "action": "bust_tool_cache",
-              "params": {
-                "mcp": "xero-accounting",
-                "tool": "get_organisation"
-              }
-            },
-            {
-              "action": "xero-accounting.get_organisation",
-              "params": {
-                "xero_tenant_id": {
-                  "$state": "/ui/selectedTenantId"
-                }
-              }
-            }
-          ],
-          "/xero-accounting/list_connections/activeTenantId": [
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/selectedTenantId",
-                "value": {
-                  "$state": "/xero-accounting/list_connections/activeTenantId"
-                }
-              }
-            }
-          ],
           "/xero-accounting/list_repeating_invoices/RepeatingInvoices": [
             {
-              "action": "xero-accounting.list_connections",
+              "action": "xero-accounting.get_organisation",
               "params": {}
             }
           ]
@@ -291,39 +246,6 @@
           "variant": "primary"
         },
         "type": "Button"
-      },
-      "orgRow": {
-        "children": [
-          "orgSelect"
-        ],
-        "props": {
-          "align": "center",
-          "gap": "xs"
-        },
-        "type": "Row",
-        "visible": {
-          "$state": "/xero-accounting/list_connections/tenants/1"
-        }
-      },
-      "orgSelect": {
-        "props": {
-          "ariaLabel": "Switch Xero organisation",
-          "options": {
-            "$computed": "to_options",
-            "args": {
-              "labelField": "tenantName",
-              "value": {
-                "$state": "/xero-accounting/list_connections/tenants"
-              },
-              "valueField": "tenantId"
-            }
-          },
-          "size": "sm",
-          "value": {
-            "$bindState": "/ui/selectedTenantId"
-          }
-        },
-        "type": "Select"
       },
       "row": {
         "children": [
