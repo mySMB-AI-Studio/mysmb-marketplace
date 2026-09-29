@@ -121,9 +121,16 @@
         "children": ["totalAmountText", "payInfoRow"]
       },
       "totalAmountText": {
-        "type": "Stat",
+        "type": "Heading",
         "props": {
-          "value": { "$state": "/xero-accounting/list_xero_batch_payment_bills/summary/totalAmount" }
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value":    { "$state": "/xero-accounting/list_xero_batch_payment_bills/summary/totalAmount" },
+              "currency": "AUD"
+            }
+          },
+          "level": "h1"
         }
       },
       "payInfoRow": {
@@ -149,14 +156,7 @@
       "bankName": {
         "type": "Caption",
         "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{name} {masked}",
-              "name":   { "$state": "/xero-accounting/list_xero_batch_payment_bills/bankAccount/name" },
-              "masked": { "$state": "/xero-accounting/list_xero_batch_payment_bills/bankAccount/masked" }
-            }
-          },
+          "text": { "$state": "/xero-accounting/list_xero_batch_payment_bills/bankAccount/name" },
           "weight": "semibold"
         }
       },
