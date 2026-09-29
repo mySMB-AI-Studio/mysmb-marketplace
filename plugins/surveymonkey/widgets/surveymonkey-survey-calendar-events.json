@@ -1,29 +1,61 @@
 {
-  "id": "surveymonkey-survey-calendar-events",
-  "title": "Survey Calendar",
-  "description": "Chronological event list of recent survey launches and closings.",
   "category": "surveys",
-  "tags": ["surveymonkey", "surveys", "calendar", "events", "launching", "closing"],
-  "keywords": ["survey calendar", "events", "launching", "closing", "schedule"],
-  "connectorsUsed": ["surveymonkey"],
+  "connectorsUsed": [
+    "surveymonkey"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "surveymonkey",
+    "params": {
+      "include": "response_count,date_created,date_modified",
+      "per_page": 100,
+      "sort_by": "date_modified",
+      "sort_order": "DESC"
+    },
+    "tool": "list_surveys"
+  },
+  "description": "Chronological event list of recent survey launches and closings.",
+  "id": "surveymonkey-survey-calendar-events",
+  "keywords": [
+    "survey calendar",
+    "events",
+    "launching",
+    "closing",
+    "schedule"
+  ],
   "popularity": 60,
   "sizing": {
-    "preferred": { "colSpan": 4, "rowSpan": 10 },
-    "min": { "colSpan": 3, "rowSpan": 6 },
-    "max": { "colSpan": 6, "rowSpan": 14 }
-  },
-  "dataProvider": {
-    "mcp": "surveymonkey",
-    "tool": "list_surveys",
-    "params": { "per_page": 100, "sort_by": "date_modified", "sort_order": "DESC", "include": "response_count,date_created,date_modified" }
+    "max": {
+      "colSpan": 6,
+      "rowSpan": 14
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 6
+    },
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 10
+    }
   },
   "spec": {
-    "root": "card",
     "elements": {
-      "card": {
-        "type": "Card",
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "content"
+        ],
         "props": {},
-        "children": ["header", "body"],
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "header",
+          "body"
+        ],
+        "props": {},
+        "type": "Card",
         "watch": {
           "/surveymonkey/list_surveys/data": [
             {
@@ -33,7 +65,9 @@
                 "value": {
                   "$computed": "surveymonkey_flatten_upcoming_calendar",
                   "args": {
-                    "value": { "$state": "/surveymonkey/list_surveys/data" }
+                    "value": {
+                      "$state": "/surveymonkey/list_surveys/data"
+                    }
                   }
                 }
               }
@@ -41,108 +75,235 @@
           ]
         }
       },
-
-      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
-      "titleGroup": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
-      },
-      "titleIcon": {
-        "type": "Icon",
-        "props": { "name": "Calendar", "tone": "accent", "size": "sm" }
-      },
-      "titleStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["title", "eyebrow"]
-      },
-      "title": { "type": "Heading", "props": { "text": "Survey Calendar", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "SurveyMonkey" } },
-
-      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "content"] },
-
-      "loading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3"],
-        "visible": { "$state": "/_loading/surveymonkey.list_surveys" }
-      },
-      "sk1": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
-
-      "empty": {
-        "type": "Empty",
-        "props": { "message": "No survey events found." },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/surveymonkey.list_surveys", "not": true },
-            { "$state": "/ui/events/0", "not": true }
-          ]
-        }
-      },
-
       "content": {
+        "children": [
+          "eventList"
+        ],
+        "props": {
+          "gap": "sm"
+        },
         "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["eventList"],
         "visible": {
           "$and": [
-            { "$state": "/_loading/surveymonkey.list_surveys", "not": true },
-            { "$state": "/ui/events/0" }
+            {
+              "$state": "/_loading/surveymonkey.list_surveys",
+              "not": true
+            },
+            {
+              "$state": "/ui/events/0"
+            }
           ]
         }
       },
-
-      "eventList": {
-        "type": "Stack",
-        "props": { "gap": "md" },
-        "children": ["eventRow"],
-        "repeat": { "statePath": "/ui/events", "key": "id" }
-      },
-
-      "eventRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "start" },
-        "children": ["eventDot", "eventDetails"]
-      },
-      "eventDot": {
-        "type": "Dot",
-        "props": { "tone": { "$item": "dot_tone" }, "size": "sm" }
-      },
-      "eventDetails": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["eventDateLabel", "eventTitle", "eventAudience", "eventBadgeWrap"]
-      },
-      "eventDateLabel": {
-        "type": "Eyebrow",
-        "props": { "text": { "$item": "date_label" }, "tone": "muted" }
-      },
-      "eventTitle": {
-        "type": "Text",
-        "props": { "text": { "$item": "title" }, "size": "sm", "weight": "bold" }
+      "empty": {
+        "props": {
+          "message": "No survey events found."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/surveymonkey.list_surveys",
+              "not": true
+            },
+            {
+              "$state": "/ui/events/0",
+              "not": true
+            }
+          ]
+        }
       },
       "eventAudience": {
+        "props": {
+          "text": {
+            "$item": "audience"
+          },
+          "tone": "muted"
+        },
         "type": "Caption",
-        "props": { "text": { "$item": "audience" }, "tone": "muted" },
-        "visible": { "$item": "audience" }
-      },
-      "eventBadgeWrap": {
-        "type": "Row",
-        "props": { "gap": "none" },
-        "children": ["eventBadge"]
+        "visible": {
+          "$item": "audience"
+        }
       },
       "eventBadge": {
-        "type": "Badge",
         "props": {
-          "text": { "$item": "event_label" },
-          "tone": { "$item": "event_tone" },
+          "text": {
+            "$item": "event_label"
+          },
+          "tone": {
+            "$item": "event_tone"
+          },
           "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "eventBadgeWrap": {
+        "children": [
+          "eventBadge"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Row"
+      },
+      "eventDateLabel": {
+        "props": {
+          "text": {
+            "$item": "date_label"
+          },
+          "tone": "muted"
+        },
+        "type": "Eyebrow"
+      },
+      "eventDetails": {
+        "children": [
+          "eventDateLabel",
+          "eventTitle",
+          "eventAudience",
+          "eventBadgeWrap"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "eventDot": {
+        "props": {
+          "size": "sm",
+          "tone": {
+            "$item": "dot_tone"
+          }
+        },
+        "type": "Dot"
+      },
+      "eventList": {
+        "children": [
+          "eventRow"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/events"
+        },
+        "type": "Stack"
+      },
+      "eventRow": {
+        "children": [
+          "eventDot",
+          "eventDetails"
+        ],
+        "props": {
+          "align": "start",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "eventTitle": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "title"
+          },
+          "weight": "bold"
+        },
+        "type": "Text"
+      },
+      "eyebrow": {
+        "props": {
+          "text": "SurveyMonkey"
+        },
+        "type": "Eyebrow"
+      },
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {},
+        "type": "Header"
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/surveymonkey.list_surveys"
         }
+      },
+      "sk1": {
+        "props": {
+          "height": "4rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "4rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "4rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Survey Calendar"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Calendar",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
       }
-    }
+    },
+    "root": "card"
   },
-  "status": "published"
+  "tags": [
+    "surveymonkey",
+    "surveys",
+    "calendar",
+    "events",
+    "launching",
+    "closing"
+  ],
+  "title": "Survey Calendar"
 }
