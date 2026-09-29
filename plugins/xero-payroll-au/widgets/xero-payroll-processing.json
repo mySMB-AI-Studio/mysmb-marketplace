@@ -1,0 +1,357 @@
+{
+  "id": "xero-payroll-processing",
+  "title": "Payroll Processing",
+  "description": "Snapshot of the next pay run — wages/tax/super/net totals, comparison with the previous run, timesheet approval progress, and blockers (draft timesheets, pending leave applications).",
+  "category": "hr",
+  "tags": ["xero", "payroll", "pay run", "timesheets", "leave", "hr"],
+  "keywords": ["payroll", "pay run", "wages", "super", "tax", "net pay", "timesheets", "leave"],
+  "connectorsUsed": ["xero-payroll-au"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 9 },
+    "min":       { "colSpan": 4, "rowSpan": 7 },
+    "max":       { "colSpan": 10, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "mcp": "xero-payroll-au",
+    "tool": "get_payroll_processing",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"]
+      },
+
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Calendar", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Pay Run", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Xero Payroll AU" }
+      },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "content"]
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/xero-payroll-au.get_payroll_processing" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3rem",   "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "3rem",   "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No pay runs found for this organisation." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/xero-payroll-au.get_payroll_processing", "not": true },
+            { "$state": "/xero-payroll-au/get_payroll_processing/hasPayRun", "not": true }
+          ]
+        }
+      },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/xero-payroll-au.get_payroll_processing", "not": true },
+            { "$state": "/xero-payroll-au/get_payroll_processing/hasPayRun" }
+          ]
+        },
+        "children": [
+          "periodSection",
+          "divider1",
+          "metricsGrid",
+          "netPayRow",
+          "divider2",
+          "progressSection",
+          "divider3",
+          "blockersSection",
+          "divider4",
+          "footerRow"
+        ]
+      },
+
+      "periodSection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["periodRow", "paymentInfo"]
+      },
+      "periodRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["periodText", "paymentRelative"]
+      },
+      "periodText": {
+        "type": "Heading",
+        "props": {
+          "text": {
+            "$state": "/xero-payroll-au/get_payroll_processing/payRun/periodText"
+          },
+          "level": "h3"
+        }
+      },
+      "paymentRelative": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/xero-payroll-au/get_payroll_processing/payRun/paymentRelative"
+          },
+          "tone": "muted"
+        }
+      },
+      "paymentInfo": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Payment date {d} | {n} employees",
+              "d": { "$state": "/xero-payroll-au/get_payroll_processing/payRun/paymentDateText" },
+              "n": { "$state": "/xero-payroll-au/get_payroll_processing/payRun/employeeCount" }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+
+      "divider1": { "type": "Divider", "props": {} },
+
+      "metricsGrid": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["wagesCell", "taxCell", "superCell"]
+      },
+      "wagesCell": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["wagesLabel", "wagesValue"]
+      },
+      "wagesLabel":  { "type": "Caption", "props": { "text": "Wages", "tone": "muted" } },
+      "wagesValue": {
+        "type": "Heading",
+        "props": {
+          "level": "h3",
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value":    { "$state": "/xero-payroll-au/get_payroll_processing/totals/wages" },
+              "currency": "AUD"
+            }
+          }
+        }
+      },
+      "taxCell": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["taxLabel", "taxValue"]
+      },
+      "taxLabel": { "type": "Caption", "props": { "text": "Tax", "tone": "muted" } },
+      "taxValue": {
+        "type": "Heading",
+        "props": {
+          "level": "h3",
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value":    { "$state": "/xero-payroll-au/get_payroll_processing/totals/tax" },
+              "currency": "AUD"
+            }
+          }
+        }
+      },
+      "superCell": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["superLabel", "superValue"]
+      },
+      "superLabel": { "type": "Caption", "props": { "text": "Super", "tone": "muted" } },
+      "superValue": {
+        "type": "Heading",
+        "props": {
+          "level": "h3",
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value":    { "$state": "/xero-payroll-au/get_payroll_processing/totals/super" },
+              "currency": "AUD"
+            }
+          }
+        }
+      },
+
+      "netPayRow": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["netPayCell", "vsLastRunCell"]
+      },
+      "netPayCell": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["netPayLabel", "netPayValue"]
+      },
+      "netPayLabel": { "type": "Caption", "props": { "text": "Net pay", "tone": "muted" } },
+      "netPayValue": {
+        "type": "Heading",
+        "props": {
+          "level": "h3",
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value":    { "$state": "/xero-payroll-au/get_payroll_processing/totals/netPay" },
+              "currency": "AUD"
+            }
+          }
+        }
+      },
+      "vsLastRunCell": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["vsLastRunLabel", "vsLastRunValue"]
+      },
+      "vsLastRunLabel": { "type": "Caption", "props": { "text": "vs last run", "tone": "muted" } },
+      "vsLastRunValue": {
+        "type": "Heading",
+        "props": {
+          "level": "h3",
+          "text": { "$state": "/xero-payroll-au/get_payroll_processing/vsLastRun/label" },
+          "tone": { "$state": "/xero-payroll-au/get_payroll_processing/vsLastRun/tone" }
+        }
+      },
+
+      "divider2": { "type": "Divider", "props": {} },
+
+      "progressSection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["progressLabelRow", "progressBar"]
+      },
+      "progressLabelRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["progressLabel", "progressCount"]
+      },
+      "progressLabel": {
+        "type": "Caption",
+        "props": { "text": "Timesheets approved", "tone": "muted" }
+      },
+      "progressCount": {
+        "type": "Caption",
+        "props": {
+          "text": { "$state": "/xero-payroll-au/get_payroll_processing/timesheets/progressLabel" },
+          "weight": "semibold"
+        }
+      },
+      "progressBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": { "$state": "/xero-payroll-au/get_payroll_processing/timesheets/progressPct" },
+          "tone": "success"
+        }
+      },
+
+      "divider3": { "type": "Divider", "props": {} },
+
+      "blockersSection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["blockersHeading", "blockersList", "noBlockersCaption"]
+      },
+      "blockersHeading": {
+        "type": "Caption",
+        "props": { "text": "BLOCKERS", "tone": "muted", "weight": "semibold" }
+      },
+      "blockersList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "repeat": {
+          "statePath": "/xero-payroll-au/get_payroll_processing/blockers",
+          "key": "id"
+        },
+        "children": ["blockerRow"]
+      },
+      "blockerRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["blockerIcon", "blockerText"]
+      },
+      "blockerIcon": {
+        "type": "Icon",
+        "props": { "name": "AlertTriangle", "tone": "warning", "size": "xs" }
+      },
+      "blockerText": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "text" },
+          "size": "sm"
+        }
+      },
+      "noBlockersCaption": {
+        "type": "Caption",
+        "props": { "text": "No blockers", "tone": "success" },
+        "visible": {
+          "$state": "/xero-payroll-au/get_payroll_processing/blockers/0",
+          "not": true
+        }
+      },
+
+      "divider4": { "type": "Divider", "props": {} },
+
+      "footerRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "justify": "between", "align": "center" },
+        "children": ["footerLeft", "statusBadge"]
+      },
+      "footerLeft": {
+        "type": "Caption",
+        "props": {
+          "text": { "$state": "/xero-payroll-au/get_payroll_processing/lastRunText" },
+          "tone": "muted"
+        }
+      },
+      "statusBadge": {
+        "type": "Badge",
+        "props": {
+          "label": { "$state": "/xero-payroll-au/get_payroll_processing/payRun/statusLabel" },
+          "tone": "brand"
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}
