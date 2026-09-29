@@ -26,7 +26,7 @@ Every item has `bookkeeping` plus one of: `bill-review` (review a bill), `bill-e
 ## Answering questions
 
 1. **Find the client**: list `Bookkeeping/Clients/` and match the name. If two match or none does, ask.
-2. **Xero calls**: always pass `xero_tenant_id` from the client's file. Bills are `list_invoices` with `where: Type=="ACCPAY"`. Useful filters: `statuses: DRAFT` (drafts waiting for review), `SUBMITTED` (awaiting approval), `AUTHORISED` (approved, unpaid when `AmountDue > 0`).
+2. **Xero calls**: always pass `xero_tenant_id` from the client's file. Bills are `list_invoices` with `where: Type=="ACCPAY"`. Put the status **inside the same `where`**, never in `statuses` alongside `where`, because Xero silently returns nothing for that combination. For example: `where: Type=="ACCPAY" AND Status=="DRAFT"` (drafts waiting for review), `…Status=="SUBMITTED"` (awaiting approval), `…Status=="AUTHORISED"` (approved; unpaid when `AmountDue > 0`). Query one status at a time.
 3. **"Why was this coded like that?"**: read the bill record. `source` is `rule` (a saved rule for this supplier), `history` (the supplier's recent bills), `ai` (suggested from the chart of accounts), or `reviewer` (changed in review). Quote the `reason`.
 4. **Exceptions**: the item description holds the problem. Common fixes:
    - *No client settings for the folder*: run **Bookkeeping: Start setup** with the business name and submit its settings form, then move the PDF into the folder it names.
