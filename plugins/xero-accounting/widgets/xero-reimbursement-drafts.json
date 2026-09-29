@@ -1,16 +1,19 @@
 {
-  "id": "xero-reimbursement-drafts",
-  "title": "Xero — Reimbursement Drafts",
-  "description": "Employee expense receipts started in Xero but not yet submitted for reimbursement (Receipt Status==\"DRAFT\" — the draft stage sits one level below ExpenseClaim, which always starts at SUBMITTED). Flags receipts with no line items and a $0 total as empty — someone opened it and never finished — since that's the real action item, not just \"still a draft\".",
   "category": "finance",
-  "tags": [
-    "xero",
-    "reimbursement",
-    "expenses",
-    "receipts",
-    "expense claims",
-    "finance"
+  "connectorsUsed": [
+    "xero-accounting"
   ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-accounting",
+    "params": {
+      "order": "UpdatedDateUTC DESC",
+      "where": "Status==\"DRAFT\""
+    },
+    "tool": "list_receipts"
+  },
+  "description": "Employee expense receipts started in Xero but not yet submitted for reimbursement (Receipt Status==\"DRAFT\" — the draft stage sits one level below ExpenseClaim, which always starts at SUBMITTED). Flags receipts with no line items and a $0 total as empty — someone opened it and never finished — since that's the real action item, not just \"still a draft\".",
+  "id": "xero-reimbursement-drafts",
   "keywords": [
     "reimbursement",
     "reimbursement draft",
@@ -19,29 +22,55 @@
     "employee expenses",
     "draft"
   ],
-  "connectorsUsed": [
-    "xero-accounting"
-  ],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 6 },
-    "min": { "colSpan": 4, "rowSpan": 4 },
-    "max": { "colSpan": 8, "rowSpan": 10 }
-  },
-  "dataProvider": {
-    "mcp": "xero-accounting",
-    "tool": "list_receipts",
-    "params": {
-      "where": "Status==\"DRAFT\"",
-      "order": "UpdatedDateUTC DESC"
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 10
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 6
     }
   },
   "spec": {
-    "root": "card",
     "elements": {
+      "amount": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "currency": {
+                "$item": "currencyCode"
+              },
+              "value": {
+                "$item": "amount"
+              }
+            }
+          },
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ],
+        "type": "Body"
+      },
       "card": {
+        "children": [
+          "header",
+          "body"
+        ],
         "type": "Card",
-        "children": ["header", "body"],
         "watch": {
           "/xero-accounting/list_receipts/Receipts": [
             {
@@ -50,162 +79,267 @@
                 "statePath": "/ui/rows",
                 "value": {
                   "$computed": "xero-accounting_reimbursement_draft_rows",
-                  "args": { "receipts": { "$state": "/xero-accounting/list_receipts/Receipts" } }
+                  "args": {
+                    "receipts": {
+                      "$state": "/xero-accounting/list_receipts/Receipts"
+                    }
+                  }
                 }
               }
             }
           ]
         }
       },
-      "header": {
-        "type": "Header",
-        "children": ["titleGroup"]
-      },
-      "titleGroup": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "start" },
-        "children": ["titleIcon", "titleStack"]
-      },
-      "titleIcon": {
-        "type": "Icon",
-        "props": { "name": "Receipt", "tone": "info", "size": "sm" }
-      },
-      "titleStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["title", "count"]
-      },
-      "title": {
-        "type": "Heading",
-        "props": { "text": "Reimbursement Drafts", "level": "h2" }
-      },
       "count": {
-        "type": "Eyebrow",
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{n} Drafts",
-              "n": { "$computed": "count", "args": { "value": { "$state": "/ui/rows" } } }
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/ui/rows"
+                  }
+                }
+              },
+              "pattern": "{n} Drafts"
             }
           }
-        }
+        },
+        "type": "Eyebrow"
       },
-
-      "body": {
-        "type": "Body",
-        "children": ["loading", "empty", "list"]
-      },
-      "loading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3"],
-        "visible": { "$state": "/_loading/xero-accounting.list_receipts" }
-      },
-      "sk1": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
-
       "empty": {
+        "props": {
+          "message": "No draft reimbursements — all caught up."
+        },
         "type": "Empty",
-        "props": { "message": "No draft reimbursements — all caught up." },
         "visible": {
           "$and": [
-            { "$state": "/_loading/xero-accounting.list_receipts", "not": true },
-            { "$state": "/ui/rows/0", "not": true }
+            {
+              "$state": "/_loading/xero-accounting.list_receipts",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0",
+              "not": true
+            }
           ]
         }
       },
-
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "type": "Header"
+      },
+      "idBottom": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "age": {
+                "$computed": "relative_time",
+                "args": {
+                  "value": {
+                    "$item": "updatedDate"
+                  }
+                }
+              },
+              "pattern": "{user} · {age}",
+              "user": {
+                "$item": "userName"
+              }
+            }
+          }
+        },
+        "type": "Caption"
+      },
+      "idTop": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "payee"
+          },
+          "truncate": true,
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "identity": {
+        "children": [
+          "idTop",
+          "idBottom"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
       "list": {
+        "children": [
+          "row"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/rows"
+        },
         "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["row"],
-        "repeat": { "statePath": "/ui/rows", "key": "id" },
-        "visible": { "$state": "/_loading/xero-accounting.list_receipts", "not": true }
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_receipts",
+          "not": true
+        }
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_receipts"
+        }
+      },
+      "priority": {
+        "props": {
+          "size": "sm",
+          "tone": {
+            "$cond": {
+              "$item": "isEmpty"
+            },
+            "$else": "info",
+            "$then": "warning"
+          }
+        },
+        "type": "Dot"
       },
       "row": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "center",
-          "hover": true,
-          "clickable": true,
-          "template": "auto minmax(0, 1fr) 5rem 5.5rem"
-        },
+        "children": [
+          "priority",
+          "identity",
+          "amount",
+          "statusBadge"
+        ],
         "on": {
           "click": {
             "action": "open_url",
             "params": {
+              "target": "_blank",
               "url": {
                 "$computed": "fmt",
                 "args": {
-                  "pattern": "https://go.xero.com/Expenses/EditReceipt.aspx?ReceiptID={id}",
-                  "id": { "$item": "id" }
+                  "id": {
+                    "$item": "id"
+                  },
+                  "pattern": "https://go.xero.com/Expenses/EditReceipt.aspx?ReceiptID={id}"
                 }
-              },
-              "target": "_blank"
+              }
             }
           }
         },
-        "children": ["priority", "identity", "amount", "statusBadge"]
-      },
-      "priority": {
-        "type": "Dot",
         "props": {
-          "tone": {
-            "$cond": { "$item": "isEmpty" },
-            "$then": "warning",
-            "$else": "info"
-          },
-          "size": "sm"
-        }
+          "align": "center",
+          "clickable": true,
+          "gap": "sm",
+          "hover": true,
+          "template": "auto minmax(0, 1fr) 5rem 5.5rem"
+        },
+        "type": "Row"
       },
-      "identity": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["idTop", "idBottom"]
-      },
-      "idTop": {
-        "type": "Text",
-        "props": { "text": { "$item": "payee" }, "size": "sm", "weight": "medium", "truncate": true }
-      },
-      "idBottom": {
-        "type": "Caption",
+      "sk1": {
         "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": { "pattern": "{user} · {age}", "user": { "$item": "userName" }, "age": { "$computed": "relative_time", "args": { "value": { "$item": "updatedDate" } } } }
-          }
-        }
+          "height": "2.25rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
       },
-      "amount": {
-        "type": "Text",
+      "sk2": {
         "props": {
-          "text": {
-            "$computed": "format_currency",
-            "args": { "value": { "$item": "amount" }, "currency": { "$item": "currencyCode" } }
-          },
-          "weight": "semibold",
-          "size": "sm"
-        }
+          "height": "2.25rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
       },
       "statusBadge": {
-        "type": "Badge",
         "props": {
           "text": {
-            "$cond": { "$item": "isEmpty" },
-            "$then": "Empty draft",
-            "$else": "Draft"
+            "$cond": {
+              "$item": "isEmpty"
+            },
+            "$else": "Draft",
+            "$then": "Empty draft"
           },
           "tone": {
-            "$cond": { "$item": "isEmpty" },
-            "$then": "warning",
-            "$else": "muted"
+            "$cond": {
+              "$item": "isEmpty"
+            },
+            "$else": "muted",
+            "$then": "warning"
           },
           "variant": "soft"
-        }
+        },
+        "type": "Badge"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Reimbursement Drafts"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "start",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Receipt",
+          "size": "sm",
+          "tone": "info"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "count"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
       }
-    }
-  }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "xero",
+    "reimbursement",
+    "expenses",
+    "receipts",
+    "expense claims",
+    "finance"
+  ],
+  "title": "Xero — Reimbursement Drafts"
 }

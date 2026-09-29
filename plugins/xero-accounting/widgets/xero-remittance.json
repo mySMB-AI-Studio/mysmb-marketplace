@@ -1,16 +1,19 @@
 {
-  "id": "xero-remittance",
-  "title": "Xero — Remittance",
-  "description": "Which suppliers you've paid, how much, and when — an approximation of a remittance advice built from authorised accounts-payable payments (Xero's public API has no dedicated remittance-advice resource). A colored breakdown of the top 5 suppliers by total amount paid, then every payment (most recent first) with the invoice it settled. Click any row to open that exact bill in Xero.",
   "category": "finance",
-  "tags": [
-    "xero",
-    "remittance",
-    "payments",
-    "suppliers",
-    "accounts payable",
-    "finance"
+  "connectorsUsed": [
+    "xero-accounting"
   ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-accounting",
+    "params": {
+      "order": "Date DESC",
+      "where": "PaymentType==\"ACCPAYPAYMENT\"&&Status==\"AUTHORISED\""
+    },
+    "tool": "list_payments"
+  },
+  "description": "Which suppliers you've paid, how much, and when — an approximation of a remittance advice built from authorised accounts-payable payments (Xero's public API has no dedicated remittance-advice resource). A colored breakdown of the top 5 suppliers by total amount paid, then every payment (most recent first) with the invoice it settled. Click any row to open that exact bill in Xero.",
+  "id": "xero-remittance",
   "keywords": [
     "remittance",
     "remittance advice",
@@ -19,28 +22,150 @@
     "accounts payable",
     "bills paid"
   ],
-  "connectorsUsed": [
-    "xero-accounting"
-  ],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 6, "rowSpan": 8 },
-    "min": { "colSpan": 4, "rowSpan": 5 },
-    "max": { "colSpan": 10, "rowSpan": 12 }
-  },
-  "dataProvider": {
-    "mcp": "xero-accounting",
-    "tool": "list_payments",
-    "params": {
-      "where": "PaymentType==\"ACCPAYPAYMENT\"&&Status==\"AUTHORISED\"",
-      "order": "Date DESC"
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 12
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 5
+    },
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 8
     }
   },
   "spec": {
-    "root": "card",
     "elements": {
+      "amount": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "currency": {
+                "$item": "currencyCode"
+              },
+              "value": {
+                "$item": "amount"
+              }
+            }
+          },
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "list",
+          "truncatedCaption"
+        ],
+        "type": "Body"
+      },
+      "breakdownBar": {
+        "children": [
+          "breakdownSegment"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs",
+          "template": {
+            "$state": "/ui/breakdown/template"
+          }
+        },
+        "repeat": {
+          "key": "supplier",
+          "statePath": "/ui/breakdown/segments"
+        },
+        "type": "Row"
+      },
+      "breakdownCaption": {
+        "props": {
+          "text": "Top Suppliers Paid",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "breakdownDivider": {
+        "props": {},
+        "type": "Divider"
+      },
+      "breakdownHeaderRow": {
+        "children": [
+          "breakdownCaption",
+          "breakdownTotalCaption"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "breakdownLegend": {
+        "children": [
+          "legendItem"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "md"
+        },
+        "repeat": {
+          "key": "supplier",
+          "statePath": "/ui/breakdown/segments"
+        },
+        "type": "Row"
+      },
+      "breakdownSection": {
+        "children": [
+          "breakdownHeaderRow",
+          "breakdownBar",
+          "breakdownLegend"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_payments",
+              "not": true
+            },
+            {
+              "$state": "/ui/breakdown/segments/0"
+            }
+          ]
+        }
+      },
+      "breakdownSegment": {
+        "props": {
+          "tone": {
+            "$item": "tone"
+          },
+          "value": 100
+        },
+        "type": "ProgressBar"
+      },
+      "breakdownTotalCaption": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{total} payments",
+              "total": {
+                "$state": "/ui/breakdown/total"
+              }
+            }
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
       "card": {
-        "type": "Card",
         "children": [
           "header",
           "breakdownSection",
@@ -50,19 +175,8 @@
           "body",
           "footer"
         ],
+        "type": "Card",
         "watch": {
-          "/xero-accounting/list_payments/Payments": [
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/rows",
-                "value": {
-                  "$computed": "xero-accounting_remittance_rows",
-                  "args": { "payments": { "$state": "/xero-accounting/list_payments/Payments" } }
-                }
-              }
-            }
-          ],
           "/ui/rows": [
             {
               "action": "setState",
@@ -70,226 +184,355 @@
                 "statePath": "/ui/breakdown",
                 "value": {
                   "$computed": "xero-accounting_remittance_breakdown",
-                  "args": { "rows": { "$state": "/ui/rows" } }
+                  "args": {
+                    "rows": {
+                      "$state": "/ui/rows"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "/xero-accounting/list_payments/Payments": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "xero-accounting_remittance_rows",
+                  "args": {
+                    "payments": {
+                      "$state": "/xero-accounting/list_payments/Payments"
+                    }
+                  }
                 }
               }
             }
           ]
         }
       },
-      "header": {
-        "type": "Header",
-        "children": ["titleGroup"]
+      "colAmount": {
+        "props": {
+          "text": "Amount Paid"
+        },
+        "type": "Caption"
       },
-      "titleGroup": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "start" },
-        "children": ["titleIcon", "titleStack"]
+      "colDate": {
+        "props": {
+          "text": "Date"
+        },
+        "type": "Caption"
       },
-      "titleIcon": {
-        "type": "Icon",
-        "props": { "name": "HandCoins", "tone": "info", "size": "sm" }
+      "colDivider": {
+        "props": {},
+        "type": "Divider"
       },
-      "titleStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["title", "eyebrow"]
+      "colHeader": {
+        "children": [
+          "colSupplier",
+          "colAmount",
+          "colInvoice",
+          "colDate"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "padded": true,
+          "template": "minmax(0, 1fr) 6rem 5rem 6.5rem"
+        },
+        "type": "Row"
       },
-      "title": {
-        "type": "Heading",
-        "props": { "text": "Remittance", "level": "h2" }
+      "colInvoice": {
+        "props": {
+          "text": "Invoice"
+        },
+        "type": "Caption"
       },
-      "eyebrow": {
-        "type": "Eyebrow",
-        "props": { "text": "Xero — payments to suppliers" }
+      "colSupplier": {
+        "props": {
+          "text": "Supplier"
+        },
+        "type": "Caption"
       },
-
-      "breakdownSection": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["breakdownHeaderRow", "breakdownBar", "breakdownLegend"],
+      "date": {
+        "props": {
+          "text": {
+            "$computed": "xero-accounting_format_date",
+            "args": {
+              "format": "medium",
+              "value": {
+                "$item": "date"
+              }
+            }
+          },
+          "tone": "muted",
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "empty": {
+        "props": {
+          "message": "No supplier payments found in Xero."
+        },
+        "type": "Empty",
         "visible": {
           "$and": [
-            { "$state": "/_loading/xero-accounting.list_payments", "not": true },
-            { "$state": "/ui/breakdown/segments/0" }
+            {
+              "$state": "/_loading/xero-accounting.list_payments",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0",
+              "not": true
+            }
           ]
         }
       },
-      "breakdownHeaderRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["breakdownCaption", "breakdownTotalCaption"]
+      "eyebrow": {
+        "props": {
+          "text": "Xero — payments to suppliers"
+        },
+        "type": "Eyebrow"
       },
-      "breakdownCaption": {
-        "type": "Caption",
-        "props": { "text": "Top Suppliers Paid", "tone": "muted" }
+      "footer": {
+        "children": [
+          "openXeroBtn"
+        ],
+        "props": {
+          "justify": "end"
+        },
+        "type": "Row"
       },
-      "breakdownTotalCaption": {
-        "type": "Caption",
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "type": "Header"
+      },
+      "invoiceNumber": {
         "props": {
           "text": {
-            "$computed": "fmt",
-            "args": { "pattern": "{total} payments", "total": { "$state": "/ui/breakdown/total" } }
-          },
-          "tone": "muted"
-        }
-      },
-      "breakdownBar": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center", "template": { "$state": "/ui/breakdown/template" } },
-        "children": ["breakdownSegment"],
-        "repeat": { "statePath": "/ui/breakdown/segments", "key": "supplier" }
-      },
-      "breakdownSegment": {
-        "type": "ProgressBar",
-        "props": { "value": 100, "tone": { "$item": "tone" } }
-      },
-      "breakdownLegend": {
-        "type": "Row",
-        "props": { "gap": "md", "align": "center" },
-        "children": ["legendItem"],
-        "repeat": { "statePath": "/ui/breakdown/segments", "key": "supplier" }
-      },
-      "legendItem": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["legendDot", "legendLabel"]
+            "$item": "invoiceNumber"
+          }
+        },
+        "type": "Caption"
       },
       "legendDot": {
-        "type": "Dot",
-        "props": { "tone": { "$item": "tone" }, "size": "sm" }
+        "props": {
+          "size": "sm",
+          "tone": {
+            "$item": "tone"
+          }
+        },
+        "type": "Dot"
+      },
+      "legendItem": {
+        "children": [
+          "legendDot",
+          "legendLabel"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
       },
       "legendLabel": {
-        "type": "Caption",
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{supplier} ({amount})",
-              "supplier": { "$item": "supplier" },
               "amount": {
                 "$computed": "format_currency",
-                "args": { "value": { "$item": "amount" }, "currency": "AUD" }
+                "args": {
+                  "currency": "AUD",
+                  "value": {
+                    "$item": "amount"
+                  }
+                }
+              },
+              "pattern": "{supplier} ({amount})",
+              "supplier": {
+                "$item": "supplier"
               }
             }
           },
           "tone": "muted"
-        }
-      },
-
-      "breakdownDivider": { "type": "Divider", "props": {} },
-
-      "colHeader": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center", "padded": true, "template": "minmax(0, 1fr) 6rem 5rem 6.5rem" },
-        "children": ["colSupplier", "colAmount", "colInvoice", "colDate"]
-      },
-      "colSupplier": { "type": "Caption", "props": { "text": "Supplier" } },
-      "colAmount": { "type": "Caption", "props": { "text": "Amount Paid" } },
-      "colInvoice": { "type": "Caption", "props": { "text": "Invoice" } },
-      "colDate": { "type": "Caption", "props": { "text": "Date" } },
-
-      "colDivider": { "type": "Divider", "props": {} },
-
-      "body": {
-        "type": "Body",
-        "children": ["loading", "empty", "list", "truncatedCaption"]
-      },
-      "loading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3"],
-        "visible": { "$state": "/_loading/xero-accounting.list_payments" }
-      },
-      "sk1": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
-      "empty": {
-        "type": "Empty",
-        "props": { "message": "No supplier payments found in Xero." },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/xero-accounting.list_payments", "not": true },
-            { "$state": "/ui/rows/0", "not": true }
-          ]
-        }
+        },
+        "type": "Caption"
       },
       "list": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["row"],
-        "repeat": { "statePath": "/ui/rows", "key": "id" },
-        "limit": 20,
-        "visible": { "$state": "/_loading/xero-accounting.list_payments", "not": true }
-      },
-      "row": {
-        "type": "Row",
+        "children": [
+          "row"
+        ],
         "props": {
-          "gap": "sm",
-          "align": "center",
-          "hover": true,
-          "clickable": true,
-          "template": "minmax(0, 1fr) 6rem 5rem 6.5rem"
+          "gap": "xs"
         },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/rows"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_payments",
+          "not": true
+        }
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_payments"
+        }
+      },
+      "openXeroBtn": {
         "on": {
           "click": {
             "action": "open_url",
             "params": {
-              "url": {
-                "$computed": "fmt",
-                "args": {
-                  "pattern": "https://go.xero.com/AccountsPayable/View.aspx?InvoiceID={id}",
-                  "id": { "$item": "invoiceId" }
-                }
-              },
-              "target": "_blank"
+              "target": "_blank",
+              "url": "https://go.xero.com/AccountsPayable/"
             }
           }
         },
-        "children": ["supplier", "amount", "invoiceNumber", "date"]
+        "props": {
+          "label": "Open Bills in Xero",
+          "leadingIcon": "ExternalLink",
+          "size": "sm",
+          "tone": "brand",
+          "variant": "primary"
+        },
+        "type": "Button"
+      },
+      "row": {
+        "children": [
+          "supplier",
+          "amount",
+          "invoiceNumber",
+          "date"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "id": {
+                    "$item": "invoiceId"
+                  },
+                  "pattern": "https://go.xero.com/AccountsPayable/View.aspx?InvoiceID={id}"
+                }
+              }
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "sm",
+          "hover": true,
+          "template": "minmax(0, 1fr) 6rem 5rem 6.5rem"
+        },
+        "type": "Row"
+      },
+      "sk1": {
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
       },
       "supplier": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["supplierDot", "supplierName"]
+        "children": [
+          "supplierDot",
+          "supplierName"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
       },
       "supplierDot": {
-        "type": "Dot",
-        "props": { "tone": { "$item": "supplierTone" }, "size": "sm" }
+        "props": {
+          "size": "sm",
+          "tone": {
+            "$item": "supplierTone"
+          }
+        },
+        "type": "Dot"
       },
       "supplierName": {
-        "type": "Text",
-        "props": { "text": { "$item": "supplier" }, "size": "sm", "weight": "medium", "truncate": true }
-      },
-      "amount": {
-        "type": "Text",
         "props": {
+          "size": "sm",
           "text": {
-            "$computed": "format_currency",
-            "args": { "value": { "$item": "amount" }, "currency": { "$item": "currencyCode" } }
+            "$item": "supplier"
           },
-          "weight": "semibold",
-          "size": "sm"
-        }
+          "truncate": true,
+          "weight": "medium"
+        },
+        "type": "Text"
       },
-      "invoiceNumber": {
-        "type": "Caption",
-        "props": { "text": { "$item": "invoiceNumber" } }
-      },
-      "date": {
-        "type": "Badge",
+      "title": {
         "props": {
-          "text": {
-            "$computed": "xero-accounting_format_date",
-            "args": { "value": { "$item": "date" }, "format": "medium" }
-          },
-          "tone": "muted",
-          "variant": "soft"
-        }
+          "level": "h2",
+          "text": "Remittance"
+        },
+        "type": "Heading"
       },
-
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "start",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "HandCoins",
+          "size": "sm",
+          "tone": "info"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
       "truncatedCaption": {
-        "type": "Caption",
         "props": {
           "text": {
             "$computed": "fmt",
@@ -297,33 +540,31 @@
               "pattern": "Showing 20 of {total}",
               "total": {
                 "$computed": "count",
-                "args": { "value": { "$state": "/ui/rows" } }
+                "args": {
+                  "value": {
+                    "$state": "/ui/rows"
+                  }
+                }
               }
             }
           },
           "tone": "muted"
         },
-        "visible": { "$state": "/ui/rows/20" }
-      },
-
-      "footer": {
-        "type": "Row",
-        "props": { "justify": "end" },
-        "children": ["openXeroBtn"]
-      },
-      "openXeroBtn": {
-        "type": "Button",
-        "props": { "label": "Open Bills in Xero", "tone": "brand", "variant": "primary", "size": "sm", "leadingIcon": "ExternalLink" },
-        "on": {
-          "click": {
-            "action": "open_url",
-            "params": {
-              "url": "https://go.xero.com/AccountsPayable/",
-              "target": "_blank"
-            }
-          }
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/rows/20"
         }
       }
-    }
-  }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "xero",
+    "remittance",
+    "payments",
+    "suppliers",
+    "accounts payable",
+    "finance"
+  ],
+  "title": "Xero — Remittance"
 }
