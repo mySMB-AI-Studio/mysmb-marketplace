@@ -817,6 +817,503 @@ const three_month_window = (args) => {
     }
     return window;
 };
+// ── levenshtein_ratio ────────────────────────────────────────────────
+// Classic edit-distance similarity ratio in [0, 1] — 1 means identical.
+// Used internally by analyze_duplicate_contacts for fuzzy name matching.
+const levenshtein_ratio = (a, b) => {
+    if (a === b)
+        return 1;
+    if (!a.length || !b.length)
+        return 0;
+    const m = a.length, n = b.length;
+    const dp = new Array(n + 1);
+    for (let j = 0; j <= n; j++)
+        dp[j] = j;
+    for (let i = 1; i <= m; i++) {
+        let prev = dp[0];
+        dp[0] = i;
+        for (let j = 1; j <= n; j++) {
+            const tmp = dp[j];
+            dp[j] = a[i - 1] === b[j - 1]
+                ? prev
+                : 1 + Math.min(prev, dp[j], dp[j - 1]);
+            prev = tmp;
+        }
+    }
+    const dist = dp[n];
+    return 1 - dist / Math.max(m, n);
+};
+// ── analyze_duplicate_contacts ──────────────────────────────────────
+// Scans MYOB contacts and buckets likely duplicates by confidence:
+//  - Critical:      two+ contacts share the same normalized email or phone.
+//  - Needs Review:  two+ contacts share the same normalized display name
+//                    (and weren't already caught by the email/phone match).
+//  - Low Risk:      contacts with a highly similar (but not identical) name
+//                    to another contact sharing its first name-token
+//                    (Levenshtein ratio >= 0.82).
+// A contact is only counted once, at its highest-confidence tier.
+// Returns { totalDuplicates, critical: {count, pct}, needsReview: {count, pct},
+//   lowRisk: {count, pct}, mostAffected: {label, count}, duplicateRatePct,
+//   recordsScanned, lastScanAt }
+// Args: { value: Contact[] }
+const analyze_duplicate_contacts = (args) => {
+    const items = Array.isArray(args.value) ? args.value : [];
+    const normName = (s) => s.toLowerCase().trim().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ');
+    const normEmail = (s) => s.toLowerCase().trim();
+    const normPhone = (s) => s.replace(/\D/g, '');
+    const records = items.map((item, i) => {
+        const company = String(item.CompanyName ?? '').trim();
+        const first = String(item.FirstName ?? '').trim();
+        const last = String(item.LastName ?? '').trim();
+        const name = company || `${first} ${last}`.trim();
+        const addresses = Array.isArray(item.Addresses) ? item.Addresses : [];
+        const email = String(addresses[0]?.Email ?? '');
+        const phone = String(addresses[0]?.Phone1 ?? '');
+        return {
+            uid: String(item.UID ?? i),
+            name,
+            normName: normName(name),
+            email: normEmail(email),
+            phone: normPhone(phone),
+        };
+    }).filter((r) => r.name);
+    const critical = new Set();
+    const needsReview = new Set();
+    const lowRisk = new Set();
+    // Critical — exact email or exact phone match (phone requires 6+ digits
+    // to avoid grouping contacts with blank/short placeholder numbers).
+    const groupBy = (key, minLen = 1) => {
+        const map = new Map();
+        for (const r of records) {
+            const k = key(r);
+            if (k.length < minLen)
+                continue;
+            const arr = map.get(k) ?? [];
+            arr.push(r.uid);
+            map.set(k, arr);
+        }
+        return map;
+    };
+    for (const [, uids] of groupBy((r) => r.email)) {
+        if (uids.length > 1)
+            uids.forEach((u) => critical.add(u));
+    }
+    for (const [, uids] of groupBy((r) => r.phone, 6)) {
+        if (uids.length > 1)
+            uids.forEach((u) => critical.add(u));
+    }
+    // Needs Review — exact normalized name match, excluding contacts already critical.
+    for (const [, uids] of groupBy((r) => r.normName)) {
+        const remaining = uids.filter((u) => !critical.has(u));
+        if (remaining.length > 1)
+            remaining.forEach((u) => needsReview.add(u));
+    }
+    // Low Risk — fuzzy name match within same first-token bucket, excluding
+    // anything already flagged at a higher tier.
+    const byFirstToken = new Map();
+    for (const r of records) {
+        if (critical.has(r.uid) || needsReview.has(r.uid))
+            continue;
+        const token = r.normName.split(' ')[0] ?? '';
+        if (!token)
+            continue;
+        const arr = byFirstToken.get(token) ?? [];
+        arr.push(r);
+        byFirstToken.set(token, arr);
+    }
+    for (const [, bucket] of byFirstToken) {
+        if (bucket.length < 2)
+            continue;
+        for (let i = 0; i < bucket.length; i++) {
+            for (let j = i + 1; j < bucket.length; j++) {
+                if (bucket[i].normName === bucket[j].normName)
+                    continue;
+                if (levenshtein_ratio(bucket[i].normName, bucket[j].normName) >= 0.82) {
+                    lowRisk.add(bucket[i].uid);
+                    lowRisk.add(bucket[j].uid);
+                }
+            }
+        }
+    }
+    const criticalCount = critical.size;
+    const needsReviewCount = needsReview.size;
+    const lowRiskCount = lowRisk.size;
+    const totalDuplicates = criticalCount + needsReviewCount + lowRiskCount;
+    const pct = (n) => (totalDuplicates > 0 ? Math.round((n / totalDuplicates) * 100) : 0);
+    const recordsScanned = items.length;
+    return {
+        totalDuplicates,
+        critical: { count: criticalCount, pct: pct(criticalCount) },
+        needsReview: { count: needsReviewCount, pct: pct(needsReviewCount) },
+        lowRisk: { count: lowRiskCount, pct: pct(lowRiskCount) },
+        mostAffected: { label: 'Contacts', count: totalDuplicates },
+        duplicateRatePct: recordsScanned > 0 ? Math.round((totalDuplicates / recordsScanned) * 1000) / 10 : 0,
+        recordsScanned,
+        lastScanAt: new Date().toISOString(),
+    };
+};
+// ── analyze_myob_duplicates ───────────────────────────────────────────
+// Cross-checks MYOB Contacts, Bills, and Invoices for likely duplicates,
+// tiered EXACT / LIKELY / POSSIBLE by confidence, filterable by record
+// type via matchMode-style category filtering handled spec-side.
+//
+// "Same Contact" below means the same CANONICAL contact — Contacts that
+// are themselves flagged as duplicates of each other (shared email/phone,
+// or an exact/fuzzy name hit) are merged into one cluster first, so a
+// bill/invoice split across two duplicate contact records (e.g. "Acme
+// Pty Ltd" vs "Acme Pty. Ltd.", both real records for the same vendor)
+// still matches its counterpart under the sibling record — capped at
+// LIKELY even when the amount/date line up exactly, since a match
+// crossing a contact boundary is one inference hop weaker than a
+// same-record match.
+//
+// Match rules:
+//   Contacts  — reuses analyze_duplicate_contacts' tiers verbatim:
+//               EXACT = shared normalized email or phone (6+ digits).
+//               LIKELY = shared normalized display name (not already
+//               EXACT). POSSIBLE = fuzzy name match (Levenshtein >=0.82)
+//               within the same first-name-token bucket.
+//   Bills     — EXACT: same (raw) Supplier + same non-blank
+//               SupplierInvoiceNumber. LIKELY: same Supplier + same
+//               TotalAmount, 0-2 days apart (not already EXACT), OR a
+//               cross-contact same-day match. POSSIBLE: same Supplier +
+//               same TotalAmount, 3-7 days apart.
+//   Invoices  — same rules as Bills, using Customer +
+//               CustomerPurchaseOrderNumber in place of Supplier +
+//               SupplierInvoiceNumber.
+//
+// No MYOB Contact resource in this org exposes an ABN/tax-number field
+// (confirmed against real data — Identifiers is always null), so contact
+// matching relies on email/phone/name only, not ABN.
+//
+// detailRows: one row per flagged record, most-recent-Date-first —
+// { category: 'Bill'|'Invoice'|'Contact', label, detail, tier, amount? }.
+// filterCounts gives the per-category open count for the spec's filter
+// tabs without a second pass over detailRows.
+//
+// `filter` ('' | 'Bill' | 'Invoice' | 'Contact') narrows detailRows/
+// previewRows to one category — echoed back as `filter` in the result so
+// the spec can highlight the active filter tab from the same state write
+// that applied it, with no separate setState needed. previewRows is the
+// current filter's top 3 (most-recent-tier-first); detailRows is the
+// FULL current-filter list, for the "View all" table. totalOpen is
+// always the grand (unfiltered) count, for the header's "N open" badge.
+//
+// Args: { contacts?: Contact[], bills?: Bill[], invoices?: Invoice[], filter?: string }
+const analyze_myob_duplicates = (args) => {
+    const contacts = Array.isArray(args.contacts) ? args.contacts : [];
+    const bills = Array.isArray(args.bills) ? args.bills : [];
+    const invoices = Array.isArray(args.invoices) ? args.invoices : [];
+    const filter = ['Bill', 'Invoice', 'Contact'].includes(String(args.filter)) ? String(args.filter) : '';
+    const parseDate = (raw) => {
+        const s = String(raw ?? '');
+        if (!s)
+            return null;
+        const m = s.match(/\/Date\((-?\d+)(?:[+-]\d{4})?\)\//);
+        if (m)
+            return Number(m[1]);
+        const t = new Date(s).getTime();
+        return Number.isFinite(t) ? t : null;
+    };
+    const daysBetween = (a, b) => {
+        const ma = parseDate(a);
+        const mb = parseDate(b);
+        if (ma == null || mb == null)
+            return Infinity;
+        return Math.abs(ma - mb) / 86_400_000;
+    };
+    const dayKeyOf = (raw) => {
+        const ms = parseDate(raw);
+        return ms == null ? null : String(Math.floor(ms / 86_400_000));
+    };
+    const fmtAmt = (n) => {
+        const v = Number(n);
+        if (!Number.isFinite(v))
+            return '';
+        return 'A$' + new Intl.NumberFormat('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+    };
+    const fmtDate = (raw) => {
+        const ms = parseDate(raw);
+        if (ms == null)
+            return '';
+        return new Date(ms).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+    };
+    const daysApartPhrase = (n) => (n === 0 ? 'same day' : n === 1 ? '1 day apart' : `${n} days apart`);
+    const detailRows = [];
+    // ── Contacts — union-find over contact IDs, reusing the existing
+    // critical/needsReview/lowRisk tiers to also build canonicalContact().
+    const normName = (s) => s.toLowerCase().trim().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ');
+    const normEmail = (s) => s.toLowerCase().trim();
+    const normPhone = (s) => s.replace(/\D/g, '');
+    const contactParent = new Map();
+    const findContactRoot = (id) => {
+        if (!contactParent.has(id))
+            contactParent.set(id, id);
+        let root = id;
+        while (contactParent.get(root) !== root)
+            root = contactParent.get(root);
+        let cur = id;
+        while (contactParent.get(cur) !== root) {
+            const next = contactParent.get(cur);
+            contactParent.set(cur, root);
+            cur = next;
+        }
+        return root;
+    };
+    const unionContacts = (a, b) => {
+        const ra = findContactRoot(a);
+        const rb = findContactRoot(b);
+        if (ra !== rb)
+            contactParent.set(ra, rb);
+    };
+    const canonicalContact = (id) => (contactParent.has(id) ? findContactRoot(id) : id);
+    const contactByUid = new Map();
+    const crecs = contacts.map((item, i) => {
+        const uid = String(item.UID ?? i);
+        contactByUid.set(uid, item);
+        const company = String(item.CompanyName ?? '').trim();
+        const first = String(item.FirstName ?? '').trim();
+        const last = String(item.LastName ?? '').trim();
+        const name = company || `${first} ${last}`.trim();
+        const addresses = Array.isArray(item.Addresses) ? item.Addresses : [];
+        const email = String(addresses[0]?.Email ?? '');
+        const phone = String(addresses[0]?.Phone1 ?? '');
+        return { uid, name, normName: normName(name), email: normEmail(email), phone: normPhone(phone) };
+    }).filter((r) => r.name);
+    const contactTier = new Map();
+    const groupBy = (recs, key, minLen = 1) => {
+        const map = new Map();
+        for (const r of recs) {
+            const k = key(r);
+            if (k.length < minLen)
+                continue;
+            (map.get(k) ?? map.set(k, []).get(k)).push(r.uid);
+        }
+        return map;
+    };
+    for (const [, uids] of groupBy(crecs, (r) => r.email)) {
+        if (uids.length > 1) {
+            uids.forEach((u) => contactTier.set(u, 'exact'));
+            for (let i = 1; i < uids.length; i++)
+                unionContacts(uids[0], uids[i]);
+        }
+    }
+    for (const [, uids] of groupBy(crecs, (r) => r.phone, 6)) {
+        if (uids.length > 1) {
+            uids.forEach((u) => contactTier.set(u, 'exact'));
+            for (let i = 1; i < uids.length; i++)
+                unionContacts(uids[0], uids[i]);
+        }
+    }
+    for (const [, uids] of groupBy(crecs, (r) => r.normName)) {
+        const remaining = uids.filter((u) => contactTier.get(u) !== 'exact');
+        if (remaining.length > 1) {
+            remaining.forEach((u) => contactTier.set(u, 'likely'));
+            for (let i = 1; i < remaining.length; i++)
+                unionContacts(remaining[0], remaining[i]);
+        }
+    }
+    const byFirstToken = new Map();
+    for (const r of crecs) {
+        if (contactTier.has(r.uid))
+            continue;
+        const token = r.normName.split(' ')[0] ?? '';
+        if (!token)
+            continue;
+        (byFirstToken.get(token) ?? byFirstToken.set(token, []).get(token)).push(r);
+    }
+    for (const [, bucket] of byFirstToken) {
+        for (let i = 0; i < bucket.length; i++) {
+            for (let j = i + 1; j < bucket.length; j++) {
+                if (bucket[i].normName === bucket[j].normName)
+                    continue;
+                if (levenshtein_ratio(bucket[i].normName, bucket[j].normName) >= 0.82) {
+                    if (!contactTier.has(bucket[i].uid))
+                        contactTier.set(bucket[i].uid, 'possible');
+                    if (!contactTier.has(bucket[j].uid))
+                        contactTier.set(bucket[j].uid, 'possible');
+                    unionContacts(bucket[i].uid, bucket[j].uid);
+                }
+            }
+        }
+    }
+    for (const [uid, tier] of contactTier) {
+        const c = contactByUid.get(uid);
+        const name = String(c?.CompanyName || `${c?.FirstName ?? ''} ${c?.LastName ?? ''}`.trim());
+        const addresses = Array.isArray(c?.Addresses) ? c.Addresses : [];
+        const email = String(addresses[0]?.Email ?? '');
+        const detail = tier === 'exact'
+            ? (email ? `Same email/phone as another contact (${email})` : 'Same phone as another contact')
+            : tier === 'likely'
+                ? 'Same business name as another contact record'
+                : 'Similar name to another contact record';
+        detailRows.push({ category: 'Contact', label: `Contact · ${name}`, detail, tier, amount: '' });
+    }
+    const matchDocs = (recs, categoryLabel) => {
+        const tier = new Map();
+        // Pass 1a — same raw contact + same non-blank document number => exact.
+        const byContactNum = new Map();
+        for (const r of recs) {
+            if (!r.docNum)
+                continue;
+            const key = `${r.contactId}|${r.docNum}`;
+            (byContactNum.get(key) ?? byContactNum.set(key, []).get(key)).push(r);
+        }
+        for (const [, group] of byContactNum)
+            if (group.length > 1)
+                group.forEach((r) => tier.set(r.id, 'exact'));
+        // Pass 1b — same raw contact + same total: 0-2 days apart => likely,
+        // 3-7 days apart => possible (mirrors the reference mockup's own
+        // "same amount, N days apart" wording for the possible tier).
+        const byContactTotal = new Map();
+        for (const r of recs) {
+            const key = `${r.contactId}|${r.total ?? ''}`;
+            (byContactTotal.get(key) ?? byContactTotal.set(key, []).get(key)).push(r);
+        }
+        for (const [, group] of byContactTotal) {
+            if (group.length < 2)
+                continue;
+            for (let i = 0; i < group.length; i++) {
+                for (let j = i + 1; j < group.length; j++) {
+                    const a = group[i], b = group[j];
+                    if (tier.get(a.id) === 'exact' && tier.get(b.id) === 'exact')
+                        continue;
+                    const days = daysBetween(a.date, b.date);
+                    if (days <= 2) {
+                        if (!tier.has(a.id))
+                            tier.set(a.id, 'likely');
+                        if (!tier.has(b.id))
+                            tier.set(b.id, 'likely');
+                    }
+                    else if (days <= 7) {
+                        if (!tier.has(a.id))
+                            tier.set(a.id, 'possible');
+                        if (!tier.has(b.id))
+                            tier.set(b.id, 'possible');
+                    }
+                }
+            }
+        }
+        // Pass 2 — cross the contact boundary via canonicalContact, but ONLY
+        // for docs not already tagged, and NEVER above 'likely': a match that
+        // only exists because two Contact records are themselves flagged as
+        // duplicates is one hop weaker than a same-record match.
+        const byCanonTotal = new Map();
+        for (const r of recs) {
+            const key = `${canonicalContact(r.contactId)}|${r.total ?? ''}`;
+            (byCanonTotal.get(key) ?? byCanonTotal.set(key, []).get(key)).push(r);
+        }
+        for (const [, group] of byCanonTotal) {
+            const exactRecs = group.filter((r) => tier.get(r.id) === 'exact');
+            if (exactRecs.length === 0)
+                continue;
+            for (const r of group) {
+                if (tier.has(r.id))
+                    continue;
+                const dayKey = dayKeyOf(r.date);
+                if (dayKey != null && exactRecs.some((e) => e.contactId !== r.contactId && dayKeyOf(e.date) === dayKey)) {
+                    tier.set(r.id, 'likely');
+                }
+            }
+        }
+        return tier;
+    };
+    const billRecs = bills.map((b) => {
+        const supplier = b.Supplier;
+        return {
+            id: String(b.UID ?? ''),
+            contactId: String(supplier?.UID ?? ''),
+            contactName: String(supplier?.Name ?? 'Unknown supplier'),
+            docNum: String(b.SupplierInvoiceNumber ?? '').trim(),
+            total: b.TotalAmount,
+            date: b.Date,
+        };
+    });
+    const billTier = matchDocs(billRecs, 'Bill');
+    const billById = new Map(billRecs.map((r) => [r.id, r]));
+    for (const [id, tier] of billTier) {
+        const r = billById.get(id);
+        const b = bills.find((x) => String(x.UID ?? '') === id);
+        const siblings = billRecs.filter((o) => o.id !== id && o.contactId === r.contactId && o.docNum === r.docNum && r.docNum);
+        const detail = tier === 'exact'
+            ? `Same supplier inv # ${r.docNum} on ${siblings.length + 1} bills · ${fmtDate(r.date)}`
+            : `Same supplier & amount, ${daysApartPhrase(Math.round(Math.min(...billRecs
+                .filter((o) => o.id !== id && o.contactId === r.contactId && String(o.total) === String(r.total))
+                .map((o) => daysBetween(o.date, r.date)))))}`;
+        detailRows.push({ category: 'Bill', label: `Bill · ${r.contactName}`, detail, tier, amount: fmtAmt(b.TotalAmount) });
+    }
+    const invRecs = invoices.map((inv) => {
+        const customer = inv.Customer;
+        return {
+            id: String(inv.UID ?? ''),
+            contactId: String(customer?.UID ?? ''),
+            contactName: String(customer?.Name ?? 'Unknown customer'),
+            docNum: String(inv.CustomerPurchaseOrderNumber ?? '').trim(),
+            total: inv.TotalAmount,
+            date: inv.Date,
+        };
+    });
+    const invTier = matchDocs(invRecs, 'Invoice');
+    const invById = new Map(invRecs.map((r) => [r.id, r]));
+    for (const [id, tier] of invTier) {
+        const r = invById.get(id);
+        const inv = invoices.find((x) => String(x.UID ?? '') === id);
+        const siblings = invRecs.filter((o) => o.id !== id && o.contactId === r.contactId && o.docNum === r.docNum && r.docNum);
+        const detail = tier === 'exact'
+            ? (r.docNum
+                ? `Same customer PO # ${r.docNum} on ${siblings.length + 1} invoices · ${fmtDate(r.date)}`
+                : `Same customer & amount, same day · ${fmtDate(r.date)}`)
+            : `Same customer & amount, ${daysApartPhrase(Math.round(Math.min(...invRecs
+                .filter((o) => o.id !== id && o.contactId === r.contactId && String(o.total) === String(r.total))
+                .map((o) => daysBetween(o.date, r.date)))))}`;
+        detailRows.push({ category: 'Invoice', label: `Invoice · ${r.contactName}`, detail, tier, amount: fmtAmt(inv.TotalAmount) });
+    }
+    detailRows.sort((a, b) => {
+        const order = { exact: 0, likely: 1, possible: 2 };
+        return order[a.tier] - order[b.tier];
+    });
+    const tierCount = (cat) => {
+        const rows = cat ? detailRows.filter((r) => r.category === cat) : detailRows;
+        return {
+            exact: rows.filter((r) => r.tier === 'exact').length,
+            likely: rows.filter((r) => r.tier === 'likely').length,
+            possible: rows.filter((r) => r.tier === 'possible').length,
+            total: rows.length,
+        };
+    };
+    const shaped = detailRows.map(({ category, label, detail, tier, amount }) => ({
+        category,
+        label,
+        detail,
+        tier: tier.toUpperCase(),
+        tierTone: tier === 'exact' ? 'warning' : tier === 'likely' ? 'info' : 'muted',
+        amount,
+    }));
+    const filtered = filter ? shaped.filter((r) => r.category === filter) : shaped;
+    return {
+        totalOpen: detailRows.length,
+        filter,
+        filteredTotal: filtered.length,
+        filterCounts: {
+            all: detailRows.length,
+            bills: tierCount('Bill').total,
+            invoices: tierCount('Invoice').total,
+            contacts: tierCount('Contact').total,
+        },
+        previewRows: filtered.slice(0, 3),
+        previewCount: Math.min(3, filtered.length),
+        detailRows: filtered,
+        lastScanAt: new Date().toISOString(),
+    };
+};
+// ── duplicate_check_status_label ────────────────────────────────────
+// "Review" when any Critical-tier duplicates exist, "Clear" otherwise.
+// Args: { value: number } — critical duplicate count
+const duplicate_check_status_label = (args) => (Number(args.value) || 0) > 0 ? 'Review' : 'Clear';
+// ── duplicate_check_status_tone ─────────────────────────────────────
+// "warning" when any Critical-tier duplicates exist, "success" otherwise.
+// Args: { value: number } — critical duplicate count
+const duplicate_check_status_tone = (args) => (Number(args.value) || 0) > 0 ? 'warning' : 'success';
 const elements = {
     slug: 'myob-accounting',
     functions: {
@@ -846,6 +1343,10 @@ const elements = {
         cash_received,
         bool_not,
         three_month_window,
+        analyze_duplicate_contacts,
+        analyze_myob_duplicates,
+        duplicate_check_status_label,
+        duplicate_check_status_tone,
     },
 };
 export default elements;

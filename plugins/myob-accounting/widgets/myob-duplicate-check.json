@@ -1,0 +1,399 @@
+{
+  "id": "myob-duplicate-check",
+  "title": "MYOB — Duplicate Check",
+  "description": "Cross-checks MYOB Contacts, Bills, and Invoices for likely duplicates, tiered EXACT / LIKELY / POSSIBLE by confidence, filterable by record type. Live-wired to myob-accounting: list_contacts fires on mount, fans out to list_bills / list_invoices, and analyze_myob_duplicates converges as each result arrives. Contact matching uses email/phone/name only — no MYOB Contact in this org exposes an ABN/tax-number field. Bills/Invoices match on a shared supplier invoice # / customer PO #, or same amount within a few days of each other. Clicking a filter tab narrows the preview + detail table; 'View all duplicates' opens an in-tile table of every match in the current filter.",
+  "category": "finance",
+  "tags": ["myob", "bills", "invoices", "contacts", "duplicates", "data-quality", "deduplication"],
+  "keywords": ["duplicate", "duplicates", "dedupe", "dedup", "data quality", "cleanup", "merge", "bills", "invoices", "contacts", "myob"],
+  "connectorsUsed": ["myob-accounting"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 9 },
+    "min":       { "colSpan": 4, "rowSpan": 8 },
+    "max":       { "colSpan": 8, "rowSpan": 13 }
+  },
+  "dataProvider": {
+    "mcp": "myob-accounting",
+    "tool": "list_contacts",
+    "params": { "type": "All", "page_size": 1000 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "filterRow", "div0", "body"],
+        "watch": {
+          "/myob-accounting/list_contacts/Items": [
+            { "action": "myob-accounting.list_bills", "params": { "page_size": 1000 } },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/myobDup",
+                "value": {
+                  "$computed": "myob-accounting_analyze_myob_duplicates",
+                  "args": {
+                    "contacts": { "$state": "/myob-accounting/list_contacts/Items" },
+                    "bills": { "$state": "/myob-accounting/list_bills/Items" },
+                    "invoices": { "$state": "/myob-accounting/list_invoices/Items" },
+                    "filter": ""
+                  }
+                }
+              }
+            }
+          ],
+          "/myob-accounting/list_bills/Items": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/myobDup",
+              "value": {
+                "$computed": "myob-accounting_analyze_myob_duplicates",
+                "args": {
+                  "contacts": { "$state": "/myob-accounting/list_contacts/Items" },
+                  "bills": { "$state": "/myob-accounting/list_bills/Items" },
+                  "invoices": { "$state": "/myob-accounting/list_invoices/Items" },
+                  "filter": { "$state": "/ui/myobDup/filter" }
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"],
+        "watch": {
+          "/myob-accounting/list_contacts/Items": {
+            "action": "myob-accounting.list_invoices",
+            "params": { "page_size": 1000 }
+          },
+          "/myob-accounting/list_invoices/Items": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/myobDup",
+              "value": {
+                "$computed": "myob-accounting_analyze_myob_duplicates",
+                "args": {
+                  "contacts": { "$state": "/myob-accounting/list_contacts/Items" },
+                  "bills": { "$state": "/myob-accounting/list_bills/Items" },
+                  "invoices": { "$state": "/myob-accounting/list_invoices/Items" },
+                  "filter": { "$state": "/ui/myobDup/filter" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Copy", "tone": "info", "size": "md" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "subtitle"] },
+      "title": { "type": "Heading", "props": { "text": "Duplicate Check", "level": "h2" } },
+      "subtitle": { "type": "Caption", "props": { "text": "MYOB", "tone": "muted" } },
+
+      "filterRow": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["filterAllWrap", "filterBillsWrap", "filterInvoicesWrap", "filterContactsWrap"] },
+
+      "filterAllWrap": {
+        "type": "Row",
+        "props": { "clickable": true },
+        "children": ["filterAllBadge"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/myobDup",
+              "value": {
+                "$computed": "myob-accounting_analyze_myob_duplicates",
+                "args": {
+                  "contacts": { "$state": "/myob-accounting/list_contacts/Items" },
+                  "bills": { "$state": "/myob-accounting/list_bills/Items" },
+                  "invoices": { "$state": "/myob-accounting/list_invoices/Items" },
+                  "filter": ""
+                }
+              }
+            }
+          }
+        }
+      },
+      "filterAllBadge": {
+        "type": "Badge",
+        "props": {
+          "text": "All",
+          "tone": { "$cond": { "$state": "/ui/myobDup/filter", "eq": "" }, "$then": "accent", "$else": "muted" },
+          "variant": { "$cond": { "$state": "/ui/myobDup/filter", "eq": "" }, "$then": "solid", "$else": "outline" }
+        }
+      },
+
+      "filterBillsWrap": {
+        "type": "Row",
+        "props": { "clickable": true },
+        "children": ["filterBillsBadge"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/myobDup",
+              "value": {
+                "$computed": "myob-accounting_analyze_myob_duplicates",
+                "args": {
+                  "contacts": { "$state": "/myob-accounting/list_contacts/Items" },
+                  "bills": { "$state": "/myob-accounting/list_bills/Items" },
+                  "invoices": { "$state": "/myob-accounting/list_invoices/Items" },
+                  "filter": "Bill"
+                }
+              }
+            }
+          }
+        }
+      },
+      "filterBillsBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "Bills ({n})", "n": { "$state": "/ui/myobDup/filterCounts/bills" } } },
+          "tone": { "$cond": { "$state": "/ui/myobDup/filter", "eq": "Bill" }, "$then": "accent", "$else": "muted" },
+          "variant": { "$cond": { "$state": "/ui/myobDup/filter", "eq": "Bill" }, "$then": "solid", "$else": "outline" }
+        }
+      },
+
+      "filterInvoicesWrap": {
+        "type": "Row",
+        "props": { "clickable": true },
+        "children": ["filterInvoicesBadge"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/myobDup",
+              "value": {
+                "$computed": "myob-accounting_analyze_myob_duplicates",
+                "args": {
+                  "contacts": { "$state": "/myob-accounting/list_contacts/Items" },
+                  "bills": { "$state": "/myob-accounting/list_bills/Items" },
+                  "invoices": { "$state": "/myob-accounting/list_invoices/Items" },
+                  "filter": "Invoice"
+                }
+              }
+            }
+          }
+        }
+      },
+      "filterInvoicesBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "Invoices ({n})", "n": { "$state": "/ui/myobDup/filterCounts/invoices" } } },
+          "tone": { "$cond": { "$state": "/ui/myobDup/filter", "eq": "Invoice" }, "$then": "accent", "$else": "muted" },
+          "variant": { "$cond": { "$state": "/ui/myobDup/filter", "eq": "Invoice" }, "$then": "solid", "$else": "outline" }
+        }
+      },
+
+      "filterContactsWrap": {
+        "type": "Row",
+        "props": { "clickable": true },
+        "children": ["filterContactsBadge"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/myobDup",
+              "value": {
+                "$computed": "myob-accounting_analyze_myob_duplicates",
+                "args": {
+                  "contacts": { "$state": "/myob-accounting/list_contacts/Items" },
+                  "bills": { "$state": "/myob-accounting/list_bills/Items" },
+                  "invoices": { "$state": "/myob-accounting/list_invoices/Items" },
+                  "filter": "Contact"
+                }
+              }
+            }
+          }
+        }
+      },
+      "filterContactsBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "Contacts ({n})", "n": { "$state": "/ui/myobDup/filterCounts/contacts" } } },
+          "tone": { "$cond": { "$state": "/ui/myobDup/filter", "eq": "Contact" }, "$then": "accent", "$else": "muted" },
+          "variant": { "$cond": { "$state": "/ui/myobDup/filter", "eq": "Contact" }, "$then": "solid", "$else": "outline" }
+        }
+      },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": { "padding": "md" }, "children": ["loading", "empty", "content"] },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": {
+          "$or": [
+            { "$state": "/_loading/myob-accounting.list_contacts" },
+            { "$state": "/myob-accounting/list_bills/Items", "not": true },
+            { "$state": "/myob-accounting/list_invoices/Items", "not": true }
+          ]
+        }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No likely duplicates found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myob-accounting.list_contacts", "not": true },
+            { "$state": "/myob-accounting/list_bills/Items" },
+            { "$state": "/myob-accounting/list_invoices/Items" },
+            { "$state": "/ui/myobDup/totalOpen", "not": true }
+          ]
+        }
+      },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["previewRow1", "div1", "previewRow2", "div2", "previewRow3", "div3", "footerRow", "detailSection"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myob-accounting.list_contacts", "not": true },
+            { "$state": "/myob-accounting/list_bills/Items" },
+            { "$state": "/myob-accounting/list_invoices/Items" },
+            { "$state": "/ui/myobDup/totalOpen" }
+          ]
+        }
+      },
+
+      "previewRow1": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["previewRow1Top", "previewRow1Detail"],
+        "visible": { "$state": "/ui/myobDup/previewCount", "gt": 0 }
+      },
+      "previewRow1Top": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["previewRow1Left", "previewRow1Amount"] },
+      "previewRow1Left": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["previewRow1Badge", "previewRow1Label"] },
+      "previewRow1Badge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$state": "/ui/myobDup/previewRows/0/tier" },
+          "tone": { "$state": "/ui/myobDup/previewRows/0/tierTone" },
+          "variant": "solid"
+        }
+      },
+      "previewRow1Label": { "type": "Text", "props": { "text": { "$state": "/ui/myobDup/previewRows/0/label" }, "weight": "semibold", "size": "sm" } },
+      "previewRow1Amount": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/myobDup/previewRows/0/amount" }, "weight": "semibold", "size": "sm" },
+        "visible": { "$state": "/ui/myobDup/previewRows/0/amount" }
+      },
+      "previewRow1Detail": { "type": "Caption", "props": { "text": { "$state": "/ui/myobDup/previewRows/0/detail" }, "tone": "muted" } },
+
+      "div1": { "type": "Divider", "props": {}, "visible": { "$state": "/ui/myobDup/previewCount", "gt": 1 } },
+
+      "previewRow2": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["previewRow2Top", "previewRow2Detail"],
+        "visible": { "$state": "/ui/myobDup/previewCount", "gt": 1 }
+      },
+      "previewRow2Top": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["previewRow2Left", "previewRow2Amount"] },
+      "previewRow2Left": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["previewRow2Badge", "previewRow2Label"] },
+      "previewRow2Badge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$state": "/ui/myobDup/previewRows/1/tier" },
+          "tone": { "$state": "/ui/myobDup/previewRows/1/tierTone" },
+          "variant": "solid"
+        }
+      },
+      "previewRow2Label": { "type": "Text", "props": { "text": { "$state": "/ui/myobDup/previewRows/1/label" }, "weight": "semibold", "size": "sm" } },
+      "previewRow2Amount": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/myobDup/previewRows/1/amount" }, "weight": "semibold", "size": "sm" },
+        "visible": { "$state": "/ui/myobDup/previewRows/1/amount" }
+      },
+      "previewRow2Detail": { "type": "Caption", "props": { "text": { "$state": "/ui/myobDup/previewRows/1/detail" }, "tone": "muted" } },
+
+      "div2": { "type": "Divider", "props": {}, "visible": { "$state": "/ui/myobDup/previewCount", "gt": 2 } },
+
+      "previewRow3": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["previewRow3Top", "previewRow3Detail"],
+        "visible": { "$state": "/ui/myobDup/previewCount", "gt": 2 }
+      },
+      "previewRow3Top": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["previewRow3Left", "previewRow3Amount"] },
+      "previewRow3Left": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["previewRow3Badge", "previewRow3Label"] },
+      "previewRow3Badge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$state": "/ui/myobDup/previewRows/2/tier" },
+          "tone": { "$state": "/ui/myobDup/previewRows/2/tierTone" },
+          "variant": "solid"
+        }
+      },
+      "previewRow3Label": { "type": "Text", "props": { "text": { "$state": "/ui/myobDup/previewRows/2/label" }, "weight": "semibold", "size": "sm" } },
+      "previewRow3Amount": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/myobDup/previewRows/2/amount" }, "weight": "semibold", "size": "sm" },
+        "visible": { "$state": "/ui/myobDup/previewRows/2/amount" }
+      },
+      "previewRow3Detail": { "type": "Caption", "props": { "text": { "$state": "/ui/myobDup/previewRows/2/detail" }, "tone": "muted" } },
+
+      "div3": { "type": "Divider", "props": {} },
+
+      "footerRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["footerLeft", "footerRight"] },
+      "footerLeft": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Showing {shown} of {total}",
+              "shown": { "$state": "/ui/myobDup/previewCount" },
+              "total": { "$state": "/ui/myobDup/filteredTotal" }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "footerRight": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "clickable": true },
+        "children": ["footerRightLabel", "footerRightIcon"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/myobDup/showAll", "value": true } } }
+      },
+      "footerRightLabel": { "type": "Text", "props": { "text": "View all duplicates", "size": "sm", "tone": "accent" } },
+      "footerRightIcon": { "type": "Icon", "props": { "name": "ArrowRight", "tone": "accent", "size": "sm" } },
+
+      "detailSection": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["detailHeaderRow", "detailTable"],
+        "visible": { "$state": "/ui/myobDup/showAll" }
+      },
+      "detailHeaderRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["detailHeading", "detailCloseBtn"] },
+      "detailHeading": { "type": "Text", "props": { "text": "All duplicates in this view", "size": "sm", "weight": "semibold" } },
+      "detailCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "tone": "muted", "size": "sm", "ariaLabel": "Close" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/myobDup/showAll", "value": false } } }
+      },
+      "detailTable": {
+        "type": "Table",
+        "props": {
+          "rows": { "$state": "/ui/myobDup/detailRows" },
+          "columns": [
+            { "id": "tier", "header": "Tier", "field": "tier", "priority": 1, "width": 90 },
+            { "id": "label", "header": "Record", "field": "label", "priority": 1 },
+            { "id": "detail", "header": "Detail", "field": "detail", "priority": 2 },
+            { "id": "amount", "header": "Amount", "field": "amount", "priority": 1, "width": 100 }
+          ]
+        }
+      }
+    }
+  },
+  "status": "draft"
+}
