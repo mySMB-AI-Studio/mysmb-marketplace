@@ -1,17 +1,20 @@
 {
-  "id": "xero-awaiting-payment-payable",
-  "title": "Xero — Awaiting Payment (Accounts Payable)",
-  "description": "Every bill from a supplier and authorised, but not yet paid — whether it's not yet due or already overdue. Mirrors Xero's own \"Awaiting payment\" tab under Purchases > Bills. Colored breakdown of not-yet-due / overdue / well-overdue.",
   "category": "finance",
-  "tags": [
-    "xero",
-    "bills",
-    "awaiting payment",
-    "outstanding",
-    "payable",
-    "accounts payable",
-    "finance"
+  "connectorsUsed": [
+    "xero-accounting"
   ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-accounting",
+    "params": {
+      "order": "DueDate ASC",
+      "statuses": "AUTHORISED",
+      "where": "Type==\"ACCPAY\""
+    },
+    "tool": "list_invoices"
+  },
+  "description": "Every bill from a supplier and authorised, but not yet paid — whether it's not yet due or already overdue. Mirrors Xero's own \"Awaiting payment\" tab under Purchases > Bills. Colored breakdown of not-yet-due / overdue / well-overdue.",
+  "id": "xero-awaiting-payment-payable",
   "keywords": [
     "awaiting payment",
     "accounts payable",
@@ -21,31 +24,124 @@
     "purchases",
     "suppliers"
   ],
-  "connectorsUsed": [
-    "xero-accounting"
-  ],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 4, "rowSpan": 5 },
-    "min": { "colSpan": 4, "rowSpan": 4 },
-    "max": { "colSpan": 8, "rowSpan": 10 }
-  },
-  "dataProvider": {
-    "kind": "tool",
-    "mcp": "xero-accounting",
-    "tool": "list_invoices",
-    "params": {
-      "where": "Type==\"ACCPAY\"",
-      "statuses": "AUTHORISED",
-      "order": "DueDate ASC"
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 10
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 5
     }
   },
   "spec": {
-    "root": "card",
     "elements": {
+      "amount": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "currency": {
+                "$item": "CurrencyCode"
+              },
+              "value": {
+                "$item": "AmountDue"
+              }
+            }
+          },
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "list",
+          "truncatedCaption"
+        ],
+        "type": "Body"
+      },
+      "breakdownBar": {
+        "children": [
+          "breakdownSegment"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs",
+          "template": {
+            "$state": "/ui/breakdown/template"
+          }
+        },
+        "repeat": {
+          "key": "status",
+          "statePath": "/ui/breakdown/segments"
+        },
+        "type": "Row"
+      },
+      "breakdownDivider": {
+        "props": {},
+        "type": "Divider"
+      },
+      "breakdownLegend": {
+        "children": [
+          "legendItem"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "md"
+        },
+        "repeat": {
+          "key": "status",
+          "statePath": "/ui/breakdown/segments"
+        },
+        "type": "Row"
+      },
+      "breakdownSection": {
+        "children": [
+          "breakdownBar",
+          "breakdownLegend"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_invoices",
+              "not": true
+            },
+            {
+              "$state": "/ui/breakdown/segments/0"
+            }
+          ]
+        }
+      },
+      "breakdownSegment": {
+        "props": {
+          "tone": {
+            "$item": "tone"
+          },
+          "value": 100
+        },
+        "type": "ProgressBar"
+      },
       "card": {
+        "children": [
+          "header",
+          "breakdownSection",
+          "breakdownDivider",
+          "body",
+          "footer"
+        ],
         "type": "Card",
-        "children": ["header", "breakdownSection", "breakdownDivider", "body", "footer"],
         "watch": {
           "/xero-accounting/list_invoices/Invoices": [
             {
@@ -54,228 +150,360 @@
                 "statePath": "/ui/breakdown",
                 "value": {
                   "$computed": "xero-accounting_awaiting_payment_breakdown",
-                  "args": { "invoices": { "$state": "/xero-accounting/list_invoices/Invoices" } }
+                  "args": {
+                    "invoices": {
+                      "$state": "/xero-accounting/list_invoices/Invoices"
+                    }
+                  }
                 }
               }
             }
           ]
         }
       },
-      "header": {
-        "type": "Header",
-        "children": ["titleGroup"]
-      },
-      "titleGroup": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "start" },
-        "children": ["titleIcon", "titleStack"]
-      },
-      "titleIcon": {
-        "type": "Icon",
-        "props": { "name": "ArrowUpCircle", "tone": "info", "size": "sm" }
-      },
-      "titleStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["title", "eyebrow", "count"]
-      },
-      "title": {
-        "type": "Heading",
-        "props": { "text": "Awaiting Payment", "level": "h2" }
-      },
-      "eyebrow": {
-        "type": "Eyebrow",
-        "props": { "text": "Accounts Payable — Xero" }
-      },
       "count": {
-        "type": "Caption",
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{n} bills",
-              "n": { "$computed": "count", "args": { "value": { "$state": "/xero-accounting/list_invoices/Invoices" } } }
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/xero-accounting/list_invoices/Invoices"
+                  }
+                }
+              },
+              "pattern": "{n} bills"
             }
           },
           "tone": "muted"
-        }
+        },
+        "type": "Caption"
       },
-
-      "breakdownSection": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["breakdownBar", "breakdownLegend"],
+      "dueBadge": {
+        "props": {
+          "text": {
+            "$computed": "xero-accounting_overdue_label",
+            "args": {
+              "value": {
+                "$item": "DueDate"
+              }
+            }
+          },
+          "tone": {
+            "$computed": "xero-accounting_overdue_tone",
+            "args": {
+              "value": {
+                "$item": "DueDate"
+              }
+            }
+          },
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "empty": {
+        "props": {
+          "message": "Nothing awaiting payment — all bills settled."
+        },
+        "type": "Empty",
         "visible": {
           "$and": [
-            { "$state": "/_loading/xero-accounting.list_invoices", "not": true },
-            { "$state": "/ui/breakdown/segments/0" }
+            {
+              "$state": "/_loading/xero-accounting.list_invoices",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_invoices/Invoices/0",
+              "not": true
+            }
           ]
         }
       },
-      "breakdownBar": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center", "template": { "$state": "/ui/breakdown/template" } },
-        "children": ["breakdownSegment"],
-        "repeat": { "statePath": "/ui/breakdown/segments", "key": "status" }
+      "eyebrow": {
+        "props": {
+          "text": "Accounts Payable — Xero"
+        },
+        "type": "Eyebrow"
       },
-      "breakdownSegment": {
-        "type": "ProgressBar",
-        "props": { "value": 100, "tone": { "$item": "tone" } }
+      "footer": {
+        "children": [
+          "openXeroBtn"
+        ],
+        "props": {
+          "justify": "end"
+        },
+        "type": "Row"
       },
-      "breakdownLegend": {
-        "type": "Row",
-        "props": { "gap": "md", "align": "center" },
-        "children": ["legendItem"],
-        "repeat": { "statePath": "/ui/breakdown/segments", "key": "status" }
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "type": "Header"
       },
-      "legendItem": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["legendDot", "legendLabel"]
+      "idBottom": {
+        "props": {
+          "text": {
+            "$item": "InvoiceNumber"
+          }
+        },
+        "type": "Caption"
+      },
+      "idTop": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "Contact/Name"
+          },
+          "truncate": true,
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "identity": {
+        "children": [
+          "idTop",
+          "idBottom"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
       },
       "legendDot": {
-        "type": "Dot",
-        "props": { "tone": { "$item": "tone" }, "size": "sm" }
+        "props": {
+          "size": "sm",
+          "tone": {
+            "$item": "tone"
+          }
+        },
+        "type": "Dot"
+      },
+      "legendItem": {
+        "children": [
+          "legendDot",
+          "legendLabel"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
       },
       "legendLabel": {
-        "type": "Caption",
         "props": {
           "text": {
             "$computed": "fmt",
-            "args": { "pattern": "{status} ({count})", "status": { "$item": "status" }, "count": { "$item": "count" } }
+            "args": {
+              "count": {
+                "$item": "count"
+              },
+              "pattern": "{status} ({count})",
+              "status": {
+                "$item": "status"
+              }
+            }
           },
           "tone": "muted"
-        }
+        },
+        "type": "Caption"
       },
-
-      "breakdownDivider": { "type": "Divider", "props": {} },
-
-      "body": {
-        "type": "Body",
-        "children": ["loading", "empty", "list", "truncatedCaption"]
+      "list": {
+        "children": [
+          "row"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "InvoiceID",
+          "statePath": "/xero-accounting/list_invoices/Invoices"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_invoices",
+          "not": true
+        }
       },
       "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3",
+          "sk4"
+        ],
+        "props": {
+          "gap": "sm"
+        },
         "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3", "sk4"],
-        "visible": { "$state": "/_loading/xero-accounting.list_invoices" }
-      },
-      "sk1": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
-      "sk4": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
-
-      "empty": {
-        "type": "Empty",
-        "props": { "message": "Nothing awaiting payment — all bills settled." },
         "visible": {
-          "$and": [
-            { "$state": "/_loading/xero-accounting.list_invoices", "not": true },
-            { "$state": "/xero-accounting/list_invoices/Invoices/0", "not": true }
-          ]
+          "$state": "/_loading/xero-accounting.list_invoices"
         }
       },
-
-      "list": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["row"],
-        "repeat": { "statePath": "/xero-accounting/list_invoices/Invoices", "key": "InvoiceID" },
-        "limit": 20,
-        "visible": { "$state": "/_loading/xero-accounting.list_invoices", "not": true }
+      "openXeroBtn": {
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": "https://go.xero.com/AccountsPayable/"
+            }
+          }
+        },
+        "props": {
+          "label": "Open Bills in Xero",
+          "leadingIcon": "ExternalLink",
+          "size": "sm",
+          "tone": "brand",
+          "variant": "primary"
+        },
+        "type": "Button"
       },
       "row": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "center",
-          "hover": true,
-          "clickable": true,
-          "template": "auto minmax(0, 1fr) 6rem 7rem"
-        },
+        "children": [
+          "severity",
+          "identity",
+          "amount",
+          "dueBadge"
+        ],
         "on": {
           "click": {
             "action": "open_invoice_modal",
             "params": {
-              "invoiceId": { "$computed": "identity", "args": { "value": { "$item": "InvoiceID" } } }
+              "invoiceId": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "InvoiceID"
+                  }
+                }
+              }
             }
           }
         },
-        "children": ["severity", "identity", "amount", "dueBadge"]
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "sm",
+          "hover": true,
+          "template": "auto minmax(0, 1fr) 6rem 7rem"
+        },
+        "type": "Row"
       },
       "severity": {
-        "type": "Dot",
         "props": {
           "size": "sm",
-          "tone": { "$computed": "xero-accounting_overdue_tone", "args": { "value": { "$item": "DueDate" } } }
-        }
+          "tone": {
+            "$computed": "xero-accounting_overdue_tone",
+            "args": {
+              "value": {
+                "$item": "DueDate"
+              }
+            }
+          }
+        },
+        "type": "Dot"
       },
-      "identity": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["idTop", "idBottom"]
-      },
-      "idTop": {
-        "type": "Text",
-        "props": { "text": { "$item": "Contact/Name" }, "size": "sm", "weight": "medium", "truncate": true }
-      },
-      "idBottom": {
-        "type": "Caption",
-        "props": { "text": { "$item": "InvoiceNumber" } }
-      },
-      "amount": {
-        "type": "Text",
+      "sk1": {
         "props": {
-          "text": {
-            "$computed": "format_currency",
-            "args": { "value": { "$item": "AmountDue" }, "currency": { "$item": "CurrencyCode" } }
-          },
-          "weight": "semibold",
-          "size": "sm"
-        }
+          "height": "2.25rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
       },
-      "dueBadge": {
-        "type": "Badge",
+      "sk2": {
         "props": {
-          "text": { "$computed": "xero-accounting_overdue_label", "args": { "value": { "$item": "DueDate" } } },
-          "tone": { "$computed": "xero-accounting_overdue_tone", "args": { "value": { "$item": "DueDate" } } },
-          "variant": "soft"
-        }
+          "height": "2.25rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
       },
-
+      "sk3": {
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk4": {
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Awaiting Payment"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "start",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "ArrowUpCircle",
+          "size": "sm",
+          "tone": "info"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow",
+          "count"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
       "truncatedCaption": {
-        "type": "Caption",
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
               "pattern": "Showing 20 of {total}",
-              "total": { "$computed": "count", "args": { "value": { "$state": "/xero-accounting/list_invoices/Invoices" } } }
+              "total": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/xero-accounting/list_invoices/Invoices"
+                  }
+                }
+              }
             }
           },
           "tone": "muted"
         },
-        "visible": { "$state": "/xero-accounting/list_invoices/Invoices/20" }
-      },
-
-      "footer": {
-        "type": "Row",
-        "props": { "justify": "end" },
-        "children": ["openXeroBtn"]
-      },
-      "openXeroBtn": {
-        "type": "Button",
-        "props": { "label": "Open Bills in Xero", "tone": "brand", "variant": "primary", "size": "sm", "leadingIcon": "ExternalLink" },
-        "on": {
-          "click": {
-            "action": "open_url",
-            "params": {
-              "url": "https://go.xero.com/AccountsPayable/",
-              "target": "_blank"
-            }
-          }
+        "type": "Caption",
+        "visible": {
+          "$state": "/xero-accounting/list_invoices/Invoices/20"
         }
       }
-    }
-  }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "xero",
+    "bills",
+    "awaiting payment",
+    "outstanding",
+    "payable",
+    "accounts payable",
+    "finance"
+  ],
+  "title": "Xero — Awaiting Payment (Accounts Payable)"
 }

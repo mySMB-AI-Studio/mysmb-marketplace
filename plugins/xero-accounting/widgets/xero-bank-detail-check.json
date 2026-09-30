@@ -121,6 +121,40 @@
         },
         "type": "Text"
       },
+      "billReviewBtn": {
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$item": "reviewUrl"
+              }
+            }
+          }
+        },
+        "props": {
+          "label": "Review",
+          "size": "sm",
+          "tone": "brand",
+          "trailingIcon": "ArrowRight",
+          "variant": "primary"
+        },
+        "type": "Button",
+        "visible": {
+          "$item": "needsReview"
+        }
+      },
+      "billRightCol": {
+        "children": [
+          "billAmount",
+          "billReviewBtn"
+        ],
+        "props": {
+          "align": "end",
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
       "billRow": {
         "children": [
           "billRowContent",
@@ -143,40 +177,6 @@
           "template": "auto minmax(0,1fr) auto"
         },
         "type": "Row"
-      },
-      "billRightCol": {
-        "children": [
-          "billAmount",
-          "billReviewBtn"
-        ],
-        "props": {
-          "align": "end",
-          "gap": "xs"
-        },
-        "type": "Stack"
-      },
-      "billReviewBtn": {
-        "props": {
-          "label": "Review",
-          "size": "sm",
-          "tone": "brand",
-          "variant": "primary",
-          "trailingIcon": "ArrowRight"
-        },
-        "on": {
-          "click": {
-            "action": "open_url",
-            "params": {
-              "url": {
-                "$item": "reviewUrl"
-              }
-            }
-          }
-        },
-        "type": "Button",
-        "visible": {
-          "$item": "needsReview"
-        }
       },
       "body": {
         "children": [
@@ -364,49 +364,9 @@
         },
         "type": "Stat"
       },
-      "statVerified": {
-        "props": {
-          "label": "VERIFIED",
-          "tone": "success",
-          "value": {
-            "$state": "/xero-accounting/list_xero_bank_detail_check/summary/verified"
-          }
-        },
-        "type": "Stat"
-      },
-      "statsGrid": {
-        "children": [
-          "statMismatchCard",
-          "statCantVerifyCard",
-          "statVerifiedCard"
-        ],
-        "props": {
-          "cols": 3,
-          "gap": "sm"
-        },
-        "type": "Grid"
-      },
-      "statMismatchCard": {
-        "children": [
-          "statMismatch"
-        ],
-        "props": {
-          "variant": "bordered"
-        },
-        "type": "Section"
-      },
       "statCantVerifyCard": {
         "children": [
           "statCantVerify"
-        ],
-        "props": {
-          "variant": "bordered"
-        },
-        "type": "Section"
-      },
-      "statVerifiedCard": {
-        "children": [
-          "statVerified"
         ],
         "props": {
           "variant": "bordered"
@@ -422,6 +382,46 @@
           }
         },
         "type": "Stat"
+      },
+      "statMismatchCard": {
+        "children": [
+          "statMismatch"
+        ],
+        "props": {
+          "variant": "bordered"
+        },
+        "type": "Section"
+      },
+      "statVerified": {
+        "props": {
+          "label": "VERIFIED",
+          "tone": "success",
+          "value": {
+            "$state": "/xero-accounting/list_xero_bank_detail_check/summary/verified"
+          }
+        },
+        "type": "Stat"
+      },
+      "statVerifiedCard": {
+        "children": [
+          "statVerified"
+        ],
+        "props": {
+          "variant": "bordered"
+        },
+        "type": "Section"
+      },
+      "statsGrid": {
+        "children": [
+          "statMismatchCard",
+          "statCantVerifyCard",
+          "statVerifiedCard"
+        ],
+        "props": {
+          "cols": 3,
+          "gap": "sm"
+        },
+        "type": "Grid"
       },
       "title": {
         "props": {
