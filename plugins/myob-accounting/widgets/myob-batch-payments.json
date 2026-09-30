@@ -3,16 +3,44 @@
   "title": "Batch Payments",
   "description": "Lists outstanding MYOB supplier bills pre-classified for a batch payment run — ready (valid BSB + account on file) vs excluded (missing or invalid bank details).",
   "category": "finance",
-  "tags": ["myob", "bills", "batch", "payments", "bank", "accounts-payable"],
-  "keywords": ["myob", "batch payment", "supplier", "bills", "bank details", "bsb", "accounts payable", "pay run"],
-  "connectorsUsed": ["myob-accounting"],
+  "tags": [
+    "myob",
+    "bills",
+    "batch",
+    "payments",
+    "bank",
+    "accounts-payable"
+  ],
+  "keywords": [
+    "myob",
+    "batch payment",
+    "supplier",
+    "bills",
+    "bank details",
+    "bsb",
+    "accounts payable",
+    "pay run"
+  ],
+  "connectorsUsed": [
+    "myob-accounting"
+  ],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 9 },
-    "min":       { "colSpan": 4, "rowSpan": 7 },
-    "max":       { "colSpan": 10, "rowSpan": 16 }
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 9
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 7
+    },
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 16
+    }
   },
   "dataProvider": {
+    "kind": "tool",
     "mcp": "myob-accounting",
     "tool": "list_myob_batch_payment_bills",
     "params": {}
@@ -20,35 +48,180 @@
   "spec": {
     "root": "card",
     "elements": {
-
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "body"]
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/myob-accounting/list_myob_batch_payment_bills/bills": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bp",
+              "value": {
+                "$computed": "myob-accounting_paginate",
+                "args": {
+                  "value": {
+                    "$state": "/myob-accounting/list_myob_batch_payment_bills/bills"
+                  },
+                  "page": 0,
+                  "delta": 0,
+                  "size": 30
+                }
+              }
+            }
+          }
+        }
       },
-
       "header": {
         "type": "Header",
         "props": {},
-        "children": ["titleGroup"]
+        "children": [
+          "titleGroup"
+        ]
       },
       "titleGroup": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
       },
       "titleIcon": {
         "type": "Icon",
-        "props": { "name": "Banknote", "tone": "accent", "size": "sm" }
-      },
-      "titleStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["title", "eyebrow"]
+        "props": {
+          "name": "Banknote",
+          "tone": "accent",
+          "size": "sm"
+        }
       },
       "title": {
         "type": "Heading",
-        "props": { "text": "Batch Payments", "level": "h2" }
+        "props": {
+          "text": "Batch Payments",
+          "level": "h2"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3",
+          "sk4",
+          "sk5"
+        ],
+        "visible": {
+          "$state": "/_loading/myob-accounting.list_myob_batch_payment_bills"
+        }
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "4rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.75rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.75rem",
+          "rounded": "md"
+        }
+      },
+      "sk4": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.75rem",
+          "rounded": "md"
+        }
+      },
+      "sk5": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.75rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No outstanding bills found."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/myob-accounting.list_myob_batch_payment_bills",
+              "not": true
+            },
+            {
+              "$state": "/myob-accounting/list_myob_batch_payment_bills/bills/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "summary",
+          "summaryDivider",
+          "billList",
+          "pagerRow",
+          "footerDivider",
+          "footerRow"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/myob-accounting.list_myob_batch_payment_bills",
+              "not": true
+            },
+            {
+              "$state": "/myob-accounting/list_myob_batch_payment_bills/bills/0"
+            }
+          ]
+        }
+      },
+      "summary": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "eyebrow",
+          "totalAmount",
+          "metaRow",
+          "blockedReason"
+        ]
       },
       "eyebrow": {
         "type": "Eyebrow",
@@ -56,67 +229,23 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "Bills Due This Week · {n}",
-              "n": { "$state": "/myob-accounting/list_myob_batch_payment_bills/summary/total" }
+              "pattern": "Bills due this week · {n}",
+              "n": {
+                "$state": "/myob-accounting/list_myob_batch_payment_bills/summary/total"
+              }
             }
           }
         }
       },
-
-      "body": {
-        "type": "Body",
-        "props": {},
-        "children": ["loading", "empty", "content"]
-      },
-
-      "loading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3", "sk4", "sk5", "sk6"],
-        "visible": { "$state": "/_loading/myob-accounting.list_myob_batch_payment_bills" }
-      },
-      "sk1": { "type": "Skeleton", "props": { "height": "4rem",    "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
-      "sk4": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
-      "sk5": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
-      "sk6": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
-
-      "empty": {
-        "type": "Empty",
-        "props": { "message": "No outstanding bills found." },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/myob-accounting.list_myob_batch_payment_bills", "not": true },
-            { "$state": "/myob-accounting/list_myob_batch_payment_bills/bills/0", "not": true }
-          ]
-        }
-      },
-
-      "content": {
-        "type": "Stack",
-        "props": { "gap": "md" },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/myob-accounting.list_myob_batch_payment_bills", "not": true },
-            { "$state": "/myob-accounting/list_myob_batch_payment_bills/bills/0" }
-          ]
-        },
-        "children": ["summarySection", "divider1", "billList", "footerRow"]
-      },
-
-      "summarySection": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["totalAmountText", "metaRow", "blockedReasonRow"]
-      },
-      "totalAmountText": {
+      "totalAmount": {
         "type": "Stat",
         "props": {
           "value": {
             "$computed": "format_currency",
             "args": {
-              "value":    { "$state": "/myob-accounting/list_myob_batch_payment_bills/summary/totalAmount" },
+              "value": {
+                "$state": "/myob-accounting/list_myob_batch_payment_bills/summary/totalAmount"
+              },
               "currency": "AUD"
             }
           }
@@ -124,169 +253,505 @@
       },
       "metaRow": {
         "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["nextDueLabel", "nextDueValue", "blockedLabel", "blockedValue"]
+        "props": {
+          "gap": "md",
+          "align": "center"
+        },
+        "children": [
+          "nextDueGroup",
+          "blockedGroup"
+        ]
+      },
+      "nextDueGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "nextDueLabel",
+          "nextDueValue"
+        ],
+        "visible": {
+          "$state": "/myob-accounting/list_myob_batch_payment_bills/summary/nextDueDate"
+        }
       },
       "nextDueLabel": {
         "type": "Caption",
-        "props": { "text": "Next due:", "tone": "muted" }
+        "props": {
+          "text": "Next due:",
+          "tone": "muted"
+        }
       },
       "nextDueValue": {
-        "type": "Caption",
+        "type": "Text",
         "props": {
-          "text": { "$state": "/myob-accounting/list_myob_batch_payment_bills/summary/nextDueDate" },
-          "weight": "semibold"
+          "text": {
+            "$state": "/myob-accounting/list_myob_batch_payment_bills/summary/nextDueDate"
+          },
+          "size": "xs",
+          "weight": "medium"
+        }
+      },
+      "blockedGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "blockedLabel",
+          "blockedValue"
+        ],
+        "visible": {
+          "$state": "/myob-accounting/list_myob_batch_payment_bills/summary/excludedCount"
         }
       },
       "blockedLabel": {
         "type": "Caption",
-        "props": { "text": "Blocked:", "tone": "muted" },
-        "visible": { "$state": "/myob-accounting/list_myob_batch_payment_bills/summary/excludedCount" }
+        "props": {
+          "text": "Blocked:",
+          "tone": "muted"
+        }
       },
       "blockedValue": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/myob-accounting/list_myob_batch_payment_bills/summary/excludedCount"
+          },
+          "size": "xs",
+          "weight": "medium",
+          "tone": "warning"
+        }
+      },
+      "blockedReason": {
         "type": "Caption",
         "props": {
-          "text": { "$state": "/myob-accounting/list_myob_batch_payment_bills/summary/excludedCount" },
-          "weight": "semibold",
+          "text": {
+            "$state": "/myob-accounting/list_myob_batch_payment_bills/summary/blockedReason"
+          },
           "tone": "warning"
         },
-        "visible": { "$state": "/myob-accounting/list_myob_batch_payment_bills/summary/excludedCount" }
+        "visible": {
+          "$state": "/myob-accounting/list_myob_batch_payment_bills/summary/blockedReason"
+        }
       },
-
-      "blockedReasonRow": {
-        "type": "Caption",
-        "props": {
-          "text": { "$state": "/myob-accounting/list_myob_batch_payment_bills/summary/blockedReason" },
-          "tone": "warning"
-        },
-        "visible": { "$state": "/myob-accounting/list_myob_batch_payment_bills/summary/blockedReason" }
+      "summaryDivider": {
+        "type": "Divider",
+        "props": {}
       },
-
-      "divider1": { "type": "Divider", "props": {} },
-
       "billList": {
         "type": "Stack",
-        "props": { "gap": "none" },
-        "repeat": {
-          "statePath": "/myob-accounting/list_myob_batch_payment_bills/bills",
-          "key": "id"
+        "props": {
+          "gap": "sm"
         },
-        "children": ["billRow"]
+        "children": [
+          "billRow"
+        ],
+        "repeat": {
+          "statePath": "/ui/bp/items",
+          "key": "id"
+        }
       },
-
       "billRow": {
         "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["billRowContent", "billDivider"]
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "billRowContent",
+          "billDivider"
+        ]
       },
-
       "billRowContent": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "start", "template": "auto minmax(0,1fr) auto" },
-        "children": ["billDot", "billInfo", "billAmount"]
+        "props": {
+          "gap": "sm",
+          "align": "start",
+          "template": "auto minmax(0,1fr) auto"
+        },
+        "children": [
+          "billDotGroup",
+          "billInfo",
+          "billAmount"
+        ]
       },
-
-      "billDot": {
-        "type": "Dot",
-        "props": { "size": "sm", "tone": { "$item": "tone" } }
+      "billDotGroup": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "billDotMismatch",
+          "billDotMissing",
+          "billDotReady"
+        ]
       },
-
       "billInfo": {
         "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["billName", "billMeta"]
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "billName",
+          "billMeta",
+          "billBadgeRow"
+        ]
       },
-
       "billName": {
         "type": "Text",
         "props": {
-          "text":     { "$item": "contactName" },
-          "size":     "sm",
-          "weight":   "semibold",
+          "text": {
+            "$item": "contactName"
+          },
+          "size": "md",
+          "weight": "medium",
           "truncate": true
         }
       },
-
       "billMeta": {
         "type": "Caption",
         "props": {
-          "text":     { "$item": "metaLine" },
-          "tone":     "muted",
-          "truncate": true
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Due {d} · {n}",
+              "d": {
+                "$item": "dueDate"
+              },
+              "n": {
+                "$item": "invoiceNumber"
+              }
+            }
+          },
+          "tone": "muted"
         }
       },
-
+      "billBadgeRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "billBadgeMismatch",
+          "billBadgeMissing",
+          "billBadgeReady"
+        ]
+      },
+      "billDotMismatch": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "destructive"
+        },
+        "visible": {
+          "$item": "bankStatus",
+          "eq": "mismatch"
+        }
+      },
+      "billBadgeMismatch": {
+        "type": "Badge",
+        "props": {
+          "text": "Bank detail mismatch",
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "bankStatus",
+          "eq": "mismatch"
+        }
+      },
+      "billDotMissing": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "warning"
+        },
+        "visible": {
+          "$item": "bankStatus",
+          "eq": "missing"
+        }
+      },
+      "billBadgeMissing": {
+        "type": "Badge",
+        "props": {
+          "text": "No bank details",
+          "tone": "warning",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "bankStatus",
+          "eq": "missing"
+        }
+      },
+      "billDotReady": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "success"
+        },
+        "visible": {
+          "$item": "bankStatus",
+          "eq": "ready"
+        }
+      },
+      "billBadgeReady": {
+        "type": "Badge",
+        "props": {
+          "text": "Ready",
+          "tone": "success",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "bankStatus",
+          "eq": "ready"
+        }
+      },
       "billAmount": {
         "type": "Text",
         "props": {
           "text": {
             "$computed": "format_currency",
             "args": {
-              "value":    { "$item": "amountDue" },
-              "currency": { "$item": "currencyCode" }
+              "value": {
+                "$item": "amountDue"
+              },
+              "currency": {
+                "$item": "currencyCode"
+              }
             }
           },
-          "size":   "sm",
-          "weight": "semibold"
+          "size": "md",
+          "weight": "medium"
         }
       },
-
-      "billDivider": { "type": "Divider", "props": {} },
-
-      "footerRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "justify": "between", "align": "center" },
-        "children": ["footerLeft", "footerRight"]
+      "billDivider": {
+        "type": "Divider",
+        "props": {}
       },
-
-      "footerLeft": {
+      "pagerRow": {
         "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["footerCount", "footerSep", "footerAmount"]
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "pagerLabel",
+          "pagerButtons"
+        ],
+        "visible": {
+          "$state": "/ui/bp/hasPages"
+        }
       },
-      "footerCount": {
+      "pagerLabel": {
         "type": "Caption",
         "props": {
-          "text": { "$state": "/myob-accounting/list_myob_batch_payment_bills/summary/readyOfTotalText" },
-          "weight": "semibold"
+          "text": {
+            "$state": "/ui/bp/label"
+          },
+          "tone": "muted"
+        }
+      },
+      "pagerButtons": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "pagerPrev",
+          "pagerNext"
+        ]
+      },
+      "pagerPrev": {
+        "type": "Button",
+        "props": {
+          "label": "Previous",
+          "variant": "secondary",
+          "size": "sm",
+          "leadingIcon": "ChevronLeft"
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bp",
+              "value": {
+                "$computed": "myob-accounting_paginate",
+                "args": {
+                  "value": {
+                    "$state": "/myob-accounting/list_myob_batch_payment_bills/bills"
+                  },
+                  "page": {
+                    "$state": "/ui/bp/page"
+                  },
+                  "delta": -1,
+                  "size": 30
+                }
+              }
+            }
+          }
+        },
+        "visible": {
+          "$state": "/ui/bp/hasPrev"
+        }
+      },
+      "pagerNext": {
+        "type": "Button",
+        "props": {
+          "label": "Next page",
+          "variant": "secondary",
+          "size": "sm",
+          "leadingIcon": "ChevronRight"
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bp",
+              "value": {
+                "$computed": "myob-accounting_paginate",
+                "args": {
+                  "value": {
+                    "$state": "/myob-accounting/list_myob_batch_payment_bills/bills"
+                  },
+                  "page": {
+                    "$state": "/ui/bp/page"
+                  },
+                  "delta": 1,
+                  "size": 30
+                }
+              }
+            }
+          }
+        },
+        "visible": {
+          "$state": "/ui/bp/hasNext"
+        }
+      },
+      "footerDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "footerRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "end",
+          "justify": "between"
+        },
+        "children": [
+          "footerLeft",
+          "footerOpen"
+        ]
+      },
+      "footerLeft": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "footerLabel",
+          "footerTotals"
+        ]
+      },
+      "footerLabel": {
+        "type": "Caption",
+        "props": {
+          "text": "Ready to pay",
+          "tone": "muted"
+        }
+      },
+      "footerTotals": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "footerCount",
+          "footerSep",
+          "footerAmount"
+        ]
+      },
+      "footerCount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/myob-accounting/list_myob_batch_payment_bills/summary/readyOfTotalText"
+          },
+          "size": "sm",
+          "weight": "medium"
         }
       },
       "footerSep": {
-        "type": "Caption",
-        "props": { "text": "|", "tone": "muted" }
+        "type": "Text",
+        "props": {
+          "text": "·",
+          "size": "sm",
+          "tone": "muted"
+        }
       },
       "footerAmount": {
-        "type": "Caption",
+        "type": "Text",
         "props": {
           "text": {
             "$computed": "format_currency",
             "args": {
-              "value":    { "$state": "/myob-accounting/list_myob_batch_payment_bills/summary/readyAmount" },
+              "value": {
+                "$state": "/myob-accounting/list_myob_batch_payment_bills/summary/readyAmount"
+              },
               "currency": "AUD"
             }
           },
-          "weight": "semibold"
+          "size": "sm",
+          "weight": "medium"
         }
       },
-
-      "footerRight": {
-        "type": "Button",
+      "footerOpen": {
+        "type": "Row",
         "props": {
-          "label":   "Open in MYOB",
-          "variant": "secondary",
-          "size":    "sm"
+          "gap": "xs",
+          "align": "center",
+          "hover": true,
+          "clickable": true
         },
+        "children": [
+          "footerOpenText",
+          "footerOpenIcon"
+        ],
         "on": {
           "click": {
             "action": "open_url",
             "params": {
-              "url": { "$state": "/myob-accounting/list_myob_batch_payment_bills/billsUrl" },
+              "url": {
+                "$state": "/myob-accounting/list_myob_batch_payment_bills/billsUrl"
+              },
               "target": "_blank"
             }
           }
         }
+      },
+      "footerOpenText": {
+        "type": "Text",
+        "props": {
+          "text": "Open in MYOB",
+          "size": "sm",
+          "weight": "medium",
+          "tone": "info"
+        }
+      },
+      "footerOpenIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ArrowRight",
+          "size": "xs",
+          "tone": "info"
+        }
       }
-
     }
   },
   "status": "published"

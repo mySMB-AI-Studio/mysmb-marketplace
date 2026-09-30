@@ -1330,7 +1330,7 @@ const duplicate_check_status_tone: ComputedFunction = (args) =>
 // json-render's watch loop cancels after the first state write, so chained
 // setStates would silently drop all but the first.
 // Args: { value: array, page?: number, delta?: number, size?: number (default 30) }
-// Returns: { items, page, label, hasPrev, hasNext }
+// Returns: { items, page, label, hasPrev, hasNext, hasPages }
 const paginate: ComputedFunction = (args) => {
   const all = Array.isArray(args.value) ? args.value : [];
   const size = Math.max(1, Math.floor(Number(args.size) || 30));
@@ -1345,6 +1345,7 @@ const paginate: ComputedFunction = (args) => {
     label: all.length ? `${from + 1}–${to} of ${all.length}` : '',
     hasPrev: page > 0,
     hasNext: page < pageCount - 1,
+    hasPages: pageCount > 1,
   };
 };
 
