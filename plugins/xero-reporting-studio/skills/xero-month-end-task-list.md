@@ -19,7 +19,7 @@ Categorise every finding as **Required** (an objective check failed against live
 
 This report declares more than 5 Xero bindings, so the foundation's 429 retry is mandatory: wire `retryRateLimited` into the first bundle exactly as the foundation shows. A tie whose figures did not all arrive (a binding errored, even after retry) renders N/A, never Fail: `$2,304.50 vs —` is N/A.
 
-After the chat summary, always offer one follow-up in a single line: a monthly reminder to review this report before close. If the user says yes, give them the reminder prompt from the foundation's "automated or scheduled" paragraph, filled in for this report. Never offer to regenerate the report on a schedule.
+If you have the `automation_draft` tool, end the chat summary with one line offering to deliver this report to WorkQ on a schedule ("Want this in your WorkQ every month before close?"). On yes, follow the foundation's "automated or scheduled" paragraph: ask the frequency, then draft the automation yourself. If you don't have that tool, don't offer it. Never offer to regenerate the report on a schedule.
 
 In the chat reply after saving, state only the counts and findings the page itself computes from the bound data, using the same rules. Never restate a finding from an earlier discovery call that the page would show differently. If in doubt, give the totals and tell the user to open the report.
 
