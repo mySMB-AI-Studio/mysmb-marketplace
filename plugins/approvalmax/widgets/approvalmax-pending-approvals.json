@@ -1,0 +1,280 @@
+{
+  "id": "approvalmax-pending-approvals",
+  "title": "ApprovalMax — Pending Approvals",
+  "description": "Xero-sourced supplier bills and purchase orders currently moving through ApprovalMax's approval workflow, merged into one list and tagged Bill/Purchase Order. Bootstraps its company from list_companies' first result — multi-company ApprovalMax accounts only show that first company's items for now. NOT yet live-data-verified: no ApprovalMax sandbox account has completed OAuth against this connector, and the vendor's own API spec doesn't enumerate its approval-status values, so the pending-vs-decided filter is a best-effort heuristic — confirm against a real connected account before relying on this tile.",
+  "category": "accounting",
+  "tags": ["approvalmax", "approvals", "bills", "purchase-orders", "xero", "accounts-payable", "finance"],
+  "keywords": ["approvalmax", "pending approvals", "bills", "purchase orders", "accounts payable", "approval workflow", "xero"],
+  "connectorsUsed": ["approvalmax"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 8, "rowSpan": 6 },
+    "min": { "colSpan": 5, "rowSpan": 5 },
+    "max": { "colSpan": 12, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "mcp": "approvalmax",
+    "tool": "list_companies",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "breakdownSection", "breakdownDivider", "body", "footer"],
+        "watch": {
+          "/approvalmax/list_companies/0/companyId": [
+            {
+              "action": "approvalmax.list_bills",
+              "params": {
+                "company_id": { "$state": "/approvalmax/list_companies/0/companyId" },
+                "limit": 50
+              }
+            },
+            {
+              "action": "approvalmax.list_purchase_orders",
+              "params": {
+                "company_id": { "$state": "/approvalmax/list_companies/0/companyId" },
+                "limit": 50
+              }
+            }
+          ],
+          "/approvalmax/list_bills/payload": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "approvalmax_pending_rows",
+                  "args": {
+                    "bills": { "$state": "/approvalmax/list_bills/payload" },
+                    "purchaseOrders": { "$state": "/approvalmax/list_purchase_orders/payload" },
+                    "companyId": { "$state": "/approvalmax/list_companies/0/companyId" }
+                  }
+                }
+              }
+            }
+          ],
+          "/approvalmax/list_purchase_orders/payload": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "approvalmax_pending_rows",
+                  "args": {
+                    "bills": { "$state": "/approvalmax/list_bills/payload" },
+                    "purchaseOrders": { "$state": "/approvalmax/list_purchase_orders/payload" },
+                    "companyId": { "$state": "/approvalmax/list_companies/0/companyId" }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/rows": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/breakdown",
+                "value": {
+                  "$computed": "approvalmax_pending_breakdown",
+                  "args": { "rows": { "$state": "/ui/rows" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "ClipboardCheck", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow", "count"] },
+      "title": { "type": "Heading", "props": { "text": "Pending Approvals", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "ApprovalMax · bills & purchase orders" } },
+      "count": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} pending",
+              "n": { "$computed": "count", "args": { "value": { "$state": "/ui/rows" } } }
+            }
+          },
+          "tone": { "$state": "/ui/breakdown/worstTone" }
+        }
+      },
+
+      "breakdownSection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["breakdownBar", "breakdownLegend"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/approvalmax.list_companies", "not": true },
+            { "$state": "/ui/breakdown/segments/0" }
+          ]
+        }
+      },
+      "breakdownBar": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "xs", "template": { "$state": "/ui/breakdown/template" } },
+        "repeat": { "key": "status", "statePath": "/ui/breakdown/segments" },
+        "children": ["breakdownSegment"]
+      },
+      "breakdownSegment": {
+        "type": "ProgressBar",
+        "props": { "tone": { "$item": "tone" }, "value": 100 }
+      },
+      "breakdownLegend": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "md" },
+        "repeat": { "key": "status", "statePath": "/ui/breakdown/segments" },
+        "children": ["legendItem"]
+      },
+      "legendItem": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "xs" },
+        "children": ["legendDot", "legendLabel"]
+      },
+      "legendDot": { "type": "Dot", "props": { "size": "sm", "tone": { "$item": "tone" } } },
+      "legendLabel": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{status} ({count})", "status": { "$item": "status" }, "count": { "$item": "count" } }
+          },
+          "tone": "muted"
+        }
+      },
+      "breakdownDivider": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["loading", "noCompanyEmpty", "empty", "table", "truncatedCaption"] },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": {
+          "$or": [
+            { "$state": "/_loading/approvalmax.list_companies" },
+            { "$state": "/_loading/approvalmax.list_bills" },
+            { "$state": "/_loading/approvalmax.list_purchase_orders" }
+          ]
+        }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+
+      "noCompanyEmpty": {
+        "type": "Empty",
+        "props": { "message": "No ApprovalMax company found for this connection." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/approvalmax.list_companies", "not": true },
+            { "$state": "/approvalmax/list_companies/0", "not": true }
+          ]
+        }
+      },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "Nothing pending — inbox zero." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/approvalmax.list_companies", "not": true },
+            { "$state": "/_loading/approvalmax.list_bills", "not": true },
+            { "$state": "/_loading/approvalmax.list_purchase_orders", "not": true },
+            { "$state": "/approvalmax/list_companies/0" },
+            { "$state": "/ui/rows/0", "not": true }
+          ]
+        }
+      },
+
+      "table": {
+        "type": "Table",
+        "props": {
+          "loading": {
+            "$cond": {
+              "$or": [
+                { "$state": "/_loading/approvalmax.list_companies" },
+                { "$state": "/_loading/approvalmax.list_bills" },
+                { "$state": "/_loading/approvalmax.list_purchase_orders" }
+              ]
+            },
+            "$then": true,
+            "$else": false
+          },
+          "skeletonRows": 6,
+          "rows": {
+            "$computed": "top_n",
+            "args": { "value": { "$state": "/ui/rows" }, "limit": 20 }
+          },
+          "rowAction": [
+            { "action": "open_url", "params": { "target": "_blank" }, "fromRow": { "url": "externalUrl" } }
+          ],
+          "columns": [
+            { "id": "opensIn", "header": "Opens In", "field": "linkDestination", "width": 100, "priority": 3 },
+            { "id": "type", "header": "Type", "field": "docType", "width": 90, "priority": 2 },
+            { "id": "doc", "header": "Document", "field": "docNumber", "width": 110, "priority": 1 },
+            { "id": "supplier", "header": "Supplier", "field": "supplier", "priority": 1 },
+            { "id": "amount", "header": "Amount", "field": "amountDisplay", "width": 110, "priority": 1, "align": "right" },
+            { "id": "due", "header": "Due Date", "field": "dueDateLabel", "width": 100, "priority": 2 }
+          ]
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/approvalmax.list_companies", "not": true },
+            { "$state": "/_loading/approvalmax.list_bills", "not": true },
+            { "$state": "/_loading/approvalmax.list_purchase_orders", "not": true },
+            { "$state": "/ui/rows/0" }
+          ]
+        }
+      },
+
+      "truncatedCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Showing 20 of {total}",
+              "total": { "$computed": "count", "args": { "value": { "$state": "/ui/rows" } } }
+            }
+          },
+          "tone": "muted"
+        },
+        "visible": { "$state": "/ui/rows/20" }
+      },
+
+      "footer": { "type": "Row", "props": { "justify": "end" }, "children": ["openBtn"] },
+      "openBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Open ApprovalMax",
+          "leadingIcon": "ExternalLink",
+          "size": "sm",
+          "tone": "brand",
+          "variant": "primary"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": "https://app.approvalmax.com/login", "target": "_blank" }
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}
