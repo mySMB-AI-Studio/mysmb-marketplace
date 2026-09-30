@@ -1,224 +1,685 @@
 {
-  "id": "myob-bank-detail-check",
-  "title": "Bank-Detail Check",
-  "description": "Cross-references open MYOB purchase bills against bank account details stored on supplier contacts — surfaces missing or unverifiable bank details before batch payment runs.",
   "category": "finance",
-  "tags": ["myob", "bills", "bank", "payments", "fraud", "verification", "accounts-payable"],
-  "keywords": ["myob", "bank detail", "check", "verify", "verified", "can't verify", "missing", "bills", "accounts payable", "batch payment", "supplier", "contact", "fraud"],
-  "connectorsUsed": ["myob-accounting"],
+  "connectorsUsed": [
+    "myob-accounting"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "myob-accounting",
+    "params": {},
+    "tool": "list_myob_bank_detail_check"
+  },
+  "description": "Cross-references open MYOB purchase bills against bank account details stored on supplier contacts — surfaces missing or unverifiable bank details before batch payment runs.",
+  "id": "myob-bank-detail-check",
+  "keywords": [
+    "myob",
+    "bank detail",
+    "check",
+    "verify",
+    "verified",
+    "can't verify",
+    "missing",
+    "bills",
+    "accounts payable",
+    "batch payment",
+    "supplier",
+    "contact",
+    "fraud"
+  ],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 7 },
-    "min":       { "colSpan": 4, "rowSpan": 5 },
-    "max":       { "colSpan": 10, "rowSpan": 14 }
-  },
-  "dataProvider": {
-    "mcp": "myob-accounting",
-    "tool": "list_myob_bank_detail_check",
-    "params": {}
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 14
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 5
+    },
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 7
+    }
   },
   "spec": {
     "root": "card",
     "elements": {
-
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "body"]
-      },
-
-      "header": {
-        "type": "Header",
-        "props": {},
-        "children": ["titleGroup"]
-      },
-      "titleGroup": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
-      },
-      "titleIcon": {
-        "type": "Icon",
-        "props": { "name": "ShieldCheck", "tone": "accent", "size": "sm" }
-      },
-      "titleStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["title", "eyebrow"]
-      },
-      "title": {
-        "type": "Heading",
-        "props": { "text": "Bank-Detail Check", "level": "h2" }
-      },
-      "eyebrow": {
-        "type": "Eyebrow",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "MYOB · {n} bills · first 100",
-              "n": { "$state": "/myob-accounting/list_myob_bank_detail_check/summary/total" }
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/myob-accounting/list_myob_bank_detail_check/bills": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bdc",
+              "value": {
+                "$computed": "myob-accounting_paginate",
+                "args": {
+                  "value": {
+                    "$state": "/myob-accounting/list_myob_bank_detail_check/bills"
+                  },
+                  "page": 0,
+                  "delta": 0,
+                  "size": 30
+                }
+              }
             }
           }
         }
       },
-
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ShieldCheck",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Bank-Detail Check",
+          "level": "h2"
+        }
+      },
       "body": {
         "type": "Body",
         "props": {},
-        "children": ["loading", "empty", "content"]
+        "children": [
+          "loading",
+          "empty",
+          "content"
+        ]
       },
-
       "loading": {
         "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3", "sk4", "sk5"],
-        "visible": { "$state": "/_loading/myob-accounting.list_myob_bank_detail_check" }
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3",
+          "sk4",
+          "sk5"
+        ],
+        "visible": {
+          "$state": "/_loading/myob-accounting.list_myob_bank_detail_check"
+        }
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
-      "sk4": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
-      "sk5": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
-
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.5rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.75rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.75rem",
+          "rounded": "md"
+        }
+      },
+      "sk4": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.75rem",
+          "rounded": "md"
+        }
+      },
+      "sk5": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.75rem",
+          "rounded": "md"
+        }
+      },
       "empty": {
         "type": "Empty",
-        "props": { "message": "No open bills found." },
+        "props": {
+          "message": "No open bills found."
+        },
         "visible": {
           "$and": [
-            { "$state": "/_loading/myob-accounting.list_myob_bank_detail_check", "not": true },
-            { "$state": "/myob-accounting/list_myob_bank_detail_check/bills/0", "not": true }
+            {
+              "$state": "/_loading/myob-accounting.list_myob_bank_detail_check",
+              "not": true
+            },
+            {
+              "$state": "/myob-accounting/list_myob_bank_detail_check/bills/0",
+              "not": true
+            }
           ]
         }
       },
-
       "content": {
         "type": "Stack",
-        "props": { "gap": "md" },
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "statsGrid",
+          "divider",
+          "billList",
+          "pagerRow",
+          "footerDivider",
+          "footerRow"
+        ],
         "visible": {
           "$and": [
-            { "$state": "/_loading/myob-accounting.list_myob_bank_detail_check", "not": true },
-            { "$state": "/myob-accounting/list_myob_bank_detail_check/bills/0" }
+            {
+              "$state": "/_loading/myob-accounting.list_myob_bank_detail_check",
+              "not": true
+            },
+            {
+              "$state": "/myob-accounting/list_myob_bank_detail_check/bills/0"
+            }
           ]
-        },
-        "children": ["statsGrid", "divider", "billList", "footerRow"]
+        }
       },
-
       "statsGrid": {
         "type": "Grid",
-        "props": { "cols": 2, "gap": "sm" },
-        "children": ["statCantVerify", "statVerified"]
+        "props": {
+          "cols": 3,
+          "gap": "sm"
+        },
+        "children": [
+          "statMismatchCard",
+          "statCantVerifyCard",
+          "statVerifiedCard"
+        ]
       },
-
+      "statMismatchCard": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "statMismatch"
+        ]
+      },
+      "statMismatch": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "valMismatch",
+          "lblMismatch"
+        ]
+      },
+      "valMismatch": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/myob-accounting/list_myob_bank_detail_check/summary/mismatch"
+          }
+        }
+      },
+      "lblMismatch": {
+        "type": "Caption",
+        "props": {
+          "text": "MISMATCH",
+          "tone": "destructive"
+        }
+      },
+      "statCantVerifyCard": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "statCantVerify"
+        ]
+      },
       "statCantVerify": {
         "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["valCantVerify", "lblCantVerify"]
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "valCantVerify",
+          "lblCantVerify"
+        ]
       },
       "valCantVerify": {
         "type": "Stat",
         "props": {
-          "value": { "$state": "/myob-accounting/list_myob_bank_detail_check/summary/cantVerify" },
-          "tone": "warning"
+          "value": {
+            "$state": "/myob-accounting/list_myob_bank_detail_check/summary/cantVerify"
+          }
         }
       },
       "lblCantVerify": {
         "type": "Caption",
-        "props": { "text": "CAN'T VERIFY", "tone": "muted" }
+        "props": {
+          "text": "CAN'T VERIFY",
+          "tone": "warning"
+        }
       },
-
+      "statVerifiedCard": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "statVerified"
+        ]
+      },
       "statVerified": {
         "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["valVerified", "lblVerified"]
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "valVerified",
+          "lblVerified"
+        ]
       },
       "valVerified": {
         "type": "Stat",
         "props": {
-          "value": { "$state": "/myob-accounting/list_myob_bank_detail_check/summary/verified" },
-          "tone": "success"
+          "value": {
+            "$state": "/myob-accounting/list_myob_bank_detail_check/summary/verified"
+          }
         }
       },
       "lblVerified": {
         "type": "Caption",
-        "props": { "text": "VERIFIED", "tone": "muted" }
+        "props": {
+          "text": "VERIFIED",
+          "tone": "success"
+        }
       },
-
-      "divider": { "type": "Divider", "props": {} },
-
+      "divider": {
+        "type": "Divider",
+        "props": {}
+      },
       "billList": {
         "type": "Stack",
-        "props": { "gap": "none" },
-        "repeat": {
-          "statePath": "/myob-accounting/list_myob_bank_detail_check/bills",
-          "key": "id"
+        "props": {
+          "gap": "sm"
         },
-        "children": ["billRow"]
+        "children": [
+          "billRow"
+        ],
+        "repeat": {
+          "statePath": "/ui/bdc/items",
+          "key": "id"
+        }
       },
-
       "billRow": {
         "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["billRowContent", "billDivider"]
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "billRowContent",
+          "billDivider"
+        ]
       },
-
       "billRowContent": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "start", "template": "auto minmax(0,1fr) auto" },
-        "children": ["billDot", "billInfo", "billAmount"]
+        "props": {
+          "gap": "sm",
+          "align": "start",
+          "template": "auto minmax(0,1fr) auto"
+        },
+        "children": [
+          "billDotGroup",
+          "billInfo",
+          "billRightCol"
+        ]
       },
-
-      "billDot": {
-        "type": "Dot",
-        "props": { "size": "sm", "tone": { "$item": "tone" } }
+      "billDotGroup": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "billDotMismatch",
+          "billDotMissing",
+          "billDotVerified"
+        ]
       },
-
       "billInfo": {
         "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["billName", "billMeta"]
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "billName",
+          "billMeta",
+          "billBadgeRow"
+        ]
       },
-
       "billName": {
         "type": "Text",
         "props": {
-          "text": { "$item": "contactName" },
-          "size": "sm",
+          "text": {
+            "$item": "contactName"
+          },
+          "size": "md",
           "weight": "semibold",
           "truncate": true
         }
       },
-
       "billMeta": {
         "type": "Caption",
         "props": {
-          "text": { "$item": "metaLine" },
+          "text": {
+            "$item": "metaLine"
+          },
           "tone": "muted",
           "truncate": true
         }
       },
-
+      "billBadgeRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "billBadgeMismatch",
+          "billBadgeMissing",
+          "billBadgeVerified"
+        ]
+      },
+      "billDotMismatch": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "destructive"
+        },
+        "visible": {
+          "$item": "status",
+          "eq": "mismatch"
+        }
+      },
+      "billBadgeMismatch": {
+        "type": "Badge",
+        "props": {
+          "text": "Mismatch",
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "status",
+          "eq": "mismatch"
+        }
+      },
+      "billDotMissing": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "warning"
+        },
+        "visible": {
+          "$item": "status",
+          "eq": "cant_verify"
+        }
+      },
+      "billBadgeMissing": {
+        "type": "Badge",
+        "props": {
+          "text": "Missing on contact",
+          "tone": "warning",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "status",
+          "eq": "cant_verify"
+        }
+      },
+      "billDotVerified": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "success"
+        },
+        "visible": {
+          "$item": "status",
+          "eq": "verified"
+        }
+      },
+      "billBadgeVerified": {
+        "type": "Badge",
+        "props": {
+          "text": "Verified",
+          "tone": "success",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "status",
+          "eq": "verified"
+        }
+      },
+      "billRightCol": {
+        "type": "Stack",
+        "props": {
+          "align": "end",
+          "gap": "sm"
+        },
+        "children": [
+          "billAmount",
+          "billReviewBtn"
+        ]
+      },
       "billAmount": {
         "type": "Text",
         "props": {
           "text": {
             "$computed": "format_currency",
             "args": {
-              "value":    { "$item": "amountDue" },
-              "currency": { "$item": "currencyCode" }
+              "value": {
+                "$item": "amountDue"
+              },
+              "currency": {
+                "$item": "currencyCode"
+              }
             }
           },
-          "size": "sm",
+          "size": "md",
           "weight": "semibold"
         }
       },
-
-      "billDivider": { "type": "Divider", "props": {} },
-
+      "billReviewBtn": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "billReviewText",
+          "billReviewIcon"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "reviewUrl"
+                  }
+                }
+              },
+              "target": "_blank"
+            }
+          }
+        },
+        "visible": {
+          "$item": "needsReview"
+        }
+      },
+      "billReviewText": {
+        "type": "Text",
+        "props": {
+          "text": "Review",
+          "size": "sm",
+          "weight": "medium",
+          "tone": "info"
+        }
+      },
+      "billReviewIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ArrowRight",
+          "size": "xs",
+          "tone": "info"
+        }
+      },
+      "billDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "pagerRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "pagerLabel",
+          "pagerButtons"
+        ]
+      },
+      "pagerLabel": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/bdc/label"
+          },
+          "tone": "muted"
+        }
+      },
+      "pagerButtons": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "pagerPrev",
+          "pagerNext"
+        ]
+      },
+      "pagerPrev": {
+        "type": "Button",
+        "props": {
+          "label": "Previous",
+          "variant": "secondary",
+          "size": "sm",
+          "leadingIcon": "ChevronLeft"
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bdc",
+              "value": {
+                "$computed": "myob-accounting_paginate",
+                "args": {
+                  "value": {
+                    "$state": "/myob-accounting/list_myob_bank_detail_check/bills"
+                  },
+                  "page": {
+                    "$state": "/ui/bdc/page"
+                  },
+                  "delta": -1,
+                  "size": 30
+                }
+              }
+            }
+          }
+        },
+        "visible": {
+          "$state": "/ui/bdc/hasPrev"
+        }
+      },
+      "pagerNext": {
+        "type": "Button",
+        "props": {
+          "label": "Next page",
+          "variant": "secondary",
+          "size": "sm",
+          "leadingIcon": "ChevronRight"
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bdc",
+              "value": {
+                "$computed": "myob-accounting_paginate",
+                "args": {
+                  "value": {
+                    "$state": "/myob-accounting/list_myob_bank_detail_check/bills"
+                  },
+                  "page": {
+                    "$state": "/ui/bdc/page"
+                  },
+                  "delta": 1,
+                  "size": 30
+                }
+              }
+            }
+          }
+        },
+        "visible": {
+          "$state": "/ui/bdc/hasNext"
+        }
+      },
+      "footerDivider": {
+        "type": "Divider",
+        "props": {}
+      },
       "footerRow": {
         "type": "Row",
-        "props": { "gap": "sm", "justify": "between", "align": "center" },
-        "children": ["footerLeft", "footerRight"]
+        "props": {
+          "gap": "sm",
+          "justify": "between",
+          "align": "center"
+        },
+        "children": [
+          "footerLeft",
+          "footerRight"
+        ]
       },
       "footerLeft": {
         "type": "Caption",
@@ -227,7 +688,9 @@
             "$computed": "fmt",
             "args": {
               "pattern": "{n} open bills scanned",
-              "n": { "$state": "/myob-accounting/list_myob_bank_detail_check/summary/total" }
+              "n": {
+                "$state": "/myob-accounting/list_myob_bank_detail_check/summary/total"
+              }
             }
           },
           "tone": "muted"
@@ -240,14 +703,25 @@
             "$computed": "fmt",
             "args": {
               "pattern": "Updated {t}",
-              "t": { "$state": "/myob-accounting/list_myob_bank_detail_check/updatedTime" }
+              "t": {
+                "$state": "/myob-accounting/list_myob_bank_detail_check/updatedTime"
+              }
             }
           },
           "tone": "muted"
         }
       }
-
     }
   },
-  "status": "published"
+  "status": "published",
+  "tags": [
+    "myob",
+    "bills",
+    "bank",
+    "payments",
+    "fraud",
+    "verification",
+    "accounts-payable"
+  ],
+  "title": "Bank-Detail Check"
 }
