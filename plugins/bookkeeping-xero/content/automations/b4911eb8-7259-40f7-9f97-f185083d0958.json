@@ -1,0 +1,189 @@
+{
+  "attachments": [],
+  "contentHash": "e81a3b66d10c9ba033c713d44fddbb47ad41e599276131817f8ec7ffe0e0e202",
+  "declaredScopes": [
+    "ai:generate",
+    "connectors:m365-mail-read",
+    "files:read",
+    "files:write",
+    "workq:write"
+  ],
+  "dependencies": [],
+  "description": "Every 15 minutes, checks the owner’s Outlook inbox for emails with a PDF attached, has AI pick out the supplier bills, works out which client each bill is addressed to, and files it in that client’s Bookkeeping Inbox folder, where Process bill takes over. Other emails are left untouched. Needs the Microsoft 365 extension, with Outlook connected by the automation’s owner.",
+  "flowIr": {
+    "description": "Every 15 minutes, checks the owner’s Outlook inbox for emails with a PDF attached, has AI pick out the supplier bills, works out which client each bill is addressed to, and files it in that client’s Bookkeeping Inbox folder, where Process bill takes over. Other emails are left untouched. Needs the Microsoft 365 extension, with Outlook connected by the automation’s owner.",
+    "irVersion": 1,
+    "name": "Bookkeeping: Email intake (Outlook)",
+    "nodes": [
+      {
+        "code": "# ── bookkeeping kit: shared helpers (inlined into each node by gen-ext.js) ──\nimport json\nimport re\nimport datetime\nfrom zoneinfo import ZoneInfo\n\n# Knowledge layout. Folders may nest at most 2 levels, so inbox folders are top-level.\nBK_SETTINGS = \"Bookkeeping/settings.json\"\nBK_CLIENTS = \"Bookkeeping/Clients\"\nBK_RULES = \"Bookkeeping/Rules\"\nBK_BILLS = \"Bookkeeping/Bills\"\nBK_INBOX = \"Bookkeeping Inbox\"\nBK_PROCESSED = \"Bookkeeping Processed\"\nBK_FAILED = \"Bookkeeping Failed\"\nBK_MAIL = \"Bookkeeping/Mail\"\n\n\ndef bk_read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\n\n# ── bookkeeping kit: mailbox adapter (inlined into email-intake nodes by gen-ext.js) ──\n# Reads the automation owner's own mailbox: Outlook through m365-mail-read, Gmail through google-workspace-gmail.\n# Read-only: nothing in the mailbox is changed, so emails that aren't bills stay exactly as they were.\nimport base64\n\nMAIL_SERVER = {\"outlook\": \"m365-mail-read\", \"gmail\": \"google-workspace-gmail\"}\nMAIL_FIRST_RUN_HOURS = 24\nMAIL_PER_RUN = 10\n\n\ndef mail_call(provider, tool, **args):\n    return api.connectors.invoke(server=MAIL_SERVER[provider], tool=tool, args=args)\n\n\ndef mail_addr(value):\n    \"\"\"Outlook sends {\"emailAddress\": {\"name\", \"address\"}}; Gmail sends \"Name <address>\".\"\"\"\n    if isinstance(value, dict):\n        e = value.get(\"emailAddress\") or value\n        name = str(e.get(\"name\") or \"\").strip()\n        addr = str(e.get(\"address\") or \"\").strip()\n        return (name + \" <\" + addr + \">\").strip() if addr else name\n    return str(value or \"\").strip()\n\n\ndef mail_when(value):\n    \"\"\"An ISO timestamp or epoch (s or ms) as an aware datetime; None when it can't be read.\"\"\"\n    s = str(value or \"\").strip()\n    if not s:\n        return None\n    if s.isdigit():\n        try:\n            return datetime.datetime.fromtimestamp(int(s) / (1000 if len(s) > 11 else 1), datetime.timezone.utc)\n        except (OverflowError, OSError, ValueError):\n            return None\n    try:\n        d = datetime.datetime.fromisoformat(s.replace(\"Z\", \"+00:00\"))\n    except ValueError:\n        return None\n    return d if d.tzinfo else d.replace(tzinfo=datetime.timezone.utc)\n\n\ndef mail_recent(provider, limit=50):\n    \"\"\"Newest inbox emails that may carry a PDF, as [{id, subject, from, received, preview}].\"\"\"\n    out = []\n    if provider == \"outlook\":\n        rows = mail_call(provider, \"list_emails\", folder=\"inbox\", limit=limit)\n        if isinstance(rows, dict):\n            rows = rows.get(\"value\") or rows.get(\"emails\") or rows.get(\"messages\") or []\n        for m in rows or []:\n            if isinstance(m, dict) and m.get(\"id\") and m.get(\"hasAttachments\"):\n                out.append({\"id\": str(m[\"id\"]), \"subject\": str(m.get(\"subject\") or \"\"), \"from\": mail_addr(m.get(\"from\")),\n                            \"received\": str(m.get(\"receivedDateTime\") or \"\"),\n                            \"preview\": str(m.get(\"bodyPreview\") or \"\")[:1500]})\n    else:\n        res = mail_call(provider, \"list_messages\", labelIds=[\"INBOX\"], maxResults=limit,\n                        q=\"has:attachment filename:pdf newer_than:3d\")\n        rows = res.get(\"messages\") if isinstance(res, dict) else res\n        for m in rows or []:\n            if isinstance(m, dict) and m.get(\"id\"):\n                out.append({\"id\": str(m[\"id\"]), \"subject\": str(m.get(\"subject\") or \"\"), \"from\": mail_addr(m.get(\"from\")),\n                            \"received\": str(m.get(\"internalDate\") or m.get(\"date\") or m.get(\"timestamp\") or \"\"),\n                            \"preview\": str(m.get(\"snippet\") or \"\")[:1500]})\n    return out\n\n\n# ── Find new emails ──\n\n\nprovider = params[\"provider\"]\nproblem = \"\"\ncandidates = []\nsettings = bk_read_json(BK_SETTINGS) or {}\nledger = bk_read_json(BK_MAIL + \"/\" + provider + \".json\") or {}\nnow = datetime.datetime.now(datetime.timezone.utc)\n# The first run looks back a day; after that only emails the ledger hasn't seen are picked up.\nsince_at = mail_when(ledger.get(\"since\")) or (now - datetime.timedelta(hours=MAIL_FIRST_RUN_HOURS))\nsince = since_at.replace(microsecond=0).isoformat()\n\nif not settings:\n    problem = \"Bookkeeping isn't set up yet.\"\nelse:\n    seen = ledger.get(\"seen\") or {}\n    for m in mail_recent(provider):\n        if m[\"id\"] in seen:\n            continue\n        when = mail_when(m[\"received\"])\n        if when and when < since_at:\n            continue\n        candidates.append(m)\n    # Oldest first, and a bounded batch per run; the rest are picked up by the next run.\n    candidates = sorted(candidates, key=lambda m: m[\"received\"])[:MAIL_PER_RUN]\n",
+        "id": "find_emails",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "New emails with attachments",
+            "name": "candidates",
+            "type": "list[dict]"
+          },
+          {
+            "description": "When email intake started",
+            "name": "since",
+            "type": "str"
+          },
+          {
+            "description": "Why nothing was checked, or empty",
+            "name": "problem",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "control": "hidden",
+            "label": "Mailbox",
+            "name": "provider",
+            "required": true,
+            "type": "str",
+            "value": "outlook"
+          }
+        ],
+        "summary": "Lists the newest Outlook inbox emails with attachments that haven’t been looked at yet.",
+        "title": "Find new emails"
+      },
+      {
+        "code": "# ── bookkeeping kit: shared helpers (inlined into each node by gen-ext.js) ──\nimport json\nimport re\nimport datetime\nfrom zoneinfo import ZoneInfo\n\n# Knowledge layout. Folders may nest at most 2 levels, so inbox folders are top-level.\nBK_SETTINGS = \"Bookkeeping/settings.json\"\nBK_CLIENTS = \"Bookkeeping/Clients\"\nBK_RULES = \"Bookkeeping/Rules\"\nBK_BILLS = \"Bookkeeping/Bills\"\nBK_INBOX = \"Bookkeeping Inbox\"\nBK_PROCESSED = \"Bookkeeping Processed\"\nBK_FAILED = \"Bookkeeping Failed\"\nBK_MAIL = \"Bookkeeping/Mail\"\n\n\n# ── bookkeeping kit: mailbox adapter (inlined into email-intake nodes by gen-ext.js) ──\n# Reads the automation owner's own mailbox: Outlook through m365-mail-read, Gmail through google-workspace-gmail.\n# Read-only: nothing in the mailbox is changed, so emails that aren't bills stay exactly as they were.\nimport base64\n\nMAIL_SERVER = {\"outlook\": \"m365-mail-read\", \"gmail\": \"google-workspace-gmail\"}\nMAIL_FIRST_RUN_HOURS = 24\nMAIL_PER_RUN = 10\n\n\ndef mail_call(provider, tool, **args):\n    return api.connectors.invoke(server=MAIL_SERVER[provider], tool=tool, args=args)\n\n\ndef mail_is_pdf(att):\n    name = str(att.get(\"name\") or att.get(\"filename\") or \"\").lower()\n    ctype = str(att.get(\"contentType\") or att.get(\"mimeType\") or \"\").lower()\n    return ((name.endswith(\".pdf\") or ctype == \"application/pdf\") and not att.get(\"isInline\")\n            and str(att.get(\"kind\") or \"file\") == \"file\")\n\n\ndef mail_pdfs(provider, msg_id):\n    \"\"\"The email's PDF file attachments, as [{id, name, size}].\"\"\"\n    if provider == \"outlook\":\n        rows = mail_call(provider, \"list_email_attachments\", id=msg_id)\n        if isinstance(rows, dict):\n            rows = rows.get(\"attachments\") or rows.get(\"value\") or []\n        return [{\"id\": str(a[\"id\"]), \"name\": str(a.get(\"name\") or \"bill.pdf\"), \"size\": a.get(\"size\") or 0}\n                for a in rows or [] if isinstance(a, dict) and a.get(\"id\") and mail_is_pdf(a)]\n    msg = mail_call(provider, \"get_message\", id=msg_id)\n    rows = msg.get(\"attachments\") if isinstance(msg, dict) else []\n    return [{\"id\": str(a[\"attachmentId\"]), \"name\": str(a.get(\"filename\") or \"bill.pdf\"), \"size\": a.get(\"size\") or 0}\n            for a in rows or [] if isinstance(a, dict) and a.get(\"attachmentId\") and mail_is_pdf(a)]\n\n\n# ── Pick out the bills ──\n\n\nTRIAGE_PROMPT = (\n    \"You triage an Australian bookkeeper's inbox. For each email, decide whether its PDF attachment is a supplier \"\n    \"invoice or bill that the business has to pay (a tax invoice, invoice or bill from a supplier). These are NOT \"\n    \"bills: statements of account, remittance advices, receipts for something already paid, quotes, purchase orders, \"\n    \"credit notes, payment reminders whose PDF isn't the invoice itself, invoices the business sent to its own \"\n    \"customers, newsletters and marketing, and any other work. Judge from the subject, sender, preview text and \"\n    \"attachment names. Give a short reason for each.\"\n)\nTRIAGE_HINT = '[{\"index\": 0, \"is_bill\": true, \"kind\": \"supplier invoice\", \"reason\": \"\"}]'\n\nprovider = params[\"provider\"]\nproblem = params.get(\"problem\") or \"\"\nbills = []\nskipped = []\nif not problem:\n    looked = []\n    for m in params.get(\"candidates\") or []:\n        try:\n            pdfs = mail_pdfs(provider, m[\"id\"])\n        except Exception as exc:\n            skipped.append({\"id\": m[\"id\"], \"outcome\": \"error\", \"reason\": \"Couldn't read the attachments: \" + str(exc)[:200]})\n            continue\n        if not pdfs:\n            skipped.append({\"id\": m[\"id\"], \"outcome\": \"no_pdf\", \"reason\": \"No PDF attached\"})\n            continue\n        looked.append(dict(m, pdfs=pdfs))\n    if looked:\n        verdicts = api.ai.extract(\n            prompt=TRIAGE_PROMPT,\n            input=json.dumps([{\"index\": i, \"subject\": m[\"subject\"], \"from\": m[\"from\"], \"preview\": m[\"preview\"][:800],\n                               \"attachments\": [p[\"name\"] for p in m[\"pdfs\"]]} for i, m in enumerate(looked)])[:20000],\n            schema_hint=TRIAGE_HINT,\n        )\n        by_index = {}\n        for v in verdicts if isinstance(verdicts, list) else []:\n            if isinstance(v, dict) and isinstance(v.get(\"index\"), (int, float)):\n                by_index[int(v[\"index\"])] = v\n        for i, m in enumerate(looked):\n            v = by_index.get(i)\n            if v is None:\n                # No verdict (the AI call failed or skipped it): try again on the next run.\n                skipped.append({\"id\": m[\"id\"], \"outcome\": \"error\", \"reason\": \"The AI didn't triage this email\"})\n            elif v.get(\"is_bill\"):\n                bills.append(dict(m, kind=str(v.get(\"kind\") or \"invoice\"), reason=str(v.get(\"reason\") or \"\")))\n            else:\n                skipped.append({\"id\": m[\"id\"], \"outcome\": \"not_a_bill\",\n                                \"reason\": (str(v.get(\"kind\") or \"not a bill\") + \": \" + str(v.get(\"reason\") or \"\"))[:200]})\n",
+        "id": "triage_emails",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "Emails carrying a supplier bill",
+            "name": "bills",
+            "type": "list[dict]"
+          },
+          {
+            "description": "Emails that are not bills, and why",
+            "name": "skipped",
+            "type": "list[dict]"
+          }
+        ],
+        "params": [
+          {
+            "control": "hidden",
+            "label": "Mailbox",
+            "name": "provider",
+            "required": true,
+            "type": "str",
+            "value": "outlook"
+          },
+          {
+            "binding": "{{ steps.find_emails.outputs.candidates }}",
+            "control": "hidden",
+            "label": "New emails",
+            "name": "candidates",
+            "required": false,
+            "type": "list[dict]"
+          },
+          {
+            "binding": "{{ steps.find_emails.outputs.problem }}",
+            "control": "hidden",
+            "label": "Problem so far",
+            "name": "problem",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Keeps emails with a PDF attached and has AI decide which are supplier bills; everything else is left alone.",
+        "title": "Pick out the bills"
+      },
+      {
+        "code": "# ── bookkeeping kit: shared helpers (inlined into each node by gen-ext.js) ──\nimport json\nimport re\nimport datetime\nfrom zoneinfo import ZoneInfo\n\n# Knowledge layout. Folders may nest at most 2 levels, so inbox folders are top-level.\nBK_SETTINGS = \"Bookkeeping/settings.json\"\nBK_CLIENTS = \"Bookkeeping/Clients\"\nBK_RULES = \"Bookkeeping/Rules\"\nBK_BILLS = \"Bookkeeping/Bills\"\nBK_INBOX = \"Bookkeeping Inbox\"\nBK_PROCESSED = \"Bookkeeping Processed\"\nBK_FAILED = \"Bookkeeping Failed\"\nBK_MAIL = \"Bookkeeping/Mail\"\n\n\ndef bk_read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\n\ndef bk_write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True))\n\n\ndef bk_tz(settings):\n    # The sandbox may lack the tz database; fall back to AEST (UTC+10) rather than failing the run.\n    try:\n        return ZoneInfo((settings or {}).get(\"timezone\") or \"Australia/Sydney\")\n    except Exception:\n        return datetime.timezone(datetime.timedelta(hours=10))\n\n\ndef bk_today(settings):\n    return datetime.datetime.now(bk_tz(settings)).date()\n\n\ndef bk_now_iso(settings):\n    return datetime.datetime.now(bk_tz(settings)).replace(microsecond=0).isoformat()\n\n\ndef bk_add_business_days(day, n):\n    d = day\n    while n > 0:\n        d = d + datetime.timedelta(days=1)\n        if d.weekday() < 5:\n            n -= 1\n    return d\n\n\ndef bk_reviewer(settings, client):\n    return (client or {}).get(\"reviewer_id\") or (settings or {}).get(\"reviewer_id\")\n\n\ndef bk_exceptions_owner(settings, client):\n    return (settings or {}).get(\"exceptions_owner_id\") or bk_reviewer(settings, client)\n\n\n# ── bookkeeping kit: mailbox adapter (inlined into email-intake nodes by gen-ext.js) ──\n# Reads the automation owner's own mailbox: Outlook through m365-mail-read, Gmail through google-workspace-gmail.\n# Read-only: nothing in the mailbox is changed, so emails that aren't bills stay exactly as they were.\nimport base64\n\nMAIL_SERVER = {\"outlook\": \"m365-mail-read\", \"gmail\": \"google-workspace-gmail\"}\nMAIL_FIRST_RUN_HOURS = 24\nMAIL_PER_RUN = 10\n\n\ndef mail_call(provider, tool, **args):\n    return api.connectors.invoke(server=MAIL_SERVER[provider], tool=tool, args=args)\n\n\ndef mail_download(provider, msg_id, att, dest):\n    \"\"\"Save one attachment's bytes to the scratch path `dest`; returns the size.\"\"\"\n    tool = \"get_email_attachment\" if provider == \"outlook\" else \"get_attachment\"\n    res = mail_call(provider, tool, messageId=msg_id, attachmentId=att[\"id\"])\n    data = base64.b64decode(str((res or {}).get(\"contentBase64\") or \"\")) if isinstance(res, dict) else b\"\"\n    if not data:\n        raise RuntimeError(\"the attachment came back empty\")\n    with open(dest, \"wb\") as fh:\n        fh.write(data)\n    return len(data)\n\n\n# ── File each bill under its client ──\n\n\nimport hashlib\n\nfrom pypdf import PdfReader\n\nMATCH_PROMPT = (\n    \"A bookkeeping practice keeps the books for the client businesses listed in 'clients'. Which one is this \"\n    \"supplier invoice addressed to (the 'Bill to', 'Invoice to', customer or account name on the invoice)? Compare \"\n    \"names, trading names and ABNs, ignoring Pty Ltd and punctuation. Answer with that client's slug, or an empty \"\n    \"slug when none of them matches or you aren't sure. Never pick the supplier who issued the invoice.\"\n)\nMATCH_HINT = '{\"client_slug\": \"acme-plumbing\", \"bill_to\": \"Acme Plumbing Pty Ltd\", \"confidence\": \"high\", \"reason\": \"\"}'\n\nprovider = params[\"provider\"]\nproblem = params.get(\"problem\") or \"\"\nsettings = bk_read_json(BK_SETTINGS) or {}\nledger_path = BK_MAIL + \"/\" + provider + \".json\"\nledger = bk_read_json(ledger_path) or {}\nseen = ledger.get(\"seen\") or {}\nerrors = ledger.get(\"errors\") or {}\ntoday = bk_today(settings)\nnow = bk_now_iso(settings)\nmailbox = \"Outlook\" if provider == \"outlook\" else \"Gmail\"\nfiled = 0\nunmatched = 0\nlines = []\n\nclients = []\nfor f in (api.files.list(path=BK_CLIENTS) if not problem else []):\n    if f.get(\"kind\") == \"file\" and str(f.get(\"path\", \"\")).endswith(\".json\"):\n        c = bk_read_json(f[\"path\"]) or {}\n        if c.get(\"slug\") and c.get(\"xero_tenant_id\"):\n            clients.append(c)\nslugs = {c[\"slug\"] for c in clients}\n\n\ndef _pdf_text(path):\n    try:\n        return \"\\n\".join((page.extract_text() or \"\") for page in PdfReader(path).pages[:3])\n    except Exception:\n        return \"\"\n\n\ndef _client_for(email, text):\n    \"\"\"(slug, how it was decided). Slug is \"\" when the bill can't be placed with confidence.\"\"\"\n    if len(clients) == 1:\n        return clients[0][\"slug\"], \"the only client\"\n    if len(text.strip()) < 40:\n        return \"\", \"the PDF has no readable text (probably a scan)\"\n    guess = api.ai.extract(\n        prompt=MATCH_PROMPT,\n        input=json.dumps({\"clients\": [{\"slug\": c[\"slug\"], \"name\": c.get(\"name\"), \"xero_org_name\": c.get(\"xero_org_name\")}\n                                      for c in clients],\n                          \"email\": {\"subject\": email[\"subject\"], \"from\": email[\"from\"]}, \"invoice_text\": text[:6000]}),\n        schema_hint=MATCH_HINT,\n    )\n    guess = guess if isinstance(guess, dict) else {}\n    slug = str(guess.get(\"client_slug\") or \"\")\n    if slug in slugs and str(guess.get(\"confidence\") or \"\").lower() != \"low\":\n        return slug, \"addressed to \" + str(guess.get(\"bill_to\") or \"that client\")\n    return \"\", (\"the AI couldn't tell which client it's for\" + (\" (it's addressed to \" + str(guess[\"bill_to\"]) + \")\"\n                                                                 if guess.get(\"bill_to\") else \"\"))\n\n\ndef _file_name(email, att):\n    tag = hashlib.sha1((email[\"id\"] + \"/\" + att[\"id\"]).encode(\"utf-8\")).hexdigest()[:6]\n    base = re.sub(r\"[^A-Za-z0-9._ -]+\", \"\", att[\"name\"]).strip() or \"bill.pdf\"\n    if not base.lower().endswith(\".pdf\"):\n        base += \".pdf\"\n    # Unique per email attachment, so each one is a new Knowledge file (a new file is what starts Process bill).\n    return str(today) + \" \" + tag + \" \" + base[-80:]\n\n\nfor s in params.get(\"skipped\") or []:\n    if s.get(\"outcome\") == \"error\":\n        errors[s[\"id\"]] = int(errors.get(s[\"id\"]) or 0) + 1\n        if errors[s[\"id\"]] < 3:\n            continue\n    seen[s[\"id\"]] = {\"at\": now, \"outcome\": s.get(\"outcome\"), \"note\": s.get(\"reason\") or \"\"}\n\nfor email in params.get(\"bills\") or []:\n    try:\n        placed = []\n        for att in email.get(\"pdfs\") or []:\n            name = _file_name(email, att)\n            local = api.files.scratch_path(name)\n            mail_download(provider, email[\"id\"], att, local)\n            slug, why = _client_for(email, _pdf_text(local))\n            if slug:\n                dest = BK_INBOX + \"/\" + slug + \"/\" + name\n                api.files.put(file=dest, scratch_file=local)\n                filed += 1\n                placed.append(slug)\n                lines.append(\"- \" + att[\"name\"] + \" from \" + email[\"from\"] + \": filed for **\" + slug + \"** (\" + why + \")\")\n                continue\n            dest = BK_FAILED + \"/unmatched/\" + name\n            api.files.put(file=dest, scratch_file=local)\n            unmatched += 1\n            owner = bk_exceptions_owner(settings, {})\n            api.workq.create(\n                title=(\"Which client is this bill for? \" + att[\"name\"])[:200],\n                scope=\"org\",\n                description=(\"A bill arrived by email, but \" + why + \", so it wasn't filed under a client.\\n\\n\"\n                             \"- From: \" + email[\"from\"] + \"\\n- Subject: \" + email[\"subject\"] + \"\\n- Received: \"\n                             + email[\"received\"] + \" (\" + mailbox + \")\\n- File: `\" + dest + \"` in Knowledge\\n\\n\"\n                             \"Download it and upload it into `\" + BK_INBOX + \"/<client>/` in Knowledge, and it's \"\n                             \"processed from there. Then complete this item.\"),\n                priority=\"high\",\n                due_date=str(bk_add_business_days(today, 1)),\n                assignee_ids=[owner] if owner else None,\n                labels=[\"bookkeeping\", \"bill-exception\", \"email-intake\"],\n            )\n            lines.append(\"- \" + att[\"name\"] + \" from \" + email[\"from\"] + \": **needs a client** (\" + why + \")\")\n        seen[email[\"id\"]] = {\"at\": now, \"outcome\": \"filed\" if placed else \"unmatched\", \"clients\": placed}\n        errors.pop(email[\"id\"], None)\n    except Exception as exc:\n        errors[email[\"id\"]] = int(errors.get(email[\"id\"]) or 0) + 1\n        lines.append(\"- \" + email[\"subject\"] + \": couldn't be filed (\" + str(exc)[:200] + \")\")\n        if errors[email[\"id\"]] >= 3:\n            seen[email[\"id\"]] = {\"at\": now, \"outcome\": \"failed\", \"note\": str(exc)[:200]}\n            owner = bk_exceptions_owner(settings, {})\n            api.workq.create(\n                title=(\"Couldn't take a bill from email: \" + email[\"subject\"])[:200],\n                scope=\"org\",\n                description=(\"Email intake tried three times and couldn't save this email's PDF: \" + str(exc)[:400]\n                             + \"\\n\\n- From: \" + email[\"from\"] + \"\\n- Received: \" + email[\"received\"] + \" (\" + mailbox\n                             + \")\\n\\nSave the PDF from the email and upload it into `\" + BK_INBOX\n                             + \"/<client>/` in Knowledge, then complete this item.\"),\n                priority=\"high\",\n                due_date=str(bk_add_business_days(today, 1)),\n                assignee_ids=[owner] if owner else None,\n                labels=[\"bookkeeping\", \"bill-exception\", \"email-intake\"],\n            )\n\nif not problem:\n    # Keep the ledger bounded: the newest 2000 emails are plenty to stop anything being filed twice.\n    keep = sorted(seen.items(), key=lambda kv: str((kv[1] or {}).get(\"at\") or \"\"))[-2000:]\n    bk_write_json(ledger_path, {\"since\": params.get(\"since\") or now, \"seen\": dict(keep), \"errors\": errors})\n\nsummary = (problem or (\"Filed \" + str(filed) + \" bill(s), \" + str(unmatched) + \" need a client, \"\n                       + str(len(params.get(\"skipped\") or [])) + \" email(s) weren't bills or had no PDF.\"\n                       + (\"\\n\\n\" + \"\\n\".join(lines) if lines else \"\")))\n",
+        "id": "file_bills",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "Bills filed under a client",
+            "name": "filed",
+            "type": "int"
+          },
+          {
+            "description": "Bills that need a client",
+            "name": "unmatched",
+            "type": "int"
+          },
+          {
+            "description": "What happened",
+            "name": "summary",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "control": "hidden",
+            "label": "Mailbox",
+            "name": "provider",
+            "required": true,
+            "type": "str",
+            "value": "outlook"
+          },
+          {
+            "binding": "{{ steps.triage_emails.outputs.bills }}",
+            "control": "hidden",
+            "label": "Bills",
+            "name": "bills",
+            "required": false,
+            "type": "list[dict]"
+          },
+          {
+            "binding": "{{ steps.triage_emails.outputs.skipped }}",
+            "control": "hidden",
+            "label": "Not bills",
+            "name": "skipped",
+            "required": false,
+            "type": "list[dict]"
+          },
+          {
+            "binding": "{{ steps.find_emails.outputs.since }}",
+            "control": "hidden",
+            "label": "Intake start",
+            "name": "since",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.find_emails.outputs.problem }}",
+            "control": "hidden",
+            "label": "Problem so far",
+            "name": "problem",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Saves each bill PDF into the Bookkeeping Inbox folder of the client it is addressed to, which starts Process bill. Bills it can’t place become exception items.",
+        "title": "File each bill under its client"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "find_emails",
+      "triage_emails",
+      "file_bills"
+    ],
+    "triggers": [
+      {
+        "cron": "*/15 * * * *",
+        "kind": "schedule",
+        "timezone": "Australia/Sydney"
+      },
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "knowledgeFiles": [],
+  "level": "org",
+  "name": "Bookkeeping: Email intake (Outlook)",
+  "originKey": "b4911eb8-7259-40f7-9f97-f185083d0958",
+  "tags": [
+    "bookkeeping"
+  ]
+}
