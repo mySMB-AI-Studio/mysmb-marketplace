@@ -1,6 +1,6 @@
 {
   "id": "myob-duplicate-check",
-  "title": "MYOB — Duplicate Check",
+  "title": "MYOB — Reconciliation Check",
   "description": "Cross-checks MYOB Contacts, Bills, and Invoices for likely duplicates, tiered EXACT / LIKELY / POSSIBLE by confidence, filterable by record type. Live-wired to myob-accounting: list_contacts fires on mount, fans out to list_bills / list_invoices, and analyze_myob_duplicates converges as each result arrives. Contact matching uses email/phone/name only — no MYOB Contact in this org exposes an ABN/tax-number field. Bills/Invoices match on a shared supplier invoice # / customer PO #, or same amount within a few days of each other. Clicking a filter tab narrows the preview + detail table; 'View all duplicates' opens an in-tile table of every match in the current filter.",
   "category": "finance",
   "tags": ["myob", "bills", "invoices", "contacts", "duplicates", "data-quality", "deduplication"],
@@ -90,7 +90,7 @@
       },
       "titleIcon": { "type": "Icon", "props": { "name": "Copy", "tone": "info", "size": "md" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "subtitle"] },
-      "title": { "type": "Heading", "props": { "text": "Duplicate Check", "level": "h2" } },
+      "title": { "type": "Heading", "props": { "text": "Reconciliation Check", "level": "h2" } },
       "subtitle": { "type": "Caption", "props": { "text": "MYOB", "tone": "muted" } },
 
       "filterRow": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["filterAllWrap", "filterBillsWrap", "filterInvoicesWrap", "filterContactsWrap"] },
@@ -121,7 +121,7 @@
         "type": "Badge",
         "props": {
           "text": "All",
-          "tone": { "$cond": { "$state": "/ui/myobDup/filter", "eq": "" }, "$then": "accent", "$else": "muted" },
+          "tone": { "$cond": { "$state": "/ui/myobDup/filter", "eq": "" }, "$then": "accent", "$else": "default" },
           "variant": { "$cond": { "$state": "/ui/myobDup/filter", "eq": "" }, "$then": "solid", "$else": "outline" }
         }
       },
@@ -152,7 +152,7 @@
         "type": "Badge",
         "props": {
           "text": { "$computed": "fmt", "args": { "pattern": "Bills ({n})", "n": { "$state": "/ui/myobDup/filterCounts/bills" } } },
-          "tone": { "$cond": { "$state": "/ui/myobDup/filter", "eq": "Bill" }, "$then": "accent", "$else": "muted" },
+          "tone": { "$cond": { "$state": "/ui/myobDup/filter", "eq": "Bill" }, "$then": "accent", "$else": "default" },
           "variant": { "$cond": { "$state": "/ui/myobDup/filter", "eq": "Bill" }, "$then": "solid", "$else": "outline" }
         }
       },
@@ -183,7 +183,7 @@
         "type": "Badge",
         "props": {
           "text": { "$computed": "fmt", "args": { "pattern": "Invoices ({n})", "n": { "$state": "/ui/myobDup/filterCounts/invoices" } } },
-          "tone": { "$cond": { "$state": "/ui/myobDup/filter", "eq": "Invoice" }, "$then": "accent", "$else": "muted" },
+          "tone": { "$cond": { "$state": "/ui/myobDup/filter", "eq": "Invoice" }, "$then": "accent", "$else": "default" },
           "variant": { "$cond": { "$state": "/ui/myobDup/filter", "eq": "Invoice" }, "$then": "solid", "$else": "outline" }
         }
       },
@@ -214,7 +214,7 @@
         "type": "Badge",
         "props": {
           "text": { "$computed": "fmt", "args": { "pattern": "Contacts ({n})", "n": { "$state": "/ui/myobDup/filterCounts/contacts" } } },
-          "tone": { "$cond": { "$state": "/ui/myobDup/filter", "eq": "Contact" }, "$then": "accent", "$else": "muted" },
+          "tone": { "$cond": { "$state": "/ui/myobDup/filter", "eq": "Contact" }, "$then": "accent", "$else": "default" },
           "variant": { "$cond": { "$state": "/ui/myobDup/filter", "eq": "Contact" }, "$then": "solid", "$else": "outline" }
         }
       },
