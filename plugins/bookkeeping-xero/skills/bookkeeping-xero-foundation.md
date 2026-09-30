@@ -13,22 +13,23 @@ Use when someone asks about supplier bills, bill reviews, exceptions, what's wai
 |---|---|
 | `Bookkeeping/settings.json` | Practice settings: `mode`, `timezone`, `reviewer_id`, `exceptions_owner_id`, `digest_recipient_ids`, `approved_status` (`SUBMITTED` = awaiting approval, `AUTHORISED` = approved), `auto_approve_below`, `client_approval_above` |
 | `Bookkeeping/Clients/<client>.json` | One file per client business: `name`, `slug`, **`xero_tenant_id`**, `xero_org_name`, `gst_registered`, `reviewer_id`, `client_approval_above`, `contact_name`, `contact_email`, `notes` (coding notes) |
-| `Bookkeeping/Rules/<client>.json` | Saved coding rules: `suppliers` keyed by Xero ContactID and by `name:<normalised name>` → `account_code`, `tax_type` |
-| `Bookkeeping/Bills/<review item id>.json` | One record per bill: `status` (`in_review`, `awaiting_client`, `waiting_client`, `approved`, `rejected`, `auto_approved`), `bill_id` (Xero InvoiceID), `proposal` (supplier, dates, lines with `account_code`, `tax_type`, `source`, `reason`, `confidence`), `warnings`, `blocking`, `file`, `history`. A record with only `link` points to the original record. |
+| `Bookkeeping/Rules/<client>.json` | Saved coding rules: `suppliers` (bills) and `customers` (sales invoices), each keyed by Xero ContactID and by `name:<normalised name>` → `account_code`, `tax_type` |
+| `Bookkeeping/Bills/<review item id>.json` | One record per bill or sales invoice (`proposal.doc_type` is `ACCPAY` for a bill, `ACCREC` for a sales invoice): `status` (`in_review`, `awaiting_client`, `waiting_client`, `approved`, `rejected`, `auto_approved`), `bill_id` (Xero InvoiceID), `proposal` (supplier, dates, lines with `account_code`, `tax_type`, `source`, `reason`, `confidence`), `warnings`, `blocking`, `file`, `history`. A record with only `link` points to the original record. |
 | `Bookkeeping Inbox/<client>/` | Drop bill PDFs here. Each new PDF is processed automatically. Email intake saves emailed bills here too (file names start with the date and a short tag). |
 | `Bookkeeping/Mail/<outlook or gmail>.json` | Email intake's ledger: every email it has looked at (`seen`, with the outcome: `filed`, `unmatched`, `not_a_bill`, `no_pdf`, `failed`) and when intake started (`since`). |
 | `Bookkeeping Failed/unmatched/` | Emailed bills that couldn't be matched to a client |
+| `Bookkeeping Requests/<client>/` | Invoice requests Email intake filed (`from`, `subject`, `received`, `text`). Each new file is drafted by *Draft requested invoice*, then moved to `Bookkeeping Processed/<client>/` |
 | `Bookkeeping Processed/<client>/` | PDFs that became review items |
 | `Bookkeeping Failed/<client>/` | PDFs that became exception items |
 
 ## WorkQ labels
 
-Every item has `bookkeeping` plus one of: `bill-review` (review a bill), `bill-exception` (something went wrong), `client-approval` (get the business owner's OK), `client-query` (ask the client a question), `setup`. Exceptions from email intake also carry `email-intake`. The client's slug is also a label, so filter by it to answer "what's waiting for <client>".
+Every item has `bookkeeping` plus one of: `bill-review` (review a bill), `invoice-review` (review a sales invoice the client issued), `invoice-request` (approve an invoice raised from a client's request; `proposal.origin` is `request`), `bill-exception` (something went wrong), `client-approval` (get the business owner's OK), `client-query` (ask the client a question), `setup`. Exceptions from email intake also carry `email-intake`. The client's slug is also a label, so filter by it to answer "what's waiting for <client>".
 
 ## Answering questions
 
 1. **Find the client**: list `Bookkeeping/Clients/` and match the name. If two match or none does, ask.
-2. **Xero calls**: always pass `xero_tenant_id` from the client's file. Bills are `list_invoices` with `where: Type=="ACCPAY"`. Put the status **inside the same `where`**, never in `statuses` alongside `where`, because Xero silently returns nothing for that combination. For example: `where: Type=="ACCPAY" AND Status=="DRAFT"` (drafts waiting for review), `…Status=="SUBMITTED"` (awaiting approval), `…Status=="AUTHORISED"` (approved; unpaid when `AmountDue > 0`). Query one status at a time.
+2. **Xero calls**: always pass `xero_tenant_id` from the client's file. Bills are `list_invoices` with `where: Type=="ACCPAY"`; sales invoices are `Type=="ACCREC"` (awaiting payment is `Status=="AUTHORISED"`). Put the status **inside the same `where`**, never in `statuses` alongside `where`, because Xero silently returns nothing for that combination. For example: `where: Type=="ACCPAY" AND Status=="DRAFT"` (drafts waiting for review), `…Status=="SUBMITTED"` (awaiting approval), `…Status=="AUTHORISED"` (approved; unpaid when `AmountDue > 0`). Query one status at a time.
 3. **"Why was this coded like that?"**: read the bill record. `source` is `rule` (a saved rule for this supplier), `history` (the supplier's recent bills), `ai` (suggested from the chart of accounts), or `reviewer` (changed in review). Quote the `reason`.
 4. **Exceptions**: the item description holds the problem. Common fixes:
    - *No client settings for the folder*: run **Bookkeeping: Start setup** with the business name and submit its settings form, then move the PDF into the folder it names.

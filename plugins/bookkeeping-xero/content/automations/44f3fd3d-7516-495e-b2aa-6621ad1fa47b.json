@@ -1,0 +1,287 @@
+{
+  "attachments": [],
+  "contentHash": "35a881b82a36bfb640f62edcffb835b14789d8e11ce36fd64c55c29cbcd5ad96",
+  "declaredScopes": [
+    "ai:generate",
+    "connectors:xero-accounting",
+    "files:read",
+    "files:write",
+    "workq:write"
+  ],
+  "dependencies": [
+    {
+      "entityKind": "form",
+      "originKey": "a50cab39-831c-493e-9cf2-96f4d5cb2f00",
+      "sourceId": "8c5aad2c-d4d3-4f5f-ac5f-afa3a3a002c4"
+    }
+  ],
+  "description": "When a client asks for an invoice to be raised (an email that Email intake files in Bookkeeping Requests/<client>, or run by hand with the request text), drafts the sales invoice in the client’s Xero organisation: the customer, the lines priced from Xero items or what the request says, and the coding. The reviewer approves it in WorkQ and chooses whether Xero emails it to the customer.",
+  "flowIr": {
+    "description": "When a client asks for an invoice to be raised (an email that Email intake files in Bookkeeping Requests/<client>, or run by hand with the request text), drafts the sales invoice in the client’s Xero organisation: the customer, the lines priced from Xero items or what the request says, and the coding. The reviewer approves it in WorkQ and chooses whether Xero emails it to the customer.",
+    "irVersion": 1,
+    "name": "Bookkeeping: Draft requested invoice (Xero)",
+    "nodes": [
+      {
+        "code": "# ── bookkeeping kit: shared helpers (inlined into each node by gen-ext.js) ──\nimport json\nimport re\nimport datetime\nfrom zoneinfo import ZoneInfo\n\n# Knowledge layout. Folders may nest at most 2 levels, so inbox folders are top-level.\nBK_SETTINGS = \"Bookkeeping/settings.json\"\nBK_CLIENTS = \"Bookkeeping/Clients\"\nBK_RULES = \"Bookkeeping/Rules\"\nBK_BILLS = \"Bookkeeping/Bills\"\nBK_INBOX = \"Bookkeeping Inbox\"\nBK_PROCESSED = \"Bookkeeping Processed\"\nBK_FAILED = \"Bookkeeping Failed\"\nBK_MAIL = \"Bookkeeping/Mail\"\nBK_REQUESTS = \"Bookkeeping Requests\"\n\n\ndef bk_slug(name):\n    s = re.sub(r\"[^a-z0-9]+\", \"-\", str(name or \"\").lower()).strip(\"-\")\n    return s[:40].strip(\"-\") or \"client\"\n\n\ndef bk_read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\n\ndef bk_tz(settings):\n    # The sandbox may lack the tz database; fall back to AEST (UTC+10) rather than failing the run.\n    try:\n        return ZoneInfo((settings or {}).get(\"timezone\") or \"Australia/Sydney\")\n    except Exception:\n        return datetime.timezone(datetime.timedelta(hours=10))\n\n\ndef bk_now_iso(settings):\n    return datetime.datetime.now(bk_tz(settings)).replace(microsecond=0).isoformat()\n\n\ndef bk_norm(name):\n    s = re.sub(r\"[^a-z0-9 ]+\", \" \", str(name or \"\").lower())\n    s = re.sub(r\"\\b(pty|ltd|limited|p/l|the|inc|co)\\b\", \" \", s)\n    return re.sub(r\"\\s+\", \" \", s).strip()\n\n\ndef bk_client_for(settings, slug):\n    client = bk_read_json(BK_CLIENTS + \"/\" + slug + \".json\")\n    if not client:\n        return None\n    return client\n\n\n# ── Is this an invoice request? ──\n\n\npath = str(params.get(\"path\") or \"\").replace(\"\\\\\", \"/\").strip(\"/\")\nmanual_text = str(params.get(\"request_text\") or \"\").strip()\nmanual_client = str(params.get(\"client_name\") or \"\").strip()\nshould_process = False\nproblem = \"\"\nskip_reason = \"\"\nrequest = {}\nctx = {}\nfolder = \"\"\n\nparts = path.split(\"/\")\nif len(parts) == 3 and parts[0] == BK_REQUESTS and parts[2].lower().endswith(\".json\"):\n    # Filed by email intake.\n    request = bk_read_json(path) or {}\n    request[\"path\"] = path\n    request[\"source\"] = \"email\"\n    folder = parts[1]\n    should_process = True\nelif path:\n    skip_reason = \"not an invoice request in \" + BK_REQUESTS\nelif manual_text:\n    # Run by hand: a request taken over the phone, or one email intake couldn't place.\n    request = {\"from\": \"\", \"subject\": \"Invoice request\", \"received\": bk_now_iso(bk_read_json(BK_SETTINGS) or {}),\n               \"text\": manual_text, \"path\": \"\", \"source\": \"manual\"}\n    folder = bk_slug(manual_client)\n    should_process = True\nelse:\n    skip_reason = \"no request: run it by hand with the client's name and what to invoice\"\n\nif should_process:\n    settings = bk_read_json(BK_SETTINGS)\n    client = bk_client_for(settings, folder) if folder else None\n    if not client and manual_client:\n        for f in api.files.list(path=BK_CLIENTS):\n            c = (bk_read_json(f.get(\"path\") or \"\") or {}) if str(f.get(\"path\", \"\")).endswith(\".json\") else {}\n            if c and bk_norm(manual_client) in (bk_norm(c.get(\"name\")), bk_norm(c.get(\"xero_org_name\"))):\n                client = c\n    rules = {\"suppliers\": {}, \"customers\": {}}\n    if not settings:\n        problem = \"Bookkeeping isn't set up yet. Run **Bookkeeping: Start setup** and submit the Bookkeeping setup form.\"\n    elif not client:\n        problem = (\"There are no client settings for \" + (manual_client or folder or \"this request\") + \". Run \"\n                   \"**Bookkeeping: Start setup** with the business's name and submit its settings form.\")\n    elif not client.get(\"xero_tenant_id\"):\n        problem = \"The client settings for \" + str(client.get(\"name\")) + \" have no Xero organisation. Submit them again.\"\n    elif not str(request.get(\"text\") or \"\").strip():\n        problem = \"The request has no text to draft an invoice from.\"\n    else:\n        rules = bk_read_json(BK_RULES + \"/\" + client[\"slug\"] + \".json\", rules) or rules\n    ctx = {\"settings\": settings or {}, \"client\": client or {}, \"rules\": rules, \"folder\": (client or {}).get(\"slug\") or folder}\n",
+        "id": "load_request",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "True for a request to draft",
+            "name": "should_process",
+            "type": "bool"
+          },
+          {
+            "description": "The request",
+            "name": "request",
+            "type": "dict"
+          },
+          {
+            "description": "Settings, client and rules",
+            "name": "ctx",
+            "type": "dict"
+          },
+          {
+            "description": "Why it stopped, or empty",
+            "name": "problem",
+            "type": "str"
+          },
+          {
+            "description": "Why it was skipped",
+            "name": "skip_reason",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ trigger.event.subject.path }}",
+            "control": "hidden",
+            "label": "Request file",
+            "name": "path",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.client_name }}",
+            "control": "hidden",
+            "label": "Client",
+            "name": "client_name",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.request_text }}",
+            "control": "hidden",
+            "label": "Request",
+            "name": "request_text",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Reads the request filed by Email intake, or the one typed in, and loads the client’s settings.",
+        "title": "Is this an invoice request?"
+      },
+      {
+        "cond": "steps[\"load_request\"][\"outputs\"][\"should_process\"]",
+        "else": [],
+        "id": "gate",
+        "kind": "if",
+        "summary": "Continues only for a request filed in Bookkeeping Requests, or one typed in.",
+        "then": [
+          "draft_invoice",
+          "route_request"
+        ],
+        "title": "Only invoice requests"
+      },
+      {
+        "code": "# ── bookkeeping kit: shared helpers (inlined into each node by gen-ext.js) ──\nimport json\nimport re\nimport datetime\nfrom zoneinfo import ZoneInfo\n\n# Knowledge layout. Folders may nest at most 2 levels, so inbox folders are top-level.\nBK_SETTINGS = \"Bookkeeping/settings.json\"\nBK_CLIENTS = \"Bookkeeping/Clients\"\nBK_RULES = \"Bookkeeping/Rules\"\nBK_BILLS = \"Bookkeeping/Bills\"\nBK_INBOX = \"Bookkeeping Inbox\"\nBK_PROCESSED = \"Bookkeeping Processed\"\nBK_FAILED = \"Bookkeeping Failed\"\nBK_MAIL = \"Bookkeeping/Mail\"\nBK_REQUESTS = \"Bookkeeping Requests\"\n\n\ndef bk_money(value):\n    \"\"\"Parse 1234.5, \"1,234.50\", \"$12\" or \"A$ 12.00\" into a float; None when blank or not a number.\"\"\"\n    if value is None or isinstance(value, bool):\n        return None\n    if isinstance(value, (int, float)):\n        return float(value)\n    s = re.sub(r\"[^0-9.\\-]\", \"\", str(value))\n    if s in (\"\", \"-\", \".\", \"-.\"):\n        return None\n    try:\n        return float(s)\n    except ValueError:\n        return None\n\n\ndef bk_tz(settings):\n    # The sandbox may lack the tz database; fall back to AEST (UTC+10) rather than failing the run.\n    try:\n        return ZoneInfo((settings or {}).get(\"timezone\") or \"Australia/Sydney\")\n    except Exception:\n        return datetime.timezone(datetime.timedelta(hours=10))\n\n\ndef bk_today(settings):\n    return datetime.datetime.now(bk_tz(settings)).date()\n\n\ndef bk_norm(name):\n    s = re.sub(r\"[^a-z0-9 ]+\", \" \", str(name or \"\").lower())\n    s = re.sub(r\"\\b(pty|ltd|limited|p/l|the|inc|co)\\b\", \" \", s)\n    return re.sub(r\"\\s+\", \" \", s).strip()\n\n\n# ── bookkeeping kit: Xero ledger adapter (inlined into Xero nodes by gen-ext.js) ──\n# Every write passes xero_tenant_id so it lands in the client's own Xero organisation\n# (myhub-mcp-servers PR #558). Reads pass it too.\nimport base64\nfrom collections import Counter\n\nXERO = \"xero-accounting\"\nXERO_EXPENSE_TYPES = {\"EXPENSE\", \"DIRECTCOSTS\", \"OVERHEADS\", \"FIXED\", \"CURRENT\", \"INVENTORY\", \"PREPAYMENT\", \"NONCURRENT\"}\nXERO_REVENUE_TYPES = {\"REVENUE\", \"SALES\", \"OTHERINCOME\"}\nXERO_DEAD = {\"DELETED\", \"VOIDED\"}\n\n\ndef xero_call(tool, tenant_id=None, **args):\n    if tenant_id:\n        args[\"xero_tenant_id\"] = tenant_id\n    # Bound first on purpose: the platform's Publish lint only counts plain assignments as a function's own names,\n    # so an `except ... as exc` name alone reads as undefined inside a helper.\n    exc = None\n    try:\n        return api.connectors.invoke(server=XERO, tool=tool, args=args)\n    except Exception as exc:\n        raise RuntimeError(xero_error_text(exc)) from None\n\n\ndef xero_error_text(exc):\n    \"\"\"Xero's own validation messages (the useful part, at the end of a long error), else the error text.\"\"\"\n    text = str(exc)\n    at = text.find(\"ValidationErrors\")\n    messages = []\n    for m in re.findall(r'\"Message\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"', text[at:] if at >= 0 else \"\"):\n        if m not in messages:\n            messages.append(m)\n    return (\"Xero says: \" + \"; \".join(messages)) if messages else text[:600]\n\n\ndef xero_q(value):\n    return str(value).replace(\"\\\\\", \"\\\\\\\\\").replace('\"', '\\\\\"')\n\n\ndef xero_rows(result, key):\n    if isinstance(result, dict):\n        return result.get(key) or []\n    if isinstance(result, list):\n        return result\n    return []\n\n\ndef xero_find_supplier(tenant_id, name, abn):\n    \"\"\"Existing contact by ABN (TaxNumber) first, then by normalised name. None when not found.\"\"\"\n    if not name:\n        return None\n    rows = xero_rows(xero_call(\"list_contacts\", tenant_id, searchTerm=str(name)[:60]), \"Contacts\")\n    abn_digits = \"\".join(ch for ch in str(abn or \"\") if ch.isdigit())\n    if abn_digits:\n        for c in rows:\n            if \"\".join(ch for ch in str(c.get(\"TaxNumber\") or \"\") if ch.isdigit()) == abn_digits:\n                return c\n    target = bk_norm(name)\n    for c in rows:\n        if bk_norm(c.get(\"Name\")) == target:\n            return c\n    return None\n\n\ndef xero_history_coding(tenant_id, contact_id, doc_type=\"ACCPAY\"):\n    \"\"\"Most common (AccountCode, TaxType) on the contact's recent bills (or sales invoices), or None.\"\"\"\n    if not contact_id:\n        return None\n    where = 'Type==\"%s\" AND Contact.ContactID==guid(\"%s\")' % (doc_type, xero_q(contact_id))\n    rows = xero_rows(xero_call(\"list_invoices\", tenant_id, where=where, order=\"Date DESC\", page=1), \"Invoices\")\n    pairs = []\n    for inv in rows[:5]:\n        if inv.get(\"Status\") in XERO_DEAD:\n            continue\n        for li in inv.get(\"LineItems\") or []:\n            if li.get(\"AccountCode\"):\n                pairs.append((li.get(\"AccountCode\"), li.get(\"TaxType\") or \"\"))\n    if not pairs:\n        return None\n    (code, tax), _ = Counter(pairs).most_common(1)[0]\n    return {\"account_code\": code, \"tax_type\": tax}\n\n\ndef xero_chart(tenant_id, doc_type=\"ACCPAY\"):\n    \"\"\"Active accounts and tax rates a bill (expense side) or a sales invoice (revenue side) can use.\"\"\"\n    sales = doc_type == \"ACCREC\"\n    accounts = xero_rows(xero_call(\"list_accounts\", tenant_id, where='Status==\"ACTIVE\"'), \"Accounts\")\n    taxes = xero_rows(xero_call(\"list_tax_rates\", tenant_id), \"TaxRates\")\n    kinds = XERO_REVENUE_TYPES if sales else XERO_EXPENSE_TYPES\n    acc = [{\"code\": a.get(\"Code\"), \"name\": a.get(\"Name\"), \"type\": a.get(\"Type\"),\n            \"description\": (a.get(\"Description\") or \"\")[:120]}\n           for a in accounts if a.get(\"Code\") and a.get(\"Type\") in kinds]\n    tax = [{\"type\": t.get(\"TaxType\"), \"name\": t.get(\"Name\"), \"rate\": t.get(\"EffectiveRate\")}\n           for t in taxes if t.get(\"Status\", \"ACTIVE\") == \"ACTIVE\"\n           and t.get(\"CanApplyToRevenue\" if sales else \"CanApplyToExpenses\", True)]\n    return acc, tax\n\n\ndef xero_bill_body(proposal, status):\n    lines = []\n    for ln in proposal.get(\"lines\") or []:\n        qty = ln.get(\"quantity\") or 1\n        unit = ln.get(\"unit_amount\")\n        if unit is None:\n            unit = round((ln.get(\"line_amount\") or 0) / qty, 4) if qty else (ln.get(\"line_amount\") or 0)\n        item = {\"Description\": (ln.get(\"description\") or \"\")[:4000], \"Quantity\": qty, \"UnitAmount\": unit}\n        if ln.get(\"item_code\"):\n            item[\"ItemCode\"] = ln[\"item_code\"]\n        if ln.get(\"account_code\"):\n            item[\"AccountCode\"] = ln[\"account_code\"]\n        if ln.get(\"tax_type\"):\n            item[\"TaxType\"] = ln[\"tax_type\"]\n        lines.append(item)\n    body = {\n        \"Type\": proposal.get(\"doc_type\") or \"ACCPAY\",\n        \"Contact\": {\"ContactID\": proposal[\"contact\"][\"id\"]},\n        \"Date\": proposal.get(\"date\"),\n        \"LineAmountTypes\": proposal.get(\"line_amount_types\") or \"Exclusive\",\n        \"LineItems\": lines,\n        \"Status\": status,\n    }\n    for key, field in ((\"due_date\", \"DueDate\"), (\"invoice_number\", \"InvoiceNumber\"),\n                       (\"reference\", \"Reference\"), (\"currency\", \"CurrencyCode\")):\n        if proposal.get(key):\n            body[field] = proposal[key]\n    return body\n\n\ndef xero_ensure_contact(tenant_id, proposal):\n    contact = proposal.get(\"contact\") or {}\n    if contact.get(\"id\"):\n        return contact[\"id\"]\n    # An earlier attempt may have created the contact before Xero rejected the bill; reuse it.\n    found = xero_find_supplier(tenant_id, contact.get(\"name\"), contact.get(\"abn\"))\n    if found and found.get(\"ContactID\"):\n        proposal[\"contact\"][\"id\"] = found[\"ContactID\"]\n        proposal[\"contact\"][\"is_new\"] = False\n        return found[\"ContactID\"]\n    body = {\"Name\": contact.get(\"name\") or \"Unknown supplier\"}\n    if contact.get(\"abn\"):\n        body[\"TaxNumber\"] = contact[\"abn\"]\n    if contact.get(\"email\"):\n        body[\"EmailAddress\"] = contact[\"email\"]\n    rows = xero_rows(xero_call(\"create_contact\", tenant_id, contact=body), \"Contacts\")\n    if not rows or not rows[0].get(\"ContactID\"):\n        raise RuntimeError(\"Xero did not return the new contact\")\n    proposal[\"contact\"][\"id\"] = rows[0][\"ContactID\"]\n    proposal[\"contact\"][\"is_new\"] = False\n    return rows[0][\"ContactID\"]\n\n\ndef xero_terms_due(terms, issue):\n    \"\"\"Due date from Xero payment terms ({\"Day\": n, \"Type\": ...}) for a bill dated `issue`, or None.\"\"\"\n    try:\n        day = int(str((terms or {}).get(\"Day\") or \"\"))\n    except (TypeError, ValueError):\n        return None\n    kind = str((terms or {}).get(\"Type\") or \"\")\n    next_month = (issue.replace(day=1) + datetime.timedelta(days=32)).replace(day=1)\n    if kind == \"DAYSAFTERBILLDATE\":\n        return issue + datetime.timedelta(days=day)\n    if kind == \"DAYSAFTERBILLMONTH\":\n        return next_month - datetime.timedelta(days=1) + datetime.timedelta(days=day)\n    if kind == \"OFCURRENTMONTH\":\n        return issue.replace(day=min(max(day, 1), (next_month - datetime.timedelta(days=1)).day))\n    if kind == \"OFFOLLOWINGMONTH\":\n        after = (next_month + datetime.timedelta(days=32)).replace(day=1)\n        return next_month.replace(day=min(max(day, 1), (after - datetime.timedelta(days=1)).day))\n    return None\n\n\ndef xero_default_due(tenant_id, contact, issue_date, doc_type=\"ACCPAY\"):\n    \"\"\"(due date, where it came from) for a bill or invoice with no due date: the contact's payment terms in Xero,\n    then the organisation's default terms, then the document date. (\"\", \"\") when there's no usable date.\"\"\"\n    side = \"Sales\" if doc_type == \"ACCREC\" else \"Bills\"\n    who = \"customer\" if doc_type == \"ACCREC\" else \"supplier\"\n    try:\n        issue = datetime.date.fromisoformat(str(issue_date or \"\")[:10])\n    except ValueError:\n        return \"\", \"\"\n    due = xero_terms_due(((contact or {}).get(\"PaymentTerms\") or {}).get(side), issue)\n    if due:\n        return str(due), \"the \" + who + \"'s payment terms in Xero\"\n    try:\n        org = xero_call(\"get_organisation\", tenant_id)\n        if isinstance(org, dict) and isinstance(org.get(\"Organisations\"), list):\n            org = org[\"Organisations\"][0] if org[\"Organisations\"] else {}\n        elif isinstance(org, list):\n            org = org[0] if org else {}\n        due = xero_terms_due(((org or {}).get(\"PaymentTerms\") or {}).get(side), issue)\n    except Exception:\n        due = None\n    if due:\n        return str(due), \"the organisation's default \" + (\"invoice\" if side == \"Sales\" else \"bill\") + \" terms in Xero\"\n    return str(issue), \"the invoice date, because no payment terms are set in Xero\"\n\n\ndef xero_create_bill(tenant_id, proposal, status=\"DRAFT\"):\n    xero_ensure_contact(tenant_id, proposal)\n    rows = xero_rows(xero_call(\"create_invoice\", tenant_id, invoice=xero_bill_body(proposal, status)), \"Invoices\")\n    if not rows or not rows[0].get(\"InvoiceID\"):\n        raise RuntimeError(\"Xero did not return the new bill\")\n    if not proposal.get(\"invoice_number\") and rows[0].get(\"InvoiceNumber\"):\n        # A raised invoice takes the organisation's next number.\n        proposal[\"invoice_number\"] = rows[0][\"InvoiceNumber\"]\n    return rows[0][\"InvoiceID\"]\n\n\ndef xero_items(tenant_id):\n    \"\"\"The organisation's sold items: [{code, name, description, price, account_code, tax_type}].\"\"\"\n    out = []\n    for it in xero_rows(xero_call(\"list_items\", tenant_id), \"Items\"):\n        if it.get(\"IsSold\") is False or not it.get(\"Code\"):\n            continue\n        sd = it.get(\"SalesDetails\") or {}\n        out.append({\"code\": str(it[\"Code\"]), \"name\": str(it.get(\"Name\") or \"\"), \"description\": str(it.get(\"Description\") or \"\")[:200],\n                    \"price\": bk_money(sd.get(\"UnitPrice\")), \"account_code\": str(sd.get(\"AccountCode\") or \"\"),\n                    \"tax_type\": str(sd.get(\"TaxType\") or \"\")})\n    return out\n\n\n# ── Draft the invoice ──\n\n\nREQUEST_PROMPT = (\n    \"A small business has asked its bookkeeper to raise a sales invoice to one of its customers. From the request, \"\n    \"extract the invoice to raise. Never guess: a quantity, price, date or email the request doesn't state is null. \"\n    \"'items' lists the business's Xero items; when a line is one of them, give its code in item_code. A price the \"\n    \"request states wins over the item's price. Dates as YYYY-MM-DD (Australian requests are day/month/year). If the \"\n    \"request isn't actually asking for an invoice to be raised, set is_request false.\"\n)\nREQUEST_HINT = ('{\"is_request\": true, \"customer_name\": \"\", \"customer_email\": null, \"reference\": \"\", \"invoice_date\": null, '\n                '\"due_date\": null, \"lines\": [{\"description\": \"\", \"quantity\": 1, \"unit_amount\": null, \"item_code\": null}], '\n                '\"notes\": \"\"}')\nSALES_CODE_PROMPT = (\n    \"You code sales invoice lines for an Australian bookkeeper: the client is invoicing its customer. For each line, \"\n    \"pick the best revenue account code from 'accounts' and the tax type from 'tax_rates' (GST on income for taxable \"\n    \"sales when the business is GST registered, GST-free income or BAS-excluded otherwise). Use the client's coding \"\n    \"notes when they apply. Only use codes that appear in the lists. Give a one-sentence reason and a confidence of \"\n    \"high, medium or low for each line.\"\n)\nCODE_HINT = '[{\"index\": 0, \"account_code\": \"200\", \"tax_type\": \"OUTPUT\", \"reason\": \"\", \"confidence\": \"high\"}]'\n\nproblem = params.get(\"problem\") or \"\"\nctx = params.get(\"ctx\") or {}\nrequest = params.get(\"request\") or {}\nproposal = {}\nwarnings = []\nblocking = []\nbill_id = \"\"\n\nif not problem:\n    try:\n        settings = ctx.get(\"settings\") or {}\n        client = ctx.get(\"client\") or {}\n        tenant = client[\"xero_tenant_id\"]\n        items = xero_items(tenant)\n        asked = api.ai.extract(\n            prompt=REQUEST_PROMPT,\n            input=json.dumps({\"business\": client.get(\"name\"), \"today\": str(bk_today(settings)),\n                              \"request\": {\"from\": request.get(\"from\"), \"subject\": request.get(\"subject\"),\n                                          \"text\": str(request.get(\"text\") or \"\")[:8000]},\n                              \"items\": [{\"code\": i[\"code\"], \"name\": i[\"name\"], \"description\": i[\"description\"],\n                                         \"price\": i[\"price\"]} for i in items[:200]]})[:30000],\n            schema_hint=REQUEST_HINT,\n        )\n        asked = asked if isinstance(asked, dict) else {}\n        customer = str(asked.get(\"customer_name\") or \"\").strip()\n        if not asked:\n            problem = \"The AI couldn't read this request.\"\n        elif asked.get(\"is_request\") is False:\n            problem = \"This doesn't look like a request to raise an invoice, so nothing was drafted.\"\n        elif not customer:\n            problem = \"The request doesn't say which customer to invoice.\"\n        elif not (asked.get(\"lines\") or []):\n            problem = \"The request doesn't say what to invoice.\"\n    except Exception as exc:\n        problem = \"Couldn't read the request: \" + str(exc)[:400]\n        asked, customer, items, client, settings, tenant = {}, \"\", [], {}, {}, \"\"\n\nif not problem:\n    try:\n        contact = xero_find_supplier(tenant, customer, \"\")\n        email = str((contact or {}).get(\"EmailAddress\") or asked.get(\"customer_email\") or \"\").strip()\n        if not contact:\n            warnings.append(\"New customer: \\\"\" + customer + \"\\\" isn't in Xero yet. The contact is created when you approve\"\n                            + (\" (with \" + email + \").\" if email else \".\"))\n        if not email:\n            warnings.append(\"There's no email address for \" + customer + \", so Xero can't email the invoice. Add one to \"\n                            \"the contact in Xero, or send the invoice yourself.\")\n\n        accounts, taxes = xero_chart(tenant, \"ACCREC\")\n        codes = {a[\"code\"] for a in accounts}\n        tax_types = {t[\"type\"] for t in taxes}\n        rates = {t[\"type\"]: bk_money(t.get(\"rate\")) or 0 for t in taxes}\n        by_code = {i[\"code\"].lower(): i for i in items}\n        rules = (ctx.get(\"rules\") or {}).get(\"customers\") or {}\n        rule = (rules.get(contact.get(\"ContactID\")) if contact else None) or rules.get(\"name:\" + bk_norm(customer))\n        hist = xero_history_coding(tenant, contact.get(\"ContactID\"), \"ACCREC\") if contact else None\n\n        lines = []\n        for i, ln in enumerate(asked.get(\"lines\") or []):\n            ln = ln if isinstance(ln, dict) else {}\n            item = by_code.get(str(ln.get(\"item_code\") or \"\").lower())\n            qty = bk_money(ln.get(\"quantity\")) or 1\n            unit = bk_money(ln.get(\"unit_amount\"))\n            line = {\"description\": str(ln.get(\"description\") or (item or {}).get(\"name\") or \"\")[:400], \"quantity\": qty,\n                    \"item_code\": (item or {}).get(\"code\") or \"\", \"price_source\": \"request\" if unit is not None else \"\"}\n            if unit is None and item and item.get(\"price\") is not None:\n                unit = item[\"price\"]\n                line[\"price_source\"] = \"the Xero item \" + item[\"code\"]\n            line[\"unit_amount\"] = unit\n            line[\"line_amount\"] = round(qty * unit, 2) if unit is not None else None\n            if item and item.get(\"account_code\"):\n                line.update(account_code=item[\"account_code\"], tax_type=item.get(\"tax_type\") or \"\", source=\"item\",\n                            reason=\"From the Xero item \" + item[\"code\"], confidence=\"high\")\n            elif rule and rule.get(\"account_code\"):\n                line.update(account_code=rule[\"account_code\"], tax_type=rule.get(\"tax_type\") or \"\", source=\"rule\",\n                            reason=\"Coding rule saved for this customer\", confidence=\"high\")\n            elif hist:\n                line.update(account_code=hist[\"account_code\"], tax_type=hist[\"tax_type\"], source=\"history\",\n                            reason=\"Same coding as this customer's recent invoices\", confidence=\"high\")\n            lines.append(line)\n\n        uncoded = [i for i, l in enumerate(lines) if not l.get(\"account_code\")]\n        if uncoded:\n            coded = api.ai.extract(\n                prompt=SALES_CODE_PROMPT,\n                input=json.dumps({\"customer\": customer, \"gst_registered\": bool(client.get(\"gst_registered\")),\n                                  \"client_notes\": client.get(\"notes\") or \"\",\n                                  \"lines\": [{\"index\": i, \"description\": lines[i][\"description\"], \"amount\": lines[i][\"line_amount\"]}\n                                            for i in uncoded],\n                                  \"accounts\": accounts[:300], \"tax_rates\": taxes})[:30000],\n                schema_hint=CODE_HINT,\n            )\n            for c in coded if isinstance(coded, list) else []:\n                if isinstance(c, dict) and isinstance(c.get(\"index\"), (int, float)) and int(c[\"index\"]) in uncoded:\n                    lines[int(c[\"index\"])].update(account_code=str(c.get(\"account_code\") or \"\"), tax_type=str(c.get(\"tax_type\") or \"\"),\n                                                  source=\"ai\", reason=str(c.get(\"reason\") or \"Suggested by AI\"),\n                                                  confidence=str(c.get(\"confidence\") or \"low\").lower())\n\n        for i, l in enumerate(lines):\n            if l.get(\"account_code\") and l[\"account_code\"] not in codes:\n                warnings.append(\"Line \" + str(i + 1) + \": account \" + l[\"account_code\"] + \" isn't an active revenue account in Xero.\")\n                l[\"account_code\"] = \"\"\n            if l.get(\"tax_type\") and l[\"tax_type\"] not in tax_types:\n                l[\"tax_type\"] = \"\"\n            if not l.get(\"account_code\"):\n                l[\"confidence\"] = \"low\"\n                blocking.append(\"Line \" + str(i + 1) + \" has no account code. Add one in your changes.\")\n            if l[\"line_amount\"] is None:\n                l[\"confidence\"] = \"low\"\n                blocking.append(\"Line \" + str(i + 1) + \" (\" + l[\"description\"][:60] + \") has no price. Add it in your \"\n                                \"changes, e.g. \\\"line \" + str(i + 1) + \" unit price 180\\\".\")\n            elif l.get(\"price_source\") and l[\"price_source\"] != \"request\":\n                l[\"reason\"] = str(l.get(\"reason\") or \"\") + \". Price from \" + l[\"price_source\"]\n\n        priced = [l for l in lines if l[\"line_amount\"] is not None]\n        subtotal = round(sum(l[\"line_amount\"] for l in priced), 2)\n        tax = round(sum(l[\"line_amount\"] * rates.get(l.get(\"tax_type\") or \"\", 0) / 100 for l in priced), 2)\n        date = str(asked.get(\"invoice_date\") or bk_today(settings))[:10]\n        due = str(asked.get(\"due_date\") or \"\")[:10]\n        if not due:\n            due, came_from = xero_default_due(tenant, contact, date, \"ACCREC\")\n            if due:\n                warnings.append(\"Due \" + due + \", from \" + came_from + \".\")\n        proposal = {\n            \"doc_type\": \"ACCREC\",\n            \"origin\": \"request\",\n            \"contact\": {\"id\": (contact or {}).get(\"ContactID\") or \"\", \"name\": (contact or {}).get(\"Name\") or customer,\n                        \"abn\": \"\", \"email\": email, \"is_new\": not contact},\n            \"invoice_number\": \"\",\n            \"date\": date,\n            \"due_date\": due,\n            \"reference\": str(asked.get(\"reference\") or \"\")[:255],\n            \"currency\": \"\",\n            \"line_amount_types\": \"Exclusive\",\n            \"lines\": lines,\n            \"subtotal\": subtotal,\n            \"tax\": tax,\n            \"total\": round(subtotal + tax, 2),\n            \"coding_source\": \",\".join(sorted({str(l.get(\"source\") or \"\") for l in lines if l.get(\"source\")})),\n            \"notes\": str(asked.get(\"notes\") or \"\")[:1000],\n        }\n        # An existing customer gets a draft now, so the reviewer can preview it (Xero gives it its number); a new\n        # customer's contact and invoice wait for approval, like a new supplier's bill.\n        if contact and not blocking:\n            bill_id = xero_create_bill(tenant, proposal, \"DRAFT\")\n    except Exception as exc:\n        problem = \"Couldn't draft this invoice in Xero. \" + str(exc)[:500]\n",
+        "id": "draft_invoice",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "The invoice to raise",
+            "name": "proposal",
+            "type": "dict"
+          },
+          {
+            "description": "Things to check",
+            "name": "warnings",
+            "type": "list[str]"
+          },
+          {
+            "description": "Things to fix before approving",
+            "name": "blocking",
+            "type": "list[str]"
+          },
+          {
+            "description": "Xero InvoiceID of the draft, or empty",
+            "name": "bill_id",
+            "type": "str"
+          },
+          {
+            "description": "Why it stopped, or empty",
+            "name": "problem",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ steps.load_request.outputs.ctx }}",
+            "control": "hidden",
+            "label": "Context",
+            "name": "ctx",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ steps.load_request.outputs.request }}",
+            "control": "hidden",
+            "label": "Request",
+            "name": "request",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ steps.load_request.outputs.problem }}",
+            "control": "hidden",
+            "label": "Problem so far",
+            "name": "problem",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Has AI read the customer and lines from the request, prices them from Xero items or the request, codes them, and creates a draft in Xero for an existing customer.",
+        "title": "Draft the invoice"
+      },
+      {
+        "code": "# ── bookkeeping kit: shared helpers (inlined into each node by gen-ext.js) ──\nimport json\nimport re\nimport datetime\nfrom zoneinfo import ZoneInfo\n\n# Knowledge layout. Folders may nest at most 2 levels, so inbox folders are top-level.\nBK_SETTINGS = \"Bookkeeping/settings.json\"\nBK_CLIENTS = \"Bookkeeping/Clients\"\nBK_RULES = \"Bookkeeping/Rules\"\nBK_BILLS = \"Bookkeeping/Bills\"\nBK_INBOX = \"Bookkeeping Inbox\"\nBK_PROCESSED = \"Bookkeeping Processed\"\nBK_FAILED = \"Bookkeeping Failed\"\nBK_MAIL = \"Bookkeeping/Mail\"\nBK_REQUESTS = \"Bookkeeping Requests\"\n\n\ndef bk_write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True))\n\n\ndef bk_fmt(amount, currency=\"\"):\n    if amount is None:\n        return \"—\"\n    return (currency + \" \" if currency else \"\") + \"{:,.2f}\".format(amount)\n\n\ndef bk_tz(settings):\n    # The sandbox may lack the tz database; fall back to AEST (UTC+10) rather than failing the run.\n    try:\n        return ZoneInfo((settings or {}).get(\"timezone\") or \"Australia/Sydney\")\n    except Exception:\n        return datetime.timezone(datetime.timedelta(hours=10))\n\n\ndef bk_today(settings):\n    return datetime.datetime.now(bk_tz(settings)).date()\n\n\ndef bk_now_iso(settings):\n    return datetime.datetime.now(bk_tz(settings)).replace(microsecond=0).isoformat()\n\n\ndef bk_add_business_days(day, n):\n    d = day\n    while n > 0:\n        d = d + datetime.timedelta(days=1)\n        if d.weekday() < 5:\n            n -= 1\n    return d\n\n\ndef bk_move(src, dst):\n    \"\"\"Move a knowledge file (binary-safe): copy through the run's scratch space, then delete the source.\"\"\"\n    local = api.files.get(file=src)\n    with open(local, \"rb\") as fh:\n        data = fh.read()\n    scratch = api.files.scratch_path(dst.split(\"/\")[-1])\n    with open(scratch, \"wb\") as fh:\n        fh.write(data)\n    api.files.put(file=dst, scratch_file=scratch)\n    api.files.delete(file=src)\n    return dst\n\n\ndef bk_reviewer(settings, client):\n    return (client or {}).get(\"reviewer_id\") or (settings or {}).get(\"reviewer_id\")\n\n\ndef bk_exceptions_owner(settings, client):\n    return (settings or {}).get(\"exceptions_owner_id\") or bk_reviewer(settings, client)\n\n\n# ── bookkeeping kit: Xero ledger adapter (inlined into Xero nodes by gen-ext.js) ──\n# Every write passes xero_tenant_id so it lands in the client's own Xero organisation\n# (myhub-mcp-servers PR #558). Reads pass it too.\nimport base64\nfrom collections import Counter\n\nXERO = \"xero-accounting\"\nXERO_EXPENSE_TYPES = {\"EXPENSE\", \"DIRECTCOSTS\", \"OVERHEADS\", \"FIXED\", \"CURRENT\", \"INVENTORY\", \"PREPAYMENT\", \"NONCURRENT\"}\nXERO_REVENUE_TYPES = {\"REVENUE\", \"SALES\", \"OTHERINCOME\"}\nXERO_DEAD = {\"DELETED\", \"VOIDED\"}\n\n\ndef xero_bill_link(bill_id, doc_type=\"ACCPAY\"):\n    area = \"AccountsReceivable\" if doc_type == \"ACCREC\" else \"AccountsPayable\"\n    return \"https://go.xero.com/\" + area + \"/Edit.aspx?InvoiceID=\" + str(bill_id)\n\n\ndef xero_bill_markdown(proposal, warnings=None, blocking=None, bill_id=\"\", file_path=\"\", client_name=\"\"):\n    \"\"\"The review item's description: what the AI read, how it coded it, and what to check.\"\"\"\n    p = proposal or {}\n    c = p.get(\"contact\") or {}\n    cur = p.get(\"currency\") or \"\"\n    sales = p.get(\"doc_type\") == \"ACCREC\"\n    raising = p.get(\"origin\") == \"request\"\n    doc = \"invoice\" if sales else \"bill\"\n    out = []\n    if raising:\n        out.append(\"**Invoice to raise** from \" + (client_name or \"the client\") + \" to **\" + (c.get(\"name\") or \"Unknown customer\")\n                   + \"**\" + (\" (new customer)\" if c.get(\"is_new\") else \"\") + (\" · \" + c[\"email\"] if c.get(\"email\") else \"\"))\n    elif sales:\n        out.append(\"**Sales invoice** from \" + (client_name or \"the client\") + \" to **\" + (c.get(\"name\") or \"Unknown customer\")\n                   + \"**\" + (\" (new customer)\" if c.get(\"is_new\") else \"\"))\n    else:\n        out.append(\"**\" + (c.get(\"name\") or \"Unknown supplier\") + \"**\" + (\" (new supplier)\" if c.get(\"is_new\") else \"\")\n                   + (\" for \" + client_name if client_name else \"\"))\n    out.append(\"\")\n    out.append(\"- Invoice \" + (p.get(\"invoice_number\") or (\"numbered by Xero\" if raising else \"—\")) + \", dated \" + (p.get(\"date\") or \"—\")\n               + \", due \" + (p.get(\"due_date\") or \"—\"))\n    out.append(\"- Total \" + bk_fmt(p.get(\"total\"), cur) + \" (GST \" + bk_fmt(p.get(\"tax\"), cur) + \", amounts \"\n               + (\"include\" if p.get(\"line_amount_types\") == \"Inclusive\" else \"exclude\") + \" GST)\")\n    if bill_id:\n        out.append(\"- Draft \" + doc + \" in Xero: [open in Xero](\" + xero_bill_link(bill_id, p.get(\"doc_type\") or \"ACCPAY\") + \")\")\n    else:\n        out.append(\"- Not in Xero yet: the \" + doc + \" is created when you approve\")\n    if file_path:\n        out.append(\"- PDF: `\" + file_path + \"` in Knowledge\")\n    out.append(\"\")\n    out.append(\"**Lines**\")\n    out.append(\"\")\n    # A list, not a table: WorkQ descriptions don't render markdown tables.\n    for i, ln in enumerate(p.get(\"lines\") or []):\n        desc = str(ln.get(\"description\") or \"\").replace(\"\\n\", \" \")[:120]\n        out.append(\"- Line \" + str(i + 1) + \": \" + desc + \", \" + bk_fmt(ln.get(\"line_amount\"), cur) + \". Account **\"\n                   + (ln.get(\"account_code\") or \"missing\") + \"**, tax \" + (ln.get(\"tax_type\") or \"—\") + \". \"\n                   + str(ln.get(\"reason\") or \"\")[:160] + \" (\" + str(ln.get(\"confidence\") or \"low\") + \" confidence)\")\n    if blocking:\n        out.append(\"\")\n        out.append(\"**Must fix before approving**\")\n        out.extend(\"- \" + b for b in blocking)\n    if warnings:\n        out.append(\"\")\n        out.append(\"**Check**\")\n        out.extend(\"- \" + w for w in warnings)\n    out.append(\"\")\n    if raising:\n        out.append(\"Fill in the **Invoice to send** form on this item: approve it (and choose whether Xero emails it to the \"\n                   \"customer), change it, reject it or ask the client.\")\n    else:\n        out.append(\"Fill in the **\" + (\"Invoice\" if sales else \"Bill\") + \" review** form on this item to approve, change, \"\n                   \"reject or ask the client.\" + (\" Approving records it in Xero as awaiting payment; nothing is emailed \"\n                                                  \"to the customer.\" if sales else \"\"))\n    return \"\\n\".join(out)\n\n\n# ── Send for approval ──\n\n\nproblem = params.get(\"problem\") or \"\"\nctx = params.get(\"ctx\") or {}\nrequest = params.get(\"request\") or {}\nproposal = params.get(\"proposal\") or {}\nwarnings = params.get(\"warnings\") or []\nblocking = params.get(\"blocking\") or []\nbill_id = params.get(\"bill_id\") or \"\"\nsettings = ctx.get(\"settings\") or {}\nclient = ctx.get(\"client\") or {}\nslug = client.get(\"slug\") or ctx.get(\"folder\") or \"unknown\"\ntoday = bk_today(settings)\nsrc = str(request.get(\"path\") or \"\")\noutcome = \"\"\ntodo_id = \"\"\n\nquoted = \"\\n\".join(\"> \" + ln for ln in str(request.get(\"text\") or \"\")[:1500].splitlines() if ln.strip())\nasked_by = (\"**Requested by** \" + (request.get(\"from\") or \"the client\") + (\", \" + str(request.get(\"received\")) if request.get(\"received\") else \"\")\n            + (\"  \\n**Subject:** \" + str(request.get(\"subject\")) if request.get(\"subject\") else \"\"))\n\nif problem:\n    dest = \"\"\n    if src:\n        try:\n            dest = bk_move(src, BK_FAILED + \"/\" + slug + \"/\" + src.split(\"/\")[-1])\n        except Exception:\n            dest = src\n    owner = bk_exceptions_owner(settings, client)\n    item = api.workq.create(\n        title=(\"Invoice request needs attention: \" + (request.get(\"subject\") or \"request\")\n               + (\" (\" + client[\"name\"] + \")\" if client.get(\"name\") else \"\"))[:200],\n        scope=\"org\",\n        description=(problem + \"\\n\\n\" + asked_by + \"\\n\\n\" + quoted + (\"\\n\\n- Request file: `\" + dest + \"` in Knowledge\" if dest else \"\")\n                     + \"\\n\\nFix it, then run **Bookkeeping: Draft requested invoice (Xero)** by hand with the client's name \"\n                     \"and the request text, or raise the invoice in Xero yourself, and complete this item.\"),\n        priority=\"high\",\n        due_date=str(bk_add_business_days(today, 1)),\n        assignee_ids=[owner] if owner else None,\n        labels=[\"bookkeeping\", \"bill-exception\", \"invoice-request\", slug],\n    )\n    todo_id = item[\"id\"]\n    outcome = \"exception\"\nelse:\n    dest = \"\"\n    if src:\n        dest = bk_move(src, BK_PROCESSED + \"/\" + slug + \"/\" + src.split(\"/\")[-1])\n    c = proposal.get(\"contact\") or {}\n    reviewer = bk_reviewer(settings, client)\n    title = (\"Invoice to raise: \" + (c.get(\"name\") or \"customer\") + \" \" + (proposal.get(\"invoice_number\") or \"\")\n             + \" \" + bk_fmt(proposal.get(\"total\"), proposal.get(\"currency\") or \"\") + \" (\" + client.get(\"name\", \"\") + \")\")\n    item = api.workq.create(\n        title=re.sub(r\"\\s+\", \" \", title)[:200],\n        scope=\"org\",\n        description=(asked_by + \"\\n\\n\" + quoted + \"\\n\\n---\\n\\n\"\n                     + xero_bill_markdown(proposal, warnings, blocking, bill_id, \"\", client.get(\"name\", \"\"))),\n        priority=\"high\" if (blocking or c.get(\"is_new\")) else \"medium\",\n        due_date=str(bk_add_business_days(today, 1)),\n        assignee_ids=[reviewer] if reviewer else None,\n        labels=[\"bookkeeping\", \"invoice-request\", slug],\n    )\n    api.workq.attach_form(todo_id=item[\"id\"], form_id=params[\"send_form\"])\n    levels = [str(l.get(\"confidence\") or \"low\") for l in proposal.get(\"lines\") or []]\n    record = {\n        \"client_slug\": slug,\n        \"tenant_id\": client.get(\"xero_tenant_id\"),\n        \"bill_id\": bill_id,\n        \"proposal\": proposal,\n        \"warnings\": warnings,\n        \"blocking\": blocking,\n        \"confidence\": \"low\" if (blocking or \"low\" in levels) else (\"medium\" if \"medium\" in levels else \"high\"),\n        \"file\": \"\",\n        \"request\": {k: request.get(k) for k in (\"from\", \"subject\", \"received\", \"mailbox\", \"source\")},\n        \"request_file\": dest,\n        \"created_at\": bk_now_iso(settings),\n        \"history\": [],\n        \"status\": \"in_review\",\n        \"review_todo_id\": item[\"id\"],\n    }\n    bk_write_json(BK_BILLS + \"/\" + item[\"id\"] + \".json\", record)\n    todo_id = item[\"id\"]\n    outcome = \"review\"\n",
+        "id": "route_request",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "review or exception",
+            "name": "outcome",
+            "type": "str"
+          },
+          {
+            "description": "The WorkQ item created",
+            "name": "todo_id",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ steps.draft_invoice.outputs.problem }}",
+            "control": "hidden",
+            "label": "Problem so far",
+            "name": "problem",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.load_request.outputs.ctx }}",
+            "control": "hidden",
+            "label": "Context",
+            "name": "ctx",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ steps.load_request.outputs.request }}",
+            "control": "hidden",
+            "label": "Request",
+            "name": "request",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ steps.draft_invoice.outputs.proposal }}",
+            "control": "hidden",
+            "label": "Invoice",
+            "name": "proposal",
+            "required": false,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ steps.draft_invoice.outputs.warnings }}",
+            "control": "hidden",
+            "label": "Warnings",
+            "name": "warnings",
+            "required": false,
+            "type": "list[str]"
+          },
+          {
+            "binding": "{{ steps.draft_invoice.outputs.blocking }}",
+            "control": "hidden",
+            "label": "Blocking issues",
+            "name": "blocking",
+            "required": false,
+            "type": "list[str]"
+          },
+          {
+            "binding": "{{ steps.draft_invoice.outputs.bill_id }}",
+            "control": "hidden",
+            "label": "Draft invoice",
+            "name": "bill_id",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "control": "form-picker",
+            "label": "Invoice to send form",
+            "name": "send_form",
+            "required": true,
+            "type": "uuid",
+            "value": "8c5aad2c-d4d3-4f5f-ac5f-afa3a3a002c4"
+          }
+        ],
+        "summary": "Creates the WorkQ item with the Invoice to send form, or an exception item if something went wrong. Files the request away.",
+        "title": "Send for approval"
+      }
+    ],
+    "params": [
+      {
+        "control": "text",
+        "description": "The business asking for the invoice, as in its client settings.",
+        "label": "Client business (manual runs only)",
+        "name": "client_name",
+        "required": false,
+        "type": "str",
+        "value": ""
+      },
+      {
+        "control": "text",
+        "description": "For example: Please invoice Bayview Hospitality for 6 hours of plumbing labour in September.",
+        "label": "What to invoice (manual runs only)",
+        "name": "request_text",
+        "required": false,
+        "type": "str",
+        "value": ""
+      }
+    ],
+    "rootOrder": [
+      "load_request",
+      "gate"
+    ],
+    "triggers": [
+      {
+        "eventType": "knowledge.file_created",
+        "filter": {
+          "scope": "org"
+        },
+        "kind": "event"
+      },
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "knowledgeFiles": [],
+  "level": "org",
+  "name": "Bookkeeping: Draft requested invoice (Xero)",
+  "originKey": "44f3fd3d-7516-495e-b2aa-6621ad1fa47b",
+  "tags": [
+    "bookkeeping"
+  ]
+}
