@@ -45,7 +45,7 @@
     "elements": {
       "billAmount": {
         "props": {
-          "size": "sm",
+          "size": "md",
           "text": {
             "$computed": "format_currency",
             "args": {
@@ -65,31 +65,23 @@
         "props": {},
         "type": "Divider"
       },
-      "billDot": {
-        "props": {
-          "size": "sm",
-          "tone": {
-            "$item": "tone"
-          }
-        },
-        "type": "Dot"
-      },
       "billInfo": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
         "children": [
           "billName",
-          "billMeta"
-        ],
-        "props": {
-          "gap": "none"
-        },
-        "type": "Stack"
+          "billMeta",
+          "billBadgeRow"
+        ]
       },
       "billList": {
         "children": [
           "billRow"
         ],
         "props": {
-          "gap": "none"
+          "gap": "sm"
         },
         "repeat": {
           "key": "id",
@@ -109,7 +101,7 @@
       },
       "billName": {
         "props": {
-          "size": "sm",
+          "size": "md",
           "text": {
             "$item": "contactName"
           },
@@ -124,13 +116,13 @@
           "billDivider"
         ],
         "props": {
-          "gap": "xs"
+          "gap": "sm"
         },
         "type": "Stack"
       },
       "billRowContent": {
         "children": [
-          "billDot",
+          "billDotGroup",
           "billInfo",
           "billRightCol"
         ],
@@ -148,7 +140,7 @@
         ],
         "props": {
           "align": "end",
-          "gap": "xs"
+          "gap": "sm"
         },
         "type": "Stack"
       },
@@ -206,6 +198,7 @@
           "statsGrid",
           "divider",
           "billList",
+          "footerDivider",
           "footerRow"
         ],
         "props": {
@@ -245,20 +238,6 @@
             }
           ]
         }
-      },
-      "eyebrow": {
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "n": {
-                "$state": "/myob-accounting/list_myob_bank_detail_check/summary/total"
-              },
-              "pattern": "MYOB · {n} bills · first 100"
-            }
-          }
-        },
-        "type": "Eyebrow"
       },
       "footerLeft": {
         "props": {
@@ -304,7 +283,7 @@
       },
       "header": {
         "children": [
-          "titleGroup"
+          "title"
         ],
         "props": {},
         "type": "Header"
@@ -361,58 +340,54 @@
         "type": "Skeleton"
       },
       "statCantVerify": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
         "children": [
           "valCantVerify",
           "lblCantVerify"
-        ],
-        "props": {
-          "gap": "none"
-        },
-        "type": "Stack"
+        ]
       },
       "valCantVerify": {
+        "type": "Stat",
         "props": {
-          "size": "sm",
-          "tone": "warning",
           "value": {
             "$state": "/myob-accounting/list_myob_bank_detail_check/summary/cantVerify"
-          }
-        },
-        "type": "Stat"
+          },
+          "tone": "warning"
+        }
       },
       "lblCantVerify": {
+        "type": "Caption",
         "props": {
-          "text": "CAN'T VERIFY",
-          "tone": "warning"
-        },
-        "type": "Caption"
+          "text": "CAN'T VERIFY"
+        }
       },
       "statVerified": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
         "children": [
           "valVerified",
           "lblVerified"
-        ],
-        "props": {
-          "gap": "none"
-        },
-        "type": "Stack"
+        ]
       },
       "valVerified": {
+        "type": "Stat",
         "props": {
-          "size": "sm",
-          "tone": "success",
           "value": {
             "$state": "/myob-accounting/list_myob_bank_detail_check/summary/verified"
-          }
-        },
-        "type": "Stat"
+          },
+          "tone": "success"
+        }
       },
       "lblVerified": {
+        "type": "Caption",
         "props": {
-          "text": "VERIFIED",
-          "tone": "success"
-        },
-        "type": "Caption"
+          "text": "VERIFIED"
+        }
       },
       "statsGrid": {
         "children": [
@@ -427,58 +402,56 @@
         "type": "Grid"
       },
       "statMismatchCard": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
         "children": [
           "statMismatch"
-        ],
-        "props": {
-          "variant": "muted"
-        },
-        "type": "Section"
+        ]
       },
       "statCantVerifyCard": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
         "children": [
           "statCantVerify"
-        ],
-        "props": {
-          "variant": "muted"
-        },
-        "type": "Section"
+        ]
       },
       "statVerifiedCard": {
-        "children": [
-          "statVerified"
-        ],
+        "type": "Section",
         "props": {
           "variant": "muted"
         },
-        "type": "Section"
+        "children": [
+          "statVerified"
+        ]
       },
       "statMismatch": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
         "children": [
           "valMismatch",
           "lblMismatch"
-        ],
-        "props": {
-          "gap": "none"
-        },
-        "type": "Stack"
+        ]
       },
       "valMismatch": {
+        "type": "Stat",
         "props": {
-          "size": "sm",
-          "tone": "destructive",
           "value": {
             "$state": "/myob-accounting/list_myob_bank_detail_check/summary/mismatch"
-          }
-        },
-        "type": "Stat"
+          },
+          "tone": "destructive"
+        }
       },
       "lblMismatch": {
+        "type": "Caption",
         "props": {
-          "text": "MISMATCH",
-          "tone": "destructive"
-        },
-        "type": "Caption"
+          "text": "MISMATCH"
+        }
       },
       "title": {
         "props": {
@@ -486,35 +459,6 @@
           "text": "Bank-Detail Check"
         },
         "type": "Heading"
-      },
-      "titleGroup": {
-        "children": [
-          "titleIcon",
-          "titleStack"
-        ],
-        "props": {
-          "align": "center",
-          "gap": "sm"
-        },
-        "type": "Row"
-      },
-      "titleIcon": {
-        "props": {
-          "name": "ShieldCheck",
-          "size": "sm",
-          "tone": "accent"
-        },
-        "type": "Icon"
-      },
-      "titleStack": {
-        "children": [
-          "title",
-          "eyebrow"
-        ],
-        "props": {
-          "gap": "none"
-        },
-        "type": "Stack"
       },
       "billReviewText": {
         "type": "Text",
@@ -532,6 +476,102 @@
           "size": "xs",
           "tone": "info"
         }
+      },
+      "footerDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "billDotGroup": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "billDotMismatch",
+          "billDotMissing",
+          "billDotVerified"
+        ]
+      },
+      "billDotMismatch": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "destructive"
+        },
+        "visible": {
+          "$item": "status",
+          "eq": "mismatch"
+        }
+      },
+      "billBadgeMismatch": {
+        "type": "Badge",
+        "props": {
+          "text": "Mismatch",
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "status",
+          "eq": "mismatch"
+        }
+      },
+      "billDotMissing": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "warning"
+        },
+        "visible": {
+          "$item": "status",
+          "eq": "cant_verify"
+        }
+      },
+      "billBadgeMissing": {
+        "type": "Badge",
+        "props": {
+          "text": "Missing on contact",
+          "tone": "warning",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "status",
+          "eq": "cant_verify"
+        }
+      },
+      "billDotVerified": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "success"
+        },
+        "visible": {
+          "$item": "status",
+          "eq": "verified"
+        }
+      },
+      "billBadgeVerified": {
+        "type": "Badge",
+        "props": {
+          "text": "Verified",
+          "tone": "success",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "status",
+          "eq": "verified"
+        }
+      },
+      "billBadgeRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "billBadgeMismatch",
+          "billBadgeMissing",
+          "billBadgeVerified"
+        ]
       }
     },
     "root": "card"
