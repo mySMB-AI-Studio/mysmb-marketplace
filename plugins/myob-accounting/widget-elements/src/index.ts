@@ -1322,6 +1322,32 @@ const duplicate_check_status_label: ComputedFunction = (args) =>
 const duplicate_check_status_tone: ComputedFunction = (args) =>
   (Number(args.value) || 0) > 0 ? 'warning' : 'success';
 
+// ── paginate ─────────────────────────────────────────────────────────
+// Client-side paging over a list already in state. `repeat` only accepts a
+// static statePath, so widgets `setState` the returned object into a UI path
+// (on data load via `watch`, and from Prev/Next clicks) and repeat over
+// `<path>/items`. Returns one object so a single setState writes everything —
+// json-render's watch loop cancels after the first state write, so chained
+// setStates would silently drop all but the first.
+// Args: { value: array, page?: number, delta?: number, size?: number (default 30) }
+// Returns: { items, page, label, hasPrev, hasNext }
+const paginate: ComputedFunction = (args) => {
+  const all = Array.isArray(args.value) ? args.value : [];
+  const size = Math.max(1, Math.floor(Number(args.size) || 30));
+  const pageCount = Math.max(1, Math.ceil(all.length / size));
+  const requested = Math.floor(Number(args.page) || 0) + Math.floor(Number(args.delta) || 0);
+  const page = Math.min(Math.max(requested, 0), pageCount - 1);
+  const from = page * size;
+  const to = Math.min(all.length, from + size);
+  return {
+    items: all.slice(from, to),
+    page,
+    label: all.length ? `${from + 1}–${to} of ${all.length}` : '',
+    hasPrev: page > 0,
+    hasNext: page < pageCount - 1,
+  };
+};
+
 const elements: PluginElementsModule = {
   slug: 'myob-accounting',
   functions: {
@@ -1355,6 +1381,7 @@ const elements: PluginElementsModule = {
     analyze_myob_duplicates,
     duplicate_check_status_label,
     duplicate_check_status_tone,
+    paginate,
   },
 };
 
