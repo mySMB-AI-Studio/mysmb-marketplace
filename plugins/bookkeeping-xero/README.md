@@ -3,8 +3,6 @@
 Supplier bills from PDF to approved in Xero, for bookkeeping practices that keep the books for many client businesses. Drop a bill into a client's inbox folder and it's read, checked and coded. It's created as a draft bill in **that client's own Xero organisation**, with the PDF attached, and sent to the reviewer in WorkQ. The reviewer's decision is applied in Xero, and coding corrections are remembered for next time. A weekly digest shows what's waiting for each client.
 
 > Generated from `bookkeeping-kit` (gen-ext.js). Change the kit source and regenerate; don't hand-edit these files.
->
-> **Exception (2026-09-29):** the agent's `skills:` line was hand-edited to add four reporting skills from `xero-reporting-studio` (below) — the `bookkeeping-kit` generator source wasn't available to fold this in properly. If this extension is regenerated from the kit later without adding the same skills there, this addition will be silently lost. Fold it into the kit source when convenient.
 
 ## What's in the box
 
