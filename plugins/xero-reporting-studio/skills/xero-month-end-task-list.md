@@ -17,6 +17,10 @@ Per area:
 
 Categorise every finding as **Required** (an objective check failed against live data — negative bank balance, a draft pay run near period end, a non-zero suspense account), **Review** (a live figure exists but needs human judgement — ageing concentration, unusual journals), **Information-required** (this connector genuinely cannot answer it — for example whether a depreciation journal has been posted), or **Optional** (good practice, not close-blocking). State this rule plainly in the output so a reader can see why each task landed where it did.
 
+This report declares more than 5 Xero bindings, so the foundation's 429 retry is mandatory: wire `retryRateLimited` into the first bundle exactly as the foundation shows. A tie whose figures did not all arrive (a binding errored, even after retry) renders N/A, never Fail: `$2,304.50 vs —` is N/A.
+
+After the chat summary, always offer one follow-up in a single line: a monthly reminder to review this report before close. If the user says yes, give them the reminder prompt from the foundation's "automated or scheduled" paragraph, filled in for this report. Never offer to regenerate the report on a schedule.
+
 In the chat reply after saving, state only the counts and findings the page itself computes from the bound data, using the same rules. Never restate a finding from an earlier discovery call that the page would show differently. If in doubt, give the totals and tell the user to open the report.
 
 Validate that every Required/Review task cites the specific figure and threshold that produced it — never an unsupported judgement call — and that Information-required tasks are exactly the ones this connector cannot answer, never a catch-all for something merely inconvenient to check.
