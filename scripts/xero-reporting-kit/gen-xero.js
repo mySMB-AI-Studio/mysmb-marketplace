@@ -132,7 +132,7 @@ ${f.members.map((m) => '| ' + m[0] + ' | ' + m[1] + ' |').join('\n')}
 ## Validation checks (shown in the banner)
 
 ${f.checks.map((c) => '- ' + c).join('\n')}
-
+${f.chat ? '\n## In the chat reply\n\n' + f.chat.map((c) => '- ' + c).join('\n') + '\n' : ''}
 ## Save as
 
 \`fileName\`: \`${f.fileName}\` · \`tags\`: ${JSON.stringify(f.tags)}

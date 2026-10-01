@@ -1,0 +1,22 @@
+{
+  "inputs": [
+    { "name": "period_start", "label": "From", "type": "date", "default": "2026-08-01" },
+    { "name": "period_end", "label": "To", "type": "date", "default": "2026-08-31" },
+    { "name": "mj_where", "label": "Journals filter", "type": "string", "maxLength": 200, "default": "Date>=DateTime(2026,08,01) AND Date<=DateTime(2026,08,31)" },
+    { "name": "org", "label": "Organisation", "type": "string", "maxLength": 64, "default": "" },
+    { "name": "page", "label": "Page", "type": "number", "min": 1, "max": 20, "default": 1 },
+    { "name": "display", "label": "Display settings", "type": "string", "maxLength": 300, "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"last_month\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\",\"o\":\"f=all\"}" }
+  ],
+  "bindings": [
+    { "id": "bank", "tool": { "mcp": "xero-accounting", "name": "get_bank_summary" }, "params": { "fromDate": { "kind": "input", "input": "period_start" }, "toDate": { "kind": "input", "input": "period_end" }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
+    { "id": "receivables", "tool": { "mcp": "xero-accounting", "name": "list_invoices" }, "params": { "where": { "kind": "static", "value": "Type==\"ACCREC\"" }, "statuses": { "kind": "static", "value": "AUTHORISED" }, "order": { "kind": "static", "value": "DueDate ASC" }, "page": { "kind": "input", "input": "page" }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
+    { "id": "payables", "tool": { "mcp": "xero-accounting", "name": "list_invoices" }, "params": { "where": { "kind": "static", "value": "Type==\"ACCPAY\"" }, "statuses": { "kind": "static", "value": "AUTHORISED" }, "order": { "kind": "static", "value": "DueDate ASC" }, "page": { "kind": "input", "input": "page" }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
+    { "id": "journals", "tool": { "mcp": "xero-accounting", "name": "list_manual_journals" }, "params": { "where": { "kind": "input", "input": "mj_where" }, "page": { "kind": "input", "input": "page" }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
+    { "id": "bs", "tool": { "mcp": "xero-accounting", "name": "get_balance_sheet" }, "params": { "date": { "kind": "input", "input": "period_end" }, "standardLayout": { "kind": "static", "value": true }, "paymentsOnly": { "kind": "static", "value": false }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
+    { "id": "pay_runs", "tool": { "mcp": "xero-payroll-au", "name": "list_pay_runs" }, "params": { "order": { "kind": "static", "value": "PayRunPeriodEndDate DESC" }, "page": { "kind": "input", "input": "page" }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
+    { "id": "timesheets", "tool": { "mcp": "xero-payroll-au", "name": "list_timesheets" }, "params": { "page": { "kind": "input", "input": "page" }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
+    { "id": "assets", "tool": { "mcp": "xero-assets", "name": "list_assets" }, "params": { "status": { "kind": "static", "value": "Registered" }, "pageSize": { "kind": "static", "value": 500 }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
+    { "id": "org", "tool": { "mcp": "xero-accounting", "name": "get_organisation" }, "params": { "xero_tenant_id": { "kind": "input", "input": "org" } } },
+    { "id": "connections", "tool": { "mcp": "xero-accounting", "name": "list_connections" }, "params": {} }
+  ]
+}

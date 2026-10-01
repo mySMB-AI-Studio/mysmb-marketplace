@@ -629,7 +629,8 @@ var XK = (function () {
     function fy() { return fiscalStart(co().org, cfg.fyMonth); }
     // An {__error} object (if a proxy returns one) moves to S.errors so every section and check treats it as a failed source.
     function absorb(id, v) { var e = errorOf(v); S.pages[id] = null; S.trunc[id] = false; if (e) { delete S.data[id]; S.errors[id] = { code: 'tool_error', message: e }; } else { S.data[id] = v; delete S.errors[id]; } }
-    function err(id) { var e = S.errors[id]; return e ? (FRIENDLY[e.code] || e.message || 'Unavailable') + (e.code === 'tool_error' && e.message ? ' (' + e.message + ')' : '') : null; }
+    function srcOf(id) { return (cfg.sources || {})[id] || null; }
+    function err(id) { var e = S.errors[id], sc = srcOf(id); if (!e) return null; if (e.code === 'needs_connection' && sc) return 'Connect ' + sc.name + ' (Settings → Connections) to see this section.'; return (FRIENDLY[e.code] || e.message || 'Unavailable') + (e.code === 'tool_error' && e.message ? ' (' + e.message + ')' : ''); }
     function announce() { if (MH && live) MH.setInputs(Object.assign({}, S.inputs)); }
     function status(t) { var el = $('xk-status'); if (el) el.textContent = t || ''; }
     // Xero allows 5 calls in progress per organisation and the host opens every binding at once, so a report with more
@@ -802,7 +803,7 @@ var XK = (function () {
       var d = disp(), c0 = co(), f = fy();
       return { data: S.data, errors: S.errors, err: err, inputs: S.inputs, I: I, display: d, view: d.v || (cfg.views ? cfg.views[0][0] : ''), compareMode: cfg.compare ? d.c : 'none',
         persona: I.persona ? S.inputs[I.persona] : 'Bookkeeper', company: c0.name, organisation: c0, fy: f, currency: homeCurrency(c0.org), live: live,
-        fetchedAt: S.fetchedAt, body: $('xk-body'), change: change, disp: disp, today: iso(today()), opt: optv, setOpt: function (id, v) { return change({}, { o: setOpt(id, v) }); }, rows: rows, truncated: truncated, fan: fan, pageError: function (id) { return (S.pageError || {})[id] || null; } };
+        fetchedAt: S.fetchedAt, source: srcOf, body: $('xk-body'), change: change, disp: disp, today: iso(today()), opt: optv, setOpt: function (id, v) { return change({}, { o: setOpt(id, v) }); }, rows: rows, truncated: truncated, fan: fan, pageError: function (id) { return (S.pageError || {})[id] || null; } };
     }
     var last = { checks: [], na: [], notes: [] };
     function render() {
@@ -817,14 +818,14 @@ var XK = (function () {
       last = { checks: out.checks || [], na: out.na || [], notes: out.notes || [] };
       stale().forEach(function (x) { last.checks.unshift({ name: 'Xero report dates = the selected dates', pass: false, detail: (cfg.tools || {})[x.id] + ' returned "' + x.title + '" — press Refresh' }); });
       // Not connected: always say so at the top of the report, whichever view is showing.
-      var nc = Object.keys(S.errors).some(function (id) { return S.errors[id] && S.errors[id].code === 'needs_connection'; });
+      var nc = Object.keys(S.errors).some(function (id) { return S.errors[id] && S.errors[id].code === 'needs_connection' && !srcOf(id); });
       if (nc && c.body && c.body.textContent.indexOf(FRIENDLY.needs_connection) < 0) { var dv = document.createElement('div'); dv.className = 'xk-banner fail'; dv.textContent = FRIENDLY.needs_connection; c.body.insertBefore(dv, c.body.firstChild); }
       // A failed data source is never silent: it turns the banner red even when the report's own checks still pass.
       Object.keys(S.errors).forEach(function (id) {
         if (id === cfg.conns && S.data[cfg.org]) return; // the organisation list is only needed for the picker
         var msg = err(id);
         if (last.checks.some(function (k) { return k.pass === false && k.detail === msg; })) return;
-        last.checks.unshift({ name: 'Data loaded: ' + ((cfg.tools || {})[id] || id), pass: false, detail: msg });
+        var sc = srcOf(id); last.checks.unshift({ name: 'Data loaded: ' + ((cfg.tools || {})[id] || id), pass: sc && sc.optional ? null : false, detail: msg });
       });
       var hd = $('xk-head');
       if (hd) { hd.hidden = !d.hdr || !!cfg.noHead; var per = out.period || (I.start ? periodLine(S.inputs[I.start], S.inputs[I.end]) : I.asAt ? asOfLine(S.inputs[I.asAt]) : ''); hd.innerHTML = '<div class="co">' + h(c.company || 'N/A — not in source') + '</div><div class="ti">' + h(out.title || cfg.title) + '</div><div class="pe">' + h(per) + '</div><div class="xk-src">' + (d.style === 'mysmb' ? '<span class="xk-badge">mySMB</span>mySMB Reporting · data from Xero' : '<span class="xk-badge">Xero</span>Prepared from Xero') + '</div>'; }
@@ -849,7 +850,7 @@ var XK = (function () {
       var el = $('xk-sources'); if (!el) return; var t = cfg.tools || {};
       var items = Object.keys(t).map(function (id) { return h(t[id]) + (S.errors[id] ? ' — <span class="xk-err">' + h(err(id)) + '</span>' : ''); });
       var na = last.na.slice(); if (!c.company) na.unshift('Organisation name (Xero returned no organisation details)');
-      el.innerHTML = '<h2>Sources &amp; limitations</h2><ul><li>Mechanism: ' + h(MECHANISM) + '</li><li>Tool calls: ' + items.join(' · ') + '</li>' +
+      el.innerHTML = '<h2>Sources &amp; limitations</h2><ul><li>Mechanism: ' + h(cfg.mechanism || MECHANISM) + '</li><li>Tool calls: ' + items.join(' · ') + '</li>' +
         '<li>Basis: ' + h(I.basis ? S.inputs[I.basis] : 'n/a') + ' · Currency: ' + h(c.currency) + ' · Organisation: ' + h(c.company || 'N/A — not in source') + ' (one Xero organisation per report)</li>' +
         (/^assumed/.test(c.fy.source) ? '<li>Financial year: ' + h(c.fy.source) + ' (starts ' + h(MONTHS[c.fy.month - 1]) + '). Adjust the dates if this organisation uses a different year.</li>' : '') +
         last.notes.map(function (n) { return '<li>' + h(n) + '</li>'; }).join('') +
