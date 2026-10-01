@@ -372,7 +372,8 @@ svg .donut-c{fill:var(--ink);font-size:15px;font-weight:700}
 .xk-chip{display:inline-block;border:1px solid var(--line);border-radius:14px;padding:3px 10px;margin:2px;font-size:12px;background:var(--card);cursor:pointer}
 .xk-chip.on{border-color:var(--accent);color:var(--ink);font-weight:600}
 .xk-ok{color:var(--pos)}.xk-bad{color:var(--neg)}
-@media print{body{background:var(--card);padding:0}#xk-controls,#xk-status,.no-print,.xk-filter{display:none!important}.xk-card{border:0;padding:0 0 12px}th{position:static}@page{size:A4 landscape;margin:12mm}}
+.print-only{display:none}
+@media print{.print-only{display:inline!important}body{background:var(--card);padding:0}#xk-controls,#xk-status,.no-print,.xk-filter{display:none!important}.xk-card{border:0;padding:0 0 12px}th{position:static}@page{size:A4 landscape;margin:12mm}}
 /* QuickBooks branding accents (the accent follows the house-style toggle and the optional brand colour) */
 #xk-controls{border-top:3px solid var(--accent)}
 main.xk-card{border-top:4px solid var(--accent)}
