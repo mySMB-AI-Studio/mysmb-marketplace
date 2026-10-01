@@ -1,8 +1,8 @@
 # Xero Reporting Studio — report kit (source, tests, generator)
 
-This folder is the source of the **kit reports** in `plugins/xero-reporting-studio/skills/`. Each kit skill carries a `dataBindings` manifest and a report config. The foundation skill carries the kit (`xk-kit.js`), the stylesheet (`xk.css`) and the skeleton. The agent assembles them verbatim; it never writes report code.
+This folder is the source of the **kit reports** in `plugins/xero-reporting-studio/skills/`. Each kit skill carries a `dataBindings` manifest and its complete report document: the skeleton, the stylesheet (`xk.css`), the kit (`xk-kit.js`) cut down to what that report uses, and the report config. The agent copies them verbatim, changing only the dates; it never writes report code. The foundation skill carries the build steps and rules, not code.
 
-**Never hand-edit the config or kit blocks in the skill `.md` files.** Change the files here, run the tests, then regenerate.
+**Never hand-edit the report document or `dataBindings` blocks in the skill `.md` files.** Change the files here, run the tests, then regenerate.
 
 ## Setup
 
@@ -26,16 +26,17 @@ Open the PR only when `npm run roundtrip` and `validate.ts` both pass.
 
 | File | What it is |
 |---|---|
-| `xk-kit.js` / `xk.css` / `skeleton.html` | The kit, stylesheet and page skeleton (one copy each; the foundation embeds them, with the kit minified for whitespace and comments only). |
+| `xk-kit.js` / `xk.css` / `skeleton.html` | The kit, stylesheet and page skeleton (one copy each). |
+| `kit-prune.js` / `build.js` | `build.js` assembles one report's document. `kit-prune.js` cuts the kit down to the `XK.*` members that report's config calls (plus what they use), minified with names kept and lines of about 300 characters. |
 | `reports/<id>.cfg.js` + `<id>.manifest.json` | One kit report: its config and its `dataBindings`. `aged.tpl.js` and `pipeline.tpl.js` are templates: `mk-aged.js` writes `ar` / `ap` and `mk-pipeline.js` writes `so` / `pu`. Edit the templates, not those four. |
 | `families.js` | One entry per kit skill (skill file, title, trigger, discovery, dates, members, checks, golden set, file name). |
-| `gen-xero.js` | Writes the foundation and every kit skill. The foundation's "Rules for report skills without a kit config" come from `foundation-written-spec.md`. That section is the guidance for the written-spec skills, so edit it there. |
+| `gen-xero.js` | Writes the foundation and every kit skill (each with its document from `build.js`). It fails if a skill or a document is over the limits below. The foundation's "Rules for report skills without a kit config" come from `foundation-written-spec.md`. That section is the guidance for the written-spec skills, so edit it there. |
 | `harness.js` | Runs a built report in jsdom against a mock `MyHubReport` that behaves like the host: params come from the manifest, defaults are filled, unknown inputs are rejected, plus `getData`, snapshot mode and a fixed clock (25 Sep 2026). |
 | `ledger.js` | A small double-entry set of books. **Every Xero response is derived from it:** P&L (accrual and cash, `periods`/`timeframe`), Balance Sheet, Bank Summary, Trial Balance, and lists with statuses, `where` and 100-row paging. Cross-report ties therefore hold by construction, and a tampered value must fail. |
 | `fixtures.js` | The original P&L / Balance Sheet fixtures used by `test-xero.js`. |
 | `test-ledger.js` · `test-xero.js` · `test-dash.js` | The tests. Run `node test-dash.js <group>` to run one group (`aged`, `pipe`, `bo`, `pf`, `cp`, `hs`, `vz`, `cs`, `cf`, `gst`, `rc`, `tb`, `me`). |
 | `check-reports.mts` + `platform/` | The platform's own validators. `report-bindings.ts` is a verbatim copy of myHubV2 `packages/shared/src/artifacts/report-bindings.ts`. |
-| `roundtrip.js` | The pre-PR check described above. |
+| `roundtrip.js` | The pre-PR check described above. It extracts each document from its skill and runs the tests on that exact text. |
 | `demo.js` | `node demo.js <id> [light|dark] [xero|mysmb]` writes `out/<id>…demo.html`, which runs offline on the ledger. Open it in a browser to look at a report. |
 
 ## What every report's tests cover
@@ -51,6 +52,10 @@ Open the PR only when `npm run roundtrip` and `validate.ts` both pass.
 - **Bindings:** at most 12. The host hydrates all of them at once and Xero allows 5 calls in progress per organisation, so the kit retries 429s sequentially.
 - **Opening a report:** the host hydrates with the **manifest** defaults. The kit compares the dates in Xero's report title with its controls and refetches if they differ.
 - **Skill limits:** markdown up to 128 × 1024 characters and a description of at most 500 characters (myHubV2 developer skills). The generator enforces both.
+- **What the agent can produce in one turn.** An agent chat turn is aborted after **10 minutes** (and 15 steps), and an aborted turn shows **no reply at all** (myHubV2 `apps/web/src/lib/chat/service.ts`, `TURN_BUDGET_MS`). The agent writes the whole document in a single `artifact_save` call, so the document size decides how long that takes. Keep it small:
+  - **No line over 1,500 characters** in any skill. A long skill result can reach the model as a file, and reading it back cuts lines over 2,000 characters. In #1015 the whole kit sat on one 65,000-character line in a 115 KB foundation, and Month-End got no reply in QA.
+  - **Report document ≤ 85,000 characters.** That's about 30k tokens: the largest is Business overview at about 32.6k, under QuickBooks Forecasts at 35.3k, which works in QA. That's why each report carries only the kit parts it uses.
+  - Both limits are enforced by `gen-xero.js` and `roundtrip.js`.
 - **The save check** is a plain text match on `MyHubReport.onData`. The kit calls it in full.
 - **Bindings from other connectors** (e.g. `xero-payroll-au`, `xero-assets`) work like any other binding. Declare them in `cfg.sources` (`{ bindingId: { name: 'Xero Payroll AU', optional: true } }`):
   - a missing connection then names that connector;
@@ -59,3 +64,11 @@ Open the PR only when `npm run roundtrip` and `validate.ts` both pass.
 
   Both connectors accept `xero_tenant_id`. Bind the organisation input to them too, or a report could mix two organisations' data.
 - **A report config owns its body.** Statements use `XK.statement`; dashboards and task lists (e.g. `me.cfg.js`) build their own layout from the kit pieces. Findings such as month-end tasks are content, not checks; the banner is for data-integrity ties.
+
+## Kit reference (for writing a report config)
+
+`XK.app(cfg)` keys: `title`, `primary` (binding whose title a snapshot reads), `dated` (bindings whose Xero report title must name the selected dates — checked on open and after each refetch), `org` (the `get_organisation` binding id), `conns` (the `list_connections` binding id), `fyMonth` (override the organisation's financial-year start), `retryMs`, `inputs` (role → declared input: start, end, asAt, basis, cmpStart, cmpEnd, cmpAsAt, org, persona, display), `defaults`, `uses` (binding id → the declared inputs it consumes; drives refetching), `tools`, `compare`, `enums`, `views`, `options` ([{id, label, options:[[v, l]], def}] → display `o`), `presets` / `asats` (preset lists), `paged` ({binding: {input: 'page', key: 'Invoices'}}), `fan` ({binding: (inputs, ctx) → [{key, inputs}]} — extra calls after open), `noBasis`, `derive(inputs, fyMonth)` (applied on open and on every change), `roll`, `render(ctx)` → `{checks:[{name, pass:true|false|null, info?, detail}], na, notes, title, period}`, `excel(ctx)`. In `render`, `ctx` also gives `rows(id)` (every page of a list), `truncated(id)`, `fan(id)`, `opt(key)` / `setOpt(key, value)`, `change(inputs, display)`, `today`.
+
+Helpers: `XK.walk(report)` → `{lines:[{kind:'header'|'row'|'total', depth, label, id, group, parent, calc, closes, values}], sections, columns, titles}`; `sectionTotal` / `sectionBy(walked, /title/)`; `linesTies` (SummaryRow = Σ rows) / `parentTies` (Total Assets = Σ sections) / `runningTies` (Gross / Net Profit = running Σ); `currentYearEarnings(lines)`; `orgOf` / `connections` / `companyOf` / `fiscalStart`; `find` / `val`; `money` / `pct` / `periodLine` / `rangeLabel` / `asOfLine` / `footerStamp`; `statement` / `grid` / `kpis` / `bars` / `line` / `donut` / `waterfall`; `preset` / `asAt` / `compare` / `fyStartOf`; `xlsx` / `sheetFromLines`. Lists: `doc` / `openDocs(sets, base, asAt)` (credits negative) / `ageingCols(asAt, by, n, len)` / `byContact` / `pipeline(invoices, asAt)` (draft, approval, awaiting, overdue). Parts: `plParts(walked, col)` (income, expenses, trading, cos, opex, gp, np) / `bsParts(walked, col)` (bank, currentAssets, currentLiabilities, ar, ap, gst, totals, cye). Months: `monthCols(walked)` / `monthsEnding(end, n)` / `monthKey` / `monthLabel`; `dateWhere(field, from, to)` (Xero `where` for a date window).
+
+A document carries only the members its config calls (`kit-prune.js` finds them by the text `XK.<name>`), so call kit members as `XK.<name>`, never through an alias.

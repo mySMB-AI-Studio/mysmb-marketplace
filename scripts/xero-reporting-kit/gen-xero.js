@@ -1,28 +1,33 @@
 // node gen-xero.js [mysmb-marketplace root] (default: this repo)
-// Writes the Xero report foundation (build recipe + tested kit + the rules kept for prose skills) and one skill per kit-built
-// family, under the EXISTING xero-* file stems so the agent blueprint's skill ids and contentHash do not change.
+// Writes the Xero report foundation (build recipe + the rules kept for prose skills) and one skill per kit-built family, under
+// the EXISTING xero-* file stems so the agent blueprint's skill ids and contentHash do not change. Each kit skill carries its
+// complete report document (build.js: skeleton + stylesheet + the kit cut down to what that config uses + the config).
 const fs = require('fs'), path = require('path');
 const ROOT = process.argv[2] || require('path').resolve(__dirname, '..', '..');
 const SLUG = 'xero-reporting-studio', P = path.join(ROOT, 'plugins', SLUG), K = __dirname;
 const FAM = require('./families.js');
 const rd = (f) => fs.readFileSync(path.join(K, f), 'utf8').replace(/\r\n/g, '\n');
 const w = (rel, s) => { const f = path.join(P, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, s.replace(/\r\n/g, '\n')); };
-// The kit goes into the foundation minified for whitespace and comments only (no renaming, no syntax changes) — it keeps the
-// foundation well under the 128 × 1024-character skill limit; the round-trip tests run on exactly this text.
-const esbuild = require('esbuild');
-const kitCompact = esbuild.transformSync(rd('xk-kit.js').replace(/\nif \(typeof module[^\n]*\n?$/, '\n'), { minifyWhitespace: true, legalComments: 'none', target: 'es2017' }).code.trim();
-new Function(kitCompact); // parses
+const { assemble } = require('./build.js');
 // prose = the rules for written-spec skills, kept verbatim from dev (they carry live-QA lessons); noReport = the rule for reports
 // this agent has no skill for. Written-spec skills = every skill file on the target that is not a kit family nor the foundation.
-const css = rd('xk.css').trim(), skeleton = rd('skeleton.html').trim(), prose = rd('foundation-written-spec.md').trim(), noReport = rd('foundation-noreport.md').trim();
+const prose = rd('foundation-written-spec.md').trim(), noReport = rd('foundation-noreport.md').trim();
 const fence = (lang, s) => '```' + lang + '\n' + s.trim() + '\n```';
 const built = FAM.map((f) => '`' + SLUG + ':' + f.skill + '`' + (/^P\d\d$/.test(f.p) ? ' (' + f.p + ')' : '')).join(', ');
 const specSkills = fs.readdirSync(path.join(P, 'skills')).map((f) => f.replace(/\.md$/, '')).filter((s) => s !== 'xero-report-foundation' && !FAM.some((f) => f.skill === s)).sort();
 const spec = specSkills.map((s) => '`' + SLUG + ':' + s + '`').join(', ');
 const LIMIT = 128 * 1024, DESC = 500; // myHubV2 developer skills: markdown ≤ 128 × 1024 characters, description ≤ 500
-const guard = (name, md, desc) => { if (md.length > LIMIT) throw new Error(name + ' is ' + md.length + ' characters (limit ' + LIMIT + ')'); if (desc && desc.length > DESC) throw new Error(name + ' description is ' + desc.length + ' characters (limit ' + DESC + ')'); };
+// What the agent can handle (README "Platform facts"): no line over LINE characters, and a report document of at most DOC
+// characters — the agent writes the whole document in one artifact_save call, inside a 10-minute turn.
+const LINE = 1500, DOC = 85000;
+const guard = (name, md, desc) => {
+  if (md.length > LIMIT) throw new Error(name + ' is ' + md.length + ' characters (limit ' + LIMIT + ')');
+  if (desc && desc.length > DESC) throw new Error(name + ' description is ' + desc.length + ' characters (limit ' + DESC + ')');
+  const lines = md.split('\n'), long = lines.findIndex((l) => l.length > LINE);
+  if (long >= 0) throw new Error(name + ' line ' + (long + 1) + ' is ' + lines[long].length + ' characters (limit ' + LINE + ')');
+};
 
-const fdesc = 'Shared build recipe, controls contract, validation rules, Xero styling and the tested report kit for every Xero kit report (AGT-001), the rules for report skills built from a written specification, and the connector facts. Load it with the report skill.';
+const fdesc = 'Shared build recipe, controls contract, validation rules and Xero styling for every Xero kit report (AGT-001), the rules for report skills built from a written specification, and the connector facts. Load it with the report skill.';
 const foundation = `---
 name: xero-report-foundation
 description: ${fdesc}
@@ -31,7 +36,7 @@ description: ${fdesc}
 
 Use when you build any Xero report, dashboard or report pack. Load this skill first, then the report skill. Two kinds of report skill exist:
 
-- **Kit reports** (${FAM.length}) — ${built}. The report skill carries a tested \`dataBindings\` manifest and a report config; this file carries the tested kit and stylesheet. **You assemble them — you do not write report code.** Follow *Build a kit report* below.
+- **Kit reports** (${FAM.length}) — ${built}. The report skill carries a tested \`dataBindings\` manifest and the complete, tested report document. **You copy them — you do not write report code.** Follow *Build a kit report* below.
 - **Built on request** (${specSkills.length}) — ${spec}. Each is a written specification: build the report yourself following *Rules for report skills without a kit config* at the end of this file.
 
 For a report this agent has no skill for, see *When the user asks for something this agent has no report for*.
@@ -40,12 +45,11 @@ Spec: Xero Reports Prompt Library v1.2 (P01–P15) with the v1.2 patch (one agen
 
 ## Build a kit report
 
-1. **Discovery call.** Call the report's primary tool once with its default inputs (the report skill says which), plus \`get_organisation\` and \`list_connections\` once each. Confirm Xero is connected (a connection error → tell the user to connect Xero under Settings → Connections and stop). A failed call is an error message, not data: report it. Read the organisation's name from \`get_organisation\`. Never copy a returned figure into the document.
+1. **Discovery call.** Call the report's primary tool once with its default inputs (the report skill says which), plus \`get_organisation\` and \`list_connections\` once each — together, in one step. Confirm Xero is connected (a connection error → tell the user to connect Xero under Settings → Connections and stop). A failed call is an error message, not data: report it. Read the organisation's name from \`get_organisation\`. Never copy a returned figure into the document.
 2. **dataBindings.** Copy the report skill's \`dataBindings\` JSON exactly. Change only the \`default\` values of date inputs, as its *Date defaults* line says (\`YYYY-MM-DD\` or \`"today"\`), and the \`display\` JSON string's \`p\` (period preset), \`a\` (as-at preset), \`c\` (compare: \`none\` | \`prev_period\` | \`prev_year\` | \`ytd\`) and \`v\` (report view) to match the request. Leave \`org\` empty (the connection's default organisation) unless the user names another organisation that \`list_connections\` returned — then use its \`tenantId\`. For a cash-basis request set the \`basis\` default to \`Cash\`. **Branding:** leave \`style\` = \`xero\` (Xero branding, the default). Set \`style\` = \`mysmb\` when the user asks for mySMB branding or the mySMB report template. Set \`b\` to \`#rrggbb\` only when the user asks for their own or their customer's colour. Keep every other key, input name, option, binding id, tool name and param.
-3. **Report config.** Copy the report config JS exactly. Change only its \`defaults\` object so it equals the manifest defaults **exactly** (the same dates — the platform opens the report with the manifest defaults), with \`"today"\` written as today's date. Change nothing else. (If the two ever differ, the kit sees it in Xero's report title and refetches at the dates the controls show.)
-4. **Assemble** one HTML document from the skeleton below: replace \`{{TITLE}}\` with the report title, \`{{CSS}}\` with the stylesheet, \`{{KIT}}\` with the report kit and \`{{CFG}}\` with the report config, all verbatim. Never edit, shorten, reformat or "improve" the kit or the stylesheet — they are tested as one unit and the platform validates the document against the bindings.
-5. **Save** with \`artifact_save\`: \`title\` = "<Organisation> — <Report name>" (no period — the reader can change it; put the opening period in the one-line \`description\`), \`fileName\` and \`tags\` from the report skill, \`content\` = the document, \`dataBindings\` = the manifest. Do not pass \`connectors\` (a live report derives them). Never paste the HTML into chat.
-6. **Completion note** (3–6 lines): the report is live and refreshes on open; the controls the reader can change; the validation checks and whether they passed on the discovery data; any N/A items (the report skill lists them); Download PDF / Download Excel are in the report, and the report window's Download and Share save a frozen snapshot.
+3. **Report document.** Copy the report skill's *Report document* exactly. It is the whole report: the page, the stylesheet, the tested kit (only the parts this report uses) and, in the last \`<script>\`, the report config. Change only the config's \`defaults\` object so it equals the manifest defaults **exactly** (the same dates — the platform opens the report with the manifest defaults), with \`"today"\` written as today's date. Change nothing else: never edit, shorten, reformat or "improve" any other part — it is tested as one unit and the platform validates it against the bindings. (If the dates ever differ, the kit sees it in Xero's report title and refetches at the dates the controls show.)
+4. **Save** with \`artifact_save\`: \`title\` = "<Organisation> — <Report name>" (no period — the reader can change it; put the opening period in the one-line \`description\`), \`fileName\` and \`tags\` from the report skill, \`content\` = the document, \`dataBindings\` = the manifest. Do not pass \`connectors\` (a live report derives them). Write the document once, directly in this call — never in chat, in a draft or in a note first.
+5. **Completion note** (3–6 lines): the report is live and refreshes on open; the controls the reader can change; the validation checks and whether they passed on the discovery data; any N/A items (the report skill lists them); Download PDF / Download Excel are in the report, and the report window's Download and Share save a frozen snapshot.
 
 The user never has to choose an output format: every report is HTML with Download PDF (print to PDF) and Download Excel (.xlsx). If they ask for Excel or PDF, build the report and point to those buttons.
 
@@ -72,24 +76,6 @@ The user never has to choose an output format: every report is HTML with Downloa
 - Every report recomputes its checks on every load and change. Each report includes at least one **independent tie** — a figure matched against a different Xero report (e.g. P&L Net Profit = Balance Sheet Current Year Earnings) — so a check never just re-adds the report's own numbers. Only real checks count in "x/y passed"; N/A and information lines are counted separately.
 - Financial output is decision support, not audit, tax or legal advice.
 
-## Kit reference (for adapting a config after discovery)
-
-\`XK.app(cfg)\` keys: \`title\`, \`primary\` (binding whose title a snapshot reads), \`dated\` (bindings whose Xero report title must name the selected dates — checked on open and after each refetch), \`org\` (the \`get_organisation\` binding id), \`conns\` (the \`list_connections\` binding id), \`fyMonth\` (override the organisation's financial-year start), \`retryMs\`, \`inputs\` (role → declared input: start, end, asAt, basis, cmpStart, cmpEnd, cmpAsAt, org, persona, display), \`defaults\`, \`uses\` (binding id → the declared inputs it consumes; drives refetching), \`tools\`, \`compare\`, \`enums\`, \`views\`, \`options\` ([{id, label, options:[[v, l]], def}] → display \`o\`), \`presets\` / \`asats\` (preset lists), \`paged\` ({binding: {input: 'page', key: 'Invoices'}}), \`fan\` ({binding: (inputs, ctx) → [{key, inputs}]} — extra calls after open), \`noBasis\`, \`derive(inputs, fyMonth)\` (applied on open and on every change), \`roll\`, \`render(ctx)\` → \`{checks:[{name, pass:true|false|null, info?, detail}], na, notes, title, period}\`, \`excel(ctx)\`. In \`render\`, \`ctx\` also gives \`rows(id)\` (every page of a list), \`truncated(id)\`, \`fan(id)\`, \`opt(key)\` / \`setOpt(key, value)\`, \`change(inputs, display)\`, \`today\`.
-
-Helpers: \`XK.walk(report)\` → \`{lines:[{kind:'header'|'row'|'total', depth, label, id, group, parent, calc, closes, values}], sections, columns, titles}\`; \`sectionTotal\` / \`sectionBy(walked, /title/)\`; \`linesTies\` (SummaryRow = Σ rows) / \`parentTies\` (Total Assets = Σ sections) / \`runningTies\` (Gross / Net Profit = running Σ); \`currentYearEarnings(lines)\`; \`orgOf\` / \`connections\` / \`companyOf\` / \`fiscalStart\`; \`find\` / \`val\`; \`money\` / \`pct\` / \`periodLine\` / \`rangeLabel\` / \`asOfLine\` / \`footerStamp\`; \`statement\` / \`grid\` / \`kpis\` / \`bars\` / \`line\` / \`donut\` / \`waterfall\`; \`preset\` / \`asAt\` / \`compare\` / \`fyStartOf\`; \`xlsx\` / \`sheetFromLines\`. Lists: \`doc\` / \`openDocs(sets, base, asAt)\` (credits negative) / \`ageingCols(asAt, by, n, len)\` / \`byContact\` / \`pipeline(invoices, asAt)\` (draft, approval, awaiting, overdue). Parts: \`plParts(walked, col)\` (income, expenses, trading, cos, opex, gp, np) / \`bsParts(walked, col)\` (bank, currentAssets, currentLiabilities, ar, ap, gst, totals, cye). Months: \`monthCols(walked)\` / \`monthsEnding(end, n)\` / \`monthKey\` / \`monthLabel\`; \`dateWhere(field, from, to)\` (Xero \`where\` for a date window).
-
-## Skeleton
-
-${fence('html', skeleton)}
-
-## Stylesheet ({{CSS}})
-
-${fence('css', css)}
-
-## Report kit ({{KIT}}) — copy verbatim
-
-${fence('js', kitCompact)}
-
 ${noReport}
 
 ## Rules for report skills without a kit config
@@ -103,15 +89,20 @@ w('skills/xero-report-foundation.md', foundation);
 
 FAM.forEach((f) => {
   const manifest = JSON.stringify(JSON.parse(rd('reports/' + f.report + '.manifest.json')), null, 2);
-  const cfg = rd('reports/' + f.report + '.cfg.js').trim();
-  const tools = [...new Set(JSON.parse(manifest).bindings.map((b) => '`' + b.tool.name + '`'))].join(', ');
+  const doc = assemble(f.report).trim();
+  if (doc.length > DOC) throw new Error(f.skill + ' report document is ' + doc.length + ' characters (limit ' + DOC + ')');
+  if (doc.includes('```')) throw new Error(f.skill + ' report document contains a code fence');
+  const byMcp = {};
+  JSON.parse(manifest).bindings.forEach((b) => { (byMcp[b.tool.mcp] = byMcp[b.tool.mcp] || new Set()).add('`' + b.tool.name + '`'); });
+  const mcps = Object.keys(byMcp).map((m) => '`' + m + '` (' + [...byMcp[m]].join(', ') + ')');
+  const tools = mcps.length === 1 ? 'the ' + mcps[0].replace(' (', ' connector (') : 'the connectors ' + mcps.slice(0, -1).join(', ') + ' and ' + mcps[mcps.length - 1];
   const md = `---
 name: ${f.skill}
 description: ${f.description}
 ---
 # ${f.title} (${f.p})
 
-Use when ${f.trigger}. Load \`xero-report-foundation\` first and follow its *Build a kit report* steps with the blocks below — copy them, do not rewrite them. This skill needs the \`xero-accounting\` connector (${tools}).
+Use when ${f.trigger}. Load \`xero-report-foundation\` first and follow its *Build a kit report* steps with the blocks below — copy them, do not rewrite them. This skill needs ${tools}.
 
 Xero location: ${f.menu}. Library: Xero Reports Prompt Library v1.2 → Prompts → ${f.p}. Delivery: ${f.wave}.
 
@@ -151,11 +142,11 @@ ${f.chat ? '\n## In the chat reply\n\n' + f.chat.map((c) => '- ' + c).join('\n')
 
 ${fence('json', manifest)}
 
-## Report config ({{CFG}})
+## Report document (copy verbatim — change only the config's \`defaults\`)
 
-${fence('js', cfg)}
+${fence('html', doc)}
 `;
   guard(f.skill, md, f.description);
   w('skills/' + f.skill + '.md', md);
 });
-console.log('generated', SLUG, '| foundation', Buffer.byteLength(foundation), 'bytes | kit reports:', FAM.map((f) => f.skill).join(', '));
+console.log('generated', SLUG, '| foundation', foundation.length, 'characters | kit reports:', FAM.map((f) => f.skill).join(', '));
