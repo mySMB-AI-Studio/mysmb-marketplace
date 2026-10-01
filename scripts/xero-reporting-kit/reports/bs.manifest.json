@@ -1,0 +1,20 @@
+{
+  "inputs": [
+    { "name": "as_at", "label": "As at", "type": "date", "default": "today" },
+    { "name": "basis", "label": "Accounting basis", "type": "enum", "options": ["Accrual", "Cash"], "default": "Accrual" },
+    { "name": "compare_as_at", "label": "Compare as at", "type": "date", "default": "2025-09-25" },
+    { "name": "fy_start", "label": "Financial year start", "type": "date", "default": "2026-07-01" },
+    { "name": "org", "label": "Organisation", "type": "string", "maxLength": 64, "default": "" },
+    { "name": "persona", "label": "View as", "type": "enum", "options": ["Client", "Bookkeeper", "Practitioner", "Executive"], "default": "Bookkeeper" },
+    { "name": "display", "label": "Display settings", "type": "string", "maxLength": 300, "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"today\",\"c\":\"none\",\"v\":\"bs\"}" }
+  ],
+  "bindings": [
+    { "id": "bs", "tool": { "mcp": "xero-accounting", "name": "get_balance_sheet" }, "params": { "date": { "kind": "input", "input": "as_at" }, "standardLayout": { "kind": "static", "value": true }, "paymentsOnly": { "kind": "static", "value": false }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
+    { "id": "bs_cash", "tool": { "mcp": "xero-accounting", "name": "get_balance_sheet" }, "params": { "date": { "kind": "input", "input": "as_at" }, "standardLayout": { "kind": "static", "value": true }, "paymentsOnly": { "kind": "static", "value": true }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
+    { "id": "bs_compare", "tool": { "mcp": "xero-accounting", "name": "get_balance_sheet" }, "params": { "date": { "kind": "input", "input": "compare_as_at" }, "standardLayout": { "kind": "static", "value": true }, "paymentsOnly": { "kind": "static", "value": false }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
+    { "id": "bs_compare_cash", "tool": { "mcp": "xero-accounting", "name": "get_balance_sheet" }, "params": { "date": { "kind": "input", "input": "compare_as_at" }, "standardLayout": { "kind": "static", "value": true }, "paymentsOnly": { "kind": "static", "value": true }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
+    { "id": "pnl_ytd", "tool": { "mcp": "xero-accounting", "name": "get_profit_and_loss" }, "params": { "fromDate": { "kind": "input", "input": "fy_start" }, "toDate": { "kind": "input", "input": "as_at" }, "standardLayout": { "kind": "static", "value": true }, "paymentsOnly": { "kind": "static", "value": false }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
+    { "id": "org", "tool": { "mcp": "xero-accounting", "name": "get_organisation" }, "params": { "xero_tenant_id": { "kind": "input", "input": "org" } } },
+    { "id": "connections", "tool": { "mcp": "xero-accounting", "name": "list_connections" }, "params": {} }
+  ]
+}

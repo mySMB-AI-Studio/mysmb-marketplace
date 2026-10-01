@@ -1,39 +1,35 @@
 ---
 name: xero-trial-balance
-description: Build a live, validated Xero Trial Balance on the tested report kit — as-at date, accrual/cash basis and an organisation picker. Use for "trial balance", "TB", "debits and credits", "account balances as at".
+description: Build a live, validated Xero Trial Balance on the tested report kit — every account's debit and credit (and year to date) as at a date, accrual or cash basis, with debits = credits and a tie to Current Year Earnings. Use for "trial balance", "TB", "debits and credits", "account balances as at".
 ---
-# Trial Balance
+# Trial Balance (TB)
 
 Use when the user asks for a trial balance, TB, debits and credits by account, or account balances as at a date. Load `xero-report-foundation` first and follow its *Build a kit report* steps with the blocks below — copy them, do not rewrite them. This skill needs the `xero-accounting` connector (`get_trial_balance`, `get_balance_sheet`, `get_organisation`, `list_connections`).
 
-Xero location: Reporting → Trial Balance. Not in the original Xero Reports Prompt Library v1.2 (P01–P15) — added to cover a gap in the original 15-report library.
-
-**Note on tier:** this skill uses the same shared report kit (`{{KIT}}`/`{{CFG}}`) as Profit and Loss (P06) and Balance Sheet (P07) below, because `get_trial_balance` needs only the kit's existing `asAt` / `basis` / `org` / `persona` / `display` input roles — no new control the kit doesn't already support. The foundation file's own intro paragraph still names only P06/P07 as "kit reports"; that line was not edited as part of adding this skill (out of scope here), so treat this as the kit mechanism extended to a third report rather than a formally re-declared kit list.
+Xero location: Reporting → Trial Balance. Library: Xero Reports Prompt Library v1.2 → Prompts → TB. Delivery: Added skill (not in the P01–P15 library).
 
 ## Discovery call
 
-Call `get_organisation` once, `list_connections` once, and `get_trial_balance` once with `date` = today. The connector facts confirm `get_trial_balance` returns the same `{Reports:[{Rows:[...]}]}` shape as every other report tool, but its exact section/column layout (whether accounts are grouped into titled sections by account type the way the Balance Sheet is, and whether amounts arrive as separate Debit/Credit columns or one signed column) has **not been exercised live** — read `w.columns` (from the Header row, via `XK.walk`) and match by label (`/debit/i`, `/credit/i`) rather than assuming a fixed column count or position. An error is a failed call: report its message.
+Call `get_organisation` and `list_connections` once, and `get_trial_balance` once with `date` = today. Xero's layout is Account | Debit | Credit | YTD Debit | YTD Credit with Revenue / Expenses / Assets / Liabilities / Equity sections and a final Total row — the kit reads the columns from the Header row by label, so a different layout shows as N/A rather than a wrong check. An error is a failed call: report its message.
 
 ## Date defaults
 
-`as_at` = the balance date asked for (default `"today"`); set the display preset `a` to `today`, `end_last_month`, `end_last_quarter`, `end_last_fy` or `custom` to match. No `fy_start` is needed — the Current Year Earnings tie below reads the Balance Sheet's own figure directly, it does not recompute a financial-year-to-date P&L.
+`as_at` = the balance date (default `"today"`; display preset `a` = `today`, `end_last_month`, `end_last_quarter`, `end_last_fy` or `custom`). For a cash-basis request set the `basis` default to `Cash`.
 
 ## Members
 
 | Member / view | How |
 |---|---|
-| Trial Balance | Report = Trial Balance (default, only view) |
+| Trial Balance | The one view |
 | Cash basis | Accounting method = Cash (Xero payments only) |
-| Another organisation | Organisation picker |
-| Comparison, tracking columns, YTD vs period columns | N/A in this version — `get_trial_balance` takes no `periods` / comparison parameter; say so |
+| Comparison / tracking columns | N/A — get_trial_balance has no periods or tracking parameter |
 
 ## Validation checks (shown in the banner)
 
-- Total Debits = Total Credits — shown only when the call returns separate Debit/Credit columns (detected from the Header row); N/A, with the actual column names disclosed, when it does not
-- Every section total = Σ its account rows — only when Xero grouped rows into titled sections; N/A otherwise
-- Parent group totals = Σ their sections — only when the report nests sections under a parent group the way the Balance Sheet does; N/A otherwise
-- **Independent tie:** Current Year Earnings on the Trial Balance (only when a matching account row is found) = Current Year Earnings on the Balance Sheet at the same date (a separate Xero report; accrual basis only) — informational, never Fail, when no matching row is found; the exact account label Xero uses on a Trial Balance was not confirmed live
-- No "comparison period loaded" check here — the tool has no comparison parameter
+- Total Debits = Total Credits (each Debit / Credit pair, detected from the header)
+- Xero's Total row = Σ the accounts
+- Every section total = Σ its account rows (N/A when Xero sends no section totals)
+- **Independent tie:** Revenue − Expenses (YTD columns) = Current Year Earnings on the Balance Sheet at the same date (accrual basis)
 
 ## Save as
 
@@ -41,12 +37,12 @@ Call `get_organisation` once, `list_connections` once, and `get_trial_balance` o
 
 ## QA test script (golden set)
 
-1. On a connected organisation, ask for this report as at today (or a stated date); confirm the discovery call succeeded and the report saved.
-2. This report is new and has no golden-set figures yet. On the QA organisation, check the totals this renderer shows (Total Debits/Total Credits, or the single-column total, whichever the connector actually returns) against Xero → Reporting → Trial Balance for the same date, and confirm the column layout the renderer detected matches what Xero's own screen shows — this is the first live check of that shape.
-3. Validation banner: every applicable check passes, or shows N/A / information with a stated reason — confirm the Debit = Credit check specifically either passes or is honestly N/A (never silently wrong, never a false Pass).
+1. On the golden-set organisation, ask for this report at the library's example period; confirm the discovery call succeeded and the report saved.
+2. Compare the headline figures: Not in the library, so no golden-set figures. On Irvine Jackson Pty Ltd in QA, the totals equal Xero → Reporting → Trial Balance for the same date, and the column layout the report shows matches Xero's screen.
+3. Validation banner: every check passes (the independent tie included), or shows N/A / information with a stated reason.
 4. Change every control and confirm the report refetches and still validates; switch Accounting method; switch View as to Client, then Bookkeeper; toggle Branding and the dark theme.
-5. Download PDF and Download Excel and confirm they match the screen.
-6. Download or Share from the report window: the snapshot keeps the date and figures and disables the refetching controls.
+5. Download PDF and Download Excel and confirm they match the screen (the Excel file has Validation and Parameters sheets).
+6. Download or Share from the report window: the snapshot keeps the period and figures and disables the refetching controls.
 7. Cross-client isolation (LIB-002): with several organisations on the connection, switch organisation — the report, its name and every export carry only that organisation's figures.
 
 ## dataBindings
@@ -199,50 +195,42 @@ XK.app({
   defaults: { as_at: '2026-09-25', basis: 'Accrual', org: '', persona: 'Bookkeeper',
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"today","c":"none","v":"tb"}' },
   uses: { tb: ['as_at', 'org'], tb_cash: ['as_at', 'org'], bs_tie: ['as_at', 'org'], org: ['org'], connections: [] },
-  tools: { tb: 'get_trial_balance', tb_cash: 'get_trial_balance (cash basis)', bs_tie: 'get_balance_sheet (Current Year Earnings tie, same date)', org: 'get_organisation', connections: 'list_connections' },
-  compare: false,
+  tools: { tb: 'get_trial_balance', tb_cash: 'get_trial_balance (cash basis)', bs_tie: 'get_balance_sheet (Current Year Earnings at the same date — tie)', org: 'get_organisation', connections: 'list_connections' },
   render: function (c) {
-    var body = c.body, money = function (v) { return XK.money(v, c.currency, c.display); }, cash = c.inputs.basis === 'Cash';
+    var body = c.body, money = function (v) { return XK.money(v, c.currency, c.display); }, cash = c.inputs.basis === 'Cash', r2 = function (v) { return Math.round(v * 100) / 100; };
     var id = cash ? 'tb_cash' : 'tb';
     if (c.errors[id]) { body.innerHTML = '<p class="xk-err">' + XK.h(c.err(id)) + '</p>'; return { checks: [{ name: 'Trial Balance loaded', pass: false, detail: c.err(id) }] }; }
     if (!c.data[id]) return {};
-    var w = XK.walk(c.data[id]);
-    // Column detection is defensive: the exact Debit/Credit layout get_trial_balance returns was not verified live before this skill was written.
-    var dCol = -1, cCol = -1;
-    (w.columns || []).forEach(function (h, i) { var s = String(h || '').toLowerCase(); if (dCol < 0 && /debit/.test(s)) dCol = i; if (cCol < 0 && /credit/.test(s)) cCol = i; });
-    var hasDC = dCol >= 0 && cCol >= 0, rows = w.lines.filter(function (l) { return l.kind === 'row'; });
-    var totalDebit = hasDC ? XK.sum(rows.map(function (l) { return l.values[dCol]; })) : null;
-    var totalCredit = hasDC ? XK.sum(rows.map(function (l) { return l.values[cCol]; })) : null;
-    var kpis = hasDC ? [{ label: 'Total Debits', value: totalDebit }, { label: 'Total Credits', value: totalCredit }] : [];
-    kpis.push({ label: 'Accounts shown', text: String(rows.length) });
-    var titles = [''].concat(w.columns && w.columns.length ? w.columns : ['Value']);
-    body.innerHTML = XK.kpis(kpis, c) + '<div class="xk-scroll">' + XK.statement(w.lines, titles, c, []) + '</div>';
-
-    // Checks. Debit=Credit is the fundamental identity when the connector splits the columns; section/parent ties re-add
-    // Xero's own totals from the account rows exactly as the P&L/Balance Sheet kit reports do; the independent tie matches
-    // Current Year Earnings against a separate Balance Sheet call for the same date, when a matching row can be found.
-    var ties = XK.linesTies(w.lines), par = XK.parentTies(w);
-    var cyeLine = XK.currentYearEarnings(w.lines), cye = null;
-    if (cyeLine) cye = hasDC ? Math.round(((cyeLine.values[cCol] || 0) - (cyeLine.values[dCol] || 0)) * 100) / 100 : XK.val(cyeLine, 0);
-    var bsErr = c.errors.bs_tie, bsW = c.data.bs_tie ? XK.walk(c.data.bs_tie) : null, bsCyeLine = bsW ? XK.currentYearEarnings(bsW.lines) : null, bsCye = bsCyeLine ? XK.val(bsCyeLine) : null;
+    var w = XK.walk(c.data[id]), cols = w.columns || [];
+    // Debit / Credit column pairs, read from the Header row by label (Debit | Credit | YTD Debit | YTD Credit in Xero's layout).
+    var deb = [], cre = []; cols.forEach(function (h, i) { var s = String(h || '').toLowerCase(); if (/debit/.test(s)) deb.push(i); else if (/credit/.test(s)) cre.push(i); });
+    var pairs = deb.map(function (d, k) { return cre[k] == null ? null : { d: d, c: cre[k], ytd: /ytd|year/i.test(cols[d]) }; }).filter(Boolean), main = pairs.filter(function (p) { return !p.ytd; })[0] || pairs[0], ytd = pairs.filter(function (p) { return p.ytd; })[0] || main;
+    var rows = w.lines.filter(function (l) { return l.kind === 'row'; }), colSum = function (i) { return XK.sum(rows.map(function (l) { return l.values[i]; })); };
+    var grand = XK.find(w.lines, null, /^total$/i, 'total');
+    var kp = main ? [{ label: 'Total Debits', value: colSum(main.d) }, { label: 'Total Credits', value: colSum(main.c) }] : [];
+    kp.push({ label: 'Accounts', text: String(rows.length) });
+    body.innerHTML = XK.kpis(kp, c) + '<div class="xk-scroll">' + XK.statement(w.lines, [''].concat(cols.length ? cols : ['Value']), c, []) + '</div>';
+    // Checks: debits = credits (each pair); Xero's grand Total = Σ the accounts; section ties; and the independent tie —
+    // Revenue − Expenses (year to date) = Current Year Earnings on a separate Balance Sheet call for the same date.
+    var ties = XK.linesTies(w.lines), net = function (re, p) { var s = w.sections.filter(function (x) { return re.test(x.title); }); return s.length ? XK.sum([].concat.apply([], s.map(function (x) { return x.rows; })).map(function (l) { return (l.values[p.c] || 0) - (l.values[p.d] || 0); })) : null; };
+    var revN = ytd ? net(/revenue|income/i, ytd) : null, expN = ytd ? net(/expense|cost/i, ytd) : null, plNet = revN == null || expN == null ? null : r2(revN + expN);
+    var bsW = c.data.bs_tie ? XK.walk(c.data.bs_tie) : null, bsCye = bsW ? (function () { var l = XK.currentYearEarnings(bsW.lines); return l ? XK.val(l) : null; })() : null;
     var checks = [
-      { name: 'Total Debits = Total Credits', pass: hasDC ? XK.near(totalDebit, totalCredit) : null, detail: hasDC ? money(totalDebit) + ' vs ' + money(totalCredit) : 'Xero returned column(s) ' + ((w.columns || []).join(', ') || '(none)') + ' instead of separate Debit/Credit columns on this call' },
-      { name: 'Every section total = Σ its account rows', pass: ties.checked ? ties.failed.length === 0 : null, detail: ties.checked ? (ties.failed.length ? 'Mismatch: ' + ties.failed.join(', ') : ties.checked + ' sections') : 'Xero did not group this Trial Balance into titled sections' },
-      { name: 'Parent group totals = Σ their sections', pass: par.checked ? par.failed.length === 0 : null, detail: par.checked ? (par.failed.length ? par.failed.join('; ') : par.checked + ' groups') : 'No nested parent groups in this report' },
-      !cash && cyeLine ? { name: 'Current Year Earnings (Trial Balance) = Current Year Earnings (Balance Sheet) at ' + c.inputs.as_at, pass: bsErr || bsCye == null ? null : XK.near(cye, bsCye), detail: bsErr ? c.err('bs_tie') : bsCye == null ? 'No Current Year Earnings line on the Balance Sheet' : money(cye) + ' vs ' + money(bsCye) }
-        : { name: 'Current Year Earnings tie (information)', pass: null, info: true, detail: cash ? 'The tie is checked on the accrual basis' : 'No row on this Trial Balance matched the Current Year Earnings label — the exact account naming was not verified live' }
+      { name: 'Total Debits = Total Credits', pass: main ? pairs.every(function (p) { return XK.near(colSum(p.d), colSum(p.c)); }) : null, detail: main ? pairs.map(function (p) { return cols[p.d] + ' ' + money(colSum(p.d)) + ' = ' + cols[p.c] + ' ' + money(colSum(p.c)); }).join(' · ') : 'Xero returned column(s) ' + (cols.join(', ') || '(none)') + ' instead of separate Debit / Credit columns' },
+      { name: 'Xero\'s Total row = Σ the accounts', pass: grand && main ? pairs.every(function (p) { return XK.near(grand.values[p.d], colSum(p.d)) && XK.near(grand.values[p.c], colSum(p.c)); }) : null, detail: grand ? rows.length + ' accounts' : 'No Total row in this Trial Balance' },
+      { name: 'Every section total = Σ its account rows', pass: ties.checked ? ties.failed.length === 0 : null, detail: ties.checked ? (ties.failed.length ? 'Mismatch: ' + ties.failed.join(', ') : ties.checked + ' sections') : 'Xero sends no section totals on the Trial Balance' },
+      cash ? { name: 'Revenue − Expenses vs Current Year Earnings (information)', pass: null, info: true, detail: 'The tie is checked on the accrual basis' }
+        : { name: 'Revenue − Expenses (' + (ytd && ytd.ytd ? 'YTD columns' : 'Debit / Credit') + ') = Current Year Earnings on the Balance Sheet at ' + c.inputs.as_at, pass: c.errors.bs_tie || plNet == null || bsCye == null ? null : XK.near(plNet, bsCye), detail: c.errors.bs_tie ? c.err('bs_tie') : plNet == null ? 'No Revenue / Expenses sections found' : bsCye == null ? 'No Current Year Earnings line on the Balance Sheet' : money(plNet) + ' vs ' + money(bsCye) }
     ];
     var notes = [];
-    if (!hasDC) notes.push('This call returned column(s) ' + ((w.columns || []).join(', ') || '(none)') + ' rather than separate Debit/Credit columns — shown as Xero returned it; the Debit = Credit check is N/A rather than guessed.');
+    if (!main) notes.push('This call returned column(s) ' + (cols.join(', ') || '(none)') + ' rather than separate Debit / Credit columns — shown as Xero returned it; the Debit = Credit check is N/A rather than guessed.');
     if (cash) notes.push('Cash basis: Xero\'s Trial Balance with payments only (paymentsOnly = true).');
-    this._lines = w.lines; this._cols = titles;
-    return { checks: checks, notes: notes, na: [], title: 'Trial Balance' };
+    this._lines = w.lines; this._cols = [''].concat(cols.length ? cols : ['Value']);
+    return { checks: checks, notes: notes, na: ['Comparison and tracking columns (get_trial_balance has no periods or tracking parameter)'], title: 'Trial Balance' };
   },
   excel: function (c) {
     var lines = this._lines || [], titles = this._cols || ['', 'Value'];
-    return [XK.sheetFromLines('Trial Balance', c.company, XK.asOfLine(c.inputs.as_at), titles, lines.map(function (l) {
-      return { kind: l.kind, depth: l.depth, label: l.label, values: l.values };
-    }), XK.footerStamp(c.inputs.basis, c.fetchedAt, c.currency), titles.slice(1).map(function () { return 'money'; }))];
+    return [XK.sheetFromLines('Trial Balance', c.company, XK.asOfLine(c.inputs.as_at), titles, lines.map(function (l) { return { kind: l.kind, depth: l.depth, label: l.label, values: l.values }; }), XK.footerStamp(c.inputs.basis, c.fetchedAt, c.currency), titles.slice(1).map(function () { return 'money'; }))];
   }
 });
 ```

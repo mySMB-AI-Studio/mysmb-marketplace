@@ -1,0 +1,346 @@
+// Tests for the Xero dashboards and list reports (P01–P05, P08–P15) against the ledger fixture (ledger.js), where every
+// Xero response is derived from one set of books — so a report's ties must pass, and a tampered source must fail.
+const { run, hydrate } = require('./harness.js'); const L = require('./ledger.js'); const fs = require('fs'), path = require('path');
+const DIR = process.env.KIT_DIR || __dirname;
+const man = (n) => JSON.parse(fs.readFileSync(path.join(DIR, 'reports', n + '.manifest.json'), 'utf8'));
+const text = (doc, sel) => (doc.querySelector(sel) || { textContent: '' }).textContent.replace(/\s+/g, ' ');
+let total = 0, fails = 0; const only = process.argv[2];
+const ok = (name, cond, info) => { total++; if (cond) console.log('  ✓ ' + name); else { fails++; console.log('  FAIL ' + name + (info !== undefined ? ' ' + (typeof info === 'string' ? info : JSON.stringify(info)).slice(0, 900) : '')); } };
+const set = async (t, id, val) => { const el = t.doc.getElementById(id); el.value = val; el.dispatchEvent(new t.w.Event('change')); await t.settle(); await t.settle(); };
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const banner = (t) => text(t.doc, '#xk-banner'), body = (t) => text(t.doc, '#xk-body');
+const green = (t) => t.doc.querySelector('#xk-banner').className.includes('pass'), red = (t) => t.doc.querySelector('#xk-banner').className.includes('fail');
+const fmt = (v) => (v < 0 ? '\\(\\$' : '\\$') + Math.abs(v).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\./g, '\\.') + (v < 0 ? '\\)' : '');
+const re = (s, v) => new RegExp(s + '\\s*' + fmt(v));
+const retryFast = (h) => h.replace('XK.app({\n  title:', 'XK.app({\n  retryMs: 1, title:');
+const busy = (fn, n) => { let left = n; return (q) => { if (left-- > 0) throw new Error('Xero API GET https://api.xero.com/api.xro/2.0/x 429: {"Title":"Too Many Requests"}'); return fn(q); }; };
+const tamper = (base, fn) => (q) => { const r = base(q); fn(r.Reports[0].Rows, r); return r; };
+const cellOf = (rows, label) => { for (const r of rows) { for (const k of r.Rows || [r]) if (k.Cells && k.Cells[0].Value === label) return k.Cells; } return null; };
+const E = L.expect;
+
+const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes, overpayments: L.listOverpayments, prepayments: L.listPrepayments, bs: L.bs, org: L.organisation, connections: L.connections });
+
+(async () => {
+  if (!only || only === 'aged') {
+    // ---------------- P08 Aged Receivables Summary ----------------
+    const AR = E.balances('2026-09-30')['610'], AP = E.balances('2026-09-30')['800'];
+    const a = await run('ar', man('ar'), AGED());
+    const ab = body(a), an = banner(a), head = [...a.doc.querySelectorAll('#ag-all thead th')].map((x) => x.textContent.replace(/[▲▼]/g, '').trim());
+    ok('ar: as at end of this month by default, Xero wording', /As at 30 September 2026 · Ageing by due date/.test(text(a.doc, '#xk-head')) && a.doc.getElementById('xk-asat').value === '2026-09-30', text(a.doc, '#xk-head'));
+    ok('ar: columns Customer | Current | < 1 Month | 1–3 Months | Older | Total', head.join('|') === 'Customer|Current|< 1 Month|1 Month|2 Months|3 Months|Older|Total', head);
+    ok('ar: total = Accounts Receivable in the books', re('Total receivable', AR).test(ab), [AR, ab.slice(0, 200)]);
+    ok('ar: 5/5 checks pass incl. the Balance Sheet tie, green', green(a) && /5\/5 checks passed/.test(an) && new RegExp('✓ Total = Accounts Receivable on the Balance Sheet at 2026-09-30 — ' + fmt(AR) + ' vs ' + fmt(AR)).test(an) && a.errs.length === 0, an);
+    const tf = [...a.doc.querySelectorAll('#ag-all tfoot tr')].map((tr) => tr.textContent.replace(/\s+/g, ' ').trim());
+    ok('ar: TOTAL row and "Percentage of total" row (sums to 100%)', tf.length === 2 && /^Total/.test(tf[0]) && /^Percentage of total.*100\.0%$/.test(tf[1]), tf);
+    ok('ar: overpayment shown negative in its bucket', /Eastside Motors\$[\d,.]+\(\$55\.00\)/.test(text(a.doc, '#ag-all')), text(a.doc, '#ag-all').slice(0, 900));
+    const futureNo = L.listInvoices({ where: 'Type=="ACCREC"', statuses: 'AUTHORISED' }).Invoices.find((i) => i.DateString.startsWith('2026-10')).InvoiceNumber;
+    // drill-down
+    const link = a.doc.querySelector('#ag-all a.xk-drill'); link.dispatchEvent(new a.w.MouseEvent('click', { bubbles: true })); await a.settle();
+    ok('ar: clicking a customer lists its open documents', /open documents/.test(text(a.doc, '#ag-drill')) && /Invoice/.test(text(a.doc, '#ag-drill')) && !text(a.doc, '#ag-drill').includes(futureNo), text(a.doc, '#ag-drill').slice(0, 300));
+    // options
+    const before = a.calls.length;
+    await set(a, 'xk-opt-by', 'inv');
+    const h2 = [...a.doc.querySelectorAll('#ag-all thead th')].map((x) => x.textContent.replace(/[▲▼]/g, '').trim());
+    ok('ar: ageing by invoice date → no Current column, same total, no refetch', h2[1] === '< 1 Month' && re('Total receivable', AR).test(body(a)) && a.calls.length === before && /Ageing by invoice date/.test(text(a.doc, '#xk-head')), h2);
+    await set(a, 'xk-opt-by', 'due'); await set(a, 'xk-opt-n', '6'); await set(a, 'xk-opt-len', '30');
+    const h3 = [...a.doc.querySelectorAll('#ag-all thead th')].map((x) => x.textContent.replace(/[▲▼]/g, '').trim());
+    ok('ar: 6 periods of 30 days → day buckets, total unchanged, still green', h3.join('|') === 'Customer|Current|1–30 days|31–60 days|61–90 days|91–120 days|121–150 days|151–180 days|Older|Total' && re('Total receivable', AR).test(body(a)) && green(a), h3);
+    await set(a, 'xk-opt-g', 'type');
+    ok('ar: group by document type → invoices, credit notes (Redwood Dental −$165.00), overpayments', /Sales invoices/.test(body(a)) && /Credit notes.*Redwood Dental[^A-Z]*\(\$165\.00\)/.test(body(a)) && /Overpayments/.test(body(a)) && /All documents/.test(body(a)), body(a).slice(0, 900));
+    ok('ar: options kept in the display input', /by=due;n=6;len=30;g=type|g=type/.test(JSON.parse(a.setInputsLog[a.setInputsLog.length - 1].display).o), a.setInputsLog.slice(-1));
+    // Balance Sheet tie fails on a real difference; foreign currency → information
+    const as = await run('ar', man('ar'), Object.assign(AGED(), { bs: tamper(L.bs, (rows) => { cellOf(rows, 'Accounts Receivable')[1].Value = '1000.00'; }) }));
+    ok('ar: total ≠ Balance Sheet AR → Fail with the difference', /✗ Total = Accounts Receivable on the Balance Sheet at 2026-09-30 — .* difference/.test(banner(as)) && red(as), banner(as).slice(0, 500));
+    const fxInv = (q) => { const r = L.listInvoices(q); if ((q.page || 1) === 1 && /ACCREC/.test(q.where)) r.Invoices.push(Object.assign({}, r.Invoices[0], { InvoiceID: 'fx-1', InvoiceNumber: 'INV-USD', CurrencyCode: 'USD', CurrencyRate: 0.65, AmountDue: 650, Total: 650 })); return r; };
+    const ax = await run('ar', man('ar'), Object.assign(AGED(), { invoices: fxInv }));
+    ok('ar: foreign-currency invoice converted to AUD (US$650 at 0.65 = $1,000), tie → information', re('Total receivable', AR + 1000).test(body(ax)) && /ℹ Total vs Accounts Receivable on the Balance Sheet \(information\) — Difference \$1,000\.00 — 1 foreign-currency document/.test(banner(ax)) && green(ax), banner(ax).slice(0, 500));
+    // a past as-at date uses today's balances: said so, never a silent tick
+    const ap0 = await run('ar', man('ar'), AGED());
+    await set(ap0, 'xk-asat-preset', 'custom'); await set(ap0, 'xk-asat', '2026-06-30');
+    ok('ar: past as-at date → "Ageing as at a past date" N/A and the tie is information', /– Ageing as at a past date — Xero lists today's open balances/.test(banner(ap0)) && /Total vs Accounts Receivable on the Balance Sheet \(information\)/.test(banner(ap0)) && ap0.calls.some((x) => x.requery && x.id === 'bs' && x.params.date === '2026-06-30'), banner(ap0).slice(0, 600));
+    // paging: more than 100 open invoices → page 2 fetched; an endless list stops at 20 pages and says so
+    const many = (q) => { const r = L.listInvoices(q); if (!/ACCREC/.test(q.where)) return r; const base = L.listInvoices(Object.assign({}, q, { page: 1 })).Invoices[0], all = []; for (let i = 0; i < 130; i++) all.push(Object.assign({}, base, { InvoiceID: 'm-' + i, InvoiceNumber: 'M-' + i, AmountDue: 10, Total: 10 })); r.Invoices = all.slice(((q.page || 1) - 1) * 100, (q.page || 1) * 100); return r; };
+    const pg = await run('ar', man('ar'), Object.assign(AGED(), { invoices: many })); await wait(30);
+    ok('ar: 130 open invoices → page 2 requested and all counted', pg.calls.some((x) => x.id === 'invoices' && x.params.page === 2) && /132 document/.test(banner(pg)) && /✓ All open documents loaded/.test(banner(pg)), [pg.calls.filter((x) => x.id === 'invoices').map((x) => x.params.page), banner(pg).slice(0, 400)]);
+    const endless = (q) => { const r = L.listInvoices(q); if (!/ACCREC/.test(q.where)) return r; const base = L.listInvoices(Object.assign({}, q, { page: 1 })).Invoices[0]; r.Invoices = []; for (let i = 0; i < 100; i++) r.Invoices.push(Object.assign({}, base, { InvoiceID: 'e-' + (q.page || 1) + '-' + i, AmountDue: 1, Total: 1 })); return r; };
+    const en = await run('ar', man('ar'), Object.assign(AGED(), { invoices: endless })); await wait(60);
+    ok('ar: endless list → stops at 20 pages and fails "All open documents loaded" (may be truncated)', en.calls.filter((x) => x.id === 'invoices').length === 20 && /✗ All open documents loaded — May be truncated: invoices/.test(banner(en)), [en.calls.filter((x) => x.id === 'invoices').length, banner(en).slice(0, 300)]);
+    const ar4 = await run('ar', man('ar'), Object.assign(AGED(), { credit_notes: busy(L.listCreditNotes, 1), bs: busy(L.bs, 1) }), { htmlPatch: retryFast }); await wait(80);
+    ok('ar: HTTP 429 on open → retried, ends green', green(ar4) && /5\/5 checks passed/.test(banner(ar4)), banner(ar4).slice(0, 300));
+    const ar5 = await run('ar', man('ar'), Object.assign(AGED(), { invoices: () => { throw new Error('Xero API GET …/Invoices 401: Unauthorized'); } }));
+    ok('ar: failed invoice list → error, red, never $0 with a tick', red(ar5) && /401/.test(body(ar5)) && !/✓ Total =/.test(banner(ar5)), banner(ar5).slice(0, 300));
+    const axl = await run('ar', man('ar'), AGED()); axl.doc.getElementById('xk-xlsx').click(); await axl.settle();
+    ok('ar: Excel download named after the organisation', axl.downloads.some((d) => d.name && /^Northwind Trading Pty Ltd - Aged Receivables Summary - as at 2026-09-30\.xlsx$/.test(d.name)), axl.downloads);
+    // ---------------- P09 Aged Payables Summary ----------------
+    const p = await run('ap', man('ap'), AGED());
+    const ph = [...p.doc.querySelectorAll('#ag-all thead th')].map((x) => x.textContent.replace(/[▲▼]/g, '').trim());
+    ok('ap: suppliers as rows, same engine', ph[0] === 'Supplier' && /Aged Payables Summary/.test(text(p.doc, '#xk-head')), ph);
+    ok('ap: total = Accounts Payable in the books, tie passes, green', re('Total payable', AP).test(body(p)) && new RegExp('✓ Total = Accounts Payable on the Balance Sheet at 2026-09-30 — ' + fmt(AP)).test(banner(p)) && green(p), [AP, banner(p).slice(0, 500)]);
+    const apTot = [...p.doc.querySelectorAll('#ag-all tfoot tr')][0].textContent.replace(/\s+/g, ' '), notDue = L.listInvoices({ where: 'Type=="ACCPAY"', statuses: 'AUTHORISED' }).Invoices.filter((d) => d.DueDateString.slice(0, 10) >= '2026-09-30' && d.DateString.slice(0, 10) <= '2026-09-30').reduce((s, d) => s + d.AmountDue, 0);
+    ok('ap: bills not yet due are kept in Current, not dropped (live finding #987: AP aged by due date must still equal Balance Sheet AP)', notDue > 0 && apTot.startsWith('Total' + '$' + L.r2(notDue).toLocaleString('en-AU', { minimumFractionDigits: 2 })), [L.r2(notDue), apTot]);
+    ok('ap: bills list is ACCPAY; credits are supplier credits', p.calls.some((x) => x.id === 'invoices' && x.params.where === 'Type=="ACCPAY"') && p.calls.some((x) => x.id === 'credit_notes' && /ACCPAYCREDIT/.test(x.params.where)) && p.calls.some((x) => x.id === 'overpayments' && /SPEND-OVERPAYMENT/.test(x.params.where)));
+    ok('ap: supplier credit note shown negative', /CloudSoft Subscriptions[^A-Z]*\(\$/.test(text(p.doc, '#ag-all')), text(p.doc, '#ag-all').slice(0, 600));
+    await set(p, 'xk-opt-g', 'type');
+    ok('ap: group by document type (the library\'s payables default)', /Bills/.test(body(p)) && /Credit notes/.test(body(p)), body(p).slice(0, 300));
+  }
+  if (!only || only === 'pipe') {
+    // ---------------- P02 Sales overview ----------------
+    const PIPE = (extra) => Object.assign({ invoices: L.listInvoices, credit_notes: L.listCreditNotes, overpayments: L.listOverpayments, prepayments: L.listPrepayments, linked: L.listLinked, purchase_orders: L.listPurchaseOrders, repeating: L.listRepeating, bs: L.bs, org: L.organisation, connections: L.connections }, extra || {});
+    const all = (type) => L.listInvoices({ where: 'Type=="' + type + '"', statuses: 'DRAFT,SUBMITTED,AUTHORISED' }).Invoices;
+    const sumOf = (list, k) => L.r2(list.reduce((a, d) => a + d[k], 0));
+    const exp = (type) => { const l = all(type), aw = l.filter((d) => d.Status === 'AUTHORISED' && d.AmountDue > 0), od = aw.filter((d) => d.DueDateString.slice(0, 10) < L.TODAY);
+      return { draft: l.filter((d) => d.Status === 'DRAFT'), sub: l.filter((d) => d.Status === 'SUBMITTED'), aw, od }; };
+    const S = exp('ACCREC'), s = await run('so', man('so'), PIPE());
+    const sk = [...s.doc.querySelectorAll('.xk-kpis')[0].querySelectorAll('.xk-kpi')].map((k) => k.textContent.replace(/\s+/g, ' ').trim());
+    const kpi = (lbl, list, k) => lbl + ' (' + list.length + ')' + (list.length ? '$' + sumOf(list, k).toLocaleString('en-AU', { minimumFractionDigits: 2 }) : 'None');
+    ok('so: KPI strip Draft / Awaiting approval / Awaiting payment / Overdue — counts and amounts from the invoice list', sk.join('|') === [kpi('Draft', S.draft, 'Total'), kpi('Awaiting approval', S.sub, 'Total'), kpi('Awaiting payment', S.aw, 'AmountDue'), kpi('Overdue', S.od, 'AmountDue')].join('|'), [sk, [kpi('Draft', S.draft, 'Total'), kpi('Awaiting approval', S.sub, 'Total'), kpi('Awaiting payment', S.aw, 'AmountDue'), kpi('Overdue', S.od, 'AmountDue')]]);
+    ok('so: every check passes, incl. awaiting payment − credits − future-dated = Balance Sheet AR', green(s) && /✓ Awaiting payment − credits = Accounts Receivable on the Balance Sheet today — .* future-dated = /.test(banner(s)) && s.errs.length === 0, banner(s));
+    const owingTop = text(s.doc, '#so-top');
+    const byC = {}; S.aw.forEach((d) => { byC[d.Contact.Name] = L.r2((byC[d.Contact.Name] || 0) + d.AmountDue); }); const topName = Object.keys(byC).sort((a, b) => byC[b] - byC[a])[0];
+    ok('so: customers owing the most — largest first', owingTop.indexOf(topName) >= 0 && owingTop.indexOf(topName) < 40, [topName, owingTop.slice(0, 200)]);
+    ok('so: billable expenses — 3 customers with items not yet invoiced, amount N/A (said why)', /3 customers · 3 item\(s\) not yet invoiced/.test(body(s)) && /Amount owing: N\/A — Xero's billable-expense API returns no amounts/.test(body(s)), body(s).slice(0, 800));
+    ok('so: money coming in — due this week / next week and the by-month chart', /Due this week\$[\d,.]+Due next week\$[\d,.]+/.test(body(s)) && s.doc.querySelector('#so-ch svg'), body(s).slice(0, 400));
+    s.doc.querySelector('.xk-tab[data-v="repeating"]').click(); await s.settle();
+    ok('so: Repeating invoices tab (no refetch) lists the repeating invoice', /Summit Legal.*Retainer.*monthly.*2026-10-01.*\$880\.00/.test(text(s.doc, '#so-rep')), text(s.doc, '#so-rep'));
+    s.doc.querySelector('.xk-tab[data-v="links"]').click(); await s.settle();
+    ok('so: Payment links tab says N/A (not in the API) — not a failure', /Payment links: N\/A — not in the Xero Accounting API/.test(body(s)) && green(s), body(s).slice(0, 300));
+    const sf = await run('so', man('so'), PIPE({ bs: tamper(L.bs, (rows) => { cellOf(rows, 'Accounts Receivable')[1].Value = '100.00'; }) }));
+    ok('so: Balance Sheet AR differs → Fail with the difference', /✗ Awaiting payment − credits = Accounts Receivable on the Balance Sheet today — .* difference/.test(banner(sf)) && red(sf), banner(sf).slice(0, 400));
+    const sd = await run('so', man('so'), PIPE({ invoices: (q) => { const r = L.listInvoices(q); r.Invoices.push(Object.assign({}, r.Invoices.find((d) => d.Status === 'AUTHORISED'), { InvoiceID: 'dup', Status: 'VOIDED' })); return r; } }));
+    ok('so: voided invoices are not counted', green(sd) && sk[2] === [...sd.doc.querySelectorAll('.xk-kpis')[0].querySelectorAll('.xk-kpi')].map((k) => k.textContent.replace(/\s+/g, ' ').trim())[2]);
+    // ---------------- P03 Purchases overview ----------------
+    const B = exp('ACCPAY'), u = await run('pu', man('pu'), PIPE());
+    const uk = [...u.doc.querySelectorAll('.xk-kpis')[0].querySelectorAll('.xk-kpi')].map((k) => k.textContent.replace(/\s+/g, ' ').trim());
+    ok('pu: bills strip from the bill list', uk.join('|') === [kpi('Draft', B.draft, 'Total'), kpi('Awaiting approval', B.sub, 'Total'), kpi('Awaiting payment', B.aw, 'AmountDue'), kpi('Overdue', B.od, 'AmountDue')].join('|'), uk);
+    ok('pu: every check passes incl. AP tie and money going out = awaiting payment', green(u) && /✓ Money going out \(overdue \+ next 30 days \+ later\) = awaiting payment/.test(banner(u)) && /✓ Awaiting payment − credits = Accounts Payable on the Balance Sheet today/.test(banner(u)), banner(u));
+    const pk = [...u.doc.querySelectorAll('.xk-kpis')[1].querySelectorAll('.xk-kpi')].map((k) => k.textContent.replace(/s+/g, ' ').trim()).join('|');
+    ok('pu: purchase orders strip Draft / Awaiting approval / Approved / Billed', pk === 'Draft (1)$900.00|Awaiting approval (1)$1,450.00|Approved (2)$3,080.00|Billed (1)$1,990.00', pk);
+    await set(u, 'xk-opt-r', '90');
+    ok('pu: money going out over 90 days — still reconciles', /Money going out — next 90 days/.test(body(u)) && /✓ Money going out \(overdue \+ next 90 days \+ later\)/.test(banner(u)));
+    u.doc.querySelector('.xk-tab[data-v="orders"]').click(); await u.settle();
+    ok('pu: Purchase orders tab lists the orders', /PO-0002.*Metro Wholesale.*Draft.*\$900\.00/.test(text(u.doc, '#pu-po')), text(u.doc, '#pu-po').slice(0, 300));
+  }
+  if (!only || only === 'bo') {
+    // ---------------- P01 Business overview ----------------
+    const BO = (extra) => Object.assign({ bank: L.bankSummary, invoices: L.listInvoices, bills: L.listInvoices, payments: L.listPayments, pnl_ytd: L.pnl, pnl_prior: L.pnl, pnl_month: L.pnl, accounts: L.listAccounts, bs: L.bs, org: L.organisation, connections: L.connections }, extra || {});
+    const o = await run('bo', man('bo'), BO()); await wait(40);
+    const np = E.netProfit('2026-07-01', L.TODAY), npPrior = E.netProfit('2025-07-01', '2025-09-25'), bank = L.r2(E.bankBalance('090', L.TODAY) + E.bankBalance('091', L.TODAY));
+    const ob = body(o), on = banner(o);
+    ok('bo: YTD net profit from one P&L (1 Jul – today) = the books', re('1 Jul 2026–25 Sep 2026', np).test(ob), [np, ob.slice(0, 1500)]);
+    ok('bo: % vs same period last year', new RegExp('[▲▼] ' + Math.round(Math.abs((np - npPrior) / npPrior) * 100) + '% vs same period last year').test(ob), [np, npPrior]);
+    ok('bo: bank cards = books, "Balance in Xero", statement balance N/A', re('Business Cheque Account', E.bankBalance('090', L.TODAY)).test(ob) && /Balance in Xero · Statement balance: N\/A — not in source/.test(ob), ob.slice(0, 400));
+    ok('bo: every check passes (incl. bank = Balance Sheet, NP = Current Year Earnings), green', green(o) && new RegExp('✓ Bank accounts = Total Bank on the Balance Sheet today — ' + fmt(bank)).test(on) && new RegExp('✓ YTD net profit = Current Year Earnings on the Balance Sheet — ' + fmt(np) + ' vs ' + fmt(np)).test(on) && /✓ YTD net profit = income − expenses/.test(on) && o.errs.length === 0, on);
+    const bankCalls = o.calls.filter((x) => x.id === 'bank' && x.requery).map((x) => x.params.fromDate + '..' + x.params.toDate);
+    ok('bo: cash in/out — 6 Bank Summary calls, one per month (Apr–Sep 2026)', bankCalls.join(' ') === '2026-04-01..2026-04-30 2026-05-01..2026-05-31 2026-06-01..2026-06-30 2026-07-01..2026-07-31 2026-08-01..2026-08-31 2026-09-01..2026-09-25', bankCalls);
+    const cin = ['2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09'].reduce((a, m) => { const s0 = m + '-01', e0 = m === '2026-09' ? L.TODAY : L.eom(+m.slice(0, 4), +m.slice(5)); return a + E.flows('090', s0, e0).rin + E.flows('091', s0, e0).rin; }, 0);
+    ok('bo: cash in over 6 months = the books; months chain (close = next open)', re('Cash in', L.r2(cin)).test(ob) && /✓ Cash difference = cash in − cash out; each month closes where the next opens/.test(on), [L.r2(cin), ob.slice(ob.indexOf('Cash in and out'), ob.indexOf('Cash in and out') + 200)]);
+    const lastPay = L.listPayments({ where: 'PaymentType=="ACCRECPAYMENT"', order: 'Date DESC' }).Payments[0];
+    ok('bo: recent invoice payments — newest first, up to 9', text(o.doc, '#bo-pay').includes(lastPay.Invoice.InvoiceNumber) && o.doc.querySelectorAll('#bo-pay tbody tr').length === 9, text(o.doc, '#bo-pay').slice(0, 200));
+    ok('bo: tasks — chase overdue invoices / pay overdue bills', /Chase \d+ overdue invoices?/.test(ob) && /Pay \d+ overdue bills?/.test(ob));
+    ok('bo: watchlist defaults to the 4 largest expense accounts with codes, this month and YTD', o.doc.querySelectorAll('#bo-watch tbody tr').length === 4 && [...o.doc.querySelector('#bo-watch tbody tr').querySelectorAll('td')].map((td) => td.textContent.trim()).join('|') === '477|Wages and Salaries|$0.00|' + '$' + E.plByAccount('2026-07-01', L.TODAY, false)['477'].toLocaleString('en-AU', { minimumFractionDigits: 2 }), text(o.doc, '#bo-watch'));
+    const before = o.calls.length; const add = o.doc.getElementById('bo-add'); add.value = '200'; add.dispatchEvent(new o.w.Event('change')); await o.settle();
+    ok('bo: adding an account to the watchlist (display only, no refetch)', o.doc.querySelectorAll('#bo-watch tbody tr').length === 5 && /Sales/.test(text(o.doc, '#bo-watch')) && o.calls.length === before, text(o.doc, '#bo-watch'));
+    const of = await run('bo', man('bo'), BO({ bs: tamper(L.bs, (rows) => { cellOf(rows, 'Current Year Earnings')[1].Value = '1.00'; }) })); await wait(40);
+    ok('bo: Current Year Earnings differs → Fail', /✗ YTD net profit = Current Year Earnings on the Balance Sheet/.test(banner(of)) && red(of), banner(of).slice(0, 400));
+    const ofn = await run('bo', man('bo'), BO({ pnl_ytd: tamper(L.pnl, (rows) => { cellOf(rows, 'Net Profit')[1].Value = '-838.31'; }) })); await wait(40);
+    ok('bo: the live bug (net profit not equal to income − expenses) → Fail, never silent', /✗ YTD net profit = income − expenses — \(\$838\.31\)/.test(banner(ofn)) && red(ofn), banner(ofn).slice(0, 400));
+    const ofb = await run('bo', man('bo'), BO({ bank: (q) => { if (q.fromDate === '2026-06-01') throw new Error('Xero API GET …/BankSummary 500: oops'); return L.bankSummary(q); } })); await wait(60);
+    ok('bo: a month of the Bank Summary fails → that section says which month, check fails', /Some months could not be loaded: Jun 2026/.test(body(ofb)) && /✗ Cash difference/.test(banner(ofb)), body(ofb).slice(0, 300));
+    const os = await run('bo', man('bo'), BO(), { mode: 'snapshot', bundle: hydrate(man('bo'), BO(), {}, []) });
+    ok('bo snapshot: 6-month cash is N/A (live only); the rest renders', /N\/A in a snapshot — open the live report/.test(body(os)) && /Invoices owed to you/.test(body(os)), body(os).slice(0, 300));
+  }
+  if (!only || only === 'pf') {
+    // ---------------- P11 Performance overview ----------------
+    const PF = (extra) => Object.assign({ pnl_12: L.pnl, pnl_p12: L.pnl, pnl_total: L.pnl, bs: L.bs, org: L.organisation, connections: L.connections }, extra || {});
+    const f = await run('pf', man('pf'), PF());
+    const np = E.netProfit('2025-09-01', '2026-08-31'), npp = E.netProfit('2024-09-01', '2025-08-31');
+    const inc = (a, b) => { const p = E.plByAccount(a, b, false); return L.r2(Object.keys(p).filter((k) => /REVENUE|OTHERINCOME/.test(L.ACC[k].Type)).reduce((s, k) => s + p[k], 0)); };
+    const I = inc('2025-09-01', '2026-08-31'), ar = E.balances('2026-08-31')['610'];
+    const m0 = (v) => '\\$' + Math.round(Math.abs(v)).toLocaleString('en-AU');
+    ok('pf: 12 months ending Aug 2026 (end of last month), vs the same months a year earlier', /Monthly · 12 months ending Aug 2026/.test(body(f)) && f.calls.some((x) => x.id === 'pnl_12' && x.params.fromDate === '2026-08-01' && x.params.toDate === '2026-08-31' && x.params.periods === 11 && x.params.timeframe === 'MONTH'), body(f).slice(0, 200));
+    const wg = [...f.doc.querySelectorAll('.xk-widget')].find((x) => x.querySelector('h3').textContent === 'Net profit or loss'), md = (v) => (v < 0 ? '(' : '') + '$' + Math.round(Math.abs(v)).toLocaleString('en-AU') + (v < 0 ? ')' : '');
+    ok('pf: net profit widget = the books (current and prior 12 months)', wg.querySelector('.cur').textContent === md(np) && wg.querySelectorAll('.pri')[1].textContent === 'Prior: ' + md(npp) + ' · Total Sep 2024 to Aug 2025', [md(np), md(npp), wg.textContent.slice(0, 200)]);
+    ok('pf: every check passes (12 columns, Σ months = 12-month P&L, margins, debtor days, BS balances), green', green(f) && /6\/6 checks passed/.test(banner(f)) && f.errs.length === 0, banner(f));
+    const dd = Math.round(ar / I * 365);
+    ok('pf: debtors days = AR ÷ 12-month income × 365', new RegExp('Debtors days' + dd + ' days').test(body(f).replace(/\s+/g, ' ').replace(/Debtors days /, 'Debtors days')), [dd, body(f).slice(body(f).indexOf('Debtors days'), body(f).indexOf('Debtors days') + 60)]);
+    ok('pf: 9 widgets, each with an AI insight line', f.doc.querySelectorAll('.xk-widget').length === 9 && f.doc.querySelectorAll('.xk-widget .insight').length === 9);
+    const f3 = await run('pf', man('pf'), PF({ pnl_12: (q) => L.pnl(Object.assign({}, q, { periods: 5 })) }));
+    ok('pf: Xero returns only 6 monthly columns → the column check fails (no silent gaps)', /✗ Xero returned 12 monthly columns/.test(banner(f3)) && red(f3), banner(f3).slice(0, 300));
+    const f4 = await run('pf', man('pf'), PF({ pnl_total: tamper(L.pnl, (rows) => { cellOf(rows, 'Net Profit')[1].Value = '1.00'; }) }));
+    ok('pf: 12-month P&L disagrees with the monthly columns → Fail', /✗ Σ monthly net profit = the 12-month Profit and Loss/.test(banner(f4)), banner(f4).slice(0, 300));
+    await set(f, 'xk-asat-preset', 'end_last_fy');
+    ok('pf: end month = end of last financial year → refetch Jul 2025–Jun 2026', f.calls.some((x) => x.requery && x.id === 'pnl_12' && x.params.fromDate === '2026-06-01' && x.params.toDate === '2026-06-30') && f.calls.some((x) => x.requery && x.id === 'pnl_total' && x.params.fromDate === '2025-07-01') && green(f), f.calls.filter((x) => x.requery).map((x) => x.id + ':' + x.params.fromDate));
+  }
+  if (!only || only === 'cp') {
+    // ---------------- P12 Cash position ----------------
+    const CP = (extra) => Object.assign({ bs_12: L.bs, bank: L.bankSummary, bank_total: L.bankSummary, receivables: L.listInvoices, payables: L.listInvoices, org: L.organisation, connections: L.connections }, extra || {});
+    const p = await run('cp', man('cp'), CP()); await wait(80);
+    const cash = L.r2(E.bankBalance('090', '2026-08-31') + E.bankBalance('091', '2026-08-31'));
+    const md = (v) => (v < 0 ? '(' : '') + '$' + Math.round(Math.abs(v)).toLocaleString('en-AU') + (v < 0 ? ')' : '');
+    const wd = (t) => [...p.doc.querySelectorAll('.xk-widget')].find((x) => x.querySelector('h3').textContent === t);
+    ok('cp: cash balance at the end of last month = the books', wd('Cash balance').querySelector('.cur').textContent === md(cash), [md(cash), wd('Cash balance').textContent.slice(0, 120)]);
+    ok('cp: 12 Bank Summary calls, one per month (Sep 2025–Aug 2026)', p.calls.filter((x) => x.id === 'bank' && x.requery).length === 12 && p.calls.some((x) => x.id === 'bank' && x.requery && x.params.fromDate === '2025-09-01' && x.params.toDate === '2025-09-30'), p.calls.filter((x) => x.id === 'bank').map((x) => x.params.fromDate));
+    ok('cp: every check passes (Σ months = 12-month Bank Summary, BS cash = Bank Summary closing, doughnuts), green', green(p) && /6\/6 checks passed/.test(banner(p)) && p.errs.length === 0, banner(p));
+    ok('cp: receivables and payables ageing doughnuts drawn', p.doc.querySelector('#cp-rec svg') && p.doc.querySelector('#cp-pay svg'));
+    const p2 = await run('cp', man('cp'), CP({ bank_total: tamper(L.bankSummary, (rows) => { rows[1].Rows[rows[1].Rows.length - 1].Cells[2].Value = '1.00'; }) })); await wait(80);
+    ok('cp: 12-month Bank Summary disagrees with the months → Fail', /✗ Monthly cash in \/ out = the Bank Summary for the 12 months/.test(banner(p2)) && red(p2), banner(p2).slice(0, 300));
+    const p3 = await run('cp', man('cp'), CP({ bs_12: (q) => L.bs(Object.assign({}, q, { periods: 2 })) })); await wait(80);
+    ok('cp: fewer month-end columns → check fails', /✗ Xero returned 12 month-end balances/.test(banner(p3)), banner(p3).slice(0, 300));
+  }
+  if (!only || only === 'hs') {
+    // ---------------- P14 Business health scorecard ----------------
+    const HS = (extra) => Object.assign({ pnl: L.pnl, pnl_prev: L.pnl, bs: L.bs, org: L.organisation, connections: L.connections }, extra || {});
+    const h = await run('hs', man('hs'), HS());
+    const npA = E.netProfit('2026-08-01', '2026-08-31'), npJ = E.netProfit('2026-07-01', '2026-07-31');
+    const md = (v) => (v < 0 ? '(' : '') + '$' + Math.round(Math.abs(v)).toLocaleString('en-AU') + (v < 0 ? ')' : '');
+    const rowOf = (name) => [...h.doc.querySelectorAll('.xk-grid tbody tr')].find((tr) => tr.children[0] && tr.children[0].textContent === name);
+    ok('hs: August 2026 vs July 2026 (end of last month)', /Scorecard — Aug 2026/.test(body(h)) && h.calls.some((x) => x.id === 'pnl_prev' && x.params.fromDate === '2026-07-01' && x.params.toDate === '2026-07-31'), body(h).slice(0, 200));
+    ok('hs: net profit row = the books, with its equation and status', rowOf('Net profit').children[3].textContent === md(npA) && rowOf('Net profit').children[2].textContent === md(npJ) && rowOf('Net profit').children[1].textContent === 'Total income − Total expenses' && new RegExp(npA >= npJ ? '^✓' : '^✗').test(rowOf('Net profit').children[5].textContent), [md(npA), md(npJ), rowOf('Net profit').textContent]);
+    const b = E.balances('2026-08-31'), cr = (b['090'] + b['091'] + b['610'] + b['620']) / (b['800'] + b['820']);
+    ok('hs: current ratio = current assets ÷ current liabilities', rowOf('Current ratio').children[3].textContent === cr.toFixed(2), [cr.toFixed(2), rowOf('Current ratio').textContent]);
+    const achieved = [...h.doc.querySelectorAll('.xk-grid tbody tr')].filter((tr) => tr.children[5] && /^✓/.test(tr.children[5].textContent)).length;
+    ok('hs: score = achieved ÷ 12 and every check passes (incl. NP = CYE movement), green', new RegExp(achieved + ' of 12 targets achieved').test(body(h)) && green(h) && /5\/5 checks passed/.test(banner(h)) && h.errs.length === 0, [achieved, banner(h)]);
+    h.doc.querySelector('.xk-chip[data-chip="explain"]').click(); await h.settle();
+    ok('hs: "Explain my health score" answers from the computed figures', /Your score is \d+ of 12 targets/.test(text(h.doc, '#hs-ins')), text(h.doc, '#hs-ins'));
+    const h2b = await run('hs', Object.assign(man('hs'), { inputs: man('hs').inputs.map((i) => i.name === 'targets' ? Object.assign({}, i, { default: '{"cr":100,"cd":"off"}' }) : i) }), HS(), { htmlPatch: (x) => x.replace("targets: '{}'", "targets: '{\"cr\":100,\"cd\":\"off\"}'") });
+    ok('hs: numeric target (current ratio ≥ 100) → missed; "off" removes a metric (11 targets)', /of 11 targets achieved/.test(body(h2b)) && /✗/.test([...h2b.doc.querySelectorAll('.xk-grid tbody tr')].find((tr) => tr.children[0] && tr.children[0].textContent === 'Current ratio').children[5].textContent) && !/Creditor days/.test(text(h2b.doc, '.xk-grid')), body(h2b).slice(0, 300));
+    const h3 = await run('hs', man('hs'), HS({ bs: tamper(L.bs, (rows) => { cellOf(rows, 'Current Year Earnings')[1].Value = '1.00'; }) }));
+    ok('hs: Current Year Earnings movement disagrees → Fail', /✗ Net profit for Aug 2026 = the movement in Current Year Earnings/.test(banner(h3)), banner(h3).slice(0, 300));
+    await set(h, 'xk-view', 'actuals');
+    ok('hs: Actuals mode hides targets and status', !/Importance/.test(text(h.doc, '.xk-grid thead')) && /Aug 2026/.test(text(h.doc, '.xk-grid thead')));
+  }
+  if (!only || only === 'vz') {
+    // ---------------- P15 Visualise ----------------
+    const VZ = (extra) => Object.assign({ pnl_12: L.pnl, bs_12: L.bs, bank: L.bankSummary, pnl_total: L.pnl, org: L.organisation, connections: L.connections }, extra || {});
+    const v = await run('vz', man('vz'), VZ());
+    ok('vz: Profitability tab — "Income vs Expenses · Monthly ending 31 August 2026", 12 months', /Income vs Expenses · Monthly ending 31 August 2026/.test(body(v)) && v.doc.querySelectorAll('#vz-ch rect').length === 24, body(v).slice(0, 200));
+    ok('vz: checks pass (12 columns, months re-add to the 12-month P&L), green', green(v) && /2\/2 checks passed/.test(banner(v)), banner(v));
+    ok('vz: no Bank Summary calls until the Cash tab is opened', !v.calls.some((x) => x.id === 'bank' && x.requery));
+    const g = v.doc.getElementById('vz-g'); g.value = 'np'; g.dispatchEvent(new v.w.Event('change')); await v.settle();
+    ok('vz: graph picker → Net profit (display only)', /Net profit · Monthly ending/.test(body(v)) && /(^|;)g=np/.test(JSON.parse(v.setInputsLog[v.setInputsLog.length - 1].display).o), body(v).slice(0, 120));
+    v.doc.querySelector('.xk-chip[data-chip="perf"]').click(); await v.settle();
+    ok('vz: insight chip answers from the numbers', text(v.doc, '#vz-ins').includes('net profit was $' + Math.round(E.netProfit('2025-09-01', '2026-08-31')).toLocaleString('en-AU') + ' on income of'), text(v.doc, '#vz-ins'));
+    v.doc.querySelector('.xk-tab[data-v="cash"]').click(); await v.settle(); await wait(80);
+    ok('vz: Cash tab → 12 monthly Bank Summary calls, cash in / out / net chart', v.calls.filter((x) => x.id === 'bank' && x.requery).length === 12 && v.doc.querySelector('#vz-ch svg') && /✓ Every month of the Bank Summary loaded/.test(banner(v)), [v.calls.filter((x) => x.id === 'bank').length, banner(v).slice(0, 300)]);
+    const ac = v.doc.getElementById('vz-acct'); ac.value = 'Business Savings Account'; ac.dispatchEvent(new v.w.Event('change')); await v.settle();
+    ok('vz: bank account subset (no refetch)', /Business Savings Account/.test(v.doc.getElementById('vz-acct').selectedOptions[0].textContent) && v.calls.filter((x) => x.id === 'bank' && x.requery).length === 12);
+    v.doc.querySelector('.xk-tab[data-v="accounts"]').click(); await v.settle();
+    const ct = v.doc.getElementById('vz-ct'); ct.value = 'stacked'; ct.dispatchEvent(new v.w.Event('change')); await v.settle();
+    ok('vz: Accounts tab — stacked P&L totals, chart-type toggle', /Profit and Loss totals · Monthly ending/.test(body(v)) && v.doc.querySelector('#vz-ch svg') && v.doc.getElementById('vz-ct').value === 'stacked');
+    v.doc.querySelector('.xk-tab[data-v="kpis"]').click(); await v.settle();
+    ok('vz: KPIs tab — debtors days with its formula', /Formula: Debtors days = Accounts receivable ÷ total income × days in month/.test(body(v)) && /✓ The ratio shows its formula/.test(banner(v)));
+    v.doc.querySelector('.xk-tab[data-v="benchmarks"]').click(); await v.settle();
+    ok('vz: Industry benchmarks without a benchmark → N/A with how to add one (not a failure)', /N\/A — industry benchmarks are not in the Xero API/.test(body(v)) && green(v) && /– Benchmark comparison states its source — No benchmark provided/.test(banner(v)), banner(v).slice(0, 400));
+    const vb = await run('vz', Object.assign(man('vz'), { inputs: man('vz').inputs.map((i) => i.name === 'bench' ? Object.assign({}, i, { default: '{"gpm":{"low":0.3,"high":0.4,"source":"ATO small business benchmarks 2024"}}' }) : i) }), VZ(), { htmlPatch: (x) => x.replace("bench: '{}'", "bench: '{\"gpm\":{\"low\":0.3,\"high\":0.4,\"source\":\"ATO small business benchmarks 2024\"}}'").replace('\\"v\\":\\"profitability\\"', '\\"v\\":\\"benchmarks\\"').replace('"v":"profitability"', '"v":"benchmarks"') });
+    ok('vz: benchmark band with its source', /Benchmark: 30\.0% – 40\.0% · source: ATO small business benchmarks 2024/.test(body(vb)) && /✓ Benchmark comparison states its source/.test(banner(vb)), body(vb).slice(0, 400));
+    v.doc.querySelector('.xk-tab[data-v="external"]').click(); await v.settle();
+    ok('vz: External data without figures → N/A with how to add them', /N\/A — no external data yet/.test(body(v)));
+    const vx = await run('vz', man('vz'), VZ(), { htmlPatch: (x) => x.replace("ext: '{}'", "ext: '{\"Staff employed\":{\"2026-07\":12,\"2026-08\":13}}'").replace('"v":"profitability"', '"v":"external"') });
+    ok('vz: External data series plotted beside income', /Metric:/.test(body(vx)) && vx.doc.querySelector('#vz-ch svg') && vx.doc.querySelector('#vz-ch2 svg'), body(vx).slice(0, 200));
+  }
+  if (!only || only === 'cs') {
+    // ---------------- P10 Cash Summary ----------------
+    const CS = (extra) => Object.assign({ pnl_cash: L.pnl, bank: L.bankSummary, org: L.organisation, connections: L.connections }, extra || {});
+    const s = await run('cs', man('cs'), CS()); await wait(80);
+    const st = text(s.doc, '.xk-stmt'), head = [...s.doc.querySelectorAll('.xk-stmt thead th')].map((x) => x.textContent);
+    ok('cs: header Cash Summary / organisation / period · Cash basis', /^Northwind Trading Pty Ltd\s*Cash Summary\s*For the period 1 July 2026 to 25 September 2026 · Cash basis/.test(text(s.doc, '#xk-head')), text(s.doc, '#xk-head'));
+    ok('cs: month columns Jul | Aug | Sep + Total', head.join('|') === '|Jul 2026|Aug 2026|Sep 2026|Total', head);
+    ok('cs: sections in order — Cash Received, Cash Spent, Net Cash Flows, other movements, bank balances', ['Cash Received', 'Total Cash Received', 'Cash Spent', 'Total Cash Spent', 'Net Cash Flows', 'Other cash movements', 'Net Movement in Bank', 'Opening bank balance', 'Closing bank balance'].every((x, i, a) => st.indexOf(x) >= 0 && (i === 0 || st.indexOf(x) > st.indexOf(a[i - 1]))), st.slice(0, 400));
+    const cashNp = E.netProfit('2026-07-01', L.TODAY, true);
+    const netRow = [...s.doc.querySelectorAll('.xk-stmt tr')].find((tr) => tr.children[0].textContent === 'Net Cash Flows');
+    ok('cs: Net Cash Flows (total) = the books\' cash-basis profit', netRow.lastElementChild.textContent === fmt(cashNp).replace(/\\/g, ''), [fmt(cashNp), netRow.textContent]);
+    const closeRow = [...s.doc.querySelectorAll('.xk-stmt tr')].find((tr) => tr.children[0].textContent === 'Closing bank balance'), close = L.r2(E.bankBalance('090', L.TODAY) + E.bankBalance('091', L.TODAY));
+    ok('cs: closing bank balance = the books', closeRow.lastElementChild.textContent === fmt(close).replace(/\\/g, ''), closeRow.textContent);
+    ok('cs: every check passes (net = received − spent, Xero NP, bank, months add up, months chain), green', green(s) && /5\/5 checks passed/.test(banner(s)) && s.errs.length === 0, banner(s));
+    await set(s, 'xk-view', 'total');
+    ok('cs: Total only view — no month fan-out, still green', [...s.doc.querySelectorAll('.xk-stmt thead th')].map((x) => x.textContent).join('|') === '|Total' && green(s));
+    const s2 = await run('cs', man('cs'), CS({ pnl_cash: (q) => { const r = L.pnl(q); if (q.fromDate === '2026-08-01') { const c2 = cellOf(r.Reports[0].Rows, 'Sales'); c2[1].Value = (+c2[1].Value + 500).toFixed(2); } return r; } })); await wait(80);
+    ok('cs: a month disagrees with the period total → Fail', /✗ Month columns add up to the period total/.test(banner(s2)), banner(s2).slice(0, 400));
+  }
+  if (!only || only === 'cf') {
+    // ---------------- P13 Cash flow manager ----------------
+    const CF = (extra) => Object.assign({ bank: L.bankSummary, bank_past: L.bankSummary, receivables: L.listInvoices, payables: L.listInvoices, bank_tx: L.listBankTransactions, payments: L.listPayments, bs: L.bs, org: L.organisation, connections: L.connections }, extra || {});
+    const f = await run('cf', man('cf'), CF()); await wait(40);
+    const bal = L.r2(E.bankBalance('090', L.TODAY) + E.bankBalance('091', L.TODAY)), md = (v) => (v < 0 ? '(' : '') + '$' + Math.round(Math.abs(v)).toLocaleString('en-AU') + (v < 0 ? ')' : '');
+    const kp = [...f.doc.querySelectorAll('.xk-kpis')[0].querySelectorAll('.xk-kpi')].map((k) => k.textContent.replace(/\s+/g, ' ').trim());
+    ok('cf: today\'s bank balance = the books', kp[0].startsWith("Today's bank balance" + md(bal)), [md(bal), kp[0]]);
+    const recv = L.listInvoices({ where: 'Type=="ACCREC"', statuses: 'AUTHORISED' }).Invoices, bills = L.listInvoices({ where: 'Type=="ACCPAY"', statuses: 'AUTHORISED' }).Invoices;
+    const due = (list, a, b) => list.filter((d) => { const k = d.DueDateString.slice(0, 10); return k >= L.addDays(L.TODAY, a) && k <= L.addDays(L.TODAY, b); }).reduce((s, d) => s + d.AmountDue, 0);
+    const k17 = L.r2(due(recv, 1, 7) - due(bills, 1, 7));
+    ok('cf: next 1–7 days = invoices − bills due in that window', kp[2] === 'Next 1–7 days cash movement' + md(k17), [md(k17), kp[2]]);
+    ok('cf: every check passes (projection identity, KPIs = daily series, BS bank, 30-day actuals = Bank Summary), green', green(f) && /5\/5 checks passed · 1 for information/.test(banner(f)) && f.errs.length === 0, banner(f));
+    ok('cf: bank transactions and payments filtered to the last 30 days (where from the dates)', f.calls.some((x) => x.id === 'bank_tx' && x.params.where === 'Date>=DateTime(2026,08,26) AND Date<=DateTime(2026,09,25)') && f.calls.some((x) => x.id === 'payments' && /DateTime\(2026,08,26\)/.test(x.params.where)), f.calls.filter((x) => x.id === 'bank_tx').map((x) => x.params.where));
+    const pb = [...f.doc.querySelectorAll('.xk-kpis')[1].querySelectorAll('.xk-kpi')].map((k) => k.textContent.replace(/\s+/g, ' ').trim());
+    ok('cf: summary row — today, 30 days projected balance, cash runway', /^30 days projected balance/.test(pb[1]) && /^Cash runway/.test(pb[2]), pb);
+    await set(f, 'xk-opt-d', '90');
+    ok('cf: graph days 90 → "Next 8–90 days", still reconciles', /Next 8–90 days cash movement/.test(body(f)) && green(f));
+    await set(f, 'xk-opt-od', 'today');
+    ok('cf: overdue expected today → projection includes them, still reconciles', /Overdue, expected today/.test(body(f)) && green(f), body(f).slice(0, 200));
+    const sel = f.doc.getElementById('cf-acct'); sel.value = sel.options[2].value; sel.dispatchEvent(new f.w.Event('change')); await f.settle();
+    ok('cf: one bank account → its balance; BS tie N/A (whole-bank figure); actuals still tie', kp[0] !== [...f.doc.querySelectorAll('.xk-kpis')[0].querySelectorAll('.xk-kpi')][0].textContent.replace(/\s+/g, ' ').trim() && /– Today's bank balance = Total Bank on the Balance Sheet today — One account selected/.test(banner(f)) && /✓ Last 30 days/.test(banner(f)), banner(f).slice(0, 600));
+    f.doc.querySelector('.xk-tab') ; await set(f, 'xk-view', 'in');
+    ok('cf: Manage cash in lists invoices due (and overdue)', /Cash in — invoices due/.test(body(f)) && f.doc.querySelectorAll('#cf-list tbody tr').length > 0);
+    const f2 = await run('cf', man('cf'), CF({ bank_tx: (q) => { const r = L.listBankTransactions(q); r.BankTransactions = r.BankTransactions.slice(1); return r; } })); await wait(40);
+    ok('cf: a missing transaction → the 30-day actuals no longer match the Bank Summary → Fail', /✗ Last 30 days: bank transactions \+ payments = the Bank Summary/.test(banner(f2)), banner(f2).slice(0, 400));
+  }
+  if (!only || only === 'gst') {
+    // ---------------- P05 GST summary (activity statement) ----------------
+    const GS = (extra) => Object.assign({ invoices: L.listInvoices, credit_notes: L.listCreditNotes, bank_tx: L.listBankTransactions, tax_rates: L.listTaxRates, accounts: L.listAccounts, bs_end: L.bs, bs_start: L.bs, org: L.organisation, connections: L.connections }, extra || {});
+    const g = await run('gst', man('gst'), GS());
+    const B = E.books(L.T1), inQ = (d) => d >= '2026-04-01' && d <= '2026-06-30';
+    const lines = [].concat(...B.docs.filter((d) => (d.status === 'AUTHORISED' || d.status === 'PAID') && inQ(d.date)).map((d) => d.LineItems.map((l) => ({ l, sales: d.Type === 'ACCREC' })))).concat(...B.bank.filter((x) => inQ(x.date)).map((x) => x.LineItems.map((l) => ({ l, sales: x.Type === 'RECEIVE' }))));
+    const A1 = L.r2(lines.filter((x) => x.sales && x.l.TaxType === 'OUTPUT').reduce((s, x) => s + x.l.TaxAmount, 0)), B1 = L.r2(lines.filter((x) => !x.sales && /^(INPUT|CAPEXINPUT)$/.test(x.l.TaxType)).reduce((s, x) => s + x.l.TaxAmount, 0));
+    const G2 = L.r2(lines.filter((x) => x.sales && x.l.TaxType === 'EXEMPTEXPORT').reduce((s, x) => s + x.l.LineAmount, 0));
+    const fv = (code) => { const tr = [...g.doc.querySelectorAll('.xk-grid tr')].find((r) => r.children[0] && r.children[0].textContent === code); return tr ? tr.children[2].textContent : null; };
+    const $ = (v) => fmt(v).replace(/\\/g, '');
+    ok('gst: last quarter (Apr–Jun 2026) by default, "not your Activity Statement" banner', /For the 3 months ended 30 June 2026/.test(text(g.doc, '#xk-head')) && /This is not your Activity Statement/.test(body(g)), text(g.doc, '#xk-head'));
+    ok('gst: 1A GST on sales and 1B GST on purchases = the books', fv('1A') === $(A1) && fv('1B') === $(B1), [fv('1A'), $(A1), fv('1B'), $(B1)]);
+    ok('gst: net GST = 1A − 1B = the ledger\'s GST for the quarter', new RegExp('Net GST (payable|refundable) \\(1A − 1B\\)' + fmt(Math.abs(E.gst('2026-04-01', '2026-06-30')))).test(body(g)) && L.r2(A1 - B1) === E.gst('2026-04-01', '2026-06-30'), [A1 - B1, E.gst('2026-04-01', '2026-06-30')]);
+    ok('gst: G2 export sales from GST-free export lines; W1/W2/T1 N/A', fv('G2') === $(G2) && fv('W1') === 'N/A — not in source' && fv('W2') === 'N/A — not in source', [fv('G2'), $(G2)]);
+    ok('gst: due 28 July 2026 (quarterly)', /Due 28 July 2026/.test(body(g)), body(g).slice(0, 900));
+    ok('gst: every check passes incl. GST account movement = net GST − BAS paid, green', green(g) && /6\/6 checks passed/.test(banner(g)) && /✓ GST account movement on the Balance Sheet = net GST − GST paid to the ATO — .* paid/.test(banner(g)) && g.errs.length === 0, banner(g));
+    ok('gst: documents filtered to the period in Xero (where from the dates)', g.calls.some((x) => x.id === 'invoices' && x.params.where === 'Date>=DateTime(2026,04,01) AND Date<=DateTime(2026,06,30)' && x.params.statuses === 'AUTHORISED,PAID'), g.calls.filter((x) => x.id === 'invoices').map((x) => x.params.where));
+    await set(g, 'xk-view', 'lines');
+    ok('gst: Tax lines view lists every line with its BAS fields', g.doc.querySelectorAll('#gst-lines tbody tr').length === lines.length && /G1, 1A/.test(text(g.doc, '#gst-lines')), [g.doc.querySelectorAll('#gst-lines tbody tr').length, lines.length]);
+    await set(g, 'xk-view', 'list');
+    g.doc.querySelectorAll('button[data-q]')[1].click(); await g.settle(); await g.settle();
+    ok('gst: Statements list → the Jan–Mar 2026 button refetches that quarter', g.calls.some((x) => x.requery && x.id === 'invoices' && x.params.where === 'Date>=DateTime(2026,01,01) AND Date<=DateTime(2026,03,31)') && /For the 3 months ended 31 March 2026/.test(text(g.doc, '#xk-head')), g.calls.filter((x) => x.requery).map((x) => x.id + ':' + x.params.where));
+    const g2 = await run('gst', man('gst'), GS());
+    await set(g2, 'xk-preset', 'custom'); await set(g2, 'xk-from', '2025-07-01'); await set(g2, 'xk-to', '2025-09-30');
+    ok('gst: a quarter with the capital purchase → G10 filled, still ties', /G10Capital purchases \(including any GST\)\$2,640\.00/.test(text(g2.doc, '.xk-grid')) && green(g2), [text(g2.doc, '.xk-grid').slice(0, 400), banner(g2).slice(0, 300)]);
+    const g3 = await run('gst', man('gst'), GS({ bs_end: tamper(L.bs, (rows) => { cellOf(rows, 'GST')[1].Value = '1.00'; }) }));
+    ok('gst: GST account on the Balance Sheet disagrees → Fail', /✗ GST account movement/.test(banner(g3)) && red(g3), banner(g3).slice(0, 300));
+    const g4 = await run('gst', man('gst'), GS({ invoices: (q) => { const r = L.listInvoices(q); const d = r.Invoices.find((x) => x.Type === 'ACCREC'); if (d) d.LineItems = d.LineItems.map((l, i) => (i === 0 ? Object.assign({}, l, { TaxType: 'TAX002' }) : l)); return r; } }));
+    ok('gst: a custom tax rate missing from the tax-rate list → "Every tax rate used maps to a BAS field" fails and names it', /✗ Every tax rate used maps to a BAS field — Not mapped: TAX002/.test(banner(g4)), banner(g4).slice(0, 400));
+    const gnz = await run('gst', man('gst'), GS({ org: () => { const o = L.organisation({}); o.Organisations[0].SalesTaxBasis = 'PAYMENTS'; return o; } }));
+    ok('gst: cash-basis GST organisation → says the figures are on the invoice basis (still ties)', /Your GST is reported on the cash basis/.test(body(gnz)) && green(gnz), body(gnz).slice(0, 300));
+  }
+  if (!only || only === 'rc') {
+    // ---------------- P04 All reports (catalog) ----------------
+    const r = await run('rc', man('rc'), { org: L.organisation, connections: L.connections });
+    ok('rc: groups in Xero order with Favourites first', ['Favourites', 'Financial statements', 'Payables and receivables', 'Reconciliations', 'Taxes and balances', 'Dashboards and analytics'].every((x, i, a) => body(r).indexOf(x) >= 0 && (i === 0 || body(r).indexOf(x) > body(r).indexOf(a[i - 1]))), body(r).slice(0, 300));
+    ok('rc: live reports carry their prompt ID and what to ask', /Profit and Loss Live P06 ?Ask: "Profit and loss this financial year to date"/.test(body(r)) && /Aged Receivables Summary Live P08/.test(body(r)), body(r).slice(0, 600));
+    ok('rc: reports without a prompt are flagged, never implied live', /Journal Report No prompt yet/.test(body(r)) && /Not in this agent yet — open it in Xero → Reporting/.test(body(r)));
+    ok('rc: added skills shown — Trial Balance Live, written-spec skills "Built on request"', /Trial Balance Live Added/.test(body(r)) && /General Ledger Built on request Added/.test(body(r)) && /Month-end task list Built on request/.test(body(r)), body(r).slice(0, 1600));
+    ok('rc: both checks pass, green', green(r) && /2\/2 checks passed/.test(banner(r)), banner(r));
+    const qi = r.doc.getElementById('rc-q'); qi.value = 'aged'; qi.dispatchEvent(new r.w.Event('change')); await r.settle();
+    ok('rc: search filters the catalogue (display only)', /Aged Payables Summary/.test(body(r)) && !/Journal Report/.test(body(r)), body(r).slice(0, 300));
+  }
+  if (!only || only === 'tb') {
+    // ---------------- Trial Balance (added skill, not in the library) ----------------
+    const TB = (extra) => Object.assign({ tb: L.trialBalance, tb_cash: L.trialBalance, bs_tie: L.bs, org: L.organisation, connections: L.connections }, extra || {});
+    const t = await run('tb', man('tb'), TB());
+    const kp = [...t.doc.querySelectorAll('.xk-kpis .xk-kpi')].map((k) => k.textContent.replace(/\s+/g, ' ').trim());
+    ok('tb: Total Debits = Total Credits, read from the Debit / Credit header columns', kp[0].startsWith('Total Debits$') && kp[0].slice(12) === kp[1].slice(13), kp);
+    ok('tb: every check passes (both pairs, Xero Total = Σ accounts, Revenue − Expenses = BS Current Year Earnings), green', green(t) && /3\/3 checks passed · 1 N\/A/.test(banner(t)) && new RegExp('✓ Revenue − Expenses \\(YTD columns\\) = Current Year Earnings on the Balance Sheet at 2026-09-25 — ' + fmt(E.netProfit('2026-07-01', L.TODAY)) + ' vs').test(banner(t)) && t.errs.length === 0, banner(t));
+    ok('tb: Xero\'s Revenue / Expenses / Assets / Liabilities / Equity sections and the grand Total in order', ['Revenue', 'Expenses', 'Assets', 'Liabilities', 'Equity', 'Total'].every((x, i, a) => text(t.doc, '.xk-stmt').indexOf(x) >= 0 && (i === 0 || text(t.doc, '.xk-stmt').indexOf(x) > text(t.doc, '.xk-stmt').indexOf(a[i - 1]))));
+    const t2 = await run('tb', man('tb'), TB({ tb: tamper(L.trialBalance, (rows) => { const r = rows.find((x) => x.Title === 'Assets').Rows[0]; r.Cells[1].Value = (+r.Cells[1].Value + 100).toFixed(2); }) }));
+    ok('tb: an account off by $100 → Debits ≠ Credits and the Total row check fail', /✗ Total Debits = Total Credits/.test(banner(t2)) && /✗ Xero's Total row = Σ the accounts/.test(banner(t2)) && red(t2), banner(t2).slice(0, 400));
+    const t3 = await run('tb', man('tb'), TB({ tb: (q) => { const r = L.trialBalance(q); const rows = r.Reports[0].Rows; rows[0].Cells = [{ Value: 'Account' }, { Value: 'Balance' }]; rows.forEach((s) => (s.Rows || []).forEach((k) => { k.Cells = k.Cells.slice(0, 2); })); return r; } }));
+    ok('tb: a single balance column → Debit = Credit is N/A with the columns named (never a guessed pass)', /– Total Debits = Total Credits — Xero returned column\(s\) Balance instead of separate Debit \/ Credit columns/.test(banner(t3)), banner(t3).slice(0, 400));
+    const t4 = await run('tb', man('tb'), TB({ bs_tie: tamper(L.bs, (rows) => { cellOf(rows, 'Current Year Earnings')[1].Value = '1.00'; }) }));
+    ok('tb: Balance Sheet Current Year Earnings differs → the independent tie fails', /✗ Revenue − Expenses/.test(banner(t4)), banner(t4).slice(0, 400));
+  }
+  console.log(fails ? `\n${fails}/${total} checks FAILED` : `\nALL ${total} checks passed`);
+  process.exit(fails ? 1 : 0);
+})();
