@@ -1282,6 +1282,42 @@ const analyze_excluded_documents = (args) => {
         detailRows: tagged.map(({ label: l, badgeText, badgeTone }) => ({ label: l, badgeText, badgeTone })),
     };
 };
+// ── rate_variance_rows ──────────────────────────────────────────────
+// Lays out list_xero_rate_variance lines as diverging bars around 0.
+// There's no diverging-bar primitive, so each half of a row's bar track is a
+// grid Row whose `template` (grid-template-columns) sizes three solid fills:
+//   left  half: [spacer | tolerance band | under bar]   (bar touches centre)
+//   right half: [over bar | tolerance band | spacer]
+// Units are "fr" out of 100 per half, where 100 = the axis limit (`scale`).
+// Returns one object for a single setState: { rows, axisMin, axisMax }.
+// Args: { value: RateVarianceLine[], tolerance?: number (default 5), limit?: number (default 8) }
+const rate_variance_rows = (args) => {
+    const lines = Array.isArray(args.value) ? args.value : [];
+    const tolerance = Math.max(0, Number(args.tolerance) || 5);
+    const limit = Math.max(1, Math.floor(Number(args.limit) || 8));
+    const shown = lines.slice(0, limit);
+    // Axis: at least ±20%, else the largest variance rounded up to the next 10%
+    const maxAbs = Math.max(0, ...shown.map((l) => Math.abs(Number(l.variancePct) || 0)));
+    const scale = Math.max(20, Math.ceil(maxAbs / 10) * 10);
+    const pct = (n) => Math.min(100, Math.max(0, (n / scale) * 100));
+    const fr = (...cols) => cols.map((c) => `${Math.round(c * 100) / 100}fr`).join(' ');
+    const tol = pct(tolerance);
+    const rows = shown.map((l) => {
+        const v = Number(l.variancePct) || 0;
+        const bar = pct(Math.abs(v));
+        const band = Math.max(0, tol - bar);
+        const over = v > 0;
+        const under = v < 0;
+        return {
+            ...l,
+            // Left (under) half: spacer, band, bar — the bar sits against the centre line
+            leftTemplate: under ? fr(100 - bar - band, band, bar) : fr(100 - tol, tol, 0),
+            // Right (over) half: bar, band, spacer
+            rightTemplate: over ? fr(bar, band, 100 - bar - band) : fr(0, tol, 100 - tol),
+        };
+    });
+    return { rows, axisMin: `−${scale}%`, axisMax: `+${scale}%` };
+};
 // ── paginate ─────────────────────────────────────────────────────────
 // Client-side paging over a list already in state. `repeat` only accepts a
 // static statePath, so widgets `setState` the returned object into a UI path
@@ -1312,6 +1348,7 @@ const elements = {
     slug: 'xero-accounting',
     functions: {
         paginate,
+        rate_variance_rows,
         format_date,
         status_tone,
         status_label,
