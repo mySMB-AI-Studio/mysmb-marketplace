@@ -1,63 +1,65 @@
 {
+  "id": "geotab-direct-after-hours-private-use",
+  "title": "After-Hours & Private Use",
+  "description": "After-hours kilometres over the last 30 days broken down by day of the week, plus the vehicles with the most after-hours use, to spot private-use patterns early.",
   "category": "fleet-management",
+  "tags": [
+    "geotab",
+    "fleet",
+    "compliance",
+    "logbook"
+  ],
+  "keywords": [
+    "after hours",
+    "private use",
+    "weekend",
+    "weekday",
+    "fbt",
+    "logbook",
+    "tool of trade"
+  ],
   "connectorsUsed": [
     "geotab-direct"
   ],
-  "dataProvider": {
-    "kind": "tool",
-    "mcp": "geotab-direct",
-    "params": {
-      "resultsLimit": 1000,
-      "search": {
-        "fromDate": "$quarter_start_date",
-        "toDate": "$today_date"
-      },
-      "typeName": "Trip"
-    },
-    "tool": "Get"
-  },
-  "description": "Quarter-to-date after-hours vehicle use and 12-week logbook coverage, computed from real Trip records via the connected MyGeotab account (direct API connection). Trip has no explicit business/private split field, so this tracks after-hours distance/trips specifically, not a business-vs-private percentage.",
-  "id": "geotab-direct-after-hours-private-use",
-  "keywords": [
-    "after hours",
-    "logbook",
-    "ato",
-    "vehicles"
-  ],
   "popularity": 0,
   "sizing": {
-    "max": {
-      "colSpan": 10,
-      "rowSpan": 14
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 7
     },
     "min": {
       "colSpan": 4,
-      "rowSpan": 8
-    },
-    "preferred": {
-      "colSpan": 8,
       "rowSpan": 6
+    },
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 14
+    }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "geotab-direct",
+    "tool": "Get",
+    "params": {
+      "typeName": "Trip",
+      "resultsLimit": 1000,
+      "search": {
+        "fromDate": "$days_ago_30",
+        "toDate": "$now"
+      }
     }
   },
   "spec": {
+    "root": "card",
     "elements": {
-      "body": {
-        "children": [
-          "loading",
-          "empty",
-          "content"
-        ],
-        "props": {},
-        "type": "Body"
-      },
       "card": {
+        "type": "Card",
+        "props": {},
         "children": [
           "headerRow",
           "div0",
           "body"
         ],
-        "props": {},
-        "type": "Card",
         "watch": {
           "/geotab-direct/Get": [
             {
@@ -65,7 +67,7 @@
               "params": {
                 "statePath": "/ui/dashboard",
                 "value": {
-                  "$computed": "geotab-direct_after_hours_dashboard",
+                  "$computed": "geotab-direct_after_hours_weekday_dashboard",
                   "args": {
                     "trips": {
                       "$state": "/geotab-direct/Get/result"
@@ -77,109 +79,119 @@
           ]
         }
       },
-      "content": {
-        "children": [
-          "statRow",
-          "div1",
-          "coverageLabel",
-          "coverageBarRow",
-          "coverageCaption",
-          "div3",
-          "vehiclesLabel",
-          "vehicleList",
-          "noteSection",
-          "footerDiv",
-          "footerRow"
-        ],
+      "headerRow": {
+        "type": "Row",
         "props": {
-          "gap": "md"
-        },
-        "type": "Stack",
-        "visible": {
-          "$state": "/_loading/geotab-direct.Get",
-          "not": true
-        }
-      },
-      "coverageBar": {
-        "props": {
-          "tone": "info",
-          "value": {
-            "$state": "/ui/dashboard/coveragePercent"
-          }
-        },
-        "type": "ProgressBar"
-      },
-      "coverageBarRow": {
-        "children": [
-          "coverageBar"
-        ],
-        "props": {},
-        "type": "Row"
-      },
-      "coverageCaption": {
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "p": {
-                "$state": "/ui/dashboard/coveragePercent"
-              },
-              "pattern": "{p}% through the required 12-week sample period"
-            }
-          }
-        },
-        "type": "Caption"
-      },
-      "coverageLabel": {
-        "children": [
-          "coverageLabelText",
-          "coverageValueText"
-        ],
-        "props": {
+          "align": "center",
           "justify": "between"
         },
-        "type": "Row"
+        "children": [
+          "titleGroup"
+        ]
       },
-      "coverageLabelText": {
+      "titleGroup": {
+        "type": "Row",
         "props": {
-          "size": "sm",
-          "text": "12-week logbook coverage"
+          "align": "center",
+          "gap": "sm"
         },
-        "type": "Text"
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
       },
-      "coverageValueText": {
+      "titleIcon": {
+        "type": "Icon",
         "props": {
+          "name": "Clock",
           "size": "sm",
+          "tone": "muted"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "level": "h2",
+          "text": "After-Hours & Private Use"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{w} of 12 weeks",
-              "w": {
-                "$state": "/ui/dashboard/coverageWeeks"
+              "pattern": "Last 30 days · {km} km after hours",
+              "km": {
+                "$state": "/ui/dashboard/totalKm"
               }
             }
-          },
-          "weight": "medium"
-        },
-        "type": "Text"
+          }
+        }
       },
       "div0": {
-        "props": {},
-        "type": "Divider"
+        "type": "Divider",
+        "props": {}
       },
-      "div1": {
+      "body": {
+        "type": "Body",
         "props": {},
-        "type": "Divider"
+        "children": [
+          "loading",
+          "empty",
+          "content"
+        ]
       },
-      "div3": {
-        "props": {},
-        "type": "Divider"
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "lk1",
+          "lk2",
+          "lk3"
+        ],
+        "visible": {
+          "$state": "/_loading/geotab-direct.Get"
+        }
+      },
+      "lk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "lk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "lk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
       },
       "empty": {
-        "props": {
-          "message": "No trips found in the fetched window."
-        },
         "type": "Empty",
+        "props": {
+          "message": "No after-hours trips in the last 30 days."
+        },
         "visible": {
           "$and": [
             {
@@ -187,284 +199,218 @@
               "not": true
             },
             {
-              "$state": "/ui/dashboard/rows/0",
+              "$state": "/ui/dashboard/totalKm",
               "not": true
             }
           ]
         }
       },
-      "eyebrow": {
+      "heroRow": {
+        "type": "Row",
         "props": {
-          "text": "Quarter to date · MyGeotab (direct)"
+          "gap": "sm",
+          "align": "baseline"
         },
-        "type": "Eyebrow"
+        "children": [
+          "heroStat",
+          "heroCaption"
+        ]
       },
-      "footerButton": {
-        "on": {
-          "click": [
-            {
-              "action": "open_todo_modal",
-              "params": {
-                "description": {
-                  "$state": "/ui/dashboard/flagNote"
-                },
-                "title": {
-                  "$computed": "fmt",
-                  "args": {
-                    "pattern": "Review {v} after-hours use",
-                    "v": {
-                      "$state": "/ui/dashboard/flagDeviceName"
-                    }
-                  }
-                }
+      "heroStat": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{km} km",
+              "km": {
+                "$state": "/ui/dashboard/totalKm"
               }
             }
-          ]
-        },
-        "props": {
-          "label": "Send to WorkQ",
-          "size": "sm",
-          "variant": "outline"
-        },
-        "type": "Button"
-      },
-      "footerDiv": {
-        "props": {},
-        "type": "Divider"
-      },
-      "footerRow": {
-        "children": [
-          "footerButton"
-        ],
-        "props": {
-          "justify": "end"
-        },
-        "type": "Row"
-      },
-      "headerRow": {
-        "children": [
-          "titleGroup"
-        ],
-        "props": {
-          "align": "center",
-          "justify": "between"
-        },
-        "type": "Row"
-      },
-      "lk1": {
-        "props": {
-          "height": "2.5rem",
-          "rounded": "md"
-        },
-        "type": "Skeleton"
-      },
-      "lk2": {
-        "props": {
-          "height": "2.5rem",
-          "rounded": "md"
-        },
-        "type": "Skeleton"
-      },
-      "lk3": {
-        "props": {
-          "height": "2.5rem",
-          "rounded": "md"
-        },
-        "type": "Skeleton"
-      },
-      "loading": {
-        "children": [
-          "lk1",
-          "lk2",
-          "lk3"
-        ],
-        "props": {
-          "gap": "sm"
-        },
-        "type": "Stack",
-        "visible": {
-          "$state": "/_loading/geotab-direct.Get"
+          }
         }
       },
-      "noteCaption": {
+      "heroCaption": {
+        "type": "Caption",
         "props": {
-          "text": {
-            "$state": "/ui/dashboard/flagNote"
-          },
-          "tone": "warning"
-        },
-        "type": "Caption"
-      },
-      "noteSection": {
-        "children": [
-          "noteCaption"
-        ],
-        "props": {
-          "variant": "muted"
-        },
-        "type": "Section"
-      },
-      "statKm": {
-        "props": {
-          "label": "After-hours km",
-          "value": {
-            "$state": "/ui/dashboard/totalKm"
-          }
-        },
-        "type": "Stat"
-      },
-      "statRow": {
-        "children": [
-          "statKm",
-          "statTrips"
-        ],
-        "props": {
-          "align": "start",
-          "gap": "lg"
-        },
-        "type": "Row"
-      },
-      "statTrips": {
-        "props": {
-          "label": "After-hours trips",
-          "value": {
-            "$state": "/ui/dashboard/afterHoursTripCount"
-          }
-        },
-        "type": "Stat"
-      },
-      "title": {
-        "props": {
-          "level": "h2",
-          "text": "After-Hours & Private Use"
-        },
-        "type": "Heading"
-      },
-      "titleGroup": {
-        "children": [
-          "titleIcon",
-          "titleStack"
-        ],
-        "props": {
-          "align": "center",
-          "gap": "sm"
-        },
-        "type": "Row"
-      },
-      "titleIcon": {
-        "props": {
-          "name": "Clock",
-          "size": "sm",
-          "tone": "muted"
-        },
-        "type": "Icon"
-      },
-      "titleStack": {
-        "children": [
-          "title",
-          "eyebrow"
-        ],
-        "props": {
-          "gap": "none"
-        },
-        "type": "Stack"
-      },
-      "vBar": {
-        "props": {
-          "tone": {
-            "$computed": "geotab-direct_private_km_tone",
-            "args": {
-              "value": {
-                "$item": "afterHoursKm"
-              }
-            }
-          },
-          "value": {
-            "$item": "barPercent"
-          }
-        },
-        "type": "ProgressBar"
-      },
-      "vBarRow": {
-        "children": [
-          "vBar"
-        ],
-        "props": {},
-        "type": "Row"
-      },
-      "vLabel": {
-        "props": {
-          "size": "sm",
-          "text": {
-            "$item": "deviceName"
-          },
-          "truncate": true
-        },
-        "type": "Text"
-      },
-      "vRow": {
-        "children": [
-          "vLabel",
-          "vVal"
-        ],
-        "props": {
-          "justify": "between"
-        },
-        "type": "Row"
-      },
-      "vVal": {
-        "props": {
-          "size": "sm",
           "text": {
             "$computed": "fmt",
             "args": {
-              "km": {
-                "$item": "afterHoursKm"
+              "pattern": "Peak {d} · {w}% on weekends",
+              "d": {
+                "$state": "/ui/dashboard/peakDayLabel"
               },
-              "pattern": "{km} km"
+              "w": {
+                "$state": "/ui/dashboard/weekendPercent"
+              }
             }
-          },
-          "weight": "medium"
-        },
-        "type": "Text"
+          }
+        }
       },
-      "vehicleList": {
-        "children": [
-          "vehicleRow"
-        ],
+      "div1": {
+        "type": "Divider",
+        "props": {}
+      },
+      "stripLabel": {
+        "type": "Eyebrow",
         "props": {
-          "gap": "sm"
+          "text": "By weekday"
+        }
+      },
+      "strip": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "end",
+          "template": "repeat(7, minmax(0, 1fr))"
         },
+        "children": [
+          "dayCol"
+        ],
         "repeat": {
-          "key": "deviceId",
-          "statePath": "/ui/dashboard/rows"
-        },
-        "type": "Stack"
+          "statePath": "/ui/dashboard/days",
+          "key": "key"
+        }
       },
-      "vehicleRow": {
-        "children": [
-          "vRow",
-          "vBarRow"
-        ],
+      "dayCol": {
+        "type": "Stack",
         "props": {
-          "gap": "xs"
+          "gap": "xs",
+          "align": "stretch"
         },
-        "type": "Stack"
+        "children": [
+          "dayKmWrap",
+          "dayBarWrap",
+          "dayLabelWrap"
+        ]
+      },
+      "dayKmWrap": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "dayKm"
+        ]
+      },
+      "dayKm": {
+        "type": "Text",
+        "props": {
+          "size": "xs",
+          "weight": "medium",
+          "text": {
+            "$item": "kmText"
+          }
+        }
+      },
+      "dayBarWrap": {
+        "type": "Row",
+        "props": {
+          "align": "center"
+        },
+        "children": [
+          "dayBar"
+        ]
+      },
+      "dayBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": {
+            "$item": "pct"
+          },
+          "tone": {
+            "$item": "tone"
+          }
+        }
+      },
+      "dayLabelWrap": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "dayName",
+          "dayTrips"
+        ]
+      },
+      "dayName": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "weight": "medium",
+          "text": {
+            "$item": "dayLabel"
+          }
+        }
+      },
+      "dayTrips": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "tripsText"
+          }
+        }
+      },
+      "div2": {
+        "type": "Divider",
+        "props": {}
       },
       "vehiclesLabel": {
+        "type": "Eyebrow",
         "props": {
-          "text": "After-hours km by vehicle"
+          "text": "Most after-hours km"
+        }
+      },
+      "vehicleChart": {
+        "type": "BarChart",
+        "props": {
+          "data": {
+            "$state": "/ui/dashboard/vehicles"
+          },
+          "labelField": "deviceName",
+          "valueField": "afterHoursKm",
+          "tone": "warning",
+          "limit": 5,
+          "valueFormat": "number"
+        }
+      },
+      "flagNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/dashboard/flagNote"
+          }
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
         },
-        "type": "Eyebrow"
+        "children": [
+          "heroRow",
+          "div1",
+          "stripLabel",
+          "strip",
+          "div2",
+          "vehiclesLabel",
+          "vehicleChart",
+          "flagNote"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/geotab-direct.Get",
+              "not": true
+            },
+            {
+              "$state": "/ui/dashboard/totalKm"
+            }
+          ]
+        }
       }
-    },
-    "root": "card"
-  },
-  "tags": [
-    "geotab",
-    "fleet",
-    "compliance",
-    "logbook"
-  ],
-  "title": "After-Hours & Private Use"
+    }
+  }
 }

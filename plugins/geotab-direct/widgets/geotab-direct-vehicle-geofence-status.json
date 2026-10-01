@@ -1,18 +1,14 @@
 {
-  "category": "fleet-management",
-  "connectorsUsed": [
-    "geotab-direct"
-  ],
-  "dataProvider": {
-    "kind": "tool",
-    "mcp": "geotab-direct",
-    "params": {
-      "resultsLimit": 500
-    },
-    "tool": "get_vehicle_geofence_status"
-  },
-  "description": "Real on-site/in-transit/offline classification per vehicle, matched against your mapped MyGeotab zones, in a single call to this self-hosted server's dedicated get_vehicle_geofence_status tool. This is real geofencing -- the vendor-connector `geotab` plugin's Vehicle Status widget had to be scaled back to a plain driving/stopped/offline list because MyHub's widget runtime can't combine two different Geotab entity-type fetches (DeviceStatusInfo + Zone) in one widget; this server does that match server-side instead, in one tool call.",
   "id": "geotab-direct-vehicle-geofence-status",
+  "title": "Vehicles On Site Now",
+  "description": "Live ring chart of how many vehicles are on site, in transit or offline, matched against your MyGeotab zones, with each vehicle and the site it is at.",
+  "category": "fleet-management",
+  "tags": [
+    "geotab",
+    "fleet",
+    "live-tracking",
+    "geofence"
+  ],
   "keywords": [
     "vehicle status",
     "on site",
@@ -20,42 +16,46 @@
     "offline",
     "geofence",
     "zone",
-    "live"
+    "live",
+    "fleet snapshot"
+  ],
+  "connectorsUsed": [
+    "geotab-direct"
   ],
   "popularity": 0,
   "sizing": {
-    "max": {
-      "colSpan": 10,
-      "rowSpan": 14
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 7
     },
     "min": {
       "colSpan": 4,
-      "rowSpan": 8
-    },
-    "preferred": {
-      "colSpan": 6,
       "rowSpan": 6
+    },
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 14
+    }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "geotab-direct",
+    "tool": "get_vehicle_geofence_status",
+    "params": {
+      "resultsLimit": 500
     }
   },
   "spec": {
+    "root": "card",
     "elements": {
-      "body": {
-        "children": [
-          "loading",
-          "empty",
-          "content"
-        ],
-        "props": {},
-        "type": "Body"
-      },
       "card": {
+        "type": "Card",
+        "props": {},
         "children": [
           "headerRow",
           "div0",
           "body"
         ],
-        "props": {},
-        "type": "Card",
         "watch": {
           "/geotab-direct/get_vehicle_geofence_status": [
             {
@@ -63,7 +63,7 @@
               "params": {
                 "statePath": "/ui/dashboard",
                 "value": {
-                  "$computed": "geotab-direct_vehicle_geofence_dashboard",
+                  "$computed": "geotab-direct_fleet_snapshot_dashboard",
                   "args": {
                     "statuses": {
                       "$state": "/geotab-direct/get_vehicle_geofence_status/result"
@@ -75,34 +75,119 @@
           ]
         }
       },
-      "content": {
-        "children": [
-          "pillRow",
-          "div1",
-          "vehicleRows"
-        ],
+      "headerRow": {
+        "type": "Row",
         "props": {
-          "gap": "md"
+          "align": "center",
+          "justify": "between"
         },
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "MapPin",
+          "size": "sm",
+          "tone": "muted"
+        }
+      },
+      "titleStack": {
         "type": "Stack",
-        "visible": {
-          "$state": "/_loading/geotab-direct.get_vehicle_geofence_status",
-          "not": true
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "level": "h2",
+          "text": "Vehicles On Site Now"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Live · {n} vehicles",
+              "n": {
+                "$state": "/ui/dashboard/totalCount"
+              }
+            }
+          }
         }
       },
       "div0": {
-        "props": {},
-        "type": "Divider"
+        "type": "Divider",
+        "props": {}
       },
-      "div1": {
+      "body": {
+        "type": "Body",
         "props": {},
-        "type": "Divider"
+        "children": [
+          "loading",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "lk1",
+          "lk2",
+          "lk3"
+        ],
+        "visible": {
+          "$state": "/_loading/geotab-direct.get_vehicle_geofence_status"
+        }
+      },
+      "lk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "lk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "lk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
       },
       "empty": {
+        "type": "Empty",
         "props": {
           "message": "No device status data available."
         },
-        "type": "Empty",
         "visible": {
           "$and": [
             {
@@ -116,234 +201,112 @@
           ]
         }
       },
-      "eyebrow": {
+      "ring": {
+        "type": "Donut",
         "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "n": {
-                "$state": "/ui/dashboard/totalCount"
-              },
-              "pattern": "Live · {n} vehicles"
-            }
-          }
-        },
-        "type": "Eyebrow"
-      },
-      "headerRow": {
-        "children": [
-          "titleGroup"
-        ],
-        "props": {
-          "align": "center",
-          "justify": "between"
-        },
-        "type": "Row"
-      },
-      "lk1": {
-        "props": {
-          "height": "2.5rem",
-          "rounded": "md"
-        },
-        "type": "Skeleton"
-      },
-      "lk2": {
-        "props": {
-          "height": "2.5rem",
-          "rounded": "md"
-        },
-        "type": "Skeleton"
-      },
-      "lk3": {
-        "props": {
-          "height": "2.5rem",
-          "rounded": "md"
-        },
-        "type": "Skeleton"
-      },
-      "loading": {
-        "children": [
-          "lk1",
-          "lk2",
-          "lk3"
-        ],
-        "props": {
-          "gap": "sm"
-        },
-        "type": "Stack",
-        "visible": {
-          "$state": "/_loading/geotab-direct.get_vehicle_geofence_status"
+          "segments": {
+            "$state": "/ui/dashboard/segments"
+          },
+          "centerLabel": "vehicles",
+          "size": 96,
+          "thickness": 10
         }
       },
-      "pillInTransit": {
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "n": {
-                "$state": "/ui/dashboard/inTransitCount"
-              },
-              "pattern": "In Transit {n}"
-            }
-          },
-          "tone": "info"
-        },
-        "type": "Badge"
+      "div1": {
+        "type": "Divider",
+        "props": {}
       },
-      "pillOffline": {
+      "listLabel": {
+        "type": "Eyebrow",
         "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "n": {
-                "$state": "/ui/dashboard/offlineCount"
-              },
-              "pattern": "Offline {n}"
-            }
-          },
-          "tone": "warning"
-        },
-        "type": "Badge"
+          "text": "Vehicles"
+        }
       },
-      "pillOnSite": {
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "n": {
-                "$state": "/ui/dashboard/onSiteCount"
-              },
-              "pattern": "On Site {n}"
-            }
-          },
-          "tone": "muted",
-          "variant": "solid"
-        },
-        "type": "Badge"
-      },
-      "pillRow": {
-        "children": [
-          "pillOnSite",
-          "pillInTransit",
-          "pillOffline"
-        ],
+      "vehicleRows": {
+        "type": "Stack",
         "props": {
           "gap": "sm"
         },
-        "type": "Row"
-      },
-      "title": {
-        "props": {
-          "level": "h2",
-          "text": "Vehicles On Site Now"
-        },
-        "type": "Heading"
-      },
-      "titleGroup": {
         "children": [
-          "titleIcon",
-          "titleStack"
+          "vehicleRow"
         ],
-        "props": {
-          "align": "center",
-          "gap": "sm"
-        },
-        "type": "Row"
+        "repeat": {
+          "statePath": "/ui/dashboard/rows",
+          "key": "deviceName"
+        }
       },
-      "titleIcon": {
+      "vehicleRow": {
+        "type": "Row",
         "props": {
-          "name": "MapPin",
-          "size": "sm",
-          "tone": "muted"
+          "gap": "sm",
+          "align": "center"
         },
-        "type": "Icon"
-      },
-      "titleStack": {
         "children": [
-          "title",
-          "eyebrow"
-        ],
-        "props": {
-          "gap": "none"
-        },
-        "type": "Stack"
+          "vDot",
+          "vLabelStack"
+        ]
       },
-      "vBadge": {
+      "vDot": {
+        "type": "Dot",
         "props": {
-          "text": {
-            "$item": "classificationLabel"
-          },
           "tone": {
-            "$computed": "geotab-direct_vehicle_geofence_tone",
-            "args": {
-              "value": {
-                "$item": "classification"
-              }
-            }
-          }
-        },
-        "type": "Badge"
+            "$item": "dotTone"
+          },
+          "size": "sm"
+        }
       },
-      "vCaption": {
+      "vLabelStack": {
+        "type": "Stack",
         "props": {
-          "text": {
-            "$item": "caption"
-          }
+          "gap": "xs",
+          "grow": true
         },
-        "type": "Caption"
+        "children": [
+          "vLabel",
+          "vCaption"
+        ]
       },
       "vLabel": {
+        "type": "Text",
         "props": {
           "size": "sm",
           "text": {
             "$item": "deviceName"
           },
           "truncate": true
-        },
-        "type": "Text"
+        }
       },
-      "vLabelStack": {
-        "children": [
-          "vLabel",
-          "vCaption"
-        ],
+      "vCaption": {
+        "type": "Caption",
         "props": {
-          "gap": "none"
-        },
-        "type": "Stack"
+          "text": {
+            "$item": "caption"
+          }
+        }
       },
-      "vehicleRow": {
-        "children": [
-          "vLabelStack",
-          "vBadge"
-        ],
+      "content": {
+        "type": "Stack",
         "props": {
-          "align": "center",
-          "justify": "between"
+          "gap": "md"
         },
-        "type": "Row"
-      },
-      "vehicleRows": {
         "children": [
-          "vehicleRow"
+          "ring",
+          "div1",
+          "listLabel",
+          "vehicleRows"
         ],
-        "props": {
-          "gap": "sm"
-        },
-        "repeat": {
-          "key": "deviceName",
-          "statePath": "/ui/dashboard/rows"
-        },
-        "type": "Stack"
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/geotab-direct.get_vehicle_geofence_status",
+              "not": true
+            },
+            {
+              "$state": "/ui/dashboard/totalCount"
+            }
+          ]
+        }
       }
-    },
-    "root": "card"
-  },
-  "tags": [
-    "geotab",
-    "fleet",
-    "live-tracking",
-    "geofence"
-  ],
-  "title": "Vehicles On Site Now"
+    }
+  }
 }
