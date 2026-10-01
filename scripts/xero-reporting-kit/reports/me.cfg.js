@@ -6,8 +6,8 @@ XK.app({
     display: '{"cents":1,"k":0,"zeros":1,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"last_month","a":"custom","c":"none","v":"","o":"f=all"}' },
   uses: { bank: ['period_start', 'period_end', 'org'], receivables: ['org'], payables: ['org'], journals: ['mj_where', 'org'], bs: ['period_end', 'org'], pay_runs: ['org'], timesheets: ['org'], assets: ['org'], org: ['org'], connections: [] },
   paged: { receivables: { input: 'page', key: 'Invoices' }, payables: { input: 'page', key: 'Invoices' }, journals: { input: 'page', key: 'ManualJournals' }, pay_runs: { input: 'page', key: 'PayRuns' }, timesheets: { input: 'page', key: 'Timesheets' } },
-  sources: { pay_runs: { name: 'Xero Payroll AU', optional: true }, timesheets: { name: 'Xero Payroll AU', optional: true }, assets: { name: 'Xero Assets', optional: true } },
-  tools: { bank: 'get_bank_summary (the period)', receivables: 'list_invoices (sales invoices awaiting payment)', payables: 'list_invoices (bills awaiting payment)', journals: 'list_manual_journals (dated in the period)', bs: 'get_balance_sheet (period end)', pay_runs: 'list_pay_runs (Xero Payroll AU)', timesheets: 'list_timesheets (Xero Payroll AU)', assets: 'list_assets (Xero Assets, registered)', org: 'get_organisation', connections: 'list_connections' },
+  sources: { pay_runs: { name: 'Xero Payroll (Australia)', optional: true }, timesheets: { name: 'Xero Payroll (Australia)', optional: true }, assets: { name: 'Xero Fixed Assets', optional: true } },
+  tools: { bank: 'get_bank_summary (the period)', receivables: 'list_invoices (sales invoices awaiting payment)', payables: 'list_invoices (bills awaiting payment)', journals: 'list_manual_journals (dated in the period)', bs: 'get_balance_sheet (period end)', pay_runs: 'list_pay_runs (xero-payroll-au)', timesheets: 'list_timesheets (xero-payroll-au)', assets: 'list_assets (xero-assets, registered)', org: 'get_organisation', connections: 'list_connections' },
   presets: [['last_month', 'Last month'], ['this_month', 'This month'], ['last_quarter', 'Last quarter'], ['this_month_td', 'This month to date'], ['custom', 'Custom']],
   derive: function (inp) { return { mj_where: XK.dateWhere('Date', inp.period_start, inp.period_end) }; },
   render: function (c) {
@@ -38,7 +38,8 @@ XK.app({
       Object.keys(bySup).filter(function (k) { return payT > 0 && bySup[k] / payT > 0.25; }).forEach(function (k) { task('Payables', 'Review', 'Supplier concentration: ' + k, XK.pct(bySup[k] / payT, 0) + ' of outstanding bills (' + money(bySup[k]) + ' of ' + money(payT) + ')', 'A supplier over 25% of bills dated on or before ' + day(pe)); });
     }
     // ---- Payroll (Xero Payroll AU — optional: an organisation without AU payroll gets an Information-required task)
-    if (c.errors.pay_runs) task('Payroll', 'Information-required', 'Pay runs — confirm directly in Xero', c.err('pay_runs'), 'Xero Payroll AU is not available for this organisation');
+    var why = function (id) { var nm = c.source(id).name; return c.errors[id].code === 'needs_connection' ? nm + ' is not connected in this workspace' : nm + ' is not available for this organisation'; };
+    if (c.errors.pay_runs) task('Payroll', 'Information-required', 'Pay runs — confirm directly in Xero', c.err('pay_runs'), why('pay_runs'));
     else {
       var runs = c.rows('pay_runs').map(function (r) { return { start: XK.isoDate(r.PayRunPeriodStartDate), end: XK.isoDate(r.PayRunPeriodEndDate), status: r.PayRunStatus || '', net: XK.num(r.NetPay) }; });
       var inP = runs.filter(function (r) { return r.end >= ps && r.end <= minus(pe, 7); }), dr = inP.filter(function (r) { return r.status !== 'POSTED'; });
@@ -65,7 +66,7 @@ XK.app({
       if (bp.gst != null) task('GST', 'Review', 'GST balance at the period end', money(bp.gst) + ' at ' + day(pe), 'Confirm with GST Reconciliation Detail (or the GST summary) before lodging');
       bsw.lines.filter(function (l) { return l.kind === 'row' && /suspense|uncategori[sz]ed|clearing/i.test(l.label) && Math.abs(l.values[0] || 0) >= 0.005; }).forEach(function (l) { task('Balance sheet', 'Required', 'Clear ' + l.label, 'Balance ' + money(l.values[0]) + ' at ' + day(pe), 'A non-zero suspense, uncategorised or clearing account'); });
     }
-    if (c.errors.assets) task('Fixed assets', 'Information-required', 'Fixed asset register — confirm directly in Xero', c.err('assets'), 'Xero Assets is not available for this organisation');
+    if (c.errors.assets) task('Fixed assets', 'Information-required', 'Fixed asset register — confirm directly in Xero', c.err('assets'), why('assets'));
     else if (c.data.assets) {
       var as = (c.data.assets.items || []).filter(function (a) { return /registered/i.test(a.assetStatus || ''); }), last = as.map(function (a) { return XK.isoDate(a.purchaseDate); }).sort().slice(-1)[0];
       task('Fixed assets', 'Information-required', 'Confirm ' + plabel + ' depreciation is posted', as.length + ' registered asset(s)' + (last ? ' · latest purchase ' + day(last) : ''), 'The Xero Assets API cannot run or confirm depreciation — check Fixed assets → Run depreciation in Xero');
@@ -97,7 +98,7 @@ XK.app({
       { name: 'All lists loaded', pass: lists.some(function (id) { return c.truncated(id); }) ? false : true, detail: lists.filter(function (id) { return c.truncated(id); }).join(', ') || 'every page' }
     ];
     this._x = { T: T };
-    return { checks: checks, notes: ['Open invoice and bill balances are Xero\'s current balances' + (pe < c.today ? ' (the period ended before today, so items paid since are not listed).' : '.'), 'Payroll and fixed assets come from the Xero Payroll AU and Xero Assets connectors; when either is not available for this organisation, its tasks become Information-required.'],
+    return { checks: checks, notes: ['Open invoice and bill balances are Xero\'s current balances' + (pe < c.today ? ' (the period ended before today, so items paid since are not listed).' : '.'), 'Payroll and fixed assets come from the Xero Payroll (Australia) and Xero Fixed Assets extensions; when either is not connected or not available for this organisation, its tasks become Information-required.'],
       na: ['Posting depreciation, approving pay runs or reconciling — this list reviews only'], period: XK.periodLine(ps, pe) };
   },
   excel: function (c) {

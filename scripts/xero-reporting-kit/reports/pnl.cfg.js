@@ -26,17 +26,19 @@ XK.app({
     var sec = function (re) { return XK.sectionBy(w, re); }, line = function (re) { var l = XK.find(w.lines, null, re, 'total'); return l ? XK.val(l) : null; };
     var inc = sec(/^(trading )?income$|^revenue$|^sales$/i), cos = sec(/cost of sales/i), oi = sec(/^other income$/i), opex = sec(/operating expenses|^(less )?expenses$/i), oe = sec(/other expenses/i);
     var gp = line(/^gross profit$/i), np = line(/^net (profit|loss)$/i);
+    var none = function (v) { return v == null && np != null; }; // Xero leaves out a section with nothing in it
+    var incK = none(inc) ? 0 : inc, opexK = none(opex) ? 0 : opex;
     var npCmp = wc ? (function () { var l = XK.find(wc.lines, null, /^net (profit|loss)$/i, 'total'); return l ? XK.val(l) : null; })() : null;
     var extra = cmpOn ? XK.compareCols({ prev_period: 'Previous period', prev_year: 'Previous year', ytd: 'Year to date' }[c.compareMode]) : [];
     if (c.view === 'pct') extra.push({ title: '% of Trading Income', fmt: 'pct', value: function (l) { return inc ? XK.val(l) / inc : null; } });
     var empty = !w.lines.some(function (l) { return l.kind === 'row'; });
-    body.innerHTML = XK.kpis([{ label: 'Total Trading Income', value: inc }, { label: 'Gross Profit', value: gp }, { label: 'Total Operating Expenses', value: opex },
+    body.innerHTML = XK.kpis([{ label: 'Total Trading Income', value: incK, sub: none(inc) ? 'None in this period' : null }, { label: 'Gross Profit', value: gp }, { label: 'Total Operating Expenses', value: opexK, sub: none(opex) ? 'None in this period' : null },
       { label: 'Net Profit', value: np, delta: npCmp ? (np - npCmp) / Math.abs(npCmp) : null }, { label: 'Net margin', text: inc ? XK.pct(np / inc) : '—' }], c) +
       (empty ? '<p class="muted">Xero recorded no income or expenses in this period.</p>' : '') +
       '<div class="xk-scroll">' + XK.statement(lines, ['', XK.rangeLabel(c.inputs.from_date, c.inputs.to_date)], c, extra) + '</div>' +
       '<div class="xk-grid2 detail-block" style="margin-top:16px"><div class="xk-card"><h3>Income vs expenses</h3><div id="ch1"></div></div><div class="xk-card"><h3>Trading income to net profit</h3><div id="ch2"></div></div></div>';
     var cmpOf = function (re) { return wc ? XK.sectionBy(wc, re) : null; };
-    XK.bars(document.getElementById('ch1'), { title: 'Income vs expenses', labels: ['Trading Income', 'Cost of Sales', 'Operating Expenses', 'Net Profit'], series: [{ name: 'This period', values: [inc, cos, opex, np] }].concat(wc ? [{ name: 'Comparison', values: [cmpOf(/^(trading )?income$|^revenue$|^sales$/i), cmpOf(/cost of sales/i), cmpOf(/operating expenses|^(less )?expenses$/i), npCmp] }] : []) }, c);
+    XK.bars(document.getElementById('ch1'), { title: 'Income vs expenses', labels: ['Trading Income', 'Cost of Sales', 'Operating Expenses', 'Net Profit'], series: [{ name: 'This period', values: [incK, cos || 0, opexK, np] }].concat(wc ? [{ name: 'Comparison', values: [cmpOf(/^(trading )?income$|^revenue$|^sales$/i), cmpOf(/cost of sales/i), cmpOf(/operating expenses|^(less )?expenses$/i), npCmp] }] : []) }, c);
     XK.waterfall(document.getElementById('ch2'), { title: 'Trading income to net profit', steps: [{ label: 'Trading Income', value: inc, total: true }, { label: 'Cost of Sales', value: -(cos || 0) }, { label: 'Other Income', value: oi || 0 }, { label: 'Operating Exp.', value: -(opex || 0) }, { label: 'Other Exp.', value: -(oe || 0) }, { label: 'Net Profit', value: np, total: true }] }, c);
 
     // Checks. Xero sends its own section totals and computed lines, so these re-add them from the account rows; the
