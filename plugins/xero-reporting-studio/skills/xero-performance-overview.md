@@ -28,8 +28,9 @@ Call `get_organisation` and `list_connections` once, and `get_profit_and_loss` o
 
 - Xero returned 12 monthly columns (current and prior year)
 - **Independent tie:** Σ monthly net profit, income and expenses = the 12-month Profit and Loss (a separate report)
-- Margins = profit ÷ income (formula stated)
-- Debtors days = AR ÷ 12-month income × 365; creditors days = AP ÷ 12-month expenses × 365
+- Every month: Xero's Gross Profit and Net Profit lines = the sections above them (the margins rest on them)
+- Receivables and payables at the end month agree between Xero's two Balance Sheet reports
+- Debtors / creditors days formula (information; the widgets are monthly from 12 month-end Balance Sheets)
 - Balance Sheet balances
 
 ## Save as
@@ -347,6 +348,72 @@ Call `get_organisation` and `list_connections` once, and `get_profit_and_loss` o
       }
     },
     {
+      "id": "bs_12",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "get_balance_sheet"
+      },
+      "params": {
+        "date": {
+          "kind": "input",
+          "input": "end_date"
+        },
+        "periods": {
+          "kind": "static",
+          "value": 11
+        },
+        "timeframe": {
+          "kind": "static",
+          "value": "MONTH"
+        },
+        "standardLayout": {
+          "kind": "static",
+          "value": true
+        },
+        "paymentsOnly": {
+          "kind": "static",
+          "value": false
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "bs_p12",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "get_balance_sheet"
+      },
+      "params": {
+        "date": {
+          "kind": "input",
+          "input": "prior_end"
+        },
+        "periods": {
+          "kind": "static",
+          "value": 11
+        },
+        "timeframe": {
+          "kind": "static",
+          "value": "MONTH"
+        },
+        "standardLayout": {
+          "kind": "static",
+          "value": true
+        },
+        "paymentsOnly": {
+          "kind": "static",
+          "value": false
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
       "id": "org",
       "tool": {
         "mcp": "xero-accounting",
@@ -452,7 +519,8 @@ svg .donut-c{fill:var(--ink);font-size:15px;font-weight:700}
 .xk-chip{display:inline-block;border:1px solid var(--line);border-radius:14px;padding:3px 10px;margin:2px;font-size:12px;background:var(--card);cursor:pointer}
 .xk-chip.on{border-color:var(--accent);color:var(--ink);font-weight:600}
 .xk-ok{color:var(--pos)}.xk-bad{color:var(--neg)}
-@media print{body{background:var(--card);padding:0}#xk-controls,#xk-status,.no-print,.xk-filter{display:none!important}.xk-card{border:0;padding:0 0 12px}th{position:static}@page{size:A4 landscape;margin:12mm}}
+.print-only{display:none}
+@media print{.print-only{display:inline!important}body{background:var(--card);padding:0}#xk-controls,#xk-status,.no-print,.xk-filter{display:none!important}.xk-card{border:0;padding:0 0 12px}th{position:static}@page{size:A4 landscape;margin:12mm}}
 /* QuickBooks branding accents (the accent follows the house-style toggle and the optional brand colour) */
 #xk-controls{border-top:3px solid var(--accent)}
 main.xk-card{border-top:4px solid var(--accent)}
@@ -486,8 +554,10 @@ values:[],path:[]});return}var hasRow=kids.some(function(k){return k&&k.RowType=
 Cells||[],label=lbl(kc),closes=parent&&label.toLowerCase()===("total "+parent).toLowerCase()?parent:null;out.lines.push({kind:"total",depth:0,label,group:closes||label,parent:null,calc:!closes,closes,fixed:!0,values:vals(kc),path:[]}),closes&&(parent=null)});return}var d=parent?1:0,shown=title.replace(
 /^Less\s+/i,""),sec={title,label:shown,parent,rows:[],summary:null};title&&out.lines.push({kind:"header",depth:d,label:shown,group:title,parent,values:[],path:parent?[parent]:[]}),kids.forEach(function(k){var kc=k.Cells||[],label=lbl(kc),line2;k.RowType==="SummaryRow"?(line2={kind:"total",depth:d,label,
 group:title,parent,fixed:!0,values:vals(kc),path:[]},sec.summary=line2):(line2={kind:"row",depth:d+1,label,id:attr(kc[0],"account")||attr(kc[1],"account"),group:title,parent,values:vals(kc),path:(parent?[parent]:[]).concat([shown])},sec.rows.push(line2)),out.lines.push(line2)}),out.sections.push(sec)}}),
-out}function sectionTotal(sec,col){var i=col||0;return sec.summary?sec.summary.values[i]:sum(sec.rows.map(function(l){return l.values[i]}))}var CYE_RE=/^current year('s)? earnings$|^current earnings$/i;function currentYearEarnings(bsLines){var r=bsLines.filter(function(l){return l.kind==="row"&&/^equity$/i.test(l.group)&&CYE_RE.test(l.label)})[0];return r||null}function find(lines,group,labelRe,kind){var kinds=kind?[kind]:["total","row"],
-i,j;for(j=0;j<kinds.length;j++){if(group){for(i=0;i<lines.length;i++)if(lines[i].group===group&&lines[i].kind===kinds[j])return lines[i]}if(labelRe){for(i=0;i<lines.length;i++)if(lines[i].kind===kinds[j]&&labelRe.test(lines[i].label))return lines[i]}}return null}function orgOf(v){var o=v&&!errorOf(v)&&Array.isArray(v.Organisations)?v.Organisations[0]:null;return o?{name:o.Name||o.LegalName||null,currency:o.BaseCurrency||null,country:o.CountryCode||null,fyEndMonth:Number(o.FinancialYearEndMonth)||null,fyEndDay:Number(o.FinancialYearEndDay)||null,shortCode:o.
+out}function sectionTotal(sec,col){var i=col||0;return sec.summary?sec.summary.values[i]:sum(sec.rows.map(function(l){return l.values[i]}))}function runningTies(w,col,tol){var res={checked:0,failed:[]},i=col||0,run=0,bySum={};return w.sections.forEach(function(s){bySum[s.title]=s}),w.lines.forEach(function(l){if(l.kind==="header"&&bySum[l.group]&&l.label===bySum[l.group].label){var s=bySum[l.group];run=Math.round((run+(isDeduction(s.title)?
+-1:1)*(sectionTotal(s,i)||0))*100)/100}else l.kind==="total"&&l.calc&&(res.checked++,near(l.values[i],run,tol)||res.failed.push(l.label+" "+l.values[i]+" vs "+run))}),res}var CYE_RE=/^current year('s)? earnings$|^current earnings$/i;function currentYearEarnings(bsLines){var r=bsLines.filter(function(l){
+return l.kind==="row"&&/^equity$/i.test(l.group)&&CYE_RE.test(l.label)})[0];return r||null}function find(lines,group,labelRe,kind){var kinds=kind?[kind]:["total","row"],i,j;for(j=0;j<kinds.length;j++){if(group){for(i=0;i<lines.length;i++)if(lines[i].group===group&&lines[i].kind===kinds[j])return lines[i]}
+if(labelRe){for(i=0;i<lines.length;i++)if(lines[i].kind===kinds[j]&&labelRe.test(lines[i].label))return lines[i]}}return null}function orgOf(v){var o=v&&!errorOf(v)&&Array.isArray(v.Organisations)?v.Organisations[0]:null;return o?{name:o.Name||o.LegalName||null,currency:o.BaseCurrency||null,country:o.CountryCode||null,fyEndMonth:Number(o.FinancialYearEndMonth)||null,fyEndDay:Number(o.FinancialYearEndDay)||null,shortCode:o.
 ShortCode||null,id:o.OrganisationID||null}:null}function connections(v){var t=!v||errorOf(v)?[]:Array.isArray(v.tenants)?v.tenants:Array.isArray(v)?v:[];return{active:v&&v.activeTenantId||null,list:t.map(function(x){return{id:String(x.tenantId||""),name:x.tenantName||"",type:x.tenantType||""}}).filter(
 function(x){return x.id})}}function companyOf(orgResp,connResp,chosenId,titles){var o=orgOf(orgResp),cn=connections(connResp),id=chosenId||cn.active||null,t=cn.list.filter(function(x){return x.id===id})[0],fromTitle=titles&&titles[1]?String(titles[1]):null;return{name:o&&o.name||t&&t.name||fromTitle,
 id,currency:o?o.currency:null,country:o?o.country:null,org:o,orgs:cn.list,active:cn.active,source:o?"get_organisation":t?"list_connections":fromTitle?"report title":null}}var MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];function fiscalStart(org,fyMonth){
@@ -649,14 +719,14 @@ S.inputs[I.asAt],basis:I.basis&&S.inputs[I.basis],org:I.org&&(S.inputs[I.org]||c
 "n/a"],["currency",c.currency],[],["Data as of",S.fetchedAt||""],["Source",cfg.mechanism||MECHANISM]]),widths:[28,60]});var name=[c.company||"Xero",cfg.title,I.start?S.inputs[I.start]+" to "+S.inputs[I.end]:I.asAt?"as at "+S.inputs[I.asAt]:""].filter(Boolean).join(" - ").replace(/[\\\/:*?"<>|]+/g," ");
 download(xlsx(sheets,c.currency),name+".xlsx")}function boot(bundle){if(S.data={},S.errors=Object.assign({},bundle.errors||{}),S.fetchedAt=bundle.fetchedAt||null,Object.keys(bundle.data||{}).forEach(function(id){S.errors[id]||absorb(id,bundle.data[id])}),adoptHeader(),status(""),S.first){S.first=!1;
 var roll=rollPresets();if(roll){change(roll);return}if(announce(),heal())return}render(),retryLimited(1).then(pageAll).then(fanAll)}return MH?(MyHubReport.onData(function(bundle){window.__reportStarted=!0,boot(bundle)}),MH.onRefresh&&MH.onRefresh(function(){status("Refreshing\u2026")}),MH.onThemeChange&&
-MH.onThemeChange(function(){render()}),{state:S,change,render,exportXlsx,ctx,retryLimited}):(status("Open this report in mySMB to load Xero data."),{state:S})}window.XK={app,asOfLine,bars,bsParts,donut,eom,h,isDeduction,line,money,monthCols,monthLabel,monthsEnding,near,plParts,sum,walk};})();</script>
+MH.onThemeChange(function(){render()}),{state:S,change,render,exportXlsx,ctx,retryLimited}):(status("Open this report in mySMB to load Xero data."),{state:S})}window.XK={app,asOfLine,bars,bsParts,donut,eom,h,isDeduction,line,money,monthCols,monthLabel,monthsEnding,near,plParts,runningTies,sum,walk};})();</script>
 <script>XK.app({
   title: 'Performance overview', primary: 'pnl_12', dated: ['bs'], org: 'org', conns: 'connections',
   inputs: { asAt: 'end_date', basis: 'basis', org: 'org', display: 'display' },
   defaults: { end_date: '2026-08-31', m_start: '2026-08-01', prior_end: '2025-08-31', prior_m_start: '2025-08-01', window_start: '2025-09-01', basis: 'Accrual', org: '',
     display: '{"cents":0,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"end_last_month","c":"none","v":""}' },
-  uses: { pnl_12: ['m_start', 'end_date', 'org'], pnl_12_cash: ['m_start', 'end_date', 'org'], pnl_p12: ['prior_m_start', 'prior_end', 'org'], pnl_p12_cash: ['prior_m_start', 'prior_end', 'org'], pnl_total: ['window_start', 'end_date', 'org'], pnl_total_cash: ['window_start', 'end_date', 'org'], bs: ['end_date', 'org'], org: ['org'], connections: [] },
-  tools: { pnl_12: 'get_profit_and_loss (12 monthly columns: periods 11, MONTH)', pnl_12_cash: 'get_profit_and_loss (12 monthly columns: periods 11, MONTH, cash basis)', pnl_p12: 'get_profit_and_loss (the prior 12 months)', pnl_p12_cash: 'get_profit_and_loss (the prior 12 months, cash basis)', pnl_total: 'get_profit_and_loss (the 12 months as one total — tie)', pnl_total_cash: 'get_profit_and_loss (the 12 months as one total — tie, cash basis)', bs: 'get_balance_sheet (end of the month and a year earlier)', org: 'get_organisation', connections: 'list_connections' },
+  uses: { bs_12: ['end_date', 'org'], bs_p12: ['prior_end', 'org'], pnl_12: ['m_start', 'end_date', 'org'], pnl_12_cash: ['m_start', 'end_date', 'org'], pnl_p12: ['prior_m_start', 'prior_end', 'org'], pnl_p12_cash: ['prior_m_start', 'prior_end', 'org'], pnl_total: ['window_start', 'end_date', 'org'], pnl_total_cash: ['window_start', 'end_date', 'org'], bs: ['end_date', 'org'], org: ['org'], connections: [] },
+  tools: { bs_12: 'get_balance_sheet (12 month-ends: monthly debtors / creditors days)', bs_p12: 'get_balance_sheet (the 12 month-ends a year earlier)', pnl_12: 'get_profit_and_loss (12 monthly columns: periods 11, MONTH)', pnl_12_cash: 'get_profit_and_loss (12 monthly columns: periods 11, MONTH, cash basis)', pnl_p12: 'get_profit_and_loss (the prior 12 months)', pnl_p12_cash: 'get_profit_and_loss (the prior 12 months, cash basis)', pnl_total: 'get_profit_and_loss (the 12 months as one total — tie)', pnl_total_cash: 'get_profit_and_loss (the 12 months as one total — tie, cash basis)', bs: 'get_balance_sheet (end of the month and a year earlier)', org: 'get_organisation', connections: 'list_connections' },
   asats: [['end_last_month', 'End of last month'], ['end_this_month', 'End of this month'], ['end_last_quarter', 'End of last quarter'], ['end_last_fy', 'End of last financial year'], ['custom', 'Custom']],
   derive: function (inp) {
     var e = inp.end_date, back = function (s, k) { var p = s.split('-'), d = new Date(Date.UTC(+p[0], +p[1] - 1 - k, 1)), y = d.getUTCFullYear(), m = d.getUTCMonth() + 1, last = XK.eom(y, m).getUTCDate(), eomIn = +p[2] === XK.eom(+p[0], +p[1]).getUTCDate(); return y + '-' + String(m).padStart(2, '0') + '-' + String(eomIn ? last : Math.min(+p[2], last)).padStart(2, '0'); };
@@ -707,8 +777,10 @@ MH.onThemeChange(function(){render()}),{state:S,change,render,exportXlsx,ctx,ret
     XK.line(document.getElementById('pf-gpm'), { title: 'Gross profit margin', labels: labs, fmt: pc, series: [{ name: 'Current', values: ratio(gp.cur, trd.cur) }, { name: 'Prior year', values: ratio(gp.pri, trd.pri) }] }, c);
     XK.donut(document.getElementById('pf-opex'), { title: 'Operating expenses', items: opexRows, centre: money(XK.sum(opexRows.map(function (x) { return x.value; }))) }, c);
     if (b0) XK.donut(document.getElementById('pf-bank'), { title: 'Bank accounts', items: b0.bankRows.map(function (r) { return { label: r.label, value: r.value }; }), centre: money(b0.bank) }, c);
-    var dd = function (id, a) { XK.bars(document.getElementById(id), { title: id, labels: ['Current', 'Prior'], fmt: function (v) { return Math.round(v) + ' days'; }, series: [{ name: 'Days', values: [a[0] == null ? null : Math.round(a[0]), a[1] == null ? null : Math.round(a[1])] }] }, c); };
-    dd('pf-dd', DD); dd('pf-cd', CD);
+    // monthly days: the month-end balance ÷ that month's income (or expenses) × days in the month
+    var mdays = function (id, ks, flowArr, part) { var v = c.data[id] && !c.errors[id] ? XK.walk(c.data[id]) : null, m = v ? XK.monthCols(v) : null; return ks.map(function (k, i) { var j = m && m.idx[k], f = flowArr[i]; if (j == null || !f) return null; var b = XK.bsParts(v, j)[part]; return b == null ? null : b / f * XK.eom(+k.slice(0, 4), +k.slice(5, 7)).getUTCDate(); }); };
+    var dl = function (id, part, flow) { var cur = mdays('bs_12', keys, flow.cur, part), pri = mdays('bs_p12', pkeys, flow.pri, part); XK.line(document.getElementById(id), { title: id, labels: labs, fmt: function (v) { return Math.round(v) + ' days'; }, series: [{ name: 'Current', values: cur }, { name: 'Prior year', values: pri }] }, c); return cur; };
+    var ddm = dl('pf-dd', 'ar', inc), cdm = dl('pf-cd', 'ap', exp);
 
     // Checks
     var pt = D('pnl_total') ? XK.plParts(XK.walk(D('pnl_total'))) : null, has12 = mc && keys.every(function (k) { return mc.idx[k] != null; }), hasP = mcp && pkeys.every(function (k) { return mcp.idx[k] != null; });
@@ -716,8 +788,9 @@ MH.onThemeChange(function(){render()}),{state:S,change,render,exportXlsx,ctx,ret
       { name: 'Xero returned 12 monthly columns (current and prior year)', pass: has12 && (!wp || hasP), detail: (mc ? mc.keys.length : 0) + ' + ' + (mcp ? mcp.keys.length : 0) + ' month columns' + (has12 ? '' : ' — expected ' + XK.monthLabel(keys[0]) + '…' + XK.monthLabel(keys[11])) },
       { name: 'Σ monthly net profit = the 12-month Profit and Loss', pass: pt && T.np[0] != null ? XK.near(T.np[0], pt.np, 0.05) : null, detail: pt ? money(T.np[0]) + ' vs ' + money(pt.np) : Em('pnl_total') },
       { name: 'Σ monthly income and expenses = the 12-month Profit and Loss', pass: pt && T.inc[0] != null ? XK.near(T.inc[0], pt.income, 0.05) && XK.near(T.exp[0], pt.expenses, 0.05) : null, detail: pt ? money(T.inc[0]) + ' / ' + money(T.exp[0]) : 'N/A' },
-      { name: 'Margins = profit ÷ income (net: net profit ÷ total income; gross: gross profit ÷ trading income)', pass: T.inc[0] ? XK.near(M.npm[0] * T.inc[0], T.np[0], 0.05) : null, detail: 'Net ' + pct(M.npm[0]) + ' · Gross ' + pct(M.gpm[0]) },
-      { name: 'Debtors days = accounts receivable ÷ 12-month income × 365; creditors days = accounts payable ÷ 12-month expenses × 365', pass: b0 && b0.ar != null ? XK.near(DD[0] * T.inc[0] / 365, b0.ar, 0.05) : null, detail: b0 ? 'AR ' + money(b0.ar) + ', AP ' + money(b0.ap) : c.err('bs') },
+      (function () { var run = XK.runningTies(w); return { name: 'Every month: Xero\'s Gross Profit and Net Profit lines = the sections above them (so the margins rest on them)', pass: run.checked ? run.failed.length === 0 : null, detail: run.failed.length ? run.failed.join(', ') : 'Net ' + pct(M.npm[0]) + ' · Gross ' + pct(M.gpm[0]) + ' over the 12 months' }; })(),
+      (function () { var v = c.data.bs_12 && !c.errors.bs_12 ? XK.walk(c.data.bs_12) : null, m = v ? XK.monthCols(v) : null, j = m && m.idx[keys[11]], x = j == null ? null : XK.bsParts(v, j); return { name: 'Receivables and payables at ' + end + ' agree between Xero\'s two Balance Sheet reports (month-ends and year comparison)', pass: x && b0 && x.ar != null && b0.ar != null ? XK.near(x.ar, b0.ar) && XK.near(x.ap, b0.ap) : null, detail: x && b0 ? 'AR ' + money(x.ar) + ' vs ' + money(b0.ar) + ' · AP ' + money(x.ap) + ' vs ' + money(b0.ap) : c.err('bs_12') || c.err('bs') }; })(),
+      { name: 'Debtors / creditors days formula (information)', pass: null, info: true, detail: '12 months: AR ÷ income × 365 = ' + (DD[0] == null ? 'N/A' : Math.round(DD[0]) + ' days') + '; AP ÷ expenses × 365 = ' + (CD[0] == null ? 'N/A' : Math.round(CD[0]) + ' days') + '. Monthly: month-end balance ÷ that month × days in the month' },
       { name: 'Balance Sheet balances (Total Assets = Total Liabilities + Total Equity)', pass: b0 && b0.totalAssets != null ? XK.near(b0.totalAssets, b0.totalLiabilities + b0.equity) : null, detail: b0 ? money(b0.totalAssets) : 'N/A' }
     ];
     this._x = { keys: keys, np: np, inc: inc, exp: exp, T: T, M: M, DD: DD, CD: CD };

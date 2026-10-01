@@ -21,13 +21,13 @@ Always "now" — leave the date defaults (the kit sets today, the last 30 days a
 | Member / view | How |
 |---|---|
 | Overview | KPI strip, daily chart (actual | projected), today's balance, projected balance, cash runway |
-| Manage cash in / Manage cash out | Tabs: invoices / bills due in the window (and overdue) |
-| Planned cash items | N/A — Xero's planned items are not in the API |
+| Manage cash in / Manage cash out | Tabs: invoices / bills due in the window (and overdue), plus planned items |
+| Planned cash items | Add planned receipts or payments in Manage cash in / out (or set the `planned` input: [{"d":"YYYY-MM-DD","a":<+in / −out>,"n":"description"}], up to 10); they join the projection. Xero's own planned items are not in its API |
 
 ## Validation checks (shown in the banner)
 
-- Projected balance = today's balance + projected cash in − projected cash out
-- KPI strip = Σ the daily projection
+- Every invoice and bill awaiting payment is projected, overdue or due later (none dropped)
+- Projected balance (information)
 - Cash runway method (information)
 - **Independent ties:** today's bank balance = Total Bank on the Balance Sheet; last 30 days of bank transactions + payments = the Bank Summary for the same days
 - All invoices, bills and transactions loaded
@@ -69,6 +69,13 @@ Always "now" — leave the date defaults (the kit sets today, the last 30 days a
       "type": "string",
       "maxLength": 200,
       "default": "Date>=DateTime(2026,08,26) AND Date<=DateTime(2026,09,25)"
+    },
+    {
+      "name": "planned",
+      "label": "Planned cash in / out",
+      "type": "string",
+      "maxLength": 500,
+      "default": "[]"
     },
     {
       "name": "org",
@@ -367,7 +374,8 @@ svg .donut-c{fill:var(--ink);font-size:15px;font-weight:700}
 .xk-chip{display:inline-block;border:1px solid var(--line);border-radius:14px;padding:3px 10px;margin:2px;font-size:12px;background:var(--card);cursor:pointer}
 .xk-chip.on{border-color:var(--accent);color:var(--ink);font-weight:600}
 .xk-ok{color:var(--pos)}.xk-bad{color:var(--neg)}
-@media print{body{background:var(--card);padding:0}#xk-controls,#xk-status,.no-print,.xk-filter{display:none!important}.xk-card{border:0;padding:0 0 12px}th{position:static}@page{size:A4 landscape;margin:12mm}}
+.print-only{display:none}
+@media print{.print-only{display:inline!important}body{background:var(--card);padding:0}#xk-controls,#xk-status,.no-print,.xk-filter{display:none!important}.xk-card{border:0;padding:0 0 12px}th{position:static}@page{size:A4 landscape;margin:12mm}}
 /* QuickBooks branding accents (the accent follows the house-style toggle and the optional brand colour) */
 #xk-controls{border-top:3px solid var(--accent)}
 main.xk-card{border-top:4px solid var(--accent)}
@@ -563,7 +571,7 @@ parse,sum,walk};})();</script>
 <script>XK.app({
   title: 'Cash flow manager', primary: 'bank', org: 'org', conns: 'connections', noBasis: true,
   inputs: { org: 'org', display: 'display' },
-  defaults: { as_at: '2026-09-25', past_from: '2026-08-26', past_where: 'Date>=DateTime(2026,08,26) AND Date<=DateTime(2026,09,25)', org: '', page: 1,
+  defaults: { planned: '[]', as_at: '2026-09-25', past_from: '2026-08-26', past_where: 'Date>=DateTime(2026,08,26) AND Date<=DateTime(2026,09,25)', org: '', page: 1,
     display: '{"cents":0,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"today","c":"none","v":"overview","o":"d=30;od=ex"}' },
   uses: { bank: ['as_at', 'org'], bank_past: ['past_from', 'as_at', 'org'], receivables: ['org'], payables: ['org'], bank_tx: ['past_where', 'org'], payments: ['past_where', 'org'], bs: ['as_at', 'org'], org: ['org'], connections: [] },
   paged: { receivables: { input: 'page', key: 'Invoices' }, payables: { input: 'page', key: 'Invoices' }, bank_tx: { input: 'page', key: 'BankTransactions' }, payments: { input: 'page', key: 'Payments' } },
@@ -590,7 +598,10 @@ parse,sum,walk};})();</script>
     var rec = XK.openDocs({ invoices: c.rows('receivables'), types: { invoices: 'ACCREC' } }, base, null), pay = XK.openDocs({ invoices: c.rows('payables'), types: { invoices: 'ACCPAY' } }, base, null);
     var od = { in: 0, out: 0 }, later = { in: 0, out: 0 };
     var proj = function (list, k) { list.forEach(function (d) { if (d.due < asAt) { od[k] = r2(od[k] + d.amount); if (odToday) { var t0 = at(asAt); t0['p' + k] = r2(t0['p' + k] + d.amount); } return; } var x = at(d.due); if (!x || x.off > N) { later[k] = r2(later[k] + d.amount); return; } if (x.off === 0) x = at(XK.addDaysIso(asAt, 0)); x['p' + k] = r2(x['p' + k] + d.amount); note(x, 'i' + k, (d.contact || '') + (d.number ? ' ' + d.number : ''), d.amount); }); };
-    proj(rec, 'in'); proj(pay, 'out');
+    var docIn = function () { return XK.sum(days.map(function (x) { return x.pin; })); }, docOut = function () { return XK.sum(days.map(function (x) { return x.pout; })); };
+    proj(rec, 'in'); proj(pay, 'out'); var dIn = r2(docIn() - (odToday ? od.in : 0)), dOut = r2(docOut() - (odToday ? od.out : 0));
+    var plan = []; try { plan = JSON.parse(c.inputs.planned || '[]') || []; } catch (e) { plan = []; }
+    plan.forEach(function (p) { var x = p && p.d >= asAt ? at(p.d) : null, a = +p.a || 0; if (!x || x.off > N || !a) return; if (a > 0) { x.pin = r2(x.pin + a); x.iin.push([(p.n || 'Planned') + ' (planned)', a]); } else { x.pout = r2(x.pout - a); x.iout.push([(p.n || 'Planned') + ' (planned)', -a]); } });
     var fut = days.filter(function (x) { return x.off >= 0; }), sumP = function (a, b, k) { return XK.sum(fut.filter(function (x) { return x.off >= a && x.off <= b; }).map(function (x) { return x['p' + k]; })); };
     var k17 = r2(sumP(1, 7, 'in') - sumP(1, 7, 'out')), k8N = r2(sumP(8, N, 'in') - sumP(8, N, 'out')), pin = sumP(0, N, 'in'), pout = sumP(0, N, 'out'), projBal = r2(bal + pin - pout);
     var netN = r2(pin - pout), runway = netN >= 0 ? 'Over a year' : (function () { var burn = -netN / N, dd = bal / burn; return dd > 365 ? 'Over a year' : dd <= 0 ? 'Now' : Math.round(dd) + ' days (' + (dd / 30.4).toFixed(1) + ' months)'; })();
@@ -604,7 +615,10 @@ parse,sum,walk};})();</script>
         (od.in || od.out ? '<p class="muted">Overdue, ' + (odToday ? 'expected today' : 'not in the projection') + ': invoices ' + money(od.in) + ' · bills ' + money(od.out) + '.</p>' : '');
     } else {
       var list = (view === 'in' ? rec : pay).filter(function (d) { return d.due <= XK.addDaysIso(asAt, N); }).map(function (d) { return { contact: d.contact, number: d.number, due: d.due, state: d.due < asAt ? 'Overdue' : 'Due', amount: d.amount }; });
-      html += '<div class="xk-card"><h3>' + (view === 'in' ? 'Cash in — invoices due in the next ' + N + ' days (and overdue)' : 'Cash out — bills due in the next ' + N + ' days (and overdue)') + '</h3><div id="cf-list"></div><p class="muted">Planned items and changes to expected dates are managed in Xero; this report reads due dates only.</p></div>';
+      var mine = plan.map(function (p, i) { return { i: i, d: p.d, n: p.n || 'Planned', a: +p.a || 0 }; }).filter(function (p) { return view === 'in' ? p.a > 0 : p.a < 0; });
+      html += '<div class="xk-card"><h3>' + (view === 'in' ? 'Cash in — invoices due in the next ' + N + ' days (and overdue)' : 'Cash out — bills due in the next ' + N + ' days (and overdue)') + '</h3><div id="cf-list"></div></div>' +
+        '<div class="xk-card"><h3>Planned ' + (view === 'in' ? 'cash in' : 'cash out') + '</h3>' + (mine.length ? '<ul>' + mine.map(function (p) { return '<li>' + XK.h(p.d) + ' · ' + XK.h(p.n) + ' · ' + money(Math.abs(p.a)) + ' <button type="button" class="xk-link no-print" data-rm="' + p.i + '">Remove</button></li>'; }).join('') + '</ul>' : '<p class="muted">None yet.</p>') +
+        '<p class="no-print"><label class="muted">Date <input type="date" id="cf-pd" value="' + XK.h(asAt) + '"></label> <label class="muted">Amount <input type="number" id="cf-pa" min="0" step="0.01" style="width:110px"></label> <label class="muted">Description <input type="text" id="cf-pn" maxlength="30"></label> <button type="button" id="cf-padd" class="xk-link">Add</button></p><p class="muted">Planned items are kept with this report (up to 10) and included in the projection. Xero\'s own planned items are not in its API.</p></div>';
       c._list = list;
     }
     body.innerHTML = html;
@@ -613,20 +627,23 @@ parse,sum,walk};})();</script>
     if (view === 'overview') XK.bars(document.getElementById('cf-ch'), { title: 'Cash in and out', every: 7, mark: { at: 30, label: 'Today' }, fadeFrom: 30, labels: days.map(function (x) { return x.off === 0 ? 'Today' : x.d.slice(8) + '/' + x.d.slice(5, 7); }), series: [{ name: 'Cash in', values: days.map(function (x) { return x.off < 0 ? x.ain : x.off === 0 ? r2(x.ain + x.pin) : x.pin; }), color: 'var(--pos)', tips: days.map(function (x) { return tip(x.iin); }) }, { name: 'Cash out', values: days.map(function (x) { return -(x.off < 0 ? x.aout : x.off === 0 ? r2(x.aout + x.pout) : x.pout); }), color: 'var(--neg)', tips: days.map(function (x) { return tip(x.iout); }) }] }, c);
     else XK.grid(document.getElementById('cf-list'), { filter: true, rows: c._list, columns: [{ key: 'contact', title: 'Contact' }, { key: 'number', title: 'Number' }, { key: 'due', title: 'Due date' }, { key: 'state', title: '' }, { key: 'amount', title: 'Amount', money: true }], empty: 'Nothing due.' }, c);
     var s = document.getElementById('cf-acct'); if (s) s.addEventListener('change', function () { c.setOpt('acct', this.value); });
+    var savePlan = function (list) { c.change({ planned: JSON.stringify(list.slice(-10)) }); };
+    var add = document.getElementById('cf-padd'); if (add) add.addEventListener('click', function () { var d = document.getElementById('cf-pd').value, a = +document.getElementById('cf-pa').value, n = document.getElementById('cf-pn').value.replace(/["\\]/g, '').slice(0, 30); if (!d || !a) return; savePlan(plan.concat([{ d: d, a: view === 'out' ? -Math.abs(a) : Math.abs(a), n: n }])); });
+    body.querySelectorAll('button[data-rm]').forEach(function (b) { b.addEventListener('click', function () { var k = +b.getAttribute('data-rm'); savePlan(plan.filter(function (_, i) { return i !== k; })); }); });
     // Checks
     var pastIn = XK.sum(days.filter(function (x) { return x.off <= 0; }).map(function (x) { return x.ain; })), pastOut = XK.sum(days.filter(function (x) { return x.off <= 0; }).map(function (x) { return x.aout; }));
     var bp = c.data.bank_past ? XK.walk(c.data.bank_past).lines.filter(function (l) { return l.kind === 'row' && useA(l.id); }) : null, bpIn = bp ? XK.sum(bp.map(function (l) { return l.values[1]; })) : null, bpOut = bp ? XK.sum(bp.map(function (l) { return l.values[2]; })) : null;
     var bs = c.data.bs ? XK.bsParts(XK.walk(c.data.bs)) : null, lists = ['receivables', 'payables', 'bank_tx', 'payments'];
     var checks = [
-      { name: 'Projected balance = today\'s balance + projected cash in − projected cash out', pass: XK.near(projBal, bal + pin - pout), detail: money(bal) + ' + ' + money(pin) + ' − ' + money(pout) + ' = ' + money(projBal) },
-      { name: 'KPI strip = Σ the daily projection (days 1–7 and 8–' + N + ')', pass: XK.near(k17, sumP(1, 7, 'in') - sumP(1, 7, 'out')) && XK.near(k8N, XK.sum(fut.filter(function (x) { return x.off >= 8; }).map(function (x) { return x.pin - x.pout; }))), detail: money(k17) + ' · ' + money(k8N) },
+      { name: 'Every invoice and bill awaiting payment is projected, overdue or due later (none dropped)', pass: XK.near(r2(dIn + od.in + later.in), XK.sum(rec.map(function (d) { return d.amount; })), 0.05) && XK.near(r2(dOut + od.out + later.out), XK.sum(pay.map(function (d) { return d.amount; })), 0.05), detail: 'In ' + money(XK.sum(rec.map(function (d) { return d.amount; }))) + ' · out ' + money(XK.sum(pay.map(function (d) { return d.amount; }))) + (plan.length ? ' · ' + plan.length + ' planned item(s) on top' : '') },
+      { name: 'Projected balance (information)', pass: null, info: true, detail: money(bal) + ' + ' + money(pin) + ' − ' + money(pout) + ' = ' + money(projBal) },
       { name: 'Cash runway method (information)', pass: null, info: true, detail: 'Today\'s balance ÷ average daily net outflow over the ' + N + '-day projection; "Over a year" when the projection is not negative' },
       { name: 'Today\'s bank balance = Total Bank on the Balance Sheet today', pass: acct ? null : bs && bs.bank != null ? XK.near(bal, bs.bank) : null, detail: acct ? 'One account selected' : bs ? money(bal) + ' vs ' + money(bs.bank) : c.err('bs') },
       { name: 'Last 30 days: bank transactions + payments = the Bank Summary for the same days', pass: bp ? XK.near(pastIn, bpIn, 0.05) && XK.near(pastOut, bpOut, 0.05) : null, detail: bp ? 'In ' + money(pastIn) + ' vs ' + money(bpIn) + ' · out ' + money(pastOut) + ' vs ' + money(bpOut) : c.err('bank_past') },
       { name: 'All invoices, bills and transactions loaded', pass: lists.some(function (id) { return c.errors[id] || c.truncated(id); }) ? false : true, detail: rec.length + ' invoice(s), ' + pay.length + ' bill(s), ' + c.rows('bank_tx').length + ' transaction(s), ' + c.rows('payments').length + ' payment(s)' }
     ];
     this._x = { days: days, bal: bal, projBal: projBal, runway: runway, N: N };
-    return { checks: checks, notes: ['Projection = invoices and bills awaiting payment by due date. Repeating invoices, planned items and bank-feed lines are not included (not in the Xero API as plans).', 'Actuals include transfers between your accounts, as the Bank Summary does.'], na: ['Xero\'s planned cash items (Manage cash in / out adjustments)'], period: XK.asOfLine(asAt) };
+    return { checks: checks, notes: ['Projection = invoices and bills awaiting payment by due date' + (plan.length ? ', plus ' + plan.length + ' planned item(s) kept with this report' : '') + '. Repeating invoices and Xero\'s own planned items are not included (not in the Xero API).', 'Actuals include transfers between your accounts, as the Bank Summary does.'], na: ['Xero\'s own planned cash items (Manage cash in / out adjustments made in Xero) — add planned items in this report instead'], period: XK.asOfLine(asAt) };
   },
   excel: function (c) {
     var x = this._x; if (!x) return [];

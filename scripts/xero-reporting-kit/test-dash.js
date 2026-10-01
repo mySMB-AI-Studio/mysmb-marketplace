@@ -180,7 +180,7 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
   }
   if (!only || only === 'pf') {
     // ---------------- P11 Performance overview ----------------
-    const PF = (extra) => Object.assign({ pnl_12: L.pnl, pnl_p12: L.pnl, pnl_total: L.pnl, pnl_12_cash: L.pnl, pnl_p12_cash: L.pnl, pnl_total_cash: L.pnl, bs: L.bs, org: L.organisation, connections: L.connections }, extra || {});
+    const PF = (extra) => Object.assign({ bs_12: L.bs, bs_p12: L.bs, pnl_12: L.pnl, pnl_p12: L.pnl, pnl_total: L.pnl, pnl_12_cash: L.pnl, pnl_p12_cash: L.pnl, pnl_total_cash: L.pnl, bs: L.bs, org: L.organisation, connections: L.connections }, extra || {});
     const f = await run('pf', man('pf'), PF());
     ok('pf: insight lines are labelled as computed, not as Xero\u2019s AI insights', f.doc.querySelectorAll('.insight').length > 0 && [...f.doc.querySelectorAll('.insight')].every((i) => /^Insight \(computed\):/.test(i.textContent)) && !/AI insight/.test(body(f)));
     ok('pf: the bank widget shows last year\u2019s balance and the change', /Bank accounts balance.*Prior: \(?\$[\d,.]+\)? · a year earlier/.test(body(f)), body(f).slice(body(f).indexOf('Bank accounts balance'), body(f).indexOf('Bank accounts balance') + 200));
@@ -203,18 +203,33 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     { const fc = await run('pf', man('pf'), PF()); await wait(30); const a = fc.doc.querySelector('input[name="xk-basis"][value="Cash"]'); a.checked = true; a.dispatchEvent(new fc.w.Event('change')); await fc.settle(); await wait(30);
       const npC = (() => { const r = L.pnl({ fromDate: '2025-09-01', toDate: '2026-08-31', paymentsOnly: true }); return +r.Reports[0].Rows.find((y) => y.Title === '' && y.Rows[0].Cells[0].Value === 'Net Profit').Rows[0].Cells[1].Value; })();
       ok('pf: Accounting method Cash → the cash-basis P&L (no refetch), checks still pass, footer and Sources say Cash', fc.calls.some((x) => x.id === 'pnl_12_cash' && x.params.paymentsOnly === true) && /Cash basis/.test(text(fc.doc, '#xk-foot')) && /Basis: Cash/.test(text(fc.doc, '#xk-sources')) && green(fc) && body(fc).includes('$' + Math.round(npC).toLocaleString('en-AU')), [text(fc.doc, '#xk-foot'), banner(fc).slice(0, 200)]); }
+    { const f = await run('pf', man('pf'), PF()); await wait(40); const pts = (id) => [...f.doc.querySelectorAll('#' + id + ' svg polyline')].map((p) => p.getAttribute('points').split(' ').length);
+      const ar = L.bs({ date: '2026-08-31' }).Reports[0].Rows, inc8 = (() => { const r = L.pnl({ fromDate: '2026-08-01', toDate: '2026-08-31' }).Reports[0].Rows; return r.filter((x) => x.RowType === 'Section' && !/^Less /.test(x.Title) && x.Title).reduce((a, x) => a + +x.Rows.find((y) => y.RowType === 'SummaryRow').Cells[1].Value, 0); })();
+      const AR8 = E.balances('2026-08-31')['610'], want = Math.round(AR8 / inc8 * 31), tip = [...f.doc.querySelectorAll('#pf-dd svg circle title')].map((t) => t.textContent).find((t) => /^Current · Aug/.test(t));
+      ok('pf: debtors and creditors days are monthly (12 points, this year and a year earlier)', pts('pf-dd').join(',') === '12,12' && pts('pf-cd').join(',') === '12,12' && f.calls.some((x) => x.id === 'bs_12' && x.params.periods === 11) && f.calls.some((x) => x.id === 'bs_p12' && x.params.date === '2025-08-31'), [pts('pf-dd'), pts('pf-cd')]);
+      ok('pf: August debtors days = August month-end receivables ÷ August income × 31', tip === 'Current · Aug: ' + want + ' days', [tip, want]);
+      ok('pf: the margin check rests on Xero\u2019s own profit lines, and the two Balance Sheets agree (checks that can fail)', /✓ Every month: Xero's Gross Profit and Net Profit lines = the sections above them/.test(banner(f)) && /✓ Receivables and payables at 2026-08-31 agree between Xero's two Balance Sheet reports/.test(banner(f)) && /ℹ Debtors \/ creditors days formula/.test(banner(f)), banner(f).slice(0, 600)); }
+    { const fb = await run('pf', man('pf'), PF({ bs_12: tamper(L.bs, (rows) => { const r = cellOf(rows, 'Accounts Receivable'); r[1].Value = '1.00'; }) })); await wait(30);
+      ok('pf: month-end receivables differing between the two Balance Sheets → Fail', /✗ Receivables and payables at 2026-08-31 agree/.test(banner(fb)), banner(fb).slice(0, 400)); }
     ok('pf: end month = end of last financial year → refetch Jul 2025–Jun 2026', f.calls.some((x) => x.requery && /^pnl_12/.test(x.id) && x.params.fromDate === '2026-06-01' && x.params.toDate === '2026-06-30') && f.calls.some((x) => x.requery && x.id === 'pnl_total' && x.params.fromDate === '2025-07-01') && green(f), f.calls.filter((x) => x.requery).map((x) => x.id + ':' + x.params.fromDate));
   }
   if (!only || only === 'cp') {
     // ---------------- P12 Cash position ----------------
-    const CP = (extra) => Object.assign({ bs_12: L.bs, bank: L.bankSummary, bank_total: L.bankSummary, receivables: L.listInvoices, payables: L.listInvoices, org: L.organisation, connections: L.connections }, extra || {});
+    const CP = (extra) => Object.assign({ bs_12: L.bs, bank: L.bankSummary, bank_total: L.bankSummary, bank_prior: L.bankSummary, receivables: L.listInvoices, payables: L.listInvoices, org: L.organisation, connections: L.connections }, extra || {});
+    { const q = await run('cp', man('cp'), CP()); await wait(80);
+      const pr = L.bankSummary({ fromDate: '2024-09-01', toDate: '2025-08-31' }).Reports[0].Rows[1].Rows.find((r) => r.RowType === 'SummaryRow').Cells.map((c) => +c.Value || 0);
+      const card = [...q.doc.querySelectorAll('.xk-widget')].find((w) => /Cash in vs cash out/.test(w.textContent)), md = (v) => '$' + Math.round(Math.abs(v)).toLocaleString('en-AU');
+      ok('cp: Cash in vs cash out shows the same 12 months a year earlier and the change (prior-year Bank Summary)', q.calls.some((x) => x.id === 'bank_prior' && x.params.fromDate === '2024-09-01' && x.params.toDate === '2025-08-31') && card && card.textContent.includes('Prior year: in ' + md(pr[2])) && card.querySelectorAll('.chip').length === 2 && /✓ Prior-year Bank Summary loaded/.test(banner(q)), [card && card.textContent.slice(0, 160), pr[2]]);
+      ok('cp: Net cash flow card shows last year\u2019s net and the change', [...q.doc.querySelectorAll('.xk-widget')].some((w) => /Net cash flow/.test(w.textContent) && /Prior: .* · a year earlier/.test(w.textContent) && w.querySelector('.chip')));
+      const pm = q.doc.getElementById('xk-opt-pm'); pm.value = 'y'; pm.dispatchEvent(new q.w.Event('change')); await q.settle(); await wait(150);
+      ok('cp: Prior year on the chart → the same months a year earlier are fetched and drawn', q.calls.filter((x) => x.id === 'bank' && x.params.fromDate >= '2024-09-01' && x.params.toDate <= '2025-08-31').length === 12 && /Cash in \(prior year\)/.test(text(q.doc, '#cp-io')) && green(q), [q.calls.filter((x) => x.id === 'bank').length, banner(q).slice(0, 200)]); }
     const p = await run('cp', man('cp'), CP()); await wait(80);
     const cash = L.r2(E.bankBalance('090', '2026-08-31') + E.bankBalance('091', '2026-08-31'));
     const md = (v) => (v < 0 ? '(' : '') + '$' + Math.round(Math.abs(v)).toLocaleString('en-AU') + (v < 0 ? ')' : '');
     const wd = (t) => [...p.doc.querySelectorAll('.xk-widget')].find((x) => x.querySelector('h3').textContent === t);
     ok('cp: cash balance at the end of last month = the books', wd('Cash balance').querySelector('.cur').textContent === md(cash), [md(cash), wd('Cash balance').textContent.slice(0, 120)]);
     ok('cp: 12 Bank Summary calls, one per month (Sep 2025–Aug 2026)', p.calls.filter((x) => x.id === 'bank' && x.requery).length === 12 && p.calls.some((x) => x.id === 'bank' && x.requery && x.params.fromDate === '2025-09-01' && x.params.toDate === '2025-09-30'), p.calls.filter((x) => x.id === 'bank').map((x) => x.params.fromDate));
-    ok('cp: every check passes (Σ months = 12-month Bank Summary, BS cash = Bank Summary closing, doughnuts), green', green(p) && /6\/6 checks passed/.test(banner(p)) && p.errs.length === 0, banner(p));
+    ok('cp: every check passes (Σ months = 12-month Bank Summary, BS cash = Bank Summary closing, doughnuts, prior year), green', green(p) && /7\/7 checks passed/.test(banner(p)) && p.errs.length === 0, banner(p));
     ok('cp: receivables and payables ageing doughnuts drawn', p.doc.querySelector('#cp-rec svg') && p.doc.querySelector('#cp-pay svg'));
     const p2 = await run('cp', man('cp'), CP({ bank_total: tamper(L.bankSummary, (rows) => { rows[1].Rows[rows[1].Rows.length - 1].Cells[2].Value = '1.00'; }) })); await wait(80);
     ok('cp: 12-month Bank Summary disagrees with the months → Fail', /✗ Monthly cash in \/ out = the Bank Summary for the 12 months/.test(banner(p2)) && red(p2), banner(p2).slice(0, 300));
@@ -224,6 +239,15 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
   if (!only || only === 'hs') {
     // ---------------- P14 Business health scorecard ----------------
     const HS = (extra) => Object.assign({ pnl: L.pnl, pnl_prev: L.pnl, pnl_cash: L.pnl, pnl_prev_cash: L.pnl, bs: L.bs, org: L.organisation, connections: L.connections }, extra || {});
+    { const ht = await run('hs', man('hs'), HS()); await wait(30); const rowOf = (name) => [...ht.doc.querySelectorAll('.xk-grid tbody tr')].find((tr) => tr.children[0] && tr.children[0].textContent === name);
+      const cr = ht.doc.querySelector('.hs-tv[data-id="cr"]'); cr.value = '99'; cr.dispatchEvent(new ht.w.Event('change')); await ht.settle(); await wait(20);
+      ok('hs: a target typed in the report is saved (targets input) and scored — current ratio ≥ 99 is missed', JSON.parse(ht.setInputsLog[ht.setInputsLog.length - 1].targets).cr === 99 && /≥ 99\.00/.test(rowOf('Current ratio').textContent) && /✗/.test(rowOf('Current ratio').textContent), rowOf('Current ratio') && rowOf('Current ratio').textContent);
+      const add = ht.doc.getElementById('hs-add'); add.value = 'roa'; add.dispatchEvent(new ht.w.Event('change')); await ht.settle(); await wait(20);
+      ok('hs: Add a metric → Return on assets joins the scorecard and the score', !!rowOf('Return on assets') && /of 13 targets/.test(body(ht)), body(ht).slice(0, 160));
+      ht.doc.querySelector('button[data-off="cd"]').click(); await ht.settle(); await wait(20);
+      ok('hs: Off leaves a metric out of the scorecard and the score', !rowOf('Creditor days') && /of 12 targets/.test(body(ht)), body(ht).slice(0, 160));
+      const sec = ht.doc.getElementById('xk-opt-sec'); sec.value = 'Liquidity'; sec.dispatchEvent(new ht.w.Event('change')); await ht.settle(); await wait(20);
+      ok('hs: Section filter shows only that section (score unchanged)', !!rowOf('Current ratio') && !rowOf('Net profit') && /of 12 targets/.test(body(ht)), body(ht).slice(0, 160)); }
     { const hc = await run('hs', man('hs'), HS()); await wait(30); { const a = hc.doc.querySelector('input[name="xk-basis"][value="Cash"]'); a.checked = true; a.dispatchEvent(new hc.w.Event('change')); await hc.settle(); await wait(30); }
       ok('hs: Accounting method Cash → the cash-basis month; the Balance Sheet tie becomes information (accrual only); still green', hc.calls.some((x) => x.id === 'pnl_cash' && x.params.paymentsOnly === true) && /ℹ Net profit vs the movement in Current Year Earnings \(information\)/.test(banner(hc)) && green(hc) && /Cash basis/.test(text(hc.doc, '#xk-foot')), banner(hc).slice(0, 300)); }
     const h = await run('hs', man('hs'), HS());
@@ -235,7 +259,7 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     const b = E.balances('2026-08-31'), cr = (b['090'] + b['091'] + b['610'] + b['620']) / (b['800'] + b['820'] + b['850']);
     ok('hs: current ratio = current assets ÷ current liabilities', rowOf('Current ratio').children[3].textContent === cr.toFixed(2), [cr.toFixed(2), rowOf('Current ratio').textContent]);
     const achieved = [...h.doc.querySelectorAll('.xk-grid tbody tr')].filter((tr) => tr.children[5] && /^✓/.test(tr.children[5].textContent)).length;
-    ok('hs: score = achieved ÷ 12 and every check passes (incl. NP = CYE movement), green', new RegExp(achieved + ' of 12 targets achieved').test(body(h)) && green(h) && /5\/5 checks passed/.test(banner(h)) && h.errs.length === 0, [achieved, banner(h)]);
+    ok('hs: score = achieved ÷ 12 and every check passes (incl. NP = CYE movement), green', new RegExp(achieved + ' of 12 targets achieved').test(body(h)) && green(h) && /4\/4 checks passed · 1 for information/.test(banner(h)) && h.errs.length === 0, [achieved, banner(h)]);
     h.doc.querySelector('.xk-chip[data-chip="explain"]').click(); await h.settle();
     ok('hs: "Explain my health score" answers from the computed figures', /Your score is \d+ of 12 targets/.test(text(h.doc, '#hs-ins')), text(h.doc, '#hs-ins'));
     const h2b = await run('hs', Object.assign(man('hs'), { inputs: man('hs').inputs.map((i) => i.name === 'targets' ? Object.assign({}, i, { default: '{"cr":100,"cd":"off"}' }) : i) }), HS(), { htmlPatch: (x) => x.replace("targets: '{}'", "targets: '{\"cr\":100,\"cd\":\"off\"}'") });
@@ -320,7 +344,7 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     const due = (list, a, b) => list.filter((d) => { const k = d.DueDateString.slice(0, 10); return k >= L.addDays(L.TODAY, a) && k <= L.addDays(L.TODAY, b); }).reduce((s, d) => s + d.AmountDue, 0);
     const k17 = L.r2(due(recv, 1, 7) - due(bills, 1, 7));
     ok('cf: next 1–7 days = invoices − bills due in that window', kp[2] === 'Next 1–7 days cash movement' + md(k17), [md(k17), kp[2]]);
-    ok('cf: every check passes (projection identity, KPIs = daily series, BS bank, 30-day actuals = Bank Summary), green', green(f) && /5\/5 checks passed · 1 for information/.test(banner(f)) && f.errs.length === 0, banner(f));
+    ok('cf: every check passes (projection identity, KPIs = daily series, BS bank, 30-day actuals = Bank Summary), green', green(f) && /4\/4 checks passed · 2 for information/.test(banner(f)) && /✓ Every invoice and bill awaiting payment is projected, overdue or due later/.test(banner(f)) && f.errs.length === 0, banner(f));
     ok('cf: bank transactions and payments filtered to the last 30 days (where from the dates)', f.calls.some((x) => x.id === 'bank_tx' && x.params.where === 'Date>=DateTime(2026,08,26) AND Date<=DateTime(2026,09,25)') && f.calls.some((x) => x.id === 'payments' && /DateTime\(2026,08,26\)/.test(x.params.where)), f.calls.filter((x) => x.id === 'bank_tx').map((x) => x.params.where));
     const pb = [...f.doc.querySelectorAll('.xk-kpis')[1].querySelectorAll('.xk-kpi')].map((k) => k.textContent.replace(/\s+/g, ' ').trim());
     { const svg = f.doc.querySelector('#cf-ch svg'), mk = svg && svg.querySelector('line.xk-mark'), labels = svg ? [...svg.querySelectorAll('text')].map((t) => t.textContent) : [];
@@ -339,6 +363,13 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     f.doc.querySelector('.xk-tab') ; await set(f, 'xk-view', 'in');
     ok('cf: Manage cash in lists invoices due (and overdue)', /Cash in — invoices due/.test(body(f)) && f.doc.querySelectorAll('#cf-list tbody tr').length > 0);
     const f2 = await run('cf', man('cf'), CF({ bank_tx: (q) => { const r = L.listBankTransactions(q); r.BankTransactions = r.BankTransactions.slice(1); return r; } })); await wait(40);
+    { const fp = await run('cf', man('cf'), CF()); await wait(40); await set(fp, 'xk-view', 'out'); fp.doc.getElementById('cf-pd').value = '2026-10-05'; fp.doc.getElementById('cf-pa').value = '5000'; fp.doc.getElementById('cf-pn').value = 'Tax payment'; fp.doc.getElementById('cf-padd').click(); await fp.settle(); await wait(40);
+      const saved = JSON.parse(fp.setInputsLog[fp.setInputsLog.length - 1].planned || '[]');
+      ok('cf: a planned payment added in Manage cash out is kept with the report (planned input) and listed', saved.length === 1 && saved[0].a === -5000 && saved[0].d === '2026-10-05' && /Tax payment/.test(body(fp)), [saved, body(fp).slice(0, 200)]);
+      await set(fp, 'xk-view', 'overview'); await wait(30); const tip = [...fp.doc.querySelectorAll('#cf-ch svg rect title')].map((t) => t.textContent).find((t) => /Tax payment \(planned\)/.test(t));
+      ok('cf: the planned payment is in the projection on its date (and the documents check still passes)', !!tip && /05\/10/.test(tip) && green(fp), [tip, banner(fp).slice(0, 200)]); }
+    { const fd = await run('cf', man('cf'), CF(), { htmlPatch: (h) => h.split('later[k] = r2(later[k] + d.amount); return;').join('return;') }); await wait(40);
+      ok('cf: a projection that drops documents (simulated bug: due-later items lost) → the documents check fails', /✗ Every invoice and bill awaiting payment is projected/.test(banner(fd)), banner(fd).slice(0, 300)); }
     ok('cf: a missing transaction → the 30-day actuals no longer match the Bank Summary → Fail', /✗ Last 30 days: bank transactions \+ payments = the Bank Summary/.test(banner(f2)), banner(f2).slice(0, 400));
   }
   if (!only || only === 'gst') {
