@@ -1,20 +1,21 @@
 XK.app({
   title: 'Visualise', primary: 'pnl_12', dated: ['bs_12'], org: 'org', conns: 'connections',
-  inputs: { asAt: 'end_date', org: 'org', display: 'display' },
-  defaults: { end_date: '2026-08-31', m_start: '2026-08-01', window_start: '2025-09-01', ext: '{}', bench: '{}', org: '',
+  inputs: { asAt: 'end_date', basis: 'basis', org: 'org', display: 'display' },
+  defaults: { end_date: '2026-08-31', m_start: '2026-08-01', window_start: '2025-09-01', ext: '{}', bench: '{}', basis: 'Accrual', org: '',
     display: '{"cents":0,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"end_last_month","c":"none","v":"profitability","o":""}' },
-  uses: { pnl_12: ['m_start', 'end_date', 'org'], bs_12: ['end_date', 'org'], bank: ['m_start', 'end_date', 'org'], pnl_total: ['window_start', 'end_date', 'org'], org: ['org'], connections: [] },
+  uses: { pnl_12: ['m_start', 'end_date', 'org'], pnl_12_cash: ['m_start', 'end_date', 'org'], bs_12: ['end_date', 'org'], bank: ['m_start', 'end_date', 'org'], pnl_total: ['window_start', 'end_date', 'org'], pnl_total_cash: ['window_start', 'end_date', 'org'], org: ['org'], connections: [] },
   fan: { bank: function (inp, c) { return c.view === 'cash' ? XK.monthsEnding(inp.end_date, 12).map(function (m) { return { key: m.key, inputs: { m_start: m.start, end_date: m.end < inp.end_date ? m.end : inp.end_date } }; }) : []; } },
-  tools: { pnl_12: 'get_profit_and_loss (12 monthly columns)', bs_12: 'get_balance_sheet (12 month-ends)', bank: 'get_bank_summary (per month, Cash tab)', pnl_total: 'get_profit_and_loss (the 12 months as one — tie)', org: 'get_organisation', connections: 'list_connections' },
+  tools: { pnl_12: 'get_profit_and_loss (12 monthly columns)', pnl_12_cash: 'get_profit_and_loss (12 monthly columns, cash basis)', bs_12: 'get_balance_sheet (12 month-ends)', bank: 'get_bank_summary (per month, Cash tab)', pnl_total: 'get_profit_and_loss (the 12 months as one — tie)', pnl_total_cash: 'get_profit_and_loss (the 12 months as one — tie, cash basis)', org: 'get_organisation', connections: 'list_connections' },
   asats: [['end_last_month', 'End of last month'], ['end_this_month', 'End of this month'], ['end_last_fy', 'End of last financial year'], ['custom', 'Custom']],
   views: [['profitability', 'Profitability'], ['cash', 'Cash'], ['accounts', 'Accounts'], ['external', 'External data'], ['kpis', 'KPIs'], ['benchmarks', 'Industry benchmarks']],
   derive: function (inp) { var p = inp.end_date.split('-'), d = new Date(Date.UTC(+p[0], +p[1] - 12, 1)); return { m_start: inp.end_date.slice(0, 8) + '01', window_start: d.toISOString().slice(0, 10) }; },
   render: function (c) {
+    var Bk = c.inputs.basis === 'Cash' ? '_cash' : '', PL = { pnl_12: 1, pnl_total: 1 }, D = function (id) { return c.data[PL[id] ? id + Bk : id]; }, Er = function (id) { return c.errors[PL[id] ? id + Bk : id]; }, Em = function (id) { return c.err(PL[id] ? id + Bk : id); };
     var self = this, body = c.body, d0 = Object.assign({}, c.display, { cents: 0 }), money = function (v) { return XK.money(v, c.currency, d0); };
-    if (c.errors.pnl_12) { body.innerHTML = '<p class="xk-err">' + XK.h(c.err('pnl_12')) + '</p>'; return { checks: [{ name: 'Monthly Profit and Loss loaded', pass: false, detail: c.err('pnl_12') }] }; }
-    if (!c.data.pnl_12) return {};
+    if (Er('pnl_12')) { body.innerHTML = '<p class="xk-err">' + XK.h(Em('pnl_12')) + '</p>'; return { checks: [{ name: 'Monthly Profit and Loss loaded', pass: false, detail: Em('pnl_12') }] }; }
+    if (!D('pnl_12')) return {};
     var end = c.inputs.end_date, keys = XK.monthsEnding(end, 12).map(function (m) { return m.key; }), labs = keys.map(function (k) { return XK.monthLabel(k).slice(0, 3); }), ending = ' · Monthly ending ' + XK.asOfLine(end).replace(/^As at /, '');
-    var w = XK.walk(c.data.pnl_12), mc = XK.monthCols(w), bw = c.data.bs_12 ? XK.walk(c.data.bs_12) : null, bmc = bw ? XK.monthCols(bw) : null;
+    var w = XK.walk(D('pnl_12')), mc = XK.monthCols(w), bw = c.data.bs_12 ? XK.walk(c.data.bs_12) : null, bmc = bw ? XK.monthCols(bw) : null;
     var P = keys.map(function (k) { var i = mc && mc.idx[k]; return i == null ? null : XK.plParts(w, i); }), B = keys.map(function (k) { var i = bmc && bmc.idx[k]; return i == null ? null : XK.bsParts(bw, i); });
     var ser = function (f) { return P.map(function (p) { return p ? f(p) : null; }); }, bser = function (f) { return B.map(function (b, i) { return b && P[i] ? f(b, P[i], +XK.monthsEnding(end, 12)[i].end.slice(8)) : null; }); };
     var view = c.view || 'profitability', opt = function (id, def) { return c.opt(id) || def; }, pick = function (id, list, cur) { return '<select id="vz-' + id + '">' + list.map(function (o) { return '<option value="' + XK.h(o[0]) + '"' + (o[0] === cur ? ' selected' : '') + '>' + XK.h(o[1]) + '</option>'; }).join('') + '</select>'; };
@@ -74,10 +75,10 @@ XK.app({
     body.querySelectorAll('select[id^="vz-"]').forEach(function (s) { s.addEventListener('change', function () { c.setOpt(s.id.slice(3), this.value); }); });
     body.querySelectorAll('.xk-chip').forEach(function (b) { b.addEventListener('click', function () { self._chip = self._chip === b.getAttribute('data-chip') ? null : b.getAttribute('data-chip'); c.change({}, {}); }); });
     // Checks
-    var pt = c.data.pnl_total ? XK.plParts(XK.walk(c.data.pnl_total)) : null, has12 = mc && keys.every(function (k) { return mc.idx[k] != null; }), npS = ser(function (p) { return p.np; });
+    var pt = D('pnl_total') ? XK.plParts(XK.walk(D('pnl_total'))) : null, has12 = mc && keys.every(function (k) { return mc.idx[k] != null; }), npS = ser(function (p) { return p.np; });
     var checks = [
       { name: 'Xero returned 12 monthly columns (Profit and Loss and Balance Sheet)', pass: !!has12 && (!bw || (bmc && keys.every(function (k) { return bmc.idx[k] != null; }))), detail: (mc ? mc.keys.length : 0) + ' P&L · ' + (bmc ? bmc.keys.length : 0) + ' Balance Sheet columns' },
-      { name: 'Every plotted month re-adds to the 12-month Profit and Loss', pass: pt && has12 ? XK.near(XK.sum(npS), pt.np, 0.05) && XK.near(XK.sum(ser(function (p) { return p.income; })), pt.income, 0.05) : null, detail: pt ? money(XK.sum(npS.filter(function (v) { return v != null; }))) + ' vs ' + money(pt.np) + ' net profit' : c.err('pnl_total') }
+      { name: 'Every plotted month re-adds to the 12-month Profit and Loss', pass: pt && has12 ? XK.near(XK.sum(npS), pt.np, 0.05) && XK.near(XK.sum(ser(function (p) { return p.income; })), pt.income, 0.05) : null, detail: pt ? money(XK.sum(npS.filter(function (v) { return v != null; }))) + ' vs ' + money(pt.np) + ' net profit' : Em('pnl_total') }
     ].concat(extraChecks);
     this._x = { keys: keys, P: P };
     return { checks: checks, notes: ['Every series is computed from Xero\'s monthly Profit and Loss and Balance Sheet; insights use the figures shown only.'], na: view === 'benchmarks' ? ['Industry benchmark data (not in the Xero API — supplied by you)'] : [], period: '12 months ending ' + XK.asOfLine(end).replace(/^As at /, ''),

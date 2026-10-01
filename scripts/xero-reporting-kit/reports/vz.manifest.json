@@ -1,19 +1,269 @@
 {
   "inputs": [
-    { "name": "end_date", "label": "Month ending", "type": "date", "default": "2026-08-31" },
-    { "name": "m_start", "label": "Month start", "type": "date", "default": "2026-08-01" },
-    { "name": "window_start", "label": "12 months from", "type": "date", "default": "2025-09-01" },
-    { "name": "ext", "label": "External data", "type": "string", "maxLength": 500, "default": "{}" },
-    { "name": "bench", "label": "Benchmarks", "type": "string", "maxLength": 300, "default": "{}" },
-    { "name": "org", "label": "Organisation", "type": "string", "maxLength": 64, "default": "" },
-    { "name": "display", "label": "Display settings", "type": "string", "maxLength": 300, "default": "{\"cents\":0,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"end_last_month\",\"c\":\"none\",\"v\":\"profitability\",\"o\":\"\"}" }
+    {
+      "name": "end_date",
+      "label": "Month ending",
+      "type": "date",
+      "default": "2026-08-31"
+    },
+    {
+      "name": "basis",
+      "label": "Accounting method",
+      "type": "enum",
+      "options": [
+        "Accrual",
+        "Cash"
+      ],
+      "default": "Accrual"
+    },
+    {
+      "name": "m_start",
+      "label": "Month start",
+      "type": "date",
+      "default": "2026-08-01"
+    },
+    {
+      "name": "window_start",
+      "label": "12 months from",
+      "type": "date",
+      "default": "2025-09-01"
+    },
+    {
+      "name": "ext",
+      "label": "External data",
+      "type": "string",
+      "maxLength": 500,
+      "default": "{}"
+    },
+    {
+      "name": "bench",
+      "label": "Benchmarks",
+      "type": "string",
+      "maxLength": 300,
+      "default": "{}"
+    },
+    {
+      "name": "org",
+      "label": "Organisation",
+      "type": "string",
+      "maxLength": 64,
+      "default": ""
+    },
+    {
+      "name": "display",
+      "label": "Display settings",
+      "type": "string",
+      "maxLength": 300,
+      "default": "{\"cents\":0,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"end_last_month\",\"c\":\"none\",\"v\":\"profitability\",\"o\":\"\"}"
+    }
   ],
   "bindings": [
-    { "id": "pnl_12", "tool": { "mcp": "xero-accounting", "name": "get_profit_and_loss" }, "params": { "fromDate": { "kind": "input", "input": "m_start" }, "toDate": { "kind": "input", "input": "end_date" }, "periods": { "kind": "static", "value": 11 }, "timeframe": { "kind": "static", "value": "MONTH" }, "standardLayout": { "kind": "static", "value": true }, "paymentsOnly": { "kind": "static", "value": false }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
-    { "id": "bs_12", "tool": { "mcp": "xero-accounting", "name": "get_balance_sheet" }, "params": { "date": { "kind": "input", "input": "end_date" }, "periods": { "kind": "static", "value": 11 }, "timeframe": { "kind": "static", "value": "MONTH" }, "standardLayout": { "kind": "static", "value": true }, "paymentsOnly": { "kind": "static", "value": false }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
-    { "id": "bank", "tool": { "mcp": "xero-accounting", "name": "get_bank_summary" }, "params": { "fromDate": { "kind": "input", "input": "m_start" }, "toDate": { "kind": "input", "input": "end_date" }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
-    { "id": "pnl_total", "tool": { "mcp": "xero-accounting", "name": "get_profit_and_loss" }, "params": { "fromDate": { "kind": "input", "input": "window_start" }, "toDate": { "kind": "input", "input": "end_date" }, "standardLayout": { "kind": "static", "value": true }, "paymentsOnly": { "kind": "static", "value": false }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
-    { "id": "org", "tool": { "mcp": "xero-accounting", "name": "get_organisation" }, "params": { "xero_tenant_id": { "kind": "input", "input": "org" } } },
-    { "id": "connections", "tool": { "mcp": "xero-accounting", "name": "list_connections" }, "params": {} }
+    {
+      "id": "pnl_12",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "get_profit_and_loss"
+      },
+      "params": {
+        "fromDate": {
+          "kind": "input",
+          "input": "m_start"
+        },
+        "toDate": {
+          "kind": "input",
+          "input": "end_date"
+        },
+        "periods": {
+          "kind": "static",
+          "value": 11
+        },
+        "timeframe": {
+          "kind": "static",
+          "value": "MONTH"
+        },
+        "standardLayout": {
+          "kind": "static",
+          "value": true
+        },
+        "paymentsOnly": {
+          "kind": "static",
+          "value": false
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "pnl_12_cash",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "get_profit_and_loss"
+      },
+      "params": {
+        "fromDate": {
+          "kind": "input",
+          "input": "m_start"
+        },
+        "toDate": {
+          "kind": "input",
+          "input": "end_date"
+        },
+        "periods": {
+          "kind": "static",
+          "value": 11
+        },
+        "timeframe": {
+          "kind": "static",
+          "value": "MONTH"
+        },
+        "standardLayout": {
+          "kind": "static",
+          "value": true
+        },
+        "paymentsOnly": {
+          "kind": "static",
+          "value": true
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "bs_12",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "get_balance_sheet"
+      },
+      "params": {
+        "date": {
+          "kind": "input",
+          "input": "end_date"
+        },
+        "periods": {
+          "kind": "static",
+          "value": 11
+        },
+        "timeframe": {
+          "kind": "static",
+          "value": "MONTH"
+        },
+        "standardLayout": {
+          "kind": "static",
+          "value": true
+        },
+        "paymentsOnly": {
+          "kind": "static",
+          "value": false
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "bank",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "get_bank_summary"
+      },
+      "params": {
+        "fromDate": {
+          "kind": "input",
+          "input": "m_start"
+        },
+        "toDate": {
+          "kind": "input",
+          "input": "end_date"
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "pnl_total",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "get_profit_and_loss"
+      },
+      "params": {
+        "fromDate": {
+          "kind": "input",
+          "input": "window_start"
+        },
+        "toDate": {
+          "kind": "input",
+          "input": "end_date"
+        },
+        "standardLayout": {
+          "kind": "static",
+          "value": true
+        },
+        "paymentsOnly": {
+          "kind": "static",
+          "value": false
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "pnl_total_cash",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "get_profit_and_loss"
+      },
+      "params": {
+        "fromDate": {
+          "kind": "input",
+          "input": "window_start"
+        },
+        "toDate": {
+          "kind": "input",
+          "input": "end_date"
+        },
+        "standardLayout": {
+          "kind": "static",
+          "value": true
+        },
+        "paymentsOnly": {
+          "kind": "static",
+          "value": true
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "org",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "get_organisation"
+      },
+      "params": {
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "connections",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "list_connections"
+      },
+      "params": {}
+    }
   ]
 }

@@ -154,7 +154,7 @@ var XK = (function () {
   // ---------- display preferences (one declared string input "display") ----------
   // o = report options 'key=value;…' (cfg.options), p = period preset key, a = as-at preset key, c = compare mode (none|prev_period|prev_year|ytd), v = report view / member
   // style = 'xero' (default, Xero's look) | 'mysmb' (mySMB Reporting template); b = brand colour (#rrggbb) — empty means Xero blue
-  var DISPLAY_DEFAULT = { cents: 1, k: 0, zeros: 1, neg: 'minus', red: 0, hdr: 1, ftr: 1, style: 'xero', dens: '100', p: 'custom', a: 'custom', c: 'none', v: '', x: '', b: '', o: '', pv: '' }; // pv = View as, for reports that keep it here (cfg.personaDisplay)
+  var DISPLAY_DEFAULT = { cents: 1, k: 0, zeros: 1, neg: 'minus', red: 0, hdr: 1, ftr: 1, style: 'xero', dens: '100', p: 'custom', a: 'custom', c: 'none', v: '', x: '', b: '', o: '', pv: '', fy: '' }; // pv = View as (cfg.personaDisplay); fy = financial year end month set in the report ('' = Xero's)
   var HEX = /^#[0-9a-f]{6}$/i;
   // Brand colour → accent palette (darker shade for buttons, lighter for dark theme), applied as CSS custom properties.
   function shade(hex, f) { var n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255; var t = function (c) { return Math.max(0, Math.min(255, Math.round(f < 0 ? c * (1 + f) : c + (255 - c) * f))); }; return '#' + [t(r), t(g), t(b)].map(function (x) { return x.toString(16).padStart(2, '0'); }).join(''); }
@@ -630,7 +630,7 @@ var XK = (function () {
     function disp() { return readDisplay(I.display ? S.inputs[I.display] : ''); }
     function setDisp(patch) { if (!I.display) return; var d = disp(), k; for (k in patch) d[k] = patch[k]; S.inputs[I.display] = writeDisplay(d); }
     function co() { return companyOf(S.data[cfg.org], S.data[cfg.conns], I.org ? S.inputs[I.org] : '', (reportOf(S.data[cfg.primary]) || {}).ReportTitles); }
-    function fy() { return fiscalStart(co().org, cfg.fyMonth); }
+    function fy() { var e = +disp().fy; if (e >= 1 && e <= 12) return { month: e % 12 + 1, source: 'set in this report — year ends ' + MONTHS[e - 1], set: true }; return fiscalStart(co().org, cfg.fyMonth); }
     // An {__error} object (if a proxy returns one) moves to S.errors so every section and check treats it as a failed source.
     function absorb(id, v) { var e = errorOf(v); S.pages[id] = null; S.trunc[id] = false; if (e) { delete S.data[id]; S.errors[id] = { code: 'tool_error', message: e }; } else { S.data[id] = v; delete S.errors[id]; } }
     function srcOf(id) { return (cfg.sources || {})[id] || null; }
@@ -764,6 +764,8 @@ var XK = (function () {
       if (I.asAt) x += '<label class="ctl">As at<select id="xk-asat-preset"' + dis + '>' + opt(cfg.asats || ASAT, d.a) + '</select></label><label class="ctl">Date<input type="date" id="xk-asat" value="' + h(S.inputs[I.asAt]) + '"' + dis + '></label>';
       if (I.basis) x += '<fieldset class="ctl seg"' + dis + '><legend>Accounting method</legend>' + ['Cash', 'Accrual'].map(function (b) { return '<label><input type="radio" name="xk-basis" value="' + b + '"' + (S.inputs[I.basis] === b ? ' checked' : '') + dis + '>' + b + '</label>'; }).join('') + '</fieldset>';
       if (I.columnsBy && cfg.columnsBy) x += '<label class="ctl">Display columns by<select id="xk-cols"' + dis + '>' + opt(cfg.columnsBy, S.inputs[I.columnsBy]) + '</select></label>';
+      var xfy = fiscalStart(c0.org, cfg.fyMonth), xend = ((xfy.month + 10) % 12) + 1;
+      x += '<label class="ctl">Year end<select id="xk-fy"' + dis + ' title="The month the financial year ends — from the organisation\'s Xero settings unless you change it">' + opt([['', 'Xero (' + MONTHS[xend - 1] + ')']].concat(MONTHS.map(function (m, i) { return [String(i + 1), m]; })), d.fy || '') + '</select></label>';
       if (cfg.compare) x += '<label class="ctl">Compare to<select id="xk-cmp"' + dis + '>' + opt(cfg.compareModes || (I.asAt ? [['none', 'None'], ['prev_period', 'Previous month end'], ['prev_year', 'Previous year']] : [['none', 'None'], ['prev_period', 'Previous period'], ['prev_year', 'Previous year'], ['ytd', 'Year-to-date']]), d.c) + '</select></label>';
       (cfg.enums || []).forEach(function (e, i) { var rq = Object.keys(cfg.uses || {}).some(function (id) { return (cfg.uses[id] || []).indexOf(e.input) >= 0; }); x += '<label class="ctl">' + h(e.label) + '<select id="xk-enum-' + i + '"' + (rq ? dis : '') + '>' + opt(e.options, S.inputs[e.input]) + '</select></label>'; });
       if (cfg.views) x += '<label class="ctl">Report<select id="xk-view">' + opt(cfg.views, d.v || cfg.views[0][0]) + '</select></label>';
@@ -790,6 +792,7 @@ var XK = (function () {
       document.querySelectorAll('input[name="xk-basis"]').forEach(function (r) { r.addEventListener('change', function () { var p = {}; p[I.basis] = this.value; change(p); }); });
       on('xk-cols', 'change', function () { var p = {}; p[I.columnsBy] = this.value; change(p); });
       on('xk-cmp', 'change', function () { change({}, { c: this.value }); });
+      on('xk-fy', 'change', function () { setDisp({ fy: this.value }); change(rollPresets() || {}, {}); }); // financial-year presets follow the new year end
       (cfg.enums || []).forEach(function (e, i) { on('xk-enum-' + i, 'change', function () { var p = {}; p[e.input] = this.value; change(p); }); });
       on('xk-view', 'change', function () { change({}, { v: this.value }); });
       (cfg.options || []).forEach(function (o) { on('xk-opt-' + o.id, 'change', function () { change({}, { o: setOpt(o.id, this.value) }); }); });

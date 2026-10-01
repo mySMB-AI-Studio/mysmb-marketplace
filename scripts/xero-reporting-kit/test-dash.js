@@ -180,7 +180,7 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
   }
   if (!only || only === 'pf') {
     // ---------------- P11 Performance overview ----------------
-    const PF = (extra) => Object.assign({ pnl_12: L.pnl, pnl_p12: L.pnl, pnl_total: L.pnl, bs: L.bs, org: L.organisation, connections: L.connections }, extra || {});
+    const PF = (extra) => Object.assign({ pnl_12: L.pnl, pnl_p12: L.pnl, pnl_total: L.pnl, pnl_12_cash: L.pnl, pnl_p12_cash: L.pnl, pnl_total_cash: L.pnl, bs: L.bs, org: L.organisation, connections: L.connections }, extra || {});
     const f = await run('pf', man('pf'), PF());
     ok('pf: insight lines are labelled as computed, not as Xero\u2019s AI insights', f.doc.querySelectorAll('.insight').length > 0 && [...f.doc.querySelectorAll('.insight')].every((i) => /^Insight \(computed\):/.test(i.textContent)) && !/AI insight/.test(body(f)));
     ok('pf: the bank widget shows last year\u2019s balance and the change', /Bank accounts balance.*Prior: \(?\$[\d,.]+\)? · a year earlier/.test(body(f)), body(f).slice(body(f).indexOf('Bank accounts balance'), body(f).indexOf('Bank accounts balance') + 200));
@@ -200,7 +200,10 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     const f4 = await run('pf', man('pf'), PF({ pnl_total: tamper(L.pnl, (rows) => { cellOf(rows, 'Net Profit')[1].Value = '1.00'; }) }));
     ok('pf: 12-month P&L disagrees with the monthly columns → Fail', /✗ Σ monthly net profit = the 12-month Profit and Loss/.test(banner(f4)), banner(f4).slice(0, 300));
     await set(f, 'xk-asat-preset', 'end_last_fy');
-    ok('pf: end month = end of last financial year → refetch Jul 2025–Jun 2026', f.calls.some((x) => x.requery && x.id === 'pnl_12' && x.params.fromDate === '2026-06-01' && x.params.toDate === '2026-06-30') && f.calls.some((x) => x.requery && x.id === 'pnl_total' && x.params.fromDate === '2025-07-01') && green(f), f.calls.filter((x) => x.requery).map((x) => x.id + ':' + x.params.fromDate));
+    { const fc = await run('pf', man('pf'), PF()); await wait(30); const a = fc.doc.querySelector('input[name="xk-basis"][value="Cash"]'); a.checked = true; a.dispatchEvent(new fc.w.Event('change')); await fc.settle(); await wait(30);
+      const npC = (() => { const r = L.pnl({ fromDate: '2025-09-01', toDate: '2026-08-31', paymentsOnly: true }); return +r.Reports[0].Rows.find((y) => y.Title === '' && y.Rows[0].Cells[0].Value === 'Net Profit').Rows[0].Cells[1].Value; })();
+      ok('pf: Accounting method Cash → the cash-basis P&L (no refetch), checks still pass, footer and Sources say Cash', fc.calls.some((x) => x.id === 'pnl_12_cash' && x.params.paymentsOnly === true) && /Cash basis/.test(text(fc.doc, '#xk-foot')) && /Basis: Cash/.test(text(fc.doc, '#xk-sources')) && green(fc) && body(fc).includes('$' + Math.round(npC).toLocaleString('en-AU')), [text(fc.doc, '#xk-foot'), banner(fc).slice(0, 200)]); }
+    ok('pf: end month = end of last financial year → refetch Jul 2025–Jun 2026', f.calls.some((x) => x.requery && /^pnl_12/.test(x.id) && x.params.fromDate === '2026-06-01' && x.params.toDate === '2026-06-30') && f.calls.some((x) => x.requery && x.id === 'pnl_total' && x.params.fromDate === '2025-07-01') && green(f), f.calls.filter((x) => x.requery).map((x) => x.id + ':' + x.params.fromDate));
   }
   if (!only || only === 'cp') {
     // ---------------- P12 Cash position ----------------
@@ -220,7 +223,9 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
   }
   if (!only || only === 'hs') {
     // ---------------- P14 Business health scorecard ----------------
-    const HS = (extra) => Object.assign({ pnl: L.pnl, pnl_prev: L.pnl, bs: L.bs, org: L.organisation, connections: L.connections }, extra || {});
+    const HS = (extra) => Object.assign({ pnl: L.pnl, pnl_prev: L.pnl, pnl_cash: L.pnl, pnl_prev_cash: L.pnl, bs: L.bs, org: L.organisation, connections: L.connections }, extra || {});
+    { const hc = await run('hs', man('hs'), HS()); await wait(30); { const a = hc.doc.querySelector('input[name="xk-basis"][value="Cash"]'); a.checked = true; a.dispatchEvent(new hc.w.Event('change')); await hc.settle(); await wait(30); }
+      ok('hs: Accounting method Cash → the cash-basis month; the Balance Sheet tie becomes information (accrual only); still green', hc.calls.some((x) => x.id === 'pnl_cash' && x.params.paymentsOnly === true) && /ℹ Net profit vs the movement in Current Year Earnings \(information\)/.test(banner(hc)) && green(hc) && /Cash basis/.test(text(hc.doc, '#xk-foot')), banner(hc).slice(0, 300)); }
     const h = await run('hs', man('hs'), HS());
     const npA = E.netProfit('2026-08-01', '2026-08-31'), npJ = E.netProfit('2026-07-01', '2026-07-31');
     const md = (v) => (v < 0 ? '(' : '') + '$' + Math.round(Math.abs(v)).toLocaleString('en-AU') + (v < 0 ? ')' : '');
@@ -242,7 +247,9 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
   }
   if (!only || only === 'vz') {
     // ---------------- P15 Visualise ----------------
-    const VZ = (extra) => Object.assign({ pnl_12: L.pnl, bs_12: L.bs, bank: L.bankSummary, pnl_total: L.pnl, org: L.organisation, connections: L.connections }, extra || {});
+    const VZ = (extra) => Object.assign({ pnl_12: L.pnl, bs_12: L.bs, bank: L.bankSummary, pnl_total: L.pnl, pnl_12_cash: L.pnl, pnl_total_cash: L.pnl, org: L.organisation, connections: L.connections }, extra || {});
+    { const vc = await run('vz', man('vz'), VZ()); await wait(30); { const a = vc.doc.querySelector('input[name="xk-basis"][value="Cash"]'); a.checked = true; a.dispatchEvent(new vc.w.Event('change')); await vc.settle(); await wait(30); }
+      ok('vz: Accounting method Cash → the cash-basis 12 months; months still re-add to the 12-month P&L; green', vc.calls.some((x) => x.id === 'pnl_12_cash' && x.params.paymentsOnly === true) && /✓ .*re-add/.test(banner(vc)) && green(vc) && /Cash basis/.test(text(vc.doc, '#xk-foot')), banner(vc).slice(0, 300)); }
     const v = await run('vz', man('vz'), VZ());
     ok('vz: Profitability tab — "Income vs Expenses · Monthly ending 31 August 2026", 12 months', /Income vs Expenses · Monthly ending 31 August 2026/.test(body(v)) && v.doc.querySelectorAll('#vz-ch rect').length === 24, body(v).slice(0, 200));
     ok('vz: checks pass (12 columns, months re-add to the 12-month P&L), green', green(v) && /2\/2 checks passed/.test(banner(v)), banner(v));
@@ -410,6 +417,11 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     ok('pnlx: Period of Year → the same months in the 3 previous years', [['2025-07-01', '2025-09-25'], ['2024-07-01', '2024-09-25'], ['2023-07-01', '2023-09-25']].every(([a, b]) => m.calls.some((x) => x.id === 'pnl_compare' && x.params.fromDate === a && x.params.toDate === b)));
     { const a = m.doc.querySelector('input[name="xk-basis"][value="Cash"]'); a.checked = true; a.dispatchEvent(new m.w.Event('change')); await m.settle(); await wait(80); }
     ok('pnlx: Cash basis → the comparison periods come from the cash-basis P&L', m.calls.some((x) => x.id === 'pnl_compare_cash' && x.params.paymentsOnly === true && x.params.fromDate === '2025-07-01'));
+    // Year end set in the report (the library's editable parameter panel)
+    { const y = await run('pnl', man('pnl'), PLX()); await wait(30); const opts = [...y.doc.querySelectorAll('#xk-fy option')].map((o) => o.textContent);
+      await set(y, 'xk-fy', '3'); await wait(30);
+      ok('pnlx: Year end control (Xero\u2019s by default); choosing March re-rolls This financial year to date to 1 April and refetches', opts[0] === 'Xero (June)' && opts.length === 13 && y.doc.getElementById('xk-from').value === '2026-04-01' && y.calls.some((x) => x.requery && x.id === 'pnl' && x.params.fromDate === '2026-04-01') && /Financial year starts April \(set in this report — year ends March\)/.test(banner(y)), [opts.slice(0, 2), y.doc.getElementById('xk-from').value, banner(y).slice(0, 200)]);
+      ok('pnlx: the Year end is saved with the report (display fy)', JSON.parse(y.setInputsLog[y.setInputsLog.length - 1].display).fy === '3'); }
     // View as lives in the display settings now
     await set(m, 'xk-persona', 'Client');
     ok('pnlx: View as Client → summary mode, kept in the display settings (no input slot)', m.doc.body.classList.contains('persona-summary') && JSON.parse(m.setInputsLog[m.setInputsLog.length - 1].display).pv === 'Client' && !('persona' in m.setInputsLog[m.setInputsLog.length - 1]), m.setInputsLog.slice(-1));
