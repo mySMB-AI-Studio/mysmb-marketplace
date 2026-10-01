@@ -4,7 +4,7 @@ description: Build a live, validated Xero Profit and Loss (P06) on the tested re
 ---
 # Profit and Loss (P06)
 
-Use when the user asks for a profit and loss, P&L, income statement, trading statement, net profit, income and expenses for a period, or a P&L comparison with last year. Load `xero-report-foundation` first and follow its *Build a kit report* steps with the blocks below — copy them, do not rewrite them. This skill needs the `xero-accounting` connector (`get_profit_and_loss`, `get_balance_sheet`, `get_organisation`, `list_connections`).
+Use when the user asks for a profit and loss, P&L, income statement, trading statement, net profit, income and expenses for a period, or a P&L comparison with last year. Load `xero-report-foundation` first and follow its *Build a kit report* steps with the blocks below — copy them, do not rewrite them. This skill needs the `xero-accounting` connector (`get_profit_and_loss`, `get_balance_sheet`, `list_tracking_categories`, `get_organisation`, `list_connections`).
 
 Xero location: Reporting → Profit and Loss. Library: Xero Reports Prompt Library v1.2 → Prompts → P06. Delivery: Wave 1 (delivery order 1).
 
@@ -14,7 +14,7 @@ Call `get_organisation` once (the organisation's `Name`, `BaseCurrency`, `Financ
 
 ## Date defaults
 
-`from_date` = start of the period asked for (default: the financial-year start from `get_organisation`, e.g. `2026-07-01` for a 30 June year end); `to_date` = end of the period (default `"today"`). Set the display preset `p` to match (`this_fy_td` by default; `this_month`, `last_month`, `this_quarter`, `last_quarter`, `last_fy` or `custom`). Comparison dates are set by the kit from the Compare to control; leave their defaults.
+`from_date` = start of the period asked for (default: the financial-year start from `get_organisation`, e.g. `2026-07-01` for a 30 June year end); `to_date` = end of the period (default `"today"`). Set the display preset `p` to match (`this_fy_td` by default; `this_month`, `last_month`, `this_quarter`, `last_quarter`, `last_fy` or `custom`). Comparison dates are set by the kit from the Compare to control; leave their defaults. Leave `tracking` empty unless the user asks for columns by a tracking category: then set it to that category's `TrackingCategoryID` from `list_tracking_categories`. For several comparison periods set display `c` = `periods` and `o` = `np=<1–11>;tf=<m|q|y>` (months, quarters or years). View as is display `pv` (`Client`, `Bookkeeper`, `Practitioner` or `Executive`).
 
 ## Members
 
@@ -23,9 +23,10 @@ Call `get_organisation` once (the organisation's `Name`, `BaseCurrency`, `Financ
 | Profit and Loss | Report = Profit and Loss (default) |
 | Profit and Loss as % of trading income | Report = P&L as % of income |
 | Compare with previous period / same period last year / year to date | Compare to = Previous period / Previous year / Year to date (adds comparison, $ change and % change columns) |
+| Compare with several previous months, quarters or years | Compare to = Several periods, then Periods (1–11) and Period of (Month / Quarter / Year): one column per period, each its own Xero P&L |
 | Cash basis | Accounting method = Cash (Xero payments only) |
 | Another organisation | Organisation picker (every organisation on this Xero connection) |
-| Tracking-category columns | N/A in this version — say so; offer the total view |
+| Tracking-category columns | Columns by tracking category → pick the category (e.g. Region): Xero's P&L by tracking category, a column per option plus Unassigned and Total |
 
 ## Validation checks (shown in the banner)
 
@@ -33,7 +34,8 @@ Call `get_organisation` once (the organisation's `Name`, `BaseCurrency`, `Financ
 - Gross Profit = Trading Income − Cost of Sales
 - Net Profit = Gross Profit + Other Income − Operating Expenses
 - **Independent tie:** for a financial-year-to-date range on the accrual basis, Net Profit = Current Year Earnings on the Balance Sheet at the end date (a separate Xero report); other ranges and the cash basis show this as information
-- Comparison period loaded (when Compare to is on)
+- Comparison period(s) loaded (when Compare to is on)
+- Tracking columns add up to the Total column, and the tracking Total Net Profit = this Profit and Loss (a separate Xero report) — when a tracking category is chosen
 
 ## Save as
 
@@ -96,23 +98,18 @@ Call `get_organisation` once (the organisation's `Name`, `BaseCurrency`, `Financ
       "default": ""
     },
     {
-      "name": "persona",
-      "label": "View as",
-      "type": "enum",
-      "options": [
-        "Client",
-        "Bookkeeper",
-        "Practitioner",
-        "Executive"
-      ],
-      "default": "Bookkeeper"
+      "name": "tracking",
+      "label": "Tracking category",
+      "type": "string",
+      "maxLength": 64,
+      "default": ""
     },
     {
       "name": "display",
       "label": "Display settings",
       "type": "string",
       "maxLength": 300,
-      "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"pl\"}"
+      "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"pl\",\"pv\":\"Bookkeeper\"}"
     }
   ],
   "bindings": [
@@ -251,6 +248,85 @@ Call `get_organisation` once (the organisation's `Name`, `BaseCurrency`, `Financ
           "kind": "static",
           "value": false
         },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "pnl_tracking",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "get_profit_and_loss"
+      },
+      "params": {
+        "fromDate": {
+          "kind": "input",
+          "input": "from_date"
+        },
+        "toDate": {
+          "kind": "input",
+          "input": "to_date"
+        },
+        "trackingCategoryID": {
+          "kind": "input",
+          "input": "tracking"
+        },
+        "standardLayout": {
+          "kind": "static",
+          "value": true
+        },
+        "paymentsOnly": {
+          "kind": "static",
+          "value": false
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "pnl_tracking_cash",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "get_profit_and_loss"
+      },
+      "params": {
+        "fromDate": {
+          "kind": "input",
+          "input": "from_date"
+        },
+        "toDate": {
+          "kind": "input",
+          "input": "to_date"
+        },
+        "trackingCategoryID": {
+          "kind": "input",
+          "input": "tracking"
+        },
+        "standardLayout": {
+          "kind": "static",
+          "value": true
+        },
+        "paymentsOnly": {
+          "kind": "static",
+          "value": true
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "tracking_cats",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "list_tracking_categories"
+      },
+      "params": {
         "xero_tenant_id": {
           "kind": "input",
           "input": "org"
@@ -411,7 +487,7 @@ r"];function fiscalStart(org,fyMonth){return fyMonth?{month:fyMonth,source:"repo
 org&&/^nz/i.test(org.country||"")?{month:4,source:"assumed \u2014 NZ default; Xero did not return the organisation's financial year"}:{month:7,source:"assumed \u2014 AU default; Xero did not return the organisation's financial year"}}function homeCurrency(org){return org&&org.currency||(org&&/^nz/i.
 test(org.country||"")?"NZD":"AUD")}function titleDates(s){for(var out=[],re=/(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/g,m;m=re.exec(String(s||""));)out.push(iso(D(+m[3],MONTHS.indexOf(m[2])+1,+m[1])));return out}var SYM={AUD:"$",NZD:"\
 $",USD:"US$",CAD:"C$",GBP:"\xA3",EUR:"\u20AC",PHP:"\u20B1",SGD:"S$",HKD:"HK$",JPY:"\xA5",INR:"\u20B9"};function symbol(code){return SYM[code]||(code?code+" ":"")}var DISPLAY_DEFAULT={cents:1,k:0,zeros:1,neg:"minus",red:0,hdr:1,ftr:1,style:"xero",dens:"100",p:"custom",a:"custom",c:"none",v:"",x:"",b:"",
-o:""},HEX=/^#[0-9a-f]{6}$/i;function shade(hex,f){var n=parseInt(hex.slice(1),16),r=n>>16,g=n>>8&255,b=n&255,t=function(c){return Math.max(0,Math.min(255,Math.round(f<0?c*(1+f):c+(255-c)*f)))};return"#"+[t(r),t(g),t(b)].map(function(x){return x.toString(16).padStart(2,"0")}).join("")}function applyBrand(root,hex){
+o:"",pv:""},HEX=/^#[0-9a-f]{6}$/i;function shade(hex,f){var n=parseInt(hex.slice(1),16),r=n>>16,g=n>>8&255,b=n&255,t=function(c){return Math.max(0,Math.min(255,Math.round(f<0?c*(1+f):c+(255-c)*f)))};return"#"+[t(r),t(g),t(b)].map(function(x){return x.toString(16).padStart(2,"0")}).join("")}function applyBrand(root,hex){
 var props=["--accent","--btn","--c1","--d1","--pos"];if(!HEX.test(hex||""))return props.forEach(function(p){root.style.removeProperty(p)}),!1;var dark=root.getAttribute("data-myhub-theme")==="dark",a=dark?shade(hex,.25):hex;return root.style.setProperty("--accent",a),root.style.setProperty("--btn",dark?
 hex:shade(hex,-.2)),root.style.setProperty("--c1",a),root.style.setProperty("--d1",a),root.style.setProperty("--pos",a),!0}function readDisplay(str){var d={},k,src={};try{src=JSON.parse(str||"{}")||{}}catch(e){src={}}for(k in DISPLAY_DEFAULT)d[k]=src[k]!=null?src[k]:DISPLAY_DEFAULT[k];return d}function writeDisplay(d){
 var o={},k;for(k in DISPLAY_DEFAULT)o[k]=d[k];return JSON.stringify(o)}function money(v,cur,d){if(v==null||v==="")return"";d=d||DISPLAY_DEFAULT;var n=Number(v);if(!isFinite(n))return String(v);d.k&&(n=n/1e3);var dp=d.cents&&!d.k?2:d.k?1:0,abs=Math.abs(n).toLocaleString("en-AU",{minimumFractionDigits:dp,
@@ -482,70 +558,71 @@ ions) to see this data.",connection_unavailable:"Xero is temporarily unavailable
 invalid value."},MECHANISM="xero-accounting connector \u2014 mySMB custom MCP on the Xero Accounting API (AGT-001)";function app(cfg){var MH=window.MyHubReport,live=!!(MH&&MH.mode!=="snapshot"),I=cfg.inputs||{},S={inputs:Object.assign({},cfg.defaults),data:{},errors:{},fetchedAt:null,first:!0,busy:0,
 pages:{},trunc:{}},$=function(id){return document.getElementById(id)};function disp(){return readDisplay(I.display?S.inputs[I.display]:"")}function setDisp(patch){if(I.display){var d=disp(),k;for(k in patch)d[k]=patch[k];S.inputs[I.display]=writeDisplay(d)}}function co(){return companyOf(S.data[cfg.
 org],S.data[cfg.conns],I.org?S.inputs[I.org]:"",(reportOf(S.data[cfg.primary])||{}).ReportTitles)}function fy(){return fiscalStart(co().org,cfg.fyMonth)}function absorb(id,v){var e=errorOf(v);S.pages[id]=null,S.trunc[id]=!1,e?(delete S.data[id],S.errors[id]={code:"tool_error",message:e}):(S.data[id]=
-v,delete S.errors[id])}function srcOf(id){return(cfg.sources||{})[id]||null}function err(id){var e=S.errors[id],sc=srcOf(id);return e?e.code==="needs_connection"&&sc?sc.name+" is not connected \u2014 add the "+sc.name+" extension and connect it (Settings \u2192 Connections) to include this.":(FRIENDLY[e.
-code]||e.message||"Unavailable")+(e.code==="tool_error"&&e.message?" ("+e.message+")":""):null}function announce(){MH&&live&&MH.setInputs(Object.assign({},S.inputs))}function status(t){var el=$("xk-status");el&&(el.textContent=t||"")}var RATE=/\b429\b|rate.?limit|too many requests/i;function limited(){
-return Object.keys(S.errors).filter(function(id){var e=S.errors[id];return e&&RATE.test(String(e.message||""))})}function fetchOne(id,inputs){S.req=S.req||{};var tok=S.req[id]=(S.req[id]||0)+1,latest=function(){return S.req[id]===tok};return MH.getData(id,inputs).then(function(v){latest()&&absorb(id,
-v)},function(e){latest()&&(S.errors[id]={code:e&&e.code||"tool_error",message:e&&e.message||String(e)})})}function retryLimited(round){var ids=limited();if(!MH||!live||!ids.length||round>3)return Promise.resolve(!1);S.busy++,status("Xero is busy \u2014 loading "+ids.length+" more section"+(ids.length>
-1?"s":"")+"\u2026");var inputs=Object.assign({},S.inputs),wait=function(ms){return new Promise(function(r){setTimeout(r,ms)})};return ids.reduce(function(p,id){return p.then(function(){return wait(round*(cfg.retryMs==null?700:cfg.retryMs))}).then(function(){return fetchOne(id,inputs)})},Promise.resolve()).
-then(function(){return S.busy--,status(""),S.fetchedAt=new Date().toISOString(),render(),retryLimited(round+1)})}function pageAll(){var P=cfg.paged||{},ids=Object.keys(P).filter(function(id){return S.data[id]&&!S.pages[id]});return!MH||!live||!ids.length?Promise.resolve(!1):(S.busy++,ids.reduce(function(p,id){
-return p.then(function(){return more(id)})},Promise.resolve()).then(function(){return S.busy--,status(""),render(),!0}))}function more(id){var P=cfg.paged[id],size=P.size||100,max=P.max||20,got=S.pages[id]=[S.data[id]],first=S.data[id],tries=0,wait=function(ms){return new Promise(function(r){setTimeout(
-r,ms)})};function step(){if(S.data[id]!==first)return Promise.resolve();var rows2=(got[got.length-1]||{})[P.key]||[];if(rows2.length<size)return Promise.resolve();if(got.length>=max)return S.trunc[id]=!0,Promise.resolve();var inp=Object.assign({},S.inputs);return inp[P.input]=got.length+1,status("Lo\
-ading "+((cfg.tools||{})[id]||id)+" \u2014 page "+(got.length+1)+"\u2026"),MH.getData(id,inp).then(function(v){if(errorOf(v))throw new Error(errorOf(v));return S.data[id]===first&&(got.push(v),tries=0),step()},function(e){var msg=e&&e.message||String(e);if(RATE.test(msg)&&tries++<3)return wait(tries*
-(cfg.retryMs==null?700:cfg.retryMs)).then(step);S.data[id]===first&&(S.trunc[id]=!0,S.pageError=S.pageError||{},S.pageError[id]=msg)})}return step()}function fanAll(){var F=cfg.fan||{},ids=Object.keys(F);if(!MH||!live||!ids.length)return Promise.resolve(!1);S.fan=S.fan||{};var c=ctx(),jobs=[];if(ids.
-forEach(function(id){var list=F[id](Object.assign({},S.inputs),c)||[],sig=JSON.stringify([S.inputs[I.org]||"",list]);if(!(S.fan[id]&&S.fan[id].sig===sig)){var st=S.fan[id]={sig,items:list.map(function(x){return{key:x.key,value:null,error:null,done:!1}})};list.forEach(function(x,i){jobs.push({id,st,i,
-inputs:Object.assign({},S.inputs,x.inputs)})})}}),!jobs.length)return Promise.resolve(!1);var conc=cfg.fanConc||2,next=0,wait=function(ms){return new Promise(function(r){setTimeout(r,ms)})};S.busy++,status("Loading "+jobs.length+" more figures from Xero\u2026");function run(j,tries){return MH.getData(
-j.id,j.inputs).then(function(v){var e=errorOf(v);j.st.items[j.i].value=e?null:v,j.st.items[j.i].error=e,j.st.items[j.i].done=!0},function(e){var msg=e&&e.message||String(e);if(RATE.test(msg)&&tries<3)return wait((tries+1)*(cfg.retryMs==null?700:cfg.retryMs)).then(function(){return run(j,tries+1)});j.
-st.items[j.i].error=msg,j.st.items[j.i].done=!0})}function worker(){if(next>=jobs.length)return Promise.resolve();var j=jobs[next++];return run(j,0).then(worker)}for(var ws=[],k=0;k<conc;k++)ws.push(worker());return Promise.all(ws).then(function(){return S.busy--,status(""),render(),!0})}function fan(id){
-var st=(S.fan||{})[id];return!st||!live?null:st.items.every(function(x){return x.done})?st.items:null}function rows(id){var P=(cfg.paged||{})[id]||{},list=S.pages[id]||(S.data[id]?[S.data[id]]:[]),out=[];return list.forEach(function(v){(v&&v[P.key]||[]).forEach(function(r){out.push(r)})}),out}function truncated(id){
-var P=(cfg.paged||{})[id];return!P||!S.data[id]?!1:S.trunc[id]?!0:!live&&((S.data[id]||{})[P.key]||[]).length>=(P.size||100)}function requery(changed){if(!MH||!live)return render(),Promise.resolve();var ids=Object.keys(cfg.uses||{}).filter(function(id){return!changed||(cfg.uses[id]||[]).some(function(n){
-return changed.indexOf(n)>=0})});if(!ids.length)return render(),Promise.resolve();S.busy++,status("Loading\u2026");var inputs=Object.assign({},S.inputs);return Promise.all(ids.map(function(id){return fetchOne(id,inputs)})).then(function(){S.fetchedAt=new Date().toISOString(),S.busy--,status("");var roll=rollPresets();
-if(roll)return change(roll);var hl=heal();return hl||(render(),retryLimited(1).then(pageAll).then(fanAll))})}function change(patch,dispPatch){var changed=[],k;S.healed=!1;for(k in patch)k&&S.inputs[k]!==patch[k]&&(S.inputs[k]=patch[k],changed.push(k));if(dispPatch&&setDisp(dispPatch),cfg.derive){var dv=cfg.
-derive(Object.assign({},S.inputs),fy().month,disp())||{};for(k in dv)S.inputs[k]!==dv[k]&&(S.inputs[k]=dv[k],changed.push(k))}var d=disp();if(cfg.compare&&d.c!=="none"){if(I.cmpStart&&I.start){var c=compare(S.inputs[I.start],S.inputs[I.end],d.c,fy().month);(S.inputs[I.cmpStart]!==c.start||S.inputs[I.
-cmpEnd]!==c.end)&&(S.inputs[I.cmpStart]=c.start,S.inputs[I.cmpEnd]=c.end,changed.push(I.cmpStart,I.cmpEnd))}if(I.cmpAsAt&&I.asAt){var ca=compareAsAt(S.inputs[I.asAt],d.c);S.inputs[I.cmpAsAt]!==ca&&(S.inputs[I.cmpAsAt]=ca,changed.push(I.cmpAsAt))}}return announce(),changed.length?requery(changed):(render(),
-fanAll())}function compareAsAt(asAtIso,mode){var x=parse(asAtIso);return iso(mode==="prev_year"?D(x.getUTCFullYear()-1,x.getUTCMonth()+1,Math.min(x.getUTCDate(),eom(x.getUTCFullYear()-1,x.getUTCMonth()+1).getUTCDate())):eom(x.getUTCFullYear(),x.getUTCMonth()))}function rollPresets(){if(!live)return null;
-var d=disp(),p={},f=fy().month;if(I.start&&d.p&&d.p!=="custom"){var r=preset(d.p,f);r&&(r.start!==S.inputs[I.start]||r.end!==S.inputs[I.end])&&(p[I.start]=r.start,p[I.end]=r.end)}if(I.asAt&&d.a&&d.a!=="custom"){var a=asAt(d.a,f);a&&a!==S.inputs[I.asAt]&&(p[I.asAt]=a)}if(cfg.roll){var cr=cfg.roll(Object.
-assign({},S.inputs),f,d)||{},k2;for(k2 in cr)cr[k2]!==S.inputs[k2]&&(p[k2]=cr[k2])}if(cfg.derive){var dv=cfg.derive(Object.assign({},S.inputs,p),f,d)||{},k3;for(k3 in dv)dv[k3]!==S.inputs[k3]&&(p[k3]=dv[k3])}return Object.keys(p).length?p:null}function adoptHeader(){var r=reportOf(S.data[cfg.primary]);
-if(!(live||!r)){var ds=titleDates((r.ReportTitles||[]).slice(2).join(" "));I.start&&ds.length>=2&&(S.inputs[I.start]=ds[0],I.end&&cfg.headerEnd!==!1&&(S.inputs[I.end]=ds[1])),I.asAt&&ds.length&&(S.inputs[I.asAt]=ds[ds.length-1])}}function stale(){var want=I.start?[S.inputs[I.start],S.inputs[I.end]]:
-I.asAt?[S.inputs[I.asAt]]:null;return want?(cfg.dated||[cfg.primary]).filter(function(id){var r=reportOf(S.data[id]);if(!r)return!1;var ds=titleDates((r.ReportTitles||[]).slice(2).join(" "));return ds.length?want.length===2?ds.length>=2?!(ds[0]===want[0]&&ds[ds.length-1]===want[1]):ds[0]!==want[1]:ds[ds.
-length-1]!==want[0]:!1}).map(function(id){var r=reportOf(S.data[id]);return{id,title:String((r.ReportTitles||[]).slice(2).join(" "))}}):[]}function dateKeys(){return Object.keys(S.inputs).filter(function(k){return k!==I.org&&k!==I.persona&&k!==I.display&&k!==I.basis})}function heal(){return!live||S.
-healed||!stale().length?null:(S.healed=!0,requery(dateKeys()))}function optv(id){var o=(cfg.options||[]).filter(function(x){return x.id===id})[0],m=new RegExp("(?:^|;)"+id+"=([^;]*)").exec(disp().o||"");return m?m[1]:o?o.def:null}function setOpt(id,v){var kv={};return String(disp().o||"").split(";").
-forEach(function(p){var i=p.indexOf("=");i>0&&(kv[p.slice(0,i)]=p.slice(i+1))}),kv[id]=v,Object.keys(kv).map(function(k){return k+"="+kv[k]}).join(";")}function opt(list,cur){return list.map(function(o){return'<option value="'+h(o[0])+'"'+(String(o[0])===String(cur)?" selected":"")+">"+h(o[1])+"</op\
-tion>"}).join("")}function controls(){var el=$("xk-controls");if(el){var d=disp(),c0=co(),dis=live?"":" disabled",x="";I.org&&c0.orgs.length>1?x+='<label class="ctl">Organisation<select id="xk-client"'+dis+' title="The Xero organisations this connection can access \u2014 one organisation per report.">'+
-opt(c0.orgs.map(function(f){return[f.id,f.name||f.id]}),S.inputs[I.org]||c0.active||"")+"</select></label>":x+='<label class="ctl">Organisation<select id="xk-client" title="The Xero organisation this connection uses."><option>'+h(c0.name||"Connected Xero organisation")+"</option></select></label>",I.
-start&&(x+='<label class="ctl">Report period<select id="xk-preset"'+dis+">"+opt(cfg.presets||PRESETS,d.p)+'</select></label><label class="ctl">From<input type="date" id="xk-from" value="'+h(S.inputs[I.start])+'"'+dis+'></label><label class="ctl">To<input type="date" id="xk-to" value="'+h(S.inputs[I.
-end])+'"'+dis+"></label>"),I.asAt&&(x+='<label class="ctl">As at<select id="xk-asat-preset"'+dis+">"+opt(cfg.asats||ASAT,d.a)+'</select></label><label class="ctl">Date<input type="date" id="xk-asat" value="'+h(S.inputs[I.asAt])+'"'+dis+"></label>"),I.basis&&(x+='<fieldset class="ctl seg"'+dis+"><leg\
-end>Accounting method</legend>"+["Cash","Accrual"].map(function(b){return'<label><input type="radio" name="xk-basis" value="'+b+'"'+(S.inputs[I.basis]===b?" checked":"")+dis+">"+b+"</label>"}).join("")+"</fieldset>"),I.columnsBy&&cfg.columnsBy&&(x+='<label class="ctl">Display columns by<select id="x\
-k-cols"'+dis+">"+opt(cfg.columnsBy,S.inputs[I.columnsBy])+"</select></label>"),cfg.compare&&(x+='<label class="ctl">Compare to<select id="xk-cmp"'+dis+">"+opt(I.asAt?[["none","None"],["prev_period","Previous month end"],["prev_year","Previous year"]]:[["none","None"],["prev_period","Previous period"],
-["prev_year","Previous year"],["ytd","Year-to-date"]],d.c)+"</select></label>"),(cfg.enums||[]).forEach(function(e,i){var rq=Object.keys(cfg.uses||{}).some(function(id){return(cfg.uses[id]||[]).indexOf(e.input)>=0});x+='<label class="ctl">'+h(e.label)+'<select id="xk-enum-'+i+'"'+(rq?dis:"")+">"+opt(
-e.options,S.inputs[e.input])+"</select></label>"}),cfg.views&&(x+='<label class="ctl">Report<select id="xk-view">'+opt(cfg.views,d.v||cfg.views[0][0])+"</select></label>"),(cfg.options||[]).forEach(function(o){x+='<label class="ctl">'+h(o.label)+'<select id="xk-opt-'+h(o.id)+'"'+(o.title?' title="'+
-h(o.title)+'"':"")+">"+opt(o.options,optv(o.id))+"</select></label>"}),I.persona&&(x+='<label class="ctl">View as<select id="xk-persona">'+opt([["Client","Client"],["Bookkeeper","Bookkeeper"],["Practitioner","Practitioner"],["Executive","Executive"]],S.inputs[I.persona])+"</select></label>"),x+='<de\
-tails class="ctl customise"><summary>Customise</summary><div class="cz"><label><input type="checkbox" id="xk-cents"'+(d.cents?" checked":"")+'> Show cents</label><label><input type="checkbox" id="xk-k"'+(d.k?" checked":"")+'> Divide by 1000</label><label><input type="checkbox" id="xk-zeros"'+(d.zeros?
-"":" checked")+'> Except zero amounts</label><label>Negative numbers<select id="xk-neg">'+opt([["minus","-100"],["paren","(100)"],["trail","100-"]],d.neg)+'</select></label><label><input type="checkbox" id="xk-red"'+(d.red?" checked":"")+'> Show in red</label><label><input type="checkbox" id="xk-hdr\
-"'+(d.hdr?" checked":"")+'> Header</label><label><input type="checkbox" id="xk-ftr"'+(d.ftr?" checked":"")+'> Footer</label><label>View<select id="xk-dens">'+opt([["compact","Compact"],["100","100%"]],d.dens)+'</select></label><label>Branding<select id="xk-branding" title="Xero branding (default) or\
- the mySMB Reporting template \u2014 display only, the data does not change">'+opt([["xero","Xero"],["mysmb","mySMB"]],d.style==="mysmb"?"mysmb":"xero")+'</select></label><label>Brand colour<input type="color" id="xk-brand" value="'+h(HEX.test(d.b)?d.b:"#13b5ea")+'"></label><label>&nbsp;<button type\
-="button" id="xk-brand-reset"'+(HEX.test(d.b)?"":" disabled")+">Use Xero branding</button></label></div></details>",x+='<div class="ctl btns"><button type="button" id="xk-pdf">Download PDF</button><button type="button" id="xk-xlsx">Download Excel</button></div>',el.innerHTML=x,wire()}}function on(id,ev,fn){
-var e=$(id);e&&e.addEventListener(ev,fn)}function wire(){on("xk-client","change",function(){if(I.org){var p={};p[I.org]=this.value,change(p)}}),on("xk-preset","change",function(){var k=this.value,r=preset(k,fy().month),p={};r&&(p[I.start]=r.start,p[I.end]=r.end),change(p,{p:k})}),on("xk-from","chang\
-e",function(){var p={};p[I.start]=this.value,change(p,{p:"custom"})}),on("xk-to","change",function(){var p={};p[I.end]=this.value,change(p,{p:"custom"})}),on("xk-asat-preset","change",function(){var k=this.value,a=asAt(k,fy().month),p={};a&&(p[I.asAt]=a),change(p,{a:k})}),on("xk-asat","change",function(){
-var p={};p[I.asAt]=this.value,change(p,{a:"custom"})}),document.querySelectorAll('input[name="xk-basis"]').forEach(function(r){r.addEventListener("change",function(){var p={};p[I.basis]=this.value,change(p)})}),on("xk-cols","change",function(){var p={};p[I.columnsBy]=this.value,change(p)}),on("xk-cm\
-p","change",function(){change({},{c:this.value})}),(cfg.enums||[]).forEach(function(e,i){on("xk-enum-"+i,"change",function(){var p={};p[e.input]=this.value,change(p)})}),on("xk-view","change",function(){change({},{v:this.value})}),(cfg.options||[]).forEach(function(o){on("xk-opt-"+o.id,"change",function(){
-change({},{o:setOpt(o.id,this.value)})})}),on("xk-persona","change",function(){var p={};p[I.persona]=this.value,change(p)}),[["xk-cents","cents"],["xk-k","k"],["xk-red","red"],["xk-hdr","hdr"],["xk-ftr","ftr"]].forEach(function(c){on(c[0],"change",function(){var p={};p[c[1]]=this.checked?1:0,change(
-{},p)})}),on("xk-zeros","change",function(){change({},{zeros:this.checked?0:1})}),on("xk-neg","change",function(){change({},{neg:this.value})}),on("xk-dens","change",function(){change({},{dens:this.value})}),on("xk-branding","change",function(){change({},{style:this.value})}),on("xk-brand","change",
-function(){HEX.test(this.value)&&change({},{b:this.value.toLowerCase()})}),on("xk-brand-reset","click",function(){change({},{b:""})}),on("xk-pdf","click",function(){window.print()}),on("xk-xlsx","click",function(){exportXlsx()})}function ctx(){var d=disp(),c0=co(),f=fy();return{data:S.data,errors:S.
-errors,err,inputs:S.inputs,I,display:d,view:d.v||(cfg.views?cfg.views[0][0]:""),compareMode:cfg.compare?d.c:"none",persona:I.persona?S.inputs[I.persona]:"Bookkeeper",company:c0.name,organisation:c0,fy:f,currency:homeCurrency(c0.org),live,fetchedAt:S.fetchedAt,source:srcOf,body:$("xk-body"),change,disp,
-today:iso(today()),opt:optv,setOpt:function(id,v){return change({},{o:setOpt(id,v)})},rows,truncated,fan,pageError:function(id){return(S.pageError||{})[id]||null}}}var last={checks:[],na:[],notes:[]};function render(){var c=ctx(),d=c.display,root=document.documentElement;root.classList.toggle("style\
--mysmb",d.style==="mysmb"),root.classList.toggle("dens-compact",d.dens==="compact"),root.classList.toggle("brand-custom",applyBrand(root,d.style==="mysmb"?"":d.b)),document.body.classList.toggle("persona-summary",c.persona==="Client"||c.persona==="Executive"),document.body.classList.toggle("persona-\
-detail",!(c.persona==="Client"||c.persona==="Executive")),controls();var out={};try{out=cfg.render(c)||{}}catch(e){c.body&&(c.body.innerHTML='<p class="xk-err">This report could not render: '+h(e.message)+"</p>"),out={checks:[{name:"Report rendered",pass:!1,detail:e.message}]}}last={checks:out.checks||
-[],na:out.na||[],notes:out.notes||[]},stale().forEach(function(x){last.checks.unshift({name:"Xero report dates = the selected dates",pass:!1,detail:(cfg.tools||{})[x.id]+' returned "'+x.title+'" \u2014 press Refresh'})});var nc=Object.keys(S.errors).some(function(id){return S.errors[id]&&S.errors[id].
-code==="needs_connection"&&!srcOf(id)});if(nc&&c.body&&c.body.textContent.indexOf(FRIENDLY.needs_connection)<0){var dv=document.createElement("div");dv.className="xk-banner fail",dv.textContent=FRIENDLY.needs_connection,c.body.insertBefore(dv,c.body.firstChild)}Object.keys(S.errors).forEach(function(id){
-if(!(id===cfg.conns&&S.data[cfg.org])){var msg=err(id);if(!last.checks.some(function(k){return k.pass===!1&&k.detail===msg})){var sc=srcOf(id);last.checks.unshift({name:"Data loaded: "+((cfg.tools||{})[id]||id),pass:sc&&sc.optional?null:!1,detail:msg})}}});var hd=$("xk-head");if(hd){hd.hidden=!d.hdr||
-!!cfg.noHead;var per=out.period||(I.start?periodLine(S.inputs[I.start],S.inputs[I.end]):I.asAt?asOfLine(S.inputs[I.asAt]):"");hd.innerHTML='<div class="ti">'+h(out.title||cfg.title)+'</div><div class="co">'+h(c.company||"N/A \u2014 not in source")+'</div><div class="pe">'+h(per)+'</div><div class="x\
-k-src">'+(d.style==="mysmb"?'<span class="xk-badge">mySMB</span>mySMB Reporting \xB7 data from Xero':'<span class="xk-badge">Xero</span>Prepared from Xero')+"</div>"}var ft=$("xk-foot");if(ft){ft.hidden=!d.ftr;var stamp=footerStamp(basisOf(),S.fetchedAt,c.currency);ft.textContent=d.style==="mysmb"?[
-c.company||"Xero organisation",out.title||cfg.title,stamp].join(" | "):stamp}banner(c),sources(c)}function banner(c){var el=$("xk-banner");if(el){var ch=last.checks,isInfo=function(k){return!!k.info},fails=ch.filter(function(k){return k.pass===!1}),done=ch.filter(function(k){return k.pass===!0}),nInfo=ch.
-filter(isInfo).length,nNA=ch.filter(function(k){return k.pass==null&&!isInfo(k)}).length,real=ch.length-nInfo,none=!fails.length&&!done.length&&ch.length>0,extra=(nNA?" \xB7 "+nNA+" N/A":"")+(nInfo?" \xB7 "+nInfo+" for information":"");el.className="xk-banner "+(fails.length?"fail":none?"na":"pass"),
-el.innerHTML="<strong>"+(fails.length?"\u26A0 Validation: "+fails.length+" check"+(fails.length>1?"s":"")+" failed"+(done.length?" \xB7 "+done.length+" passed":"")+extra:none?real?"\u2013 Validation: no check could run ("+nNA+" N/A"+(nInfo?" \xB7 "+nInfo+" for information":"")+")":"\u2139 Validation: "+
-nInfo+" line"+(nInfo>1?"s":"")+" for information":"\u2713 Validation: "+done.length+"/"+done.length+" check"+(done.length>1?"s":"")+" passed"+extra)+"</strong> \xB7 Data as of "+h(S.fetchedAt?new Date(S.fetchedAt).toLocaleString("en-AU"):"\u2014")+(live?"":" \xB7 Snapshot: figures frozen at capture tim\
-e")+" \xB7 Financial year starts "+h(MONTHS[c.fy.month-1])+" ("+h(c.fy.source)+")<ul>"+ch.map(function(k){return'<li class="'+(k.pass===!1?"bad":k.pass===!0?"ok":isInfo(k)?"na info":"na")+'">'+(k.pass===!1?"\u2717 ":k.pass===!0?"\u2713 ":isInfo(k)?"\u2139 ":"\u2013 ")+h(k.name)+(k.detail?" \u2014 "+
-h(k.detail):"")+"</li>"}).join("")+"</ul>"}}function basisOf(){return I.basis?S.inputs[I.basis]:cfg.basisLabel||(cfg.noBasis?null:"Accrual")}function sources(c){var el=$("xk-sources");if(el){var t=cfg.tools||{},items=Object.keys(t).map(function(id){var sc=srcOf(id);return h(t[id])+(S.errors[id]?' \u2014 \
+v,delete S.errors[id])}function srcOf(id){return(cfg.sources||{})[id]||null}function quiet(id){var sc=srcOf(id);return!!(sc&&sc.quiet&&sc.quiet(Object.assign({},S.inputs)))}function err(id){var e=S.errors[id],sc=srcOf(id);return e?e.code==="needs_connection"&&sc?sc.name+" is not connected \u2014 add the "+
+sc.name+" extension and connect it (Settings \u2192 Connections) to include this.":(FRIENDLY[e.code]||e.message||"Unavailable")+(e.code==="tool_error"&&e.message?" ("+e.message+")":""):null}function announce(){MH&&live&&MH.setInputs(Object.assign({},S.inputs))}function status(t){var el=$("xk-status");
+el&&(el.textContent=t||"")}var RATE=/\b429\b|rate.?limit|too many requests/i;function limited(){return Object.keys(S.errors).filter(function(id){var e=S.errors[id];return e&&RATE.test(String(e.message||""))})}function fetchOne(id,inputs){S.req=S.req||{};var tok=S.req[id]=(S.req[id]||0)+1,latest=function(){
+return S.req[id]===tok};return MH.getData(id,inputs).then(function(v){latest()&&absorb(id,v)},function(e){latest()&&(S.errors[id]={code:e&&e.code||"tool_error",message:e&&e.message||String(e)})})}function retryLimited(round){var ids=limited();if(!MH||!live||!ids.length||round>3)return Promise.resolve(
+!1);S.busy++,status("Xero is busy \u2014 loading "+ids.length+" more section"+(ids.length>1?"s":"")+"\u2026");var inputs=Object.assign({},S.inputs),wait=function(ms){return new Promise(function(r){setTimeout(r,ms)})};return ids.reduce(function(p,id){return p.then(function(){return wait(round*(cfg.retryMs==
+null?700:cfg.retryMs))}).then(function(){return fetchOne(id,inputs)})},Promise.resolve()).then(function(){return S.busy--,status(""),S.fetchedAt=new Date().toISOString(),render(),retryLimited(round+1)})}function pageAll(){var P=cfg.paged||{},ids=Object.keys(P).filter(function(id){return S.data[id]&&
+!S.pages[id]});return!MH||!live||!ids.length?Promise.resolve(!1):(S.busy++,ids.reduce(function(p,id){return p.then(function(){return more(id)})},Promise.resolve()).then(function(){return S.busy--,status(""),render(),!0}))}function more(id){var P=cfg.paged[id],size=P.size||100,max=P.max||20,got=S.pages[id]=
+[S.data[id]],first=S.data[id],tries=0,wait=function(ms){return new Promise(function(r){setTimeout(r,ms)})};function step(){if(S.data[id]!==first)return Promise.resolve();var rows2=(got[got.length-1]||{})[P.key]||[];if(rows2.length<size)return Promise.resolve();if(got.length>=max)return S.trunc[id]=!0,
+Promise.resolve();var inp=Object.assign({},S.inputs);return inp[P.input]=got.length+1,status("Loading "+((cfg.tools||{})[id]||id)+" \u2014 page "+(got.length+1)+"\u2026"),MH.getData(id,inp).then(function(v){if(errorOf(v))throw new Error(errorOf(v));return S.data[id]===first&&(got.push(v),tries=0),step()},
+function(e){var msg=e&&e.message||String(e);if(RATE.test(msg)&&tries++<3)return wait(tries*(cfg.retryMs==null?700:cfg.retryMs)).then(step);S.data[id]===first&&(S.trunc[id]=!0,S.pageError=S.pageError||{},S.pageError[id]=msg)})}return step()}function fanAll(){var F=cfg.fan||{},ids=Object.keys(F);if(!MH||
+!live||!ids.length)return Promise.resolve(!1);S.fan=S.fan||{};var c=ctx(),jobs=[];if(ids.forEach(function(id){var list=F[id](Object.assign({},S.inputs),c)||[],sig=JSON.stringify([S.inputs[I.org]||"",list]);if(!(S.fan[id]&&S.fan[id].sig===sig)){var st=S.fan[id]={sig,items:list.map(function(x){return{
+key:x.key,value:null,error:null,done:!1}})};list.forEach(function(x,i){jobs.push({id,st,i,inputs:Object.assign({},S.inputs,x.inputs)})})}}),!jobs.length)return Promise.resolve(!1);var conc=cfg.fanConc||2,next=0,wait=function(ms){return new Promise(function(r){setTimeout(r,ms)})};S.busy++,status("Loa\
+ding "+jobs.length+" more figures from Xero\u2026");function run(j,tries){return MH.getData(j.id,j.inputs).then(function(v){var e=errorOf(v);j.st.items[j.i].value=e?null:v,j.st.items[j.i].error=e,j.st.items[j.i].done=!0},function(e){var msg=e&&e.message||String(e);if(RATE.test(msg)&&tries<3)return wait(
+(tries+1)*(cfg.retryMs==null?700:cfg.retryMs)).then(function(){return run(j,tries+1)});j.st.items[j.i].error=msg,j.st.items[j.i].done=!0})}function worker(){if(next>=jobs.length)return Promise.resolve();var j=jobs[next++];return run(j,0).then(worker)}for(var ws=[],k=0;k<conc;k++)ws.push(worker());return Promise.
+all(ws).then(function(){return S.busy--,status(""),render(),!0})}function fan(id){var st=(S.fan||{})[id];return!st||!live?null:st.items.every(function(x){return x.done})?st.items:null}function rows(id){var P=(cfg.paged||{})[id]||{},list=S.pages[id]||(S.data[id]?[S.data[id]]:[]),out=[];return list.forEach(
+function(v){(v&&v[P.key]||[]).forEach(function(r){out.push(r)})}),out}function truncated(id){var P=(cfg.paged||{})[id];return!P||!S.data[id]?!1:S.trunc[id]?!0:!live&&((S.data[id]||{})[P.key]||[]).length>=(P.size||100)}function requery(changed){if(!MH||!live)return render(),Promise.resolve();var ids=Object.
+keys(cfg.uses||{}).filter(function(id){return!changed||(cfg.uses[id]||[]).some(function(n){return changed.indexOf(n)>=0})});if(!ids.length)return render(),Promise.resolve();S.busy++,status("Loading\u2026");var inputs=Object.assign({},S.inputs);return Promise.all(ids.map(function(id){return fetchOne(
+id,inputs)})).then(function(){S.fetchedAt=new Date().toISOString(),S.busy--,status("");var roll=rollPresets();if(roll)return change(roll);var hl=heal();return hl||(render(),retryLimited(1).then(pageAll).then(fanAll))})}function change(patch,dispPatch){var changed=[],k;S.healed=!1;for(k in patch)k&&S.
+inputs[k]!==patch[k]&&(S.inputs[k]=patch[k],changed.push(k));if(dispPatch&&setDisp(dispPatch),cfg.derive){var dv=cfg.derive(Object.assign({},S.inputs),fy().month,disp())||{};for(k in dv)S.inputs[k]!==dv[k]&&(S.inputs[k]=dv[k],changed.push(k))}var d=disp();if(cfg.compare&&d.c!=="none"&&d.c!=="periods"){
+if(I.cmpStart&&I.start){var c=compare(S.inputs[I.start],S.inputs[I.end],d.c,fy().month);(S.inputs[I.cmpStart]!==c.start||S.inputs[I.cmpEnd]!==c.end)&&(S.inputs[I.cmpStart]=c.start,S.inputs[I.cmpEnd]=c.end,changed.push(I.cmpStart,I.cmpEnd))}if(I.cmpAsAt&&I.asAt){var ca=compareAsAt(S.inputs[I.asAt],d.
+c);S.inputs[I.cmpAsAt]!==ca&&(S.inputs[I.cmpAsAt]=ca,changed.push(I.cmpAsAt))}}return announce(),changed.length?requery(changed):(render(),fanAll())}function compareAsAt(asAtIso,mode){var x=parse(asAtIso);return iso(mode==="prev_year"?D(x.getUTCFullYear()-1,x.getUTCMonth()+1,Math.min(x.getUTCDate(),
+eom(x.getUTCFullYear()-1,x.getUTCMonth()+1).getUTCDate())):eom(x.getUTCFullYear(),x.getUTCMonth()))}function rollPresets(){if(!live)return null;var d=disp(),p={},f=fy().month;if(I.start&&d.p&&d.p!=="custom"){var r=preset(d.p,f);r&&(r.start!==S.inputs[I.start]||r.end!==S.inputs[I.end])&&(p[I.start]=r.
+start,p[I.end]=r.end)}if(I.asAt&&d.a&&d.a!=="custom"){var a=asAt(d.a,f);a&&a!==S.inputs[I.asAt]&&(p[I.asAt]=a)}if(cfg.roll){var cr=cfg.roll(Object.assign({},S.inputs),f,d)||{},k2;for(k2 in cr)cr[k2]!==S.inputs[k2]&&(p[k2]=cr[k2])}if(cfg.derive){var dv=cfg.derive(Object.assign({},S.inputs,p),f,d)||{},
+k3;for(k3 in dv)dv[k3]!==S.inputs[k3]&&(p[k3]=dv[k3])}return Object.keys(p).length?p:null}function adoptHeader(){var r=reportOf(S.data[cfg.primary]);if(!(live||!r)){var ds=titleDates((r.ReportTitles||[]).slice(2).join(" "));I.start&&ds.length>=2&&(S.inputs[I.start]=ds[0],I.end&&cfg.headerEnd!==!1&&(S.
+inputs[I.end]=ds[1])),I.asAt&&ds.length&&(S.inputs[I.asAt]=ds[ds.length-1])}}function stale(){var want=I.start?[S.inputs[I.start],S.inputs[I.end]]:I.asAt?[S.inputs[I.asAt]]:null;return want?(cfg.dated||[cfg.primary]).filter(function(id){var r=reportOf(S.data[id]);if(!r)return!1;var ds=titleDates((r.
+ReportTitles||[]).slice(2).join(" "));return ds.length?want.length===2?ds.length>=2?!(ds[0]===want[0]&&ds[ds.length-1]===want[1]):ds[0]!==want[1]:ds[ds.length-1]!==want[0]:!1}).map(function(id){var r=reportOf(S.data[id]);return{id,title:String((r.ReportTitles||[]).slice(2).join(" "))}}):[]}function dateKeys(){
+return Object.keys(S.inputs).filter(function(k){return k!==I.org&&k!==I.persona&&k!==I.display&&k!==I.basis})}function heal(){return!live||S.healed||!stale().length?null:(S.healed=!0,requery(dateKeys()))}function optv(id){var o=(cfg.options||[]).filter(function(x){return x.id===id})[0],m=new RegExp(
+"(?:^|;)"+id+"=([^;]*)").exec(disp().o||"");return m?m[1]:o?o.def:null}function setOpt(id,v){var kv={};return String(disp().o||"").split(";").forEach(function(p){var i=p.indexOf("=");i>0&&(kv[p.slice(0,i)]=p.slice(i+1))}),kv[id]=v,Object.keys(kv).map(function(k){return k+"="+kv[k]}).join(";")}function opt(list,cur){
+return list.map(function(o){return'<option value="'+h(o[0])+'"'+(String(o[0])===String(cur)?" selected":"")+">"+h(o[1])+"</option>"}).join("")}function controls(){var el=$("xk-controls");if(el){var d=disp(),c0=co(),dis=live?"":" disabled",x="";I.org&&c0.orgs.length>1?x+='<label class="ctl">Organisat\
+ion<select id="xk-client"'+dis+' title="The Xero organisations this connection can access \u2014 one organisation per report.">'+opt(c0.orgs.map(function(f){return[f.id,f.name||f.id]}),S.inputs[I.org]||c0.active||"")+"</select></label>":x+='<label class="ctl">Organisation<select id="xk-client" title\
+="The Xero organisation this connection uses."><option>'+h(c0.name||"Connected Xero organisation")+"</option></select></label>",I.start&&(x+='<label class="ctl">Report period<select id="xk-preset"'+dis+">"+opt(cfg.presets||PRESETS,d.p)+'</select></label><label class="ctl">From<input type="date" id="\
+xk-from" value="'+h(S.inputs[I.start])+'"'+dis+'></label><label class="ctl">To<input type="date" id="xk-to" value="'+h(S.inputs[I.end])+'"'+dis+"></label>"),I.asAt&&(x+='<label class="ctl">As at<select id="xk-asat-preset"'+dis+">"+opt(cfg.asats||ASAT,d.a)+'</select></label><label class="ctl">Date<in\
+put type="date" id="xk-asat" value="'+h(S.inputs[I.asAt])+'"'+dis+"></label>"),I.basis&&(x+='<fieldset class="ctl seg"'+dis+"><legend>Accounting method</legend>"+["Cash","Accrual"].map(function(b){return'<label><input type="radio" name="xk-basis" value="'+b+'"'+(S.inputs[I.basis]===b?" checked":"")+
+dis+">"+b+"</label>"}).join("")+"</fieldset>"),I.columnsBy&&cfg.columnsBy&&(x+='<label class="ctl">Display columns by<select id="xk-cols"'+dis+">"+opt(cfg.columnsBy,S.inputs[I.columnsBy])+"</select></label>"),cfg.compare&&(x+='<label class="ctl">Compare to<select id="xk-cmp"'+dis+">"+opt(cfg.compareModes||
+(I.asAt?[["none","None"],["prev_period","Previous month end"],["prev_year","Previous year"]]:[["none","None"],["prev_period","Previous period"],["prev_year","Previous year"],["ytd","Year-to-date"]]),d.c)+"</select></label>"),(cfg.enums||[]).forEach(function(e,i){var rq=Object.keys(cfg.uses||{}).some(
+function(id){return(cfg.uses[id]||[]).indexOf(e.input)>=0});x+='<label class="ctl">'+h(e.label)+'<select id="xk-enum-'+i+'"'+(rq?dis:"")+">"+opt(e.options,S.inputs[e.input])+"</select></label>"}),cfg.views&&(x+='<label class="ctl">Report<select id="xk-view">'+opt(cfg.views,d.v||cfg.views[0][0])+"</s\
+elect></label>"),(cfg.options||[]).forEach(function(o){o.when&&!o.when(d)||(x+='<label class="ctl">'+h(o.label)+'<select id="xk-opt-'+h(o.id)+'"'+(o.title?' title="'+h(o.title)+'"':"")+">"+opt(o.options,optv(o.id))+"</select></label>")}),(I.persona||cfg.personaDisplay)&&(x+='<label class="ctl">View \
+as<select id="xk-persona">'+opt([["Client","Client"],["Bookkeeper","Bookkeeper"],["Practitioner","Practitioner"],["Executive","Executive"]],I.persona?S.inputs[I.persona]:d.pv||"Bookkeeper")+"</select></label>"),x+='<details class="ctl customise"><summary>Customise</summary><div class="cz"><label><in\
+put type="checkbox" id="xk-cents"'+(d.cents?" checked":"")+'> Show cents</label><label><input type="checkbox" id="xk-k"'+(d.k?" checked":"")+'> Divide by 1000</label><label><input type="checkbox" id="xk-zeros"'+(d.zeros?"":" checked")+'> Except zero amounts</label><label>Negative numbers<select id="\
+xk-neg">'+opt([["minus","-100"],["paren","(100)"],["trail","100-"]],d.neg)+'</select></label><label><input type="checkbox" id="xk-red"'+(d.red?" checked":"")+'> Show in red</label><label><input type="checkbox" id="xk-hdr"'+(d.hdr?" checked":"")+'> Header</label><label><input type="checkbox" id="xk-f\
+tr"'+(d.ftr?" checked":"")+'> Footer</label><label>View<select id="xk-dens">'+opt([["compact","Compact"],["100","100%"]],d.dens)+'</select></label><label>Branding<select id="xk-branding" title="Xero branding (default) or the mySMB Reporting template \u2014 display only, the data does not change">'+opt(
+[["xero","Xero"],["mysmb","mySMB"]],d.style==="mysmb"?"mysmb":"xero")+'</select></label><label>Brand colour<input type="color" id="xk-brand" value="'+h(HEX.test(d.b)?d.b:"#13b5ea")+'"></label><label>&nbsp;<button type="button" id="xk-brand-reset"'+(HEX.test(d.b)?"":" disabled")+">Use Xero branding</\
+button></label></div></details>",x+='<div class="ctl btns"><button type="button" id="xk-pdf">Download PDF</button><button type="button" id="xk-xlsx">Download Excel</button></div>',el.innerHTML=x,wire()}}function on(id,ev,fn){var e=$(id);e&&e.addEventListener(ev,fn)}function wire(){on("xk-client","ch\
+ange",function(){if(I.org){var p={};p[I.org]=this.value,change(p)}}),on("xk-preset","change",function(){var k=this.value,r=preset(k,fy().month),p={};r&&(p[I.start]=r.start,p[I.end]=r.end),change(p,{p:k})}),on("xk-from","change",function(){var p={};p[I.start]=this.value,change(p,{p:"custom"})}),on("x\
+k-to","change",function(){var p={};p[I.end]=this.value,change(p,{p:"custom"})}),on("xk-asat-preset","change",function(){var k=this.value,a=asAt(k,fy().month),p={};a&&(p[I.asAt]=a),change(p,{a:k})}),on("xk-asat","change",function(){var p={};p[I.asAt]=this.value,change(p,{a:"custom"})}),document.querySelectorAll(
+'input[name="xk-basis"]').forEach(function(r){r.addEventListener("change",function(){var p={};p[I.basis]=this.value,change(p)})}),on("xk-cols","change",function(){var p={};p[I.columnsBy]=this.value,change(p)}),on("xk-cmp","change",function(){change({},{c:this.value})}),(cfg.enums||[]).forEach(function(e,i){
+on("xk-enum-"+i,"change",function(){var p={};p[e.input]=this.value,change(p)})}),on("xk-view","change",function(){change({},{v:this.value})}),(cfg.options||[]).forEach(function(o){on("xk-opt-"+o.id,"change",function(){change({},{o:setOpt(o.id,this.value)})})}),on("xk-persona","change",function(){if(!I.
+persona)return change({},{pv:this.value});var p={};p[I.persona]=this.value,change(p)}),[["xk-cents","cents"],["xk-k","k"],["xk-red","red"],["xk-hdr","hdr"],["xk-ftr","ftr"]].forEach(function(c){on(c[0],"change",function(){var p={};p[c[1]]=this.checked?1:0,change({},p)})}),on("xk-zeros","change",function(){
+change({},{zeros:this.checked?0:1})}),on("xk-neg","change",function(){change({},{neg:this.value})}),on("xk-dens","change",function(){change({},{dens:this.value})}),on("xk-branding","change",function(){change({},{style:this.value})}),on("xk-brand","change",function(){HEX.test(this.value)&&change({},{
+b:this.value.toLowerCase()})}),on("xk-brand-reset","click",function(){change({},{b:""})}),on("xk-pdf","click",function(){window.print()}),on("xk-xlsx","click",function(){exportXlsx()})}function ctx(){var d=disp(),c0=co(),f=fy();return{data:S.data,errors:S.errors,err,inputs:S.inputs,I,display:d,view:d.
+v||(cfg.views?cfg.views[0][0]:""),compareMode:cfg.compare?d.c:"none",persona:I.persona?S.inputs[I.persona]:cfg.personaDisplay&&d.pv||"Bookkeeper",company:c0.name,organisation:c0,fy:f,currency:homeCurrency(c0.org),live,fetchedAt:S.fetchedAt,source:srcOf,body:$("xk-body"),change,disp,today:iso(today()),
+opt:optv,setOpt:function(id,v){return change({},{o:setOpt(id,v)})},rows,truncated,fan,pageError:function(id){return(S.pageError||{})[id]||null}}}var last={checks:[],na:[],notes:[]};function render(){var c=ctx(),d=c.display,root=document.documentElement;root.classList.toggle("style-mysmb",d.style==="\
+mysmb"),root.classList.toggle("dens-compact",d.dens==="compact"),root.classList.toggle("brand-custom",applyBrand(root,d.style==="mysmb"?"":d.b)),document.body.classList.toggle("persona-summary",c.persona==="Client"||c.persona==="Executive"),document.body.classList.toggle("persona-detail",!(c.persona===
+"Client"||c.persona==="Executive")),controls();var out={};try{out=cfg.render(c)||{}}catch(e){c.body&&(c.body.innerHTML='<p class="xk-err">This report could not render: '+h(e.message)+"</p>"),out={checks:[{name:"Report rendered",pass:!1,detail:e.message}]}}last={checks:out.checks||[],na:out.na||[],notes:out.
+notes||[]},stale().forEach(function(x){last.checks.unshift({name:"Xero report dates = the selected dates",pass:!1,detail:(cfg.tools||{})[x.id]+' returned "'+x.title+'" \u2014 press Refresh'})});var nc=Object.keys(S.errors).some(function(id){return S.errors[id]&&S.errors[id].code==="needs_connection"&&
+!srcOf(id)});if(nc&&c.body&&c.body.textContent.indexOf(FRIENDLY.needs_connection)<0){var dv=document.createElement("div");dv.className="xk-banner fail",dv.textContent=FRIENDLY.needs_connection,c.body.insertBefore(dv,c.body.firstChild)}Object.keys(S.errors).forEach(function(id){if(!(id===cfg.conns&&S.
+data[cfg.org])&&!quiet(id)){var msg=err(id);if(!last.checks.some(function(k){return k.pass===!1&&k.detail===msg})){var sc=srcOf(id);last.checks.unshift({name:"Data loaded: "+((cfg.tools||{})[id]||id),pass:sc&&sc.optional?null:!1,detail:msg})}}});var hd=$("xk-head");if(hd){hd.hidden=!d.hdr||!!cfg.noHead;
+var per=out.period||(I.start?periodLine(S.inputs[I.start],S.inputs[I.end]):I.asAt?asOfLine(S.inputs[I.asAt]):"");hd.innerHTML='<div class="ti">'+h(out.title||cfg.title)+'</div><div class="co">'+h(c.company||"N/A \u2014 not in source")+'</div><div class="pe">'+h(per)+'</div><div class="xk-src">'+(d.style===
+"mysmb"?'<span class="xk-badge">mySMB</span>mySMB Reporting \xB7 data from Xero':'<span class="xk-badge">Xero</span>Prepared from Xero')+"</div>"}var ft=$("xk-foot");if(ft){ft.hidden=!d.ftr;var stamp=footerStamp(basisOf(),S.fetchedAt,c.currency);ft.textContent=d.style==="mysmb"?[c.company||"Xero org\
+anisation",out.title||cfg.title,stamp].join(" | "):stamp}banner(c),sources(c)}function banner(c){var el=$("xk-banner");if(el){var ch=last.checks,isInfo=function(k){return!!k.info},fails=ch.filter(function(k){return k.pass===!1}),done=ch.filter(function(k){return k.pass===!0}),nInfo=ch.filter(isInfo).
+length,nNA=ch.filter(function(k){return k.pass==null&&!isInfo(k)}).length,real=ch.length-nInfo,none=!fails.length&&!done.length&&ch.length>0,extra=(nNA?" \xB7 "+nNA+" N/A":"")+(nInfo?" \xB7 "+nInfo+" for information":"");el.className="xk-banner "+(fails.length?"fail":none?"na":"pass"),el.innerHTML="\
+<strong>"+(fails.length?"\u26A0 Validation: "+fails.length+" check"+(fails.length>1?"s":"")+" failed"+(done.length?" \xB7 "+done.length+" passed":"")+extra:none?real?"\u2013 Validation: no check could run ("+nNA+" N/A"+(nInfo?" \xB7 "+nInfo+" for information":"")+")":"\u2139 Validation: "+nInfo+" li\
+ne"+(nInfo>1?"s":"")+" for information":"\u2713 Validation: "+done.length+"/"+done.length+" check"+(done.length>1?"s":"")+" passed"+extra)+"</strong> \xB7 Data as of "+h(S.fetchedAt?new Date(S.fetchedAt).toLocaleString("en-AU"):"\u2014")+(live?"":" \xB7 Snapshot: figures frozen at capture time")+" \xB7\
+ Financial year starts "+h(MONTHS[c.fy.month-1])+" ("+h(c.fy.source)+")<ul>"+ch.map(function(k){return'<li class="'+(k.pass===!1?"bad":k.pass===!0?"ok":isInfo(k)?"na info":"na")+'">'+(k.pass===!1?"\u2717 ":k.pass===!0?"\u2713 ":isInfo(k)?"\u2139 ":"\u2013 ")+h(k.name)+(k.detail?" \u2014 "+h(k.detail):
+"")+"</li>"}).join("")+"</ul>"}}function basisOf(){return I.basis?S.inputs[I.basis]:cfg.basisLabel||(cfg.noBasis?null:"Accrual")}function sources(c){var el=$("xk-sources");if(el){var t=cfg.tools||{},items=Object.keys(t).map(function(id){var sc=srcOf(id);return h(t[id])+(S.errors[id]&&!quiet(id)?' \u2014 \
 <span class="'+(sc&&sc.optional?"muted":"xk-err")+'">'+h(err(id))+"</span>":"")}),na=last.na.slice();c.company||na.unshift("Organisation name (Xero returned no organisation details)"),el.innerHTML="<h2>Sources &amp; limitations</h2><ul><li>Mechanism: "+h(cfg.mechanism||MECHANISM)+"</li><li>Tool call\
 s: "+items.join(" \xB7 ")+"</li><li>Basis: "+h(basisOf()||"n/a")+" \xB7 Currency: "+h(c.currency)+" (the organisation's base currency \u2014 Xero's reports have no other presentation currency) \xB7 Organisation: "+h(c.company||"N/A \u2014 not in source")+" (one Xero organisation per report)</li>"+(/^assumed/.
 test(c.fy.source)?"<li>Financial year: "+h(c.fy.source)+" (starts "+h(MONTHS[c.fy.month-1])+"). Adjust the dates if this organisation uses a different year.</li>":"")+last.notes.map(function(n){return"<li>"+h(n)+"</li>"}).join("")+(na.length?"<li>N/A \u2014 not in source: "+na.map(h).join("; ")+"</l\
@@ -556,47 +633,83 @@ basis&&S.inputs[I.basis],org:I.org&&(S.inputs[I.org]||c.organisation.active||"")
 c.currency],[],["Data as of",S.fetchedAt||""],["Source",cfg.mechanism||MECHANISM]]),widths:[28,60]});var name=[c.company||"Xero",cfg.title,I.start?S.inputs[I.start]+" to "+S.inputs[I.end]:I.asAt?"as at "+S.inputs[I.asAt]:""].filter(Boolean).join(" - ").replace(/[\\\/:*?"<>|]+/g," ");download(xlsx(sheets,
 c.currency),name+".xlsx")}function boot(bundle){if(S.data={},S.errors=Object.assign({},bundle.errors||{}),S.fetchedAt=bundle.fetchedAt||null,Object.keys(bundle.data||{}).forEach(function(id){S.errors[id]||absorb(id,bundle.data[id])}),adoptHeader(),status(""),S.first){S.first=!1;var roll=rollPresets();
 if(roll){change(roll);return}if(announce(),heal())return}render(),retryLimited(1).then(pageAll).then(fanAll)}return MH?(MyHubReport.onData(function(bundle){window.__reportStarted=!0,boot(bundle)}),MH.onRefresh&&MH.onRefresh(function(){status("Refreshing\u2026")}),MH.onThemeChange&&MH.onThemeChange(function(){
-render()}),{state:S,change,render,exportXlsx,ctx,retryLimited}):(status("Open this report in mySMB to load Xero data."),{state:S})}window.XK={app,bars,compareCols,currentYearEarnings,find,footerStamp,fyStartOf:function(isoDate,m){return iso(fyStartOf(parse(isoDate),m))},h,kpis,linesTies,money,near,pct,
-periodLine,rangeLabel,runningTies,sectionBy,sheetFromLines,statement,val,walk,waterfall};})();</script>
-<script>XK.app({
+render()}),{state:S,change,render,exportXlsx,ctx,retryLimited}):(status("Open this report in mySMB to load Xero data."),{state:S})}window.XK={app,bars,compareCols,currentYearEarnings,eom,find,footerStamp,fyStartOf:function(isoDate,m){return iso(fyStartOf(parse(isoDate),m))},h,iso,kpis,linesTies,money,
+near,parse,pct,periodLine,rangeLabel,runningTies,sectionBy,sheetFromLines,statement,sum,val,walk,waterfall};})();</script>
+<script>function XK_PERIODS(inp, c) {
+  var n = Math.max(1, Math.min(11, +c.opt('np') || 2)), k = { m: 1, q: 3, y: 12 }[c.opt('tf') || 'm'] || 1, a = XK.parse(inp.from_date), b = XK.parse(inp.to_date), out = [];
+  var whole = a.getUTCDate() === 1 && XK.iso(b) === XK.iso(XK.eom(b.getUTCFullYear(), b.getUTCMonth() + 1));
+  var shift = function (d, m, end) { var y = d.getUTCFullYear(), mo = d.getUTCMonth() + 1 - m; while (mo < 1) { mo += 12; y--; } var last = XK.eom(y, mo).getUTCDate(); return XK.iso(new Date(Date.UTC(y, mo - 1, end ? last : Math.min(d.getUTCDate(), last)))); };
+  for (var i = 1; i <= n; i++) out.push({ key: 'p' + i, inputs: { compare_from: shift(a, k * i, false), compare_to: shift(b, k * i, whole) } });
+  return out;
+}
+XK.app({
   title: 'Profit and Loss', primary: 'pnl', dated: ['pnl', 'pnl_cash'], org: 'org', conns: 'connections',
-  inputs: { start: 'from_date', end: 'to_date', basis: 'basis', cmpStart: 'compare_from', cmpEnd: 'compare_to', org: 'org', persona: 'persona', display: 'display' },
-  defaults: { from_date: '2026-07-01', to_date: '2026-09-25', basis: 'Accrual', compare_from: '2025-07-01', compare_to: '2025-09-25', org: '', persona: 'Bookkeeper',
-    display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":"pl"}' },
-  uses: { pnl: ['from_date', 'to_date', 'org'], pnl_cash: ['from_date', 'to_date', 'org'], pnl_compare: ['compare_from', 'compare_to', 'org'], pnl_compare_cash: ['compare_from', 'compare_to', 'org'], bs_end: ['to_date', 'org'], org: ['org'], connections: [] },
-  tools: { pnl: 'get_profit_and_loss', pnl_cash: 'get_profit_and_loss (cash basis)', pnl_compare: 'get_profit_and_loss (comparison period)', pnl_compare_cash: 'get_profit_and_loss (comparison period, cash basis)', bs_end: 'get_balance_sheet (Current Year Earnings at the end date)', org: 'get_organisation', connections: 'list_connections' },
+  inputs: { start: 'from_date', end: 'to_date', basis: 'basis', cmpStart: 'compare_from', cmpEnd: 'compare_to', org: 'org', display: 'display' }, personaDisplay: true,
+  defaults: { from_date: '2026-07-01', to_date: '2026-09-25', basis: 'Accrual', compare_from: '2025-07-01', compare_to: '2025-09-25', org: '', tracking: '',
+    display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":"pl","pv":"Bookkeeper"}' },
+  uses: { pnl: ['from_date', 'to_date', 'org'], pnl_cash: ['from_date', 'to_date', 'org'], pnl_compare: ['compare_from', 'compare_to', 'org'], pnl_compare_cash: ['compare_from', 'compare_to', 'org'], bs_end: ['to_date', 'org'], pnl_tracking: ['from_date', 'to_date', 'tracking', 'org'], pnl_tracking_cash: ['from_date', 'to_date', 'tracking', 'org'], tracking_cats: ['org'], org: ['org'], connections: [] },
+  tools: { pnl: 'get_profit_and_loss', pnl_cash: 'get_profit_and_loss (cash basis)', pnl_compare: 'get_profit_and_loss (comparison period)', pnl_compare_cash: 'get_profit_and_loss (comparison period, cash basis)', bs_end: 'get_balance_sheet (Current Year Earnings at the end date)', pnl_tracking: 'get_profit_and_loss (columns by tracking category)', pnl_tracking_cash: 'get_profit_and_loss (by tracking category, cash basis)', tracking_cats: 'list_tracking_categories', org: 'get_organisation', connections: 'list_connections' },
   compare: true,
+  compareModes: [['none', 'None'], ['prev_period', 'Previous period'], ['prev_year', 'Previous year'], ['ytd', 'Year-to-date'], ['periods', 'Several periods']],
+  options: [{ id: 'np', label: 'Periods', options: [['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6', '6'], ['7', '7'], ['8', '8'], ['9', '9'], ['10', '10'], ['11', '11']], def: '2', when: function (d) { return d.c === 'periods'; }, title: 'How many previous periods to compare with' },
+    { id: 'tf', label: 'Period of', options: [['m', 'Month'], ['q', 'Quarter'], ['y', 'Year']], def: 'm', when: function (d) { return d.c === 'periods'; } }],
+  // the tracking P&L is optional and quiet until a tracking category is chosen
+  sources: { pnl_tracking: { name: 'Tracking', optional: true, quiet: function (i) { return !i.tracking || i.basis === 'Cash'; } }, pnl_tracking_cash: { name: 'Tracking', optional: true, quiet: function (i) { return !i.tracking || i.basis !== 'Cash'; } }, tracking_cats: { name: 'Tracking categories', optional: true } },
+  // Several periods: the comparison P&L for each previous month / quarter / year, loaded after the report opens
+  fan: { pnl_compare: function (inp, c) { return c.compareMode === 'periods' && inp.basis !== 'Cash' ? XK_PERIODS(inp, c) : []; }, pnl_compare_cash: function (inp, c) { return c.compareMode === 'periods' && inp.basis === 'Cash' ? XK_PERIODS(inp, c) : []; } },
   views: [['pl', 'Profit and Loss'], ['pct', 'P&L as % of income']],
   render: function (c) {
     var body = c.body, money = function (v) { return XK.money(v, c.currency, c.display); }, cash = c.inputs.basis === 'Cash';
     var id = cash ? 'pnl_cash' : 'pnl', cid = cash ? 'pnl_compare_cash' : 'pnl_compare';
     if (c.errors[id]) { body.innerHTML = '<p class="xk-err">' + XK.h(c.err(id)) + '</p>'; return { checks: [{ name: 'Profit and Loss loaded', pass: false, detail: c.err(id) }] }; }
     if (!c.data[id]) return {};
-    var cmpOn = c.compareMode !== 'none', w = XK.walk(c.data[id]), wc = cmpOn && c.data[cid] ? XK.walk(c.data[cid]) : null;
+    var multi = c.compareMode === 'periods', fanned = multi ? c.fan(cid) : null, wins = multi ? XK_PERIODS(c.inputs, c) : [];
+    var cmpOn = c.compareMode !== 'none', w = XK.walk(c.data[id]), wc = multi ? (fanned && fanned[0] && fanned[0].value ? XK.walk(fanned[0].value) : null) : cmpOn && c.data[cid] ? XK.walk(c.data[cid]) : null;
+    var walks = multi && fanned ? fanned.map(function (x) { return x.value ? XK.walk(x.value) : null; }) : [];
     // Comparison figures matched line by line (accounts by AccountID, totals by label); accounts with activity only in the
     // comparison period are added to their section with 0 for this period.
     var key = function (l) { return l.kind + '|' + (l.id || l.label) + '|' + l.group; }, cmap = {}, seen = {};
     if (wc) wc.lines.forEach(function (l) { cmap[key(l)] = l.values[0]; });
-    var lines = w.lines.map(function (l) { seen[key(l)] = 1; return Object.assign({}, l, { values: l.values.slice(0, 1), cmp: cmpOn && l.kind !== 'header' ? (cmap[key(l)] != null ? cmap[key(l)] : wc ? 0 : null) : null }); });
-    if (wc) wc.lines.forEach(function (l) {
-      if (l.kind !== 'row' || seen[key(l)]) return;
+    var maps = walks.map(function (wk) { var m = {}; if (wk) wk.lines.forEach(function (l) { m[key(l)] = l.values[0]; }); return m; });
+    var lines = w.lines.map(function (l) { seen[key(l)] = 1; return Object.assign({}, l, { values: l.values.slice(0, 1), cmp: cmpOn && l.kind !== 'header' ? (cmap[key(l)] != null ? cmap[key(l)] : wc ? 0 : null) : null, cmps: maps.map(function (m) { return l.kind === 'header' ? null : m[key(l)] != null ? m[key(l)] : 0; }) }); });
+    // accounts with activity only in a comparison period join their section with 0 for this period
+    (multi ? walks : wc ? [wc] : []).forEach(function (wk, wi) { if (!wk) return; wk.lines.forEach(function (l) {
+      if (l.kind !== 'row' || seen[key(l)]) return; seen[key(l)] = 1;
       var tot = -1, last = -1; lines.forEach(function (x, i) { if (x.group === l.group) { last = i; if (x.kind === 'total' && tot < 0) tot = i; } });
-      if (last >= 0) lines.splice(tot >= 0 ? tot : last + 1, 0, Object.assign({}, l, { values: [0], cmp: l.values[0] }));
-    });
+      if (last >= 0) lines.splice(tot >= 0 ? tot : last + 1, 0, Object.assign({}, l, { values: [0], cmp: multi ? (maps[0][key(l)] || 0) : l.values[0], cmps: maps.map(function (m) { return m[key(l)] || 0; }) }));
+    }); });
     var sec = function (re) { return XK.sectionBy(w, re); }, line = function (re) { var l = XK.find(w.lines, null, re, 'total'); return l ? XK.val(l) : null; };
     var inc = sec(/^(trading )?income$|^revenue$|^sales$/i), cos = sec(/cost of sales/i), oi = sec(/^other income$/i), opex = sec(/operating expenses|^(less )?expenses$/i), oe = sec(/other expenses/i);
     var gp = line(/^gross profit$/i), np = line(/^net (profit|loss)$/i);
     var none = function (v) { return v == null && np != null; }; // Xero leaves out a section with nothing in it
     var incK = none(inc) ? 0 : inc, opexK = none(opex) ? 0 : opex;
     var npCmp = wc ? (function () { var l = XK.find(wc.lines, null, /^net (profit|loss)$/i, 'total'); return l ? XK.val(l) : null; })() : null;
-    var extra = cmpOn ? XK.compareCols({ prev_period: 'Previous period', prev_year: 'Previous year', ytd: 'Year to date' }[c.compareMode]) : [];
+    var extra = multi ? wins.map(function (wn, i) { return { title: XK.rangeLabel(wn.inputs.compare_from, wn.inputs.compare_to), value: function (l) { return l.cmps ? l.cmps[i] : null; } }; })
+      : cmpOn ? XK.compareCols({ prev_period: 'Previous period', prev_year: 'Previous year', ytd: 'Year to date' }[c.compareMode]) : [];
     if (c.view === 'pct') extra.push({ title: '% of Trading Income', fmt: 'pct', value: function (l) { return inc ? XK.val(l) / inc : null; } });
     var empty = !w.lines.some(function (l) { return l.kind === 'row'; });
+    var cats = (((c.data.tracking_cats || {}).TrackingCategories) || []).filter(function (t) { return t.Status !== 'ARCHIVED' && t.Status !== 'DELETED'; }), tsel = c.inputs.tracking || '', tid = cash ? 'pnl_tracking_cash' : 'pnl_tracking';
+    var tcat = cats.filter(function (t) { return t.TrackingCategoryID === tsel; })[0], wt = tsel && c.data[tid] && !c.errors[tid] ? XK.walk(c.data[tid]) : null, tcols = wt ? wt.columns.slice() : [];
+    var TRACK = { html: '', checks: [] };
+    if (cats.length) {
+      TRACK.html = '<div class="xk-card" style="margin-top:16px"><h3>Columns by tracking category</h3><label class="muted no-print">Tracking <select id="pl-track"><option value="">None</option>' + cats.map(function (t) { return '<option value="' + XK.h(t.TrackingCategoryID) + '"' + (t.TrackingCategoryID === tsel ? ' selected' : '') + '>' + XK.h(t.Name) + '</option>'; }).join('') + '</select></label>' +
+        (!tsel ? '' : c.errors[tid] ? '<p class="xk-err">' + XK.h(c.err(tid)) + '</p>' : !wt ? '<p class="muted">Loading…</p>' : '<h3 style="margin-top:12px">Profit and Loss by ' + XK.h(tcat ? tcat.Name : 'tracking category') + '</h3><div class="xk-scroll">' + XK.statement(wt.lines, [''].concat(tcols), c) + '</div>') + '</div>';
+      if (wt) {
+        var n = tcols.length, addsUp = wt.lines.filter(function (l) { return l.kind !== 'header' && (l.values || []).length === n; }).every(function (l) { return XK.near(XK.sum(l.values.slice(0, n - 1)), l.values[n - 1], 0.05); });
+        var tnp = XK.find(wt.lines, null, /^net (profit|loss)$/i, 'total'), tnpv = tnp ? tnp.values[n - 1] : null;
+        TRACK.checks = [{ name: 'Tracking columns add up to the Total column (every line)', pass: addsUp, detail: n - 1 + ' column(s) + Total' },
+          { name: 'Tracking Total Net Profit = this Profit and Loss (separate Xero reports)', pass: tnpv == null || np == null ? null : XK.near(tnpv, np), detail: money(tnpv) + ' vs ' + money(np) }];
+      }
+    }
+    this._track = wt ? { name: tcat ? tcat.Name : 'Tracking', cols: tcols, lines: wt.lines } : null;
     body.innerHTML = XK.kpis([{ label: 'Total Trading Income', value: incK, sub: none(inc) ? 'None in this period' : null }, { label: 'Gross Profit', value: gp }, { label: 'Total Operating Expenses', value: opexK, sub: none(opex) ? 'None in this period' : null },
       { label: 'Net Profit', value: np, delta: npCmp ? (np - npCmp) / Math.abs(npCmp) : null }, { label: 'Net margin', text: inc ? XK.pct(np / inc) : '—' }], c) +
       (empty ? '<p class="muted">Xero recorded no income or expenses in this period.</p>' : '') +
+      (multi && !fanned ? '<p class="muted">Loading ' + wins.length + ' comparison period' + (wins.length === 1 ? '' : 's') + ' from Xero…</p>' : '') +
       '<div class="xk-scroll">' + XK.statement(lines, ['', XK.rangeLabel(c.inputs.from_date, c.inputs.to_date)], c, extra) + '</div>' +
+      TRACK.html +
       '<div class="xk-grid2 detail-block" style="margin-top:16px"><div class="xk-card"><h3>Income vs expenses</h3><div id="ch1"></div></div><div class="xk-card"><h3>Trading income to net profit</h3><div id="ch2"></div></div></div>';
+    var tp = document.getElementById('pl-track'); if (tp) tp.addEventListener('change', function () { c.change({ tracking: this.value }); });
     var cmpOf = function (re) { return wc ? XK.sectionBy(wc, re) : null; };
     XK.bars(document.getElementById('ch1'), { title: 'Income vs expenses', labels: ['Trading Income', 'Cost of Sales', 'Operating Expenses', 'Net Profit'], series: [{ name: 'This period', values: [incK, cos || 0, opexK, np] }].concat(wc ? [{ name: 'Comparison', values: [cmpOf(/^(trading )?income$|^revenue$|^sales$/i), cmpOf(/cost of sales/i), cmpOf(/operating expenses|^(less )?expenses$/i), npCmp] }] : []) }, c);
     XK.waterfall(document.getElementById('ch2'), { title: 'Trading income to net profit', steps: [{ label: 'Trading Income', value: inc, total: true }, { label: 'Cost of Sales', value: -(cos || 0) }, { label: 'Other Income', value: oi || 0 }, { label: 'Operating Exp.', value: -(opex || 0) }, { label: 'Other Exp.', value: -(oe || 0) }, { label: 'Net Profit', value: np, total: true }] }, c);
@@ -613,19 +726,23 @@ periodLine,rangeLabel,runningTies,sectionBy,sheetFromLines,statement,val,walk,wa
       ytd && !cash ? { name: 'Net Profit = Current Year Earnings on the Balance Sheet at ' + c.inputs.to_date, pass: bsErr || cye == null ? null : XK.near(np, cye), detail: bsErr ? c.err('bs_end') : cye == null ? 'No Current Year Earnings line on the Balance Sheet' : money(np) + ' vs ' + money(cye) }
         : { name: 'Net Profit vs Balance Sheet Current Year Earnings (information)', pass: null, info: true, detail: cash ? 'The tie is checked on the accrual basis' : 'Ties only for a financial-year-to-date range (from ' + fyStart + ')' }
     ];
-    if (cmpOn) checks.push({ name: 'Comparison period loaded', pass: c.errors[cid] ? false : c.data[cid] ? true : null, detail: c.errors[cid] ? c.err(cid) : XK.periodLine(c.inputs.compare_from, c.inputs.compare_to) });
+    if (multi) { var bad2 = fanned ? fanned.filter(function (x) { return x.error; }) : []; checks.push({ name: 'Comparison periods loaded', pass: !c.live ? null : fanned ? bad2.length === 0 : null, detail: !c.live ? 'Several periods need the live report' : !fanned ? 'Loading…' : bad2.length ? bad2.length + ' of ' + fanned.length + ' failed: ' + bad2[0].error : fanned.length + ' period(s)' }); }
+    else if (cmpOn) checks.push({ name: 'Comparison period loaded', pass: c.errors[cid] ? false : c.data[cid] ? true : null, detail: c.errors[cid] ? c.err(cid) : XK.periodLine(c.inputs.compare_from, c.inputs.compare_to) });
+    checks = checks.concat(TRACK.checks);
     var notes = [], unknown = w.sections.filter(function (s) { return !/income|revenue|sales|cost of sales|expense/i.test(s.title); });
     if (unknown.length) notes.push('Section(s) outside the standard layout, shown as Xero returned them: ' + unknown.map(function (s) { return s.label; }).join(', ') + '.');
     if (cash) notes.push('Cash basis: Xero\'s Profit and Loss with payments only (paymentsOnly = true).');
     this._lines = lines; this._extra = extra;
-    return { checks: checks, notes: notes, na: ['Tracking-category columns (not in this report yet — ask for the P&L by tracking category)'],
+    if (!cats.length && c.data.tracking_cats) notes.push('This organisation has no active tracking categories.');
+    return { checks: checks, notes: notes, na: [],
       title: c.view === 'pct' ? 'Profit and Loss as % of trading income' : cmpOn ? 'Profit and Loss Comparison' : 'Profit and Loss' };
   },
   excel: function (c) {
     var lines = this._lines || [], extra = this._extra || [], titles = ['', 'Total'].concat(extra.map(function (e) { return e.title; }));
     return [XK.sheetFromLines('Profit and Loss', c.company, XK.periodLine(c.inputs.from_date, c.inputs.to_date), titles, lines.map(function (l) {
       return { kind: l.kind, depth: l.depth, label: l.label, values: (l.values || []).concat(extra.map(function (e) { return l.kind === 'header' ? null : e.value(l); })) };
-    }), XK.footerStamp(c.inputs.basis, c.fetchedAt, c.currency), ['money'].concat(extra.map(function (e) { return e.fmt === 'pct' ? 'pct' : 'money'; })))];
+    }), XK.footerStamp(c.inputs.basis, c.fetchedAt, c.currency), ['money'].concat(extra.map(function (e) { return e.fmt === 'pct' ? 'pct' : 'money'; })))]
+      .concat(this._track ? [XK.sheetFromLines('By ' + this._track.name, c.company, XK.periodLine(c.inputs.from_date, c.inputs.to_date), [''].concat(this._track.cols), this._track.lines, null)] : []);
   }
 });</script>
 </body>
