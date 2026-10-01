@@ -26,6 +26,9 @@
   "connectorsUsed": [
     "xero-accounting"
   ],
+  "branding": {
+    "color": "#EA580C"
+  },
   "popularity": 0,
   "sizing": {
     "preferred": {
@@ -275,34 +278,63 @@
       "axisRow": {
         "type": "Row",
         "props": {
-          "gap": "sm",
-          "align": "center",
-          "template": "minmax(0,2fr) minmax(0,3fr) 5.25rem"
-        },
-        "children": [
-          "axisSpacerL",
-          "axisLabels",
-          "axisSpacerR"
-        ]
-      },
-      "axisSpacerL": {
-        "type": "Stack",
-        "props": {}
-      },
-      "axisSpacerR": {
-        "type": "Stack",
-        "props": {}
-      },
-      "axisLabels": {
-        "type": "Row",
-        "props": {
           "gap": "none",
           "align": "center",
-          "justify": "between"
+          "template": "minmax(0,2fr) 0.5rem minmax(0,1.5fr) 1px minmax(0,1.5fr) 0.5rem 5.25rem"
         },
         "children": [
-          "axisMin",
-          "axisZero",
+          "axisSp1",
+          "axisSp2",
+          "axisMinCell",
+          "axisZeroCell",
+          "axisMaxCell",
+          "axisSp3",
+          "axisSp4"
+        ]
+      },
+      "axisSp1": {
+        "type": "Stack",
+        "props": {}
+      },
+      "axisSp2": {
+        "type": "Stack",
+        "props": {}
+      },
+      "axisSp3": {
+        "type": "Stack",
+        "props": {}
+      },
+      "axisSp4": {
+        "type": "Stack",
+        "props": {}
+      },
+      "axisMinCell": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "start"
+        },
+        "children": [
+          "axisMin"
+        ]
+      },
+      "axisZeroCell": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "axisZero"
+        ]
+      },
+      "axisMaxCell": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "end"
+        },
+        "children": [
           "axisMax"
         ]
       },
@@ -347,15 +379,19 @@
       "lineRow": {
         "type": "Row",
         "props": {
-          "gap": "sm",
+          "gap": "none",
           "align": "center",
-          "template": "minmax(0,2fr) minmax(0,3fr) 5.25rem",
+          "template": "minmax(0,2fr) 0.5rem minmax(0,1.5fr) 1px minmax(0,1.5fr) 0.5rem 5.25rem",
           "hover": true,
           "clickable": true
         },
         "children": [
           "lineLabel",
-          "lineBar",
+          "linePadL",
+          "barLeft",
+          "lineZero",
+          "barRight",
+          "linePadR",
           "lineValues"
         ],
         "on": {
@@ -400,17 +436,19 @@
           "tone": "muted"
         }
       },
-      "lineBar": {
-        "type": "Row",
+      "linePadL": {
+        "type": "Stack",
+        "props": {}
+      },
+      "linePadR": {
+        "type": "Stack",
+        "props": {}
+      },
+      "lineZero": {
+        "type": "Divider",
         "props": {
-          "gap": "none",
-          "align": "center",
-          "template": "1fr 1fr"
-        },
-        "children": [
-          "barLeft",
-          "barRight"
-        ]
+          "vertical": true
+        }
       },
       "barLeft": {
         "type": "Row",
@@ -464,7 +502,7 @@
         "type": "ProgressBar",
         "props": {
           "value": 100,
-          "tone": "warning"
+          "tone": "brand"
         }
       },
       "barRightBand": {
@@ -535,7 +573,7 @@
         "type": "Dot",
         "props": {
           "size": "sm",
-          "tone": "warning"
+          "tone": "brand"
         }
       },
       "legOverText": {
