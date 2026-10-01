@@ -1306,6 +1306,159 @@ const analyze_myob_duplicates = (args) => {
         lastScanAt: new Date().toISOString(),
     };
 };
+// ── analyze_exclusion_check ──────────────────────────────────────────
+// Rolls up three independently-verified real MYOB exclusion signals into
+// one summary card:
+//  - Supplier Exclusion Screen: suppliers marked Inactive that still have
+//    at least one Bill against them (same signal as the standalone
+//    "MYOB — Exclusion Check (Suppliers)" tile's analyze_supplier_exclusions).
+//  - Inactive Contact Activity: CUSTOMERS marked Inactive that still have
+//    at least one Invoice against them. Deliberately scoped to customers
+//    only (not suppliers) so this never double-counts the same record as
+//    Supplier Exclusion Screen above — an inactive supplier with a bill is
+//    always reported there, never here.
+//  - Excluded Account Postings: accounts named Suspense/Non-deductible, or
+//    themselves marked Inactive, carrying a real non-zero CurrentBalance.
+// "GST Exclusion Mismatch" from the original 4-check reference is NOT
+// buildable: confirmed via live testing that this MCP server's get_invoice
+// and get_bill tools return no Lines/LineItems field at all (not just the
+// list endpoints — every single-record fetch was checked too), even though
+// the connector's own README documents them as returning full line-item
+// detail. A real MCP-server-side gap, not a widget-side limitation —
+// intentionally omitted rather than shown with a placeholder number.
+// `filter` ('' | 'Supplier' | 'Customer' | 'Account') narrows detailRows to
+// one check — set when a summary row is clicked, echoed back unchanged so
+// the spec can tell which row opened the detail view from the same state
+// write that applied it. `showAll` is similarly echoed back (not derived)
+// so a background data refresh (a fresh watch firing after list_bills/
+// list_invoices/list_accounts re-arrive) doesn't silently close an
+// already-open detail view — both must be read back out of current state
+// and passed in again on every recompute, same pattern as
+// analyze_myob_duplicates' `filter`.
+// Args: { contacts?: Contact[], bills?: Bill[], invoices?: Invoice[], accounts?: Account[], filter?: string, showAll?: boolean }
+const analyze_exclusion_check = (args) => {
+    const contacts = Array.isArray(args.contacts) ? args.contacts : [];
+    const bills = Array.isArray(args.bills) ? args.bills : [];
+    const invoices = Array.isArray(args.invoices) ? args.invoices : [];
+    const accounts = Array.isArray(args.accounts) ? args.accounts : [];
+    const filter = ['Supplier', 'Customer', 'Account'].includes(String(args.filter)) ? String(args.filter) : '';
+    const showAll = Boolean(args.showAll);
+    const fmtAmt = (n) => {
+        const v = Number(n);
+        if (!Number.isFinite(v))
+            return '';
+        return 'A$' + new Intl.NumberFormat('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+    };
+    // Supplier Exclusion Screen — inactive suppliers that still have at
+    // least one bill against them (a blocked/retired vendor someone is
+    // still paying).
+    const inactiveSupplierUids = new Set(contacts.filter((c) => c.Type === 'Supplier' && c.IsActive === false).map((c) => String(c.UID ?? '')));
+    const billsBySupplierForExc = new Map();
+    for (const b of bills) {
+        const supplier = b.Supplier;
+        const uid = String(supplier?.UID ?? '');
+        if (!inactiveSupplierUids.has(uid))
+            continue;
+        (billsBySupplierForExc.get(uid) ?? billsBySupplierForExc.set(uid, []).get(uid)).push(b);
+    }
+    const supplierDetailRows = contacts
+        .filter((c) => billsBySupplierForExc.has(String(c.UID ?? '')))
+        .map((c) => {
+        const uidBills = billsBySupplierForExc.get(String(c.UID ?? '')) ?? [];
+        const total = uidBills.reduce((s, b) => s + (Number(b.TotalAmount) || 0), 0);
+        const billWord = `${uidBills.length} bill${uidBills.length !== 1 ? 's' : ''}`;
+        return {
+            category: 'Supplier',
+            label: String(c.CompanyName ?? ''),
+            detail: `Inactive supplier — ${billWord} still outstanding`,
+            amount: fmtAmt(total),
+        };
+    });
+    // Inactive Contact Activity — customers marked Inactive that still have
+    // at least one invoice against them.
+    const inactiveCustomerUids = new Set(contacts.filter((c) => c.Type === 'Customer' && c.IsActive === false).map((c) => String(c.UID ?? '')));
+    const invoicesByCustomerForExc = new Map();
+    for (const i of invoices) {
+        const customer = i.Customer;
+        const uid = String(customer?.UID ?? '');
+        if (!inactiveCustomerUids.has(uid))
+            continue;
+        (invoicesByCustomerForExc.get(uid) ?? invoicesByCustomerForExc.set(uid, []).get(uid)).push(i);
+    }
+    const customerDetailRows = contacts
+        .filter((c) => invoicesByCustomerForExc.has(String(c.UID ?? '')))
+        .map((c) => {
+        const uidInvoices = invoicesByCustomerForExc.get(String(c.UID ?? '')) ?? [];
+        const total = uidInvoices.reduce((s, i) => s + (Number(i.TotalAmount) || 0), 0);
+        const invWord = `${uidInvoices.length} invoice${uidInvoices.length !== 1 ? 's' : ''}`;
+        return {
+            category: 'Customer',
+            label: String(c.CompanyName ?? ''),
+            detail: `Inactive customer — ${invWord} still outstanding`,
+            amount: fmtAmt(total),
+        };
+    });
+    // Excluded Account Postings — accounts whose balance sits outside normal
+    // P&L/balance-sheet reporting: a Suspense/clearing account, an account
+    // explicitly marked non-deductible for tax purposes, or any account
+    // that's been made Inactive but still carries a live balance.
+    const reasonFor = (a) => {
+        const name = String(a.Name ?? '');
+        if (/suspense/i.test(name))
+            return 'Suspense account — balance not yet cleared to a real account';
+        if (/non.?deductible/i.test(name))
+            return 'Marked non-deductible for tax purposes';
+        if (a.IsActive === false)
+            return 'Inactive account still carrying a live balance';
+        return String(a.Classification ?? '');
+    };
+    const flaggedAccounts = accounts.filter((a) => {
+        const name = String(a.Name ?? '');
+        const isSuspenseOrNonDeductible = /suspense|non.?deductible/i.test(name);
+        const isInactive = a.IsActive === false;
+        return (isSuspenseOrNonDeductible || isInactive) && Math.abs(Number(a.CurrentBalance) || 0) > 0;
+    });
+    const accountDetailRows = flaggedAccounts.map((a) => ({
+        category: 'Account',
+        label: String(a.Name ?? ''),
+        detail: reasonFor(a),
+        amount: fmtAmt(a.CurrentBalance),
+    }));
+    const rows = [
+        {
+            category: 'Supplier',
+            label: 'Supplier Exclusion Screen',
+            description: 'Inactive suppliers with bills still outstanding',
+            count: supplierDetailRows.length,
+            tone: 'destructive',
+        },
+        {
+            category: 'Customer',
+            label: 'Inactive Contact Activity',
+            description: 'Inactive customers with invoices still outstanding',
+            count: customerDetailRows.length,
+            tone: 'warning',
+        },
+        {
+            category: 'Account',
+            label: 'Excluded Account Postings',
+            description: 'Suspense, non-deductible, or inactive account balances',
+            count: accountDetailRows.length,
+            tone: 'success',
+        },
+    ];
+    const allDetailRows = [...supplierDetailRows, ...customerDetailRows, ...accountDetailRows];
+    const filterLabel = filter ? (rows.find((r) => r.category === filter)?.label ?? 'All flagged items') : 'All flagged items';
+    return {
+        totalCount: rows.reduce((s, r) => s + r.count, 0),
+        checksCount: rows.length,
+        rows,
+        filter,
+        showAll,
+        filterLabel,
+        detailRows: filter ? allDetailRows.filter((r) => r.category === filter) : allDetailRows,
+    };
+};
 // ── duplicate_check_status_label ────────────────────────────────────
 // "Review" when any Critical-tier duplicates exist, "Clear" otherwise.
 // Args: { value: number } — critical duplicate count
@@ -1371,6 +1524,7 @@ const elements = {
         three_month_window,
         analyze_duplicate_contacts,
         analyze_myob_duplicates,
+        analyze_exclusion_check,
         duplicate_check_status_label,
         duplicate_check_status_tone,
         paginate,
