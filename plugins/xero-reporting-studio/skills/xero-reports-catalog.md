@@ -1,39 +1,132 @@
 ---
 name: xero-reports-catalog
-description: Build an interactive index of every Xero report skill in this library, grouped by category, with search and links to each. Use for "reports catalog", "what reports can you build", "report library", "list of Xero reports".
+description: Show the live Xero report catalogue (P04) on the tested report kit — every Xero report grouped as in Xero, with which of this agent's 26 skills covers it (Live / Built on request / Partly / No prompt yet) and what to ask. Use for "what reports can you do", "list reports", "report catalog", "all reports", or when the user asks for a report you are unsure this agent has.
 ---
-# Reports Catalog
+# All reports (catalog) (P04)
 
-This is navigation, not a data report, and stays a lightweight written specification — not a kit report. `xero-report-foundation`'s *Build a kit report* pipeline exists to assemble a tested `dataBindings` manifest against a report config that renders Xero report **figures** (P&L, Balance Sheet, a scorecard, a chart); this page carries no such figures — it is a list of skill names, categories and descriptions that Claude already knows at generation time. Giving it a `dataBindings` manifest and the full `{{KIT}}` engine would mean declaring bindings nothing on the page reads (the foundation's mapping law: "every declared input must be consumed by some binding" cuts the other way here — there is nothing to consume). The only live Xero call this page makes is for organisation context in the header, exactly as a small, targeted binding — not the report engine.
+Use when the user asks what reports are available, for the report list or catalogue, or for a Xero report you are not sure this agent builds. Load `xero-report-foundation` first and follow its *Build a kit report* steps with the blocks below — copy them, do not rewrite them. This skill needs the `xero-accounting` connector (`get_organisation`, `list_connections`).
 
-Load `xero-report-foundation` for the connector facts and the *Rules for report skills without a kit config*, but do not follow *Build a kit report* — there is no report config or `{{KIT}}`/`{{CSS}}` assembly here, just a self-contained HTML/CSS/JS index page in the same visual system (Xero-inspired palette, dark mode via `data-myhub-theme`, tabular numerals) that the foundation's *Consistent visual system* section describes for every report.
+Xero location: Reporting → All reports. Library: Xero Reports Prompt Library v1.2 → Prompts → P04. Delivery: Wave 3 (delivery order 15).
 
-## What it does
+## Discovery call
 
-Call `get_organisation` once and `list_connections` once (bound the same way every other skill binds them — `organisation` input → `xero_tenant_id`, plus a `connections` binding for the picker) so the header can show which Xero organisation this catalog is being offered for. No other Xero data is read.
+Call `get_organisation` once (the organisation name for the header). No figures are read.
 
-Build an interactive HTML index, grouped by category, with a search/filter box and one entry per report skill. Link every implemented skill by its real name so the reader can ask for it directly. Categories and entries, current as of this library:
+## Date defaults
 
-- **Financial statements**: Profit and Loss (`xero-profit-and-loss`, kit report) · Balance Sheet (`xero-balance-sheet`, kit report) · Trial Balance (`xero-trial-balance`, kit report) · General Ledger — disclosed as scope-gated, may be unavailable on this connection (`xero-general-ledger`) · Tracking-Category Profit and Loss (`xero-tracking-category-pnl`)
-- **Payables and receivables**: Aged Receivables (`xero-aged-receivables`, kit report) · Aged Payables (`xero-aged-payables`, kit report) · Sales Register / Customer Sales (`xero-sales-register`)
-- **Reconciliations**: Bank Reconciliation Status — Reconciled vs Unreconciled only, no third "coded" state (`xero-bank-reconciliation-status`)
-- **Taxes and balances**: Activity Statement — a GST summary, not a lodgeable BAS (`xero-activity-statement`) · GST Reconciliation Detail — same non-BAS disclosure (`xero-gst-reconciliation-detail`)
-- **Cash**: Cash Summary (`xero-cash-summary`, kit report) · Cash Position (`xero-cash-position`, kit report) · Cash Flow Manager (`xero-cash-flow-manager`, kit report)
-- **Dashboards / overviews**: Business Overview (`xero-business-overview`, kit report) · Sales Overview (`xero-sales-overview`, kit report) · Purchases Overview (`xero-purchases-overview`, kit report) · Performance Overview (`xero-performance-overview`, kit report) · Exceptions Dashboard (`xero-exceptions-dashboard`)
-- **Planning and scoring**: Business Health Scorecard — an independently computed scorecard, not Xero's own score (`xero-business-health-scorecard`, kit report) · Budget vs Actual (`xero-budget-vs-actual`) · Month-End Task List — a checklist, not a WorkQ push (`xero-month-end-task-list`)
-- **Analytics**: Visualise — Profitability / Cash / Accounts / KPIs charts, plus an honest no-data state for External data and Industry benchmarks (`xero-visualise`, kit report)
-- **Library**: Reports Catalog (this skill) · Report Pack — bundles other report skills into one document, no data of its own (`xero-report-pack`)
+No dates. The search box keeps its text in the display input (`o` = `q=…`).
 
-That is all twenty-six skill files present in this plugin today (`plugins/xero-reporting-studio/skills/`, excluding the shared `xero-report-foundation`). If a future skill is added or removed, update this list from the actual directory contents — never guess or leave a stale entry, and never describe a skill this plugin doesn't actually carry.
+## Members
 
-Mark entries with no connector endpoint as such, not "coming soon": lodging an Activity Statement / BAS, a true cash-flow *statement* (as distinct from the Cash Flow Manager's short-term projection), Xero Analytics (Syft) widgets and AI insights, Xero's own Business Health Scorecard, and industry benchmarks. Say plainly that these have no data source on `xero-accounting` and are not planned as a "future update" — they would need a different connector or a different Xero product entirely.
+| Member / view | How |
+|---|---|
+| All reports | Favourites (the library's sample), Financial statements, Payables and receivables, Reconciliations, Taxes and balances, Dashboards and analytics, Bookkeeping workflows and packs |
+| A report marked Built on request | A written-spec skill: build it with the foundation's rules for report skills without a kit config |
+| A report marked No prompt yet | Say so and offer the closest Live report — see the foundation |
 
-## Validation
+## Validation checks (shown in the banner)
 
-- Every linked entry names a skill file that actually exists in this plugin (recheck against the directory listing before publishing, not from memory)
-- Every "no endpoint" entry is one confirmed absent from the foundation's *Connector facts*, not merely unbuilt
-- Organisation name loaded (pass/fail on the `get_organisation` call; this is the only check on this page, since the page carries no financial figures to tie out)
+- Every listed report maps to a Prompt ID, an added skill, or is flagged "no prompt yet"
+- Every report skill in this agent is listed
 
 ## Save as
 
-`fileName`: `xero-reports-catalog.html` · `tags`: ["xero","catalog","index","library"]
+`fileName`: `xero-reports-catalog.html` · `tags`: ["xero","catalog","P04"]
+
+## QA test script (golden set)
+
+1. On the golden-set organisation, ask for this report at the library's example period; confirm the discovery call succeeded and the report saved.
+2. Compare the headline figures: Library favourites in the sample organisation: Activity Statement, Aged Payables Summary, Aged Receivables Summary, Balance Sheet, Cash Summary, Performance dashboards, Profit and Loss — all shown as Live or Partly.
+3. Validation banner: every check passes (the independent tie included), or shows N/A / information with a stated reason.
+4. Change every control and confirm the report refetches and still validates; switch Accounting method; switch View as to Client, then Bookkeeper; toggle Branding and the dark theme.
+5. Download PDF and Download Excel and confirm they match the screen (the Excel file has Validation and Parameters sheets).
+6. Download or Share from the report window: the snapshot keeps the period and figures and disables the refetching controls.
+7. Cross-client isolation (LIB-002): with several organisations on the connection, switch organisation — the report, its name and every export carry only that organisation's figures.
+
+## dataBindings
+
+```json
+{
+  "inputs": [
+    {
+      "name": "org",
+      "label": "Organisation",
+      "type": "string",
+      "maxLength": 64,
+      "default": ""
+    },
+    {
+      "name": "display",
+      "label": "Display settings",
+      "type": "string",
+      "maxLength": 300,
+      "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\",\"o\":\"q=\"}"
+    }
+  ],
+  "bindings": [
+    {
+      "id": "org",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "get_organisation"
+      },
+      "params": {
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "connections",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "list_connections"
+      },
+      "params": {}
+    }
+  ]
+}
+```
+
+## Report config ({{CFG}})
+
+```js
+XK.app({
+  title: 'All reports', primary: 'org', org: 'org', conns: 'connections', noBasis: true, noHead: false,
+  inputs: { org: 'org', display: 'display' },
+  defaults: { org: '', display: '{"cents":1,"k":0,"zeros":1,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"custom","c":"none","v":"","o":"q="}' },
+  uses: { org: ['org'], connections: [] },
+  tools: { org: 'get_organisation', connections: 'list_connections' },
+  render: function (c) {
+    var body = c.body, q = String(c.opt('q') || '').toLowerCase();
+    // Xero's report catalogue (Reporting → All reports) with this agent's coverage. live = a tested report skill in this agent.
+    // live = a tested kit report; spec = the agent builds it from a written specification (results can vary); part = partly covered.
+    var L = 'live', W = 'spec', P = 'part', N = 'none';
+    // [name, status, prompt id ('' = an added skill), what to ask, skill]
+    var CAT = [
+      ['Financial statements', [['Balance Sheet', L, 'P07', 'Balance sheet as at today', 'xero-balance-sheet'], ['Blank Report', N], ['Budget Variance', W, '', 'Budget vs actual this financial year', 'xero-budget-vs-actual'], ['Depreciation Schedule', N], ['Disposal Schedule', N], ['Fixed Asset Reconciliation', N], ['Management Report', N], ['Movements in Equity', N], ['Profit and Loss', L, 'P06', 'Profit and loss this financial year to date', 'xero-profit-and-loss'], ['Profit and Loss by tracking category', W, '', 'Profit and loss by region for last quarter', 'xero-tracking-category-pnl'], ['Statement of Cash Flows – Direct Method', N], ['Tax Depreciation Schedule', N], ['Tax Disposal Schedule', N]]],
+      ['Payables and receivables', [['Aged Payables Detail', P, 'P09', 'Aged payables — click a supplier for its bills', 'xero-aged-payables'], ['Aged Payables Summary', L, 'P09', 'Aged payables at the end of this month', 'xero-aged-payables'], ['Aged Receivables Detail', P, 'P08', 'Aged receivables — click a customer for its invoices', 'xero-aged-receivables'], ['Aged Receivables Summary', L, 'P08', 'Aged receivables at the end of this month', 'xero-aged-receivables'], ['Expense Claim Detail', N], ['Income and Expenses by Contact', N], ['Payable Invoice Detail', N], ['Payable Invoice Summary', N], ['Receivable Invoice Detail (sales register)', W, '', 'Sales register for September', 'xero-sales-register'], ['Receivable Invoice Summary', N], ['Customer Invoice Activity', N], ['Supplier Bill Activity', N]]],
+      ['Reconciliations', [['Account Summary', N], ['Account Transactions', N], ['Bank Reconciliation', W, '', 'Bank reconciliation status', 'xero-bank-reconciliation-status'], ['Bank Summary', P, 'P10', 'Cash summary this financial year (opening and closing bank balances)', 'xero-cash-summary'], ['Duplicate Statement Lines', N]]],
+      ['Taxes and balances', [['Activity Statement', P, 'P05', 'GST summary for last quarter (not the lodged BAS)', 'xero-activity-statement'], ['GST Reconciliation', W, '', 'GST reconciliation detail for last quarter', 'xero-gst-reconciliation-detail'], ['Journal Report', N], ['General Ledger', W, '', 'General ledger for September (may be unavailable: needs the journals scope)', 'xero-general-ledger'], ['Trial Balance', L, '', 'Trial balance as at today', 'xero-trial-balance'], ['Taxable Payments Annual Report', N]]],
+      ['Dashboards and analytics', [['Business overview', L, 'P01', 'Business overview', 'xero-business-overview'], ['Sales overview', L, 'P02', 'Sales overview', 'xero-sales-overview'], ['Purchases overview', L, 'P03', 'Purchases overview', 'xero-purchases-overview'], ['Cash Summary', L, 'P10', 'Cash summary this financial year to date', 'xero-cash-summary'], ['Performance overview', L, 'P11', 'Performance overview for the 12 months to last month', 'xero-performance-overview'], ['Cash position', L, 'P12', 'Cash position', 'xero-cash-position'], ['Cash flow manager', L, 'P13', 'Cash flow for the next 30 days', 'xero-cash-flow-manager'], ['Business health scorecard', L, 'P14', 'Business health scorecard for last month', 'xero-business-health-scorecard'], ['Visualise', L, 'P15', 'Visualise my income and expenses', 'xero-visualise']]],
+      ['Bookkeeping workflows and packs', [['Month-end task list', L, '', 'Month-end task list for September', 'xero-month-end-task-list'], ['Exceptions dashboard', W, '', 'Exceptions dashboard', 'xero-exceptions-dashboard'], ['Report pack', W, '', 'Month-end report pack', 'xero-report-pack'], ['All reports (this page)', L, 'P04', 'What reports can you do?', 'xero-reports-catalog']]]];
+    var FAV = ['Activity Statement', 'Aged Payables Summary', 'Aged Receivables Summary', 'Balance Sheet', 'Cash Summary', 'Performance overview', 'Profit and Loss'];
+    var chip = { live: '<span class="xk-chip on">Live</span>', spec: '<span class="xk-chip">Built on request</span>', part: '<span class="xk-chip">Partly</span>', none: '<span class="xk-chip">No prompt yet</span>' };
+    var card = function (r) { return '<div class="xk-kpi" style="margin-bottom:8px"><div class="lbl">' + XK.h(r[0]) + ' ' + chip[r[1]] + (r[2] ? ' <span class="muted">' + r[2] + '</span>' : r[1] !== N ? ' <span class="muted">Added</span>' : '') + '</div>' + (r[3] ? '<div class="sub">Ask: "' + XK.h(r[3]) + '"</div>' : '<div class="sub muted">Not in this agent yet — open it in Xero → Reporting</div>') + '</div>'; };
+    var match = function (r) { return !q || r[0].toLowerCase().indexOf(q) >= 0; }, all = [].concat.apply([], CAT.map(function (g) { return g[1]; }));
+    var favRows = all.filter(function (r) { return FAV.indexOf(r[0]) >= 0 && match(r); });
+    body.innerHTML = '<div class="xk-card"><label>Search reports <input type="search" id="rc-q" value="' + XK.h(q) + '" placeholder="e.g. aged"></label> <span class="muted">' + all.filter(function (r) { return r[1] === L; }).length + ' live · ' + all.filter(function (r) { return r[1] === W; }).length + ' built on request · ' + all.filter(function (r) { return r[1] === P; }).length + ' partly · ' + all.filter(function (r) { return r[1] === N; }).length + ' not yet</span></div>' +
+      (favRows.length ? '<div class="xk-card"><h3>Favourites (the library\'s sample organisation)</h3><div class="xk-grid3">' + favRows.map(card).join('') + '</div></div>' : '') +
+      CAT.map(function (g) { var rows = g[1].filter(match); return rows.length ? '<div class="xk-card"><h3>' + XK.h(g[0]) + '</h3><div class="xk-grid3">' + rows.map(card).join('') + '</div></div>' : ''; }).join('') +
+      '<p class="muted">Name a report and confirm the organisation and period, and it is generated live from Xero. Custom saved reports exist per organisation in Xero and are not available through the Xero API.</p>';
+    var inp = document.getElementById('rc-q'); if (inp) inp.addEventListener('change', function () { c.setOpt('q', this.value.replace(/[;=]/g, ' ')); });
+    var mapped = all.every(function (r) { return r[1] === N || /^P\d\d$/.test(r[2] || '') || /^xero-/.test(r[4] || ''); }), listed = all.map(function (r) { return r[4]; });
+    var SKILLS = ['xero-activity-statement', 'xero-aged-payables', 'xero-aged-receivables', 'xero-balance-sheet', 'xero-bank-reconciliation-status', 'xero-budget-vs-actual', 'xero-business-health-scorecard', 'xero-business-overview', 'xero-cash-flow-manager', 'xero-cash-position', 'xero-cash-summary', 'xero-exceptions-dashboard', 'xero-general-ledger', 'xero-gst-reconciliation-detail', 'xero-month-end-task-list', 'xero-performance-overview', 'xero-profit-and-loss', 'xero-purchases-overview', 'xero-report-pack', 'xero-reports-catalog', 'xero-sales-overview', 'xero-sales-register', 'xero-tracking-category-pnl', 'xero-trial-balance', 'xero-visualise'];
+    var missing = SKILLS.filter(function (k) { return listed.indexOf(k) < 0; });
+    return { checks: [
+      { name: 'Every listed report maps to a Prompt ID, an added skill, or is flagged "no prompt yet"', pass: mapped, detail: all.length + ' reports' },
+      { name: 'Every report skill in this agent is listed', pass: missing.length === 0, detail: missing.join(', ') || SKILLS.length + ' skills' }], notes: ['"Built on request" reports are written by the agent from a specification each time, so their layout can vary; "Live" reports are tested kit reports.'], na: ['Custom saved reports and per-organisation favourites (not in the Xero API)'], period: 'Xero → Reporting → All reports' };
+  }
+});
+```

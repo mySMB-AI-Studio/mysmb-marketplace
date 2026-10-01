@@ -1,55 +1,51 @@
 ---
 name: xero-sales-overview
-description: Build a live Xero sales overview dashboard on the tested report kit — invoices by status, money due this week and next, customers owing the most, top customers by revenue and billable expenses. Use for "sales overview", "invoices", "money coming in", "top customers", "who owes us most".
+description: Build a live, validated Xero Sales overview dashboard (P02) on the tested report kit — Draft / Awaiting approval / Awaiting payment / Overdue strip, money coming in, customers owing the most, billable expenses and repeating invoices. Use for "sales overview", "invoices summary", "who owes us the most", "money coming in", "draft invoices".
 ---
-# Sales Overview
+# Sales overview (P02)
 
-Use when the user asks for a sales overview, invoice status, money coming in, top customers, or who owes the most. Load `xero-report-foundation` first and follow its *Build a kit report* steps with the blocks below — copy them, do not rewrite them. This skill needs the `xero-accounting` connector (`list_invoices`, `list_linked_transactions`, `get_organisation`, `list_connections`).
+Use when the user asks for a sales overview, an invoices summary, money coming in, the customers who owe the most, draft invoices or billable expenses. Load `xero-report-foundation` first and follow its *Build a kit report* steps with the blocks below — copy them, do not rewrite them. This skill needs the `xero-accounting` connector (`list_invoices`, `list_credit_notes`, `list_overpayments`, `list_prepayments`, `list_linked_transactions`, `list_repeating_invoices`, `get_balance_sheet`, `get_organisation`, `list_connections`).
 
-Xero location: no single Xero screen — this composes Reporting → Invoices, and Business → Invoices → Awaiting Payment into one dashboard. Delivery: Wave 1 dashboard.
-
-Sales invoices are `list_invoices` with `where: Type=="ACCREC"`. There is no top-customers tool and no all-contacts aged-receivables tool — top customers by revenue and customers owing the most are both aggregated client-side from `list_invoices`, with two different status filters (see dataBindings): `sales_open` (DRAFT, SUBMITTED, AUTHORISED — the open pipeline) and `sales_period` (AUTHORISED, PAID — revenue actually billed). `list_linked_transactions` returns only `{ LinkedTransactionID, SourceTransactionID, ContactID, Type, Status, UpdatedDateUTC, … }` — it does **not** return an amount or a resolved contact name, so "billable expenses" here is a count only, not a dollar figure; do not estimate one.
+Xero location: Sales → Sales overview. Library: Xero Reports Prompt Library v1.2 → Prompts → P02. Delivery: Wave 1 (delivery order 6).
 
 ## Discovery call
 
-Call `get_organisation` once, `list_connections` once, `list_invoices` with `where: Type=="ACCREC"`, `statuses: DRAFT,SUBMITTED,AUTHORISED`, `order: DueDate ASC` (the open pipeline), `list_invoices` with `where: Type=="ACCREC"`, `statuses: AUTHORISED,PAID`, `order: Date DESC` (the revenue set for top customers), and `list_linked_transactions` with `status: APPROVED`. An error on any call is a failed section: report its message, keep the others rendering.
-
-The exact JSON field names on `list_payments` / `list_purchase_orders` / `list_linked_transactions` rows are not spelled out in the foundation's connector facts (only params are) — this skill relies on the standard, stable Xero Accounting API object schema for `LinkedTransaction` (`LinkedTransactionID`, `SourceTransactionID`, `ContactID`, `Type`, `Status`). That schema is public and long-stable, but has not been called live against this connector while writing this skill.
+Call `get_organisation` and `list_connections` once, and `list_invoices` once with `where` = `Type=="ACCREC"`, `statuses` = `DRAFT,SUBMITTED,AUTHORISED`, `page` = 1. An error is a failed call: report its message.
 
 ## Date defaults
 
-No binding here takes a date parameter (see the foundation: `where`, `statuses` and `order` are static strings fixed at authoring). The top-customers period (This month / This quarter / This financial year to date) is a client-side preset applied to the already-loaded `sales_period` rows on `DateString` — not a declared input, and it never re-queries.
+Always "now" — leave the date default; the kit sets today on open.
 
 ## Members
 
 | Member / view | How |
 |---|---|
-| Sales overview | The one dashboard view (no report switcher) |
-| Another organisation | Organisation picker (every organisation on this Xero connection) |
-| Top-customers period | Client-side preset (This month / This quarter / This financial year to date) over the loaded revenue set |
-| Presentation currency, tracking columns | N/A in this version — figures are in the organisation's base currency |
+| Invoices | Default tab: KPI strip, money coming in (due this week / next week, by due month), customers owing the most (View all), billable expenses, create-new list |
+| Repeating invoices | Tab (no refetch) |
+| Payment links, Statements | Tabs that say N/A — not in the Xero Accounting API |
 
 ## Validation checks (shown in the banner)
 
-- KPI counts and $ (Draft, Awaiting approval, Awaiting payment) reconcile against the open-pipeline rows actually shown
-- Overdue is a subset of Awaiting payment (count and $ both ≤ the total)
-- Due this week + Due next week are each a subset of Awaiting payment
-- For every customer in "Customers owing the most": Due ≥ Overdue
-- Top customers by revenue (the rows shown) ≤ total revenue for the same period and status set
+- Strip counts × amounts reconcile to the invoices listed
+- Overdue is part of awaiting payment
+- Due ≥ Overdue for every customer; customers owing the most ≤ total awaiting payment
+- Money coming in (by due date) = awaiting payment
+- All invoices and credits loaded
+- **Independent tie:** awaiting payment − unallocated credits − future-dated invoices = Accounts Receivable on the Balance Sheet today
 
 ## Save as
 
-`fileName`: `xero-sales-overview.html` · `tags`: ["xero","sales-overview","dashboard","receivables"]
+`fileName`: `xero-sales-overview.html` · `tags`: ["xero","sales-overview","P02","dashboard"]
 
-## QA test script (no live access — follow this before shipping)
+## QA test script (golden set)
 
-This report has not been exercised against a live Xero organisation. Before treating it as done:
-
-1. Open it against a connected sandbox or golden-set organisation and confirm all three sections load (KPIs, both grids, the donut).
-2. Confirm `list_invoices` rows carry `Contact.ContactID` (not just `Contact.Name`) for every AUTHORISED/PAID/DRAFT/SUBMITTED invoice — the customer aggregations group by `ContactID` and fall back to `Contact.Name` only when the ID is missing.
-3. Confirm `list_linked_transactions` really returns no amount field on this connector (as the foundation implies); if it does carry one, this skill should be revisited to show a real dollar figure instead of a count.
-4. Check every validation line passes (or shows a stated reason) against the same organisation's figures in Xero → Business → Invoices.
-5. Switch organisation (if more than one is connected), switch the top-customers period preset, switch View as, toggle Branding and the dark theme, then Download PDF and Download Excel and confirm they match the screen.
+1. On the golden-set organisation, ask for this report at the library's example period; confirm the discovery call succeeded and the report saved.
+2. Compare the headline figures: Hammerjack Pty Limited: Draft (236) 2,394,245.40 | Awaiting approval (0) 0.00 | Awaiting payment (170) 2,321,268.48 | Overdue (142) 2,076,292.77 · Due this week 32,470.87, next week 149,579.55 · top debtor mySMB 1,388,337.73. On Irvine Jackson Pty Ltd in QA, the strip matches Xero → Sales → Sales overview and every check passes.
+3. Validation banner: every check passes (the independent tie included), or shows N/A / information with a stated reason.
+4. Change every control and confirm the report refetches and still validates; switch Accounting method; switch View as to Client, then Bookkeeper; toggle Branding and the dark theme.
+5. Download PDF and Download Excel and confirm they match the screen (the Excel file has Validation and Parameters sheets).
+6. Download or Share from the report window: the snapshot keeps the period and figures and disables the refetching controls.
+7. Cross-client isolation (LIB-002): with several organisations on the connection, switch organisation — the report, its name and every export carry only that organisation's figures.
 
 ## dataBindings
 
@@ -57,11 +53,25 @@ This report has not been exercised against a live Xero organisation. Before trea
 {
   "inputs": [
     {
+      "name": "as_at",
+      "label": "As at",
+      "type": "date",
+      "default": "today"
+    },
+    {
       "name": "org",
       "label": "Organisation",
       "type": "string",
       "maxLength": 64,
       "default": ""
+    },
+    {
+      "name": "page",
+      "label": "Page",
+      "type": "number",
+      "min": 1,
+      "max": 20,
+      "default": 1
     },
     {
       "name": "persona",
@@ -80,12 +90,12 @@ This report has not been exercised against a live Xero organisation. Before trea
       "label": "Display settings",
       "type": "string",
       "maxLength": 300,
-      "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\"}"
+      "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"today\",\"c\":\"none\",\"v\":\"docs\",\"o\":\"r=30\"}"
     }
   ],
   "bindings": [
     {
-      "id": "sales_open",
+      "id": "invoices",
       "tool": {
         "mcp": "xero-accounting",
         "name": "list_invoices"
@@ -104,8 +114,8 @@ This report has not been exercised against a live Xero organisation. Before trea
           "value": "DueDate ASC"
         },
         "page": {
-          "kind": "static",
-          "value": 1
+          "kind": "input",
+          "input": "page"
         },
         "xero_tenant_id": {
           "kind": "input",
@@ -114,27 +124,19 @@ This report has not been exercised against a live Xero organisation. Before trea
       }
     },
     {
-      "id": "sales_period",
+      "id": "credit_notes",
       "tool": {
         "mcp": "xero-accounting",
-        "name": "list_invoices"
+        "name": "list_credit_notes"
       },
       "params": {
         "where": {
           "kind": "static",
-          "value": "Type==\"ACCREC\""
-        },
-        "statuses": {
-          "kind": "static",
-          "value": "AUTHORISED,PAID"
-        },
-        "order": {
-          "kind": "static",
-          "value": "Date DESC"
+          "value": "Type==\"ACCRECCREDIT\" AND Status==\"AUTHORISED\""
         },
         "page": {
-          "kind": "static",
-          "value": 1
+          "kind": "input",
+          "input": "page"
         },
         "xero_tenant_id": {
           "kind": "input",
@@ -143,7 +145,49 @@ This report has not been exercised against a live Xero organisation. Before trea
       }
     },
     {
-      "id": "billable",
+      "id": "overpayments",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "list_overpayments"
+      },
+      "params": {
+        "where": {
+          "kind": "static",
+          "value": "Type==\"RECEIVE-OVERPAYMENT\" AND Status==\"AUTHORISED\""
+        },
+        "page": {
+          "kind": "input",
+          "input": "page"
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "prepayments",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "list_prepayments"
+      },
+      "params": {
+        "where": {
+          "kind": "static",
+          "value": "Type==\"RECEIVE-PREPAYMENT\" AND Status==\"AUTHORISED\""
+        },
+        "page": {
+          "kind": "input",
+          "input": "page"
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "linked",
       "tool": {
         "mcp": "xero-accounting",
         "name": "list_linked_transactions"
@@ -154,8 +198,50 @@ This report has not been exercised against a live Xero organisation. Before trea
           "value": "APPROVED"
         },
         "page": {
+          "kind": "input",
+          "input": "page"
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "repeating",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "list_repeating_invoices"
+      },
+      "params": {
+        "where": {
           "kind": "static",
-          "value": 1
+          "value": "Type==\"ACCREC\" AND Status==\"AUTHORISED\""
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "bs",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "get_balance_sheet"
+      },
+      "params": {
+        "date": {
+          "kind": "input",
+          "input": "as_at"
+        },
+        "standardLayout": {
+          "kind": "static",
+          "value": true
+        },
+        "paymentsOnly": {
+          "kind": "static",
+          "value": false
         },
         "xero_tenant_id": {
           "kind": "input",
@@ -192,103 +278,92 @@ This report has not been exercised against a live Xero organisation. Before trea
 
 ```js
 XK.app({
-  title: 'Sales Overview', primary: 'sales_open', dated: [], org: 'org', conns: 'connections',
+  title: 'Sales overview', primary: 'invoices', org: 'org', conns: 'connections', noBasis: true,
   inputs: { org: 'org', persona: 'persona', display: 'display' },
-  defaults: { org: '', persona: 'Bookkeeper',
-    display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"custom","c":"none","v":""}' },
-  uses: { sales_open: ['org'], sales_period: ['org'], billable: ['org'], org: ['org'], connections: [] },
-  tools: { sales_open: 'list_invoices (Type==ACCREC, DRAFT/SUBMITTED/AUTHORISED)', sales_period: 'list_invoices (Type==ACCREC, AUTHORISED/PAID)', billable: 'list_linked_transactions (APPROVED)', org: 'get_organisation', connections: 'list_connections' },
+  defaults: { as_at: '2026-09-25', org: '', page: 1, persona: 'Bookkeeper',
+    display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"today","c":"none","v":"docs","o":"r=30"}' },
+  uses: { invoices: ['org'], credit_notes: ['org'], overpayments: ['org'], prepayments: ['org'], linked: ['org'], repeating: ['org'], bs: ['as_at', 'org'], org: ['org'], connections: [] },
+  paged: { invoices: { input: 'page', key: 'Invoices' }, credit_notes: { input: 'page', key: 'CreditNotes' }, overpayments: { input: 'page', key: 'Overpayments' }, prepayments: { input: 'page', key: 'Prepayments' }, linked: { input: 'page', key: 'LinkedTransactions' } },
+  tools: { invoices: 'list_invoices (invoices: draft, awaiting approval, awaiting payment)', credit_notes: 'list_credit_notes (unallocated)', overpayments: 'list_overpayments (unallocated)', prepayments: 'list_prepayments (unallocated)', linked: 'list_linked_transactions (billable expenses)', repeating: 'list_repeating_invoices', bs: 'get_balance_sheet (Accounts Receivable today)', org: 'get_organisation', connections: 'list_connections' },
+  roll: function () { return { as_at: XK.asAt('today') }; }, // a dashboard is always "now"
+  views: [['docs', 'Invoices'], ['repeating', 'Repeating invoices'], ['links', 'Payment links'], ['statements', 'Statements']],
+  options: [],
   render: function (c) {
-    var self = this, body = c.body, money = function (v) { return XK.money(v, c.currency, c.display); }, today = c.today;
-    if (!c.data.sales_open && !c.errors.sales_open) return {};
-    function rowsOf(v, key) { return v && !XK.errorOf(v) && Array.isArray(v[key]) ? v[key] : []; }
-    var open = rowsOf(c.data.sales_open, 'Invoices'), period = rowsOf(c.data.sales_period, 'Invoices'), billable = rowsOf(c.data.billable, 'LinkedTransactions');
-
-    var byStatus = function (s) { return open.filter(function (r) { return r.Status === s; }); };
-    var draft = byStatus('DRAFT'), submitted = byStatus('SUBMITTED'), authorised = byStatus('AUTHORISED');
-    var isOverdue = function (r) { var d = String(r.DueDateString || '').slice(0, 10); return !!d && d < today; };
-    var overdue = authorised.filter(isOverdue);
-    var sum = function (rows) { return XK.sum(rows.map(function (r) { return XK.num(r.AmountDue); })); };
-
-    var t = XK.parse(today), w1s = today, w1e = XK.iso(XK.addDays(t, 6)), w2s = XK.iso(XK.addDays(t, 7)), w2e = XK.iso(XK.addDays(t, 13));
-    var inWindow = function (r, s, e) { var d = String(r.DueDateString || '').slice(0, 10); return !!d && d >= s && d <= e; };
-    var dueThisWeek = authorised.filter(function (r) { return inWindow(r, w1s, w1e); }), dueNextWeek = authorised.filter(function (r) { return inWindow(r, w2s, w2e); });
-
-    // Customers owing the most (open pipeline, AUTHORISED only)
-    var byCust = {};
-    authorised.forEach(function (r) {
-      var key = (r.Contact && (r.Contact.ContactID || r.Contact.Name)) || 'unknown', name = (r.Contact && r.Contact.Name) || 'N/A — not in source';
-      var e = byCust[key] || (byCust[key] = { name: name, due: 0, overdue: 0, count: 0 });
-      var amt = XK.num(r.AmountDue) || 0; e.due += amt; e.count++; if (isOverdue(r)) e.overdue += amt;
-    });
-    var custOwing = Object.keys(byCust).map(function (k) { return byCust[k]; }).sort(function (a, b) { return b.due - a.due; });
-    var custViolations = custOwing.filter(function (e) { return e.overdue > e.due + 0.01; });
-
-    // Top customers by revenue (client-side period preset over `period` rows)
-    var presetKey = this._salesPreset || 'this_month', pr = XK.preset(presetKey, c.fy.month) || { start: '0000-01-01', end: '9999-12-31' };
-    var periodRows = period.filter(function (r) { var d = String(r.DateString || '').slice(0, 10); return !!d && d >= pr.start && d <= pr.end; });
-    var byRev = {};
-    periodRows.forEach(function (r) {
-      var key = (r.Contact && (r.Contact.ContactID || r.Contact.Name)) || 'unknown', name = (r.Contact && r.Contact.Name) || 'N/A — not in source';
-      var e = byRev[key] || (byRev[key] = { name: name, revenue: 0, count: 0 }); e.revenue += XK.num(r.SubTotal) || 0; e.count++;
-    });
-    var topRev = Object.keys(byRev).map(function (k) { return byRev[k]; }).sort(function (a, b) { return b.revenue - a.revenue; });
-    var totalRevenue = XK.sum(topRev.map(function (e) { return e.revenue; })), top10 = topRev.slice(0, 10), top10Sum = XK.sum(top10.map(function (e) { return e.revenue; }));
-
-    // ---- Body ----
-    body.innerHTML =
-      XK.kpis([
-        { label: 'Draft', value: sum(draft), sub: draft.length + ' invoice' + (draft.length === 1 ? '' : 's') },
-        { label: 'Awaiting approval', value: sum(submitted), sub: submitted.length + ' invoice' + (submitted.length === 1 ? '' : 's') },
-        { label: 'Awaiting payment', value: sum(authorised), sub: authorised.length + ' invoice' + (authorised.length === 1 ? '' : 's') },
-        { label: 'Overdue', value: sum(overdue), sub: overdue.length + ' overdue' },
-        { label: 'Billable expenses awaiting invoicing', value: billable.length, money: false, sub: 'count only — no amount on this endpoint' }
-      ], c) +
-      '<div class="xk-grid2" style="margin-top:16px">' +
-      '<div class="xk-card"><h3>Money due this week / next week</h3><div id="xk-due"></div></div>' +
-      '<div class="xk-card"><h3>Top customers by revenue<label style="float:right;font-weight:400"><select id="xk-top-preset" style="font:inherit"><option value="this_month">This month</option><option value="this_quarter">This quarter</option><option value="this_fy_td">This financial year to date</option></select></label></h3><div id="xk-donut"></div></div>' +
-      '</div>' +
-      '<div class="xk-grid2 detail-block" style="margin-top:16px">' +
-      '<div class="xk-card"><h3>Customers owing the most</h3><div id="xk-owing"></div></div>' +
-      '<div class="xk-card"><h3>Top customers by revenue (' + XK.h(pr.start) + ' to ' + XK.h(pr.end) + ')</h3><div id="xk-top"></div></div>' +
-      '</div>';
-    var presetEl = document.getElementById('xk-top-preset');
-    presetEl.value = presetKey;
-    presetEl.addEventListener('change', function () { self._salesPreset = presetEl.value; c.change({}); }); // client-side filter only — no refetch
-
-    XK.bars(document.getElementById('xk-due'), { title: 'Money due this week vs next week', labels: ['Due this week', 'Due next week'], series: [{ name: 'Awaiting payment (AUTHORISED)', values: [sum(dueThisWeek), sum(dueNextWeek)] }] }, c);
-    XK.donut(document.getElementById('xk-donut'), { title: 'Top customers by revenue', centre: money(totalRevenue), items: topRev.map(function (e) { return { label: e.name, value: e.revenue }; }) }, c);
-    XK.grid(document.getElementById('xk-owing'), {
-      columns: [{ key: 'name', title: 'Customer' }, { key: 'count', title: 'Invoices', num: true }, { key: 'due', title: 'Due', money: true }, { key: 'overdue', title: 'Overdue', money: true }],
-      rows: custOwing, filter: true, total: { name: 'Total (' + custOwing.length + ')', count: authorised.length, due: sum(authorised), overdue: sum(overdue) },
-      empty: c.errors.sales_open ? c.err('sales_open') : 'No open sales invoices.'
-    }, c);
-    XK.grid(document.getElementById('xk-top'), {
-      columns: [{ key: 'name', title: 'Customer' }, { key: 'count', title: 'Invoices', num: true }, { key: 'revenue', title: 'Revenue', money: true }],
-      rows: top10, filter: false, empty: c.errors.sales_period ? c.err('sales_period') : 'No invoiced or paid sales in this period.'
-    }, c);
-
-    // ---- Checks ----
+    var K = { kind: 'sales', inv: 'ACCREC', cn: 'ACCRECCREDIT', op: 'RECEIVE-OVERPAYMENT', pp: 'RECEIVE-PREPAYMENT', who: 'Customer', whoPl: 'Customers', docs: 'invoices', Docs: 'Invoices', bs: /^Accounts Receivable$/i, bsName: 'Accounts Receivable' };
+    var self = this, body = c.body, money = function (v) { return XK.money(v, c.currency, c.display); }, asAt = c.inputs.as_at, base = c.currency, r2 = function (v) { return Math.round(v * 100) / 100; };
+    if (c.errors.invoices) { body.innerHTML = '<p class="xk-err">' + XK.h(c.err('invoices')) + '</p>'; return { checks: [{ name: K.Docs + ' loaded', pass: false, detail: c.err('invoices') }] }; }
+    if (!c.data.invoices) return {};
+    var inv = c.rows('invoices').filter(function (d) { return d && d.Type === K.inv; }), P = XK.pipeline(inv, asAt, base);
+    var credits = XK.openDocs({ credit_notes: c.rows('credit_notes'), overpayments: c.rows('overpayments'), prepayments: c.rows('prepayments'), types: { credit_notes: K.cn, overpayments: K.op, prepayments: K.pp } }, base, null);
+    var creditSum = XK.sum(credits.map(function (d) { return d.amount; }));
+    var strip = '<div class="xk-kpis">' + [['Draft', P.draft], ['Awaiting approval', P.approval], ['Awaiting payment', P.awaiting], ['Overdue', P.overdue]].map(function (k, i) {
+      return '<div class="xk-kpi"><div class="lbl">' + XK.h(k[0]) + ' (' + k[1].n + ')</div><div class="val' + (i === 3 && k[1].v > 0 ? ' neg' : '') + '">' + (k[1].n ? money(k[1].v) : 'None') + '</div></div>'; }).join('') + '</div>';
+    var view = c.view || 'docs', extra = { checks: [], html: '', na: [] };
+    // ---- per-kind panels ----
+    var A = XK.parse(asAt), dow = (A.getUTCDay() + 6) % 7, wk0 = XK.addDaysIso(asAt, -dow), wk1 = XK.addDaysIso(wk0, 6), nw0 = XK.addDaysIso(wk0, 7), nw1 = XK.addDaysIso(wk0, 13);
+    var due = function (a, b) { return XK.sum(P.awaiting.docs.filter(function (d) { return d.due >= a && d.due <= b; }).map(function (d) { return d.amount; })); };
+    var VIEWS = [['docs', 'Invoices'], ['repeating', 'Repeating invoices'], ['links', 'Payment links'], ['statements', 'Statements']];
+      extra.tabs = VIEWS.map(function (v) { return '<button type="button" class="xk-tab' + (v[0] === view ? ' on' : '') + '" data-v="' + v[0] + '">' + XK.h(v[1]) + '</button>'; }).join('');
+      extra.after = [function () { body.querySelectorAll('.xk-tab').forEach(function (b) { b.addEventListener('click', function () { c.change({}, { v: b.getAttribute('data-v') }); }); }); }];
+      var dueW = due(wk0, wk1), dueN = due(nw0, nw1), ms = XK.monthsEnding(asAt, 3), mkeys = ms.map(function (m) { return m.key; });
+      var buckets = [{ label: 'Older', v: 0 }].concat(ms.map(function (m) { return { label: XK.monthLabel(m.key), v: 0 }; })).concat([{ label: 'Future', v: 0 }]);
+      P.awaiting.docs.forEach(function (d) { var k = d.due.slice(0, 7), j = k < mkeys[0] ? 0 : k > mkeys[2] ? buckets.length - 1 : 1 + mkeys.indexOf(k); buckets[j].v = r2(buckets[j].v + d.amount); });
+      var byC = {}; P.awaiting.docs.forEach(function (d) { if (!byC[d.cid]) byC[d.cid] = { name: d.contact, due: 0, overdue: 0 }; byC[d.cid].due = r2(byC[d.cid].due + d.amount); if (d.due < asAt) byC[d.cid].overdue = r2(byC[d.cid].overdue + d.amount); });
+      var owing = Object.keys(byC).map(function (k) { return byC[k]; }).sort(function (a, b) { return b.due - a.due || a.name.localeCompare(b.name); }), top = self._all ? owing : owing.slice(0, 9);
+      var names = {}; inv.forEach(function (d) { if (d.Contact) names[d.Contact.ContactID] = d.Contact.Name; });
+      var lc = {}; c.rows('linked').forEach(function (l) { if (l && l.Status === 'APPROVED') lc[l.ContactID] = (lc[l.ContactID] || 0) + 1; });
+      var lkeys = Object.keys(lc), rep = ((c.data.repeating || {}).RepeatingInvoices || []).filter(function (r) { return r.Type === K.inv && r.Status === 'AUTHORISED'; });
+      if (view === 'docs') {
+        extra.html = '<div class="xk-grid2" style="margin-top:12px"><div class="xk-card"><h3>Money coming in</h3><div class="xk-kpis"><div class="xk-kpi"><div class="lbl">Due this week</div><div class="val">' + money(dueW) + '</div></div><div class="xk-kpi"><div class="lbl">Due next week</div><div class="val">' + money(dueN) + '</div></div></div><div id="so-ch"></div></div>' +
+          '<div class="xk-card"><h3>' + K.whoPl + ' owing the most</h3><div id="so-top"></div>' + (owing.length > 9 ? '<button type="button" id="so-all" class="xk-link">' + (self._all ? 'Show top 9' : 'View all ' + owing.length) + '</button>' : '') + '</div>' +
+          '<div class="xk-card detail-block"><h3>Billable expenses</h3>' + (lkeys.length ? '<p>' + lkeys.length + ' customer' + (lkeys.length === 1 ? '' : 's') + ' · ' + lkeys.reduce(function (a, k) { return a + lc[k]; }, 0) + ' item(s) not yet invoiced</p><ul>' + lkeys.map(function (k) { return '<li>' + XK.h(names[k] || 'Customer ' + k.slice(0, 8)) + ' — ' + lc[k] + ' item(s)</li>'; }).join('') + '</ul><p class="muted">Amount owing: N/A — Xero\'s billable-expense API returns no amounts.</p>' : '<p class="muted">No billable expenses waiting to be invoiced.</p>') + '</div>' +
+          '<div class="xk-card detail-block"><h3>Create new (in Xero)</h3><ul><li>Invoice</li><li>Payment link</li><li>Repeating invoice</li></ul><p class="muted">Reports only read from Xero — create these in Xero → Sales.</p></div></div>';
+        extra.after.push(function () {
+          XK.bars(document.getElementById('so-ch'), { title: 'Money coming in by due date', labels: buckets.map(function (b) { return b.label; }), series: [{ name: 'Awaiting payment', values: buckets.map(function (b) { return b.v; }), colors: buckets.map(function (b, i) { return i === 3 ? 'var(--c1)' : 'var(--c2)'; }) }] }, c);
+          XK.grid(document.getElementById('so-top'), { rows: top, columns: [{ key: 'name', title: K.who }, { key: 'due', title: 'Due', money: true }, { key: 'overdue', title: 'Overdue', num: true, fmt: function (v) { return v ? '<span class="neg">' + XK.h(money(v)) + '</span>' : money(v); }, html: true }], empty: 'Nothing owing.' }, c);
+          var b = document.getElementById('so-all'); if (b) b.addEventListener('click', function () { self._all = !self._all; c.change({}, {}); });
+        });
+      } else if (view === 'repeating') {
+        extra.viewTitle = 'Repeating invoices';
+        extra.html = '<div class="xk-card" style="margin-top:12px"><h3>Repeating invoices</h3><div id="so-rep"></div></div>';
+        extra.after.push(function () { XK.grid(document.getElementById('so-rep'), { filter: true, rows: rep.map(function (r) { var s = r.Schedule || {}; return { contact: (r.Contact || {}).Name || '', ref: r.Reference || '', every: (s.Period > 1 ? 'Every ' + s.Period + ' ' : '') + String(s.Unit || '').toLowerCase(), next: XK.isoDate(s.NextScheduledDateString || s.NextScheduledDate) || '', total: XK.num(r.Total) }; }), columns: [{ key: 'contact', title: K.who }, { key: 'ref', title: 'Reference' }, { key: 'every', title: 'Repeats' }, { key: 'next', title: 'Next invoice' }, { key: 'total', title: 'Amount', money: true }], empty: 'No repeating invoices.' }, c); });
+      } else { extra.viewTitle = view === 'links' ? 'Payment links' : 'Statements'; extra.html = '<p class="muted" style="margin-top:12px">' + (view === 'links' ? 'Payment links' : 'Customer statements') + ': N/A — not in the Xero Accounting API. Open Xero → Sales → ' + (view === 'links' ? 'Payment links' : 'Statements') + '.</p>'; }
+      extra.checks = [
+        { name: 'Due ≥ Overdue for every ' + K.who.toLowerCase(), pass: owing.every(function (o) { return o.due + 0.005 >= o.overdue; }), detail: owing.length + ' ' + K.whoPl.toLowerCase() },
+        { name: K.whoPl + ' owing the most ≤ total awaiting payment', pass: XK.sum(owing.slice(0, 9).map(function (o) { return o.due; })) <= P.awaiting.v + 0.005, detail: 'Top ' + Math.min(9, owing.length) + ': ' + money(XK.sum(owing.slice(0, 9).map(function (o) { return o.due; }))) + ' of ' + money(P.awaiting.v) },
+        { name: 'Money coming in (by due date) = awaiting payment', pass: XK.near(XK.sum(buckets.map(function (b) { return b.v; })), P.awaiting.v), detail: money(XK.sum(buckets.map(function (b) { return b.v; }))) }];
+      extra.na = ['Payment links and statements (not in the Xero Accounting API)', 'Billable expense amounts (the linked-transaction API has no amounts)'];
+      extra.sheet = [[], [{ v: 'Money coming in', s: 'bold' }]].concat(buckets.map(function (b) { return [b.label, null, { v: b.v, s: 'money' }]; })).concat([[], [{ v: K.whoPl + ' owing the most', s: 'bold' }, null, { v: 'Due', s: 'bold' }, { v: 'Overdue', s: 'bold' }]]).concat(owing.map(function (o) { return [o.name, null, { v: o.due, s: 'money' }, { v: o.overdue, s: 'money' }]; }));
+    // ---- checks ----
+    var docCount = P.draft.n + P.approval.n + P.awaiting.n, listed = inv.filter(function (d) { return /^(DRAFT|SUBMITTED)$/.test(d.Status) || (d.Status === 'AUTHORISED' && XK.num(d.AmountDue)); });
+    var sums = { DRAFT: 0, SUBMITTED: 0, AUTHORISED: 0 }; listed.forEach(function (d) { sums[d.Status] = r2(sums[d.Status] + XK.doc(d, 'Invoice', base)[d.Status === 'AUTHORISED' ? 'amount' : 'total']); });
+    var ids = ['invoices', 'credit_notes', 'overpayments', 'prepayments'], failed = ids.filter(function (id) { return c.errors[id]; }), cut = ids.filter(function (id) { return c.truncated(id); });
+    var fxDocs = inv.filter(function (d) { return d.CurrencyCode && d.CurrencyCode !== base; }).length, open = r2(P.awaiting.v + creditSum);
+    var bsRow = c.data.bs ? XK.find(XK.walk(c.data.bs).lines, null, K.bs, 'row') : null, bsv = bsRow ? XK.val(bsRow) : null;
+    var future = XK.sum(P.awaiting.docs.filter(function (d) { return d.date > asAt; }).map(function (d) { return d.amount; })), openAt = r2(open - future);
     var checks = [
-      { name: 'Draft / Awaiting approval / Awaiting payment reconcile against the rows shown', pass: c.errors.sales_open ? false : true, detail: c.errors.sales_open ? c.err('sales_open') : draft.length + ' draft, ' + submitted.length + ' awaiting approval, ' + authorised.length + ' awaiting payment' },
-      { name: 'Overdue is a subset of Awaiting payment', pass: c.errors.sales_open ? null : overdue.length <= authorised.length && sum(overdue) <= sum(authorised) + 0.01, detail: overdue.length + ' of ' + authorised.length + ' invoices, ' + money(sum(overdue)) + ' of ' + money(sum(authorised)) },
-      { name: 'Due this week + Due next week are each a subset of Awaiting payment', pass: c.errors.sales_open ? null : sum(dueThisWeek) <= sum(authorised) + 0.01 && sum(dueNextWeek) <= sum(authorised) + 0.01, detail: money(sum(dueThisWeek)) + ' + ' + money(sum(dueNextWeek)) + ' vs ' + money(sum(authorised)) + ' total' },
-      { name: 'Every customer owing: Due ≥ Overdue', pass: c.errors.sales_open ? null : custViolations.length === 0, detail: custViolations.length ? custViolations.length + ' customer(s) show overdue exceeding due — a data or rendering bug' : custOwing.length + ' customer' + (custOwing.length === 1 ? '' : 's') + ' checked' },
-      { name: 'Top customers by revenue ≤ total revenue for the period', pass: c.errors.sales_period ? null : top10Sum <= totalRevenue + 0.01, detail: money(top10Sum) + ' (top ' + top10.length + ') of ' + money(totalRevenue) + ' total' }
-    ];
-    var notes = ['Billable expenses: `list_linked_transactions` returns no amount or resolved contact name — the KPI is a count of APPROVED linked transactions only.'];
-    if (open.length === 100 || period.length === 100 || billable.length === 100) notes.push('One or more lists returned exactly 100 rows (Xero’s page size) — only the first page was fetched, so totals may be incomplete for a very large ledger.');
-    this._open = open; this._custOwing = custOwing; this._topRev = topRev; this._billableCount = billable.length; this._pr = pr;
-    return { checks: checks, notes: notes, na: ['Presentation currency and tracking-category columns (not in this version)'], title: 'Sales Overview' };
+      { name: 'Strip counts × amounts reconcile to the ' + K.docs + ' listed', pass: listed.length === docCount && XK.near(sums.DRAFT, P.draft.v) && XK.near(sums.SUBMITTED, P.approval.v) && XK.near(sums.AUTHORISED, P.awaiting.v), detail: docCount + ' ' + K.docs + ' · ' + money(P.awaiting.v) + ' awaiting payment' },
+      { name: 'Overdue is part of awaiting payment', pass: P.overdue.n <= P.awaiting.n && P.overdue.v <= P.awaiting.v + 0.005, detail: P.overdue.n + ' of ' + P.awaiting.n + ' overdue · ' + money(P.overdue.v) }
+    ].concat(extra.checks).concat([
+      { name: 'All ' + K.docs + ' and credits loaded', pass: failed.length || cut.length ? false : true, detail: failed.length ? 'Not loaded: ' + failed.map(function (id) { return c.err(id); }).join('; ') : cut.length ? 'May be truncated: ' + cut.join(', ') : inv.length + ' ' + K.docs + ', ' + credits.length + ' credit(s)' },
+      c.errors.bs ? { name: 'Awaiting payment − credits = ' + K.bsName + ' on the Balance Sheet', pass: null, detail: c.err('bs') }
+        : bsv == null ? { name: 'Awaiting payment − credits = ' + K.bsName + ' on the Balance Sheet', pass: null, detail: 'No ' + K.bsName + ' line on the Balance Sheet' }
+        : XK.near(openAt, bsv) ? { name: 'Awaiting payment − credits = ' + K.bsName + ' on the Balance Sheet today', pass: true, detail: money(P.awaiting.v) + (creditSum ? ' − ' + money(-creditSum) : '') + (future ? ' − ' + money(future) + ' future-dated' : '') + ' = ' + money(bsv) }
+        : fxDocs ? { name: 'Awaiting payment vs ' + K.bsName + ' on the Balance Sheet (information)', pass: null, info: true, detail: 'Difference ' + money(r2(openAt - bsv)) + ' — foreign-currency ' + K.docs + ' are converted at their own rates' }
+        : { name: 'Awaiting payment − credits = ' + K.bsName + ' on the Balance Sheet today', pass: false, detail: money(openAt) + ' vs ' + money(bsv) + ' — difference ' + money(r2(openAt - bsv)) }
+    ]);
+    body.innerHTML = '<div class="xk-tabs detail-block">' + extra.tabs + '</div>' + strip + extra.html;
+    (extra.after || []).forEach(function (f) { f(); });
+    this._x = { P: P, extra: extra };
+    return { checks: checks, notes: extra.notes || [], na: extra.na, period: XK.asOfLine(asAt), title: 'Sales overview' + (extra.viewTitle ? ' — ' + extra.viewTitle : '') };
   },
   excel: function (c) {
-    var open = this._open || [], owing = this._custOwing || [], top = this._topRev || [], pr = this._pr || { start: '', end: '' };
-    return [
-      { name: 'Open invoices', rows: [['Invoice #', 'Customer', 'Status', 'Due date', 'Amount due']].concat(open.map(function (r) { return [r.InvoiceNumber || '', (r.Contact && r.Contact.Name) || '', r.Status || '', String(r.DueDateString || '').slice(0, 10), XK.num(r.AmountDue)]; })), widths: [16, 30, 14, 12, 14] },
-      { name: 'Customers owing', rows: [['Customer', 'Invoices', 'Due', 'Overdue']].concat(owing.map(function (e) { return [e.name, e.count, e.due, e.overdue]; })), widths: [30, 10, 14, 14] },
-      { name: 'Top customers by revenue', rows: [['Period ' + pr.start + ' to ' + pr.end], ['Customer', 'Invoices', 'Revenue']].concat(top.map(function (e) { return [e.name, e.count, e.revenue]; })), widths: [30, 10, 14] },
-      { name: 'Billable expenses', rows: [['Awaiting invoicing (count)', this._billableCount || 0], ['Note', 'list_linked_transactions returns no amount field on this connector']], widths: [30, 40] }
-    ];
+    var x = this._x; if (!x) return [];
+    var head = [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: 'Sales overview', s: 'bold' }], [XK.asOfLine(c.inputs.as_at)], []];
+    var strip = [[{ v: 'Status', s: 'bold' }, { v: 'Count', s: 'bold' }, { v: 'Amount', s: 'bold' }]].concat([['Draft', x.P.draft], ['Awaiting approval', x.P.approval], ['Awaiting payment', x.P.awaiting], ['Overdue', x.P.overdue]].map(function (k) { return [k[0], k[1].n, { v: k[1].v, s: 'money' }]; }));
+    var docs = [[{ v: 'Status', s: 'bold' }, { v: 'Number', s: 'bold' }, { v: 'Customer', s: 'bold' }, { v: 'Date', s: 'bold' }, { v: 'Due date', s: 'bold' }, { v: 'Amount', s: 'bold' }]]
+      .concat([['Draft', x.P.draft], ['Awaiting approval', x.P.approval], ['Awaiting payment', x.P.awaiting]].reduce(function (a, k) { return a.concat(k[1].docs.map(function (d) { return [k[0], d.number, d.contact, d.date, d.due, { v: k[0] === 'Awaiting payment' ? d.amount : d.total, s: 'money' }]; })); }, []));
+    return [{ name: 'Sales overview', rows: head.concat(strip).concat((x.extra.sheet || [])), widths: [34, 12, 16, 12, 12, 16] }, { name: 'Invoices', rows: docs, widths: [18, 14, 32, 12, 12, 16] }];
   }
 });
 ```

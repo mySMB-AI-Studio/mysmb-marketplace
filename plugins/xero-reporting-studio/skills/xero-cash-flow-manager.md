@@ -1,55 +1,50 @@
 ---
 name: xero-cash-flow-manager
-description: Build a live, validated Xero Cash Flow Manager on the tested report kit — today's bank balance, projected receipts and payments over the next 30 days, a daily actual/projected chart, and runway. Use for "cash flow", "cash forecast", "cash projection", "runway", "will we have enough cash".
+description: Build a live, validated Xero Cash flow manager (P13) on the tested report kit — today's bank balance, today's movement, the next 1–7 and 8–30 days, a daily chart of the last 30 days (actual) and the next 30 (projected from invoices and bills), projected balance and cash runway. Use for "cash flow forecast", "cash flow manager", "next 30 days cash", "cash runway", "projected balance".
 ---
-# Cash Flow Manager
+# Cash flow manager (P13)
 
-Use when the user asks for a cash flow forecast, cash projection, runway, or "will we have enough cash". Load `xero-report-foundation` first and follow its *Build a kit report* steps with the blocks below — copy them, do not rewrite them. This skill needs the `xero-accounting` connector (`get_bank_summary`, `list_invoices`, `list_bank_transactions`, `get_organisation`, `list_connections`).
+Use when the user asks for a cash flow forecast, the cash flow manager, cash for the next 30 days, a projected bank balance or cash runway. Load `xero-report-foundation` first and follow its *Build a kit report* steps with the blocks below — copy them, do not rewrite them. This skill needs the `xero-accounting` connector (`get_bank_summary`, `list_invoices`, `list_bank_transactions`, `list_payments`, `get_balance_sheet`, `get_organisation`, `list_connections`).
 
-Delivery: Wave 2 (Analytics dashboard). Not a numbered Prompt Library statement.
-
-**This report contains NO Xero-sourced forecast.** There is no cash-flow-statement or forecasting/projection endpoint anywhere on this connector. Every forward-looking figure is built from today's actual bank balance (`get_bank_summary`) plus open invoices'/bills' due dates and `AmountDue` (`list_invoices`) — real, currently-owed amounts, but their due date is not a promise of when cash actually moves. The report says this in the header, the banner, and Sources & limitations, and adds an explicit "what-if" adjustment the reader can use to layer their own judgement on top without it ever being presented as data from Xero.
-
-**Data-shape caveat:** `list_bank_transactions`'s response fields are not documented in the foundation's connector facts (only its params are: `where`, `order`, `page`, `unitdp`). This skill assumes Xero's standard BankTransaction shape (`Type` = `RECEIVE` / `SPEND`, `Total`, `Date`/`DateString`) for the daily actual-balance chart and skips any record it cannot parse. If that chart shows "N/A" live, record the actual field names and fix the `txnAmount()` / `txnDate()` helpers in this file — every other section (today's balance, the projection, runway) does not depend on this call and keeps working regardless.
+Xero location: Reporting → Cash flow manager. Library: Xero Reports Prompt Library v1.2 → Prompts → P13. Delivery: Wave 2 (delivery order 11).
 
 ## Discovery call
 
-Call `get_organisation` once, `list_connections` once, `get_bank_summary` twice (once with `fromDate` = `toDate` = today for the current balance, once with `fromDate` = 30 days ago and `toDate` = today for the burn-rate history), `list_invoices` twice (`where: Type=="ACCREC"` and `where: Type=="ACCPAY"`, both `statuses: AUTHORISED`, `order: DueDate ASC`), and `list_bank_transactions` once (`order: Date DESC`). Each call's failure is that section's failure only — the projection and runway do not need `list_bank_transactions` to work.
+Call `get_organisation` and `list_connections` once, `get_bank_summary` once with `fromDate` = `toDate` = today, and `list_invoices` once with `where` = `Type=="ACCREC"`, `statuses` = `AUTHORISED`. An error is a failed call: report its message.
 
 ## Date defaults
 
-There is no date control in this report. "Today" is always the real current date (bound via the platform's `now.date` context, never a user input). The trailing history window (`history_from`, used for the burn-rate calculation and the actual-balance chart) is recomputed to 30 days before today every time the report opens — leave its default; do not add a control for it (the tested kit has no numeric-days-back stepper yet).
+Always "now" — leave the date defaults (the kit sets today, the last 30 days and the matching `where` filter). Options in `o`: `d=7|14|30|60|90` (graph days), `od=ex|today` (overdue invoices and bills not projected / expected today), `acct=<AccountID>` (one bank account).
 
-## Controls and views
+## Members
 
-| Control | Behaviour |
+| Member / view | How |
 |---|---|
-| Organisation | Picker (LIB-002) |
-| What-if adjustments (Additional expected receipts / payments) | Plain number fields inside the report body, not a declared input — a local scenario the reader can type into that adjusts only the Projected balance (30 days) card and is never sent to Xero or saved with the report |
-| View as | Client / Bookkeeper / Practitioner / Executive |
+| Overview | KPI strip, daily chart (actual | projected), today's balance, projected balance, cash runway |
+| Manage cash in / Manage cash out | Tabs: invoices / bills due in the window (and overdue) |
+| Planned cash items | N/A — Xero's planned items are not in the API |
 
 ## Validation checks (shown in the banner)
 
-- Projected balance (30 days) = today's balance + projected inflows (overdue + next 30 days) − projected outflows + any what-if adjustment
-- Today's movement = Cash received − Cash spent, from `get_bank_summary`'s own figures for today
-- Runway follows the disclosed burn method (average daily net cash flow over the trailing window) — shown for information; it is a method disclosure, not a pass/fail
-- All open receivables / payables loaded (no pagination truncation)
-- The daily actual-balance chart reflects `list_bank_transactions` when that call succeeds — N/A otherwise, never faked
-- Every section total = Σ its account rows, across every source that returned rows
+- Projected balance = today's balance + projected cash in − projected cash out
+- KPI strip = Σ the daily projection
+- Cash runway method (information)
+- **Independent ties:** today's bank balance = Total Bank on the Balance Sheet; last 30 days of bank transactions + payments = the Bank Summary for the same days
+- All invoices, bills and transactions loaded
 
 ## Save as
 
-`fileName`: `xero-cash-flow-manager.html` · `tags`: ["xero","cash-flow","analytics","dashboard"]
+`fileName`: `xero-cash-flow-manager.html` · `tags`: ["xero","cash-flow-manager","P13","cash"]
 
-## QA test script (no golden set — new dashboard)
+## QA test script (golden set)
 
-1. On a connected Xero organisation, ask for this report; confirm the six discovery calls resolve or fail individually without blocking the rest of the page.
-2. **Record `list_bank_transactions`'s actual response** (its top-level array key and each transaction's field names for date, amount and direction). Compare against the `txnAmount()` / `txnDate()` / `listRows()` helpers in this file's Report config and fix them if Xero's wording differs — this call only feeds the daily actual-balance chart, so a mismatch degrades that one chart to N/A rather than breaking the report.
-3. Cross-check today's balance against Xero → Reporting → Bank Summary for today, and the open receivables/payables buckets against Xero → Business → Invoices / Bills filtered to Awaiting Payment, sorted by due date.
-4. Type a value into "Additional expected receipts" or "payments" and confirm only the Projected balance (30 days) card changes — no refetch, no change to any other section.
-5. Confirm the daily chart's line is solid up to today and dashed from today through +7/+30 days (the "today divider" is this solid-to-dashed transition — there is no separate divider primitive in the tested kit).
-6. If either invoice list has more than 100 open items, confirm further pages load automatically up to the stated cap.
-7. Validation banner, controls, PDF/Excel download, Download/Share snapshot (the what-if fields reset to zero in a snapshot, since they are not part of `dataBindings`), dark theme, and cross-client isolation (LIB-002).
+1. On the golden-set organisation, ask for this report at the library's example period; confirm the discovery call succeeded and the report saved.
+2. Compare the headline figures: Hammerjack Pty Limited: Today 3,932,894 · today's movement 4,551 · next 1–7 days −569,688 · next 8–30 days 455,057 · 30-day projected balance 3,822,815 · runway Over a year. Xero's own projection also uses planned items, so small differences are expected. On Irvine Jackson Pty Ltd in QA, every check passes.
+3. Validation banner: every check passes (the independent tie included), or shows N/A / information with a stated reason.
+4. Change every control and confirm the report refetches and still validates; switch Accounting method; switch View as to Client, then Bookkeeper; toggle Branding and the dark theme.
+5. Download PDF and Download Excel and confirm they match the screen (the Excel file has Validation and Parameters sheets).
+6. Download or Share from the report window: the snapshot keeps the period and figures and disables the refetching controls.
+7. Cross-client isolation (LIB-002): with several organisations on the connection, switch organisation — the report, its name and every export carry only that organisation's figures.
 
 ## dataBindings
 
@@ -57,16 +52,23 @@ There is no date control in this report. "Today" is always the real current date
 {
   "inputs": [
     {
-      "name": "history_from",
-      "label": "Burn-rate history start",
+      "name": "as_at",
+      "label": "Today",
+      "type": "date",
+      "default": "today"
+    },
+    {
+      "name": "past_from",
+      "label": "Actuals from",
       "type": "date",
       "default": "2026-08-26"
     },
     {
-      "name": "page",
-      "label": "Page",
-      "type": "number",
-      "default": 1
+      "name": "past_where",
+      "label": "Actuals window",
+      "type": "string",
+      "maxLength": 200,
+      "default": "Date>=DateTime(2026,08,26) AND Date<=DateTime(2026,09,25)"
     },
     {
       "name": "org",
@@ -76,40 +78,36 @@ There is no date control in this report. "Today" is always the real current date
       "default": ""
     },
     {
-      "name": "persona",
-      "label": "View as",
-      "type": "enum",
-      "options": [
-        "Client",
-        "Bookkeeper",
-        "Practitioner",
-        "Executive"
-      ],
-      "default": "Bookkeeper"
+      "name": "page",
+      "label": "Page",
+      "type": "number",
+      "min": 1,
+      "max": 20,
+      "default": 1
     },
     {
       "name": "display",
       "label": "Display settings",
       "type": "string",
       "maxLength": 300,
-      "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\"}"
+      "default": "{\"cents\":0,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"today\",\"c\":\"none\",\"v\":\"overview\",\"o\":\"d=30;od=ex\"}"
     }
   ],
   "bindings": [
     {
-      "id": "today_balance",
+      "id": "bank",
       "tool": {
         "mcp": "xero-accounting",
         "name": "get_bank_summary"
       },
       "params": {
         "fromDate": {
-          "kind": "context",
-          "source": "now.date"
+          "kind": "input",
+          "input": "as_at"
         },
         "toDate": {
-          "kind": "context",
-          "source": "now.date"
+          "kind": "input",
+          "input": "as_at"
         },
         "xero_tenant_id": {
           "kind": "input",
@@ -118,7 +116,7 @@ There is no date control in this report. "Today" is always the real current date
       }
     },
     {
-      "id": "history_balance",
+      "id": "bank_past",
       "tool": {
         "mcp": "xero-accounting",
         "name": "get_bank_summary"
@@ -126,11 +124,11 @@ There is no date control in this report. "Today" is always the real current date
       "params": {
         "fromDate": {
           "kind": "input",
-          "input": "history_from"
+          "input": "past_from"
         },
         "toDate": {
-          "kind": "context",
-          "source": "now.date"
+          "kind": "input",
+          "input": "as_at"
         },
         "xero_tenant_id": {
           "kind": "input",
@@ -139,7 +137,7 @@ There is no date control in this report. "Today" is always the real current date
       }
     },
     {
-      "id": "open_ar",
+      "id": "receivables",
       "tool": {
         "mcp": "xero-accounting",
         "name": "list_invoices"
@@ -168,7 +166,7 @@ There is no date control in this report. "Today" is always the real current date
       }
     },
     {
-      "id": "open_ap",
+      "id": "payables",
       "tool": {
         "mcp": "xero-accounting",
         "name": "list_invoices"
@@ -197,19 +195,65 @@ There is no date control in this report. "Today" is always the real current date
       }
     },
     {
-      "id": "bank_txns",
+      "id": "bank_tx",
       "tool": {
         "mcp": "xero-accounting",
         "name": "list_bank_transactions"
       },
       "params": {
-        "order": {
-          "kind": "static",
-          "value": "Date DESC"
+        "where": {
+          "kind": "input",
+          "input": "past_where"
         },
         "page": {
           "kind": "input",
           "input": "page"
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "payments",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "list_payments"
+      },
+      "params": {
+        "where": {
+          "kind": "input",
+          "input": "past_where"
+        },
+        "page": {
+          "kind": "input",
+          "input": "page"
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "bs",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "get_balance_sheet"
+      },
+      "params": {
+        "date": {
+          "kind": "input",
+          "input": "as_at"
+        },
+        "standardLayout": {
+          "kind": "static",
+          "value": true
+        },
+        "paymentsOnly": {
+          "kind": "static",
+          "value": false
         },
         "xero_tenant_id": {
           "kind": "input",
@@ -245,198 +289,75 @@ There is no date control in this report. "Today" is always the real current date
 ## Report config ({{CFG}})
 
 ```js
-var APP;
-var _scenario = { extraIn: 0, extraOut: 0 };
-var _arCache = { key: null, rows: null, loading: false, truncated: false };
-var _apCache = { key: null, rows: null, loading: false, truncated: false };
-var _txnCache = { key: null, rows: null, loading: false, truncated: false };
-function colIdx(cols, re) { for (var i = 0; i < cols.length; i++) if (re.test(cols[i])) return i; return -1; }
-function bankTotals(w) {
-  if (!w || !w.columns.length) return null;
-  var openIdx = colIdx(w.columns, /opening/i), recvIdx = colIdx(w.columns, /received/i), spentIdx = colIdx(w.columns, /spent/i), closeIdx = colIdx(w.columns, /closing/i);
-  if (closeIdx < 0) return null;
-  var totalLine = w.lines.filter(function (l) { return /^total/i.test(l.label || ''); })[0] || null;
-  var accountLines = w.lines.filter(function (l) { return l !== totalLine && (l.kind === 'row' || l.kind === 'total'); });
-  var sumCol = function (idx) { return idx < 0 ? null : XK.sum(accountLines.map(function (l) { return l.values[idx]; })); };
-  return { opening: totalLine && openIdx >= 0 ? XK.val(totalLine, openIdx) : sumCol(openIdx), received: totalLine && recvIdx >= 0 ? XK.val(totalLine, recvIdx) : sumCol(recvIdx),
-    spent: totalLine && spentIdx >= 0 ? XK.val(totalLine, spentIdx) : sumCol(spentIdx), closing: totalLine && closeIdx >= 0 ? XK.val(totalLine, closeIdx) : sumCol(closeIdx) };
-}
-function listRows(v, key) { return (v && (v.Rows || v[key])) || []; } // envelope key unconfirmed for every list_* tool — both checked
-function loadAllPages(id, cache, c, entityKey, cap) {
-  var key = (c.inputs.org || '') + '|' + c.inputs.page;
-  if (cache.key !== key) { cache.key = key; cache.rows = null; cache.loading = false; cache.truncated = false; }
-  if (cache.rows != null || cache.loading || !c.live || !window.MyHubReport) return cache;
-  var rows1 = listRows(c.data[id], entityKey);
-  if (rows1.length < 100) { cache.rows = rows1; return cache; }
-  cache.loading = true; var acc = rows1.slice();
-  function next(p) {
-    MyHubReport.getData(id, Object.assign({}, c.inputs, { page: p })).then(function (v) {
-      var err = XK.errorOf(v), rows = err ? [] : listRows(v, entityKey);
-      acc = acc.concat(rows);
-      if (err || rows.length < 100 || p >= cap) { cache.rows = acc; cache.truncated = !!err || (rows.length >= 100 && p >= cap); cache.loading = false; if (APP) APP.render(); }
-      else next(p + 1);
-    }, function () { cache.rows = acc; cache.truncated = true; cache.loading = false; if (APP) APP.render(); });
-  }
-  next(2);
-  return cache;
-}
-function loadTxns(c, windowFrom, cap) {
-  var key = (c.inputs.org || '') + '|' + c.inputs.page;
-  if (_txnCache.key !== key) { _txnCache = { key: key, rows: null, loading: false, truncated: false }; }
-  if (_txnCache.rows != null || _txnCache.loading || !c.live || !window.MyHubReport) return _txnCache;
-  function txnDate(t) { return XK.isoDate(t.DateString || t.Date); }
-  function pastWindow(rows) { return rows.length < 100 || rows.every(function (t) { var d = txnDate(t); return d && d < windowFrom; }); }
-  var rows1 = listRows(c.data.bank_txns, 'BankTransactions');
-  if (pastWindow(rows1)) { _txnCache.rows = rows1; return _txnCache; }
-  _txnCache.loading = true; var acc = rows1.slice();
-  function next(p) {
-    MyHubReport.getData('bank_txns', Object.assign({}, c.inputs, { page: p })).then(function (v) {
-      var err = XK.errorOf(v), rows = err ? [] : listRows(v, 'BankTransactions');
-      acc = acc.concat(rows);
-      if (err || p >= cap || pastWindow(rows)) { _txnCache.rows = acc; _txnCache.truncated = !err && !pastWindow(rows) && p >= cap; _txnCache.loading = false; if (APP) APP.render(); }
-      else next(p + 1);
-    }, function () { _txnCache.rows = acc; _txnCache.truncated = true; _txnCache.loading = false; if (APP) APP.render(); });
-  }
-  next(2);
-  return _txnCache;
-}
-function txnAmount(t) { var total = XK.num(t.Total); if (total == null) return null; var type = String(t.Type || '').toUpperCase();
-  if (/RECEIVE/.test(type)) return Math.abs(total); if (/SPEND/.test(type)) return -Math.abs(total); return null; }
-function txnDate2(t) { return XK.isoDate(t.DateString || t.Date); }
-APP = XK.app({
-  title: 'Cash Flow Manager', primary: 'today_balance', dated: [], org: 'org', conns: 'connections',
-  inputs: { org: 'org', persona: 'persona', display: 'display' },
-  defaults: { history_from: '2026-08-26', page: 1, org: '', persona: 'Bookkeeper',
-    display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"custom","c":"none","v":""}' },
-  uses: { today_balance: ['org'], history_balance: ['history_from', 'org'], open_ar: ['page', 'org'], open_ap: ['page', 'org'], bank_txns: ['page', 'org'], org: ['org'], connections: [] },
-  tools: { today_balance: 'get_bank_summary (today)', history_balance: 'get_bank_summary (trailing history)', open_ar: 'list_invoices (Type==ACCREC)', open_ap: 'list_invoices (Type==ACCPAY)', bank_txns: 'list_bank_transactions', org: 'get_organisation', connections: 'list_connections' },
-  derive: function () {
-    var t = new Date(), todayIso = XK.iso(new Date(Date.UTC(t.getFullYear(), t.getMonth(), t.getDate())));
-    return { history_from: XK.iso(XK.addDays(XK.parse(todayIso), -30)) };
-  },
+XK.app({
+  title: 'Cash flow manager', primary: 'bank', org: 'org', conns: 'connections', noBasis: true,
+  inputs: { org: 'org', display: 'display' },
+  defaults: { as_at: '2026-09-25', past_from: '2026-08-26', past_where: 'Date>=DateTime(2026,08,26) AND Date<=DateTime(2026,09,25)', org: '', page: 1,
+    display: '{"cents":0,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"today","c":"none","v":"overview","o":"d=30;od=ex"}' },
+  uses: { bank: ['as_at', 'org'], bank_past: ['past_from', 'as_at', 'org'], receivables: ['org'], payables: ['org'], bank_tx: ['past_where', 'org'], payments: ['past_where', 'org'], bs: ['as_at', 'org'], org: ['org'], connections: [] },
+  paged: { receivables: { input: 'page', key: 'Invoices' }, payables: { input: 'page', key: 'Invoices' }, bank_tx: { input: 'page', key: 'BankTransactions' }, payments: { input: 'page', key: 'Payments' } },
+  tools: { bank: 'get_bank_summary (today)', bank_past: 'get_bank_summary (the last 30 days — tie)', receivables: 'list_invoices (sales invoices awaiting payment)', payables: 'list_invoices (bills awaiting payment)', bank_tx: 'list_bank_transactions (last 30 days)', payments: 'list_payments (last 30 days)', bs: 'get_balance_sheet (today)', org: 'get_organisation', connections: 'list_connections' },
+  roll: function () { return { as_at: XK.asAt('today') }; },
+  derive: function (inp) { var pf = XK.addDaysIso(inp.as_at, -30); return { past_from: pf, past_where: XK.dateWhere('Date', pf, inp.as_at) }; },
+  views: [['overview', 'Overview'], ['in', 'Manage cash in'], ['out', 'Manage cash out']],
+  options: [{ id: 'd', label: 'Graph days', options: [['7', '7 days'], ['14', '14 days'], ['30', '30 days'], ['60', '60 days'], ['90', '90 days']], def: '30' },
+    { id: 'od', label: 'Overdue invoices and bills', options: [['ex', 'Not projected'], ['today', 'Expected today']], def: 'ex' }],
   render: function (c) {
-    var body = c.body, money = function (v) { return XK.money(v, c.currency, c.display); };
-    var t = new Date(), todayIso = XK.iso(new Date(Date.UTC(t.getFullYear(), t.getMonth(), t.getDate())));
-    var allFailed = ['today_balance', 'history_balance', 'open_ar', 'open_ap'].every(function (id) { return !!c.errors[id]; });
-    if (allFailed) {
-      var msg0 = c.err('today_balance') || c.err('open_ar') || c.err('open_ap') || 'Loading…';
-      body.innerHTML = '<p class="xk-err">' + XK.h(msg0) + '</p>';
-      return { checks: [{ name: 'Cash flow data loaded', pass: false, detail: msg0 }] };
-    }
-    var wToday = c.data.today_balance && !c.errors.today_balance ? XK.walk(c.data.today_balance) : null;
-    var wHist = c.data.history_balance && !c.errors.history_balance ? XK.walk(c.data.history_balance) : null;
-    var btToday = bankTotals(wToday), btHist = bankTotals(wHist);
-    var todayClosing = btToday ? btToday.closing : null;
-    var todayMovement = (btToday && btToday.received != null && btToday.spent != null) ? Math.round((btToday.received - btToday.spent) * 100) / 100 : null;
-
-    var histDays = (btHist && c.inputs.history_from) ? Math.round((XK.parse(todayIso) - XK.parse(c.inputs.history_from)) / 86400000) : null;
-    var avgDailyNet = (btHist && histDays > 0 && btHist.received != null && btHist.spent != null) ? (btHist.received - btHist.spent) / histDays : null;
-    var runwayDays = (avgDailyNet != null && avgDailyNet < 0 && todayClosing != null) ? Math.floor(todayClosing / Math.abs(avgDailyNet)) : null;
-
-    var arCache = loadAllPages('open_ar', _arCache, c, 'Invoices', 5), apCache = loadAllPages('open_ap', _apCache, c, 'Invoices', 5);
-    var arRows = arCache.rows || listRows(c.data.open_ar, 'Invoices'), apRows = apCache.rows || listRows(c.data.open_ap, 'Invoices');
-    function classify(rows) {
-      var b = { overdue: 0, next7: 0, next830: 0, beyond: 0, undated: 0, undatedCount: 0, count: 0 };
-      rows.forEach(function (inv) {
-        if (!inv || XK.errorOf(inv)) return;
-        var amt = XK.num(inv.AmountDue); if (amt == null) return;
-        var due = XK.isoDate(inv.DueDateString || inv.DueDate);
-        if (!due) { b.undated += amt; b.undatedCount++; b.count++; return; }
-        var days = Math.round((XK.parse(due) - XK.parse(todayIso)) / 86400000);
-        if (days < 0) b.overdue += amt; else if (days <= 7) b.next7 += amt; else if (days <= 30) b.next830 += amt; else b.beyond += amt;
-        b.count++;
-      });
-      return b;
-    }
-    var ar = classify(arRows), ap = classify(apRows);
-    var overdueNet = Math.round((ar.overdue - ap.overdue) * 100) / 100, next7Net = Math.round((ar.next7 - ap.next7) * 100) / 100, next830Net = Math.round((ar.next830 - ap.next830) * 100) / 100;
-    var bal7 = todayClosing != null ? Math.round((todayClosing + overdueNet + next7Net) * 100) / 100 : null;
-    var bal30 = bal7 != null ? Math.round((bal7 + next830Net + _scenario.extraIn - _scenario.extraOut) * 100) / 100 : null;
-    var direct30 = todayClosing != null ? Math.round((todayClosing + overdueNet + next7Net + next830Net + _scenario.extraIn - _scenario.extraOut) * 100) / 100 : null;
-
-    var kpiRow = [
-      { label: "Today's balance", value: todayClosing },
-      { label: "Today's movement", value: todayMovement },
-      { label: 'Overdue (receivables − payables)', value: overdueNet },
-      { label: 'Next 1–7 days (net)', value: next7Net },
-      { label: 'Next 8–30 days (net)', value: next830Net },
-      { label: 'Projected balance (30 days)', value: bal30 },
-      { label: 'Runway', money: false, text: runwayDays == null ? (avgDailyNet != null && avgDailyNet >= 0 ? 'Not burning cash' : 'N/A') : runwayDays + ' days' }
-    ];
-    body.innerHTML = XK.kpis(kpiRow, c) +
-      '<p class="muted">Projections are built from open invoices/bills and their due dates — never a guaranteed cash date. Use the what-if fields below to layer your own judgement.</p>' +
-      '<div class="xk-card"><h3>What-if adjustments (not sent to Xero)</h3><div class="cz">' +
-      '<label>Additional expected receipts<input type="number" step="0.01" id="xk-extra-in" value="' + _scenario.extraIn + '"></label>' +
-      '<label>Additional expected payments<input type="number" step="0.01" id="xk-extra-out" value="' + _scenario.extraOut + '"></label></div></div>' +
-      '<div id="xk-cfm-chart" class="xk-card" style="margin-top:12px"></div>' +
-      '<div class="xk-card detail-block" style="margin-top:12px"><h3>Upcoming 30 days (receivables and payables due)</h3><div id="gridUpcoming"></div></div>';
-
-    var elIn = document.getElementById('xk-extra-in'), elOut = document.getElementById('xk-extra-out');
-    if (elIn) elIn.addEventListener('change', function () { _scenario.extraIn = Number(this.value) || 0; APP.render(); });
-    if (elOut) elOut.addEventListener('change', function () { _scenario.extraOut = Number(this.value) || 0; APP.render(); });
-
-    var txnCache = loadTxns(c, c.inputs.history_from, 3);
-    var chartEl = document.getElementById('xk-cfm-chart');
-    if (txnCache.rows && todayClosing != null && c.inputs.history_from) {
-      chartEl.innerHTML = '<h3>Daily cash position — actual and projected</h3><div id="ch1"></div>';
-      var netByDay = {};
-      txnCache.rows.forEach(function (tr) { var d = txnDate2(tr), a = txnAmount(tr); if (!d || a == null) return; netByDay[d] = (netByDay[d] || 0) + a; });
-      var days = []; for (var dt = XK.parse(c.inputs.history_from); XK.iso(dt) <= todayIso; dt = XK.addDays(dt, 1)) days.push(XK.iso(dt));
-      var bal = {}; bal[todayIso] = todayClosing;
-      for (var i = days.length - 1; i > 0; i--) { var d1 = days[i], d0 = days[i - 1]; bal[d0] = bal[d1] == null ? null : Math.round((bal[d1] - (netByDay[d1] || 0)) * 100) / 100; }
-      var histBalances = days.map(function (d) { return bal[d] == null ? null : bal[d]; });
-      var labels = days.concat(['+7 days', '+30 days']);
-      var actualSeries = histBalances.concat([null, null]);
-      var projectedSeries = histBalances.map(function (v, idx) { return idx === histBalances.length - 1 ? v : null; }).concat([bal7, bal30]);
-      XK.line(document.getElementById('ch1'), { title: 'Daily cash position', labels: labels, series: [{ name: 'Actual balance', values: actualSeries }, { name: 'Projected balance', values: projectedSeries }] }, c);
+    var body = c.body, d0 = Object.assign({}, c.display, { cents: 0 }), money = function (v) { return XK.money(v, c.currency, d0); }, r2 = function (v) { return Math.round(v * 100) / 100; };
+    if (c.errors.bank) { body.innerHTML = '<p class="xk-err">' + XK.h(c.err('bank')) + '</p>'; return { checks: [{ name: 'Bank Summary loaded', pass: false, detail: c.err('bank') }] }; }
+    if (!c.data.bank) return {};
+    var asAt = c.inputs.as_at, N = +(c.opt('d') || 30), odToday = c.opt('od') === 'today', acct = c.opt('acct') || '', base = c.currency;
+    var bw = XK.walk(c.data.bank), accts = bw.lines.filter(function (l) { return l.kind === 'row'; }), useA = function (id) { return !acct || id === acct; };
+    var mine = accts.filter(function (l) { return useA(l.id); }), bal = XK.sum(mine.map(function (l) { return l.values[3]; })), todayMove = r2(XK.sum(mine.map(function (l) { return l.values[1] - l.values[2]; })));
+    // actuals: the last 30 days from bank transactions (spend / receive money, overpayments, transfers) and invoice / bill payments
+    var days = []; for (var i = -30; i <= N; i++) days.push({ d: XK.addDaysIso(asAt, i), off: i, ain: 0, aout: 0, pin: 0, pout: 0 });
+    var at = function (iso) { var k = Math.round((XK.parse(iso) - XK.parse(asAt)) / 86400000) + 30; return days[k]; };
+    c.rows('bank_tx').forEach(function (t) { if (!t || t.Status === 'DELETED' || t.Status === 'VOIDED' || !useA((t.BankAccount || {}).AccountID)) return; var d = XK.isoDate(t.DateString || t.Date), x = d && at(d); if (!x || x.off > 0) return; var v = XK.num(t.Total) || 0; if (/^RECEIVE/.test(t.Type)) x.ain = r2(x.ain + v); else if (/^SPEND/.test(t.Type)) x.aout = r2(x.aout + v); });
+    c.rows('payments').forEach(function (p) { if (!p || p.Status === 'DELETED' || !useA((p.Account || {}).AccountID)) return; var d = XK.isoDate(p.Date), x = d && at(d); if (!x || x.off > 0) return; var v = XK.num(p.Amount) || 0; if (/^ACCREC|^AR/.test(p.PaymentType)) x.ain = r2(x.ain + v); else x.aout = r2(x.aout + v); });
+    // projection: invoices and bills awaiting payment by due date (overdue ones optionally expected today)
+    var rec = XK.openDocs({ invoices: c.rows('receivables'), types: { invoices: 'ACCREC' } }, base, null), pay = XK.openDocs({ invoices: c.rows('payables'), types: { invoices: 'ACCPAY' } }, base, null);
+    var od = { in: 0, out: 0 }, later = { in: 0, out: 0 };
+    var proj = function (list, k) { list.forEach(function (d) { if (d.due < asAt) { od[k] = r2(od[k] + d.amount); if (odToday) { var t0 = at(asAt); t0['p' + k] = r2(t0['p' + k] + d.amount); } return; } var x = at(d.due); if (!x || x.off > N) { later[k] = r2(later[k] + d.amount); return; } if (x.off === 0) x = at(XK.addDaysIso(asAt, 0)); x['p' + k] = r2(x['p' + k] + d.amount); }); };
+    proj(rec, 'in'); proj(pay, 'out');
+    var fut = days.filter(function (x) { return x.off >= 0; }), sumP = function (a, b, k) { return XK.sum(fut.filter(function (x) { return x.off >= a && x.off <= b; }).map(function (x) { return x['p' + k]; })); };
+    var k17 = r2(sumP(1, 7, 'in') - sumP(1, 7, 'out')), k8N = r2(sumP(8, N, 'in') - sumP(8, N, 'out')), pin = sumP(0, N, 'in'), pout = sumP(0, N, 'out'), projBal = r2(bal + pin - pout);
+    var netN = r2(pin - pout), runway = netN >= 0 ? 'Over a year' : (function () { var burn = -netN / N, dd = bal / burn; return dd > 365 ? 'Over a year' : dd <= 0 ? 'Now' : Math.round(dd) + ' days (' + (dd / 30.4).toFixed(1) + ' months)'; })();
+    var view = c.view || 'overview', accSel = accts.length > 1 ? '<label class="muted">Bank accounts <select id="cf-acct"><option value="">All accounts</option>' + accts.map(function (l) { return '<option value="' + XK.h(l.id) + '"' + (l.id === acct ? ' selected' : '') + '>' + XK.h(l.label) + '</option>'; }).join('') + '</select></label>' : '';
+    var kp = function (lbl, v, sub) { return '<div class="xk-kpi"><div class="lbl">' + lbl + '</div><div class="val' + (v < 0 ? ' neg' : '') + '">' + money(v) + '</div>' + (sub ? '<div class="sub">' + sub + '</div>' : '') + '</div>'; };
+    var html = '<div class="xk-kpis">' + kp('Today\'s bank balance', bal, XK.asOfLine(asAt)) + kp('Today\'s cash movement', todayMove) + kp('Next 1–7 days cash movement', k17) + kp('Next 8–' + N + ' days cash movement', k8N) + '</div>' + accSel;
+    if (view === 'overview') {
+      html += '<div class="xk-card"><h3>Cash in &amp; cash out — last 30 days and projected for ' + N + ' days ending ' + XK.asOfLine(XK.addDaysIso(asAt, N)).replace(/^As at /, '') + '</h3><p class="muted">Actuals left of today; projected from invoices and bills by due date right of today' + (odToday ? ' (overdue ones expected today)' : '') + '.</p><div id="cf-ch"></div></div>' +
+        '<div class="xk-kpis">' + kp('Today\'s balance', bal) + kp(N + ' days projected balance', projBal) + '<div class="xk-kpi"><div class="lbl">Cash runway</div><div class="val">' + XK.h(runway) + '</div></div></div>' +
+        (od.in || od.out ? '<p class="muted">Overdue, ' + (odToday ? 'expected today' : 'not in the projection') + ': invoices ' + money(od.in) + ' · bills ' + money(od.out) + '.</p>' : '');
     } else {
-      chartEl.innerHTML = '<h3>Daily cash position — actual and projected</h3><p class="muted">N/A — list_bank_transactions ' + (txnCache.truncated ? 'returned incomplete data' : (c.errors.bank_txns ? XK.h(c.err('bank_txns')) : 'is still loading or returned nothing usable')) + '. Today\'s balance and the projection KPIs above do not depend on this chart.</p>';
+      var list = (view === 'in' ? rec : pay).filter(function (d) { return d.due <= XK.addDaysIso(asAt, N); }).map(function (d) { return { contact: d.contact, number: d.number, due: d.due, state: d.due < asAt ? 'Overdue' : 'Due', amount: d.amount }; });
+      html += '<div class="xk-card"><h3>' + (view === 'in' ? 'Cash in — invoices due in the next ' + N + ' days (and overdue)' : 'Cash out — bills due in the next ' + N + ' days (and overdue)') + '</h3><div id="cf-list"></div><p class="muted">Planned items and changes to expected dates are managed in Xero; this report reads due dates only.</p></div>';
+      c._list = list;
     }
-
-    var dayIso30 = XK.iso(XK.addDays(XK.parse(todayIso), 30));
-    function invRow(inv, kind) { return { contact: (inv.Contact && inv.Contact.Name) || 'N/A', due: XK.isoDate(inv.DueDateString || inv.DueDate), amount: XK.num(inv.AmountDue), kind: kind }; }
-    var upcoming = arRows.map(function (i) { return invRow(i, 'Receivable'); }).concat(apRows.map(function (i) { return invRow(i, 'Payable'); }))
-      .filter(function (r) { return r.due && r.due <= dayIso30 && r.amount != null; })
-      .sort(function (a, b) { return a.due < b.due ? -1 : a.due > b.due ? 1 : 0; });
-    XK.grid(document.getElementById('gridUpcoming'), { filter: true, empty: 'No receivables or payables due in the next 30 days.',
-      columns: [{ key: 'contact', title: 'Contact' }, { key: 'kind', title: 'Type' }, { key: 'due', title: 'Due date' }, { key: 'amount', title: 'Amount due', money: true }],
-      rows: upcoming }, c);
-
-    var tieCounts = { checked: 0, failed: [] };
-    [wToday, wHist].forEach(function (w) { if (!w) return; var tt = XK.linesTies(w.lines); tieCounts.checked += tt.checked; tieCounts.failed = tieCounts.failed.concat(tt.failed); });
+    body.innerHTML = html;
+    if (view === 'overview') XK.bars(document.getElementById('cf-ch'), { title: 'Cash in and out', every: 7, labels: days.map(function (x) { return x.off === 0 ? 'Today' : x.d.slice(8) + '/' + x.d.slice(5, 7); }), series: [{ name: 'Cash in', values: days.map(function (x) { return x.off < 0 ? x.ain : x.off === 0 ? r2(x.ain + x.pin) : x.pin; }), color: 'var(--pos)' }, { name: 'Cash out', values: days.map(function (x) { return -(x.off < 0 ? x.aout : x.off === 0 ? r2(x.aout + x.pout) : x.pout); }), color: 'var(--neg)' }] }, c);
+    else XK.grid(document.getElementById('cf-list'), { filter: true, rows: c._list, columns: [{ key: 'contact', title: 'Contact' }, { key: 'number', title: 'Number' }, { key: 'due', title: 'Due date' }, { key: 'state', title: '' }, { key: 'amount', title: 'Amount', money: true }], empty: 'Nothing due.' }, c);
+    var s = document.getElementById('cf-acct'); if (s) s.addEventListener('change', function () { c.setOpt('acct', this.value); });
+    // Checks
+    var pastIn = XK.sum(days.filter(function (x) { return x.off <= 0; }).map(function (x) { return x.ain; })), pastOut = XK.sum(days.filter(function (x) { return x.off <= 0; }).map(function (x) { return x.aout; }));
+    var bp = c.data.bank_past ? XK.walk(c.data.bank_past).lines.filter(function (l) { return l.kind === 'row' && useA(l.id); }) : null, bpIn = bp ? XK.sum(bp.map(function (l) { return l.values[1]; })) : null, bpOut = bp ? XK.sum(bp.map(function (l) { return l.values[2]; })) : null;
+    var bs = c.data.bs ? XK.bsParts(XK.walk(c.data.bs)) : null, lists = ['receivables', 'payables', 'bank_tx', 'payments'];
     var checks = [
-      { name: "Projected balance (30 days) = today's balance + projected inflows − projected outflows", pass: bal30 == null || direct30 == null ? null : XK.near(bal30, direct30), detail: todayClosing == null ? "Today's balance is unavailable" : money(todayClosing) + ' + ' + money(overdueNet + next7Net) + ' (overdue + next 7 days) + ' + money(next830Net) + ' (8–30 days)' + ((_scenario.extraIn || _scenario.extraOut) ? ' + what-if adjustments' : '') + ' = ' + money(bal30) },
-      { name: "Today's movement = Cash received − Cash spent", pass: (btToday && btToday.received != null && btToday.spent != null) ? true : null, detail: btToday ? money(todayMovement) : (c.err('today_balance') || 'Bank Summary unavailable') },
-      { name: 'Runway follows the disclosed burn method (information)', pass: null, info: true, detail: avgDailyNet == null ? 'History window unavailable — see the Bank Summary (trailing history) call' : 'Average daily net cash flow over the trailing ' + histDays + ' days: ' + money(avgDailyNet) + '/day' },
-      { name: 'All open receivables loaded (no truncation)', pass: arCache.rows == null ? null : !arCache.truncated, detail: arCache.rows == null ? 'Still loading further pages…' : (arCache.truncated ? 'Stopped at the page cap — the projection may understate what is actually owed' : arCache.rows.length + ' invoices loaded') },
-      { name: 'All open payables loaded (no truncation)', pass: apCache.rows == null ? null : !apCache.truncated, detail: apCache.rows == null ? 'Still loading further pages…' : (apCache.truncated ? 'Stopped at the page cap — the projection may understate what is actually owed' : apCache.rows.length + ' invoices loaded') },
-      { name: 'Daily actual-balance chart reflects list_bank_transactions', pass: txnCache.rows ? true : null, detail: txnCache.rows ? txnCache.rows.length + ' transactions read' : 'Unavailable — the KPI cards above do not depend on this call' },
-      { name: 'Every section total = Σ its account rows (all sources)', pass: tieCounts.checked ? tieCounts.failed.length === 0 : null, detail: tieCounts.failed.length ? 'Mismatch: ' + tieCounts.failed.join(', ') : tieCounts.checked + ' sections checked' }
+      { name: 'Projected balance = today\'s balance + projected cash in − projected cash out', pass: XK.near(projBal, bal + pin - pout), detail: money(bal) + ' + ' + money(pin) + ' − ' + money(pout) + ' = ' + money(projBal) },
+      { name: 'KPI strip = Σ the daily projection (days 1–7 and 8–' + N + ')', pass: XK.near(k17, sumP(1, 7, 'in') - sumP(1, 7, 'out')) && XK.near(k8N, XK.sum(fut.filter(function (x) { return x.off >= 8; }).map(function (x) { return x.pin - x.pout; }))), detail: money(k17) + ' · ' + money(k8N) },
+      { name: 'Cash runway method (information)', pass: null, info: true, detail: 'Today\'s balance ÷ average daily net outflow over the ' + N + '-day projection; "Over a year" when the projection is not negative' },
+      { name: 'Today\'s bank balance = Total Bank on the Balance Sheet today', pass: acct ? null : bs && bs.bank != null ? XK.near(bal, bs.bank) : null, detail: acct ? 'One account selected' : bs ? money(bal) + ' vs ' + money(bs.bank) : c.err('bs') },
+      { name: 'Last 30 days: bank transactions + payments = the Bank Summary for the same days', pass: bp ? XK.near(pastIn, bpIn, 0.05) && XK.near(pastOut, bpOut, 0.05) : null, detail: bp ? 'In ' + money(pastIn) + ' vs ' + money(bpIn) + ' · out ' + money(pastOut) + ' vs ' + money(bpOut) : c.err('bank_past') },
+      { name: 'All invoices, bills and transactions loaded', pass: lists.some(function (id) { return c.errors[id] || c.truncated(id); }) ? false : true, detail: rec.length + ' invoice(s), ' + pay.length + ' bill(s), ' + c.rows('bank_tx').length + ' transaction(s), ' + c.rows('payments').length + ' payment(s)' }
     ];
-    var undatedTotal = Math.round((ar.undated - ap.undated) * 100) / 100, undatedCount = ar.undatedCount + ap.undatedCount;
-    var notes = ['No cash-flow-statement or forecast endpoint exists on this connector — every projected figure is built from open invoices/bills\' due dates, never Xero-sourced.',
-      'list_bank_transactions\'s exact field names are unconfirmed live — see the data-shape caveat at the top of this skill.'];
-    if (undatedCount) notes.push(undatedCount + ' open invoice(s)/bill(s) totalling ' + money(undatedTotal) + ' (net) have no due date and are excluded from every projection bucket.');
-    this._kpi = { todayBalance: todayClosing, todayMovement: todayMovement, overdueNet: overdueNet, next7Net: next7Net, next830Net: next830Net, bal30: bal30, runwayDays: runwayDays };
-    this._upcoming = upcoming;
-    return { checks: checks, notes: notes, na: ['A true daily forward projection beyond the +7/+30-day checkpoints (kept coarse to limit unverified per-day cash-placement assumptions)', 'Xero Analytics/Syft cash-flow widgets (not in this connector)'],
-      title: 'Cash Flow Manager' };
+    this._x = { days: days, bal: bal, projBal: projBal, runway: runway, N: N };
+    return { checks: checks, notes: ['Projection = invoices and bills awaiting payment by due date. Repeating invoices, planned items and bank-feed lines are not included (not in the Xero API as plans).', 'Actuals include transfers between your accounts, as the Bank Summary does.'], na: ['Xero\'s planned cash items (Manage cash in / out adjustments)'], period: XK.asOfLine(asAt) };
   },
   excel: function (c) {
-    var k = this._kpi || {}, up = this._upcoming || [];
-    var summaryRows = [
-      { kind: 'row', depth: 0, label: "Today's balance", values: [k.todayBalance] },
-      { kind: 'row', depth: 0, label: "Today's movement", values: [k.todayMovement] },
-      { kind: 'row', depth: 0, label: 'Overdue (receivables − payables)', values: [k.overdueNet] },
-      { kind: 'row', depth: 0, label: 'Next 1–7 days (net)', values: [k.next7Net] },
-      { kind: 'row', depth: 0, label: 'Next 8–30 days (net)', values: [k.next830Net] },
-      { kind: 'row', depth: 0, label: 'Projected balance (30 days)', values: [k.bal30] },
-      { kind: 'row', depth: 0, label: 'Runway (days)', values: [k.runwayDays] }
-    ];
-    var sheets = [XK.sheetFromLines('Cash Flow Manager', c.company, 'As at today', ['', 'Value'], summaryRows, XK.footerStamp('Accrual', c.fetchedAt, c.currency), ['money'])];
-    if (up.length) sheets.push(XK.sheetFromLines('Upcoming 30 Days', c.company, 'Receivables and payables due', ['Contact / Type', 'Amount due'],
-      up.map(function (r) { return { kind: 'row', depth: 0, label: r.contact + ' (' + r.kind + ', due ' + r.due + ')', values: [r.amount] }; }), '', ['money']));
-    return sheets;
+    var x = this._x; if (!x) return [];
+    var rows = [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: 'Cash flow manager', s: 'bold' }], [XK.asOfLine(c.inputs.as_at)], [], ['Today\'s balance', { v: x.bal, s: 'money' }], [x.N + ' days projected balance', { v: x.projBal, s: 'money' }], ['Cash runway', x.runway], [], [{ v: 'Date', s: 'bold' }, { v: 'Actual in', s: 'bold' }, { v: 'Actual out', s: 'bold' }, { v: 'Projected in', s: 'bold' }, { v: 'Projected out', s: 'bold' }]]
+      .concat(x.days.map(function (d) { return [d.d, { v: d.ain, s: 'money' }, { v: d.aout, s: 'money' }, { v: d.pin, s: 'money' }, { v: d.pout, s: 'money' }]; }));
+    return [{ name: 'Cash flow manager', rows: rows, widths: [26, 16, 16, 16, 16] }];
   }
 });
 ```
