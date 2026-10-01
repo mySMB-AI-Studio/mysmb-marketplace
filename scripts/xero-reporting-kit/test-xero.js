@@ -52,6 +52,13 @@ const retryFast = (h) => h.replace("XK.app({\n  title:", "XK.app({\n  retryMs: 1
   ok('pnl: Xero section total ≠ Σ rows → section check fails', /✗ Every section total = Σ its account rows — Mismatch: Total Operating Expenses/.test(banner(pt)), banner(pt).slice(0, 500));
   const pnp = await run('pnl', man('pnl'), Object.assign(PL(), { pnl: tamper(F.pnl, (rows) => { cellOf(rows, 'Net Profit')[1].Value = '11000.00'; }) }));
   ok('pnl: Net Profit ≠ GP + OI − OpEx → Fail', /✗ Net Profit = Gross Profit \+ Other Income − Operating Expenses/.test(banner(pnp)) && /✓ Gross Profit = Trading Income − Cost of Sales/.test(banner(pnp)), banner(pnp).slice(0, 500));
+  // a period with no operating expenses: Xero leaves the section out → the KPI is $0.00 (none), not N/A, and every check passes
+  const noOpex = (rows) => { const ox = +cellOf(rows, 'Total Operating Expenses')[1].Value, n = cellOf(rows, 'Net Profit'); n[1].Value = (+n[1].Value + ox).toFixed(2); rows.splice(rows.findIndex((r) => r.Title === 'Less Operating Expenses'), 1); };
+  const npNo = (() => { const r = F.pnl(p.calls.find((x) => x.id === 'pnl').params); noOpex(r.Reports[0].Rows); return cellOf(r.Reports[0].Rows, 'Net Profit')[1].Value; })();
+  const pz = await run('pnl', man('pnl'), Object.assign(PL(), { pnl: tamper(F.pnl, noOpex), pnl_cash: tamper(F.pnl, noOpex), bs_end: tamper(F.bs, (rows) => { cellOf(rows, 'Current Year Earnings')[1].Value = npNo; }) }));
+  const kpi = (t, label) => { const k = [...t.doc.querySelectorAll('.xk-kpi')].find((x) => x.querySelector('.lbl').textContent === label); return k ? k.textContent.replace(/\s+/g, ' ') : ''; };
+  ok('pnl: no Operating Expenses section → KPI $0.00 "None in this period", not N/A; banner green', /\$0\.00/.test(kpi(pz, 'Total Operating Expenses')) && /None in this period/.test(kpi(pz, 'Total Operating Expenses')) && !/N\/A/.test(kpi(pz, 'Total Operating Expenses')) && green(pz), [kpi(pz, 'Total Operating Expenses'), banner(pz).slice(0, 400)]);
+  ok('pnl: with operating expenses the KPI is Xero\'s total and has no "None" note', /Total Operating Expenses\s*\$[1-9]/.test(kpi(p, 'Total Operating Expenses')) && !/None in this period/.test(kpi(p, 'Total Operating Expenses')), kpi(p, 'Total Operating Expenses'));
   // custom range → tie is information (back on accrual)
   { const a = p.doc.querySelector('input[name="xk-basis"][value="Accrual"]'); a.checked = true; a.dispatchEvent(new p.w.Event('change')); await p.settle(); }
   await set(p, 'xk-from', '2026-08-01');

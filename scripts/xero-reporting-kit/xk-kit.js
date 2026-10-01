@@ -630,7 +630,7 @@ var XK = (function () {
     // An {__error} object (if a proxy returns one) moves to S.errors so every section and check treats it as a failed source.
     function absorb(id, v) { var e = errorOf(v); S.pages[id] = null; S.trunc[id] = false; if (e) { delete S.data[id]; S.errors[id] = { code: 'tool_error', message: e }; } else { S.data[id] = v; delete S.errors[id]; } }
     function srcOf(id) { return (cfg.sources || {})[id] || null; }
-    function err(id) { var e = S.errors[id], sc = srcOf(id); if (!e) return null; if (e.code === 'needs_connection' && sc) return 'Connect ' + sc.name + ' (Settings → Connections) to see this section.'; return (FRIENDLY[e.code] || e.message || 'Unavailable') + (e.code === 'tool_error' && e.message ? ' (' + e.message + ')' : ''); }
+    function err(id) { var e = S.errors[id], sc = srcOf(id); if (!e) return null; if (e.code === 'needs_connection' && sc) return sc.name + ' is not connected — add the ' + sc.name + ' extension and connect it (Settings → Connections) to include this.'; return (FRIENDLY[e.code] || e.message || 'Unavailable') + (e.code === 'tool_error' && e.message ? ' (' + e.message + ')' : ''); }
     function announce() { if (MH && live) MH.setInputs(Object.assign({}, S.inputs)); }
     function status(t) { var el = $('xk-status'); if (el) el.textContent = t || ''; }
     // Xero allows 5 calls in progress per organisation and the host opens every binding at once, so a report with more
@@ -848,7 +848,7 @@ var XK = (function () {
     }
     function sources(c) {
       var el = $('xk-sources'); if (!el) return; var t = cfg.tools || {};
-      var items = Object.keys(t).map(function (id) { return h(t[id]) + (S.errors[id] ? ' — <span class="xk-err">' + h(err(id)) + '</span>' : ''); });
+      var items = Object.keys(t).map(function (id) { var sc = srcOf(id); return h(t[id]) + (S.errors[id] ? ' — <span class="' + (sc && sc.optional ? 'muted' : 'xk-err') + '">' + h(err(id)) + '</span>' : ''); });
       var na = last.na.slice(); if (!c.company) na.unshift('Organisation name (Xero returned no organisation details)');
       el.innerHTML = '<h2>Sources &amp; limitations</h2><ul><li>Mechanism: ' + h(cfg.mechanism || MECHANISM) + '</li><li>Tool calls: ' + items.join(' · ') + '</li>' +
         '<li>Basis: ' + h(I.basis ? S.inputs[I.basis] : 'n/a') + ' · Currency: ' + h(c.currency) + ' · Organisation: ' + h(c.company || 'N/A — not in source') + ' (one Xero organisation per report)</li>' +
