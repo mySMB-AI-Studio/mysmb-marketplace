@@ -1390,9 +1390,209 @@ const paginate: ComputedFunction = (args) => {
   };
 };
 
+// ── analyze_bill_duplicates ──────────────────────────────────────────
+// Flags Xero ACCPAY bills that look like accidental double-entries: same
+// REAL vendor + same amount, dated within a few days of each other,
+// scanned over a rolling window (default 30 days). Same-day matches
+// (span 0) are tiered "Exact"; 1-6 days apart is "Near". A same-
+// vendor/amount pair spanning 7+ days is treated as a normal recurring
+// charge (weekly/monthly service fees, subscriptions) and NOT flagged —
+// confirmed against this org's real data (e.g. MCO Cleaning Services'
+// weekly $220 invoice would otherwise false-positive).
+//
+// "Same vendor" is resolved via the contacts list (email, falling back to
+// phone, falling back to raw name), NOT by the bill's embedded Contact.Name
+// alone — confirmed against real data that one vendor can have two
+// separate Xero contact records under slightly different legal names
+// (e.g. "DCT Sunset Office Supplies" vs "...Pty Ltd") sharing the same
+// email/phone. Grouping by name alone silently dropped that second
+// record's bill from the cluster. The group's display name is the most
+// frequent raw name among its bills (a tie keeps the first seen).
+// `organisation` is the raw get_organisation response — used only to pull
+// the real ShortCode needed for Xero's documented deep-link format
+// (https://go.xero.com/organisationlogin/default.aspx?shortcode=...&
+// redirecturl=/AccountsPayable/Edit.aspx?InvoiceID=...) — a bare
+// /AccountsPayable/... URL with no shortcode/org context 404s/errors,
+// confirmed live.
+// Args: { invoices?: Invoice[], contacts?: Contact[], organisation?: unknown, windowDays?: number, expandedGroupId?: string, clickedGroupId?: string }
+const analyze_bill_duplicates: ComputedFunction = (args) => {
+  const invoices = Array.isArray(args.invoices) ? (args.invoices as Record<string, unknown>[]) : [];
+  const contacts = Array.isArray(args.contacts) ? (args.contacts as Record<string, unknown>[]) : [];
+  const windowDays = Number(args.windowDays) > 0 ? Number(args.windowDays) : 30;
+
+  const org = (args.organisation as Record<string, unknown> | undefined) ?? {};
+  const orgs = Array.isArray(org.Organisations) ? (org.Organisations as Record<string, unknown>[]) : [];
+  const shortCode = String(orgs[0]?.ShortCode ?? '');
+
+  const parseDate = (raw: unknown): number => {
+    const m = String(raw ?? '').match(/\/Date\((-?\d+)(?:[+-]\d{4})?\)\//);
+    return m ? Number(m[1]) : NaN;
+  };
+  const fmtAmt = (n: unknown): string => {
+    const v = Number(n);
+    if (!Number.isFinite(v)) return '';
+    return '$' + new Intl.NumberFormat('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+  };
+  const fmtDate = (ms: number): string => {
+    if (!Number.isFinite(ms)) return '';
+    return new Date(ms).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
+  // ContactID -> resolved vendor identity (email > phone > name), built
+  // from the full contacts list (which carries Email/Phones — the bill's
+  // own embedded Contact object doesn't).
+  const identityByContactId = new Map<string, string>();
+  for (const c of contacts) {
+    const contactId = String(c.ContactID ?? '');
+    if (!contactId) continue;
+    const email = String(c.EmailAddress ?? '').trim().toLowerCase();
+    let identity = email ? `email:${email}` : '';
+    if (!identity) {
+      const phones = Array.isArray(c.Phones) ? (c.Phones as Record<string, unknown>[]) : [];
+      const phone = phones
+        .map((p) => `${String(p.PhoneAreaCode ?? '')}${String(p.PhoneNumber ?? '')}`)
+        .find((p) => p.replace(/\D/g, '').length >= 3);
+      identity = phone ? `phone:${phone}` : `name:${String(c.Name ?? '').trim().toLowerCase()}`;
+    }
+    identityByContactId.set(contactId, identity);
+  }
+  const resolveIdentity = (contact: Record<string, unknown> | undefined): string => {
+    const contactId = String(contact?.ContactID ?? '');
+    return identityByContactId.get(contactId) ?? `name:${String(contact?.Name ?? 'Unknown').trim().toLowerCase()}`;
+  };
+
+  const cutoff = Date.now() - windowDays * 86_400_000;
+  const bills = invoices.filter((i) => {
+    if (i.Type !== 'ACCPAY' || i.Status === 'VOIDED' || i.Status === 'DELETED') return false;
+    const t = parseDate(i.Date);
+    return Number.isFinite(t) && t >= cutoff;
+  });
+
+  const groups = new Map<string, Record<string, unknown>[]>();
+  for (const b of bills) {
+    const contact = b.Contact as Record<string, unknown> | undefined;
+    const key = `${resolveIdentity(contact)}|${Number(b.Total) || 0}`;
+    (groups.get(key) ?? groups.set(key, []).get(key)!).push(b);
+  }
+
+  const displayName = (arr: Record<string, unknown>[]): string => {
+    const counts = new Map<string, number>();
+    for (const b of arr) {
+      const name = String((b.Contact as Record<string, unknown> | undefined)?.Name ?? 'Unknown');
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'Unknown';
+  };
+
+  type Group = { contact: string; tier: 'exact' | 'near'; spanDays: number; bills: Record<string, unknown>[] };
+  const flagged: Group[] = [];
+  for (const [, arr] of groups) {
+    if (arr.length < 2) continue;
+    const sorted = [...arr].sort((a, b) => parseDate(a.Date) - parseDate(b.Date));
+    const spanDays = Math.round((parseDate(sorted[sorted.length - 1].Date) - parseDate(sorted[0].Date)) / 86_400_000);
+    if (spanDays > 6) continue; // normal recurring charge, not a duplicate
+    flagged.push({ contact: displayName(sorted), tier: spanDays === 0 ? 'exact' : 'near', spanDays, bills: sorted });
+  }
+  flagged.sort((a, b) => (a.tier === b.tier ? 0 : a.tier === 'exact' ? -1 : 1));
+
+  const exactCount = flagged.filter((g) => g.tier === 'exact').reduce((s, g) => s + g.bills.length, 0);
+  const nearCount = flagged.filter((g) => g.tier === 'near').reduce((s, g) => s + g.bills.length, 0);
+
+  // One compact row per duplicate GROUP (not per bill) — contact + amount,
+  // then a tiered detail line. For an exact (same-day) group, the detail
+  // names the distinct invoice-number variants involved (e.g. "BSE-7001 vs
+  // BSE7001") — this IS the explanation: those numbers colliding on the
+  // same contact/amount/day is why it's flagged. When a group has more
+  // bills than distinct number variants (e.g. "BSE-7001" entered twice
+  // plus "BSE7001"), the bill count is appended for clarity. A near
+  // (1-6 days apart) group instead states the count + day span, since
+  // there's no number collision to point at.
+  // `clickedGroupId` is only present when a row's own click triggered this
+  // recompute — toggles that row's expanded state against whatever was
+  // previously expanded (read back from state as `expandedGroupId`, same
+  // echo-and-compare pattern as analyze_myob_duplicates' `filter`). A
+  // background data refresh (list_invoices/list_contacts/get_organisation
+  // re-arriving) omits `clickedGroupId` entirely, so it just preserves
+  // whatever was already expanded instead of collapsing it.
+  const prevExpandedGroupId = String(args.expandedGroupId ?? '');
+  const clickedGroupId = args.clickedGroupId !== undefined ? String(args.clickedGroupId) : undefined;
+  const expandedGroupId =
+    clickedGroupId !== undefined ? (clickedGroupId === prevExpandedGroupId ? '' : clickedGroupId) : prevExpandedGroupId;
+
+  const detailRows = flagged.map((g, i) => {
+    const amount = fmtAmt(g.bills[0]?.Total);
+    const groupId = `${g.contact}|${amount}`;
+    const uniqueNumbers = [...new Set(g.bills.map((b) => String(b.InvoiceNumber ?? '—')))];
+    let detail: string;
+    if (g.tier === 'exact') {
+      detail = uniqueNumbers.length >= 2 ? uniqueNumbers.slice(0, 2).join(' vs ') : uniqueNumbers[0] ?? '';
+      if (g.bills.length > uniqueNumbers.length || g.bills.length > 2) detail += ` (${g.bills.length} bills)`;
+    } else {
+      detail = `${g.bills.length} bills, ${g.spanDays} day${g.spanDays !== 1 ? 's' : ''} apart`;
+    }
+    // One line per actual bill in this group — shown only when the row is
+    // expanded (clicked). preserveLines renders this as a real multi-line
+    // block rather than relying on nested `repeat` (not confirmed supported
+    // inside an already-repeated template in this renderer).
+    const billsSummary = g.bills
+      .map((b) => `${String(b.InvoiceNumber ?? '—')} · ${fmtDate(parseDate(b.Date))} · ${fmtAmt(b.Total)}`)
+      .join('\n');
+    return {
+      groupId,
+      contact: g.contact,
+      amount,
+      tierLabel: g.tier === 'exact' ? 'Exact match' : 'Near match',
+      tierTone: g.tier === 'exact' ? 'destructive' : 'warning',
+      detail,
+      isLast: i === flagged.length - 1,
+      expanded: groupId === expandedGroupId,
+      billsSummary,
+    };
+  });
+
+  const firstFlaggedInvoiceId = String(flagged[0]?.bills[0]?.InvoiceID ?? '');
+  const reviewUrl = shortCode
+    ? `https://go.xero.com/organisationlogin/default.aspx?shortcode=${encodeURIComponent(shortCode)}&redirecturl=${encodeURIComponent(
+        firstFlaggedInvoiceId ? `/AccountsPayable/Edit.aspx?InvoiceID=${firstFlaggedInvoiceId}` : '/AccountsPayable/Bills',
+      )}`
+    : 'https://go.xero.com/';
+
+  return {
+    groupCount: flagged.length,
+    billCount: exactCount + nearCount,
+    exactCount,
+    nearCount,
+    clearCount: bills.length - exactCount - nearCount,
+    totalScanned: bills.length,
+    reviewUrl,
+    expandedGroupId,
+    detailRows,
+    scannedAt: new Date().toISOString(),
+  };
+};
+
+// ── time_ago ──────────────────────────────────────────────────────────
+// Formats an ISO timestamp as a short relative-time string: "just now",
+// "N min ago", "N hrs ago", "N days ago".
+// Args: { value: string }
+const time_ago: ComputedFunction = (args) => {
+  const t = new Date(String(args.value ?? '')).getTime();
+  if (!Number.isFinite(t)) return '';
+  const mins = Math.floor((Date.now() - t) / 60_000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} hr${hours !== 1 ? 's' : ''} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days !== 1 ? 's' : ''} ago`;
+};
+
+
 const elements: PluginElementsModule = {
   slug: 'xero-accounting',
   functions: {
+    analyze_bill_duplicates,
+    time_ago,
     paginate,
     rate_variance_rows,
     ready_to_pay_held,
