@@ -12,7 +12,7 @@ Accounting, CRM, HR, payroll, community, productivity — wrapped as Model Conte
 
 **New here?** → [ONBOARDING.md](./ONBOARDING.md) · [CONTRIBUTING.md](./CONTRIBUTING.md) · [CREATING_PLUGINS.md](./CREATING_PLUGINS.md)
 
-**One repo, branch tiers:** `feature/* → dev → staging → main`. Plugin `.mcp.json` URLs use the **production** MCP host on every branch — myHub routes per-environment at runtime. See [CONTRIBUTING.md](./CONTRIBUTING.md#the-one-hard-rule-about-urls).
+**One repo, four branch tiers:** `dev → qa → uat → main`. Work lands on `dev`; AI Studio publishes and promotes each extension up the tiers. Plugin `.mcp.json` URLs use the **production** MCP host on every branch — myHub routes per-environment at runtime. See [CONTRIBUTING.md](./CONTRIBUTING.md#branch-model).
 
 </div>
 
@@ -76,7 +76,8 @@ The same plugin installs in two places:
 
 Two things on your machine. Open your terminal and check whether each is already installed.
 
-**Node.js 18 or newer.** Check with `node --version`. If you don't have it:
+**Node.js 20.19+ on the 20.x line, 22.12+ on the 22.x line, or 24 and newer.**
+This matches the validator and regression-test tooling. Check with `node --version`. If you don't have it:
 
 - **macOS** — [install Homebrew](https://brew.sh) once, then `brew install node`.
 - **Windows** — `winget install OpenJS.NodeJS.LTS` from PowerShell, or grab the installer at [nodejs.org](https://nodejs.org).
@@ -150,6 +151,10 @@ When the plugin works the way you want:
 Full reference: [`CREATING_PLUGINS.md`](CREATING_PLUGINS.md).
 
 ---
+
+`qa` is the canonical QA marketplace branch. The existing `staging` branch is
+retained for legacy rollback only; new authoring and publication use the four
+tiers above.
 
 ## Install an existing plugin
 

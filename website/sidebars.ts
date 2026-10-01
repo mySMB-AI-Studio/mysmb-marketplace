@@ -52,6 +52,7 @@ const sidebars: SidebarsConfig = {
         'reference/mcp-json',
         'reference/widget-json',
         'reference/validator-rules',
+        'reference/extension-content',
       ],
     },
     'contributing',

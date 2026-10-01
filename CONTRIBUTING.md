@@ -6,21 +6,26 @@ local Claude Code. It uses **branch tiers**, not separate repos per environment.
 ## Branch model
 
 ```
-feature/* ──→ dev ──→ staging ──→ main (production)
+feature/* ──→ dev ──→ qa ──→ uat ──→ main (production)
 ```
 
 | Branch | Who installs it | What lives here |
 |--------|-----------------|-----------------|
 | `main` | Production tenants | Vetted, released plugins only |
-| `staging` | Staging tenants | Full superset under pre-prod validation |
+| `qa` | QA tenants | Extensions published for QA validation |
+| `uat` | UAT tenants | Extensions promoted for user acceptance |
 | `dev` | Local Claude Code / dev tenants | Integration of in-flight plugin work |
 | `feature/*` | — | One plugin's work, short-lived, branched from `dev` |
 
-- Open PRs **into `dev`**. Promote up the tiers (`dev → staging → main`) via PR.
+- Open authoring PRs **into `dev`**. AI Studio publishes and promotes each
+  extension through `dev → qa → uat → main`.
 - Graduate a single plugin between tiers with
   [`scripts/promote-plugin.mjs`](./scripts/promote-plugin.mjs).
 - Branches differ **only by which plugins/versions exist** — never by URLs or
   environment config.
+
+`qa` is the canonical QA marketplace branch. `staging` remains only as a legacy
+rollback branch and is not a new publish target.
 
 ## The one hard rule about URLs
 

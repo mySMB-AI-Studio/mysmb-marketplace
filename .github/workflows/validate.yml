@@ -20,4 +20,7 @@ jobs:
         with:
           node-version: "20"
       - name: Run marketplace validator
-        run: npx --yes tsx scripts/validate.ts
+        run: |
+          npm ci
+          npm test
+          npm run validate

@@ -22,6 +22,11 @@ Lives at `plugins/<name>/.claude-plugin/plugin.json`.
 }
 ```
 
+Workspace custom table schemas and setup definitions use optional
+`content.recordTypes` and `content.setups` sections. See
+[Custom tables and setup](/reference/extension-content) for payload contracts and
+installation behaviour.
+
 ## Fields
 
 | Field | Required | Type | Notes |
