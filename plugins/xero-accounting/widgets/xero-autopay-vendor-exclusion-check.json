@@ -1,0 +1,327 @@
+{
+  "id": "xero-autopay-vendor-exclusion-check",
+  "title": "Autopay Vendor Exclusion Check",
+  "description": "Flags which Xero repeating-bill vendors are fully automated (AUTHORISED repeating invoices that post without a human touching them — effectively 'autopay') versus still requiring manual approval each cycle (DRAFT repeating invoices). AUTHORISED vendors are 'Excluded from Check' — an automated routine bill review doesn't need to re-examine them every cycle. DRAFT vendors are flagged 'Needs Review' since a person has to approve each generated bill. 'New Exclusions' counts AUTHORISED vendors whose repeating schedule started in roughly the last 40 days — the closest real proxy available, since Xero's RepeatingInvoice object has no 'date authorised' field. Live-wired to xero-accounting: list_repeating_invoices (ACCPAY only) fires on mount, fans out to get_organisation for the real deep-link ShortCode, and analyze_autopay_exclusions computes the stats and detail rows.",
+  "category": "finance",
+  "tags": ["xero", "autopay", "repeating", "vendors", "exclusions", "compliance"],
+  "keywords": ["autopay", "vendor", "exclusion", "repeating invoice", "needs review", "excluded", "xero"],
+  "connectorsUsed": ["xero-accounting"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 9, "rowSpan": 7 },
+    "min":       { "colSpan": 7, "rowSpan": 6 },
+    "max":       { "colSpan": 12, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "xero-accounting",
+    "tool": "list_repeating_invoices",
+    "params": { "xero_tenant_id": "fb48e700-fb7b-4bec-b82c-4a84d3daf864" }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "body"],
+        "watch": {
+          "/xero-accounting/list_repeating_invoices/RepeatingInvoices": [
+            { "action": "xero-accounting.get_organisation", "params": { "xero_tenant_id": "fb48e700-fb7b-4bec-b82c-4a84d3daf864" } },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/autopay",
+                "value": {
+                  "$computed": "xero-accounting_analyze_autopay_exclusions",
+                  "args": {
+                    "repeatingInvoices": { "$state": "/xero-accounting/list_repeating_invoices/RepeatingInvoices" },
+                    "organisation": { "$state": "/xero-accounting/get_organisation" },
+                    "filter": { "$state": "/ui/autopay/filter" }
+                  }
+                }
+              }
+            }
+          ],
+          "/xero-accounting/get_organisation": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/autopay",
+              "value": {
+                "$computed": "xero-accounting_analyze_autopay_exclusions",
+                "args": {
+                  "repeatingInvoices": { "$state": "/xero-accounting/list_repeating_invoices/RepeatingInvoices" },
+                  "organisation": { "$state": "/xero-accounting/get_organisation" }
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "headerRow": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "RefreshCcw", "tone": "accent", "size": "lg" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "subtitle"] },
+      "title": { "type": "Heading", "props": { "text": "Autopay Vendor Exclusion Check", "level": "h2" } },
+      "subtitle": { "type": "Eyebrow", "props": { "text": "Xero" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": { "padding": "md" }, "children": ["loading", "empty", "content"] },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": {
+          "$or": [
+            { "$state": "/_loading/xero-accounting.list_repeating_invoices" },
+            { "$state": "/xero-accounting/list_repeating_invoices/RepeatingInvoices", "not": true }
+          ]
+        }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No repeating bills found — nothing to check for autopay exclusions." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/xero-accounting.list_repeating_invoices", "not": true },
+            { "$state": "/xero-accounting/list_repeating_invoices/RepeatingInvoices" },
+            { "$state": "/ui/autopay/vendorCount", "not": true }
+          ]
+        }
+      },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["statGrid", "div1", "sectionHeadingRow", "tableHeaderRow", "rowList", "div2", "footerRow"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/xero-accounting.list_repeating_invoices", "not": true },
+            { "$state": "/xero-accounting/list_repeating_invoices/RepeatingInvoices" },
+            { "$state": "/ui/autopay/vendorCount" }
+          ]
+        }
+      },
+
+      "statGrid": { "type": "Row", "props": { "gap": "sm" }, "children": ["statVendors", "statExcluded", "statNew", "statReview"] },
+
+      "statVendors": { "type": "Section", "props": { "variant": "bordered" }, "children": ["statVendorsCard"] },
+      "statVendorsCard": { "type": "Section", "props": { "variant": "muted" }, "children": ["statVendorsClick"] },
+      "statVendorsClick": {
+        "type": "Row",
+        "props": { "justify": "center", "clickable": true, "selected": { "$state": "/ui/autopay/filterIsAll" } },
+        "children": ["statVendorsStack"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/autopay",
+              "value": {
+                "$computed": "xero-accounting_analyze_autopay_exclusions",
+                "args": {
+                  "repeatingInvoices": { "$state": "/xero-accounting/list_repeating_invoices/RepeatingInvoices" },
+                  "organisation": { "$state": "/xero-accounting/get_organisation" },
+                  "filter": ""
+                }
+              }
+            }
+          }
+        }
+      },
+      "statVendorsStack": { "type": "Stack", "props": { "gap": "xs", "align": "center" }, "children": ["statVendorsIcon", "statVendorsValue", "statVendorsLabel"] },
+      "statVendorsIcon": { "type": "Icon", "props": { "name": "Users", "tone": "accent", "size": "lg" } },
+      "statVendorsValue": { "type": "Stat", "props": { "value": { "$state": "/ui/autopay/vendorCount" }, "tone": "accent" } },
+      "statVendorsLabel": { "type": "Caption", "props": { "text": "AutoPay Vendors", "tone": "muted" } },
+
+      "statExcluded": { "type": "Section", "props": { "variant": "bordered" }, "children": ["statExcludedCard"] },
+      "statExcludedCard": { "type": "Section", "props": { "variant": "muted" }, "children": ["statExcludedClick"] },
+      "statExcludedClick": {
+        "type": "Row",
+        "props": { "justify": "center", "clickable": true, "selected": { "$state": "/ui/autopay/filterIsExcluded" } },
+        "children": ["statExcludedStack"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/autopay",
+              "value": {
+                "$computed": "xero-accounting_analyze_autopay_exclusions",
+                "args": {
+                  "repeatingInvoices": { "$state": "/xero-accounting/list_repeating_invoices/RepeatingInvoices" },
+                  "organisation": { "$state": "/xero-accounting/get_organisation" },
+                  "filter": "excluded"
+                }
+              }
+            }
+          }
+        }
+      },
+      "statExcludedStack": { "type": "Stack", "props": { "gap": "xs", "align": "center" }, "children": ["statExcludedIcon", "statExcludedValue", "statExcludedLabel"] },
+      "statExcludedIcon": { "type": "Icon", "props": { "name": "Ban", "tone": "destructive", "size": "lg" } },
+      "statExcludedValue": { "type": "Stat", "props": { "value": { "$state": "/ui/autopay/excludedCount" }, "tone": "destructive" } },
+      "statExcludedLabel": { "type": "Caption", "props": { "text": "Excluded from Check", "tone": "muted" } },
+
+      "statNew": { "type": "Section", "props": { "variant": "bordered" }, "children": ["statNewCard"] },
+      "statNewCard": { "type": "Section", "props": { "variant": "muted" }, "children": ["statNewClick"] },
+      "statNewClick": {
+        "type": "Row",
+        "props": { "justify": "center", "clickable": true, "selected": { "$state": "/ui/autopay/filterIsNew" } },
+        "children": ["statNewStack"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/autopay",
+              "value": {
+                "$computed": "xero-accounting_analyze_autopay_exclusions",
+                "args": {
+                  "repeatingInvoices": { "$state": "/xero-accounting/list_repeating_invoices/RepeatingInvoices" },
+                  "organisation": { "$state": "/xero-accounting/get_organisation" },
+                  "filter": "new"
+                }
+              }
+            }
+          }
+        }
+      },
+      "statNewStack": { "type": "Stack", "props": { "gap": "xs", "align": "center" }, "children": ["statNewIcon", "statNewValue", "statNewLabel"] },
+      "statNewIcon": { "type": "Icon", "props": { "name": "FilePlus2", "tone": "success", "size": "lg" } },
+      "statNewValue": { "type": "Stat", "props": { "value": { "$state": "/ui/autopay/newExclusionsCount" }, "tone": "success" } },
+      "statNewLabel": { "type": "Caption", "props": { "text": "New Exclusions", "tone": "muted" } },
+
+      "statReview": { "type": "Section", "props": { "variant": "bordered" }, "children": ["statReviewCard"] },
+      "statReviewCard": { "type": "Section", "props": { "variant": "muted" }, "children": ["statReviewClick"] },
+      "statReviewClick": {
+        "type": "Row",
+        "props": { "justify": "center", "clickable": true, "selected": { "$state": "/ui/autopay/filterIsNeedsReview" } },
+        "children": ["statReviewStack"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/autopay",
+              "value": {
+                "$computed": "xero-accounting_analyze_autopay_exclusions",
+                "args": {
+                  "repeatingInvoices": { "$state": "/xero-accounting/list_repeating_invoices/RepeatingInvoices" },
+                  "organisation": { "$state": "/xero-accounting/get_organisation" },
+                  "filter": "needsReview"
+                }
+              }
+            }
+          }
+        }
+      },
+      "statReviewStack": { "type": "Stack", "props": { "gap": "xs", "align": "center" }, "children": ["statReviewIcon", "statReviewValue", "statReviewLabel"] },
+      "statReviewIcon": { "type": "Icon", "props": { "name": "AlertTriangle", "tone": "warning", "size": "lg" } },
+      "statReviewValue": { "type": "Stat", "props": { "value": { "$state": "/ui/autopay/needsReviewCount" }, "tone": "warning" } },
+      "statReviewLabel": { "type": "Caption", "props": { "text": "Needs Review", "tone": "muted" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "sectionHeadingRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["sectionHeading", "clearFilterBtn"] },
+      "sectionHeading": { "type": "Text", "props": { "text": "Recently Excluded Vendors", "size": "sm", "weight": "semibold" } },
+      "clearFilterBtn": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "clickable": true },
+        "children": ["clearFilterLabel"],
+        "visible": { "$state": "/ui/autopay/filterIsAll", "not": true },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/autopay",
+              "value": {
+                "$computed": "xero-accounting_analyze_autopay_exclusions",
+                "args": {
+                  "repeatingInvoices": { "$state": "/xero-accounting/list_repeating_invoices/RepeatingInvoices" },
+                  "organisation": { "$state": "/xero-accounting/get_organisation" },
+                  "filter": ""
+                }
+              }
+            }
+          }
+        }
+      },
+      "clearFilterLabel": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "Showing: {f} · Clear", "f": { "$state": "/ui/autopay/filterLabel" } } },
+          "tone": "accent"
+        }
+      },
+
+      "tableHeaderRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "template": "2fr 1.3fr 1.6fr 1fr 1fr" },
+        "children": ["colVendor", "colAutopay", "colReason", "colAdded", "colStatus"]
+      },
+      "colVendor": { "type": "Caption", "props": { "text": "VENDOR", "tone": "muted" } },
+      "colAutopay": { "type": "Caption", "props": { "text": "AUTOPAY STATUS", "tone": "muted" } },
+      "colReason": { "type": "Caption", "props": { "text": "EXCLUSION REASON", "tone": "muted" } },
+      "colAdded": { "type": "Caption", "props": { "text": "ADDED", "tone": "muted" } },
+      "colStatus": { "type": "Caption", "props": { "text": "STATUS", "tone": "muted" } },
+
+      "rowList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["rowItem"],
+        "repeat": { "statePath": "/ui/autopay/rows", "key": "contactId" }
+      },
+      "rowItem": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "template": "2fr 1.3fr 1.6fr 1fr 1fr" },
+        "children": ["cellVendor", "cellAutopay", "cellReason", "cellAdded", "cellStatus"]
+      },
+      "cellVendor": { "type": "Text", "props": { "text": { "$item": "vendor" }, "size": "sm", "weight": "medium" } },
+      "cellAutopay": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["cellAutopayDot", "cellAutopayText"] },
+      "cellAutopayDot": { "type": "Dot", "props": { "tone": { "$item": "autopayStatusTone" }, "size": "xs" } },
+      "cellAutopayText": { "type": "Text", "props": { "text": { "$item": "autopayStatusLabel" }, "size": "sm", "tone": "muted" } },
+      "cellReason": { "type": "Text", "props": { "text": { "$item": "exclusionReason" }, "size": "sm", "tone": "muted" } },
+      "cellAdded": { "type": "Text", "props": { "text": { "$item": "added" }, "size": "sm", "tone": "muted" } },
+      "cellStatus": { "type": "Badge", "props": { "text": { "$item": "status" }, "tone": { "$item": "statusTone" }, "variant": "soft" } },
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "footerRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["footerButtons", "lastScannedScanning", "lastScannedDone"] },
+      "footerButtons": { "type": "Row", "props": { "gap": "sm" }, "children": ["reviewBtn", "rescanBtn"] },
+      "reviewBtn": {
+        "type": "Button",
+        "props": { "label": "Review Exclusions", "variant": "primary", "size": "sm", "leadingIcon": "Eye" },
+        "on": { "click": { "action": "open_url", "params": { "url": { "$state": "/ui/autopay/reviewUrl" }, "target": "_blank" } } }
+      },
+      "rescanBtn": {
+        "type": "Button",
+        "props": { "label": "Rescan Data", "variant": "secondary", "size": "sm", "leadingIcon": "RotateCw" },
+        "on": { "click": { "action": "xero-accounting.list_repeating_invoices", "params": { "xero_tenant_id": "fb48e700-fb7b-4bec-b82c-4a84d3daf864" } } }
+      },
+
+      "lastScannedScanning": {
+        "type": "Caption",
+        "props": { "text": "Scanning…", "tone": "accent" },
+        "visible": { "$state": "/_loading/xero-accounting.list_repeating_invoices" }
+      },
+      "lastScannedDone": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "Last scanned {t}", "t": { "$computed": "xero-accounting_time_ago", "args": { "value": { "$state": "/ui/autopay/scannedAt" } } } } },
+          "tone": "muted"
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/xero-accounting.list_repeating_invoices", "not": true },
+            { "$state": "/ui/autopay/scannedAt" }
+          ]
+        }
+      }
+
+    }
+  },
+  "status": "draft"
+}
