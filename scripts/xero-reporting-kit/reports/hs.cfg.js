@@ -1,19 +1,20 @@
 XK.app({
   title: 'Business health scorecard', primary: 'pnl', dated: ['bs'], org: 'org', conns: 'connections',
-  inputs: { asAt: 'end_date', org: 'org', display: 'display' },
-  defaults: { end_date: '2026-08-31', m_start: '2026-08-01', prev_end: '2026-07-31', prev_start: '2026-07-01', targets: '{}', org: '',
+  inputs: { asAt: 'end_date', basis: 'basis', org: 'org', display: 'display' },
+  defaults: { end_date: '2026-08-31', m_start: '2026-08-01', prev_end: '2026-07-31', prev_start: '2026-07-01', targets: '{}', basis: 'Accrual', org: '',
     display: '{"cents":0,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"end_last_month","c":"none","v":"target"}' },
-  uses: { pnl: ['m_start', 'end_date', 'org'], pnl_prev: ['prev_start', 'prev_end', 'org'], bs: ['end_date', 'org'], org: ['org'], connections: [] },
-  tools: { pnl: 'get_profit_and_loss (the month)', pnl_prev: 'get_profit_and_loss (the previous month)', bs: 'get_balance_sheet (month end and previous month end: periods 1, MONTH)', org: 'get_organisation', connections: 'list_connections' },
+  uses: { pnl: ['m_start', 'end_date', 'org'], pnl_cash: ['m_start', 'end_date', 'org'], pnl_prev: ['prev_start', 'prev_end', 'org'], pnl_prev_cash: ['prev_start', 'prev_end', 'org'], bs: ['end_date', 'org'], org: ['org'], connections: [] },
+  tools: { pnl: 'get_profit_and_loss (the month)', pnl_cash: 'get_profit_and_loss (the month, cash basis)', pnl_prev: 'get_profit_and_loss (the previous month)', pnl_prev_cash: 'get_profit_and_loss (the previous month, cash basis)', bs: 'get_balance_sheet (month end and previous month end: periods 1, MONTH)', org: 'get_organisation', connections: 'list_connections' },
   asats: [['end_last_month', 'End of last month'], ['end_this_month', 'End of this month'], ['custom', 'Custom']],
   views: [['target', 'Actuals vs target'], ['actuals', 'Actuals']],
   derive: function (inp) { var p = inp.end_date.split('-'), pe = new Date(Date.UTC(+p[0], +p[1] - 1, 0)).toISOString().slice(0, 10); return { m_start: inp.end_date.slice(0, 8) + '01', prev_end: pe, prev_start: pe.slice(0, 8) + '01' }; },
   render: function (c) {
+    var Bk = c.inputs.basis === 'Cash' ? '_cash' : '', PL = { pnl: 1, pnl_prev: 1 }, D = function (id) { return c.data[PL[id] ? id + Bk : id]; }, Er = function (id) { return c.errors[PL[id] ? id + Bk : id]; }, Em = function (id) { return c.err(PL[id] ? id + Bk : id); };
     var self = this, body = c.body, d0 = Object.assign({}, c.display, { cents: 0 }), money = function (v) { return XK.money(v, c.currency, d0); };
-    if (c.errors.pnl || c.errors.bs) { body.innerHTML = '<p class="xk-err">' + XK.h(c.err('pnl') || c.err('bs')) + '</p>'; return { checks: [{ name: 'Profit and Loss and Balance Sheet loaded', pass: false, detail: c.err('pnl') || c.err('bs') }] }; }
-    if (!c.data.pnl || !c.data.bs) return {};
+    if (Er('pnl') || c.errors.bs) { body.innerHTML = '<p class="xk-err">' + XK.h(Em('pnl') || c.err('bs')) + '</p>'; return { checks: [{ name: 'Profit and Loss and Balance Sheet loaded', pass: false, detail: Em('pnl') || c.err('bs') }] }; }
+    if (!D('pnl') || !c.data.bs) return {};
     var end = c.inputs.end_date, mon = XK.monthLabel(end.slice(0, 7)), pmon = XK.monthLabel(c.inputs.prev_end.slice(0, 7)), dim = +end.slice(8), pdim = +c.inputs.prev_end.slice(8);
-    var bw = XK.walk(c.data.bs), cur = { pl: XK.plParts(XK.walk(c.data.pnl)), bs: XK.bsParts(bw, 0), days: dim }, prv = { pl: c.data.pnl_prev ? XK.plParts(XK.walk(c.data.pnl_prev)) : null, bs: bw.columns.length > 1 ? XK.bsParts(bw, 1) : null, days: pdim };
+    var bw = XK.walk(c.data.bs), cur = { pl: XK.plParts(XK.walk(D('pnl'))), bs: XK.bsParts(bw, 0), days: dim }, prv = { pl: D('pnl_prev') ? XK.plParts(XK.walk(D('pnl_prev'))) : null, bs: bw.columns.length > 1 ? XK.bsParts(bw, 1) : null, days: pdim };
     var div = function (a, b) { return a == null || b == null || !b ? null : a / b; };
     var MET = [
       { id: 'income', sec: 'Core profitability', name: 'Total income', eq: 'Σ income accounts', f: function (x) { return x.pl && x.pl.income; }, t: 'm', dir: 'increase', imp: 'High' },
@@ -62,7 +63,7 @@ XK.app({
       { name: 'Score = targets achieved ÷ targets with a result', pass: score == null ? null : XK.near(score, won / scored.length, 0.0001), detail: won + '/' + scored.length + ' = ' + (score == null ? 'N/A' : (score * 100).toFixed(1) + '%') },
       { name: 'Every status recomputed from actual vs target', pass: recomputed, detail: rows.length + ' metrics' },
       { name: 'Every metric shows its equation', pass: rows.every(function (r) { return !!r.m.eq; }), detail: rows.length + ' equations' },
-      { name: 'Net profit for ' + mon + ' = the movement in Current Year Earnings on the Balance Sheet', pass: cyeMove == null || cur.pl.np == null ? null : XK.near(cur.pl.np, cyeMove), detail: cyeMove == null ? 'Current Year Earnings not on both month ends' : money(cur.pl.np) + ' vs ' + money(cyeMove) },
+      c.inputs.basis === 'Cash' ? { name: 'Net profit vs the movement in Current Year Earnings (information)', pass: null, info: true, detail: 'The Balance Sheet tie is checked on the accrual basis' } : { name: 'Net profit for ' + mon + ' = the movement in Current Year Earnings on the Balance Sheet', pass: cyeMove == null || cur.pl.np == null ? null : XK.near(cur.pl.np, cyeMove), detail: cyeMove == null ? 'Current Year Earnings not on both month ends' : money(cur.pl.np) + ' vs ' + money(cyeMove) },
       { name: 'Xero returned both month-end balance sheets', pass: bw.columns.length >= 2, detail: bw.columns.join(', ') }
     ];
     this._x = { rows: rows, mon: mon, pmon: pmon, score: score, won: won, scored: scored.length, grade: grade, show: show };
