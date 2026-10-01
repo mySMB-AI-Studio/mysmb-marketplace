@@ -97,7 +97,18 @@
       "titleIcon": { "type": "Icon", "props": { "name": "ClipboardCheck", "tone": "accent", "size": "sm" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow", "count"] },
       "title": { "type": "Heading", "props": { "text": "Pending Approvals", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "ApprovalMax · bills & purchase orders" } },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "ApprovalMax · {company}",
+              "company": { "$state": "/approvalmax/list_companies/0/name" }
+            }
+          }
+        }
+      },
       "count": {
         "type": "Caption",
         "props": {
