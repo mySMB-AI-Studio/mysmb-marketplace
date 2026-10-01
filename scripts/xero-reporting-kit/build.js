@@ -1,16 +1,23 @@
-// node build.js <report>  -> out/<report>.html  (skeleton + xk.css + xk-kit.js + reports/<report>.cfg.js)
+// node build.js <report>  -> out/<report>.html
+// A report document = skeleton + xk.css + the kit cut down to what reports/<report>.cfg.js uses (kit-prune.js) + the config.
+// gen-xero.js puts exactly this document in the report skill. With KIT_DIR set to an extracted copy (roundtrip.js), the
+// document is the one extracted from the skill (reports/<report>.doc.html), so the tests run on what the agent copies.
 const fs = require('fs'), path = require('path');
 const dir = process.env.KIT_DIR || __dirname;
-function build(name, title) {
-  const sk = fs.readFileSync(path.join(dir, 'skeleton.html'), 'utf8');
-  const css = fs.readFileSync(path.join(dir, 'xk.css'), 'utf8').trim();
-  const kit = fs.readFileSync(path.join(dir, 'xk-kit.js'), 'utf8').replace(/\nif \(typeof module[^\n]*\n?$/, '\n').trim();
-  const cfg = fs.readFileSync(path.join(dir, 'reports', name + '.cfg.js'), 'utf8').trim();
+const rd = (f) => fs.readFileSync(path.join(__dirname, f), 'utf8').replace(/\r\n/g, '\n');
+function assemble(name, title) {
+  const { reportKit } = require('./kit-prune.js');
+  const cfg = rd(path.join('reports', name + '.cfg.js')).trim();
   const t = title || (cfg.match(/title:\s*'([^']+)'/) || [])[1] || name;
-  const html = sk.replace('{{TITLE}}', t).replace('{{CSS}}', () => css).replace('{{KIT}}', () => kit).replace('{{CFG}}', () => cfg);
+  return rd('skeleton.html').trim().replace('{{TITLE}}', t).replace('{{CSS}}', () => rd('xk.css').trim()).replace('{{KIT}}', () => reportKit(cfg)).replace('{{CFG}}', () => cfg) + '\n';
+}
+function build(name, title) {
+  const doc = path.join(dir, 'reports', name + '.doc.html');
+  const html = fs.existsSync(doc) ? fs.readFileSync(doc, 'utf8').replace(/\r\n/g, '\n') : assemble(name, title);
   fs.mkdirSync(path.join(dir, 'out'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'out', name + '.html'), html);
   return html;
 }
 if (require.main === module) { const h = build(process.argv[2]); console.log('built', process.argv[2], h.length, 'bytes'); }
 module.exports = build;
+module.exports.assemble = assemble;
