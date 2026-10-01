@@ -56,7 +56,23 @@
         "children": [
           "header",
           "body"
-        ]
+        ],
+        "watch": {
+          "/xero-accounting/list_xero_ready_to_pay/heldBills": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/rtp",
+              "value": {
+                "$computed": "xero-accounting_ready_to_pay_held",
+                "args": {
+                  "value": {
+                    "$state": "/xero-accounting/list_xero_ready_to_pay/heldBills"
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       "header": {
         "type": "Header",
@@ -181,80 +197,24 @@
       "hero": {
         "type": "Row",
         "props": {
-          "gap": "md",
+          "gap": "lg",
           "align": "center",
           "template": "auto minmax(0,1fr)"
         },
         "children": [
-          "heroReady",
+          "heroRing",
           "heroText"
         ]
       },
-      "heroReady": {
-        "type": "Section",
+      "heroRing": {
+        "type": "Donut",
         "props": {
-          "variant": "bordered"
-        },
-        "children": [
-          "heroReadyStack"
-        ]
-      },
-      "heroReadyStack": {
-        "type": "Stack",
-        "props": {
-          "gap": "xs",
-          "align": "center"
-        },
-        "children": [
-          "heroReadyFrac",
-          "heroReadyWord",
-          "heroReadyBarWrap"
-        ]
-      },
-      "heroReadyFrac": {
-        "type": "Text",
-        "props": {
-          "text": {
-            "$state": "/xero-accounting/list_xero_ready_to_pay/summary/readyOfTotalText"
+          "segments": {
+            "$state": "/xero-accounting/list_xero_ready_to_pay/summary/ringSegments"
           },
-          "size": "md",
-          "weight": "medium",
-          "tone": "success"
-        }
-      },
-      "heroReadyWord": {
-        "type": "Caption",
-        "props": {
-          "text": "ready",
-          "tone": "success"
-        }
-      },
-      "heroReadyBarWrap": {
-        "type": "Row",
-        "props": {
-          "gap": "none",
-          "align": "center",
-          "template": "3rem"
-        },
-        "children": [
-          "heroReadyBar"
-        ]
-      },
-      "heroReadyBar": {
-        "type": "ProgressBar",
-        "props": {
-          "value": {
-            "$computed": "pct",
-            "args": {
-              "part": {
-                "$state": "/xero-accounting/list_xero_ready_to_pay/summary/readyCount"
-              },
-              "whole": {
-                "$state": "/xero-accounting/list_xero_ready_to_pay/summary/totalCount"
-              }
-            }
-          },
-          "tone": "success"
+          "centerLabel": "bills",
+          "size": 84,
+          "thickness": 9
         }
       },
       "heroText": {
@@ -534,7 +494,7 @@
           "heldChip"
         ],
         "repeat": {
-          "statePath": "/xero-accounting/list_xero_ready_to_pay/heldBills",
+          "statePath": "/ui/rtp/bills",
           "key": "id"
         }
       },
@@ -549,7 +509,9 @@
         "children": [
           "heldName",
           "heldAmount",
-          "heldReasons"
+          "heldPill0",
+          "heldPill1",
+          "heldPill2"
         ],
         "on": {
           "click": {
@@ -588,15 +550,43 @@
           "weight": "medium"
         }
       },
-      "heldReasons": {
-        "type": "Text",
+      "heldPill0": {
+        "type": "Badge",
         "props": {
           "text": {
-            "$item": "reasonText"
+            "$item": "pills/0"
           },
-          "size": "sm",
-          "weight": "medium",
-          "tone": "destructive"
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "pills/0"
+        }
+      },
+      "heldPill1": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "pills/1"
+          },
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "pills/1"
+        }
+      },
+      "heldPill2": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "pills/2"
+          },
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "pills/2"
         }
       },
       "footerDivider": {
