@@ -1304,6 +1304,28 @@ const analyze_excluded_documents: ComputedFunction = (args) => {
   };
 };
 
+// ── ready_to_pay_held ───────────────────────────────────────────────
+// Adds `pills` (one display label per failed check) to each held bill from
+// list_xero_ready_to_pay, so the tile can render one Badge per reason via
+// positional `$item: "pills/0"` … `"pills/2"` (repeat has no nested lists).
+// Returns one object for a single setState: { bills }.
+// Args: { value: ReadyToPayBill[] }
+const HELD_REASON_PILL: Record<string, string> = {
+  not_approved: '✕ not approved',
+  bank: '✕ bank',
+  rate: '✕ rate',
+};
+const ready_to_pay_held: ComputedFunction = (args) => {
+  const bills = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  return {
+    bills: bills.map((b) => ({
+      ...b,
+      pills: (Array.isArray(b.reasons) ? (b.reasons as unknown[]) : [])
+        .map((r) => HELD_REASON_PILL[String(r)] ?? `✕ ${String(r).replace(/_/g, ' ')}`),
+    })),
+  };
+};
+
 // ── rate_variance_rows ──────────────────────────────────────────────
 // Lays out list_xero_rate_variance lines as diverging bars around 0.
 // There's no diverging-bar primitive, so each half of a row's bar track is a
@@ -1373,6 +1395,7 @@ const elements: PluginElementsModule = {
   functions: {
     paginate,
     rate_variance_rows,
+    ready_to_pay_held,
     format_date,
     status_tone,
     status_label,
