@@ -697,6 +697,18 @@ Required top‑level keys: `id`, `title`, `description`, `category`, `tags`, `co
 
 ---
 
+### Workspace custom tables and setup
+
+AI Studio can package `custom-table` and `setup` components alongside existing
+components. Table payloads use `kind: "record_type"` and are listed in
+`content.recordTypes` at `content/record-types/<originKey>.json`; setup payloads
+use `kind: "setup"` and `content.setups` at
+`content/setups/<originKey>.json`. Both carry UUID origins and verified canonical
+SHA-256 hashes. Tables are empty drafts until a designer reviews publication.
+Setup stores nonsecret per-user answers and selected connector IDs; authentication
+uses Connections. Installation never publishes automations or expands grants.
+See [the complete contracts](website/docs/reference/extension-content.md).
+
 ## 12. Reference: rules the validator enforces
 
 From `scripts/validate.ts`:

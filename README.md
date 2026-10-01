@@ -76,7 +76,8 @@ The same plugin installs in two places:
 
 Two things on your machine. Open your terminal and check whether each is already installed.
 
-**Node.js 18 or newer.** Check with `node --version`. If you don't have it:
+**Node.js 20.19+ on the 20.x line, 22.12+ on the 22.x line, or 24 and newer.**
+This matches the validator and regression-test tooling. Check with `node --version`. If you don't have it:
 
 - **macOS** — [install Homebrew](https://brew.sh) once, then `brew install node`.
 - **Windows** — `winget install OpenJS.NodeJS.LTS` from PowerShell, or grab the installer at [nodejs.org](https://nodejs.org).
@@ -169,6 +170,10 @@ dev ──publish──► qa ──promote──► uat ──promote──► 
 Promotion is **per extension**: AI Studio copies `plugins/<slug>/` and its `marketplace.json` entry from the tier below, writes the new version into `plugin.json` and the entry, commits onto the target branch, and refreshes that environment's marketplace so tenants see it in the store straight away. Nobody commits to `qa`, `uat` or `main` by hand, and nobody bumps `version` by hand. CI validates every push to every tier. Full rules: [CONTRIBUTING.md](./CONTRIBUTING.md#branch-tiers).
 
 ---
+
+`qa` is the canonical QA marketplace branch. The existing `staging` branch is
+retained for legacy rollback only; new authoring and publication use the four
+tiers above.
 
 ## Install an existing plugin
 

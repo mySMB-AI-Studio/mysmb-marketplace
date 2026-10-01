@@ -29,6 +29,11 @@ It hard-fails the PR or push if any rule is violated; a failed publish or promot
 | 9 | Every myhub-hosted MCP URL uses the **production** myhub-mcp-servers host, on every branch tier. | Use the production host; myHub rewrites it per environment at runtime. `node scripts/normalize-mcp-urls.mjs` fixes imported files. |
 | 10 | Store `branding` / `listing` on a `marketplace.json` entry (when present): `branding.color` is `#rgb`/`#rrggbb`; `branding.tagline` ≤ 90 chars; `listing.highlights` ≤ 4 × ≤ 120 chars; `listing.screenshots` ≤ 6; `listing.longDescription` ≤ 20,000 chars; `listing.publisher` has a `name` (≤ 80 chars); publisher/support URLs parse; every image (`branding.logo`, `branding.logoDark`, `listing.screenshots[]`) is an `https://` URL, a `data:image/…` URI, or a bundle-relative svg/png/jpg/jpeg/webp/gif that exists in `plugins/<slug>/` and is ≤ 96 KB. | Keep images in the bundle (e.g. `assets/logo.svg`) — SVG preferred. See [Validate and ship](/authoring/validate-and-ship#store-branding-and-listing-optional). |
 
+The content check also validates `content.recordTypes` and `content.setups`:
+UUID origins, canonical paths and SHA-256 hashes, bounded portable definitions,
+portal field policy and unique setup keys. Content paths cannot leave the plugin
+directory. See [Custom tables and setup](/reference/extension-content).
+
 ## Convention rules (reviewed in PR, not enforced)
 
 These are not blocked by the validator but will be flagged in code review:
