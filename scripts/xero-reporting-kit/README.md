@@ -33,7 +33,7 @@ Open the PR only when `npm run roundtrip` and `validate.ts` both pass.
 | `harness.js` | Runs a built report in jsdom against a mock `MyHubReport` that behaves like the host: params come from the manifest, defaults are filled, unknown inputs are rejected, plus `getData`, snapshot mode and a fixed clock (25 Sep 2026). |
 | `ledger.js` | A small double-entry set of books. **Every Xero response is derived from it:** P&L (accrual and cash, `periods`/`timeframe`), Balance Sheet, Bank Summary, Trial Balance, and lists with statuses, `where` and 100-row paging. Cross-report ties therefore hold by construction, and a tampered value must fail. |
 | `fixtures.js` | The original P&L / Balance Sheet fixtures used by `test-xero.js`. |
-| `test-ledger.js` · `test-xero.js` · `test-dash.js` | The tests. Run `node test-dash.js <group>` to run one group (`aged`, `pipe`, `bo`, `pf`, `cp`, `hs`, `vz`, `cs`, `cf`, `gst`, `rc`, `tb`). |
+| `test-ledger.js` · `test-xero.js` · `test-dash.js` | The tests. Run `node test-dash.js <group>` to run one group (`aged`, `pipe`, `bo`, `pf`, `cp`, `hs`, `vz`, `cs`, `cf`, `gst`, `rc`, `tb`, `me`). |
 | `check-reports.mts` + `platform/` | The platform's own validators. `report-bindings.ts` is a verbatim copy of myHubV2 `packages/shared/src/artifacts/report-bindings.ts`. |
 | `roundtrip.js` | The pre-PR check described above. |
 | `demo.js` | `node demo.js <id> [light|dark] [xero|mysmb]` writes `out/<id>…demo.html`, which runs offline on the ledger. Open it in a browser to look at a report. |
@@ -52,3 +52,10 @@ Open the PR only when `npm run roundtrip` and `validate.ts` both pass.
 - **Opening a report:** the host hydrates with the **manifest** defaults. The kit compares the dates in Xero's report title with its controls and refetches if they differ.
 - **Skill limits:** markdown up to 128 × 1024 characters and a description of at most 500 characters (myHubV2 developer skills). The generator enforces both.
 - **The save check** is a plain text match on `MyHubReport.onData`. The kit calls it in full.
+- **Bindings from other connectors** (e.g. `xero-payroll-au`, `xero-assets`) work like any other binding. Declare them in `cfg.sources` (`{ bindingId: { name: 'Xero Payroll AU', optional: true } }`):
+  - a missing connection then names that connector;
+  - only the main Xero connection raises the top "Connect Xero" banner;
+  - an optional source that fails is an N/A line, not a red banner.
+
+  Both connectors accept `xero_tenant_id`. Bind the organisation input to them too, or a report could mix two organisations' data.
+- **A report config owns its body.** Statements use `XK.statement`; dashboards and task lists (e.g. `me.cfg.js`) build their own layout from the kit pieces. Findings such as month-end tasks are content, not checks; the banner is for data-integrity ties.

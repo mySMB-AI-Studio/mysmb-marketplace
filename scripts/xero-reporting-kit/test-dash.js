@@ -196,7 +196,7 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     const rowOf = (name) => [...h.doc.querySelectorAll('.xk-grid tbody tr')].find((tr) => tr.children[0] && tr.children[0].textContent === name);
     ok('hs: August 2026 vs July 2026 (end of last month)', /Scorecard — Aug 2026/.test(body(h)) && h.calls.some((x) => x.id === 'pnl_prev' && x.params.fromDate === '2026-07-01' && x.params.toDate === '2026-07-31'), body(h).slice(0, 200));
     ok('hs: net profit row = the books, with its equation and status', rowOf('Net profit').children[3].textContent === md(npA) && rowOf('Net profit').children[2].textContent === md(npJ) && rowOf('Net profit').children[1].textContent === 'Total income − Total expenses' && new RegExp(npA >= npJ ? '^✓' : '^✗').test(rowOf('Net profit').children[5].textContent), [md(npA), md(npJ), rowOf('Net profit').textContent]);
-    const b = E.balances('2026-08-31'), cr = (b['090'] + b['091'] + b['610'] + b['620']) / (b['800'] + b['820']);
+    const b = E.balances('2026-08-31'), cr = (b['090'] + b['091'] + b['610'] + b['620']) / (b['800'] + b['820'] + b['850']);
     ok('hs: current ratio = current assets ÷ current liabilities', rowOf('Current ratio').children[3].textContent === cr.toFixed(2), [cr.toFixed(2), rowOf('Current ratio').textContent]);
     const achieved = [...h.doc.querySelectorAll('.xk-grid tbody tr')].filter((tr) => tr.children[5] && /^✓/.test(tr.children[5].textContent)).length;
     ok('hs: score = achieved ÷ 12 and every check passes (incl. NP = CYE movement), green', new RegExp(achieved + ' of 12 targets achieved').test(body(h)) && green(h) && /5\/5 checks passed/.test(banner(h)) && h.errs.length === 0, [achieved, banner(h)]);
@@ -321,7 +321,7 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     ok('rc: groups in Xero order with Favourites first', ['Favourites', 'Financial statements', 'Payables and receivables', 'Reconciliations', 'Taxes and balances', 'Dashboards and analytics'].every((x, i, a) => body(r).indexOf(x) >= 0 && (i === 0 || body(r).indexOf(x) > body(r).indexOf(a[i - 1]))), body(r).slice(0, 300));
     ok('rc: live reports carry their prompt ID and what to ask', /Profit and Loss Live P06 ?Ask: "Profit and loss this financial year to date"/.test(body(r)) && /Aged Receivables Summary Live P08/.test(body(r)), body(r).slice(0, 600));
     ok('rc: reports without a prompt are flagged, never implied live', /Journal Report No prompt yet/.test(body(r)) && /Not in this agent yet — open it in Xero → Reporting/.test(body(r)));
-    ok('rc: added skills shown — Trial Balance Live, written-spec skills "Built on request"', /Trial Balance Live Added/.test(body(r)) && /General Ledger Built on request Added/.test(body(r)) && /Month-end task list Built on request/.test(body(r)), body(r).slice(0, 1600));
+    ok('rc: added skills shown — Trial Balance Live, written-spec skills "Built on request"', /Trial Balance Live Added/.test(body(r)) && /General Ledger Built on request Added/.test(body(r)) && /Month-end task list Live Added/.test(body(r)) && /Exceptions dashboard Built on request/.test(body(r)), body(r).slice(0, 1600));
     ok('rc: both checks pass, green', green(r) && /2\/2 checks passed/.test(banner(r)), banner(r));
     const qi = r.doc.getElementById('rc-q'); qi.value = 'aged'; qi.dispatchEvent(new r.w.Event('change')); await r.settle();
     ok('rc: search filters the catalogue (display only)', /Aged Payables Summary/.test(body(r)) && !/Journal Report/.test(body(r)), body(r).slice(0, 300));
@@ -340,6 +340,42 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     ok('tb: a single balance column → Debit = Credit is N/A with the columns named (never a guessed pass)', /– Total Debits = Total Credits — Xero returned column\(s\) Balance instead of separate Debit \/ Credit columns/.test(banner(t3)), banner(t3).slice(0, 400));
     const t4 = await run('tb', man('tb'), TB({ bs_tie: tamper(L.bs, (rows) => { cellOf(rows, 'Current Year Earnings')[1].Value = '1.00'; }) }));
     ok('tb: Balance Sheet Current Year Earnings differs → the independent tie fails', /✗ Revenue − Expenses/.test(banner(t4)), banner(t4).slice(0, 400));
+  }
+  if (!only || only === 'me') {
+    // ---------------- Month-end task list (added skill; xero-accounting + xero-payroll-au + xero-assets) ----------------
+    const ME = (extra) => Object.assign({ bank: L.bankSummary, receivables: L.listInvoices, payables: L.listInvoices, journals: L.listManualJournals, bs: L.bs, pay_runs: L.listPayRuns, timesheets: L.listTimesheets, assets: L.listAssets, org: L.organisation, connections: L.connections }, extra || {});
+    const m = await run('me', man('me'), ME());
+    const taskText = (k) => [...k.children].map((e) => e.textContent.replace(/\s+/g, ' ').trim()).join(' '), tasks = () => [...m.doc.querySelectorAll('#xk-body .xk-card .xk-kpi')].map(taskText);
+    const has = (list, cat, re) => list.some((t) => t.startsWith(cat) && re.test(t));
+    const tl = tasks();
+    ok('me: last month (August 2026) by default', /For the month ended 31 August 2026/.test(text(m.doc, '#xk-head')) && m.calls.some((x) => x.id === 'journals' && x.params.where === 'Date>=DateTime(2026,08,01) AND Date<=DateTime(2026,08,31)'), text(m.doc, '#xk-head'));
+    ok('me: draft pay run for the period → Required', has(tl, 'Required', /Pay run not posted: 1 Aug 2026 – 31 Aug 2026 Status DRAFT/), tl);
+    ok('me: unapproved timesheets in the period → Review (2 timesheets, 75.5 hours)', has(tl, 'Review', /Timesheets not yet approved 2 timesheet\(s\) · 75\.5 hours/), tl);
+    ok('me: draft manual journal → Required; $10,000 posted journal → Review; voided one ignored', has(tl, 'Required', /Draft manual journal: Accrued audit fee 31 Aug 2026/) && has(tl, 'Review', /Large or round journal: Insurance prepaid — funded by loan drawdown .*\$10,000\.00/) && !tl.some((t) => /Duplicate entry/.test(t)), tl);
+    ok('me: non-zero Suspense on the Balance Sheet → Required', has(tl, 'Required', /Clear Suspense Balance \$120\.00 at 31 Aug 2026/), tl);
+    const recOpen = L.listInvoices({ where: 'Type=="ACCREC"', statuses: 'AUTHORISED' }).Invoices.filter((d) => d.DateString.slice(0, 10) <= '2026-08-31' && d.DueDateString.slice(0, 10) < L.addDays('2026-08-31', -90));
+    ok('me: invoices more than 90 days overdue → Required (grouped)', recOpen.length ? has(tl, 'Required', new RegExp('Invoices more than 90 days overdue ' + recOpen.length + ' invoice\\(s\\)')) : !tl.some((t) => /90 days/.test(t)), [recOpen.length, tl]);
+    const bills = L.listInvoices({ where: 'Type=="ACCPAY"', statuses: 'AUTHORISED' }).Invoices.filter((d) => d.DateString.slice(0, 10) <= '2026-08-31'), odB = bills.filter((d) => d.DueDateString.slice(0, 10) < '2026-08-31');
+    ok('me: bills overdue at the period end → Required (grouped)', odB.length && has(tl, 'Required', new RegExp('Bills overdue at the period end ' + odB.length + ' bill\\(s\\)')), [odB.length, tl]);
+    const byS = {}; bills.forEach((d) => { byS[d.Contact.Name] = (byS[d.Contact.Name] || 0) + d.AmountDue; }); const tot = Object.values(byS).reduce((a, b) => a + b, 0), big = Object.keys(byS).filter((k) => byS[k] / tot > 0.25);
+    ok('me: supplier over 25% of outstanding bills → Review', big.every((k) => has(tl, 'Review', new RegExp('Supplier concentration: ' + k))) && tl.filter((t) => /Supplier concentration/.test(t)).length === big.length, [big, tl.filter((t) => /Supplier/.test(t))]);
+    ok('me: GST balance → Review; depreciation → Information-required (2 registered assets); lock dates → Optional', has(tl, 'Review', /GST balance at the period end/) && has(tl, 'Information-required', /Confirm August 2026 depreciation is posted 2 registered asset\(s\)/) && has(tl, 'Optional', /Lock the period in Xero/), tl);
+    ok('me: Required tasks do not turn the banner red — checks pass (bank tie, figures cited, lists loaded), green', green(m) && /✓ Bank closing balances = Total Bank on the Balance Sheet at 2026-08-31/.test(banner(m)) && /✓ Every Required and Review task cites its figure and threshold/.test(banner(m)) && m.errs.length === 0, banner(m));
+    ok('me: payroll and assets get the selected organisation (xero_tenant_id)', ['pay_runs', 'timesheets', 'assets'].every((id) => m.calls.some((x) => x.id === id && 'xero_tenant_id' in x.params)) && m.calls.some((x) => x.id === 'assets' && x.params.status === 'Registered'));
+    ok('me: sources line names all three connectors', /xero-accounting, xero-payroll-au and xero-assets connectors/.test(text(m.doc, '#xk-sources')));
+    const fbtn = m.doc.querySelector('button[data-f="Required"]'); fbtn.click(); await m.settle();
+    ok('me: category filter shows only Required tasks (display only)', tasks().length > 0 && tasks().every((t) => t.startsWith('Required')), tasks());
+    // an organisation without AU payroll (Xero returns its error) → N/A + Information-required, never red
+    const m2 = await run('me', man('me'), ME({ pay_runs: (q) => L.listPayRuns(Object.assign({}, q, { xero_tenant_id: L.T2 })), timesheets: (q) => L.listTimesheets(Object.assign({}, q, { xero_tenant_id: L.T2 })) }));
+    ok('me: no AU payroll → Information-required task and an N/A line, banner still green', green(m2) && /– Data loaded: list_pay_runs \(Xero Payroll AU\)/.test(banner(m2)) && [...m2.doc.querySelectorAll('#xk-body .xk-card .xk-kpi')].some((k) => /^Information-required Pay runs — confirm directly in Xero/.test(taskText(k))), banner(m2).slice(0, 600));
+    const m3 = await run('me', man('me'), ME(), { fail: { pay_runs: { code: 'needs_connection', message: 'Connect xero-payroll-au to see this data' }, timesheets: { code: 'needs_connection', message: 'Connect xero-payroll-au to see this data' } } });
+    ok('me: payroll not connected → "Connect Xero Payroll AU", no top "Connect Xero" banner', /Connect Xero Payroll AU \(Settings → Connections\) to see this section/.test(body(m3) + banner(m3)) && !m3.doc.querySelector('#xk-body > .xk-banner.fail') && green(m3), [body(m3).slice(0, 300), banner(m3).slice(0, 300)]);
+    const m4 = await run('me', man('me'), ME(), { fail: { bank: { code: 'needs_connection', message: 'Connect xero-accounting to see this data' } } });
+    ok('me: Xero accounting not connected → "Connect Xero" shown and the banner red', /Connect Xero \(Settings → Connections\)/.test(body(m4)) && red(m4) && /✗ Data loaded: get_bank_summary/.test(banner(m4)), body(m4).slice(0, 200));
+    const m5 = await run('me', man('me'), ME({ pay_runs: busy(L.listPayRuns, 1), assets: busy(L.listAssets, 1) }), { htmlPatch: (h) => h.replace("XK.app({\n  title: 'Month-end task list',", "XK.app({\n  retryMs: 1, title: 'Month-end task list',") }); await wait(80);
+    ok('me: HTTP 429 on payroll / assets → retried, tasks filled', m5.calls.some((x) => x.requery && x.id === 'pay_runs') && [...m5.doc.querySelectorAll('#xk-body .xk-kpi')].some((k) => /Pay run not posted/.test(k.textContent)) && green(m5), banner(m5).slice(0, 300));
+    await set(m, 'xk-client', L.T2); await wait(30);
+    ok('me: switching organisation refetches payroll and assets for it too (no mixing)', ['pay_runs', 'timesheets', 'assets', 'journals'].every((id) => m.calls.some((x) => x.requery && x.id === id && x.params.xero_tenant_id === L.T2)), m.calls.filter((x) => x.requery).map((x) => x.id + ':' + x.params.xero_tenant_id));
   }
   console.log(fails ? `\n${fails}/${total} checks FAILED` : `\nALL ${total} checks passed`);
   process.exit(fails ? 1 : 0);

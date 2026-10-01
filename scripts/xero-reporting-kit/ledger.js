@@ -27,7 +27,7 @@ const ACCOUNTS = [
   ['090', 'Business Cheque Account', 'BANK'], ['091', 'Business Savings Account', 'BANK'],
   ['610', 'Accounts Receivable', 'CURRENT'], ['620', 'Prepayments', 'CURRENT'],
   ['710', 'Office Equipment', 'FIXED'], ['711', 'Less Accumulated Depreciation on Office Equipment', 'FIXED'],
-  ['800', 'Accounts Payable', 'CURRLIAB'], ['820', 'GST', 'CURRLIAB'],
+  ['800', 'Accounts Payable', 'CURRLIAB'], ['820', 'GST', 'CURRLIAB'], ['850', 'Suspense', 'CURRLIAB'],
   ['900', 'Loan - Westpac', 'TERMLIAB'], ['960', 'Retained Earnings', 'EQUITY'],
   ['200', 'Sales', 'REVENUE'], ['260', 'Consulting Fees', 'REVENUE'], ['270', 'Interest Income', 'OTHERINCOME'],
   ['310', 'Purchases', 'DIRECTCOSTS'], ['320', 'Freight & Courier', 'DIRECTCOSTS'],
@@ -92,7 +92,17 @@ function books(tenant) {
   [['DRAFT', 900], ['SUBMITTED', 1450], ['AUTHORISED', 2300], ['AUTHORISED', 780], ['BILLED', 1990]].forEach(([st, v], i) => pos.push({ PurchaseOrderID: 'po-' + i, PurchaseOrderNumber: 'PO-' + String(++poNo).padStart(4, '0'), Contact: contact(SUPPLIERS[i % SUPPLIERS.length], 'sup'), date: addDays(TODAY, -3 * i - 2), DeliveryDate: msDate(addDays(TODAY, 10)), Status: st, Total: r2(v * S), SubTotal: r2(v * S / 1.1), TotalTax: r2(v * S - v * S / 1.1), CurrencyCode: O.BaseCurrency }));
   const billsNow = docs.filter((d) => d.Type === 'ACCPAY' && d.date > '2026-08-15' && d.date <= TODAY).slice(0, 3);
   billsNow.forEach((b, i) => links.push({ LinkedTransactionID: 'lt-' + i, SourceTransactionID: b.InvoiceID, SourceLineItemID: b.LineItems[0].LineItemID, ContactID: contact(CUSTOMERS[i + 1], 'cus').ContactID, Status: 'APPROVED', Type: 'BILLABLEEXPENSE', SourceTransactionTypeCode: 'ACCPAY' }));
-  const B = { t, O, docs, pays, bank, credits, overs, pos, links, bas: [] };
+  // manual journals (LineAmount: debit positive, credit negative). Posted ones are in the books (balances and P&L); a draft,
+  // a voided one and an earlier small reclass exercise the month-end rules.
+  const mj = (id, date, status, narration, lines) => ({ ManualJournalID: 'mj-' + t.slice(-1) + '-' + id, date, Status: status, Narration: narration, LineAmountTypes: 'NoTax', ShowOnCashBasisReports: true,
+    JournalLines: lines.map(([code, amt, desc]) => ({ LineAmount: r2(amt * S), AccountCode: code, Description: desc || '', TaxType: 'BASEXCLUDED' })) });
+  const journals = [
+    mj(1, '2026-08-20', 'POSTED', 'Insurance prepaid — funded by loan drawdown', [['620', 10000], ['900', -10000]]),
+    mj(2, '2026-08-28', 'POSTED', 'Unidentified deposit — to suspense', [['429', 120], ['850', -120]]),
+    mj(3, '2026-08-31', 'DRAFT', 'Accrued audit fee', [['429', 450], ['800', -450]]),
+    mj(4, '2026-08-15', 'VOIDED', 'Duplicate entry', [['429', 99], ['850', -99]]),
+    mj(5, '2026-07-31', 'POSTED', 'Subscriptions reclass', [['485', 300], ['429', -300]])];
+  const B = { t, O, docs, pays, bank, credits, overs, pos, links, journals, bas: [] };
   // BAS: pay each quarter's net GST (accrual) on the 28th of the following month, up to today
   ['2024-07-01', '2024-10-01', '2025-01-01', '2025-04-01', '2025-07-01', '2025-10-01', '2026-01-01', '2026-04-01'].forEach((qs) => {
     const qe = addDays(shiftMonths(qs, 3), -1), pay = shiftMonths(qs, 3).slice(0, 8) + '28', net = gstMovement(B, qs, qe);
@@ -136,6 +146,7 @@ function plByAccount(B, a, b, cash) {
     B.pays.filter((p) => p.date >= a && p.date <= b).forEach((p) => { const f = p.amount / p.doc.Total; p.doc.LineItems.forEach((l) => add(l.AccountCode, r2(l.LineAmount * f))); });
   }
   B.bank.filter((x) => x.date >= a && x.date <= b).forEach((x) => x.LineItems.forEach((l) => add(l.AccountCode, l.LineAmount)));
+  (B.journals || []).filter((j) => j.Status === 'POSTED' && j.date >= a && j.date <= b).forEach((j) => j.JournalLines.forEach((l) => add(l.AccountCode, /REVENUE|OTHERINCOME/.test(ACC[l.AccountCode].Type) ? -l.LineAmount : l.LineAmount)));
   return out;
 }
 function netProfit(B, a, b, cash) { const p = plByAccount(B, a, b, cash); let n = 0; Object.keys(p).forEach((c) => { n += (/REVENUE|OTHERINCOME/.test(ACC[c].Type) ? 1 : -1) * p[c]; }); return r2(n); }
@@ -147,7 +158,8 @@ function balances(B, date) { // Balance Sheet by account at date (accrual)
   const capex = r2(B.docs.filter((d) => approved(d) && d.date <= date).reduce((a, d) => a + d.LineItems.filter((l) => l.AccountCode === '710').reduce((s, l) => s + l.LineAmount, 0), 0));
   const gst = r2(gstMovement(B, '2000-01-01', date) - basPaid);
   const cye = netProfit(B, fy, date, false), re = r2(openRE + netProfit(B, '2000-01-01', addDays(fy, -1), false));
-  return { '090': bankBalance(B, '090', date), '091': bankBalance(B, '091', date), '610': ar, '620': 0, '710': r2(8400 * B.O.scale + capex), '711': r2(-1680 * B.O.scale), '800': ap, '820': gst, '900': r2(10000 * B.O.scale), CYE: cye, '960': re };
+  const jd = (code) => r2((B.journals || []).filter((j) => j.Status === 'POSTED' && j.date <= date).reduce((s, j) => s + j.JournalLines.filter((l) => l.AccountCode === code).reduce((t, l) => t + l.LineAmount, 0), 0)); // debit positive
+  return { '090': bankBalance(B, '090', date), '091': bankBalance(B, '091', date), '610': ar, '620': jd('620'), '710': r2(8400 * B.O.scale + capex), '711': r2(-1680 * B.O.scale), '800': ap, '820': gst, '850': r2(-jd('850')), '900': r2(10000 * B.O.scale - jd('900')), CYE: cye, '960': re };
 }
 // ---------- Xero report JSON ----------
 const cell = (v, id) => { const a = id ? [{ Value: id, Id: 'account' }] : undefined; return a ? { Value: v, Attributes: a } : { Value: v }; };
@@ -177,10 +189,10 @@ function bsReport(p) {
   const cols = dates.map((d) => balances(B, d)), val = (code) => cols.map((c) => c[code] || 0);
   const sec = (title, total, codes) => ({ RowType: 'Section', Title: title, Rows: codes.map((c) => rowOf(ACC[c].Name, val(c), ACC[c].AccountID)).concat([sumRow(total, cols.map((col) => r2(codes.reduce((s, c) => s + (col[c] || 0), 0))))]) });
   const sumc = (codes) => cols.map((col) => r2(codes.reduce((s, c) => s + (col[c] || 0), 0)));
-  const TA = sumc(['090', '091', '610', '620', '710', '711']), TL = sumc(['800', '820', '900']);
+  const TA = sumc(['090', '091', '610', '620', '710', '711']), TL = sumc(['800', '820', '850', '900']);
   const Rows = [{ RowType: 'Header', Cells: [cell('')].concat(dates.map((d) => cell(short(d)))) },
     { RowType: 'Section', Title: 'Assets', Rows: [] }, sec('Bank', 'Total Bank', ['090', '091']), sec('Current Assets', 'Total Current Assets', ['610', '620']), sec('Fixed Assets', 'Total Fixed Assets', ['710', '711']), calc('Total Assets', TA),
-    { RowType: 'Section', Title: 'Liabilities', Rows: [] }, sec('Current Liabilities', 'Total Current Liabilities', ['800', '820']), sec('Non-Current Liabilities', 'Total Non-Current Liabilities', ['900']), calc('Total Liabilities', TL),
+    { RowType: 'Section', Title: 'Liabilities', Rows: [] }, sec('Current Liabilities', 'Total Current Liabilities', ['800', '820', '850']), sec('Non-Current Liabilities', 'Total Non-Current Liabilities', ['900']), calc('Total Liabilities', TL),
     calc('Net Assets', TA.map((a, i) => r2(a - TL[i]))),
     { RowType: 'Section', Title: 'Equity', Rows: [rowOf('Current Year Earnings', val('CYE')), rowOf('Retained Earnings', val('960'), ACC['960'].AccountID), sumRow('Total Equity', cols.map((c) => r2(c.CYE + c['960'])))] }];
   return { Reports: [{ ReportID: 'BalanceSheet', ReportName: 'Balance Sheet', ReportType: 'BalanceSheet', ReportTitles: ['Balance Sheet', B.O.Name, 'As at ' + long(p.date)], ReportDate: short(TODAY), Rows }] };
@@ -253,9 +265,34 @@ function listAccounts(p) { return { Accounts: ACCOUNTS.map((a) => Object.assign(
 function listTaxRates() { return { TaxRates: TAX_RATES.map((t) => Object.assign({}, t)) }; }
 function organisation(p) { const o = Object.assign({}, ORG[(p && p.xero_tenant_id) || T1]); delete o.seed; delete o.scale; return { Id: 'x', Status: 'OK', ProviderName: 'mySMB', Organisations: [o] }; }
 function connections() { return { activeTenantId: T1, tenants: [{ tenantId: T1, tenantName: ORG[T1].Name, tenantType: 'ORGANISATION' }, { tenantId: T2, tenantName: ORG[T2].Name, tenantType: 'ORGANISATION' }] }; }
+// manual journals (list_manual_journals: where on Date, 100 per page)
+function listManualJournals(p) { const B = books(p.xero_tenant_id), f = whereFilter(p.where); return page(B.journals.map((j) => ({ ManualJournalID: j.ManualJournalID, Date: msDate(j.date), Status: j.Status, Narration: j.Narration, LineAmountTypes: j.LineAmountTypes, ShowOnCashBasisReports: j.ShowOnCashBasisReports, JournalLines: j.JournalLines, _Date: j.date })).filter(f).map((j) => { delete j._Date; return j; }), p, 'ManualJournals'); }
+// Xero Payroll AU (payroll.xro/1.0, raw JSON, /Date()/ dates). AU organisations only: the NZ organisation gets Xero's error.
+const auOnly = (p) => { if (ORG[(p && p.xero_tenant_id) || T1].CountryCode !== 'AU') throw new Error('Xero API GET https://api.xero.com/payroll.xro/1.0/PayRuns 403: {"Message":"The organisation does not use Australian payroll"}'); };
+function listPayRuns(p) {
+  auOnly(p); const B = books(p.xero_tenant_id), runs = [];
+  for (let k = 0; k < 26; k++) { const s0 = shiftMonths('2024-07-01', k, false), y = +s0.slice(0, 4), m = +s0.slice(5, 7), e0 = eom(y, m), wages = r2(4200 * (1 + k * 0.015) * B.O.scale);
+    runs.push({ PayRunID: 'pr-' + s0.slice(0, 7), PayrollCalendarID: 'cal-monthly', PayRunPeriodStartDate: msDate(s0), PayRunPeriodEndDate: msDate(e0), PaymentDate: msDate(s0.slice(0, 8) + '28'), PayRunStatus: s0 >= '2026-08-01' ? 'DRAFT' : 'POSTED', Wages: wages, Deductions: 0, Tax: r2(wages * 0.18), Super: r2(wages * 0.115), Reimbursement: 0, NetPay: r2(wages * 0.82) }); }
+  runs.sort((a, b) => b.PayRunID.localeCompare(a.PayRunID)); return page(runs, p, 'PayRuns');
+}
+function listTimesheets(p) {
+  auOnly(p);
+  const ts = [['ts-1', 'emp-1', '2026-08-03', '2026-08-09', 'APPROVED', 38], ['ts-2', 'emp-2', '2026-08-17', '2026-08-23', 'DRAFT', 35.5], ['ts-3', 'emp-3', '2026-08-24', '2026-08-30', 'DRAFT', 40], ['ts-4', 'emp-1', '2026-07-06', '2026-07-12', 'DRAFT', 38]]
+    .map(([TimesheetID, EmployeeID, a, b, Status, Hours]) => ({ TimesheetID, EmployeeID, StartDate: msDate(a), EndDate: msDate(b), Status, Hours }));
+  return page(ts, p, 'Timesheets');
+}
+function listEmployees(p) { auOnly(p); return page([['emp-1', 'Mia', 'Nguyen'], ['emp-2', 'Liam', 'Brown'], ['emp-3', 'Ava', 'Singh']].map(([EmployeeID, FirstName, LastName]) => ({ EmployeeID, FirstName, LastName, Status: 'ACTIVE' })), p, 'Employees'); }
+// Xero Assets (assets.xro/1.0, camelCase, {pagination, items}); status is required by Xero.
+function listAssets(p) {
+  const B = books(p.xero_tenant_id), S = B.O.scale;
+  const items = [{ assetId: 'as-1', assetName: 'Office Equipment', assetNumber: 'FA-0001', purchaseDate: '2024-07-01T00:00:00', purchasePrice: r2(8400 * S), assetStatus: 'Registered', accountingBookValue: r2(6720 * S), bookDepreciationDetail: { depreciationStartDate: '2024-07-01T00:00:00', priorAccumDepreciationAmount: r2(1680 * S), currentAccumDepreciationAmount: 0 } },
+    { assetId: 'as-2', assetName: 'Laptop', assetNumber: 'FA-0002', purchaseDate: '2025-09-18T00:00:00', purchasePrice: r2(2400 * S), assetStatus: 'Registered', accountingBookValue: r2(2400 * S), bookDepreciationDetail: { depreciationStartDate: '2025-09-18T00:00:00', priorAccumDepreciationAmount: 0, currentAccumDepreciationAmount: 0 } },
+    { assetId: 'as-3', assetName: 'Old printer', assetNumber: 'FA-0000', purchaseDate: '2020-01-10T00:00:00', purchasePrice: r2(600 * S), assetStatus: 'Disposed', accountingBookValue: 0 }].filter((a) => !p.status || a.assetStatus === p.status);
+  return { pagination: { page: 1, pageSize: p.pageSize || 10, pageCount: 1, itemCount: items.length }, items };
+}
 // expected figures computed independently of the Xero JSON (for assertions)
 const expect = {
   balances: (date, t) => balances(books(t), date), netProfit: (a, b, cash, t) => netProfit(books(t), a, b, cash), bankBalance: (code, date, t) => bankBalance(books(t), code, date),
   flows: (code, a, b, t) => flows(books(t), code, a, b), gst: (a, b, t) => gstMovement(books(t), a, b), plByAccount: (a, b, cash, t) => plByAccount(books(t), a, b, cash), books,
 };
-module.exports = { TODAY, T1, T2, ORG, ACCOUNTS, ACC, pnl: pnlReport, bs: bsReport, bankSummary, trialBalance, listInvoices, listCreditNotes, listOverpayments, listPrepayments, listPayments, listBankTransactions, listPurchaseOrders, listLinked, listRepeating, listAccounts, listTaxRates, organisation, connections, expect, fyStart, addDays, shiftMonths, eom, r2 };
+module.exports = { TODAY, T1, T2, ORG, ACCOUNTS, ACC, pnl: pnlReport, bs: bsReport, bankSummary, trialBalance, listManualJournals, listPayRuns, listTimesheets, listEmployees, listAssets, listInvoices, listCreditNotes, listOverpayments, listPrepayments, listPayments, listBankTransactions, listPurchaseOrders, listLinked, listRepeating, listAccounts, listTaxRates, organisation, connections, expect, fyStart, addDays, shiftMonths, eom, r2 };

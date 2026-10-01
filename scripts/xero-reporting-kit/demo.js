@@ -10,6 +10,7 @@ const FX = {
   hs: 'pnl: L.pnl, pnl_prev: L.pnl, bs: L.bs', vz: 'pnl_12: L.pnl, bs_12: L.bs, bank: L.bankSummary, pnl_total: L.pnl', cs: 'pnl_cash: L.pnl, bank: L.bankSummary',
   cf: 'bank: L.bankSummary, bank_past: L.bankSummary, receivables: L.listInvoices, payables: L.listInvoices, bank_tx: L.listBankTransactions, payments: L.listPayments, bs: L.bs',
   gst: 'invoices: L.listInvoices, credit_notes: L.listCreditNotes, bank_tx: L.listBankTransactions, tax_rates: L.listTaxRates, accounts: L.listAccounts, bs_end: L.bs, bs_start: L.bs', rc: '',
+  me: 'bank: L.bankSummary, receivables: L.listInvoices, payables: L.listInvoices, journals: L.listManualJournals, bs: L.bs, pay_runs: L.listPayRuns, timesheets: L.listTimesheets, assets: L.listAssets', tb: 'tb: L.trialBalance, tb_cash: L.trialBalance, bs_tie: L.bs',
   pnl: 'pnl: L.pnl, pnl_cash: L.pnl, pnl_compare: L.pnl, pnl_compare_cash: L.pnl, bs_end: L.bs', bs: 'bs: L.bs, bs_cash: L.bs, bs_compare: L.bs, bs_compare_cash: L.bs, pnl_ytd: L.pnl' };
 const manifest = fs.readFileSync(path.join(__dirname, 'reports', name + '.manifest.json'), 'utf8'), led = fs.readFileSync(path.join(__dirname, 'ledger.js'), 'utf8');
 const mock = `<script>
