@@ -1,0 +1,1104 @@
+{
+  "id": "xero-bill-validation",
+  "title": "Bill Validation",
+  "description": "Checks every unpaid Xero bill for duplicates, supplier ABN, GST, line totals, bill date and a missing source document — one row per bill, one column per check, so problems stand out before payment.",
+  "category": "finance",
+  "tags": [
+    "xero",
+    "bills",
+    "validation",
+    "compliance",
+    "accounts-payable",
+    "controls"
+  ],
+  "keywords": [
+    "xero",
+    "bill validation",
+    "duplicate bill",
+    "abn check",
+    "gst check",
+    "missing attachment",
+    "bill errors",
+    "accounts payable",
+    "pre-payment check",
+    "bill review"
+  ],
+  "connectorsUsed": [
+    "xero-accounting"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 8
+    },
+    "min": {
+      "colSpan": 5,
+      "rowSpan": 6
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 16
+    }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-accounting",
+    "tool": "list_xero_bill_validation",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleStack"
+        ]
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "eyebrow",
+          "titleGroup"
+        ]
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Unpaid bills"
+        }
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ListChecks",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Bill Validation",
+          "level": "h2"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3",
+          "sk4"
+        ],
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_xero_bill_validation"
+        }
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "4rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "sk4": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No unpaid bills to check."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_xero_bill_validation",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_xero_bill_validation/summary/total",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "stats",
+          "statsDivider",
+          "matrix",
+          "legend",
+          "footerDivider",
+          "footerRow"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_xero_bill_validation",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_xero_bill_validation/summary/total"
+            }
+          ]
+        }
+      },
+      "stats": {
+        "type": "Grid",
+        "props": {
+          "cols": 3,
+          "gap": "sm"
+        },
+        "children": [
+          "statPassedCard",
+          "statWarnCard",
+          "statFailCard"
+        ]
+      },
+      "statPassedCard": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "statPassed"
+        ]
+      },
+      "statPassed": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "valPassed",
+          "lblPassed"
+        ]
+      },
+      "valPassed": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/xero-accounting/list_xero_bill_validation/summary/passed"
+          }
+        }
+      },
+      "lblPassed": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "dotPassed",
+          "textPassed"
+        ]
+      },
+      "dotPassed": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "success"
+        }
+      },
+      "textPassed": {
+        "type": "Caption",
+        "props": {
+          "text": "Passed",
+          "tone": "muted"
+        }
+      },
+      "statWarnCard": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "statWarn"
+        ]
+      },
+      "statWarn": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "valWarn",
+          "lblWarn"
+        ]
+      },
+      "valWarn": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/xero-accounting/list_xero_bill_validation/summary/warnings"
+          }
+        }
+      },
+      "lblWarn": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "dotWarn",
+          "textWarn"
+        ]
+      },
+      "dotWarn": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "warning"
+        }
+      },
+      "textWarn": {
+        "type": "Caption",
+        "props": {
+          "text": "Warnings",
+          "tone": "muted"
+        }
+      },
+      "statFailCard": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "statFail"
+        ]
+      },
+      "statFail": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "valFail",
+          "lblFail"
+        ]
+      },
+      "valFail": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/xero-accounting/list_xero_bill_validation/summary/failed"
+          }
+        }
+      },
+      "lblFail": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "dotFail",
+          "textFail"
+        ]
+      },
+      "dotFail": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "destructive"
+        }
+      },
+      "textFail": {
+        "type": "Caption",
+        "props": {
+          "text": "Failed",
+          "tone": "muted"
+        }
+      },
+      "statsDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "matrix": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "matrixHead",
+          "billList"
+        ]
+      },
+      "matrixHead": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center",
+          "template": "minmax(0,1fr) 2.1rem 2.1rem 2.1rem 2.1rem 2.1rem 2.1rem 5.5rem"
+        },
+        "children": [
+          "headBill",
+          "headDUP",
+          "headABN",
+          "headGST",
+          "headTOTAL",
+          "headDATE",
+          "headFILE",
+          "headAmount"
+        ]
+      },
+      "headBill": {
+        "type": "Caption",
+        "props": {
+          "text": "BILL",
+          "tone": "muted"
+        }
+      },
+      "headDUP": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "headDUPText"
+        ]
+      },
+      "headDUPText": {
+        "type": "Caption",
+        "props": {
+          "text": "DUP",
+          "tone": "muted"
+        }
+      },
+      "headABN": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "headABNText"
+        ]
+      },
+      "headABNText": {
+        "type": "Caption",
+        "props": {
+          "text": "ABN",
+          "tone": "muted"
+        }
+      },
+      "headGST": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "headGSTText"
+        ]
+      },
+      "headGSTText": {
+        "type": "Caption",
+        "props": {
+          "text": "GST",
+          "tone": "muted"
+        }
+      },
+      "headTOTAL": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "headTOTALText"
+        ]
+      },
+      "headTOTALText": {
+        "type": "Caption",
+        "props": {
+          "text": "TOTAL",
+          "tone": "muted"
+        }
+      },
+      "headDATE": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "headDATEText"
+        ]
+      },
+      "headDATEText": {
+        "type": "Caption",
+        "props": {
+          "text": "DATE",
+          "tone": "muted"
+        }
+      },
+      "headFILE": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "headFILEText"
+        ]
+      },
+      "headFILEText": {
+        "type": "Caption",
+        "props": {
+          "text": "FILE",
+          "tone": "muted"
+        }
+      },
+      "headAmount": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "end"
+        },
+        "children": [
+          "headAmountText"
+        ]
+      },
+      "headAmountText": {
+        "type": "Caption",
+        "props": {
+          "text": "AMOUNT",
+          "tone": "muted"
+        }
+      },
+      "billList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "billRow"
+        ],
+        "repeat": {
+          "statePath": "/xero-accounting/list_xero_bill_validation/bills",
+          "key": "id"
+        }
+      },
+      "billRow": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "billRowContent",
+          "billReason",
+          "billDivider"
+        ]
+      },
+      "billRowContent": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center",
+          "template": "minmax(0,1fr) 2.1rem 2.1rem 2.1rem 2.1rem 2.1rem 2.1rem 5.5rem",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "billInfo",
+          "cellDUP",
+          "cellABN",
+          "cellGST",
+          "cellTOTAL",
+          "cellDATE",
+          "cellFILE",
+          "billAmountWrap"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "reviewUrl"
+                  }
+                }
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "billInfo": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "billName",
+          "billNumber"
+        ]
+      },
+      "billName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "contactName"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "billNumber": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "invoiceNumber"
+          },
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+      "cellDUP": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "cellDUPPass",
+          "cellDUPWarn",
+          "cellDUPFail"
+        ]
+      },
+      "cellDUPPass": {
+        "type": "Icon",
+        "props": {
+          "name": "Check",
+          "size": "xs",
+          "tone": "success"
+        },
+        "visible": {
+          "$item": "dupState",
+          "eq": "pass"
+        }
+      },
+      "cellDUPWarn": {
+        "type": "Icon",
+        "props": {
+          "name": "TriangleAlert",
+          "size": "xs",
+          "tone": "warning"
+        },
+        "visible": {
+          "$item": "dupState",
+          "eq": "warn"
+        }
+      },
+      "cellDUPFail": {
+        "type": "Icon",
+        "props": {
+          "name": "X",
+          "size": "xs",
+          "tone": "destructive"
+        },
+        "visible": {
+          "$item": "dupState",
+          "eq": "fail"
+        }
+      },
+      "cellABN": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "cellABNPass",
+          "cellABNWarn",
+          "cellABNFail"
+        ]
+      },
+      "cellABNPass": {
+        "type": "Icon",
+        "props": {
+          "name": "Check",
+          "size": "xs",
+          "tone": "success"
+        },
+        "visible": {
+          "$item": "abnState",
+          "eq": "pass"
+        }
+      },
+      "cellABNWarn": {
+        "type": "Icon",
+        "props": {
+          "name": "TriangleAlert",
+          "size": "xs",
+          "tone": "warning"
+        },
+        "visible": {
+          "$item": "abnState",
+          "eq": "warn"
+        }
+      },
+      "cellABNFail": {
+        "type": "Icon",
+        "props": {
+          "name": "X",
+          "size": "xs",
+          "tone": "destructive"
+        },
+        "visible": {
+          "$item": "abnState",
+          "eq": "fail"
+        }
+      },
+      "cellGST": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "cellGSTPass",
+          "cellGSTWarn",
+          "cellGSTFail"
+        ]
+      },
+      "cellGSTPass": {
+        "type": "Icon",
+        "props": {
+          "name": "Check",
+          "size": "xs",
+          "tone": "success"
+        },
+        "visible": {
+          "$item": "gstState",
+          "eq": "pass"
+        }
+      },
+      "cellGSTWarn": {
+        "type": "Icon",
+        "props": {
+          "name": "TriangleAlert",
+          "size": "xs",
+          "tone": "warning"
+        },
+        "visible": {
+          "$item": "gstState",
+          "eq": "warn"
+        }
+      },
+      "cellGSTFail": {
+        "type": "Icon",
+        "props": {
+          "name": "X",
+          "size": "xs",
+          "tone": "destructive"
+        },
+        "visible": {
+          "$item": "gstState",
+          "eq": "fail"
+        }
+      },
+      "cellTOTAL": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "cellTOTALPass",
+          "cellTOTALWarn",
+          "cellTOTALFail"
+        ]
+      },
+      "cellTOTALPass": {
+        "type": "Icon",
+        "props": {
+          "name": "Check",
+          "size": "xs",
+          "tone": "success"
+        },
+        "visible": {
+          "$item": "totalState",
+          "eq": "pass"
+        }
+      },
+      "cellTOTALWarn": {
+        "type": "Icon",
+        "props": {
+          "name": "TriangleAlert",
+          "size": "xs",
+          "tone": "warning"
+        },
+        "visible": {
+          "$item": "totalState",
+          "eq": "warn"
+        }
+      },
+      "cellTOTALFail": {
+        "type": "Icon",
+        "props": {
+          "name": "X",
+          "size": "xs",
+          "tone": "destructive"
+        },
+        "visible": {
+          "$item": "totalState",
+          "eq": "fail"
+        }
+      },
+      "cellDATE": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "cellDATEPass",
+          "cellDATEWarn",
+          "cellDATEFail"
+        ]
+      },
+      "cellDATEPass": {
+        "type": "Icon",
+        "props": {
+          "name": "Check",
+          "size": "xs",
+          "tone": "success"
+        },
+        "visible": {
+          "$item": "dateState",
+          "eq": "pass"
+        }
+      },
+      "cellDATEWarn": {
+        "type": "Icon",
+        "props": {
+          "name": "TriangleAlert",
+          "size": "xs",
+          "tone": "warning"
+        },
+        "visible": {
+          "$item": "dateState",
+          "eq": "warn"
+        }
+      },
+      "cellDATEFail": {
+        "type": "Icon",
+        "props": {
+          "name": "X",
+          "size": "xs",
+          "tone": "destructive"
+        },
+        "visible": {
+          "$item": "dateState",
+          "eq": "fail"
+        }
+      },
+      "cellFILE": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "cellFILEPass",
+          "cellFILEWarn",
+          "cellFILEFail"
+        ]
+      },
+      "cellFILEPass": {
+        "type": "Icon",
+        "props": {
+          "name": "Check",
+          "size": "xs",
+          "tone": "success"
+        },
+        "visible": {
+          "$item": "fileState",
+          "eq": "pass"
+        }
+      },
+      "cellFILEWarn": {
+        "type": "Icon",
+        "props": {
+          "name": "TriangleAlert",
+          "size": "xs",
+          "tone": "warning"
+        },
+        "visible": {
+          "$item": "fileState",
+          "eq": "warn"
+        }
+      },
+      "cellFILEFail": {
+        "type": "Icon",
+        "props": {
+          "name": "X",
+          "size": "xs",
+          "tone": "destructive"
+        },
+        "visible": {
+          "$item": "fileState",
+          "eq": "fail"
+        }
+      },
+      "billAmountWrap": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "end"
+        },
+        "children": [
+          "billAmount"
+        ]
+      },
+      "billAmount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "amountText"
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "billReason": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "reasonText"
+          },
+          "tone": "muted"
+        },
+        "visible": {
+          "$item": "reasonText"
+        }
+      },
+      "billDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "legend": {
+        "type": "Row",
+        "props": {
+          "gap": "md",
+          "align": "center"
+        },
+        "children": [
+          "legPass",
+          "legWarn",
+          "legFail"
+        ]
+      },
+      "legPass": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "legPassIcon",
+          "legPassText"
+        ]
+      },
+      "legPassIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Check",
+          "size": "xs",
+          "tone": "success"
+        }
+      },
+      "legPassText": {
+        "type": "Caption",
+        "props": {
+          "text": "Pass",
+          "tone": "muted"
+        }
+      },
+      "legWarn": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "legWarnIcon",
+          "legWarnText"
+        ]
+      },
+      "legWarnIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "TriangleAlert",
+          "size": "xs",
+          "tone": "warning"
+        }
+      },
+      "legWarnText": {
+        "type": "Caption",
+        "props": {
+          "text": "Warning",
+          "tone": "muted"
+        }
+      },
+      "legFail": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "legFailIcon",
+          "legFailText"
+        ]
+      },
+      "legFailIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "X",
+          "size": "xs",
+          "tone": "destructive"
+        }
+      },
+      "legFailText": {
+        "type": "Caption",
+        "props": {
+          "text": "Fail",
+          "tone": "muted"
+        }
+      },
+      "footerDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "footerRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "footerChecked",
+          "footerOpen"
+        ]
+      },
+      "footerChecked": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/list_xero_bill_validation/summary/checkedText"
+          },
+          "tone": "muted"
+        }
+      },
+      "footerOpen": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "footerOpenText",
+          "footerOpenIcon"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$state": "/xero-accounting/list_xero_bill_validation/billsUrl"
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "footerOpenText": {
+        "type": "Text",
+        "props": {
+          "text": "Open in Xero",
+          "size": "sm",
+          "weight": "medium",
+          "tone": "info"
+        }
+      },
+      "footerOpenIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ArrowRight",
+          "size": "xs",
+          "tone": "info"
+        }
+      }
+    }
+  }
+}
