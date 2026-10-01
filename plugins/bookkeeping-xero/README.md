@@ -7,15 +7,29 @@ Supplier bills and sales invoices from email or PDF into Xero, for bookkeeping p
 ## What's in the box
 
 - **Connector:** `xero-accounting` (the mySMB Xero connector). Email intake uses `m365-mail-read` (Microsoft 365 extension) or `google-workspace-gmail` (Google Workspace extension).
-- **Automations (8):**
+- **Automations (13):**
   - *Bookkeeping: Start setup* (run by hand): creates the setup items.
   - *Bookkeeping: Apply setup (Xero)*: saves the setup answers and matches each client to its Xero organisation.
   - *Bookkeeping: Process bill or invoice (Xero)*: runs when a PDF lands in `Bookkeeping Inbox/<client>/`. It works out whether it's a supplier bill (addressed to the client) or a sales invoice (issued by the client, matched on the client's Xero organisation name and ABN).
   - *Bookkeeping: Apply bill or invoice review (Xero)*: runs when a Bill review, Invoice review or Client bill approval form is submitted.
   - *Bookkeeping: Draft requested invoice (Xero)*: runs when Email intake files a request in `Bookkeeping Requests/<client>/`, or by hand with the client's name and the request text (a phone request, say).
   - *Bookkeeping: Weekly AP digest (Xero)*: Mondays at 8am.
+  - **Payroll** (Xero Payroll AU; reads only, so nothing in Xero Payroll changes without the payroll officer):
+    - *Bookkeeping: Start pay runs (Xero Payroll)*: hourly on weekdays. Opens each client's pay run item on its preparation day, says when the timesheets are in Xero, and drafts a chase when Deputy timesheets are late.
+    - *Bookkeeping: Check pay run (Xero Payroll + Deputy)* or *(Xero Payroll)*: publish one. Runs from the pay run item's form and lists:
+      - Deputy vs Xero hours per employee per day;
+      - missing starters;
+      - salaried staff with timesheets;
+      - penalty bands (early, late, Saturday, Sunday, public holiday, overtime) worked out from shift times;
+      - rates against the client's pay guide;
+      - this period's changes (junior birthdays, special arrangements ending, 1 July);
+      - reimbursements against the draft pay run.
+
+      Then it posts a report and one drafted query email.
+    - *Bookkeeping: Build payroll review pack (Xero Payroll)*: the draft pay run's totals and payslips, the last check, the changes and the notes, sent to the internal reviewer.
+    - *Bookkeeping: Apply payroll review*: internal approval → client approval item with a drafted email → done (or "post it" when the practice posts).
   - *Bookkeeping: Email intake (Outlook)* and *Bookkeeping: Email intake (Gmail)*: every 15 minutes, read the owner's inbox, have AI pick out supplier bills (emails with a PDF that is a bill to pay), work out which client each bill is addressed to, and save it into that client's `Bookkeeping Inbox/<client>/` folder. Other emails are left untouched: nothing in the mailbox is changed. Bills it can't place with a client become exception items. Publish the one(s) for the mailbox you use.
-- **Forms (6):** Bookkeeping setup, Client bookkeeping settings, Bill review, Invoice review, Invoice to send, Client bill approval.
+- **Forms (10):** Bookkeeping setup, Client bookkeeping settings, Bill review, Invoice review, Invoice to send, Client bill approval, Client payroll settings, Pay run, Payroll review, Client payroll approval.
 - **Agent (1):** Bookkeeping Coordinator (Xero). It answers status questions, explains coding and exceptions, drafts client emails, and can build a live Aged Payables, Purchases Overview, Exceptions Dashboard or GST Reconciliation Detail report on request. It never approves or sends anything.
 - **Skill (1):** `bookkeeping-xero-foundation`. Also reuses four report skills from `xero-reporting-studio` (`xero-report-foundation`, `xero-aged-payables`, `xero-purchases-overview`, `xero-exceptions-dashboard`, `xero-gst-reconciliation-detail`) — **`xero-reporting-studio` must be installed on the same workspace** for these to resolve; without it, the agent simply won't have them available.
 
@@ -61,6 +75,29 @@ The same inbox, the same steps, the other side of the ledger:
 4. **Review:** always, on the **Invoice review** form. The client-approval limit is for spending, so it doesn't apply.
 5. **Apply:** approved sales invoices are **Awaiting payment** in Xero, with the PDF attached. Nothing is emailed to the customer; they already have the invoice.
 
+## How a pay run flows
+
+1. **Settings:** run *Start setup* with the business under *Client businesses to set up payroll for*. Fill in its **Client payroll settings**:
+   - the pay calendar's name in Xero Payroll;
+   - the preparation day and time;
+   - where the hours come from;
+   - the timesheet owner;
+   - the payroll officer and the internal reviewer;
+   - the client approvers;
+   - who posts.
+
+   A pay guide template appears in `Bookkeeping Payroll/<client>/pay-guide.xlsx`.
+2. **Pay guide:** fill in its sheets and replace the EXAMPLE rows. The guide is the client's own rate sheet, from the Fair Work pay guides:
+   - `rates`: award, classification, employment type, age range, band, rate and effective date;
+   - `employees`: each employee's award, classification, state and any special arrangement with its end date;
+   - `rules`: when the day starts and ends, and the daily overtime threshold and first-hours band;
+   - `holidays`: public holidays by state;
+   - `pay_items`: which band each Xero earnings rate pays.
+3. **Pay run item:** opens on the preparation day, in the week of the pay day. When the timesheets are in Xero Payroll it says so; if Deputy timesheets are late it drafts a chase.
+4. **Check:** choose *Run the checks* on the Pay run form, fix what the report lists in Xero Payroll, and run it again. Drop the period's reimbursement spreadsheet (*expense* or *reimburs* in the name) into `Bookkeeping Payroll/<client>/` first.
+5. **Review pack:** choose *Ready for review* once the draft pay run is in Xero. The internal reviewer gets the pack and the **Payroll review** form.
+6. **Client approval:** an approved review creates the client approval item with a drafted email. Record the answer on the **Client payroll approval** form. If the client posts the pay run, the pay run item completes; if the practice posts it, the item stays open until you post and file STP.
+
 ## How an invoice request flows
 
 1. **Triage:** Email intake reads every new email, with or without attachments. A client asking the bookkeeper to raise an invoice is an *invoice request*.
@@ -73,5 +110,6 @@ The same inbox, the same steps, the other side of the ledger:
 
 - One Xero connection covers all clients. The connection owner's Xero login must include every client organisation. If an organisation is added later, reconnect Xero.
 - One invoice per PDF. Credit notes, statements and receipts are sent to exceptions.
+- Payroll checks read Xero Payroll AU and Deputy only; the officer makes every correction. Deputy is one connection per client business. Penalty rules beyond the day start/end, weekends, public holidays and a daily overtime threshold are not modelled yet.
 - Gmail requests are read from the email's snippet (the first couple of lines): the Gmail connector doesn't return the full body. Outlook requests are read in full.
 - A raised invoice uses the organisation's default branding theme and invoice numbering, and Xero's standard email template when it's emailed.
