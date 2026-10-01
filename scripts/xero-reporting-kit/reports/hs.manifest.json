@@ -1,0 +1,18 @@
+{
+  "inputs": [
+    { "name": "end_date", "label": "Month ending", "type": "date", "default": "2026-08-31" },
+    { "name": "m_start", "label": "Month start", "type": "date", "default": "2026-08-01" },
+    { "name": "prev_end", "label": "Previous month end", "type": "date", "default": "2026-07-31" },
+    { "name": "prev_start", "label": "Previous month start", "type": "date", "default": "2026-07-01" },
+    { "name": "targets", "label": "Targets", "type": "string", "maxLength": 500, "default": "{}" },
+    { "name": "org", "label": "Organisation", "type": "string", "maxLength": 64, "default": "" },
+    { "name": "display", "label": "Display settings", "type": "string", "maxLength": 300, "default": "{\"cents\":0,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"end_last_month\",\"c\":\"none\",\"v\":\"target\"}" }
+  ],
+  "bindings": [
+    { "id": "pnl", "tool": { "mcp": "xero-accounting", "name": "get_profit_and_loss" }, "params": { "fromDate": { "kind": "input", "input": "m_start" }, "toDate": { "kind": "input", "input": "end_date" }, "standardLayout": { "kind": "static", "value": true }, "paymentsOnly": { "kind": "static", "value": false }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
+    { "id": "pnl_prev", "tool": { "mcp": "xero-accounting", "name": "get_profit_and_loss" }, "params": { "fromDate": { "kind": "input", "input": "prev_start" }, "toDate": { "kind": "input", "input": "prev_end" }, "standardLayout": { "kind": "static", "value": true }, "paymentsOnly": { "kind": "static", "value": false }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
+    { "id": "bs", "tool": { "mcp": "xero-accounting", "name": "get_balance_sheet" }, "params": { "date": { "kind": "input", "input": "end_date" }, "periods": { "kind": "static", "value": 1 }, "timeframe": { "kind": "static", "value": "MONTH" }, "standardLayout": { "kind": "static", "value": true }, "paymentsOnly": { "kind": "static", "value": false }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
+    { "id": "org", "tool": { "mcp": "xero-accounting", "name": "get_organisation" }, "params": { "xero_tenant_id": { "kind": "input", "input": "org" } } },
+    { "id": "connections", "tool": { "mcp": "xero-accounting", "name": "list_connections" }, "params": {} }
+  ]
+}

@@ -1,259 +1,18 @@
----
-name: xero-aged-payables
-description: Build a live, validated Xero Aged Payables Summary (P09) on the tested report kit — every supplier's open bills, credit notes, overpayments and prepayments aged by due or invoice date, grouping by document type, drill-down and a tie to Accounts Payable. Use for "aged payables", "aged creditors", "who do we owe", "overdue bills", "creditors ageing".
----
-# Aged Payables Summary (P09)
-
-Use when the user asks for aged payables, aged creditors, a creditors ageing, what the business owes suppliers, or overdue bills by supplier. Load `xero-report-foundation` first and follow its *Build a kit report* steps with the blocks below — copy them, do not rewrite them. This skill needs the `xero-accounting` connector (`list_invoices`, `list_credit_notes`, `list_overpayments`, `list_prepayments`, `get_balance_sheet`, `get_organisation`, `list_connections`).
-
-Xero location: Reporting → Aged Payables Summary. Library: Xero Reports Prompt Library v1.2 → Prompts → P09. Delivery: Wave 1 (delivery order 4).
-
-## Discovery call
-
-Call `get_organisation` and `list_connections` once, and `list_invoices` once with `where` = `Type=="ACCPAY"`, `statuses` = `AUTHORISED`, `page` = 1 (bills are invoices of type ACCPAY; there is no separate bills tool). An error is a failed call: report its message.
-
-## Date defaults
-
-`as_at` = the ageing date (default: the end of this month). Options as for Aged Receivables (`o`: `by`, `n`, `len`, `g`). The library's payables sample groups by document type: set `g=type` when asked.
-
-## Members
-
-| Member / view | How |
-|---|---|
-| Aged Payables Summary | Default: 4 periods of 1 month by due date |
-| Group by document type | Group by = Document type (Bills, Credit notes, Overpayments, Prepayments) |
-| Aged Payables Detail | Click a supplier for its open bills |
-| Ageing options | Ageing by / Period of / Ageing periods (no refetch) |
-
-## Validation checks (shown in the banner)
-
-- Every supplier total = Σ its ageing buckets
-- Total = Σ supplier totals = Σ open documents
-- Percentage of total sums to 100%
-- All open documents loaded
-- **Independent tie:** Total = Accounts Payable on the Balance Sheet at the as-at date
-
-## Save as
-
-`fileName`: `xero-aged-payables.html` · `tags`: ["xero","aged-payables","P09","payables"]
-
-## QA test script (golden set)
-
-1. On the golden-set organisation, ask for this report at the library's example period; confirm the discovery call succeeded and the report saved.
-2. Compare the headline figures: Hammerjack Pty Limited as at 31 Aug 2026: single supplier mySMB with buckets —, 101,950.51, 82,598.01, 85,680.00, 1,180,403.46; total 1,450,632; 81.37% Older. On Irvine Jackson Pty Ltd in QA, every check passes and the total equals Xero's Aged Payables Summary for the same date.
-3. Validation banner: every check passes (the independent tie included), or shows N/A / information with a stated reason.
-4. Change every control and confirm the report refetches and still validates; switch Accounting method; switch View as to Client, then Bookkeeper; toggle Branding and the dark theme.
-5. Download PDF and Download Excel and confirm they match the screen (the Excel file has Validation and Parameters sheets).
-6. Download or Share from the report window: the snapshot keeps the period and figures and disables the refetching controls.
-7. Cross-client isolation (LIB-002): with several organisations on the connection, switch organisation — the report, its name and every export carry only that organisation's figures.
-
-## dataBindings
-
-```json
-{
-  "inputs": [
-    {
-      "name": "as_at",
-      "label": "As at",
-      "type": "date",
-      "default": "2026-09-30"
-    },
-    {
-      "name": "org",
-      "label": "Organisation",
-      "type": "string",
-      "maxLength": 64,
-      "default": ""
-    },
-    {
-      "name": "page",
-      "label": "Page",
-      "type": "number",
-      "min": 1,
-      "max": 20,
-      "default": 1
-    },
-    {
-      "name": "persona",
-      "label": "View as",
-      "type": "enum",
-      "options": [
-        "Client",
-        "Bookkeeper",
-        "Practitioner",
-        "Executive"
-      ],
-      "default": "Bookkeeper"
-    },
-    {
-      "name": "display",
-      "label": "Display settings",
-      "type": "string",
-      "maxLength": 300,
-      "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"end_this_month\",\"c\":\"none\",\"v\":\"\",\"o\":\"by=due;n=4;len=m;g=none\"}"
-    }
-  ],
-  "bindings": [
-    {
-      "id": "invoices",
-      "tool": {
-        "mcp": "xero-accounting",
-        "name": "list_invoices"
-      },
-      "params": {
-        "where": {
-          "kind": "static",
-          "value": "Type==\"ACCPAY\""
-        },
-        "statuses": {
-          "kind": "static",
-          "value": "AUTHORISED"
-        },
-        "order": {
-          "kind": "static",
-          "value": "DueDate ASC"
-        },
-        "page": {
-          "kind": "input",
-          "input": "page"
-        },
-        "xero_tenant_id": {
-          "kind": "input",
-          "input": "org"
-        }
-      }
-    },
-    {
-      "id": "credit_notes",
-      "tool": {
-        "mcp": "xero-accounting",
-        "name": "list_credit_notes"
-      },
-      "params": {
-        "where": {
-          "kind": "static",
-          "value": "Type==\"ACCPAYCREDIT\" AND Status==\"AUTHORISED\""
-        },
-        "page": {
-          "kind": "input",
-          "input": "page"
-        },
-        "xero_tenant_id": {
-          "kind": "input",
-          "input": "org"
-        }
-      }
-    },
-    {
-      "id": "overpayments",
-      "tool": {
-        "mcp": "xero-accounting",
-        "name": "list_overpayments"
-      },
-      "params": {
-        "where": {
-          "kind": "static",
-          "value": "Type==\"SPEND-OVERPAYMENT\" AND Status==\"AUTHORISED\""
-        },
-        "page": {
-          "kind": "input",
-          "input": "page"
-        },
-        "xero_tenant_id": {
-          "kind": "input",
-          "input": "org"
-        }
-      }
-    },
-    {
-      "id": "prepayments",
-      "tool": {
-        "mcp": "xero-accounting",
-        "name": "list_prepayments"
-      },
-      "params": {
-        "where": {
-          "kind": "static",
-          "value": "Type==\"SPEND-PREPAYMENT\" AND Status==\"AUTHORISED\""
-        },
-        "page": {
-          "kind": "input",
-          "input": "page"
-        },
-        "xero_tenant_id": {
-          "kind": "input",
-          "input": "org"
-        }
-      }
-    },
-    {
-      "id": "bs",
-      "tool": {
-        "mcp": "xero-accounting",
-        "name": "get_balance_sheet"
-      },
-      "params": {
-        "date": {
-          "kind": "input",
-          "input": "as_at"
-        },
-        "standardLayout": {
-          "kind": "static",
-          "value": true
-        },
-        "paymentsOnly": {
-          "kind": "static",
-          "value": false
-        },
-        "xero_tenant_id": {
-          "kind": "input",
-          "input": "org"
-        }
-      }
-    },
-    {
-      "id": "org",
-      "tool": {
-        "mcp": "xero-accounting",
-        "name": "get_organisation"
-      },
-      "params": {
-        "xero_tenant_id": {
-          "kind": "input",
-          "input": "org"
-        }
-      }
-    },
-    {
-      "id": "connections",
-      "tool": {
-        "mcp": "xero-accounting",
-        "name": "list_connections"
-      },
-      "params": {}
-    }
-  ]
-}
-```
-
-## Report config ({{CFG}})
-
-```js
 XK.app({
-  title: 'Aged Payables Summary', primary: 'invoices', dated: ['bs'], org: 'org', conns: 'connections', noBasis: true,
+  title: 'Aged Receivables Summary', primary: 'invoices', dated: ['bs'], org: 'org', conns: 'connections', noBasis: true,
   inputs: { asAt: 'as_at', org: 'org', persona: 'persona', display: 'display' },
   defaults: { as_at: '2026-09-30', org: '', page: 1, persona: 'Bookkeeper',
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"end_this_month","c":"none","v":"","o":"by=due;n=4;len=m;g=none"}' },
   uses: { invoices: ['org'], credit_notes: ['org'], overpayments: ['org'], prepayments: ['org'], bs: ['as_at', 'org'], org: ['org'], connections: [] },
   paged: { invoices: { input: 'page', key: 'Invoices' }, credit_notes: { input: 'page', key: 'CreditNotes' }, overpayments: { input: 'page', key: 'Overpayments' }, prepayments: { input: 'page', key: 'Prepayments' } },
-  tools: { invoices: 'list_invoices (bills, awaiting payment)', credit_notes: 'list_credit_notes (unallocated)', overpayments: 'list_overpayments (unallocated)', prepayments: 'list_prepayments (unallocated)', bs: 'get_balance_sheet (Accounts Payable at the as-at date)', org: 'get_organisation', connections: 'list_connections' },
+  tools: { invoices: 'list_invoices (sales invoices, awaiting payment)', credit_notes: 'list_credit_notes (unallocated)', overpayments: 'list_overpayments (unallocated)', prepayments: 'list_prepayments (unallocated)', bs: 'get_balance_sheet (Accounts Receivable at the as-at date)', org: 'get_organisation', connections: 'list_connections' },
   asats: [['end_this_month', 'End of this month'], ['today', 'Today'], ['end_last_month', 'End of last month'], ['custom', 'Custom']],
   options: [{ id: 'by', label: 'Ageing by', options: [['due', 'Due date'], ['inv', 'Invoice date']], def: 'due' },
     { id: 'n', label: 'Ageing periods', options: [['3', '3'], ['4', '4'], ['5', '5'], ['6', '6']], def: '4' },
     { id: 'len', label: 'Period of', options: [['m', '1 month'], ['30', '30 days'], ['14', '14 days'], ['7', '7 days']], def: 'm' },
     { id: 'g', label: 'Group by', options: [['none', 'None'], ['type', 'Document type']], def: 'none' }],
   render: function (c) {
-    var K = { inv: 'ACCPAY', cn: 'ACCPAYCREDIT', op: 'SPEND-OVERPAYMENT', pp: 'SPEND-PREPAYMENT', who: 'Supplier', owing: 'Suppliers you owe', total: 'Total payable', bs: /^Accounts Payable$/i, bsName: 'Accounts Payable', docs: 'bills' };
+    var K = { inv: 'ACCREC', cn: 'ACCRECCREDIT', op: 'RECEIVE-OVERPAYMENT', pp: 'RECEIVE-PREPAYMENT', who: 'Customer', owing: 'Customers owing', total: 'Total receivable', bs: /^Accounts Receivable$/i, bsName: 'Accounts Receivable', docs: 'sales invoices' };
     var self = this, body = c.body, money = function (v) { return XK.money(v, c.currency, c.display); }, asAt = c.inputs.as_at;
     if (c.errors.invoices) { body.innerHTML = '<p class="xk-err">' + XK.h(c.err('invoices')) + '</p>'; return { checks: [{ name: K.docs + ' loaded', pass: false, detail: c.err('invoices') }] }; }
     if (!c.data.invoices) return {};
@@ -325,14 +84,13 @@ XK.app({
   },
   excel: function (c) {
     var x = this._x; if (!x) return [];
-    var head = [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: 'Aged Payables Summary', s: 'bold' }], [XK.asOfLine(c.inputs.as_at)], [], [{ v: 'Supplier', s: 'bold' }].concat(x.cols.map(function (col) { return { v: col.title, s: 'bold' }; })).concat([{ v: 'Total', s: 'bold' }])];
+    var head = [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: 'Aged Receivables Summary', s: 'bold' }], [XK.asOfLine(c.inputs.as_at)], [], [{ v: 'Customer', s: 'bold' }].concat(x.cols.map(function (col) { return { v: col.title, s: 'bold' }; })).concat([{ v: 'Total', s: 'bold' }])];
     var rows = head.concat(x.contacts.map(function (k) { return [k.name].concat(x.cols.map(function (col) { return { v: k.b[col.j], s: 'money' }; })).concat([{ v: k.total, s: 'money' }]); }));
     rows.push([{ v: 'Total', s: 'bold' }].concat(x.cols.map(function (col) { return { v: x.tot[col.j], s: 'moneyBold' }; })).concat([{ v: x.grand, s: 'moneyBold' }]));
     rows.push([{ v: 'Percentage of total', s: 'bold' }].concat(x.cols.map(function (col) { return x.grand ? { v: x.tot[col.j] / x.grand, s: 'pct' } : null; })).concat([x.grand ? { v: 1, s: 'pct' } : null]));
     rows.push([], [{ v: XK.footerStamp(null, c.fetchedAt, c.currency), s: 'muted' }]);
     var docs = [[{ v: 'Contact', s: 'bold' }, { v: 'Type', s: 'bold' }, { v: 'Number', s: 'bold' }, { v: 'Date', s: 'bold' }, { v: 'Due date', s: 'bold' }, { v: 'Ageing', s: 'bold' }, { v: 'Amount', s: 'bold' }, { v: 'Currency', s: 'bold' }]]
       .concat(x.docs.map(function (d) { return [d.contact, d.kind, d.number, d.date, d.due, d.bucket, { v: d.amount, s: 'money' }, d.cur]; }));
-    return [{ name: 'Aged Payables Summary', rows: rows, widths: [36].concat(x.cols.map(function () { return 14; })).concat([16]) }, { name: 'Documents', rows: docs, widths: [32, 14, 14, 12, 12, 12, 16, 10] }];
+    return [{ name: 'Aged Receivables Summary', rows: rows, widths: [36].concat(x.cols.map(function () { return 14; })).concat([16]) }, { name: 'Documents', rows: docs, widths: [32, 14, 14, 12, 12, 12, 16, 10] }];
   }
 });
-```
