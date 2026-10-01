@@ -1,0 +1,97 @@
+{
+  "attachments": [],
+  "contentHash": "a05fc6bbdcd67b5924e4bbd1c29aaef1f3550f860bbc6d754e7637e635ab5d70",
+  "declaredScopes": [
+    "ai:generate",
+    "connectors:xero-payroll-au",
+    "files:read",
+    "files:write",
+    "workq:write"
+  ],
+  "dependencies": [
+    {
+      "entityKind": "form",
+      "originKey": "64982edb-3de7-46fb-a62b-ee218a70b259",
+      "sourceId": "a40a3d23-cb3c-48d9-943b-a71c48b8f84f"
+    }
+  ],
+  "description": "Every hour on weekdays, for each client with payroll settings: on the preparation day of its pay calendar, opens the pay run item with the checklist and the Pay run form; says when the period’s timesheets are in Xero Payroll; and, if Deputy timesheets are late, drafts a chase email for the payroll officer to send.",
+  "flowIr": {
+    "description": "Every hour on weekdays, for each client with payroll settings: on the preparation day of its pay calendar, opens the pay run item with the checklist and the Pay run form; says when the period’s timesheets are in Xero Payroll; and, if Deputy timesheets are late, drafts a chase email for the payroll officer to send.",
+    "irVersion": 1,
+    "name": "Bookkeeping: Start pay runs (Xero Payroll)",
+    "nodes": [
+      {
+        "code": "# ── bookkeeping kit: shared helpers (inlined into each node by gen-ext.js) ──\nimport json\nimport re\nimport datetime\nfrom zoneinfo import ZoneInfo\n\n# Knowledge layout. Folders may nest at most 2 levels, so inbox folders are top-level.\nBK_SETTINGS = \"Bookkeeping/settings.json\"\nBK_CLIENTS = \"Bookkeeping/Clients\"\nBK_RULES = \"Bookkeeping/Rules\"\nBK_BILLS = \"Bookkeeping/Bills\"\nBK_INBOX = \"Bookkeeping Inbox\"\nBK_PROCESSED = \"Bookkeeping Processed\"\nBK_FAILED = \"Bookkeeping Failed\"\nBK_MAIL = \"Bookkeeping/Mail\"\nBK_REQUESTS = \"Bookkeeping Requests\"\n\n\ndef bk_slug(name):\n    s = re.sub(r\"[^a-z0-9]+\", \"-\", str(name or \"\").lower()).strip(\"-\")\n    return s[:40].strip(\"-\") or \"client\"\n\n\ndef bk_read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\n\ndef bk_write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True))\n\n\ndef bk_tz(settings):\n    # The sandbox may lack the tz database; fall back to AEST (UTC+10) rather than failing the run.\n    try:\n        return ZoneInfo((settings or {}).get(\"timezone\") or \"Australia/Sydney\")\n    except Exception:\n        return datetime.timezone(datetime.timedelta(hours=10))\n\n\ndef bk_now_iso(settings):\n    return datetime.datetime.now(bk_tz(settings)).replace(microsecond=0).isoformat()\n\n\ndef bk_norm(name):\n    s = re.sub(r\"[^a-z0-9 ]+\", \" \", str(name or \"\").lower())\n    s = re.sub(r\"\\b(pty|ltd|limited|p/l|the|inc|co)\\b\", \" \", s)\n    return re.sub(r\"\\s+\", \" \", s).strip()\n\n\ndef bk_client_for(settings, slug):\n    client = bk_read_json(BK_CLIENTS + \"/\" + slug + \".json\")\n    if not client:\n        return None\n    return client\n\n\n# ── bookkeeping kit: payroll adapter (inlined into payroll nodes by gen-ext.js) ──\n# Xero Payroll AU through xero-payroll-au (reads take xero_tenant_id, so each call lands in the client's own\n# organisation) and Deputy through deputy. Read-only: the checks list corrections, the payroll officer makes them.\nimport csv\nimport io\n\nfrom openpyxl import Workbook, load_workbook\n\nBK_PAYROLL = \"Bookkeeping/Payroll\"\nBK_PAYRUNS = \"Bookkeeping/PayRuns\"\nBK_PAYROLL_FILES = \"Bookkeeping Payroll\"\nPAYROLL = \"xero-payroll-au\"\nDEPUTY = \"deputy\"\nPAY_WEEKDAYS = [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\", \"Sunday\"]\nPAY_BANDS = [\"ordinary\", \"early\", \"late\", \"saturday\", \"sunday\", \"public_holiday\", \"ot_first\", \"ot_after\"]\nPAY_BAND_NAMES = {\"ordinary\": \"ordinary\", \"early\": \"early (before start of day)\", \"late\": \"late (after end of day)\",\n                  \"saturday\": \"Saturday\", \"sunday\": \"Sunday\", \"public_holiday\": \"public holiday\",\n                  \"ot_first\": \"overtime (first hours)\", \"ot_after\": \"overtime (after that)\"}\n\n\ndef pay_call(tool, tenant_id=None, **args):\n    if tenant_id:\n        args[\"xero_tenant_id\"] = tenant_id\n    exc = None  # bound first for the platform lint (see xero_call)\n    try:\n        return api.connectors.invoke(server=PAYROLL, tool=tool, args=args)\n    except Exception as exc:\n        raise RuntimeError(\"Xero Payroll: \" + str(exc)[:500]) from None\n\n\ndef pay_rows(result, key):\n    if isinstance(result, dict):\n        rows = result.get(key)\n        return rows if isinstance(rows, list) else []\n    return result if isinstance(result, list) else []\n\n\ndef pay_date(value):\n    \"\"\"Xero Payroll dates arrive as '/Date(1759276800000+0000)/' or ISO; Deputy's as ISO or epoch seconds.\"\"\"\n    s = str(value or \"\")\n    m = re.match(r\"/Date\\((-?\\d+)\", s)\n    if m:\n        return datetime.datetime.fromtimestamp(int(m.group(1)) / 1000, datetime.timezone.utc).date()\n    try:\n        return datetime.date.fromisoformat(s[:10])\n    except ValueError:\n        return None\n\n\ndef pay_xero_dt(d):\n    return \"DateTime(%d,%d,%d)\" % (d.year, d.month, d.day)\n\n\ndef pay_period_end(start, kind):\n    kind = str(kind or \"\").upper()\n    if kind == \"WEEKLY\":\n        return start + datetime.timedelta(days=6)\n    if kind == \"FOURWEEKLY\":\n        return start + datetime.timedelta(days=27)\n    if kind in (\"MONTHLY\", \"QUARTERLY\"):\n        months = 3 if kind == \"QUARTERLY\" else 1\n        y, mo = start.year + (start.month - 1 + months) // 12, (start.month - 1 + months) % 12 + 1\n        return datetime.date(y, mo, min(start.day, 28)) - datetime.timedelta(days=1)\n    if kind == \"TWICEMONTHLY\":\n        return start + datetime.timedelta(days=14)\n    return start + datetime.timedelta(days=13)  # FORTNIGHTLY\n\n\ndef pay_calendar(tenant_id, name):\n    \"\"\"The client's pay calendar by its Xero name: {id, name, type, start, end, payment}, or None.\"\"\"\n    for c in pay_rows(pay_call(\"list_payroll_calendars\", tenant_id), \"PayrollCalendars\"):\n        if bk_norm(c.get(\"Name\")) == bk_norm(name):\n            start = pay_date(c.get(\"StartDate\"))\n            if not start:\n                return None\n            return {\"id\": c.get(\"PayrollCalendarID\"), \"name\": c.get(\"Name\"), \"type\": c.get(\"CalendarType\"),\n                    \"start\": str(start), \"end\": str(pay_period_end(start, c.get(\"CalendarType\"))),\n                    \"payment\": str(pay_date(c.get(\"PaymentDate\")) or \"\")}\n    return None\n\n\ndef pay_prep_date(payment, weekday):\n    \"\"\"The preparation weekday on or before the pay day.\"\"\"\n    target = PAY_WEEKDAYS.index(weekday) if weekday in PAY_WEEKDAYS else 0\n    return payment - datetime.timedelta(days=(payment.weekday() - target) % 7)\n\n\ndef pay_timesheets(tenant_id, start, end):\n    where = \"StartDate>=%s AND EndDate<=%s\" % (pay_xero_dt(start), pay_xero_dt(end))\n    return pay_rows(pay_call(\"list_timesheets\", tenant_id, where=where), \"Timesheets\")\n\n\ndef pay_hm(text, default):\n    m = re.match(r\"(\\d{1,2}):(\\d{2})\", str(text or \"\"))\n    return (int(m.group(1)), int(m.group(2))) if m else default\n\n\ndef pay_link(todo_id, run):\n    \"\"\"Point a WorkQ item at its pay run record, so its form submissions find the pay run.\"\"\"\n    bk_write_json(BK_PAYRUNS + \"/\" + todo_id + \".json\", {\"link\": run[\"slug\"] + \"-\" + run[\"period_start\"]})\n\n\n# ── Open pay runs and watch for timesheets ──\n\n\nCHASE_PROMPT = (\n    \"Draft a short, polite email from a payroll officer at a bookkeeping practice to the client's staff member who \"\n    \"exports the timesheets, asking whether this pay period's timesheets are ready in Xero, as payroll is being prepared \"\n    \"today. Plain text, no subject line, sign off as the payroll team. Use only the facts given.\"\n)\nSOURCE_WORDS = {\"deputy\": \"Deputy, exported to Xero by the client\", \"xero\": \"entered in Xero Payroll\",\n                \"emailed\": \"emailed timesheets, keyed into Xero by us\", \"none\": \"none (salaried staff only)\"}\n\nsettings = bk_read_json(BK_SETTINGS) or {}\ntz_now = datetime.datetime.now(bk_tz(settings))\ntry:\n    # The trigger's own time when it carries one (a scheduled fire time), so a late run behaves like an on-time one.\n    if params.get(\"now\"):\n        tz_now = datetime.datetime.fromisoformat(str(params.get(\"now\")).replace(\"Z\", \"+00:00\")).astimezone(bk_tz(settings))\nexcept ValueError:\n    pass\nonly = bk_slug(params.get(\"client_name\") or \"\") if str(params.get(\"client_name\") or \"\").strip() else \"\"\nopened = 0\nchased = 0\nlines = []\n\nfor f in (api.files.list(path=BK_PAYROLL) if settings else []):\n    if f.get(\"kind\") != \"file\" or not str(f.get(\"path\", \"\")).endswith(\".json\"):\n        continue\n    ps = bk_read_json(f[\"path\"]) or {}\n    slug = ps.get(\"slug\") or \"\"\n    if not slug or (only and slug != only):\n        continue\n    name = ps.get(\"name\") or slug\n    try:\n        client = bk_client_for(settings, slug) or {}\n        tenant = client.get(\"xero_tenant_id\")\n        if not tenant:\n            lines.append(\"- \" + name + \": no Xero organisation in its bookkeeping settings\")\n            continue\n        cal = pay_calendar(tenant, ps.get(\"calendar\"))\n        if not cal:\n            lines.append(\"- \" + name + \": no pay calendar called \\\"\" + str(ps.get(\"calendar\")) + \"\\\" in Xero Payroll\")\n            continue\n        start = datetime.date.fromisoformat(cal[\"start\"])\n        end = datetime.date.fromisoformat(cal[\"end\"])\n        payment = datetime.date.fromisoformat(cal[\"payment\"]) if cal[\"payment\"] else end\n        prep = pay_prep_date(payment, ps.get(\"prep_day\"))\n        h, m = pay_hm(ps.get(\"prep_time\"), (9, 0))\n        prep_at = datetime.datetime.combine(prep, datetime.time(h, m), tz_now.tzinfo)\n        path = BK_PAYRUNS + \"/\" + slug + \"-\" + cal[\"start\"] + \".json\"\n        run = bk_read_json(path)\n        if run is None:\n            if tz_now < prep_at and not only:\n                continue\n            period = cal[\"start\"] + \" to \" + cal[\"end\"]\n            item = api.workq.create(\n                title=(\"Pay run: \" + name + \", \" + period + \", pay day \" + str(payment))[:200],\n                scope=\"org\",\n                description=(\n                    \"**Pay run for \" + name + \"**: \" + period + \", pay day **\" + str(payment) + \"** (\" + str(cal[\"name\"]) + \").\\n\\n\"\n                    \"Hours: \" + SOURCE_WORDS.get(ps.get(\"timesheets\") or \"none\", \"\") + \".\\n\\n\"\n                    \"1. Make sure new starters and changes (rates, promotions, terminations) are in Xero Payroll.\\n\"\n                    \"2. Wait for the timesheets\" + (\" from \" + ps[\"ts_owner\"] if ps.get(\"ts_owner\") else \"\") + \". I'll say when they're in Xero.\\n\"\n                    \"3. Choose **Run the checks** on the Pay run form below. The check compares the hours, rates, penalties, \"\n                    \"leave and reimbursements, lists what to fix and drafts one query email.\\n\"\n                    \"4. Fix what it lists in Xero Payroll and run the checks again until they're clear.\\n\"\n                    \"5. Choose **Ready for review** to send the review pack to \" + (ps.get(\"reviewer_name\") or \"the reviewer\") + \".\\n\\n\"\n                    \"The pay guide and this period's reimbursement file go in `\" + BK_PAYROLL_FILES + \"/\" + slug + \"` in Knowledge.\"\n                ),\n                priority=\"high\",\n                due_date=str(payment),\n                assignee_ids=[ps[\"officer_id\"]] if ps.get(\"officer_id\") else None,\n                labels=[\"bookkeeping\", \"payroll\", slug],\n            )\n            api.workq.attach_form(todo_id=item[\"id\"], form_id=params[\"payrun_form\"])\n            run = {\"slug\": slug, \"name\": name, \"tenant_id\": tenant, \"calendar\": cal, \"period_start\": cal[\"start\"],\n                   \"period_end\": cal[\"end\"], \"payment_date\": str(payment), \"prep_date\": str(prep), \"item_id\": item[\"id\"],\n                   \"status\": \"open\", \"ts_ready\": False, \"chased\": False, \"checks\": [], \"notes\": [],\n                   \"created_at\": bk_now_iso(settings)}\n            bk_write_json(path, run)\n            pay_link(item[\"id\"], run)\n            opened += 1\n            lines.append(\"- \" + name + \": pay run opened for \" + period)\n        if run.get(\"status\") in (\"done\", \"cancelled\") or run.get(\"ts_ready\") or ps.get(\"timesheets\") == \"none\":\n            continue\n        count = len(pay_timesheets(tenant, start, end))\n        if count:\n            run[\"ts_ready\"] = True\n            api.workq.comment(todo_id=run[\"item_id\"], body=(\"Timesheets are in Xero Payroll (\" + str(count) + \"). Choose \"\n                                                            \"**Run the checks** on the Pay run form.\"))\n            bk_write_json(path, run)\n            lines.append(\"- \" + name + \": timesheets are in Xero\")\n        elif (ps.get(\"timesheets\") == \"deputy\" and not run.get(\"chased\") and ps.get(\"ts_email\")\n              and tz_now >= prep_at + datetime.timedelta(minutes=int(ps.get(\"chase_after_minutes\") or 60))):\n            email = api.ai.generate(prompt=CHASE_PROMPT, input=json.dumps({\n                \"to\": ps.get(\"ts_owner\") or \"the timesheet owner\", \"business\": name,\n                \"pay_period\": cal[\"start\"] + \" to \" + cal[\"end\"], \"pay_day\": str(payment)}))\n            api.workq.comment(todo_id=run[\"item_id\"], body=(\n                \"The timesheets aren't in Xero Payroll yet. **Draft follow-up to \" + (ps.get(\"ts_owner\") or \"the client\")\n                + \" (\" + ps[\"ts_email\"] + \")** for you to send:\\n\\n\" + str(email)))\n            run[\"chased\"] = True\n            bk_write_json(path, run)\n            chased += 1\n            lines.append(\"- \" + name + \": timesheets are late, chase drafted\")\n    except Exception as exc:\n        lines.append(\"- \" + name + \": \" + str(exc)[:200])\n\nsummary = (\"Opened \" + str(opened) + \" pay run(s), drafted \" + str(chased) + \" chase(s).\"\n           + (\"\\n\\n\" + \"\\n\".join(lines) if lines else \"\"))\n",
+        "id": "start_runs",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "What happened",
+            "name": "summary",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.client_name }}",
+            "control": "hidden",
+            "label": "Client",
+            "name": "client_name",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ trigger.now }}",
+            "control": "hidden",
+            "label": "Run time",
+            "name": "now",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "control": "form-picker",
+            "label": "Pay run form",
+            "name": "payrun_form",
+            "required": true,
+            "type": "uuid",
+            "value": "a40a3d23-cb3c-48d9-943b-a71c48b8f84f"
+          }
+        ],
+        "summary": "Opens each client’s pay run item on its preparation day, notes when timesheets are in Xero Payroll and drafts a chase when they’re late.",
+        "title": "Open pay runs and watch for timesheets"
+      }
+    ],
+    "params": [
+      {
+        "control": "text",
+        "label": "Client business (manual runs only: opens its pay run now)",
+        "name": "client_name",
+        "required": false,
+        "type": "str",
+        "value": ""
+      }
+    ],
+    "rootOrder": [
+      "start_runs"
+    ],
+    "triggers": [
+      {
+        "cron": "0 7-17 * * 1-5",
+        "kind": "schedule",
+        "timezone": "Australia/Sydney"
+      },
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "knowledgeFiles": [],
+  "level": "org",
+  "name": "Bookkeeping: Start pay runs (Xero Payroll)",
+  "originKey": "60fdcb99-5470-4c7c-aefa-41d38478640c",
+  "tags": [
+    "bookkeeping"
+  ]
+}

@@ -18,13 +18,16 @@ Use when someone asks about supplier bills, bill reviews, exceptions, what's wai
 | `Bookkeeping Inbox/<client>/` | Drop bill PDFs here. Each new PDF is processed automatically. Email intake saves emailed bills here too (file names start with the date and a short tag). |
 | `Bookkeeping/Mail/<outlook or gmail>.json` | Email intake's ledger: every email it has looked at (`seen`, with the outcome: `filed`, `unmatched`, `not_a_bill`, `no_pdf`, `failed`) and when intake started (`since`). |
 | `Bookkeeping Failed/unmatched/` | Emailed bills that couldn't be matched to a client |
+| `Bookkeeping/Payroll/<client>.json` | Payroll settings: `calendar` (Xero pay calendar name), `prep_day`, `prep_time`, `timesheets` (`deputy`, `xero`, `emailed`, `none`), `ts_owner`, `ts_email`, `officer_id`, `reviewer_id`, `approvers`, `who_posts` (`client` or `practice`) |
+| `Bookkeeping/PayRuns/<client>-<period start>.json` | One record per pay run: `status` (`open`, `checked`, `in_review`, `changes`, `client_approval`, `approved`, `done`, `cancelled`), `period_start`, `period_end`, `payment_date`, `item_id`, `last_check` (`open_items`, `summary`, `changes`, `url`), `notes`, `pack_url`. A file named after a WorkQ item id holds only `link` |
+| `Bookkeeping Payroll/<client>/` | The client's `pay-guide.xlsx` (rates, employees, rules, holidays, pay_items) and each period's reimbursement spreadsheet |
 | `Bookkeeping Requests/<client>/` | Invoice requests Email intake filed (`from`, `subject`, `received`, `text`). Each new file is drafted by *Draft requested invoice*, then moved to `Bookkeeping Processed/<client>/` |
 | `Bookkeeping Processed/<client>/` | PDFs that became review items |
 | `Bookkeeping Failed/<client>/` | PDFs that became exception items |
 
 ## WorkQ labels
 
-Every item has `bookkeeping` plus one of: `bill-review` (review a bill), `invoice-review` (review a sales invoice the client issued), `invoice-request` (approve an invoice raised from a client's request; `proposal.origin` is `request`), `bill-exception` (something went wrong), `client-approval` (get the business owner's OK), `client-query` (ask the client a question), `setup`. Exceptions from email intake also carry `email-intake`. The client's slug is also a label, so filter by it to answer "what's waiting for <client>".
+Every item has `bookkeeping` plus one of: `bill-review` (review a bill), `invoice-review` (review a sales invoice the client issued), `invoice-request` (approve an invoice raised from a client's request; `proposal.origin` is `request`), `bill-exception` (something went wrong), `client-approval` (get the business owner's OK), `client-query` (ask the client a question), `setup`, `payroll` (a pay run), `payroll-review` (internal review of a pay run), `payroll-approval` (record the client's approval). Exceptions from email intake also carry `email-intake`. The client's slug is also a label, so filter by it to answer "what's waiting for <client>".
 
 ## Answering questions
 
