@@ -4,7 +4,7 @@ description: Build a live, validated Xero GST summary for a BAS period (P05) on 
 ---
 # GST summary (activity statement) (P05)
 
-Use when the user asks for an activity statement, BAS, GST for a quarter or month, GST payable or refundable, or BAS labels such as G1 or 1A. Load `xero-report-foundation` first and follow its *Build a kit report* steps with the blocks below — copy them, do not rewrite them. This skill needs the connectors `xero-accounting` (`list_invoices`, `list_credit_notes`, `list_bank_transactions`, `list_tax_rates`, `list_accounts`, `get_balance_sheet`, `get_organisation`, `list_connections`) and `xero-payroll-au` (`list_pay_runs`).
+Use when the user asks for an activity statement, BAS, GST for a quarter or month, GST payable or refundable, or BAS labels such as G1 or 1A. Load `xero-report-foundation` first and follow its *Build a kit report* steps with the blocks below — copy them, do not rewrite them. This skill needs the connectors `xero-accounting` (`list_payments`, `list_invoices`, `list_credit_notes`, `list_bank_transactions`, `list_tax_rates`, `list_accounts`, `get_balance_sheet`, `get_organisation`, `list_connections`) and `xero-payroll-au` (`list_pay_runs`).
 
 Xero location: Tax → Activity statements. Library: Xero Reports Prompt Library v1.2 → Prompts → P05. Delivery: Wave 3 (delivery order 14).
 
@@ -23,6 +23,7 @@ Call `get_organisation` (SalesTaxBasis, SalesTaxPeriod) and `list_connections` o
 | Statement | Default: GST fields; PAYG W1 / W2 from Xero Payroll (Australia) pay runs paid in the period (N/A when that connector is not available); W3, W4, T1, T2, 5A N/A; net GST payable / refundable and the ATO due date |
 | Statements list | The last four quarters (the last six months for a monthly GST filer); click one to show it (lodgement status N/A — not in the API) |
 | Tax lines | Every line with its tax type and BAS fields |
+| Cash-basis GST | Automatic for an organisation that reports GST on payments: the GST on each payment in the period, in proportion to the share of its invoice it paid |
 
 ## Validation checks (shown in the banner)
 
@@ -79,6 +80,13 @@ Call `get_organisation` (SalesTaxBasis, SalesTaxPeriod) and `list_connections` o
       "default": "Date>=DateTime(2026,04,01) AND Date<=DateTime(2026,06,30)"
     },
     {
+      "name": "inv_ids",
+      "label": "Paid invoice ids",
+      "type": "string",
+      "maxLength": 500,
+      "default": ""
+    },
+    {
       "name": "org",
       "label": "Organisation",
       "type": "string",
@@ -102,6 +110,44 @@ Call `get_organisation` (SalesTaxBasis, SalesTaxPeriod) and `list_connections` o
     }
   ],
   "bindings": [
+    {
+      "id": "payments",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "list_payments"
+      },
+      "params": {
+        "where": {
+          "kind": "input",
+          "input": "date_where"
+        },
+        "page": {
+          "kind": "input",
+          "input": "page"
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "paid_inv",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "list_invoices"
+      },
+      "params": {
+        "ids": {
+          "kind": "input",
+          "input": "inv_ids"
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
     {
       "id": "invoices",
       "tool": {
@@ -379,6 +425,7 @@ svg .donut-c{fill:var(--ink);font-size:15px;font-weight:700}
 main.xk-card{border-top:4px solid var(--accent)}
 .xk-kpi{border-left:4px solid var(--accent)}
 .xk-stmt thead th,.xk-grid thead th{border-bottom:2px solid var(--accent)}
+.xk-stmt tr.k-row td:first-child{color:var(--btn)}:root.style-mysmb .xk-stmt tr.k-row td:first-child{color:inherit}
 .xk-src{font-size:12px;color:var(--muted);margin-top:4px}.xk-src i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:6px;vertical-align:middle}
 :root.style-mysmb #xk-head .xk-src{color:var(--band-ink);opacity:.85}:root.style-mysmb #xk-head .xk-src i{background:var(--band-ink)}
 /* keep the right-hand amounts clear of the workspace's floating chat button */
@@ -552,13 +599,14 @@ preset,sum,walk};})();</script>
 <script>XK.app({
   title: 'GST summary', basisLabel: 'Accrual (invoice)', primary: 'bs_end', dated: ['bs_end'], org: 'org', conns: 'connections', noBasis: true,
   inputs: { start: 'from_date', end: 'to_date', org: 'org', display: 'display' },
-  defaults: { from_date: '2026-04-01', to_date: '2026-06-30', prev_end: '2026-03-31', date_where: 'Date>=DateTime(2026,04,01) AND Date<=DateTime(2026,06,30)', org: '', page: 1,
+  defaults: { inv_ids: '', from_date: '2026-04-01', to_date: '2026-06-30', prev_end: '2026-03-31', date_where: 'Date>=DateTime(2026,04,01) AND Date<=DateTime(2026,06,30)', org: '', page: 1,
     display: '{"cents":1,"k":0,"zeros":1,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"last_quarter","a":"custom","c":"none","v":"statement"}' },
-  uses: { pay_runs: ['org'], invoices: ['date_where', 'org'], credit_notes: ['date_where', 'org'], bank_tx: ['date_where', 'org'], tax_rates: ['org'], accounts: ['org'], bs_end: ['to_date', 'org'], bs_start: ['prev_end', 'org'], org: ['org'], connections: [] },
-  paged: { invoices: { input: 'page', key: 'Invoices' }, credit_notes: { input: 'page', key: 'CreditNotes' }, bank_tx: { input: 'page', key: 'BankTransactions' }, pay_runs: { input: 'page', key: 'PayRuns' } },
-  sources: { pay_runs: { name: 'Xero Payroll (Australia)', optional: true } },
+  uses: { payments: ['date_where', 'org'], paid_inv: ['inv_ids', 'org'], pay_runs: ['org'], invoices: ['date_where', 'org'], credit_notes: ['date_where', 'org'], bank_tx: ['date_where', 'org'], tax_rates: ['org'], accounts: ['org'], bs_end: ['to_date', 'org'], bs_start: ['prev_end', 'org'], org: ['org'], connections: [] },
+  paged: { payments: { input: 'page', key: 'Payments' }, invoices: { input: 'page', key: 'Invoices' }, credit_notes: { input: 'page', key: 'CreditNotes' }, bank_tx: { input: 'page', key: 'BankTransactions' }, pay_runs: { input: 'page', key: 'PayRuns' } },
+  sources: { pay_runs: { name: 'Xero Payroll (Australia)', optional: true }, paid_inv: { name: 'Paid invoices', optional: true, quiet: function (i) { return !i.inv_ids; } } },
+  fan: { paid_inv: function (inp, c) { var o = ((c.data.org || {}).Organisations || [])[0] || {}; if (!/PAYMENT|CASH/i.test(o.SalesTaxBasis || '')) return []; var ids = {}; c.rows('payments').forEach(function (p) { var id = (p.Invoice || {}).InvoiceID; if (id && p.Status !== 'DELETED') ids[id] = 1; }); var all = Object.keys(ids), out = []; for (var i = 0; i < all.length; i += 12) out.push({ key: 'b' + i, inputs: { inv_ids: all.slice(i, i + 12).join(',') } }); return out; } },
   mechanism: 'xero-accounting and xero-payroll-au connectors — mySMB custom MCPs on the Xero Accounting and Payroll AU APIs (AGT-001)',
-  tools: { pay_runs: 'list_pay_runs (xero-payroll-au — W1 / W2)', invoices: 'list_invoices (sales invoices and bills in the period, with lines)', credit_notes: 'list_credit_notes (in the period)', bank_tx: 'list_bank_transactions (spend / receive money in the period)', tax_rates: 'list_tax_rates (BAS reporting type of each tax rate)', accounts: 'list_accounts (the GST account)', bs_end: 'get_balance_sheet (GST at the period end)', bs_start: 'get_balance_sheet (GST the day before the period)', org: 'get_organisation (GST basis and period)', connections: 'list_connections' },
+  tools: { payments: 'list_payments (in the period — cash-basis GST)', paid_inv: 'list_invoices (the invoices and bills those payments paid, by id)', pay_runs: 'list_pay_runs (xero-payroll-au — W1 / W2)', invoices: 'list_invoices (sales invoices and bills in the period, with lines)', credit_notes: 'list_credit_notes (in the period)', bank_tx: 'list_bank_transactions (spend / receive money in the period)', tax_rates: 'list_tax_rates (BAS reporting type of each tax rate)', accounts: 'list_accounts (the GST account)', bs_end: 'get_balance_sheet (GST at the period end)', bs_start: 'get_balance_sheet (GST the day before the period)', org: 'get_organisation (GST basis and period)', connections: 'list_connections' },
   presets: [['this_quarter', 'This quarter'], ['last_quarter', 'Last quarter'], ['this_month', 'This month'], ['last_month', 'Last month'], ['this_fy', 'This financial year'], ['last_fy', 'Last financial year'], ['custom', 'Custom']],
   views: [['statement', 'Statement'], ['list', 'Statements list'], ['lines', 'Tax lines']],
   derive: function (inp) { return { prev_end: XK.addDaysIso(inp.from_date, -1), date_where: XK.dateWhere('Date', inp.from_date, inp.to_date) }; },
@@ -585,7 +633,13 @@ preset,sum,walk};})();</script>
       });
       if (!XK.near(r2(lt), XK.num(doc.TotalTax) || 0)) docTaxOk = false;
     };
-    c.rows('invoices').forEach(function (d) { if (d.Status === 'AUTHORISED' || d.Status === 'PAID') add(d, d.Type === 'ACCREC' ? 'sales' : 'purchases', 1, d.Type === 'ACCREC' ? 'Invoice' : 'Bill'); });
+    // invoice basis: invoices and bills dated in the period. Cash basis: the GST on each payment in the period, in proportion to
+    // the share of its invoice it paid (Xero's cash-basis GST); spend / receive money is cash either way.
+    var fin = c.fan('paid_inv'), byId = {}, cashDone = cashBasis && fin != null && fin.every(function (x) { return !x.error; }), nPay = 0;
+    if (fin) fin.forEach(function (x) { ((x.value || {}).Invoices || []).forEach(function (d) { byId[d.InvoiceID] = d; }); });
+    if (cashDone) c.rows('payments').forEach(function (p) { var d = byId[(p.Invoice || {}).InvoiceID], tot = d ? XK.num(d.Total) : 0, k = tot ? (XK.num(p.Amount) || 0) / tot : 0; if (!d || !k || p.Status === 'DELETED') return; nPay++;
+      add(Object.assign({}, d, { DateString: XK.isoDate(p.Date), TotalTax: (XK.num(d.TotalTax) || 0) * k, LineItems: (d.LineItems || []).map(function (l) { return Object.assign({}, l, { LineAmount: (XK.num(l.LineAmount) || 0) * k, TaxAmount: (XK.num(l.TaxAmount) || 0) * k }); }) }), d.Type === 'ACCREC' ? 'sales' : 'purchases', 1, (d.Type === 'ACCREC' ? 'Invoice' : 'Bill') + ' payment'); });
+    else c.rows('invoices').forEach(function (d) { if (d.Status === 'AUTHORISED' || d.Status === 'PAID') add(d, d.Type === 'ACCREC' ? 'sales' : 'purchases', 1, d.Type === 'ACCREC' ? 'Invoice' : 'Bill'); });
     c.rows('credit_notes').forEach(function (d) { if (/^(AUTHORISED|PAID)$/.test(d.Status || '')) add(d, d.Type === 'ACCRECCREDIT' ? 'sales' : 'purchases', -1, 'Credit note'); });
     c.rows('bank_tx').forEach(function (d) { if (d.Status === 'AUTHORISED' && (d.Type === 'RECEIVE' || d.Type === 'SPEND')) add(d, d.Type === 'RECEIVE' ? 'sales' : 'purchases', 1, d.Type === 'RECEIVE' ? 'Receive money' : 'Spend money'); });
     var net = r2(F['1A'] - F['1B']);
@@ -601,7 +655,7 @@ preset,sum,walk};})();</script>
     var settled = 0; if (code) c.rows('bank_tx').forEach(function (d) { var dd = XK.isoDate(d.DateString || d.Date); if (!inP(dd) || d.Status !== 'AUTHORISED') return; (d.LineItems || []).forEach(function (l) { if (l.AccountCode === code) settled = r2(settled + (d.Type === 'SPEND' ? 1 : -1) * (XK.num(l.LineAmount) || 0)); }); });
     var move = g1 && g0 ? r2(g1.v - g0.v) : null;
     var view = c.view || 'statement', fld = function (code2, label, v) { return '<tr><td class="num" style="width:60px"><strong>' + code2 + '</strong></td><td>' + label + '</td><td class="num">' + (v == null ? 'N/A — not in source' : money(v)) + '</td></tr>'; };
-    var html = '<div class="xk-banner na" style="margin-bottom:12px"><strong>This is not your Activity Statement</strong> — a GST summary calculated from your Xero transactions. Lodge from Xero → Tax → Activity statements.' + (cashBasis ? ' Your GST is reported on the <strong>cash</strong> basis; these figures are on the invoice (accrual) basis and can differ from the lodged amounts.' : '') + '</div>';
+    var html = '<div class="xk-banner na" style="margin-bottom:12px"><strong>This is not your Activity Statement</strong> — a GST summary calculated from your Xero transactions. Lodge from Xero → Tax → Activity statements.' + (cashBasis ? (cashDone ? ' Your GST is reported on the <strong>cash</strong> basis: these figures are the GST on payments received and made in the period.' : ' Your GST is reported on the <strong>cash</strong> basis: ' + (fin == null ? 'loading the payments\' invoices…' : 'some paid invoices could not be loaded, so these figures are on the invoice basis.') ) : '') + '</div>';
     if (view === 'statement') {
       html += '<div class="xk-grid2"><div class="xk-card"><h3>GST — ' + XK.h(XK.periodLine(from, to).replace(/^For the /, '')) + '</h3><table class="xk-grid"><tbody>' + fld('G1', 'Total sales (including any GST)', F.G1) + fld('G2', 'Export sales', F.G2) + fld('G3', 'Other GST-free sales', F.G3) + fld('G4', 'Input taxed sales', F.G4) + fld('G10', 'Capital purchases (including any GST)', F.G10) + fld('G11', 'Non-capital purchases (including any GST)', F.G11) + fld('1A', 'GST on sales', F['1A']) + fld('1B', 'GST on purchases', F['1B']) + '</tbody></table></div>' +
         '<div class="xk-card"><h3>PAYG and summary</h3><table class="xk-grid"><tbody>' + fld('W1', 'Total salary, wages and other payments', W1) + fld('W2', 'Amounts withheld from payments at W1', W2) + fld('W4', 'Amounts withheld where no ABN is quoted', null) + fld('W3', 'Other amounts withheld', null) +
@@ -622,9 +676,11 @@ preset,sum,walk};})();</script>
       { name: 'G1 ≥ G2 + G3 + G4 (exports, GST-free and input-taxed sales are part of total sales)', pass: F.G1 + 0.005 >= F.G2 + F.G3 + F.G4, detail: money(F.G1) + ' ≥ ' + money(r2(F.G2 + F.G3 + F.G4)) },
       { name: 'Every tax rate used maps to a BAS field', pass: Object.keys(unmapped).length === 0, detail: Object.keys(unmapped).length ? 'Not mapped: ' + Object.keys(unmapped).join(', ') : lines.length + ' line(s)' },
       move == null ? { name: 'GST account movement on the Balance Sheet = net GST − GST paid to the ATO', pass: null, detail: c.err('bs_end') || c.err('bs_start') || 'No GST line on the Balance Sheet' }
+        : cashDone ? { name: 'GST account movement on the Balance Sheet vs net GST (information — cash basis)', pass: null, info: true, detail: money(move) + ' movement · ' + money(net) + ' net GST on payments · ' + nPay + ' payment(s)' }
         : { name: 'GST account movement on the Balance Sheet = net GST − GST paid to the ATO', pass: code ? XK.near(move, r2(net - settled)) : null, detail: code ? money(move) + ' = ' + money(net) + ' − ' + money(settled) + ' paid' : 'GST account code unknown' },
       { name: 'All documents in the period loaded', pass: ids.some(function (id) { return c.errors[id] || c.truncated(id); }) ? false : true, detail: docs + ' document(s)' }
     ];
+    if (cashBasis) checks.push({ name: 'Cash basis: every payment\'s invoice loaded', pass: fin == null ? null : cashDone && nPay === c.rows('payments').filter(function (p) { return p.Status !== 'DELETED' && (p.Invoice || {}).InvoiceID; }).length, detail: fin == null ? (c.live ? 'Loading' : 'Needs the live report') : nPay + ' of ' + c.rows('payments').length + ' payment(s)' });
     if (prOk) checks.push({ name: 'W2 consistent with W1 (tax withheld between 0% and 47% of wages — the top marginal rate with the Medicare levy)', pass: W1 > 0 ? W2 >= 0 && W2 <= W1 * 0.47 + 0.005 : XK.near(W2, 0), detail: W1 > 0 ? money(W2) + ' = ' + XK.pct(W2 / W1) + ' of ' + money(W1) : 'No wages paid in the period' },
       { name: 'All pay runs loaded', pass: c.truncated('pay_runs') ? false : true, detail: runs.length + ' pay run(s) paid in the period' });
     this._x = { F: F, net: net, lines: lines, dueDate: dueDate, W1: W1, W2: W2 };

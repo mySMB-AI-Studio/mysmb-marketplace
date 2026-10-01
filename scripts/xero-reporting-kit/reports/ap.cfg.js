@@ -1,11 +1,12 @@
 XK.app({
   title: 'Aged Payables Summary', primary: 'invoices', dated: ['bs'], org: 'org', conns: 'connections', noBasis: true,
   inputs: { asAt: 'as_at', org: 'org', persona: 'persona', display: 'display' },
-  defaults: { as_at: '2026-09-30', org: '', page: 1, persona: 'Bookkeeper',
+  defaults: { as_at: '2026-09-30', paid_where: 'Type=="ACCPAY" AND FullyPaidOnDate>DateTime(2026,09,30)', pay_where: 'PaymentType=="ACCPAYPAYMENT" AND Date>DateTime(2026,09,30)', org: '', page: 1, persona: 'Bookkeeper',
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"end_this_month","c":"none","v":"","o":"by=due;n=4;len=m;g=none"}' },
-  uses: { invoices: ['org'], credit_notes: ['org'], overpayments: ['org'], prepayments: ['org'], bs: ['as_at', 'org'], org: ['org'], connections: [] },
-  paged: { invoices: { input: 'page', key: 'Invoices' }, credit_notes: { input: 'page', key: 'CreditNotes' }, overpayments: { input: 'page', key: 'Overpayments' }, prepayments: { input: 'page', key: 'Prepayments' } },
-  tools: { invoices: 'list_invoices (bills, awaiting payment)', credit_notes: 'list_credit_notes (unallocated)', overpayments: 'list_overpayments (unallocated)', prepayments: 'list_prepayments (unallocated)', bs: 'get_balance_sheet (Accounts Payable at the as-at date)', org: 'get_organisation', connections: 'list_connections' },
+  uses: { paid_after: ['paid_where', 'org'], pays_after: ['pay_where', 'org'], invoices: ['org'], credit_notes: ['org'], overpayments: ['org'], prepayments: ['org'], bs: ['as_at', 'org'], org: ['org'], connections: [] },
+  paged: { paid_after: { input: 'page', key: 'Invoices' }, pays_after: { input: 'page', key: 'Payments' }, invoices: { input: 'page', key: 'Invoices' }, credit_notes: { input: 'page', key: 'CreditNotes' }, overpayments: { input: 'page', key: 'Overpayments' }, prepayments: { input: 'page', key: 'Prepayments' } },
+  tools: { paid_after: 'list_invoices (bills fully paid after the as-at date)', pays_after: 'list_payments (made after the as-at date)', invoices: 'list_invoices (bills, awaiting payment)', credit_notes: 'list_credit_notes (unallocated)', overpayments: 'list_overpayments (unallocated)', prepayments: 'list_prepayments (unallocated)', bs: 'get_balance_sheet (Accounts Payable at the as-at date)', org: 'get_organisation', connections: 'list_connections' },
+  derive: function (inp) { var d = 'DateTime(' + inp.as_at.split('-').map(Number).join(',') + ')'; return { paid_where: 'Type=="ACCPAY" AND FullyPaidOnDate>' + d, pay_where: 'PaymentType=="ACCPAYPAYMENT" AND Date>' + d }; },
   asats: [['end_this_month', 'End of this month'], ['today', 'Today'], ['end_last_month', 'End of last month'], ['custom', 'Custom']],
   options: [{ id: 'by', label: 'Ageing by', options: [['due', 'Due date'], ['inv', 'Invoice date']], def: 'due' },
     { id: 'n', label: 'Ageing periods', options: [['3', '3'], ['4', '4'], ['5', '5'], ['6', '6']], def: '4' },
@@ -18,7 +19,9 @@ XK.app({
     if (!c.data.invoices) return {};
     var by = c.opt('by') === 'inv' ? 'inv' : 'due', n = Math.max(1, Math.min(12, +c.opt('n') || 4)), len = c.opt('len') || 'm', grp = c.opt('g') === 'type', cur0 = by === 'due';
     // Open documents at the as-at date in base currency (credit notes, overpayments and prepayments negative, as in Xero).
-    var base = c.currency, docs = XK.openDocs({ invoices: c.rows('invoices'), credit_notes: c.rows('credit_notes'), overpayments: c.rows('overpayments'), prepayments: c.rows('prepayments'),
+    var past0 = asAt < c.today, back = {}, nBack = 0; if (past0) c.rows('pays_after').forEach(function (p) { var id = (p.Invoice || {}).InvoiceID; if (!id || p.Status === 'DELETED' || XK.isoDate(p.Date) <= asAt) return; back[id] = Math.round(((back[id] || 0) + (XK.num(p.Amount) || 0)) * 100) / 100; nBack++; });
+    var invAt = c.rows('invoices').concat(past0 ? c.rows('paid_after').filter(function (d) { return d.Status === 'PAID'; }) : []).map(function (d) { var a = back[d.InvoiceID]; return a ? Object.assign({}, d, { AmountDue: (XK.num(d.AmountDue) || 0) + a, Status: 'AUTHORISED' }) : d; }); // a document paid after the as-at date was still awaiting payment on it
+    var base = c.currency, docs = XK.openDocs({ invoices: invAt, credit_notes: c.rows('credit_notes'), overpayments: c.rows('overpayments'), prepayments: c.rows('prepayments'),
       types: { invoices: K.inv, credit_notes: K.cn, overpayments: K.op, prepayments: K.pp } }, base, asAt);
     var ag = XK.ageingCols(asAt, by, n, len), cols = ag.cols, A = XK.parse(asAt), m = len === 'm', L = +len;
     var zero = function () { return cols.map(function () { return 0; }); }, r2 = function (v) { return Math.round(v * 100) / 100; };
@@ -72,12 +75,13 @@ XK.app({
       { name: 'All open documents loaded', pass: failed.length ? false : cut.length ? false : true, detail: failed.length ? 'Not loaded: ' + failed.map(function (id) { return c.err(id); }).join('; ') : cut.length ? 'May be truncated: ' + cut.join(', ') + (c.pageError(cut[0]) ? ' (' + c.pageError(cut[0]) + ')' : ' — over 20 pages') : docs.length + ' document(s)' },
       c.errors.bs ? { name: 'Total = ' + K.bsName + ' on the Balance Sheet', pass: null, detail: c.err('bs') }
         : bsv == null ? { name: 'Total = ' + K.bsName + ' on the Balance Sheet', pass: null, detail: 'No ' + K.bsName + ' line on the Balance Sheet' }
-        : past ? { name: 'Total vs ' + K.bsName + ' on the Balance Sheet (information)', pass: null, info: true, detail: money(grand) + ' vs ' + money(bsv) + ' — a past as-at date uses today\'s open balances, so these can differ' }
+        : past && docs.some(function (d) { return d.kind !== 'Invoice'; }) && !XK.near(grand, bsv) ? { name: 'Total vs ' + K.bsName + ' on the Balance Sheet (information)', pass: null, info: true, detail: money(grand) + ' vs ' + money(bsv) + ' — credit notes, overpayments or prepayments allocated after ' + asAt + ' are not added back' }
         : XK.near(grand, bsv) ? { name: 'Total = ' + K.bsName + ' on the Balance Sheet at ' + asAt, pass: true, detail: money(grand) + ' vs ' + money(bsv) }
         : fxDocs ? { name: 'Total vs ' + K.bsName + ' on the Balance Sheet (information)', pass: null, info: true, detail: 'Difference ' + money(diff) + ' — ' + fxDocs + ' foreign-currency document(s) are converted at their own rates; Xero revalues them on the Balance Sheet' }
         : { name: 'Total = ' + K.bsName + ' on the Balance Sheet at ' + asAt, pass: false, detail: money(grand) + ' vs ' + money(bsv) + ' — difference ' + money(diff) + ' (e.g. a manual journal to ' + K.bsName + ')' }
     ];
-    if (past) checks.push({ name: 'Ageing as at a past date', pass: null, detail: 'Xero lists today\'s open balances: documents paid between ' + asAt + ' and today are not included — use Today or a later date' });
+    if (past) checks.push({ name: 'Balances rebuilt at ' + asAt + ' (information)', pass: null, info: true, detail: 'Today\'s amounts due plus ' + nBack + ' payment(s) made after ' + asAt + ' (' + c.rows('paid_after').length + ' document(s) fully paid since)' + (c.errors.pays_after || c.errors.paid_after ? ' — ' + (c.err('pays_after') || c.err('paid_after')) : '') });
+    if (past && (c.errors.pays_after || c.errors.paid_after || c.truncated('pays_after') || c.truncated('paid_after'))) checks.push({ name: 'Payments after the as-at date loaded', pass: false, detail: c.err('pays_after') || c.err('paid_after') || 'May be truncated (over 20 pages)' });
     var notes = ['Includes unallocated credit notes, overpayments and prepayments as negative amounts, as Xero does.'];
     if (fxDocs) notes.push(fxDocs + ' foreign-currency document(s) converted to ' + base + ' at each document\'s own rate.');
     notes.push('Ageing ' + (cur0 ? 'by due date' : 'by invoice date') + ' in ' + n + ' periods of ' + (m ? '1 month (calendar months)' : L + ' days') + '.');
