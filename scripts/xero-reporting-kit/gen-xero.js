@@ -17,9 +17,10 @@ const built = FAM.map((f) => '`' + SLUG + ':' + f.skill + '`' + (/^P\d\d$/.test(
 const specSkills = fs.readdirSync(path.join(P, 'skills')).map((f) => f.replace(/\.md$/, '')).filter((s) => s !== 'xero-report-foundation' && !FAM.some((f) => f.skill === s)).sort();
 const spec = specSkills.map((s) => '`' + SLUG + ':' + s + '`').join(', ');
 const LIMIT = 128 * 1024, DESC = 500; // myHubV2 developer skills: markdown ≤ 128 × 1024 characters, description ≤ 500
-// What the agent can handle (README "Platform facts"): no line over LINE characters, and a report document of at most DOC
-// characters — the agent writes the whole document in one artifact_save call, inside a 10-minute turn.
-const LINE = 1500, DOC = 85000;
+// What the agent can handle (README "Platform facts"): no line over LINE characters, and a report document + its dataBindings of
+// at most DOC tokens — the agent writes both in one artifact_save call, inside a 10-minute turn. Tokens are counted with
+// @anthropic-ai/tokenizer; the largest document proven in QA (QuickBooks Forecasts) counts about 35,300 on it.
+const LINE = 1500, DOC = 35000, { countTokens } = require('@anthropic-ai/tokenizer');
 const guard = (name, md, desc) => {
   if (md.length > LIMIT) throw new Error(name + ' is ' + md.length + ' characters (limit ' + LIMIT + ')');
   if (desc && desc.length > DESC) throw new Error(name + ' description is ' + desc.length + ' characters (limit ' + DESC + ')');
@@ -90,7 +91,8 @@ w('skills/xero-report-foundation.md', foundation);
 FAM.forEach((f) => {
   const manifest = JSON.stringify(JSON.parse(rd('reports/' + f.report + '.manifest.json')), null, 2);
   const doc = assemble(f.report).trim();
-  if (doc.length > DOC) throw new Error(f.skill + ' report document is ' + doc.length + ' characters (limit ' + DOC + ')');
+  const docTok = countTokens(doc) + countTokens(JSON.stringify(JSON.parse(manifest)));
+  if (docTok > DOC) throw new Error(f.skill + ' report document + dataBindings is ' + docTok + ' tokens (limit ' + DOC + ')');
   if (doc.includes('```')) throw new Error(f.skill + ' report document contains a code fence');
   const byMcp = {};
   JSON.parse(manifest).bindings.forEach((b) => { (byMcp[b.tool.mcp] = byMcp[b.tool.mcp] || new Set()).add('`' + b.tool.name + '`'); });

@@ -247,7 +247,7 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
   }
   if (!only || only === 'vz') {
     // ---------------- P15 Visualise ----------------
-    const VZ = (extra) => Object.assign({ pnl_12: L.pnl, bs_12: L.bs, bank: L.bankSummary, pnl_total: L.pnl, pnl_12_cash: L.pnl, pnl_total_cash: L.pnl, org: L.organisation, connections: L.connections }, extra || {});
+    const VZ = (extra) => Object.assign({ pnl_12: L.pnl, bs_12: L.bs, bank: L.bankSummary, transfers: L.listBankTransfers, pnl_total: L.pnl, pnl_12_cash: L.pnl, pnl_total_cash: L.pnl, org: L.organisation, connections: L.connections }, extra || {});
     { const vc = await run('vz', man('vz'), VZ()); await wait(30); { const a = vc.doc.querySelector('input[name="xk-basis"][value="Cash"]'); a.checked = true; a.dispatchEvent(new vc.w.Event('change')); await vc.settle(); await wait(30); }
       ok('vz: Accounting method Cash → the cash-basis 12 months; months still re-add to the 12-month P&L; green', vc.calls.some((x) => x.id === 'pnl_12_cash' && x.params.paymentsOnly === true) && /✓ .*re-add/.test(banner(vc)) && green(vc) && /Cash basis/.test(text(vc.doc, '#xk-foot')), banner(vc).slice(0, 300)); }
     const v = await run('vz', man('vz'), VZ());
@@ -260,13 +260,27 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     ok('vz: insight chip answers from the numbers', text(v.doc, '#vz-ins').includes('net profit was $' + Math.round(E.netProfit('2025-09-01', '2026-08-31')).toLocaleString('en-AU') + ' on income of'), text(v.doc, '#vz-ins'));
     v.doc.querySelector('.xk-tab[data-v="cash"]').click(); await v.settle(); await wait(80);
     ok('vz: Cash tab → 12 monthly Bank Summary calls, cash in / out / net chart', v.calls.filter((x) => x.id === 'bank' && x.requery).length === 12 && v.doc.querySelector('#vz-ch svg') && /✓ Every month of the Bank Summary loaded/.test(banner(v)), [v.calls.filter((x) => x.id === 'bank').length, banner(v).slice(0, 300)]);
+    { const tr = L.listBankTransfers({}).BankTransfers.filter((t) => t.DateString.slice(0, 7) === '2026-08').reduce((a, t) => a + t.Amount, 0), bs = L.bankSummary({ fromDate: '2026-08-01', toDate: '2026-08-31' }).Reports[0].Rows[1].Rows.find((r) => r.RowType === 'SummaryRow').Cells.map((c) => +c.Value || 0);
+      const tips = [...v.doc.querySelectorAll('#vz-ch svg rect title')].map((t) => t.textContent), aug = tips.find((t) => /^Cash in · Aug/.test(t));
+      ok('vz: Cash — transfers between your own accounts are taken out of cash in (Aug = Bank Summary received − transfers)', tr > 0 && !!aug && aug.endsWith('$' + Math.round(bs[2] - tr).toLocaleString('en-AU')) && /✓ Transfers between your accounts loaded/.test(banner(v)), [aug, bs[2], tr]); }
     const ac = v.doc.getElementById('vz-acct'); ac.value = 'Business Savings Account'; ac.dispatchEvent(new v.w.Event('change')); await v.settle();
     ok('vz: bank account subset (no refetch)', /Business Savings Account/.test(v.doc.getElementById('vz-acct').selectedOptions[0].textContent) && v.calls.filter((x) => x.id === 'bank' && x.requery).length === 12);
     v.doc.querySelector('.xk-tab[data-v="accounts"]').click(); await v.settle();
     const ct = v.doc.getElementById('vz-ct'); ct.value = 'stacked'; ct.dispatchEvent(new v.w.Event('change')); await v.settle();
+    { const pickv = async (id, val) => { const el = v.doc.getElementById(id); el.value = val; el.dispatchEvent(new v.w.Event('change')); await v.settle(); await v.settle(); };
+      await pickv('vz-src', 'bs'); ok('vz: Accounts — Balance Sheet totals (Total Assets, Total Liabilities, Net Assets, Bank)', /Balance Sheet totals · Monthly ending/.test(body(v)) && ['Total Assets', 'Total Liabilities', 'Net Assets', 'Bank'].every((n) => text(v.doc, '#vz-ch').includes(n)), text(v.doc, '#vz-ch').slice(0, 200));
+      await pickv('vz-acc', 'Business Cheque Account'); await pickv('vz-acc2', 'Accounts Receivable');
+      ok('vz: Accounts — up to three accounts together (Balance Sheet accounts)', /Business Cheque Account, Accounts Receivable · Monthly ending/.test(body(v)) && !!v.doc.getElementById('vz-acc3'), body(v).slice(0, 200));
+      await pickv('vz-ct', 'bar'); ok('vz: Accounts — Bar chart (horizontal, a row per month)', v.doc.querySelectorAll('#vz-ch svg rect').length >= 12 && /Sep/.test(text(v.doc, '#vz-ch svg')));
+      await pickv('vz-ct', 'area'); ok('vz: Accounts — Area chart', !!v.doc.querySelector('#vz-ch svg polygon'));
+      await pickv('vz-acc', ''); await pickv('vz-acc2', ''); await pickv('vz-src', 'pl'); await pickv('vz-ct', 'stacked'); }
     ok('vz: Accounts tab — stacked P&L totals, chart-type toggle', /Profit and Loss totals · Monthly ending/.test(body(v)) && v.doc.querySelector('#vz-ch svg') && v.doc.getElementById('vz-ct').value === 'stacked');
     v.doc.querySelector('.xk-tab[data-v="kpis"]').click(); await v.settle();
-    ok('vz: KPIs tab — debtors days with its formula', /Formula: Debtors days = Accounts receivable ÷ total income × days in month/.test(body(v)) && /✓ The ratio shows its formula/.test(banner(v)));
+    { const pickv = async (id, val) => { const el = v.doc.getElementById(id); el.value = val; el.dispatchEvent(new v.w.Event('change')); await v.settle(); await v.settle(); };
+      for (const [id, name] of [['roa', 'Return on assets'], ['roe', 'Return on equity'], ['debt', 'Debt ratio']]) { await pickv('vz-k', id); ok('vz: KPIs — ' + name + ' with its formula', new RegExp(name + ' · Monthly ending').test(body(v)) && !!v.doc.querySelector('#vz-ch svg polyline'), body(v).slice(0, 200)); }
+      await pickv('vz-k', 'dcd'); ok('vz: KPIs — debtors days and creditors days on one graph', v.doc.querySelectorAll('#vz-ch svg polyline').length === 2, v.doc.querySelectorAll('#vz-ch svg polyline').length);
+      await pickv('vz-k', 'dd'); }
+    ok('vz: KPIs tab — debtors days with its formula', /Formula: Debtors days = Accounts receivable ÷ total income × days in month/.test(body(v)) && /ℹ The ratio shows its formula \(information\)/.test(banner(v)));
     v.doc.querySelector('.xk-tab[data-v="benchmarks"]').click(); await v.settle();
     ok('vz: Industry benchmarks without a benchmark → N/A with how to add one (not a failure)', /N\/A — industry benchmarks are not in the Xero API/.test(body(v)) && green(v) && /– Benchmark comparison states its source — No benchmark provided/.test(banner(v)), banner(v).slice(0, 400));
     const vb = await run('vz', Object.assign(man('vz'), { inputs: man('vz').inputs.map((i) => i.name === 'bench' ? Object.assign({}, i, { default: '{"gpm":{"low":0.3,"high":0.4,"source":"ATO small business benchmarks 2024"}}' }) : i) }), VZ(), { htmlPatch: (x) => x.replace("bench: '{}'", "bench: '{\"gpm\":{\"low\":0.3,\"high\":0.4,\"source\":\"ATO small business benchmarks 2024\"}}'").replace('\\"v\\":\\"profitability\\"', '\\"v\\":\\"benchmarks\\"').replace('"v":"profitability"', '"v":"benchmarks"') });

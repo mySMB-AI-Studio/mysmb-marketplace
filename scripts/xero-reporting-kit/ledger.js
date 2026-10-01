@@ -108,6 +108,11 @@ function books(tenant) {
     const qe = addDays(shiftMonths(qs, 3), -1), pay = shiftMonths(qs, 3).slice(0, 8) + '28', net = gstMovement(B, qs, qe);
     if (pay <= TODAY && net > 0) { const lines = [{ Description: 'BAS ' + qs, Quantity: 1, UnitAmount: net, AccountCode: '820', TaxType: 'BASEXCLUDED', TaxAmount: 0, LineAmount: net, LineItemID: 'bas-' + qs }]; bank.push({ Type: 'SPEND', BankTransactionID: 'bt-' + t.slice(-1) + '-bas-' + qs, Contact: contact('Australian Taxation Office', 'bt'), date: pay, status: 'AUTHORISED', LineAmountTypes: 'Exclusive', LineItems: lines, SubTotal: net, TotalTax: 0, Total: net, BankAccount: { AccountID: ACC['090'].AccountID, Code: '090', Name: ACC['090'].Name }, IsReconciled: true }); }
   });
+  // a transfer from the cheque account to the savings account on the 15th of every month (18 months)
+  B.transfers = [];
+  for (let k = 0; k < 18; k++) { const date = shiftMonths('2025-04-15', k, false); if (date > TODAY) break; const amt = r2((1500 + 100 * (k % 4)) * S), id = 'tr-' + t.slice(-1) + '-' + k, acc = (c) => ({ AccountID: ACC[c].AccountID, Code: c, Name: ACC[c].Name });
+    B.transfers.push({ BankTransferID: id, FromBankAccount: acc('090'), ToBankAccount: acc('091'), Amount: amt, date });
+    [['SPEND-TRANSFER', '090'], ['RECEIVE-TRANSFER', '091']].forEach(([Type, c]) => bank.push({ Type, BankTransactionID: id + '-' + c, Contact: contact('Transfer', 'bt'), date, status: 'AUTHORISED', LineAmountTypes: 'NoTax', LineItems: [], SubTotal: amt, TotalTax: 0, Total: amt, BankAccount: acc(c), IsReconciled: true })); }
   bank.sort((a, b) => a.date.localeCompare(b.date));
   BOOKS[t] = B; return B;
 }
@@ -126,13 +131,13 @@ function paidBy(B, doc, date) { return r2(B.pays.filter((p) => p.doc === doc && 
 function bankBalance(B, code, date) { // opening + inflows − outflows up to date
   let v = code === '090' ? 15000 * B.O.scale : 10000 * B.O.scale;
   B.pays.filter((p) => p.acct === code && p.date <= date).forEach((p) => { v += (p.doc.Type === 'ACCREC' ? 1 : -1) * p.amount; });
-  B.bank.filter((x) => x.BankAccount.Code === code && x.date <= date).forEach((x) => { v += (x.Type === 'RECEIVE' ? 1 : -1) * x.Total; });
+  B.bank.filter((x) => x.BankAccount.Code === code && x.date <= date).forEach((x) => { v += (/^RECEIVE/.test(x.Type) ? 1 : -1) * x.Total; });
   B.overs.filter((o) => o.acct === code && o.date <= date).forEach((o) => { v += o.Total; });
   return r2(v);
 }
 function flows(B, code, a, b) { let rin = 0, rout = 0;
   B.pays.filter((p) => p.acct === code && p.date >= a && p.date <= b).forEach((p) => { if (p.doc.Type === 'ACCREC') rin += p.amount; else rout += p.amount; });
-  B.bank.filter((x) => x.BankAccount.Code === code && x.date >= a && x.date <= b).forEach((x) => { if (x.Type === 'RECEIVE') rin += x.Total; else rout += x.Total; });
+  B.bank.filter((x) => x.BankAccount.Code === code && x.date >= a && x.date <= b).forEach((x) => { if (/^RECEIVE/.test(x.Type)) rin += x.Total; else rout += x.Total; });
   B.overs.filter((o) => o.acct === code && o.date >= a && o.date <= b).forEach((o) => { rin += o.Total; });
   return { rin: r2(rin), rout: r2(rout) };
 }
@@ -258,6 +263,7 @@ function listInvoices(p) {
   return page(list.map((o) => { const c = Object.assign({}, o); delete c._Date; delete c._DueDate; return c; }), p, 'Invoices');
 }
 function getInvoice(p) { const B = books(p.xero_tenant_id), d = B.docs.find((x) => x.InvoiceID === p.invoiceId); if (!d) throw new Error('Xero API GET https://api.xero.com/api.xro/2.0/Invoices/' + (p.invoiceId || '') + ' 404: {"Title":"Not Found"}'); const o = invoiceOut(B, d); delete o._Date; delete o._DueDate; return { Invoices: [o] }; }
+function listBankTransfers(p) { const B = books(p.xero_tenant_id); const list = B.transfers.map((x) => ({ BankTransferID: x.BankTransferID, FromBankAccount: x.FromBankAccount, ToBankAccount: x.ToBankAccount, Amount: x.Amount, Date: msDate(x.date), DateString: x.date + 'T00:00:00' })); if (/Date DESC/.test(p.order || '')) list.reverse(); return { BankTransfers: list }; }
 function listCreditNotes(p) { const B = books(p.xero_tenant_id), f = whereFilter(p.where); return page(B.credits.map((c) => Object.assign({}, c, { Date: msDate(c.date), DateString: c.date + 'T00:00:00', Status: c.status, _Date: c.date })).filter(f).map((c) => { delete c._Date; delete c.date; delete c.status; return c; }), p, 'CreditNotes'); }
 function listOverpayments(p) { const B = books(p.xero_tenant_id), f = whereFilter(p.where); return page(B.overs.map((o) => ({ Type: o.Type, OverpaymentID: o.OverpaymentID, Contact: o.Contact, Date: msDate(o.date), DateString: o.date + 'T00:00:00', Status: o.status, Total: o.Total, RemainingCredit: o.RemainingCredit, CurrencyCode: o.CurrencyCode, _Date: o.date })).filter(f).map((o) => { delete o._Date; return o; }), p, 'Overpayments'); }
 function listPrepayments(p) { return page([], p, 'Prepayments'); }
@@ -307,4 +313,4 @@ const expect = {
   balances: (date, t) => balances(books(t), date), netProfit: (a, b, cash, t) => netProfit(books(t), a, b, cash), bankBalance: (code, date, t) => bankBalance(books(t), code, date),
   flows: (code, a, b, t) => flows(books(t), code, a, b), gst: (a, b, t) => gstMovement(books(t), a, b), plByAccount: (a, b, cash, t) => plByAccount(books(t), a, b, cash), books,
 };
-module.exports = { TODAY, T1, T2, ORG, ACCOUNTS, ACC, TRACKING, listTrackingCategories, getInvoice, pnl: pnlReport, bs: bsReport, bankSummary, trialBalance, listManualJournals, listPayRuns, listTimesheets, listEmployees, listAssets, listInvoices, listCreditNotes, listOverpayments, listPrepayments, listPayments, listBankTransactions, listPurchaseOrders, listLinked, listRepeating, listAccounts, listTaxRates, organisation, connections, expect, fyStart, addDays, shiftMonths, eom, r2 };
+module.exports = { TODAY, T1, T2, ORG, ACCOUNTS, ACC, TRACKING, listTrackingCategories, getInvoice, listBankTransfers, pnl: pnlReport, bs: bsReport, bankSummary, trialBalance, listManualJournals, listPayRuns, listTimesheets, listEmployees, listAssets, listInvoices, listCreditNotes, listOverpayments, listPrepayments, listPayments, listBankTransactions, listPurchaseOrders, listLinked, listRepeating, listAccounts, listTaxRates, organisation, connections, expect, fyStart, addDays, shiftMonths, eom, r2 };
