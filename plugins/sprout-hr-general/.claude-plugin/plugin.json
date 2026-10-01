@@ -1,0 +1,68 @@
+{
+  "name": "sprout-hr-general",
+  "version": "1.1.0",
+  "description": "Access Sprout HR General reference data and admin configuration — companies, departments, locations, clients, access levels (roles), notifications, and shared lookups.",
+  "author": {
+    "name": "mySMB",
+    "email": "support@mysmb.com"
+  },
+  "category": "Human Resources",
+  "keywords": [
+    "sprout",
+    "hr",
+    "companies",
+    "departments",
+    "access levels",
+    "philippines"
+  ],
+  "connection": {
+    "authType": "api_key",
+    "instructions": "Connect with your **Sprout HR API** credential pair — NOT the Payroll (PR) API pair. Sprout issues two separate credential pairs when granting API access: an **HR API** pair (long 64-character hex strings — used here and by the other Sprout HR-side plugins) and a **PR API** pair (short client id — used only by the Sprout Payroll plugin). Only the HR pair works here.\n\n1. Request API access from the **Sprout Developer Portal** (Getting Started → Authorization).\n2. From the credentials Sprout sends, copy the **HR API** Client ID and Client Secret below.\n3. Paste the **Subscription Key** (`Ocp-Apim-Subscription-Key`) — required in both environments; it is shared across Sprout's HR and Payroll APIs.\n4. Set **Environment** to `sandbox` or `production` — whichever your credentials were issued for. Sprout credentials belong to exactly one environment: a sandbox subscription key is rejected by the production gateway (HTTP 401 \"invalid subscription key\") and vice versa. If Sprout pointed you at api-docs-**sandbox**.sprout.ph, your credentials are sandbox credentials.\n\nWe exchange your credentials for a short-lived token automatically — you never paste a bearer token.",
+    "docUrl": "https://developers.sprout.ph/developers/getting-started",
+    "fields": [
+      {
+        "name": "SPROUT_CLIENT_ID",
+        "label": "HR API Client ID",
+        "type": "text",
+        "required": true,
+        "placeholder": "64-character hex client id",
+        "helpText": "The LONG (64-character hex) HR API client id — not the short Payroll client id."
+      },
+      {
+        "name": "SPROUT_CLIENT_SECRET",
+        "label": "HR API Client Secret",
+        "type": "password",
+        "required": true,
+        "placeholder": "your-hr-api-client-secret",
+        "helpText": "Issued alongside the HR API Client ID. Stored encrypted; exchanged server-side for a token."
+      },
+      {
+        "name": "SPROUT_SUBSCRIPTION_KEY",
+        "label": "Subscription Key",
+        "type": "password",
+        "required": false,
+        "placeholder": "Ocp-Apim-Subscription-Key",
+        "helpText": "Required in both sandbox and production (shared across Sprout's HR and Payroll APIs)."
+      },
+      {
+        "name": "SPROUT_ENVIRONMENT",
+        "label": "Environment",
+        "type": "text",
+        "required": false,
+        "placeholder": "sandbox or production",
+        "helpText": "Which Sprout environment issued your credentials — type \"sandbox\" or \"production\". A sandbox subscription key is rejected by the production gateway (and vice versa). Leave blank to use the platform default."
+      },
+      {
+        "name": "SPROUT_TENANT_CODE",
+        "label": "Tenant Code",
+        "type": "text",
+        "required": false,
+        "placeholder": "your-company-code",
+        "helpText": "Identifies which company the calls target. Leave blank if your client is single-tenant."
+      }
+    ]
+  },
+  "widgets": "widgets",
+  "displayName": "Sprout HR General",
+  "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAALVBMVEVHcEwyzhMwzREyzhIyzhMyzhMyzhIxzhEyzhMxzhIxzhIyzhIxzhIxzhIyzhOAhJ6oAAAADnRSTlMA8Q1628iOIbNGNaFVYlSFz2UAAAHOSURBVFiF7VfJdsMgDDSrQWD+/3MbBNQbEqRue8pc8l6ExtJoMV6WD/4Y4Lct+vWHzlanBqPeJtl278rh33IX6Q4zHYU0u5c4Uqk5f1+Pa+sl8oFqjGYq/HLWwSkoWwOSk/4arv/LMMcAeCz0TCU1zftLPGT7xlWQ5N8I7BGJDFxDwEBqtAuGAMvFyaT4dlizeWP8l0WzISi0ehWMfsE4G2/dG1kVMr1SpwEQLp7PcCpjDVvPHRCOcVgmB0Bb6Ayi2yk8o3PuYtclOCgvGREsHlRdgmTaUwVdyIBF3PoESdQ0stJErxsMDgiClAqDS2QZMgGUGBkGw0cA5RFEFrKmQGjgir6RJMA5y7+xT2Cric7hFTvsatyganBEIRFls/X9scncwoeA7xtqFvI0i8bE4bZxG/KTseH67dxAr6xchrJPrm/GuQBQPRRhkQwD0UVNhKYwyeBo/+LVRpXQgfU/5PCC71Vz8ILGbbG3mbpSjK8I7iJSPEyWsBM3DOz088ZbN2WDVfcN3wezb+bALd1/CiH+Sgj8JWIAbuXMIZd+6j5HAduRWJtzwGvCIx3FcOoGgMdJhMfNIJ5WAgbLbwy8Kb31kXKF00abRzJ8MI0vOxgztGhwgqoAAAAASUVORK5CYII="
+}
