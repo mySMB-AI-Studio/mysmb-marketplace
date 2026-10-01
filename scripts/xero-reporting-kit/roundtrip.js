@@ -9,7 +9,8 @@ console.log('1. extract from', SKILLS); run('node', ['extract-skills.js', SKILLS
 console.log('2. tests on the extracted copy'); for (const t of ['test-ledger.js', 'test-xero.js', 'test-dash.js', 'test-conformance.js']) run('node', [t], { KIT_DIR: OUT });
 console.log('3. build every report'); for (const f of FAM) run('node', ['build.js', f.report], { KIT_DIR: OUT });
 console.log('4. platform validators'); run('npx', ['tsx', 'check-reports.mts', OUT]);
-console.log('5. limits: markdown ≤ 128 × 1024 characters, description ≤ 500, no line over 1,500 characters, report document ≤ 85,000');
+console.log('5. limits: markdown ≤ 128 × 1024 characters, description ≤ 500, no line over 1,500 characters, report document + dataBindings ≤ 35,000 tokens');
+const { countTokens } = require('@anthropic-ai/tokenizer'), tok = (f) => countTokens(fs.readFileSync(path.join(OUT, 'reports', f.report + '.doc.html'), 'utf8')) + countTokens(JSON.stringify(JSON.parse(fs.readFileSync(path.join(OUT, 'reports', f.report + '.manifest.json'), 'utf8'))));
 let bad = 0;
 for (const f of fs.readdirSync(SKILLS)) {
   const s = fs.readFileSync(path.join(SKILLS, f), 'utf8'), m = /^---\n[\s\S]*?\ndescription: (.*)\n/.exec(s.replace(/\r\n/g, '\n'));
@@ -18,9 +19,9 @@ for (const f of fs.readdirSync(SKILLS)) {
   if (long > 1500) { bad++; console.log('  LINE TOO LONG', f, long, 'characters'); }
 }
 for (const f of FAM) {
-  const d = fs.readFileSync(path.join(OUT, 'reports', f.report + '.doc.html'), 'utf8').length;
-  if (d > 85000) { bad++; console.log('  DOCUMENT TOO BIG', f.skill, d, 'characters'); }
+  const d = tok(f);
+  if (d > 35000) { bad++; console.log('  DOCUMENT TOO BIG', f.skill, d, 'tokens'); }
 }
-console.log('  report documents (characters):', FAM.map((f) => f.report + ' ' + fs.readFileSync(path.join(OUT, 'reports', f.report + '.doc.html'), 'utf8').length).join(', '));
+console.log('  report documents + dataBindings (tokens):', FAM.map((f) => f.report + ' ' + tok(f)).join(', '));
 if (bad) process.exit(1);
 console.log('\nROUND TRIP OK —', FAM.length, 'kit reports; extracted copy in', OUT);

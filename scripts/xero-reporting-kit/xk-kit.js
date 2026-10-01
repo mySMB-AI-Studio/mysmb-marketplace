@@ -556,6 +556,17 @@ var XK = (function () {
     if (o.mark) { var mx = (P + gw * o.mark.at + gw / 2).toFixed(1); svg += '<line x1="' + mx + '" x2="' + mx + '" y1="' + (P - 6) + '" y2="' + (H - P + 4) + '" class="xk-mark" stroke="var(--ink)" stroke-dasharray="4 3" stroke-width="1"/><text x="' + mx + '" y="' + (P - 10) + '" class="tick" text-anchor="middle" font-weight="600">' + h(o.mark.label || '') + '</text>'; }
     el.innerHTML = svg + '</svg>' + legend(o.series);
   }
+  // hbars(el, {labels, series:[{name, values}], title}) — horizontal grouped bars, one row per label
+  function hbars(el, o, ctx) {
+    var fmt = o.fmt || function (v) { return money(v, ctx.currency, ctx.display); }, all = [];
+    o.series.forEach(function (s) { all = all.concat(s.values.filter(function (v) { return v != null; })); });
+    if (!all.length) { el.innerHTML = '<p class="muted">Data appears once it\'s available.</p>'; return; }
+    var ns = o.series.length, rh = 6 + 10 * ns, W = 640, L = 70, P = 16, H = P * 2 + rh * o.labels.length, sc = scale(all), x = function (v) { return L + (W - L - P) * (v - sc.mn) / (sc.mx - sc.mn); };
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + h(o.title || 'Bar chart') + '"><line x1="' + x(0) + '" x2="' + x(0) + '" y1="' + P + '" y2="' + (H - P) + '" class="axis"/>';
+    o.labels.forEach(function (lb, i) { var y0 = P + rh * i; svg += '<text x="' + (L - 6) + '" y="' + (y0 + rh / 2 + 3) + '" class="tick" text-anchor="end">' + h(lb) + '</text>';
+      o.series.forEach(function (s, j) { var v = s.values[i]; if (v == null) return; var a = x(Math.min(0, v)), b = x(Math.max(0, v)); svg += '<rect x="' + a.toFixed(1) + '" y="' + (y0 + 3 + 10 * j) + '" width="' + Math.max(1, b - a).toFixed(1) + '" height="8" fill="' + (s.color || 'var(--c' + (j + 1) + ')') + '"><title>' + h(s.name + ' · ' + lb + ': ' + fmt(v)) + '</title></rect>'; }); });
+    el.innerHTML = svg + '</svg>' + legend(o.series);
+  }
   // line(el, {labels, series:[{name, values}], area:bool, band:{low:[], high:[], name}, title})
   function line(el, o, ctx) {
     var W = 640, H = 220, P = 28, all = [], fmt = o.fmt || function (v) { return money(v, ctx.currency, ctx.display); }; o.series.forEach(function (s) { all = all.concat(s.values.filter(function (v) { return v != null; })); });
@@ -899,7 +910,7 @@ var XK = (function () {
   return { doc: doc, openDocs: openDocs, ageingCols: ageingCols, byContact: byContact, pipeline: pipeline, plParts: plParts, bsParts: bsParts, monthKey: monthKey, monthLabel: monthLabel, shortDate: shortDate, monthsEnding: monthsEnding, monthCols: monthCols, dateWhere: dateWhere, addDaysIso: function (s, k) { return iso(addDays(parse(s), k)); },
     errorOf: errorOf, isoDate: isoDate, reportOf: reportOf, walk: walk, isDeduction: isDeduction, sectionTotal: sectionTotal, sectionBy: sectionBy, parentTies: parentTies, runningTies: runningTies,
     CYE_RE: CYE_RE, currentYearEarnings: currentYearEarnings, linesTies: linesTies, orgOf: orgOf, connections: connections, companyOf: companyOf, fiscalStart: fiscalStart, homeCurrency: homeCurrency, titleDates: titleDates,
-    applyBrand: applyBrand, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app,
+    applyBrand: applyBrand, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, hbars: hbars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app,
     MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays, num: num, find: find, val: val, totalFor: totalFor, near: near, sum: sum, symbol: symbol,
     DISPLAY_DEFAULT: DISPLAY_DEFAULT, readDisplay: readDisplay, writeDisplay: writeDisplay, money: money, pct: pct, isNeg: isNeg,
     PRESETS: PRESETS, preset: preset, ASAT: ASAT, asAt: asAt, compare: compare, periodLine: periodLine, rangeLabel: rangeLabel, asOfLine: asOfLine, footerStamp: footerStamp, freshest: freshest,
