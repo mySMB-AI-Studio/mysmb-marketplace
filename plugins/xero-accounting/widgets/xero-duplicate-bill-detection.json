@@ -1,0 +1,246 @@
+{
+  "id": "xero-duplicate-bill-detection",
+  "title": "Xero — Duplicate Bill Detection",
+  "description": "Flags Xero ACCPAY bills that look like accidental double-entries: same real vendor + same amount, dated within a few days of each other. Live-wired to xero-accounting: list_invoices fires on mount, fans out to list_contacts, and analyze_bill_duplicates filters to ACCPAY bills in a rolling 30-day window and tiers matches Exact (same day) vs Near (1-6 days apart). Vendor identity is resolved via each contact's email (falling back to phone, then raw name) rather than the bill's embedded contact name alone — confirmed against real data that one vendor can have two separate Xero contact records under slightly different legal names sharing the same email/phone, which name-only grouping would silently split into two groups and undercount. Same-vendor/amount pairs spanning 7+ days are treated as normal recurring charges and not flagged.",
+  "category": "finance",
+  "tags": ["xero", "bills", "duplicates", "accpay", "data-quality"],
+  "keywords": ["duplicate", "bill", "accpay", "double entry", "exact match", "near match", "xero"],
+  "connectorsUsed": ["xero-accounting"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 7 },
+    "min":       { "colSpan": 5, "rowSpan": 6 },
+    "max":       { "colSpan": 10, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "xero-accounting",
+    "tool": "list_invoices",
+    "params": { "order": "Date DESC", "xero_tenant_id": "fb48e700-fb7b-4bec-b82c-4a84d3daf864" }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "body"],
+        "watch": {
+          "/xero-accounting/list_invoices/Invoices": [
+            { "action": "xero-accounting.list_contacts", "params": { "order": "Name ASC", "xero_tenant_id": "fb48e700-fb7b-4bec-b82c-4a84d3daf864" } },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/billDup",
+                "value": {
+                  "$computed": "xero-accounting_analyze_bill_duplicates",
+                  "args": {
+                    "invoices": { "$state": "/xero-accounting/list_invoices/Invoices" },
+                    "contacts": { "$state": "/xero-accounting/list_contacts/Contacts" },
+                    "organisation": { "$state": "/xero-accounting/get_organisation" },
+                    "expandedGroupId": { "$state": "/ui/billDup/expandedGroupId" }
+                  }
+                }
+              }
+            }
+          ],
+          "/xero-accounting/list_contacts/Contacts": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/billDup",
+              "value": {
+                "$computed": "xero-accounting_analyze_bill_duplicates",
+                "args": {
+                  "invoices": { "$state": "/xero-accounting/list_invoices/Invoices" },
+                  "contacts": { "$state": "/xero-accounting/list_contacts/Contacts" },
+                  "organisation": { "$state": "/xero-accounting/get_organisation" },
+                  "expandedGroupId": { "$state": "/ui/billDup/expandedGroupId" }
+                }
+              }
+            }
+          },
+          "/xero-accounting/get_organisation": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/billDup",
+              "value": {
+                "$computed": "xero-accounting_analyze_bill_duplicates",
+                "args": {
+                  "invoices": { "$state": "/xero-accounting/list_invoices/Invoices" },
+                  "contacts": { "$state": "/xero-accounting/list_contacts/Contacts" },
+                  "organisation": { "$state": "/xero-accounting/get_organisation" },
+                  "expandedGroupId": { "$state": "/ui/billDup/expandedGroupId" }
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "headerRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "Copy", "tone": "accent", "size": "lg" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "subtitle"] },
+      "title": { "type": "Heading", "props": { "text": "Duplicate Bill Detection", "level": "h2" } },
+      "subtitle": { "type": "Eyebrow", "props": { "text": "Xero" } },
+
+      "div0": {
+        "type": "Divider",
+        "props": {},
+        "watch": {
+          "/xero-accounting/list_invoices/Invoices": {
+            "action": "xero-accounting.get_organisation",
+            "params": { "xero_tenant_id": "fb48e700-fb7b-4bec-b82c-4a84d3daf864" }
+          }
+        }
+      },
+
+      "body": { "type": "Body", "props": { "padding": "md" }, "children": ["loading", "content"] },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": {
+          "$or": [
+            { "$state": "/_loading/xero-accounting.list_invoices" },
+            { "$state": "/xero-accounting/list_invoices/Invoices", "not": true },
+            { "$state": "/xero-accounting/list_contacts/Contacts", "not": true }
+          ]
+        }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["heroRow", "div1", "dupSection", "emptyMsg", "div2", "footerRow"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/xero-accounting.list_invoices", "not": true },
+            { "$state": "/xero-accounting/list_invoices/Invoices" },
+            { "$state": "/xero-accounting/list_contacts/Contacts" }
+          ]
+        }
+      },
+
+      "heroRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["heroLeft", "statGrid"] },
+      "heroLeft": { "type": "Stack", "props": { "gap": "xs" }, "children": ["heroValue", "heroLabel"] },
+      "heroValue": { "type": "Stat", "props": { "value": { "$state": "/ui/billDup/groupCount" }, "tone": "accent" } },
+      "heroLabel": { "type": "Text", "props": { "text": "possible duplicates, last 30 days", "size": "sm", "tone": "muted" } },
+
+      "statGrid": { "type": "Row", "props": { "gap": "sm" }, "children": ["exactBox", "nearBox", "clearBox"] },
+      "exactBox": { "type": "Section", "props": { "variant": "muted" }, "children": ["exactStack"] },
+      "exactStack": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["exactValue", "exactLabel"] },
+      "exactValue": { "type": "Stat", "props": { "value": { "$state": "/ui/billDup/exactCount" }, "tone": "destructive" } },
+      "exactLabel": { "type": "Caption", "props": { "text": "EXACT", "tone": "destructive" } },
+
+      "nearBox": { "type": "Section", "props": { "variant": "muted" }, "children": ["nearStack"] },
+      "nearStack": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["nearValue", "nearLabel"] },
+      "nearValue": { "type": "Stat", "props": { "value": { "$state": "/ui/billDup/nearCount" }, "tone": "warning" } },
+      "nearLabel": { "type": "Caption", "props": { "text": "NEAR", "tone": "warning" } },
+
+      "clearBox": { "type": "Section", "props": { "variant": "muted" }, "children": ["clearStack"] },
+      "clearStack": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["clearValue", "clearLabel"] },
+      "clearValue": { "type": "Stat", "props": { "value": { "$state": "/ui/billDup/clearCount" }, "tone": "muted" } },
+      "clearLabel": { "type": "Caption", "props": { "text": "CLEAR", "tone": "muted" } },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "dupSection": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["dupList"],
+        "visible": { "$state": "/ui/billDup/groupCount" }
+      },
+      "dupList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["dupRow"],
+        "repeat": { "statePath": "/ui/billDup/detailRows", "key": "groupId" }
+      },
+      "dupRow": { "type": "Stack", "props": { "gap": "xs" }, "children": ["dupClickable", "dupBills", "dupDivider"] },
+      "dupClickable": {
+        "type": "Row",
+        "props": { "clickable": true },
+        "children": ["dupTextStack"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/billDup",
+              "value": {
+                "$computed": "xero-accounting_analyze_bill_duplicates",
+                "args": {
+                  "invoices": { "$state": "/xero-accounting/list_invoices/Invoices" },
+                  "contacts": { "$state": "/xero-accounting/list_contacts/Contacts" },
+                  "organisation": { "$state": "/xero-accounting/get_organisation" },
+                  "expandedGroupId": { "$state": "/ui/billDup/expandedGroupId" },
+                  "clickedGroupId": { "$item": "groupId" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "dupTextStack": { "type": "Stack", "props": { "gap": "xs" }, "children": ["dupTop", "dupBottom"] },
+      "dupTop": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "{c} · {a}", "c": { "$item": "contact" }, "a": { "$item": "amount" } } },
+          "size": "sm",
+          "weight": "semibold",
+          "tone": "accent"
+        }
+      },
+      "dupBottom": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "{t} · {d}", "t": { "$item": "tierLabel" }, "d": { "$item": "detail" } } },
+          "size": "xs",
+          "tone": { "$item": "tierTone" }
+        }
+      },
+      "dupBills": {
+        "type": "Text",
+        "props": { "text": { "$item": "billsSummary" }, "size": "xs", "tone": "muted", "preserveLines": true },
+        "visible": { "$item": "expanded" }
+      },
+      "dupDivider": { "type": "Divider", "props": {}, "visible": { "$item": "isLast", "not": true } },
+
+      "emptyMsg": {
+        "type": "Empty",
+        "props": { "message": "No possible duplicate bills found this period." },
+        "visible": { "$state": "/ui/billDup/groupCount", "not": true }
+      },
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "footerRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["syncedCaption", "reviewLink"] },
+      "syncedCaption": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "Synced {t}", "t": { "$computed": "xero-accounting_time_ago", "args": { "value": { "$state": "/ui/billDup/scannedAt" } } } } },
+          "tone": "muted"
+        }
+      },
+      "reviewLink": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "clickable": true },
+        "children": ["reviewLabel", "reviewIcon"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": { "$state": "/ui/billDup/reviewUrl" }, "target": "_blank" }
+          }
+        }
+      },
+      "reviewLabel": { "type": "Text", "props": { "text": "Review in Xero", "size": "sm", "tone": "accent", "weight": "medium" } },
+      "reviewIcon": { "type": "Icon", "props": { "name": "ArrowUpRight", "tone": "accent", "size": "sm" } }
+
+    }
+  },
+  "status": "draft"
+}
