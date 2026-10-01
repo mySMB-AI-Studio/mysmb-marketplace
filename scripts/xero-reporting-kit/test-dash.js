@@ -19,7 +19,7 @@ const cellOf = (rows, label) => { for (const r of rows) { for (const k of r.Rows
 const E = L.expect;
 const xlsxOf = async (t) => { t.doc.getElementById('xk-xlsx').click(); await t.settle(); const b = t.downloads.filter((d) => d.blob).pop(); return b ? Buffer.from(await b.blob.arrayBuffer()).toString('utf8') : ''; };
 
-const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes, overpayments: L.listOverpayments, prepayments: L.listPrepayments, bs: L.bs, org: L.organisation, connections: L.connections });
+const AGED = () => ({ paid_after: L.listInvoices, pays_after: L.listPayments, invoices: L.listInvoices, credit_notes: L.listCreditNotes, overpayments: L.listOverpayments, prepayments: L.listPrepayments, bs: L.bs, org: L.organisation, connections: L.connections });
 
 (async () => {
   if (!only || only === 'aged') {
@@ -63,7 +63,11 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     // a past as-at date uses today's balances: said so, never a silent tick
     const ap0 = await run('ar', man('ar'), AGED());
     await set(ap0, 'xk-asat-preset', 'custom'); await set(ap0, 'xk-asat', '2026-06-30');
-    ok('ar: past as-at date → "Ageing as at a past date" N/A and the tie is information', /– Ageing as at a past date — Xero lists today's open balances/.test(banner(ap0)) && /Total vs Accounts Receivable on the Balance Sheet \(information\)/.test(banner(ap0)) && ap0.calls.some((x) => x.requery && x.id === 'bs' && x.params.date === '2026-06-30'), banner(ap0).slice(0, 600));
+    ok('ar: past as-at date → balances rebuilt at that date (today\u2019s amounts due + later payments + documents paid since): total = Accounts Receivable on the Balance Sheet then', new RegExp('✓ Total = Accounts Receivable on the Balance Sheet at 2026-06-30 — ' + fmt(E.balances('2026-06-30')['610']) + ' vs ' + fmt(E.balances('2026-06-30')['610'])).test(banner(ap0)) && /ℹ Balances rebuilt at 2026-06-30/.test(banner(ap0)) && ap0.calls.some((x) => x.requery && x.id === 'pays_after' && /Date>DateTime\(2026,6,30\)/.test(x.params.where)) && ap0.calls.some((x) => x.requery && x.id === 'paid_after' && /FullyPaidOnDate>DateTime\(2026,6,30\)/.test(x.params.where)) && green(ap0), banner(ap0).slice(0, 600));
+    { const pp = await run('ap', man('ap'), AGED()); await set(pp, 'xk-asat-preset', 'custom'); await set(pp, 'xk-asat', '2026-08-31'); const AP8 = E.balances('2026-08-31')['800'];
+      ok('ap: aged payables at 31 Aug 2026 (the library\u2019s sample date) = Accounts Payable on the Balance Sheet at 31 Aug', new RegExp('✓ Total = Accounts Payable on the Balance Sheet at 2026-08-31 — ' + fmt(AP8) + ' vs ' + fmt(AP8)).test(banner(pp)) && green(pp), [AP8, banner(pp).slice(0, 400)]); }
+    { const pb = await run('ar', man('ar'), Object.assign(AGED(), { pays_after: (q) => { const r = L.listPayments(q); r.Payments = r.Payments.slice(1); return r; } })); await set(pb, 'xk-asat-preset', 'custom'); await set(pb, 'xk-asat', '2026-06-30');
+      ok('ar: a later payment missing → the rebuilt total no longer ties to the Balance Sheet → Fail', /✗ Total = Accounts Receivable on the Balance Sheet at 2026-06-30/.test(banner(pb)), banner(pb).slice(0, 400)); }
     // paging: more than 100 open invoices → page 2 fetched; an endless list stops at 20 pages and says so
     const many = (q) => { const r = L.listInvoices(q); if (!/ACCREC/.test(q.where)) return r; const base = L.listInvoices(Object.assign({}, q, { page: 1 })).Invoices[0], all = []; for (let i = 0; i < 130; i++) all.push(Object.assign({}, base, { InvoiceID: 'm-' + i, InvoiceNumber: 'M-' + i, AmountDue: 10, Total: 10 })); r.Invoices = all.slice(((q.page || 1) - 1) * 100, (q.page || 1) * 100); return r; };
     const pg = await run('ar', man('ar'), Object.assign(AGED(), { invoices: many })); await wait(30);
@@ -316,18 +320,23 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
   }
   if (!only || only === 'cs') {
     // ---------------- P10 Cash Summary ----------------
-    const CS = (extra) => Object.assign({ pnl_cash: L.pnl, bank: L.bankSummary, org: L.organisation, connections: L.connections }, extra || {});
+    const CS = (extra) => Object.assign({ pnl_cash: L.pnl, bank: L.bankSummary, bs_start: L.bs, bs_end: L.bs, bs_m: L.bs, org: L.organisation, connections: L.connections }, extra || {});
+    { const q = await run('cs', man('cs'), CS()); await wait(120); const stm = text(q.doc, '.xk-stmt');
+      ok('cs: Xero\u2019s Cash Summary sections — Plus Fixed Assets / Current Assets / Current Liabilities / Non-current Liabilities / Equity, then Net Cash Movement', ['Plus Current Liabilities', 'Net Cash Movement'].every((x) => stm.includes(x)) && q.calls.some((x) => x.id === 'bs_m' && x.params.paymentsOnly === true && x.params.date === '2026-08-31') && q.calls.some((x) => x.id === 'bs_start' && x.params.date === '2026-06-30'), stm.slice(0, 600));
+      ok('cs: net cash flows + balance-sheet movements = the movement in bank (three separate Xero reports), green', /✓ Net cash flows \+ balance-sheet movements = the movement in bank/.test(banner(q)) && green(q), banner(q).slice(0, 500)); }
+    { const qt = await run('cs', man('cs'), CS({ bs_end: tamper(L.bs, (rows) => { const r = cellOf(rows, 'Loan - Westpac'); if (r) r[1].Value = String(+r[1].Value + 5000); }) })); await wait(120);
+      ok('cs: a balance-sheet movement that does not reach the bank shows as Other (information, never a silent tie)', /Other \(not explained by the Balance Sheet/.test(text(qt.doc, '.xk-stmt')) && /ℹ Net cash flows \+ balance-sheet movements vs the movement in bank \(information\)/.test(banner(qt)), banner(qt).slice(0, 400)); }
     const s = await run('cs', man('cs'), CS()); await wait(80);
     const st = text(s.doc, '.xk-stmt'), head = [...s.doc.querySelectorAll('.xk-stmt thead th')].map((x) => x.textContent);
     ok('cs: header Cash Summary / organisation / period · Cash basis', /^Cash Summary\s*Northwind Trading Pty Ltd\s*For the period 1 July 2026 to 25 September 2026 · Cash basis/.test(text(s.doc, '#xk-head')), text(s.doc, '#xk-head'));
     ok('cs: month columns Jul | Aug | Sep + Total', head.join('|') === '|Jul 2026|Aug 2026|Sep 2026|Total', head);
-    ok('cs: sections in order — Cash Received, Cash Spent, Net Cash Flows, other movements, bank balances', ['Cash Received', 'Total Cash Received', 'Cash Spent', 'Total Cash Spent', 'Net Cash Flows', 'Other cash movements', 'Net Movement in Bank', 'Opening bank balance', 'Closing bank balance'].every((x, i, a) => st.indexOf(x) >= 0 && (i === 0 || st.indexOf(x) > st.indexOf(a[i - 1]))), st.slice(0, 400));
+    ok('cs: sections in order — Cash Received, Cash Spent, Net Cash Flows, Plus balance-sheet lines, Net Cash Movement, bank balances', ['Cash Received', 'Total Cash Received', 'Cash Spent', 'Total Cash Spent', 'Net Cash Flows', 'Plus Current Liabilities', 'Net Cash Movement', 'Net Movement in Bank', 'Opening bank balance', 'Closing bank balance'].every((x, i, a) => st.indexOf(x) >= 0 && (i === 0 || st.indexOf(x) > st.indexOf(a[i - 1]))), st.slice(0, 400));
     const cashNp = E.netProfit('2026-07-01', L.TODAY, true);
     const netRow = [...s.doc.querySelectorAll('.xk-stmt tr')].find((tr) => tr.children[0].textContent === 'Net Cash Flows');
     ok('cs: Net Cash Flows (total) = the books\' cash-basis profit', netRow.lastElementChild.textContent === fmt(cashNp).replace(/\\/g, ''), [fmt(cashNp), netRow.textContent]);
     const closeRow = [...s.doc.querySelectorAll('.xk-stmt tr')].find((tr) => tr.children[0].textContent === 'Closing bank balance'), close = L.r2(E.bankBalance('090', L.TODAY) + E.bankBalance('091', L.TODAY));
     ok('cs: closing bank balance = the books', closeRow.lastElementChild.textContent === fmt(close).replace(/\\/g, ''), closeRow.textContent);
-    ok('cs: every check passes (net = received − spent, Xero NP, bank, months add up, months chain), green', green(s) && /5\/5 checks passed/.test(banner(s)) && s.errs.length === 0, banner(s));
+    ok('cs: every check passes (net = received − spent, Xero NP, bank, months add up, months chain, bank movement tie), green', green(s) && /6\/6 checks passed/.test(banner(s)) && s.errs.length === 0, banner(s));
     await set(s, 'xk-view', 'total');
     ok('cs: Total only view — no month fan-out, still green', [...s.doc.querySelectorAll('.xk-stmt thead th')].map((x) => x.textContent).join('|') === '|Total' && green(s));
     const s2 = await run('cs', man('cs'), CS({ pnl_cash: (q) => { const r = L.pnl(q); if (q.fromDate === '2026-08-01') { const c2 = cellOf(r.Reports[0].Rows, 'Sales'); c2[1].Value = (+c2[1].Value + 500).toFixed(2); } return r; } })); await wait(80);
@@ -374,7 +383,7 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
   }
   if (!only || only === 'gst') {
     // ---------------- P05 GST summary (activity statement) ----------------
-    const GS = (extra) => Object.assign({ pay_runs: L.listPayRuns, invoices: L.listInvoices, credit_notes: L.listCreditNotes, bank_tx: L.listBankTransactions, tax_rates: L.listTaxRates, accounts: L.listAccounts, bs_end: L.bs, bs_start: L.bs, org: L.organisation, connections: L.connections }, extra || {});
+    const GS = (extra) => Object.assign({ payments: L.listPayments, paid_inv: L.listInvoices, pay_runs: L.listPayRuns, invoices: L.listInvoices, credit_notes: L.listCreditNotes, bank_tx: L.listBankTransactions, tax_rates: L.listTaxRates, accounts: L.listAccounts, bs_end: L.bs, bs_start: L.bs, org: L.organisation, connections: L.connections }, extra || {});
     const g = await run('gst', man('gst'), GS());
     const B = E.books(L.T1), inQ = (d) => d >= '2026-04-01' && d <= '2026-06-30';
     const lines = [].concat(...B.docs.filter((d) => (d.status === 'AUTHORISED' || d.status === 'PAID') && inQ(d.date)).map((d) => d.LineItems.map((l) => ({ l, sales: d.Type === 'ACCREC' })))).concat(...B.bank.filter((x) => inQ(x.date)).map((x) => x.LineItems.map((l) => ({ l, sales: x.Type === 'RECEIVE' }))));
@@ -413,8 +422,14 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     ok('gst: GST account on the Balance Sheet disagrees → Fail', /✗ GST account movement/.test(banner(g3)) && red(g3), banner(g3).slice(0, 300));
     const g4 = await run('gst', man('gst'), GS({ invoices: (q) => { const r = L.listInvoices(q); const d = r.Invoices.find((x) => x.Type === 'ACCREC'); if (d) d.LineItems = d.LineItems.map((l, i) => (i === 0 ? Object.assign({}, l, { TaxType: 'TAX002' }) : l)); return r; } }));
     ok('gst: a custom tax rate missing from the tax-rate list → "Every tax rate used maps to a BAS field" fails and names it', /✗ Every tax rate used maps to a BAS field — Not mapped: TAX002/.test(banner(g4)), banner(g4).slice(0, 400));
-    const gnz = await run('gst', man('gst'), GS({ org: () => { const o = L.organisation({}); o.Organisations[0].SalesTaxBasis = 'PAYMENTS'; return o; } }));
-    ok('gst: cash-basis GST organisation → says the figures are on the invoice basis (still ties)', /Your GST is reported on the cash basis/.test(body(gnz)) && green(gnz), body(gnz).slice(0, 300));
+    const gnz = await run('gst', man('gst'), GS({ org: () => { const o = L.organisation({}); o.Organisations[0].SalesTaxBasis = 'PAYMENTS'; return o; } })); await wait(120);
+    { const pays = L.listPayments({ where: 'Date>=DateTime(2026,04,01) AND Date<=DateTime(2026,06,30)' }).Payments.filter((p) => p.PaymentType === 'ACCRECPAYMENT');
+      const tax = pays.reduce((a, p) => { const d = L.listInvoices({ ids: p.Invoice.InvoiceID }).Invoices[0]; return a + d.TotalTax * p.Amount / d.Total; }, 0);
+      const rec = L.listBankTransactions({ where: 'Date>=DateTime(2026,04,01) AND Date<=DateTime(2026,06,30)' }).BankTransactions.filter((b) => b.Type === 'RECEIVE' && b.Status === 'AUTHORISED').reduce((a, b) => a + b.TotalTax, 0);
+      const cr = L.listCreditNotes({ where: 'Date>=DateTime(2026,04,01) AND Date<=DateTime(2026,06,30)' }).CreditNotes.filter((x) => x.Type === 'ACCRECCREDIT' && /AUTHORISED|PAID/.test(x.Status)).reduce((a, x) => a + x.TotalTax, 0);
+      const fz = (code) => { const tr = [...gnz.doc.querySelectorAll('.xk-grid tr')].find((r) => r.children[0] && r.children[0].textContent === code); return tr ? tr.children[2].textContent : null; };
+      ok('gst: cash-basis GST organisation → 1A = GST on payments received in the period (each payment\u2019s share of its invoice), banner says so', /these figures are the GST on payments received and made in the period/.test(body(gnz)) && fz('1A') === $(L.r2(tax + rec - cr)) && gnz.calls.some((x) => x.id === 'paid_inv' && x.params.ids) && /✓ Cash basis: every payment's invoice loaded/.test(banner(gnz)), [fz('1A'), $(L.r2(tax + rec - cr)), banner(gnz).slice(0, 200)]);
+      ok('gst: cash basis — the Balance Sheet GST tie is information, banner green', /ℹ GST account movement on the Balance Sheet vs net GST \(information — cash basis\)/.test(banner(gnz)) && green(gnz), banner(gnz).slice(0, 400)); }
   }
   if (!only || only === 'rc') {
     // ---------------- P04 All reports (catalog) ----------------

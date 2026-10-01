@@ -199,10 +199,15 @@ function pnlReport(p) {
   [inc, cos].forEach((s) => s && Rows.push(s.row)); Rows.push(calc('Gross Profit', gp)); [oi, ex].forEach((s) => s && Rows.push(s.row)); Rows.push(calc('Net Profit', np));
   return { Reports: [{ ReportID: 'ProfitAndLoss', ReportName: 'Profit and Loss', ReportType: 'ProfitAndLoss', ReportTitles: ['Profit and Loss', B.O.Name, long(p.fromDate) + ' to ' + long(p.toDate)], ReportDate: short(TODAY), Rows }] };
 }
+function cashBalances(B, date) {
+  const a = balances(B, date), fy = fyStart(date, B.O.FinancialYearEndMonth), openRE = (15000 + 10000 + 8400 - 1680 - 10000) * B.O.scale;
+  const cye = netProfit(B, fy, date, true), re = r2(openRE + netProfit(B, '2000-01-01', addDays(fy, -1), true)), o = Object.assign({}, a, { '610': 0, '800': 0, CYE: cye, '960': re });
+  o['820'] = r2(o['090'] + o['091'] + o['620'] + o['710'] + o['711'] - o['850'] - o['900'] - cye - re); return o;
+}
 function bsReport(p) {
   const B = books(p.xero_tenant_id), whole = isEom(p.date), dates = [p.date]; const k = p.timeframe === 'QUARTER' ? 3 : p.timeframe === 'YEAR' ? 12 : 1;
   for (let i = 1; i <= (p.periods || 0); i++) dates.push(shiftMonths(p.date, -k * i, whole));
-  const cols = dates.map((d) => balances(B, d)), val = (code) => cols.map((c) => c[code] || 0);
+  const cols = dates.map((d) => (p.paymentsOnly === true ? cashBalances(B, d) : balances(B, d))), val = (code) => cols.map((c) => c[code] || 0);
   const sec = (title, total, codes) => ({ RowType: 'Section', Title: title, Rows: codes.map((c) => rowOf(ACC[c].Name, val(c), ACC[c].AccountID)).concat([sumRow(total, cols.map((col) => r2(codes.reduce((s, c) => s + (col[c] || 0), 0))))]) });
   const sumc = (codes) => cols.map((col) => r2(codes.reduce((s, c) => s + (col[c] || 0), 0)));
   const TA = sumc(['090', '091', '610', '620', '710', '711']), TL = sumc(['800', '820', '850', '900']);
@@ -257,10 +262,11 @@ function invoiceOut(B, d) {
   return { Type: d.Type, InvoiceID: d.InvoiceID, InvoiceNumber: d.InvoiceNumber, Reference: d.Reference, Contact: d.Contact, Date: msDate(d.date), DateString: d.date + 'T00:00:00', DueDate: msDate(d.due), DueDateString: d.due + 'T00:00:00', Status: st, LineAmountTypes: d.LineAmountTypes, LineItems: d.LineItems, SubTotal: d.SubTotal, TotalTax: d.TotalTax, Total: d.Total, AmountDue: st === 'DRAFT' || st === 'SUBMITTED' ? d.Total : due, AmountPaid: paid, AmountCredited: 0, CurrencyCode: d.CurrencyCode, CurrencyRate: d.CurrencyRate, _Date: d.date, _DueDate: d.due };
 }
 function listInvoices(p) {
-  const B = books(p.xero_tenant_id), f = whereFilter(p.where), st = p.statuses ? String(p.statuses).split(',') : null;
-  let list = B.docs.map((d) => { const o = invoiceOut(B, d); if (o.Status === 'PAID') { const last = B.pays.filter((x) => x.doc === d).map((x) => x.date).sort().pop(); if (last) o.FullyPaidOnDate = msDate(last); } return o; }).filter((o) => f(o) && (!st || st.includes(o.Status)));
+  const B = books(p.xero_tenant_id), f = whereFilter(p.where), st = p.statuses ? String(p.statuses).split(',') : null, ids = p.ids != null ? String(p.ids).split(',').filter(Boolean) : null;
+  if (ids && !ids.length) throw new Error('Xero API GET https://api.xero.com/api.xro/2.0/Invoices 400: {"Message":"IDs is empty"}');
+  let list = B.docs.filter((d) => !ids || ids.includes(d.InvoiceID)).map((d) => { const o = invoiceOut(B, d); if (o.Status === 'PAID') { const last = B.pays.filter((x) => x.doc === d).map((x) => x.date).sort().pop(); if (last) { o.FullyPaidOnDate = msDate(last); o._FullyPaidOnDate = last; } } return o; }).filter((o) => f(o) && (!st || st.includes(o.Status)));
   if (/DueDate ASC/.test(p.order || '')) list.sort((a, b) => a._DueDate.localeCompare(b._DueDate)); else if (/Date DESC/.test(p.order || '')) list.sort((a, b) => b._Date.localeCompare(a._Date)); else list.sort((a, b) => a._Date.localeCompare(b._Date));
-  return page(list.map((o) => { const c = Object.assign({}, o); delete c._Date; delete c._DueDate; return c; }), p, 'Invoices');
+  return page(list.map((o) => { const c = Object.assign({}, o); delete c._Date; delete c._DueDate; delete c._FullyPaidOnDate; return c; }), p, 'Invoices');
 }
 function getInvoice(p) { const B = books(p.xero_tenant_id), d = B.docs.find((x) => x.InvoiceID === p.invoiceId); if (!d) throw new Error('Xero API GET https://api.xero.com/api.xro/2.0/Invoices/' + (p.invoiceId || '') + ' 404: {"Title":"Not Found"}'); const o = invoiceOut(B, d); delete o._Date; delete o._DueDate; return { Invoices: [o] }; }
 function listBankTransfers(p) { const B = books(p.xero_tenant_id); const list = B.transfers.map((x) => ({ BankTransferID: x.BankTransferID, FromBankAccount: x.FromBankAccount, ToBankAccount: x.ToBankAccount, Amount: x.Amount, Date: msDate(x.date), DateString: x.date + 'T00:00:00' })); if (/Date DESC/.test(p.order || '')) list.reverse(); return { BankTransfers: list }; }

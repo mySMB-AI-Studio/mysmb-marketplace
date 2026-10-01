@@ -26,6 +26,13 @@
       "default": "Date>=DateTime(2026,04,01) AND Date<=DateTime(2026,06,30)"
     },
     {
+      "name": "inv_ids",
+      "label": "Paid invoice ids",
+      "type": "string",
+      "maxLength": 500,
+      "default": ""
+    },
+    {
       "name": "org",
       "label": "Organisation",
       "type": "string",
@@ -49,6 +56,44 @@
     }
   ],
   "bindings": [
+    {
+      "id": "payments",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "list_payments"
+      },
+      "params": {
+        "where": {
+          "kind": "input",
+          "input": "date_where"
+        },
+        "page": {
+          "kind": "input",
+          "input": "page"
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "paid_inv",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "list_invoices"
+      },
+      "params": {
+        "ids": {
+          "kind": "input",
+          "input": "inv_ids"
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
     {
       "id": "invoices",
       "tool": {

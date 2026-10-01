@@ -526,6 +526,7 @@ svg .donut-c{fill:var(--ink);font-size:15px;font-weight:700}
 main.xk-card{border-top:4px solid var(--accent)}
 .xk-kpi{border-left:4px solid var(--accent)}
 .xk-stmt thead th,.xk-grid thead th{border-bottom:2px solid var(--accent)}
+.xk-stmt tr.k-row td:first-child{color:var(--btn)}:root.style-mysmb .xk-stmt tr.k-row td:first-child{color:inherit}
 .xk-src{font-size:12px;color:var(--muted);margin-top:4px}.xk-src i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:6px;vertical-align:middle}
 :root.style-mysmb #xk-head .xk-src{color:var(--band-ink);opacity:.85}:root.style-mysmb #xk-head .xk-src i{background:var(--band-ink)}
 /* keep the right-hand amounts clear of the workspace's floating chat button */

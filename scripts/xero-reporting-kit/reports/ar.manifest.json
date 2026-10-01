@@ -1,6 +1,8 @@
 {
   "inputs": [
     { "name": "as_at", "label": "As at", "type": "date", "default": "2026-09-30" },
+    { "name": "paid_where", "label": "Paid after (filter)", "type": "string", "maxLength": 120, "default": "Type==\"ACCREC\" AND FullyPaidOnDate>DateTime(2026,09,30)" },
+    { "name": "pay_where", "label": "Payments after (filter)", "type": "string", "maxLength": 120, "default": "PaymentType==\"ACCRECPAYMENT\" AND Date>DateTime(2026,09,30)" },
     { "name": "org", "label": "Organisation", "type": "string", "maxLength": 64, "default": "" },
     { "name": "page", "label": "Page", "type": "number", "min": 1, "max": 20, "default": 1 },
     { "name": "persona", "label": "View as", "type": "enum", "options": ["Client", "Bookkeeper", "Practitioner", "Executive"], "default": "Bookkeeper" },
@@ -8,6 +10,8 @@
   ],
   "bindings": [
     { "id": "invoices", "tool": { "mcp": "xero-accounting", "name": "list_invoices" }, "params": { "where": { "kind": "static", "value": "Type==\"ACCREC\"" }, "statuses": { "kind": "static", "value": "AUTHORISED" }, "order": { "kind": "static", "value": "DueDate ASC" }, "page": { "kind": "input", "input": "page" }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
+    { "id": "paid_after", "tool": { "mcp": "xero-accounting", "name": "list_invoices" }, "params": { "where": { "kind": "input", "input": "paid_where" }, "statuses": { "kind": "static", "value": "PAID" }, "page": { "kind": "input", "input": "page" }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
+    { "id": "pays_after", "tool": { "mcp": "xero-accounting", "name": "list_payments" }, "params": { "where": { "kind": "input", "input": "pay_where" }, "page": { "kind": "input", "input": "page" }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
     { "id": "credit_notes", "tool": { "mcp": "xero-accounting", "name": "list_credit_notes" }, "params": { "where": { "kind": "static", "value": "Type==\"ACCRECCREDIT\" AND Status==\"AUTHORISED\"" }, "page": { "kind": "input", "input": "page" }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
     { "id": "overpayments", "tool": { "mcp": "xero-accounting", "name": "list_overpayments" }, "params": { "where": { "kind": "static", "value": "Type==\"RECEIVE-OVERPAYMENT\" AND Status==\"AUTHORISED\"" }, "page": { "kind": "input", "input": "page" }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
     { "id": "prepayments", "tool": { "mcp": "xero-accounting", "name": "list_prepayments" }, "params": { "where": { "kind": "static", "value": "Type==\"RECEIVE-PREPAYMENT\" AND Status==\"AUTHORISED\"" }, "page": { "kind": "input", "input": "page" }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
