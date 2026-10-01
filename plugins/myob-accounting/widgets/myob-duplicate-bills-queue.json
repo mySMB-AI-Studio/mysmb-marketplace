@@ -1,0 +1,209 @@
+{
+  "id": "myob-duplicate-bills-queue",
+  "title": "MYOB — Duplicate Bills Queue",
+  "description": "A filterable queue of every MYOB bill, classified Ready / Needs Review / Duplicate Risk. Duplicate Risk = same supplier + same amount dated the same day as another bill. Needs Review = supplier name closely matches a Duplicate Risk supplier (normalized for case/punctuation) but the amount differs — confirmed real pattern (\"QA Dup Test Supplies Pty Ltd\" vs \"...Pty. Ltd.\"). Live-wired to myob-accounting: list_bills fires on mount, classify_bill_queue computes the full classification. The list scrolls natively (no pagination) via the system Body component's own overflow when it exceeds the tile's height. Every row is clickable, expanding to show a plain-language reason it's flagged that way — including Ready rows, which confirm no duplicate concerns were found. No checkboxes (no real bulk-action exists yet).",
+  "category": "finance",
+  "tags": ["myob", "bills", "duplicates", "queue", "data-quality"],
+  "keywords": ["duplicate", "bills", "queue", "ready", "needs review", "duplicate risk", "myob"],
+  "connectorsUsed": ["myob-accounting"],
+  "popularity": 0,
+  "brandColor": "#7C3AED",
+  "sizing": {
+    "preferred": { "colSpan": 8, "rowSpan": 5 },
+    "min":       { "colSpan": 6, "rowSpan": 4 },
+    "max":       { "colSpan": 12, "rowSpan": 9 }
+  },
+  "dataProvider": {
+    "mcp": "myob-accounting",
+    "tool": "list_bills",
+    "params": { "page_size": 1000 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "body"],
+        "watch": {
+          "/myob-accounting/list_bills/Items": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/billQueue",
+              "value": {
+                "$computed": "myob-accounting_classify_bill_queue",
+                "args": {
+                  "bills": { "$state": "/myob-accounting/list_bills/Items" },
+                  "filter": { "$state": "/ui/billQueue/filter" },
+                  "expandedBillId": { "$state": "/ui/billQueue/expandedBillId" }
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "headerRow": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "FileText", "tone": "brand", "size": "lg" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "subtitle"] },
+      "title": { "type": "Heading", "props": { "text": "Duplicate Bills Queue", "level": "h2" } },
+      "subtitle": { "type": "Eyebrow", "props": { "text": "MYOB" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": { "padding": "md" }, "children": ["loading", "content"] },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": {
+          "$or": [
+            { "$state": "/_loading/myob-accounting.list_bills" },
+            { "$state": "/myob-accounting/list_bills/Items", "not": true }
+          ]
+        }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["tabsRow", "div1", "tableHeaderRow", "rowList", "div2", "footerRow"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myob-accounting.list_bills", "not": true },
+            { "$state": "/myob-accounting/list_bills/Items" }
+          ]
+        }
+      },
+
+      "tabsRow": { "type": "Row", "props": { "gap": "md", "align": "center" }, "children": ["tabAll", "tabReady", "tabNeedsReview", "tabDuplicateRisk"] },
+
+      "tabAll": {
+        "type": "Row", "props": { "clickable": true }, "children": ["tabAllText"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/billQueue", "value": { "$computed": "myob-accounting_classify_bill_queue", "args": { "bills": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "", "expandedBillId": "" } } } } }
+      },
+      "tabAllText": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "All ({n})", "n": { "$state": "/ui/billQueue/counts/all" } } },
+          "size": "sm",
+          "weight": { "$cond": { "$state": "/ui/billQueue/filter", "eq": "" }, "$then": "semibold", "$else": "medium" },
+          "tone": { "$cond": { "$state": "/ui/billQueue/filter", "eq": "" }, "$then": "brand", "$else": "muted" }
+        }
+      },
+
+      "tabReady": {
+        "type": "Row", "props": { "clickable": true }, "children": ["tabReadyText"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/billQueue", "value": { "$computed": "myob-accounting_classify_bill_queue", "args": { "bills": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "Ready", "expandedBillId": "" } } } } }
+      },
+      "tabReadyText": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "Ready ({n})", "n": { "$state": "/ui/billQueue/counts/ready" } } },
+          "size": "sm",
+          "weight": { "$cond": { "$state": "/ui/billQueue/filter", "eq": "Ready" }, "$then": "semibold", "$else": "medium" },
+          "tone": { "$cond": { "$state": "/ui/billQueue/filter", "eq": "Ready" }, "$then": "brand", "$else": "muted" }
+        }
+      },
+
+      "tabNeedsReview": {
+        "type": "Row", "props": { "clickable": true }, "children": ["tabNeedsReviewText"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/billQueue", "value": { "$computed": "myob-accounting_classify_bill_queue", "args": { "bills": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "Needs Review", "expandedBillId": "" } } } } }
+      },
+      "tabNeedsReviewText": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "Needs Review ({n})", "n": { "$state": "/ui/billQueue/counts/needsReview" } } },
+          "size": "sm",
+          "weight": { "$cond": { "$state": "/ui/billQueue/filter", "eq": "Needs Review" }, "$then": "semibold", "$else": "medium" },
+          "tone": { "$cond": { "$state": "/ui/billQueue/filter", "eq": "Needs Review" }, "$then": "brand", "$else": "muted" }
+        }
+      },
+
+      "tabDuplicateRisk": {
+        "type": "Row", "props": { "clickable": true }, "children": ["tabDuplicateRiskText"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/billQueue", "value": { "$computed": "myob-accounting_classify_bill_queue", "args": { "bills": { "$state": "/myob-accounting/list_bills/Items" }, "filter": "Duplicate Risk", "expandedBillId": "" } } } } }
+      },
+      "tabDuplicateRiskText": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "Duplicate Risk ({n})", "n": { "$state": "/ui/billQueue/counts/duplicateRisk" } } },
+          "size": "sm",
+          "weight": { "$cond": { "$state": "/ui/billQueue/filter", "eq": "Duplicate Risk" }, "$then": "semibold", "$else": "medium" },
+          "tone": { "$cond": { "$state": "/ui/billQueue/filter", "eq": "Duplicate Risk" }, "$then": "brand", "$else": "muted" }
+        }
+      },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "tableHeaderRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "template": "2fr 1fr 1fr 1fr 1fr" },
+        "children": ["colSupplier", "colInvoice", "colDate", "colAmount", "colStatus"]
+      },
+      "colSupplier": { "type": "Caption", "props": { "text": "SUPPLIER", "tone": "muted" } },
+      "colInvoice": { "type": "Caption", "props": { "text": "INVOICE NO.", "tone": "muted" } },
+      "colDate": { "type": "Caption", "props": { "text": "INVOICE DATE", "tone": "muted" } },
+      "colAmount": { "type": "Caption", "props": { "text": "AMOUNT", "tone": "muted" } },
+      "colStatus": { "type": "Caption", "props": { "text": "STATUS", "tone": "muted" } },
+
+      "rowList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["rowItem"],
+        "repeat": { "statePath": "/ui/billQueue/rows", "key": "uid" }
+      },
+      "rowItem": { "type": "Stack", "props": { "gap": "xs" }, "children": ["rowClickable", "rowReason", "rowDivider"] },
+      "rowClickable": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "template": "2fr 1fr 1fr 1fr 1fr", "clickable": { "$item": "hasReason" } },
+        "children": ["cellSupplier", "cellInvoice", "cellDate", "cellAmount", "cellStatus"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/billQueue",
+              "value": {
+                "$computed": "myob-accounting_classify_bill_queue",
+                "args": {
+                  "bills": { "$state": "/myob-accounting/list_bills/Items" },
+                  "filter": { "$state": "/ui/billQueue/filter" },
+                  "expandedBillId": { "$state": "/ui/billQueue/expandedBillId" },
+                  "clickedBillId": { "$item": "uid" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "cellSupplier": { "type": "Text", "props": { "text": { "$item": "supplier" }, "size": "sm", "weight": "medium" } },
+      "cellInvoice": { "type": "Text", "props": { "text": { "$item": "invoiceNumber" }, "size": "sm", "tone": "muted" } },
+      "cellDate": { "type": "Text", "props": { "text": { "$item": "date" }, "size": "sm", "tone": "muted" } },
+      "cellAmount": { "type": "Text", "props": { "text": { "$item": "amount" }, "size": "sm", "weight": "medium" } },
+      "cellStatus": { "type": "Badge", "props": { "text": { "$item": "status" }, "tone": { "$item": "statusTone" }, "variant": "soft" } },
+      "rowReason": {
+        "type": "Caption",
+        "props": { "text": { "$item": "reason" }, "tone": "muted" },
+        "visible": { "$and": [ { "$item": "expanded" }, { "$item": "hasReason" } ] }
+      },
+      "rowDivider": { "type": "Divider", "props": {}, "visible": { "$item": "isLast", "not": true } },
+
+      "div2": { "type": "Divider", "props": {} },
+      "footerRow": { "type": "Row", "props": { "justify": "start" }, "children": ["footerCount"] },
+      "footerCount": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "{n} Bills", "n": { "$state": "/ui/billQueue/filteredCount" } } },
+          "tone": "muted"
+        }
+      }
+
+    }
+  },
+  "status": "draft"
+}
