@@ -91,12 +91,15 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
   }
   if (!only || only === 'pipe') {
     // ---------------- P02 Sales overview ----------------
-    const PIPE = (extra) => Object.assign({ invoices: L.listInvoices, credit_notes: L.listCreditNotes, overpayments: L.listOverpayments, prepayments: L.listPrepayments, linked: L.listLinked, purchase_orders: L.listPurchaseOrders, repeating: L.listRepeating, bs: L.bs, org: L.organisation, connections: L.connections }, extra || {});
+    const PIPE = (extra) => Object.assign({ invoices: L.listInvoices, credit_notes: L.listCreditNotes, overpayments: L.listOverpayments, prepayments: L.listPrepayments, linked: L.listLinked, purchase_orders: L.listPurchaseOrders, repeating: L.listRepeating, paid: L.listInvoices, bill: L.getInvoice, bs: L.bs, org: L.organisation, connections: L.connections }, extra || {});
     const all = (type) => L.listInvoices({ where: 'Type=="' + type + '"', statuses: 'DRAFT,SUBMITTED,AUTHORISED' }).Invoices;
     const sumOf = (list, k) => L.r2(list.reduce((a, d) => a + d[k], 0));
     const exp = (type) => { const l = all(type), aw = l.filter((d) => d.Status === 'AUTHORISED' && d.AmountDue > 0), od = aw.filter((d) => d.DueDateString.slice(0, 10) < L.TODAY);
       return { draft: l.filter((d) => d.Status === 'DRAFT'), sub: l.filter((d) => d.Status === 'SUBMITTED'), aw, od }; };
     const S = exp('ACCREC'), s = await run('so', man('so'), PIPE());
+    { await wait(60); const links = L.listLinked({ status: 'APPROVED' }).LinkedTransactions, amt = L.r2(links.reduce((a, l) => { const b = L.getInvoice({ invoiceId: l.SourceTransactionID }).Invoices[0]; return a + b.LineItems.find((x) => x.LineItemID === l.SourceLineItemID).LineAmount; }, 0));
+      ok('so: billable expenses show the amount to invoice, read from each source bill\u2019s linked line', links.length > 0 && re('', amt).test(text(s.doc, '#xk-body')) && /to invoice/.test(body(s)) && /✓ Billable expense amounts read from their source bills/.test(banner(s)) && s.calls.filter((x) => x.id === 'bill' && x.params.invoiceId).length === new Set(links.map((l) => l.SourceTransactionID)).size, [amt, banner(s).slice(0, 200)]);
+      ok('so: the source-bill lookup is quiet before it runs (no error for the empty bill id)', !/Source bill/.test(banner(s)) && green(s), banner(s).slice(0, 300)); }
     { const av = [...s.doc.querySelectorAll('#so-top tbody tr')].map((tr) => tr.querySelector('.xk-av'));
       ok('so: customers owing the most carry avatar initials', av.length > 0 && av.every((a) => a && /^[A-Z0-9]{1,2}$/.test(a.textContent)), av.map((a) => a && a.textContent));
       ok('so: the status strip shows (n) and an amount for every status, never "None"', [...s.doc.querySelectorAll('#xk-body .xk-kpis')[0].querySelectorAll('.xk-kpi')].every((k) => /\(\d+\)/.test(k.textContent) && /\$/.test(k.textContent))); }
@@ -107,7 +110,7 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     const owingTop = text(s.doc, '#so-top');
     const byC = {}; S.aw.forEach((d) => { byC[d.Contact.Name] = L.r2((byC[d.Contact.Name] || 0) + d.AmountDue); }); const topName = Object.keys(byC).sort((a, b) => byC[b] - byC[a])[0];
     ok('so: customers owing the most — largest first', owingTop.indexOf(topName) >= 0 && owingTop.indexOf(topName) < 40, [topName, owingTop.slice(0, 200)]);
-    ok('so: billable expenses — 3 customers with items not yet invoiced, amount N/A (said why)', /3 customers · 3 item\(s\) not yet invoiced/.test(body(s)) && /Amount owing: N\/A — Xero's billable-expense API returns no amounts/.test(body(s)), body(s).slice(0, 800));
+    ok('so: billable expenses — 3 customers with items not yet invoiced, each with its amount', /3 customers · 3 item\(s\) not yet invoiced/.test(body(s)) && /item\(s\) · \$[\d,]+\.\d\d/.test(body(s)) && !/Amount owing: N\/A/.test(body(s)), body(s).slice(0, 800));
     ok('so: money coming in — due this week / next week and the by-month chart', /Due this week\$[\d,.]+Due next week\$[\d,.]+/.test(body(s)) && s.doc.querySelector('#so-ch svg'), body(s).slice(0, 400));
     s.doc.querySelector('.xk-tab[data-v="repeating"]').click(); await s.settle();
     ok('so: Repeating invoices tab (no refetch) lists the repeating invoice', /Summit Legal.*Retainer.*monthly.*2026-10-01.*\$880\.00/.test(text(s.doc, '#so-rep')), text(s.doc, '#so-rep'));
@@ -121,6 +124,17 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     const B = exp('ACCPAY'), u = await run('pu', man('pu'), PIPE());
     ok('pu: the Xero actions (New bill, Import bills…) are offered as a read-only "Create new (in Xero)" card', /Create new \(in Xero\)/.test(body(u)) && /New bill/.test(body(u)) && /Import bills/.test(body(u)));
     ok('pu: Excel carries the money-going-out series', /Money going out — next 30 days/.test(await xlsxOf(u)));
+    { await set(u, 'xk-view', 'all'); const rowsOf = () => [...u.doc.querySelectorAll('#pu-all tbody tr')].map((tr) => [...tr.children].map((td) => td.textContent));
+      const open = L.listInvoices({ where: 'Type=="ACCPAY"', statuses: 'DRAFT,SUBMITTED,AUTHORISED' }).Invoices;
+      ok('pu: All bills tab lists every draft, awaiting-approval and awaiting-payment bill', rowsOf().length === open.length, [rowsOf().length, open.length]);
+      await set(u, 'pu-st', 'Overdue'); ok('pu: All bills filtered by status (Overdue)', rowsOf().length > 0 && rowsOf().every((r) => r[5] === 'Overdue'), rowsOf().slice(0, 2));
+      await set(u, 'pu-st', '');
+      const fi = u.doc.querySelector('#pu-all .xk-filter'); if (fi) { fi.value = rowsOf()[0][2]; fi.dispatchEvent(new u.w.Event('input')); await u.settle(); }
+      ok('pu: All bills searchable (number, reference, contact or amount)', !!fi && rowsOf().length > 0 && rowsOf().every((r) => r.join(' ').includes(fi.value)), fi ? fi.value : 'no filter box');
+      if (fi) { fi.value = ''; fi.dispatchEvent(new u.w.Event('input')); await u.settle(); }
+      await set(u, 'pu-from', '2026-09-01'); ok('pu: All bills filtered by date range', rowsOf().length > 0 && rowsOf().every((r) => r[3] >= '2026-09-01'), rowsOf().slice(0, 2)); await set(u, 'pu-from', ''); }
+    { await set(u, 'xk-view', 'paid'); const pr = [...u.doc.querySelectorAll('#pu-paid tbody tr')].map((tr) => [...tr.children].map((td) => td.textContent));
+      ok('pu: Paid tab lists recently paid bills with the date Xero marked them paid', pr.length > 0 && pr.every((r) => /^\d{4}-\d\d-\d\d$/.test(r[4])) && u.calls.some((x) => x.id === 'paid' && x.params.statuses === 'PAID'), pr.slice(0, 2)); await set(u, 'xk-view', 'docs'); }
     const uk = [...u.doc.querySelectorAll('.xk-kpis')[0].querySelectorAll('.xk-kpi')].map((k) => k.textContent.replace(/\s+/g, ' ').trim());
     ok('pu: bills strip from the bill list', uk.join('|') === [kpi('Draft', B.draft, 'Total'), kpi('Awaiting approval', B.sub, 'Total'), kpi('Awaiting payment', B.aw, 'AmountDue'), kpi('Overdue', B.od, 'AmountDue')].join('|'), uk);
     ok('pu: every check passes incl. AP tie and money going out = awaiting payment', green(u) && /✓ Money going out \(overdue \+ next 30 days \+ later\) = awaiting payment/.test(banner(u)) && /✓ Awaiting payment − credits = Accounts Payable on the Balance Sheet today/.test(banner(u)), banner(u));
@@ -308,7 +322,7 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
   }
   if (!only || only === 'gst') {
     // ---------------- P05 GST summary (activity statement) ----------------
-    const GS = (extra) => Object.assign({ invoices: L.listInvoices, credit_notes: L.listCreditNotes, bank_tx: L.listBankTransactions, tax_rates: L.listTaxRates, accounts: L.listAccounts, bs_end: L.bs, bs_start: L.bs, org: L.organisation, connections: L.connections }, extra || {});
+    const GS = (extra) => Object.assign({ pay_runs: L.listPayRuns, invoices: L.listInvoices, credit_notes: L.listCreditNotes, bank_tx: L.listBankTransactions, tax_rates: L.listTaxRates, accounts: L.listAccounts, bs_end: L.bs, bs_start: L.bs, org: L.organisation, connections: L.connections }, extra || {});
     const g = await run('gst', man('gst'), GS());
     const B = E.books(L.T1), inQ = (d) => d >= '2026-04-01' && d <= '2026-06-30';
     const lines = [].concat(...B.docs.filter((d) => (d.status === 'AUTHORISED' || d.status === 'PAID') && inQ(d.date)).map((d) => d.LineItems.map((l) => ({ l, sales: d.Type === 'ACCREC' })))).concat(...B.bank.filter((x) => inQ(x.date)).map((x) => x.LineItems.map((l) => ({ l, sales: x.Type === 'RECEIVE' }))));
@@ -319,11 +333,19 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     ok('gst: last quarter (Apr–Jun 2026) by default, "not your Activity Statement" banner', /For the 3 months ended 30 June 2026/.test(text(g.doc, '#xk-head')) && /This is not your Activity Statement/.test(body(g)), text(g.doc, '#xk-head'));
     ok('gst: 1A GST on sales and 1B GST on purchases = the books', fv('1A') === $(A1) && fv('1B') === $(B1), [fv('1A'), $(A1), fv('1B'), $(B1)]);
     ok('gst: net GST = 1A − 1B = the ledger\'s GST for the quarter', new RegExp('Net GST (payable|refundable) \\(1A − 1B\\)' + fmt(Math.abs(E.gst('2026-04-01', '2026-06-30')))).test(body(g)) && L.r2(A1 - B1) === E.gst('2026-04-01', '2026-06-30'), [A1 - B1, E.gst('2026-04-01', '2026-06-30')]);
-    ok('gst: G2 export sales from GST-free export lines; W1/W2/T1 N/A', fv('G2') === $(G2) && fv('W1') === 'N/A — not in source' && fv('W2') === 'N/A — not in source', [fv('G2'), $(G2)]);
+    ok('gst: G2 export sales from GST-free export lines', fv('G2') === $(G2), [fv('G2'), $(G2)]);
     ok('gst: due 28 July 2026 (quarterly)', /Due 28 July 2026/.test(body(g)), body(g).slice(0, 900));
-    ok('gst: every check passes incl. GST account movement = net GST − BAS paid, green', green(g) && /6\/6 checks passed/.test(banner(g)) && /✓ GST account movement on the Balance Sheet = net GST − GST paid to the ATO — .* paid/.test(banner(g)) && g.errs.length === 0, banner(g));
+    ok('gst: every check passes incl. GST account movement = net GST − BAS paid, green', green(g) && /8\/8 checks passed/.test(banner(g)) && /✓ GST account movement on the Balance Sheet = net GST − GST paid to the ATO — .* paid/.test(banner(g)) && g.errs.length === 0, banner(g));
     ok('gst: documents filtered to the period in Xero (where from the dates)', g.calls.some((x) => x.id === 'invoices' && x.params.where === 'Date>=DateTime(2026,04,01) AND Date<=DateTime(2026,06,30)' && x.params.statuses === 'AUTHORISED,PAID'), g.calls.filter((x) => x.id === 'invoices').map((x) => x.params.where));
-    ok('gst: every PAYG code the library lists is shown — W1, W2, W4, W3, T1, T2, 5A (N/A until a source exists)', ['W1', 'W2', 'W4', 'W3', 'T1', 'T2', '5A'].every((k) => fv(k) === 'N/A — not in source'), ['W1', 'W2', 'W4', 'W3', 'T1', 'T2', '5A'].map(fv));
+    ok('gst: every PAYG code the library lists is shown — W4, W3, T1, T2, 5A N/A (not in the Xero APIs)', ['W4', 'W3', 'T1', 'T2', '5A'].every((k) => fv(k) === 'N/A — not in source'), ['W4', 'W3', 'T1', 'T2', '5A'].map(fv));
+    { const runs = L.listPayRuns({}).PayRuns.filter((r) => { const d = new Date(+/\d+/.exec(r.PaymentDate)[0]).toISOString().slice(0, 10); return r.PayRunStatus === 'POSTED' && d >= '2026-04-01' && d <= '2026-06-30'; });
+      const w1 = L.r2(runs.reduce((a, r) => a + r.Wages, 0)), w2 = L.r2(runs.reduce((a, r) => a + r.Tax, 0));
+      ok('gst: W1 / W2 = gross wages and tax withheld on the pay runs paid in the quarter (Xero Payroll AU)', runs.length === 3 && fv('W1') === $(w1) && fv('W2') === $(w2), [runs.length, fv('W1'), $(w1), fv('W2'), $(w2)]);
+      ok('gst: W2 consistent with W1 — passes, pay runs fetched for the selected organisation', /✓ W2 consistent with W1/.test(banner(g)) && g.calls.some((x) => x.id === 'pay_runs' && 'xero_tenant_id' in x.params) && green(g), banner(g).slice(0, 300)); }
+    { const gn = await run('gst', man('gst'), GS(), { fail: { pay_runs: { code: 'needs_connection', message: 'Connect xero-payroll-au to see this data' } } }); const f2 = (code) => { const tr = [...gn.doc.querySelectorAll('.xk-grid tr')].find((r) => r.children[0] && r.children[0].textContent === code); return tr ? tr.children[2].textContent : null; };
+      ok('gst: Xero Payroll (Australia) not connected → W1 / W2 N/A with the reason, banner still green, never red in Sources', f2('W1') === 'N/A — not in source' && /Xero Payroll \(Australia\) is not connected/.test(body(gn)) && green(gn) && !gn.doc.querySelector('#xk-sources .xk-err'), [f2('W1'), banner(gn).slice(0, 200)]); }
+    { const gw = await run('gst', man('gst'), GS({ pay_runs: (q) => { const r = L.listPayRuns(q); r.PayRuns.forEach((p) => { p.Tax = p.Wages * 0.6; }); return r; } }));
+      ok('gst: tax withheld above 47% of wages → the W2 check fails', /✗ W2 consistent with W1/.test(banner(gw)), banner(gw).slice(0, 300)); }
     { const gm = await run('gst', man('gst'), GS({ org: (q) => { const o = L.organisation(q); o.Organisations[0].SalesTaxPeriod = 'MONTHLY'; return o; } })); await set(gm, 'xk-view', 'list');
       const per = [...gm.doc.querySelectorAll('#xk-body .xk-grid tbody tr')].map((tr) => tr.children[0].textContent);
       ok('gst: a monthly GST filer’s statements list shows the last 6 months, not quarters', /monthly GST/.test(body(gm)) && per.length === 6 && per.every((p) => /^month ended/.test(p)), per); }
