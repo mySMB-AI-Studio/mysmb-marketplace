@@ -56,7 +56,26 @@
         "children": [
           "header",
           "body"
-        ]
+        ],
+        "watch": {
+          "/xero-accounting/list_xero_bill_validation/bills": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bval",
+              "value": {
+                "$computed": "xero-accounting_paginate",
+                "args": {
+                  "value": {
+                    "$state": "/xero-accounting/list_xero_bill_validation/bills"
+                  },
+                  "page": 0,
+                  "delta": 0,
+                  "size": 10
+                }
+              }
+            }
+          }
+        }
       },
       "header": {
         "type": "Header",
@@ -186,6 +205,7 @@
           "stats",
           "statsDivider",
           "matrix",
+          "pagerRow",
           "legend",
           "footerDivider",
           "footerRow"
@@ -537,7 +557,7 @@
           "billRow"
         ],
         "repeat": {
-          "statePath": "/xero-accounting/list_xero_bill_validation/bills",
+          "statePath": "/ui/bval/items",
           "key": "id"
         }
       },
@@ -632,11 +652,11 @@
         ]
       },
       "cellDUPPass": {
-        "type": "Icon",
+        "type": "Badge",
         "props": {
-          "name": "Check",
-          "size": "xs",
-          "tone": "success"
+          "text": "✓",
+          "tone": "success",
+          "variant": "soft"
         },
         "visible": {
           "$item": "dupState",
@@ -644,11 +664,11 @@
         }
       },
       "cellDUPWarn": {
-        "type": "Icon",
+        "type": "Badge",
         "props": {
-          "name": "TriangleAlert",
-          "size": "xs",
-          "tone": "warning"
+          "text": "!",
+          "tone": "warning",
+          "variant": "soft"
         },
         "visible": {
           "$item": "dupState",
@@ -656,11 +676,11 @@
         }
       },
       "cellDUPFail": {
-        "type": "Icon",
+        "type": "Badge",
         "props": {
-          "name": "X",
-          "size": "xs",
-          "tone": "destructive"
+          "text": "✕",
+          "tone": "destructive",
+          "variant": "soft"
         },
         "visible": {
           "$item": "dupState",
@@ -680,11 +700,11 @@
         ]
       },
       "cellABNPass": {
-        "type": "Icon",
+        "type": "Badge",
         "props": {
-          "name": "Check",
-          "size": "xs",
-          "tone": "success"
+          "text": "✓",
+          "tone": "success",
+          "variant": "soft"
         },
         "visible": {
           "$item": "abnState",
@@ -692,11 +712,11 @@
         }
       },
       "cellABNWarn": {
-        "type": "Icon",
+        "type": "Badge",
         "props": {
-          "name": "TriangleAlert",
-          "size": "xs",
-          "tone": "warning"
+          "text": "!",
+          "tone": "warning",
+          "variant": "soft"
         },
         "visible": {
           "$item": "abnState",
@@ -704,11 +724,11 @@
         }
       },
       "cellABNFail": {
-        "type": "Icon",
+        "type": "Badge",
         "props": {
-          "name": "X",
-          "size": "xs",
-          "tone": "destructive"
+          "text": "✕",
+          "tone": "destructive",
+          "variant": "soft"
         },
         "visible": {
           "$item": "abnState",
@@ -728,11 +748,11 @@
         ]
       },
       "cellGSTPass": {
-        "type": "Icon",
+        "type": "Badge",
         "props": {
-          "name": "Check",
-          "size": "xs",
-          "tone": "success"
+          "text": "✓",
+          "tone": "success",
+          "variant": "soft"
         },
         "visible": {
           "$item": "gstState",
@@ -740,11 +760,11 @@
         }
       },
       "cellGSTWarn": {
-        "type": "Icon",
+        "type": "Badge",
         "props": {
-          "name": "TriangleAlert",
-          "size": "xs",
-          "tone": "warning"
+          "text": "!",
+          "tone": "warning",
+          "variant": "soft"
         },
         "visible": {
           "$item": "gstState",
@@ -752,11 +772,11 @@
         }
       },
       "cellGSTFail": {
-        "type": "Icon",
+        "type": "Badge",
         "props": {
-          "name": "X",
-          "size": "xs",
-          "tone": "destructive"
+          "text": "✕",
+          "tone": "destructive",
+          "variant": "soft"
         },
         "visible": {
           "$item": "gstState",
@@ -776,11 +796,11 @@
         ]
       },
       "cellTOTALPass": {
-        "type": "Icon",
+        "type": "Badge",
         "props": {
-          "name": "Check",
-          "size": "xs",
-          "tone": "success"
+          "text": "✓",
+          "tone": "success",
+          "variant": "soft"
         },
         "visible": {
           "$item": "totalState",
@@ -788,11 +808,11 @@
         }
       },
       "cellTOTALWarn": {
-        "type": "Icon",
+        "type": "Badge",
         "props": {
-          "name": "TriangleAlert",
-          "size": "xs",
-          "tone": "warning"
+          "text": "!",
+          "tone": "warning",
+          "variant": "soft"
         },
         "visible": {
           "$item": "totalState",
@@ -800,11 +820,11 @@
         }
       },
       "cellTOTALFail": {
-        "type": "Icon",
+        "type": "Badge",
         "props": {
-          "name": "X",
-          "size": "xs",
-          "tone": "destructive"
+          "text": "✕",
+          "tone": "destructive",
+          "variant": "soft"
         },
         "visible": {
           "$item": "totalState",
@@ -824,11 +844,11 @@
         ]
       },
       "cellDATEPass": {
-        "type": "Icon",
+        "type": "Badge",
         "props": {
-          "name": "Check",
-          "size": "xs",
-          "tone": "success"
+          "text": "✓",
+          "tone": "success",
+          "variant": "soft"
         },
         "visible": {
           "$item": "dateState",
@@ -836,11 +856,11 @@
         }
       },
       "cellDATEWarn": {
-        "type": "Icon",
+        "type": "Badge",
         "props": {
-          "name": "TriangleAlert",
-          "size": "xs",
-          "tone": "warning"
+          "text": "!",
+          "tone": "warning",
+          "variant": "soft"
         },
         "visible": {
           "$item": "dateState",
@@ -848,11 +868,11 @@
         }
       },
       "cellDATEFail": {
-        "type": "Icon",
+        "type": "Badge",
         "props": {
-          "name": "X",
-          "size": "xs",
-          "tone": "destructive"
+          "text": "✕",
+          "tone": "destructive",
+          "variant": "soft"
         },
         "visible": {
           "$item": "dateState",
@@ -872,11 +892,11 @@
         ]
       },
       "cellFILEPass": {
-        "type": "Icon",
+        "type": "Badge",
         "props": {
-          "name": "Check",
-          "size": "xs",
-          "tone": "success"
+          "text": "✓",
+          "tone": "success",
+          "variant": "soft"
         },
         "visible": {
           "$item": "fileState",
@@ -884,11 +904,11 @@
         }
       },
       "cellFILEWarn": {
-        "type": "Icon",
+        "type": "Badge",
         "props": {
-          "name": "TriangleAlert",
-          "size": "xs",
-          "tone": "warning"
+          "text": "!",
+          "tone": "warning",
+          "variant": "soft"
         },
         "visible": {
           "$item": "fileState",
@@ -896,11 +916,11 @@
         }
       },
       "cellFILEFail": {
-        "type": "Icon",
+        "type": "Badge",
         "props": {
-          "name": "X",
-          "size": "xs",
-          "tone": "destructive"
+          "text": "✕",
+          "tone": "destructive",
+          "variant": "soft"
         },
         "visible": {
           "$item": "fileState",
@@ -943,6 +963,107 @@
         "type": "Divider",
         "props": {}
       },
+      "pagerRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "pagerLabel",
+          "pagerButtons"
+        ],
+        "visible": {
+          "$state": "/ui/bval/hasPages"
+        }
+      },
+      "pagerLabel": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/bval/label"
+          },
+          "tone": "muted"
+        }
+      },
+      "pagerButtons": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "pagerPrev",
+          "pagerNext"
+        ]
+      },
+      "pagerPrev": {
+        "type": "Button",
+        "props": {
+          "label": "Previous",
+          "variant": "secondary",
+          "size": "sm",
+          "leadingIcon": "ChevronLeft"
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bval",
+              "value": {
+                "$computed": "xero-accounting_paginate",
+                "args": {
+                  "value": {
+                    "$state": "/xero-accounting/list_xero_bill_validation/bills"
+                  },
+                  "page": {
+                    "$state": "/ui/bval/page"
+                  },
+                  "delta": -1,
+                  "size": 10
+                }
+              }
+            }
+          }
+        },
+        "visible": {
+          "$state": "/ui/bval/hasPrev"
+        }
+      },
+      "pagerNext": {
+        "type": "Button",
+        "props": {
+          "label": "Next page",
+          "variant": "secondary",
+          "size": "sm",
+          "leadingIcon": "ChevronRight"
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bval",
+              "value": {
+                "$computed": "xero-accounting_paginate",
+                "args": {
+                  "value": {
+                    "$state": "/xero-accounting/list_xero_bill_validation/bills"
+                  },
+                  "page": {
+                    "$state": "/ui/bval/page"
+                  },
+                  "delta": 1,
+                  "size": 10
+                }
+              }
+            }
+          }
+        },
+        "visible": {
+          "$state": "/ui/bval/hasNext"
+        }
+      },
       "legend": {
         "type": "Row",
         "props": {
@@ -967,11 +1088,11 @@
         ]
       },
       "legPassIcon": {
-        "type": "Icon",
+        "type": "Badge",
         "props": {
-          "name": "Check",
-          "size": "xs",
-          "tone": "success"
+          "text": "✓",
+          "tone": "success",
+          "variant": "soft"
         }
       },
       "legPassText": {
@@ -993,11 +1114,11 @@
         ]
       },
       "legWarnIcon": {
-        "type": "Icon",
+        "type": "Badge",
         "props": {
-          "name": "TriangleAlert",
-          "size": "xs",
-          "tone": "warning"
+          "text": "!",
+          "tone": "warning",
+          "variant": "soft"
         }
       },
       "legWarnText": {
@@ -1019,11 +1140,11 @@
         ]
       },
       "legFailIcon": {
-        "type": "Icon",
+        "type": "Badge",
         "props": {
-          "name": "X",
-          "size": "xs",
-          "tone": "destructive"
+          "text": "✕",
+          "tone": "destructive",
+          "variant": "soft"
         }
       },
       "legFailText": {
