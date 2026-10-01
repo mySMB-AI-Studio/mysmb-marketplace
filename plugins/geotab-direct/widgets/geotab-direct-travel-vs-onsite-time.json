@@ -1,64 +1,64 @@
 {
-  "category": "fleet-management",
-  "connectorsUsed": [
-    "geotab-direct"
-  ],
-  "dataProvider": {
-    "kind": "tool",
-    "mcp": "geotab-direct",
-    "params": {
-      "resultsLimit": 500,
-      "search": {
-        "fromDate": "$today_date",
-        "toDate": "$today_date"
-      },
-      "typeName": "Trip"
-    },
-    "tool": "Get"
-  },
-  "description": "Today's on-site vs travel vs idle time across the fleet, with a per-vehicle productive ratio, computed from real Trip records via the connected MyGeotab account (direct API connection). Grouped by vehicle, not driver — Driver's field schema wasn't confirmed against Geotab's docs.",
   "id": "geotab-direct-travel-vs-onsite-time",
+  "title": "Travel vs On-Site Time",
+  "description": "Today's on-site, travel and idle time across the fleet as a split bar, with the same split for each vehicle, from real MyGeotab trip records.",
+  "category": "fleet-management",
+  "tags": [
+    "geotab",
+    "fleet",
+    "field-service",
+    "productivity"
+  ],
   "keywords": [
     "travel time",
     "on site",
     "idle",
     "productive ratio",
+    "time split",
     "vehicles"
+  ],
+  "connectorsUsed": [
+    "geotab-direct"
   ],
   "popularity": 0,
   "sizing": {
-    "max": {
-      "colSpan": 10,
-      "rowSpan": 14
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 7
     },
     "min": {
       "colSpan": 4,
-      "rowSpan": 8
-    },
-    "preferred": {
-      "colSpan": 8,
       "rowSpan": 6
+    },
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 14
+    }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "geotab-direct",
+    "tool": "Get",
+    "params": {
+      "typeName": "Trip",
+      "resultsLimit": 500,
+      "search": {
+        "fromDate": "$today",
+        "toDate": "$now"
+      }
     }
   },
   "spec": {
+    "root": "card",
     "elements": {
-      "body": {
-        "children": [
-          "loading",
-          "empty",
-          "content"
-        ],
-        "props": {},
-        "type": "Body"
-      },
       "card": {
+        "type": "Card",
+        "props": {},
         "children": [
           "headerRow",
           "div0",
           "body"
         ],
-        "props": {},
-        "type": "Card",
         "watch": {
           "/geotab-direct/Get": [
             {
@@ -66,7 +66,7 @@
               "params": {
                 "statePath": "/ui/dashboard",
                 "value": {
-                  "$computed": "geotab-direct_travel_onsite_dashboard",
+                  "$computed": "geotab-direct_time_split_dashboard",
                   "args": {
                     "trips": {
                       "$state": "/geotab-direct/Get/result"
@@ -78,41 +78,119 @@
           ]
         }
       },
-      "content": {
-        "children": [
-          "statBlock",
-          "div1",
-          "pillRow",
-          "div2",
-          "techLabel",
-          "techRows"
-        ],
+      "headerRow": {
+        "type": "Row",
         "props": {
-          "gap": "md"
+          "align": "center",
+          "justify": "between"
         },
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "BarChart2",
+          "size": "sm",
+          "tone": "muted"
+        }
+      },
+      "titleStack": {
         "type": "Stack",
-        "visible": {
-          "$state": "/_loading/geotab-direct.Get",
-          "not": true
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "level": "h2",
+          "text": "Travel vs On-Site Time"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Today · {n} vehicles",
+              "n": {
+                "$state": "/ui/dashboard/vehicleCount"
+              }
+            }
+          }
         }
       },
       "div0": {
-        "props": {},
-        "type": "Divider"
+        "type": "Divider",
+        "props": {}
       },
-      "div1": {
+      "body": {
+        "type": "Body",
         "props": {},
-        "type": "Divider"
+        "children": [
+          "loading",
+          "empty",
+          "content"
+        ]
       },
-      "div2": {
-        "props": {},
-        "type": "Divider"
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "lk1",
+          "lk2",
+          "lk3"
+        ],
+        "visible": {
+          "$state": "/_loading/geotab-direct.Get"
+        }
+      },
+      "lk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "lk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "lk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
       },
       "empty": {
+        "type": "Empty",
         "props": {
           "message": "No trips found for today yet."
         },
-        "type": "Empty",
         "visible": {
           "$and": [
             {
@@ -126,315 +204,355 @@
           ]
         }
       },
-      "eyebrow": {
+      "heroRow": {
+        "type": "Row",
         "props": {
-          "text": {
+          "gap": "sm",
+          "align": "baseline"
+        },
+        "children": [
+          "heroStat",
+          "heroCaption"
+        ]
+      },
+      "heroStat": {
+        "type": "Stat",
+        "props": {
+          "value": {
             "$computed": "fmt",
             "args": {
-              "n": {
-                "$state": "/ui/dashboard/vehicleCount"
-              },
-              "pattern": "Today · {n} vehicles"
+              "pattern": "{p}%",
+              "p": {
+                "$state": "/ui/dashboard/onSitePercent"
+              }
             }
-          }
-        },
-        "type": "Eyebrow"
-      },
-      "headerRow": {
-        "children": [
-          "titleGroup"
-        ],
-        "props": {
-          "align": "center",
-          "justify": "between"
-        },
-        "type": "Row"
-      },
-      "lk1": {
-        "props": {
-          "height": "2.5rem",
-          "rounded": "md"
-        },
-        "type": "Skeleton"
-      },
-      "lk2": {
-        "props": {
-          "height": "2.5rem",
-          "rounded": "md"
-        },
-        "type": "Skeleton"
-      },
-      "lk3": {
-        "props": {
-          "height": "2.5rem",
-          "rounded": "md"
-        },
-        "type": "Skeleton"
-      },
-      "loading": {
-        "children": [
-          "lk1",
-          "lk2",
-          "lk3"
-        ],
-        "props": {
-          "gap": "sm"
-        },
-        "type": "Stack",
-        "visible": {
-          "$state": "/_loading/geotab-direct.Get"
+          },
+          "tone": "success"
         }
       },
-      "pillIdle": {
+      "heroCaption": {
+        "type": "Caption",
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "Idle {v}",
-              "v": {
-                "$computed": "geotab-direct_format_duration_hm",
-                "args": {
-                  "minutes": {
-                    "$state": "/ui/dashboard/idleMinutes"
-                  }
-                }
+              "pattern": "of tracked time on site · {t}",
+              "t": {
+                "$state": "/ui/dashboard/onSiteText"
               }
             }
-          },
+          }
+        }
+      },
+      "fleetBar": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "template": {
+            "$state": "/ui/dashboard/bar/template"
+          }
+        },
+        "children": [
+          "fleetBar_onSite",
+          "fleetBar_travel",
+          "fleetBar_idle"
+        ]
+      },
+      "fleetBar_onSite": {
+        "type": "ProgressBar",
+        "props": {
+          "value": 100,
+          "tone": "success"
+        },
+        "visible": {
+          "$state": "/ui/dashboard/bar/show_onSite"
+        }
+      },
+      "fleetBar_travel": {
+        "type": "ProgressBar",
+        "props": {
+          "value": 100,
+          "tone": "info"
+        },
+        "visible": {
+          "$state": "/ui/dashboard/bar/show_travel"
+        }
+      },
+      "fleetBar_idle": {
+        "type": "ProgressBar",
+        "props": {
+          "value": 100,
           "tone": "warning"
         },
-        "type": "Badge"
+        "visible": {
+          "$state": "/ui/dashboard/bar/show_idle"
+        }
       },
-      "pillOnSite": {
+      "legendRow": {
+        "type": "Row",
+        "props": {
+          "gap": "md",
+          "align": "center"
+        },
+        "children": [
+          "lg_onSite",
+          "lg_travel",
+          "lg_idle"
+        ]
+      },
+      "lg_onSite": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "lg_onSite_dot",
+          "lg_onSite_text"
+        ]
+      },
+      "lg_onSite_dot": {
+        "type": "Dot",
+        "props": {
+          "tone": "success",
+          "size": "sm"
+        }
+      },
+      "lg_onSite_text": {
+        "type": "Caption",
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "On site {v}",
-              "v": {
-                "$computed": "geotab-direct_format_duration_hm",
-                "args": {
-                  "minutes": {
-                    "$state": "/ui/dashboard/onSiteMinutes"
-                  }
-                }
+              "pattern": "On site {t} · {p}%",
+              "t": {
+                "$state": "/ui/dashboard/onSiteText"
+              },
+              "p": {
+                "$state": "/ui/dashboard/onSitePercent"
               }
             }
-          },
-          "tone": "muted",
-          "variant": "solid"
-        },
-        "type": "Badge"
+          }
+        }
       },
-      "pillRow": {
-        "children": [
-          "pillOnSite",
-          "pillTravel",
-          "pillIdle"
-        ],
+      "lg_travel": {
+        "type": "Row",
         "props": {
-          "gap": "sm"
+          "gap": "xs",
+          "align": "center"
         },
-        "type": "Row"
+        "children": [
+          "lg_travel_dot",
+          "lg_travel_text"
+        ]
       },
-      "pillTravel": {
+      "lg_travel_dot": {
+        "type": "Dot",
+        "props": {
+          "tone": "info",
+          "size": "sm"
+        }
+      },
+      "lg_travel_text": {
+        "type": "Caption",
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "Travel {v}",
-              "v": {
-                "$computed": "geotab-direct_format_duration_hm",
-                "args": {
-                  "minutes": {
-                    "$state": "/ui/dashboard/travelMinutes"
-                  }
-                }
+              "pattern": "Travel {t} · {p}%",
+              "t": {
+                "$state": "/ui/dashboard/travelText"
+              },
+              "p": {
+                "$state": "/ui/dashboard/travelPercent"
               }
             }
-          },
-          "tone": "muted"
-        },
-        "type": "Badge"
+          }
+        }
       },
-      "statBlock": {
+      "lg_idle": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
         "children": [
-          "statOnSite",
-          "statCaption"
+          "lg_idle_dot",
+          "lg_idle_text"
+        ]
+      },
+      "lg_idle_dot": {
+        "type": "Dot",
+        "props": {
+          "tone": "warning",
+          "size": "sm"
+        }
+      },
+      "lg_idle_text": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Idle {t} · {p}%",
+              "t": {
+                "$state": "/ui/dashboard/idleText"
+              },
+              "p": {
+                "$state": "/ui/dashboard/idlePercent"
+              }
+            }
+          }
+        }
+      },
+      "div1": {
+        "type": "Divider",
+        "props": {}
+      },
+      "listLabel": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "By vehicle"
+        }
+      },
+      "vehicleRows": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "vehicle"
         ],
+        "repeat": {
+          "statePath": "/ui/dashboard/rows",
+          "key": "deviceId"
+        }
+      },
+      "vehicle": {
+        "type": "Stack",
         "props": {
           "gap": "xs"
         },
-        "type": "Stack"
-      },
-      "statCaption": {
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "p": {
-                "$state": "/ui/dashboard/fleetProductivePercent"
-              },
-              "pattern": "{t} in the van · {p}% productive",
-              "t": {
-                "$computed": "geotab-direct_format_duration_hm",
-                "args": {
-                  "minutes": {
-                    "$state": "/ui/dashboard/travelMinutes"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "type": "Caption"
-      },
-      "statOnSite": {
-        "props": {
-          "label": "On site",
-          "value": {
-            "$computed": "geotab-direct_format_duration_hm",
-            "args": {
-              "minutes": {
-                "$state": "/ui/dashboard/onSiteMinutes"
-              }
-            }
-          }
-        },
-        "type": "Stat"
-      },
-      "tBar": {
-        "props": {
-          "tone": {
-            "$computed": "geotab-direct_productivity_tone",
-            "args": {
-              "value": {
-                "$item": "productivePercent"
-              }
-            }
-          },
-          "value": {
-            "$item": "productivePercent"
-          }
-        },
-        "type": "ProgressBar"
-      },
-      "tBarRow": {
         "children": [
-          "tBar"
-        ],
-        "props": {},
-        "type": "Row"
+          "vTop",
+          "vBar",
+          "vCaption"
+        ]
       },
-      "tLabel": {
+      "vTop": {
+        "type": "Row",
+        "props": {
+          "justify": "between",
+          "align": "center"
+        },
+        "children": [
+          "vLabel",
+          "vPct"
+        ]
+      },
+      "vLabel": {
+        "type": "Text",
         "props": {
           "size": "sm",
           "text": {
             "$item": "deviceName"
           },
           "truncate": true
-        },
-        "type": "Text"
+        }
       },
-      "tRow": {
-        "children": [
-          "tLabel",
-          "tVal"
-        ],
-        "props": {
-          "justify": "between"
-        },
-        "type": "Row"
-      },
-      "tVal": {
+      "vPct": {
+        "type": "Text",
         "props": {
           "size": "sm",
+          "weight": "medium",
           "text": {
             "$computed": "fmt",
             "args": {
+              "pattern": "{p}% on site",
               "p": {
                 "$item": "productivePercent"
-              },
-              "pattern": "{p}%"
+              }
             }
-          },
-          "weight": "medium"
-        },
-        "type": "Text"
+          }
+        }
       },
-      "techLabel": {
+      "vBar": {
+        "type": "Row",
         "props": {
-          "text": "Productive ratio by vehicle"
+          "gap": "xs",
+          "template": {
+            "$item": "bar/template"
+          }
         },
-        "type": "Eyebrow"
-      },
-      "techRow": {
         "children": [
-          "tRow",
-          "tBarRow"
-        ],
-        "props": {
-          "gap": "xs"
-        },
-        "type": "Stack"
+          "vBar_onSite",
+          "vBar_travel",
+          "vBar_idle"
+        ]
       },
-      "techRows": {
+      "vBar_onSite": {
+        "type": "ProgressBar",
+        "props": {
+          "value": 100,
+          "tone": "success"
+        },
+        "visible": {
+          "$item": "bar/show_onSite"
+        }
+      },
+      "vBar_travel": {
+        "type": "ProgressBar",
+        "props": {
+          "value": 100,
+          "tone": "info"
+        },
+        "visible": {
+          "$item": "bar/show_travel"
+        }
+      },
+      "vBar_idle": {
+        "type": "ProgressBar",
+        "props": {
+          "value": 100,
+          "tone": "warning"
+        },
+        "visible": {
+          "$item": "bar/show_idle"
+        }
+      },
+      "vCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "summary"
+          }
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
         "children": [
-          "techRow"
+          "heroRow",
+          "fleetBar",
+          "legendRow",
+          "div1",
+          "listLabel",
+          "vehicleRows"
         ],
-        "props": {
-          "gap": "sm"
-        },
-        "repeat": {
-          "key": "deviceId",
-          "statePath": "/ui/dashboard/rows"
-        },
-        "type": "Stack"
-      },
-      "title": {
-        "props": {
-          "level": "h2",
-          "text": "Travel vs On-Site Time"
-        },
-        "type": "Heading"
-      },
-      "titleGroup": {
-        "children": [
-          "titleIcon",
-          "titleStack"
-        ],
-        "props": {
-          "align": "center",
-          "gap": "sm"
-        },
-        "type": "Row"
-      },
-      "titleIcon": {
-        "props": {
-          "name": "BarChart2",
-          "size": "sm",
-          "tone": "muted"
-        },
-        "type": "Icon"
-      },
-      "titleStack": {
-        "children": [
-          "title",
-          "eyebrow"
-        ],
-        "props": {
-          "gap": "none"
-        },
-        "type": "Stack"
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/geotab-direct.Get",
+              "not": true
+            },
+            {
+              "$state": "/ui/dashboard/rows/0"
+            }
+          ]
+        }
       }
-    },
-    "root": "card"
-  },
-  "tags": [
-    "geotab",
-    "fleet",
-    "field-service",
-    "productivity"
-  ],
-  "title": "Travel vs On-Site Time"
+    }
+  }
 }
