@@ -83,6 +83,9 @@ into `dev` instead — CI validates it — then Pull and Publish once it merges.
 > does **not** rewrite the version or refresh the environment's marketplace —
 > do both by hand and tell the extension's owner.
 
+`qa` is the canonical QA marketplace branch. `staging` remains only as a legacy
+rollback branch and is not a new publish target.
+
 ## The one hard rule about URLs
 
 Every plugin `.mcp.json` ships the **production** myhub-mcp-servers host on
