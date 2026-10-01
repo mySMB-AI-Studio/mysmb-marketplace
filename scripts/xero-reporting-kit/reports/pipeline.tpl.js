@@ -1,12 +1,13 @@
 XK.app({
   title: '__TITLE__', primary: 'invoices', org: 'org', conns: 'connections', noBasis: true,
   inputs: { org: 'org', persona: 'persona', display: 'display' },
-  defaults: { as_at: '2026-09-25', org: '', page: 1, persona: 'Bookkeeper',
+  defaults: { as_at: '2026-09-25', org: '', page: 1, persona: 'Bookkeeper',__EXTRADEF__
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"today","c":"none","v":"docs","o":"r=30"}' },
   uses: { invoices: ['org'], credit_notes: ['org'], overpayments: ['org'], prepayments: ['org'], __EXTRAUSES__, bs: ['as_at', 'org'], org: ['org'], connections: [] },
   paged: { invoices: { input: 'page', key: 'Invoices' }, credit_notes: { input: 'page', key: 'CreditNotes' }, overpayments: { input: 'page', key: 'Overpayments' }, prepayments: { input: 'page', key: 'Prepayments' }, __EXTRAPAGED__ },
   tools: { invoices: 'list_invoices (__DOCS__: draft, awaiting approval, awaiting payment)', credit_notes: 'list_credit_notes (unallocated)', overpayments: 'list_overpayments (unallocated)', prepayments: 'list_prepayments (unallocated)', __EXTRATOOLS__, bs: 'get_balance_sheet (__BSNAME__ today)', org: 'get_organisation', connections: 'list_connections' },
   roll: function () { return { as_at: XK.asAt('today') }; }, // a dashboard is always "now"
+__EXTRAHEAD__
   views: __VIEWS__,
   options: __OPTIONS__,
   render: function (c) {

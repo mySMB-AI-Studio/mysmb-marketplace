@@ -91,12 +91,15 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
   }
   if (!only || only === 'pipe') {
     // ---------------- P02 Sales overview ----------------
-    const PIPE = (extra) => Object.assign({ invoices: L.listInvoices, credit_notes: L.listCreditNotes, overpayments: L.listOverpayments, prepayments: L.listPrepayments, linked: L.listLinked, purchase_orders: L.listPurchaseOrders, repeating: L.listRepeating, bs: L.bs, org: L.organisation, connections: L.connections }, extra || {});
+    const PIPE = (extra) => Object.assign({ invoices: L.listInvoices, credit_notes: L.listCreditNotes, overpayments: L.listOverpayments, prepayments: L.listPrepayments, linked: L.listLinked, purchase_orders: L.listPurchaseOrders, repeating: L.listRepeating, paid: L.listInvoices, bill: L.getInvoice, bs: L.bs, org: L.organisation, connections: L.connections }, extra || {});
     const all = (type) => L.listInvoices({ where: 'Type=="' + type + '"', statuses: 'DRAFT,SUBMITTED,AUTHORISED' }).Invoices;
     const sumOf = (list, k) => L.r2(list.reduce((a, d) => a + d[k], 0));
     const exp = (type) => { const l = all(type), aw = l.filter((d) => d.Status === 'AUTHORISED' && d.AmountDue > 0), od = aw.filter((d) => d.DueDateString.slice(0, 10) < L.TODAY);
       return { draft: l.filter((d) => d.Status === 'DRAFT'), sub: l.filter((d) => d.Status === 'SUBMITTED'), aw, od }; };
     const S = exp('ACCREC'), s = await run('so', man('so'), PIPE());
+    { await wait(60); const links = L.listLinked({ status: 'APPROVED' }).LinkedTransactions, amt = L.r2(links.reduce((a, l) => { const b = L.getInvoice({ invoiceId: l.SourceTransactionID }).Invoices[0]; return a + b.LineItems.find((x) => x.LineItemID === l.SourceLineItemID).LineAmount; }, 0));
+      ok('so: billable expenses show the amount to invoice, read from each source bill\u2019s linked line', links.length > 0 && re('', amt).test(text(s.doc, '#xk-body')) && /to invoice/.test(body(s)) && /✓ Billable expense amounts read from their source bills/.test(banner(s)) && s.calls.filter((x) => x.id === 'bill' && x.params.invoiceId).length === new Set(links.map((l) => l.SourceTransactionID)).size, [amt, banner(s).slice(0, 200)]);
+      ok('so: the source-bill lookup is quiet before it runs (no error for the empty bill id)', !/Source bill/.test(banner(s)) && green(s), banner(s).slice(0, 300)); }
     { const av = [...s.doc.querySelectorAll('#so-top tbody tr')].map((tr) => tr.querySelector('.xk-av'));
       ok('so: customers owing the most carry avatar initials', av.length > 0 && av.every((a) => a && /^[A-Z0-9]{1,2}$/.test(a.textContent)), av.map((a) => a && a.textContent));
       ok('so: the status strip shows (n) and an amount for every status, never "None"', [...s.doc.querySelectorAll('#xk-body .xk-kpis')[0].querySelectorAll('.xk-kpi')].every((k) => /\(\d+\)/.test(k.textContent) && /\$/.test(k.textContent))); }
@@ -107,7 +110,7 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     const owingTop = text(s.doc, '#so-top');
     const byC = {}; S.aw.forEach((d) => { byC[d.Contact.Name] = L.r2((byC[d.Contact.Name] || 0) + d.AmountDue); }); const topName = Object.keys(byC).sort((a, b) => byC[b] - byC[a])[0];
     ok('so: customers owing the most — largest first', owingTop.indexOf(topName) >= 0 && owingTop.indexOf(topName) < 40, [topName, owingTop.slice(0, 200)]);
-    ok('so: billable expenses — 3 customers with items not yet invoiced, amount N/A (said why)', /3 customers · 3 item\(s\) not yet invoiced/.test(body(s)) && /Amount owing: N\/A — Xero's billable-expense API returns no amounts/.test(body(s)), body(s).slice(0, 800));
+    ok('so: billable expenses — 3 customers with items not yet invoiced, each with its amount', /3 customers · 3 item\(s\) not yet invoiced/.test(body(s)) && /item\(s\) · \$[\d,]+\.\d\d/.test(body(s)) && !/Amount owing: N\/A/.test(body(s)), body(s).slice(0, 800));
     ok('so: money coming in — due this week / next week and the by-month chart', /Due this week\$[\d,.]+Due next week\$[\d,.]+/.test(body(s)) && s.doc.querySelector('#so-ch svg'), body(s).slice(0, 400));
     s.doc.querySelector('.xk-tab[data-v="repeating"]').click(); await s.settle();
     ok('so: Repeating invoices tab (no refetch) lists the repeating invoice', /Summit Legal.*Retainer.*monthly.*2026-10-01.*\$880\.00/.test(text(s.doc, '#so-rep')), text(s.doc, '#so-rep'));
@@ -121,6 +124,17 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     const B = exp('ACCPAY'), u = await run('pu', man('pu'), PIPE());
     ok('pu: the Xero actions (New bill, Import bills…) are offered as a read-only "Create new (in Xero)" card', /Create new \(in Xero\)/.test(body(u)) && /New bill/.test(body(u)) && /Import bills/.test(body(u)));
     ok('pu: Excel carries the money-going-out series', /Money going out — next 30 days/.test(await xlsxOf(u)));
+    { await set(u, 'xk-view', 'all'); const rowsOf = () => [...u.doc.querySelectorAll('#pu-all tbody tr')].map((tr) => [...tr.children].map((td) => td.textContent));
+      const open = L.listInvoices({ where: 'Type=="ACCPAY"', statuses: 'DRAFT,SUBMITTED,AUTHORISED' }).Invoices;
+      ok('pu: All bills tab lists every draft, awaiting-approval and awaiting-payment bill', rowsOf().length === open.length, [rowsOf().length, open.length]);
+      await set(u, 'pu-st', 'Overdue'); ok('pu: All bills filtered by status (Overdue)', rowsOf().length > 0 && rowsOf().every((r) => r[5] === 'Overdue'), rowsOf().slice(0, 2));
+      await set(u, 'pu-st', '');
+      const fi = u.doc.querySelector('#pu-all .xk-filter'); if (fi) { fi.value = rowsOf()[0][2]; fi.dispatchEvent(new u.w.Event('input')); await u.settle(); }
+      ok('pu: All bills searchable (number, reference, contact or amount)', !!fi && rowsOf().length > 0 && rowsOf().every((r) => r.join(' ').includes(fi.value)), fi ? fi.value : 'no filter box');
+      if (fi) { fi.value = ''; fi.dispatchEvent(new u.w.Event('input')); await u.settle(); }
+      await set(u, 'pu-from', '2026-09-01'); ok('pu: All bills filtered by date range', rowsOf().length > 0 && rowsOf().every((r) => r[3] >= '2026-09-01'), rowsOf().slice(0, 2)); await set(u, 'pu-from', ''); }
+    { await set(u, 'xk-view', 'paid'); const pr = [...u.doc.querySelectorAll('#pu-paid tbody tr')].map((tr) => [...tr.children].map((td) => td.textContent));
+      ok('pu: Paid tab lists recently paid bills with the date Xero marked them paid', pr.length > 0 && pr.every((r) => /^\d{4}-\d\d-\d\d$/.test(r[4])) && u.calls.some((x) => x.id === 'paid' && x.params.statuses === 'PAID'), pr.slice(0, 2)); await set(u, 'xk-view', 'docs'); }
     const uk = [...u.doc.querySelectorAll('.xk-kpis')[0].querySelectorAll('.xk-kpi')].map((k) => k.textContent.replace(/\s+/g, ' ').trim());
     ok('pu: bills strip from the bill list', uk.join('|') === [kpi('Draft', B.draft, 'Total'), kpi('Awaiting approval', B.sub, 'Total'), kpi('Awaiting payment', B.aw, 'AmountDue'), kpi('Overdue', B.od, 'AmountDue')].join('|'), uk);
     ok('pu: every check passes incl. AP tie and money going out = awaiting payment', green(u) && /✓ Money going out \(overdue \+ next 30 days \+ later\) = awaiting payment/.test(banner(u)) && /✓ Awaiting payment − credits = Accounts Payable on the Balance Sheet today/.test(banner(u)), banner(u));

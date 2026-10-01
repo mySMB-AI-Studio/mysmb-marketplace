@@ -253,10 +253,11 @@ function invoiceOut(B, d) {
 }
 function listInvoices(p) {
   const B = books(p.xero_tenant_id), f = whereFilter(p.where), st = p.statuses ? String(p.statuses).split(',') : null;
-  let list = B.docs.map((d) => invoiceOut(B, d)).filter((o) => f(o) && (!st || st.includes(o.Status)));
-  if (/DueDate ASC/.test(p.order || '')) list.sort((a, b) => a._DueDate.localeCompare(b._DueDate)); else list.sort((a, b) => a._Date.localeCompare(b._Date));
+  let list = B.docs.map((d) => { const o = invoiceOut(B, d); if (o.Status === 'PAID') { const last = B.pays.filter((x) => x.doc === d).map((x) => x.date).sort().pop(); if (last) o.FullyPaidOnDate = msDate(last); } return o; }).filter((o) => f(o) && (!st || st.includes(o.Status)));
+  if (/DueDate ASC/.test(p.order || '')) list.sort((a, b) => a._DueDate.localeCompare(b._DueDate)); else if (/Date DESC/.test(p.order || '')) list.sort((a, b) => b._Date.localeCompare(a._Date)); else list.sort((a, b) => a._Date.localeCompare(b._Date));
   return page(list.map((o) => { const c = Object.assign({}, o); delete c._Date; delete c._DueDate; return c; }), p, 'Invoices');
 }
+function getInvoice(p) { const B = books(p.xero_tenant_id), d = B.docs.find((x) => x.InvoiceID === p.invoiceId); if (!d) throw new Error('Xero API GET https://api.xero.com/api.xro/2.0/Invoices/' + (p.invoiceId || '') + ' 404: {"Title":"Not Found"}'); const o = invoiceOut(B, d); delete o._Date; delete o._DueDate; return { Invoices: [o] }; }
 function listCreditNotes(p) { const B = books(p.xero_tenant_id), f = whereFilter(p.where); return page(B.credits.map((c) => Object.assign({}, c, { Date: msDate(c.date), DateString: c.date + 'T00:00:00', Status: c.status, _Date: c.date })).filter(f).map((c) => { delete c._Date; delete c.date; delete c.status; return c; }), p, 'CreditNotes'); }
 function listOverpayments(p) { const B = books(p.xero_tenant_id), f = whereFilter(p.where); return page(B.overs.map((o) => ({ Type: o.Type, OverpaymentID: o.OverpaymentID, Contact: o.Contact, Date: msDate(o.date), DateString: o.date + 'T00:00:00', Status: o.status, Total: o.Total, RemainingCredit: o.RemainingCredit, CurrencyCode: o.CurrencyCode, _Date: o.date })).filter(f).map((o) => { delete o._Date; return o; }), p, 'Overpayments'); }
 function listPrepayments(p) { return page([], p, 'Prepayments'); }
@@ -306,4 +307,4 @@ const expect = {
   balances: (date, t) => balances(books(t), date), netProfit: (a, b, cash, t) => netProfit(books(t), a, b, cash), bankBalance: (code, date, t) => bankBalance(books(t), code, date),
   flows: (code, a, b, t) => flows(books(t), code, a, b), gst: (a, b, t) => gstMovement(books(t), a, b), plByAccount: (a, b, cash, t) => plByAccount(books(t), a, b, cash), books,
 };
-module.exports = { TODAY, T1, T2, ORG, ACCOUNTS, ACC, TRACKING, listTrackingCategories, pnl: pnlReport, bs: bsReport, bankSummary, trialBalance, listManualJournals, listPayRuns, listTimesheets, listEmployees, listAssets, listInvoices, listCreditNotes, listOverpayments, listPrepayments, listPayments, listBankTransactions, listPurchaseOrders, listLinked, listRepeating, listAccounts, listTaxRates, organisation, connections, expect, fyStart, addDays, shiftMonths, eom, r2 };
+module.exports = { TODAY, T1, T2, ORG, ACCOUNTS, ACC, TRACKING, listTrackingCategories, getInvoice, pnl: pnlReport, bs: bsReport, bankSummary, trialBalance, listManualJournals, listPayRuns, listTimesheets, listEmployees, listAssets, listInvoices, listCreditNotes, listOverpayments, listPrepayments, listPayments, listBankTransactions, listPurchaseOrders, listLinked, listRepeating, listAccounts, listTaxRates, organisation, connections, expect, fyStart, addDays, shiftMonths, eom, r2 };
