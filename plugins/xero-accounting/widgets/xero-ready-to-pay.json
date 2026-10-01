@@ -183,12 +183,79 @@
         "props": {
           "gap": "md",
           "align": "center",
-          "template": "minmax(0,1fr) auto"
+          "template": "auto minmax(0,1fr)"
         },
         "children": [
-          "heroText",
-          "heroRing"
+          "heroReady",
+          "heroText"
         ]
+      },
+      "heroReady": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "heroReadyStack"
+        ]
+      },
+      "heroReadyStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "heroReadyFrac",
+          "heroReadyWord",
+          "heroReadyBarWrap"
+        ]
+      },
+      "heroReadyFrac": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/list_xero_ready_to_pay/summary/readyOfTotalText"
+          },
+          "size": "md",
+          "weight": "medium",
+          "tone": "success"
+        }
+      },
+      "heroReadyWord": {
+        "type": "Caption",
+        "props": {
+          "text": "ready",
+          "tone": "success"
+        }
+      },
+      "heroReadyBarWrap": {
+        "type": "Row",
+        "props": {
+          "gap": "none",
+          "align": "center",
+          "template": "3rem"
+        },
+        "children": [
+          "heroReadyBar"
+        ]
+      },
+      "heroReadyBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": {
+            "$computed": "pct",
+            "args": {
+              "part": {
+                "$state": "/xero-accounting/list_xero_ready_to_pay/summary/readyCount"
+              },
+              "whole": {
+                "$state": "/xero-accounting/list_xero_ready_to_pay/summary/totalCount"
+              }
+            }
+          },
+          "tone": "success"
+        }
       },
       "heroText": {
         "type": "Stack",
@@ -229,17 +296,6 @@
             "$state": "/xero-accounting/list_xero_ready_to_pay/summary/readySubtitle"
           },
           "tone": "muted"
-        }
-      },
-      "heroRing": {
-        "type": "Donut",
-        "props": {
-          "segments": {
-            "$state": "/xero-accounting/list_xero_ready_to_pay/summary/ringSegments"
-          },
-          "centerLabel": "bills",
-          "size": 84,
-          "thickness": 9
         }
       },
       "heroDivider": {
