@@ -24,6 +24,11 @@ It hard-fails the PR if any rule is violated.
 | 4 | Every MCP server in `.mcp.json` declares `type` as `"stdio"`, `"sse"`, or `"http"`. | Use one of the recognised transports. |
 | 5 | Every `${VAR}` placeholder in `.mcp.json` (env or headers) is either `CLAUDE_PLUGIN_ROOT` (reserved) or appears under a `## Configuration` heading in the plugin's README. | Add a row for each variable to your README. |
 
+The content check also validates `content.recordTypes` and `content.setups`:
+UUID origins, canonical paths and SHA-256 hashes, bounded portable definitions,
+portal field policy and unique setup keys. Content paths cannot leave the plugin
+directory. See [Custom tables and setup](/reference/extension-content).
+
 ## Convention rules (reviewed in PR, not enforced)
 
 These are not blocked by the validator but will be flagged in code review:
