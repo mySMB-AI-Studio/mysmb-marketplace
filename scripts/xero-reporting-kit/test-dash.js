@@ -308,7 +308,7 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
   }
   if (!only || only === 'gst') {
     // ---------------- P05 GST summary (activity statement) ----------------
-    const GS = (extra) => Object.assign({ invoices: L.listInvoices, credit_notes: L.listCreditNotes, bank_tx: L.listBankTransactions, tax_rates: L.listTaxRates, accounts: L.listAccounts, bs_end: L.bs, bs_start: L.bs, org: L.organisation, connections: L.connections }, extra || {});
+    const GS = (extra) => Object.assign({ pay_runs: L.listPayRuns, invoices: L.listInvoices, credit_notes: L.listCreditNotes, bank_tx: L.listBankTransactions, tax_rates: L.listTaxRates, accounts: L.listAccounts, bs_end: L.bs, bs_start: L.bs, org: L.organisation, connections: L.connections }, extra || {});
     const g = await run('gst', man('gst'), GS());
     const B = E.books(L.T1), inQ = (d) => d >= '2026-04-01' && d <= '2026-06-30';
     const lines = [].concat(...B.docs.filter((d) => (d.status === 'AUTHORISED' || d.status === 'PAID') && inQ(d.date)).map((d) => d.LineItems.map((l) => ({ l, sales: d.Type === 'ACCREC' })))).concat(...B.bank.filter((x) => inQ(x.date)).map((x) => x.LineItems.map((l) => ({ l, sales: x.Type === 'RECEIVE' }))));
@@ -319,11 +319,19 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     ok('gst: last quarter (Apr–Jun 2026) by default, "not your Activity Statement" banner', /For the 3 months ended 30 June 2026/.test(text(g.doc, '#xk-head')) && /This is not your Activity Statement/.test(body(g)), text(g.doc, '#xk-head'));
     ok('gst: 1A GST on sales and 1B GST on purchases = the books', fv('1A') === $(A1) && fv('1B') === $(B1), [fv('1A'), $(A1), fv('1B'), $(B1)]);
     ok('gst: net GST = 1A − 1B = the ledger\'s GST for the quarter', new RegExp('Net GST (payable|refundable) \\(1A − 1B\\)' + fmt(Math.abs(E.gst('2026-04-01', '2026-06-30')))).test(body(g)) && L.r2(A1 - B1) === E.gst('2026-04-01', '2026-06-30'), [A1 - B1, E.gst('2026-04-01', '2026-06-30')]);
-    ok('gst: G2 export sales from GST-free export lines; W1/W2/T1 N/A', fv('G2') === $(G2) && fv('W1') === 'N/A — not in source' && fv('W2') === 'N/A — not in source', [fv('G2'), $(G2)]);
+    ok('gst: G2 export sales from GST-free export lines', fv('G2') === $(G2), [fv('G2'), $(G2)]);
     ok('gst: due 28 July 2026 (quarterly)', /Due 28 July 2026/.test(body(g)), body(g).slice(0, 900));
-    ok('gst: every check passes incl. GST account movement = net GST − BAS paid, green', green(g) && /6\/6 checks passed/.test(banner(g)) && /✓ GST account movement on the Balance Sheet = net GST − GST paid to the ATO — .* paid/.test(banner(g)) && g.errs.length === 0, banner(g));
+    ok('gst: every check passes incl. GST account movement = net GST − BAS paid, green', green(g) && /8\/8 checks passed/.test(banner(g)) && /✓ GST account movement on the Balance Sheet = net GST − GST paid to the ATO — .* paid/.test(banner(g)) && g.errs.length === 0, banner(g));
     ok('gst: documents filtered to the period in Xero (where from the dates)', g.calls.some((x) => x.id === 'invoices' && x.params.where === 'Date>=DateTime(2026,04,01) AND Date<=DateTime(2026,06,30)' && x.params.statuses === 'AUTHORISED,PAID'), g.calls.filter((x) => x.id === 'invoices').map((x) => x.params.where));
-    ok('gst: every PAYG code the library lists is shown — W1, W2, W4, W3, T1, T2, 5A (N/A until a source exists)', ['W1', 'W2', 'W4', 'W3', 'T1', 'T2', '5A'].every((k) => fv(k) === 'N/A — not in source'), ['W1', 'W2', 'W4', 'W3', 'T1', 'T2', '5A'].map(fv));
+    ok('gst: every PAYG code the library lists is shown — W4, W3, T1, T2, 5A N/A (not in the Xero APIs)', ['W4', 'W3', 'T1', 'T2', '5A'].every((k) => fv(k) === 'N/A — not in source'), ['W4', 'W3', 'T1', 'T2', '5A'].map(fv));
+    { const runs = L.listPayRuns({}).PayRuns.filter((r) => { const d = new Date(+/\d+/.exec(r.PaymentDate)[0]).toISOString().slice(0, 10); return r.PayRunStatus === 'POSTED' && d >= '2026-04-01' && d <= '2026-06-30'; });
+      const w1 = L.r2(runs.reduce((a, r) => a + r.Wages, 0)), w2 = L.r2(runs.reduce((a, r) => a + r.Tax, 0));
+      ok('gst: W1 / W2 = gross wages and tax withheld on the pay runs paid in the quarter (Xero Payroll AU)', runs.length === 3 && fv('W1') === $(w1) && fv('W2') === $(w2), [runs.length, fv('W1'), $(w1), fv('W2'), $(w2)]);
+      ok('gst: W2 consistent with W1 — passes, pay runs fetched for the selected organisation', /✓ W2 consistent with W1/.test(banner(g)) && g.calls.some((x) => x.id === 'pay_runs' && 'xero_tenant_id' in x.params) && green(g), banner(g).slice(0, 300)); }
+    { const gn = await run('gst', man('gst'), GS(), { fail: { pay_runs: { code: 'needs_connection', message: 'Connect xero-payroll-au to see this data' } } }); const f2 = (code) => { const tr = [...gn.doc.querySelectorAll('.xk-grid tr')].find((r) => r.children[0] && r.children[0].textContent === code); return tr ? tr.children[2].textContent : null; };
+      ok('gst: Xero Payroll (Australia) not connected → W1 / W2 N/A with the reason, banner still green, never red in Sources', f2('W1') === 'N/A — not in source' && /Xero Payroll \(Australia\) is not connected/.test(body(gn)) && green(gn) && !gn.doc.querySelector('#xk-sources .xk-err'), [f2('W1'), banner(gn).slice(0, 200)]); }
+    { const gw = await run('gst', man('gst'), GS({ pay_runs: (q) => { const r = L.listPayRuns(q); r.PayRuns.forEach((p) => { p.Tax = p.Wages * 0.6; }); return r; } }));
+      ok('gst: tax withheld above 47% of wages → the W2 check fails', /✗ W2 consistent with W1/.test(banner(gw)), banner(gw).slice(0, 300)); }
     { const gm = await run('gst', man('gst'), GS({ org: (q) => { const o = L.organisation(q); o.Organisations[0].SalesTaxPeriod = 'MONTHLY'; return o; } })); await set(gm, 'xk-view', 'list');
       const per = [...gm.doc.querySelectorAll('#xk-body .xk-grid tbody tr')].map((tr) => tr.children[0].textContent);
       ok('gst: a monthly GST filer’s statements list shows the last 6 months, not quarters', /monthly GST/.test(body(gm)) && per.length === 6 && per.every((p) => /^month ended/.test(p)), per); }

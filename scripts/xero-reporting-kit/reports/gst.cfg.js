@@ -3,9 +3,11 @@ XK.app({
   inputs: { start: 'from_date', end: 'to_date', org: 'org', display: 'display' },
   defaults: { from_date: '2026-04-01', to_date: '2026-06-30', prev_end: '2026-03-31', date_where: 'Date>=DateTime(2026,04,01) AND Date<=DateTime(2026,06,30)', org: '', page: 1,
     display: '{"cents":1,"k":0,"zeros":1,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"last_quarter","a":"custom","c":"none","v":"statement"}' },
-  uses: { invoices: ['date_where', 'org'], credit_notes: ['date_where', 'org'], bank_tx: ['date_where', 'org'], tax_rates: ['org'], accounts: ['org'], bs_end: ['to_date', 'org'], bs_start: ['prev_end', 'org'], org: ['org'], connections: [] },
-  paged: { invoices: { input: 'page', key: 'Invoices' }, credit_notes: { input: 'page', key: 'CreditNotes' }, bank_tx: { input: 'page', key: 'BankTransactions' } },
-  tools: { invoices: 'list_invoices (sales invoices and bills in the period, with lines)', credit_notes: 'list_credit_notes (in the period)', bank_tx: 'list_bank_transactions (spend / receive money in the period)', tax_rates: 'list_tax_rates (BAS reporting type of each tax rate)', accounts: 'list_accounts (the GST account)', bs_end: 'get_balance_sheet (GST at the period end)', bs_start: 'get_balance_sheet (GST the day before the period)', org: 'get_organisation (GST basis and period)', connections: 'list_connections' },
+  uses: { pay_runs: ['org'], invoices: ['date_where', 'org'], credit_notes: ['date_where', 'org'], bank_tx: ['date_where', 'org'], tax_rates: ['org'], accounts: ['org'], bs_end: ['to_date', 'org'], bs_start: ['prev_end', 'org'], org: ['org'], connections: [] },
+  paged: { invoices: { input: 'page', key: 'Invoices' }, credit_notes: { input: 'page', key: 'CreditNotes' }, bank_tx: { input: 'page', key: 'BankTransactions' }, pay_runs: { input: 'page', key: 'PayRuns' } },
+  sources: { pay_runs: { name: 'Xero Payroll (Australia)', optional: true } },
+  mechanism: 'xero-accounting and xero-payroll-au connectors — mySMB custom MCPs on the Xero Accounting and Payroll AU APIs (AGT-001)',
+  tools: { pay_runs: 'list_pay_runs (xero-payroll-au — W1 / W2)', invoices: 'list_invoices (sales invoices and bills in the period, with lines)', credit_notes: 'list_credit_notes (in the period)', bank_tx: 'list_bank_transactions (spend / receive money in the period)', tax_rates: 'list_tax_rates (BAS reporting type of each tax rate)', accounts: 'list_accounts (the GST account)', bs_end: 'get_balance_sheet (GST at the period end)', bs_start: 'get_balance_sheet (GST the day before the period)', org: 'get_organisation (GST basis and period)', connections: 'list_connections' },
   presets: [['this_quarter', 'This quarter'], ['last_quarter', 'Last quarter'], ['this_month', 'This month'], ['last_month', 'Last month'], ['this_fy', 'This financial year'], ['last_fy', 'Last financial year'], ['custom', 'Custom']],
   views: [['statement', 'Statement'], ['list', 'Statements list'], ['lines', 'Tax lines']],
   derive: function (inp) { return { prev_end: XK.addDaysIso(inp.from_date, -1), date_where: XK.dateWhere('Date', inp.from_date, inp.to_date) }; },
@@ -36,6 +38,10 @@ XK.app({
     c.rows('credit_notes').forEach(function (d) { if (/^(AUTHORISED|PAID)$/.test(d.Status || '')) add(d, d.Type === 'ACCRECCREDIT' ? 'sales' : 'purchases', -1, 'Credit note'); });
     c.rows('bank_tx').forEach(function (d) { if (d.Status === 'AUTHORISED' && (d.Type === 'RECEIVE' || d.Type === 'SPEND')) add(d, d.Type === 'RECEIVE' ? 'sales' : 'purchases', 1, d.Type === 'RECEIVE' ? 'Receive money' : 'Spend money'); });
     var net = r2(F['1A'] - F['1B']);
+    // PAYG withholding: W1 = gross wages and W2 = tax withheld on pay runs posted with a payment date in the period
+    var prOk = !c.errors.pay_runs && !!c.data.pay_runs, runs = prOk ? c.rows('pay_runs').map(function (r) { return { pay: XK.isoDate(r.PaymentDate), status: r.PayRunStatus || '', wages: XK.num(r.Wages) || 0, tax: XK.num(r.Tax) || 0 }; }).filter(function (r) { return inP(r.pay); }) : [];
+    var posted = runs.filter(function (r) { return r.status === 'POSTED'; }), drafts = runs.length - posted.length;
+    var W1 = prOk ? XK.sum(posted.map(function (r) { return r.wages; })) : null, W2 = prOk ? XK.sum(posted.map(function (r) { return r.tax; })) : null;
     // due date: ATO standard lodgement dates (quarterly 28th of the month after, Oct–Dec 28 Feb; monthly 21st)
     var pe = XK.parse(to), monthly = /MONTH/i.test(org.SalesTaxPeriod || '') && !/TWO/i.test(org.SalesTaxPeriod || ''), dueDate = (function () { var y = pe.getUTCFullYear(), m = pe.getUTCMonth() + 1; if (monthly) return XK.iso(new Date(Date.UTC(y, m, 21))); if (m === 12) return (y + 1) + '-02-28'; return XK.iso(new Date(Date.UTC(y, m, 28))); })();
     // GST account movement on the Balance Sheet vs net GST − payments / refunds coded to the GST account in the period
@@ -47,8 +53,9 @@ XK.app({
     var html = '<div class="xk-banner na" style="margin-bottom:12px"><strong>This is not your Activity Statement</strong> — a GST summary calculated from your Xero transactions. Lodge from Xero → Tax → Activity statements.' + (cashBasis ? ' Your GST is reported on the <strong>cash</strong> basis; these figures are on the invoice (accrual) basis and can differ from the lodged amounts.' : '') + '</div>';
     if (view === 'statement') {
       html += '<div class="xk-grid2"><div class="xk-card"><h3>GST — ' + XK.h(XK.periodLine(from, to).replace(/^For the /, '')) + '</h3><table class="xk-grid"><tbody>' + fld('G1', 'Total sales (including any GST)', F.G1) + fld('G2', 'Export sales', F.G2) + fld('G3', 'Other GST-free sales', F.G3) + fld('G4', 'Input taxed sales', F.G4) + fld('G10', 'Capital purchases (including any GST)', F.G10) + fld('G11', 'Non-capital purchases (including any GST)', F.G11) + fld('1A', 'GST on sales', F['1A']) + fld('1B', 'GST on purchases', F['1B']) + '</tbody></table></div>' +
-        '<div class="xk-card"><h3>PAYG and summary</h3><table class="xk-grid"><tbody>' + fld('W1', 'Total salary, wages and other payments', null) + fld('W2', 'Amounts withheld from payments at W1', null) + fld('W4', 'Amounts withheld where no ABN is quoted', null) + fld('W3', 'Other amounts withheld', null) +
+        '<div class="xk-card"><h3>PAYG and summary</h3><table class="xk-grid"><tbody>' + fld('W1', 'Total salary, wages and other payments', W1) + fld('W2', 'Amounts withheld from payments at W1', W2) + fld('W4', 'Amounts withheld where no ABN is quoted', null) + fld('W3', 'Other amounts withheld', null) +
         fld('T1', 'PAYG instalment income', null) + fld('T2', 'New varied rate / instalment rate', null) + fld('5A', 'PAYG instalment amount', null) + '</tbody></table>' +
+        '<p class="muted">' + (prOk ? 'W1 / W2: ' + posted.length + ' pay run' + (posted.length === 1 ? '' : 's') + ' posted with a payment date in the period (Xero Payroll AU)' + (drafts ? '; ' + drafts + ' draft pay run' + (drafts === 1 ? ' is' : 's are') + ' not included' : '') + '.' : 'W1 / W2: ' + XK.h(c.err('pay_runs') || 'Xero Payroll (Australia) is not available') + '') + ' W3, W4 and PAYG instalments (T1, T2, 5A) are not in the Xero APIs.</p>' +
         '<div class="xk-kpi" style="margin-top:12px"><div class="lbl">' + (net >= 0 ? 'Net GST payable' : 'Net GST refundable') + ' (1A − 1B)</div><div class="val">' + money(Math.abs(net)) + '</div><div class="sub">Due ' + XK.asOfLine(dueDate).replace(/^As at /, '') + ' (ATO standard date; lodgement programs can differ)</div></div></div></div>';
     } else if (view === 'list') {
       var step = monthly ? 1 : 3, q0 = XK.parse(XK.preset(monthly ? 'this_month' : 'this_quarter', c.fy.month).start), qs = []; for (var i = 1; i <= (monthly ? 6 : 4); i++) { var qa = new Date(Date.UTC(q0.getUTCFullYear(), q0.getUTCMonth() - step * i, 1)), qb = new Date(Date.UTC(q0.getUTCFullYear(), q0.getUTCMonth() - step * i + step, 0)); qs.push({ start: XK.iso(qa), end: XK.iso(qb) }); }
@@ -67,14 +74,16 @@ XK.app({
         : { name: 'GST account movement on the Balance Sheet = net GST − GST paid to the ATO', pass: code ? XK.near(move, r2(net - settled)) : null, detail: code ? money(move) + ' = ' + money(net) + ' − ' + money(settled) + ' paid' : 'GST account code unknown' },
       { name: 'All documents in the period loaded', pass: ids.some(function (id) { return c.errors[id] || c.truncated(id); }) ? false : true, detail: docs + ' document(s)' }
     ];
-    this._x = { F: F, net: net, lines: lines, dueDate: dueDate };
+    if (prOk) checks.push({ name: 'W2 consistent with W1 (tax withheld between 0% and 47% of wages — the top marginal rate with the Medicare levy)', pass: W1 > 0 ? W2 >= 0 && W2 <= W1 * 0.47 + 0.005 : XK.near(W2, 0), detail: W1 > 0 ? money(W2) + ' = ' + XK.pct(W2 / W1) + ' of ' + money(W1) : 'No wages paid in the period' },
+      { name: 'All pay runs loaded', pass: c.truncated('pay_runs') ? false : true, detail: runs.length + ' pay run(s) paid in the period' });
+    this._x = { F: F, net: net, lines: lines, dueDate: dueDate, W1: W1, W2: W2 };
     return { checks: checks, notes: ['Calculated from the GST on invoice, bill, credit-note and spend / receive money lines dated in the period (invoice basis), mapped through each tax rate\'s BAS reporting type.', 'Manual journals with GST are not included.'],
-      na: ['BAS lodgement status, ATO connection and PAYG withholding / instalments (W1, W2, T1) — not in the Xero Accounting API'], period: XK.periodLine(from, to) };
+      na: ['BAS lodgement status, ATO connection, W3 / W4 and PAYG instalments (T1, T2, 5A) — not in the Xero APIs'].concat(prOk ? [] : ['W1 / W2 (Xero Payroll (Australia) not available for this organisation)']), period: XK.periodLine(from, to) };
   },
   excel: function (c) {
     var x = this._x; if (!x) return [];
     var rows = [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: 'GST summary (not your Activity Statement)', s: 'bold' }], [XK.periodLine(c.inputs.from_date, c.inputs.to_date)], [], [{ v: 'Field', s: 'bold' }, { v: 'Amount', s: 'bold' }]]
-      .concat(['G1', 'G2', 'G3', 'G4', 'G10', 'G11', '1A', '1B'].map(function (k) { return [k, { v: x.F[k], s: 'money' }]; })).concat([[{ v: '1A − 1B', s: 'bold' }, { v: x.net, s: 'moneyBold' }], ['Due', x.dueDate]]);
+      .concat(['G1', 'G2', 'G3', 'G4', 'G10', 'G11', '1A', '1B'].map(function (k) { return [k, { v: x.F[k], s: 'money' }]; })).concat([[{ v: '1A − 1B', s: 'bold' }, { v: x.net, s: 'moneyBold' }], ['Due', x.dueDate], [], ['W1', x.W1 == null ? 'N/A — not in source' : { v: x.W1, s: 'money' }], ['W2', x.W2 == null ? 'N/A — not in source' : { v: x.W2, s: 'money' }]]);
     var ln = [[{ v: 'Date', s: 'bold' }, { v: 'Document', s: 'bold' }, { v: 'Contact', s: 'bold' }, { v: 'Account', s: 'bold' }, { v: 'Tax type', s: 'bold' }, { v: 'Amount incl. GST', s: 'bold' }, { v: 'GST', s: 'bold' }, { v: 'BAS fields', s: 'bold' }]].concat(x.lines.map(function (l) { return [l.date, l.doc, l.contact, l.account, l.tax, { v: l.gross, s: 'money' }, { v: l.gst, s: 'money' }, l.fields]; }));
     return [{ name: 'GST summary', rows: rows, widths: [20, 18] }, { name: 'Tax lines', rows: ln, widths: [12, 20, 28, 10, 14, 16, 12, 14] }];
   }

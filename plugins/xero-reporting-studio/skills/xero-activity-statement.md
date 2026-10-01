@@ -4,7 +4,7 @@ description: Build a live, validated Xero GST summary for a BAS period (P05) on 
 ---
 # GST summary (activity statement) (P05)
 
-Use when the user asks for an activity statement, BAS, GST for a quarter or month, GST payable or refundable, or BAS labels such as G1 or 1A. Load `xero-report-foundation` first and follow its *Build a kit report* steps with the blocks below — copy them, do not rewrite them. This skill needs the `xero-accounting` connector (`list_invoices`, `list_credit_notes`, `list_bank_transactions`, `list_tax_rates`, `list_accounts`, `get_balance_sheet`, `get_organisation`, `list_connections`).
+Use when the user asks for an activity statement, BAS, GST for a quarter or month, GST payable or refundable, or BAS labels such as G1 or 1A. Load `xero-report-foundation` first and follow its *Build a kit report* steps with the blocks below — copy them, do not rewrite them. This skill needs the connectors `xero-accounting` (`list_invoices`, `list_credit_notes`, `list_bank_transactions`, `list_tax_rates`, `list_accounts`, `get_balance_sheet`, `get_organisation`, `list_connections`) and `xero-payroll-au` (`list_pay_runs`).
 
 Xero location: Tax → Activity statements. Library: Xero Reports Prompt Library v1.2 → Prompts → P05. Delivery: Wave 3 (delivery order 14).
 
@@ -20,8 +20,8 @@ Call `get_organisation` (SalesTaxBasis, SalesTaxPeriod) and `list_connections` o
 
 | Member / view | How |
 |---|---|
-| Statement | Default: GST fields, PAYG (W1, W2, T1 N/A), net GST payable / refundable and the ATO due date |
-| Statements list | The last four quarters; click one to show it (lodgement status N/A — not in the API) |
+| Statement | Default: GST fields; PAYG W1 / W2 from Xero Payroll (Australia) pay runs paid in the period (N/A when that connector is not available); W3, W4, T1, T2, 5A N/A; net GST payable / refundable and the ATO due date |
+| Statements list | The last four quarters (the last six months for a monthly GST filer); click one to show it (lodgement status N/A — not in the API) |
 | Tax lines | Every line with its tax type and BAS fields |
 
 ## Validation checks (shown in the banner)
@@ -32,6 +32,7 @@ Call `get_organisation` (SalesTaxBasis, SalesTaxPeriod) and `list_connections` o
 - Every tax rate used maps to a BAS field
 - **Independent tie:** GST account movement on the Balance Sheet = net GST − GST paid to the ATO in the period
 - All documents in the period loaded
+- W2 consistent with W1 (tax withheld 0–47% of wages) and all pay runs loaded — when Xero Payroll (Australia) is available
 
 ## Save as
 
@@ -245,6 +246,27 @@ Call `get_organisation` (SalesTaxBasis, SalesTaxPeriod) and `list_connections` o
       }
     },
     {
+      "id": "pay_runs",
+      "tool": {
+        "mcp": "xero-payroll-au",
+        "name": "list_pay_runs"
+      },
+      "params": {
+        "order": {
+          "kind": "static",
+          "value": "PayRunPeriodEndDate DESC"
+        },
+        "page": {
+          "kind": "input",
+          "input": "page"
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
       "id": "org",
       "tool": {
         "mcp": "xero-accounting",
@@ -376,9 +398,9 @@ main.xk-card{border-top:4px solid var(--accent)}
 </main>
 <section id="xk-sources" class="xk-card" aria-label="Sources and limitations"></section>
 <script>setTimeout(function () { if (!window.__reportStarted) { var s = document.getElementById("xk-status"); if (s) s.textContent = "This report failed to start. Press Refresh; if it keeps happening, ask for the report to be regenerated."; } }, 20000);</script>
-<script>"use strict";(()=>{function num(v){if(v==null||v==="")return null;var n=Number(String(v).replace(/,/g,""));return isFinite(n)?n:null}function near(a,b,tol){return a!=null&&b!=null&&Math.abs(a-b)<=(tol==null?.01:tol)}function errorOf(v){return v&&typeof v=="object"&&!Array.isArray(v)&&v.__error!=null?String(v.__error):null}function isoDate(v){if(v==null||v==="")return null;var m=/\/Date\((-?\d+)/.exec(String(v));if(m){var d=new Date(+m[1]);return iso(D(d.getUTCFullYear(),d.getUTCMonth()+1,d.getUTCDate()))}return String(
-v).slice(0,10)}function reportOf(v){return!v||errorOf(v)?null:Array.isArray(v.Reports)?v.Reports[0]||null:Array.isArray(v.Rows)?v:null}function attr(cell,id){var a=(cell&&cell.Attributes||[]).filter(function(x){return x&&(x.Id===id||id==="account"&&/^accountid$/i.test(x.Id||""))})[0];return a?a.Value:
-null}function walk(v){var rep=reportOf(v),out={lines:[],columns:[],titles:[],date:null,name:null,sections:[]};if(!rep)return out;out.titles=rep.ReportTitles||[],out.date=rep.ReportDate||null,out.name=rep.ReportName||null;var parent=null,vals=function(c){return c.slice(1).map(function(x){return num(x&&x.Value)})},
+<script>"use strict";(()=>{function num(v){if(v==null||v==="")return null;var n=Number(String(v).replace(/,/g,""));return isFinite(n)?n:null}function near(a,b,tol){return a!=null&&b!=null&&Math.abs(a-b)<=(tol==null?.01:tol)}function sum(arr){var s=0;return arr.forEach(function(v){v!=null&&(s+=v)}),Math.round(s*100)/100}function errorOf(v){return v&&typeof v=="object"&&!Array.isArray(v)&&v.__error!=null?String(v.__error):null}function isoDate(v){
+if(v==null||v==="")return null;var m=/\/Date\((-?\d+)/.exec(String(v));if(m){var d=new Date(+m[1]);return iso(D(d.getUTCFullYear(),d.getUTCMonth()+1,d.getUTCDate()))}return String(v).slice(0,10)}function reportOf(v){return!v||errorOf(v)?null:Array.isArray(v.Reports)?v.Reports[0]||null:Array.isArray(
+v.Rows)?v:null}function attr(cell,id){var a=(cell&&cell.Attributes||[]).filter(function(x){return x&&(x.Id===id||id==="account"&&/^accountid$/i.test(x.Id||""))})[0];return a?a.Value:null}function walk(v){var rep=reportOf(v),out={lines:[],columns:[],titles:[],date:null,name:null,sections:[]};if(!rep)return out;out.titles=rep.ReportTitles||[],out.date=rep.ReportDate||null,out.name=rep.ReportName||null;var parent=null,vals=function(c){return c.slice(1).map(function(x){return num(x&&x.Value)})},
 lbl=function(c){return String((c[0]||{}).Value||"")};return(rep.Rows||[]).forEach(function(r){if(r){var c=r.Cells||[];if(r.RowType==="Header"){out.columns=c.slice(1).map(function(x){return x&&x.Value||""});return}if(r.RowType!=="Section"){c.length&&out.lines.push({kind:"total",depth:0,label:lbl(c),group:lbl(
 c),parent:null,calc:!0,fixed:!0,values:vals(c),path:[]});return}var title=String(r.Title||""),kids=r.Rows||[];if(title&&!kids.length){parent=title,out.lines.push({kind:"header",depth:0,label:title,group:title,parent:null,values:[],path:[]});return}var hasRow=kids.some(function(k){return k&&k.RowType===
 "Row"}),real=kids.some(function(k){return k&&k.RowType==="Row"&&attr((k.Cells||[])[0],"account")})||hasRow&&kids.some(function(k){return k&&k.RowType==="SummaryRow"});if(!title&&!real){kids.forEach(function(k){var kc=k.Cells||[],label=lbl(kc),closes=parent&&label.toLowerCase()===("total "+parent).toLowerCase()?
@@ -396,19 +418,20 @@ var n=parseInt(hex.slice(1),16),r=n>>16,g=n>>8&255,b=n&255,t=function(c){return 
 "--d1","--pos"];if(!HEX.test(hex||""))return props.forEach(function(p){root.style.removeProperty(p)}),!1;var dark=root.getAttribute("data-myhub-theme")==="dark",a=dark?shade(hex,.25):hex;return root.style.setProperty("--accent",a),root.style.setProperty("--btn",dark?hex:shade(hex,-.2)),root.style.setProperty(
 "--c1",a),root.style.setProperty("--d1",a),root.style.setProperty("--pos",a),!0}function readDisplay(str){var d={},k,src={};try{src=JSON.parse(str||"{}")||{}}catch(e){src={}}for(k in DISPLAY_DEFAULT)d[k]=src[k]!=null?src[k]:DISPLAY_DEFAULT[k];return d}function writeDisplay(d){var o={},k;for(k in DISPLAY_DEFAULT)
 o[k]=d[k];return JSON.stringify(o)}function money(v,cur,d){if(v==null||v==="")return"";d=d||DISPLAY_DEFAULT;var n=Number(v);if(!isFinite(n))return String(v);d.k&&(n=n/1e3);var dp=d.cents&&!d.k?2:d.k?1:0,abs=Math.abs(n).toLocaleString("en-AU",{minimumFractionDigits:dp,maximumFractionDigits:dp}),s=symbol(
-cur)+abs+(d.k?"k":"");return n<0&&Number(abs.replace(/,/g,""))!==0&&(s=d.neg==="paren"?"("+s+")":d.neg==="trail"?s+"-":"-"+s),s}function isNeg(v){return v!=null&&Number(v)<0}function iso(dt){return dt.getUTCFullYear()+"-"+String(dt.getUTCMonth()+1).padStart(2,"0")+"-"+String(dt.getUTCDate()).padStart(2,"0")}function D(y,m,d){return new Date(Date.UTC(y,m-1,d))}function parse(s){var p=String(s).split("-");return D(+p[0],+p[1],
-+p[2])}function addDays(dt,n){return new Date(dt.getTime()+n*864e5)}function eom(y,m){return D(y,m+1,0)}function today(){var t=new Date;return D(t.getFullYear(),t.getMonth()+1,t.getDate())}function fyStartOf(dt,fyMonth){var y=dt.getUTCFullYear();return dt.getUTCMonth()+1<fyMonth&&(y-=1),D(y,fyMonth,
-1)}var PRESETS=[["today","Today"],["this_week","This week"],["this_week_td","This week to date"],["this_month","This month"],["this_month_td","This month to date"],["this_quarter","This quarter"],["this_quarter_td","This quarter to date"],["this_fy","This financial year"],["this_fy_td","This financi\
-al year to date"],["last_week","Last week"],["last_month","Last month"],["last_quarter","Last quarter"],["last_fy","Last financial year"],["last_30","Last 30 days"],["since_60","Since 60 days ago"],["since_90","Since 90 days ago"],["since_365","Since 365 days ago"],["custom","Custom"]];function preset(key,fyMonth,now){
-var t=now?parse(now):today(),y=t.getUTCFullYear(),m=t.getUTCMonth()+1,dow=(t.getUTCDay()+6)%7,qs=Math.floor((m-1)/3)*3+1,fs=fyStartOf(t,fyMonth||7),r;switch(key){case"today":r=[t,t];break;case"this_week":r=[addDays(t,-dow),addDays(t,6-dow)];break;case"this_week_td":r=[addDays(t,-dow),t];break;case"t\
-his_month":r=[D(y,m,1),eom(y,m)];break;case"this_month_td":r=[D(y,m,1),t];break;case"this_quarter":r=[D(y,qs,1),eom(y,qs+2)];break;case"this_quarter_td":r=[D(y,qs,1),t];break;case"this_fy":r=[fs,addDays(D(fs.getUTCFullYear()+1,fs.getUTCMonth()+1,1),-1)];break;case"this_fy_td":r=[fs,t];break;case"las\
-t_week":r=[addDays(t,-dow-7),addDays(t,-dow-1)];break;case"last_month":r=[D(y,m-1,1),eom(y,m-1)];break;case"last_quarter":r=[D(y,qs-3,1),eom(y,qs-1)];break;case"last_fy":r=[D(fs.getUTCFullYear()-1,fs.getUTCMonth()+1,1),addDays(fs,-1)];break;case"last_30":r=[addDays(t,-29),t];break;case"since_60":r=[
-addDays(t,-60),t];break;case"since_90":r=[addDays(t,-90),t];break;case"since_365":r=[addDays(t,-365),t];break;case"last_12m":r=[D(y,m-12,1),eom(y,m-1)];break;case"last_24m":r=[D(y,m-24,1),eom(y,m-1)];break;default:return null}return{start:iso(r[0]),end:iso(r[1])}}var ASAT=[["today","Today"],["end_th\
-is_month","End of this month"],["end_last_month","End of last month"],["end_last_quarter","End of last quarter"],["end_last_fy","End of last financial year"],["custom","Custom"]];function asAt(key,fyMonth,now){var t=now?parse(now):today(),y=t.getUTCFullYear(),m=t.getUTCMonth()+1,qs=Math.floor((m-1)/
-3)*3+1;switch(key){case"today":return iso(t);case"end_this_month":return iso(eom(y,m));case"end_last_month":return iso(eom(y,m-1));case"end_last_quarter":return iso(eom(y,qs-1));case"end_last_fy":return iso(addDays(fyStartOf(t,fyMonth||7),-1));default:return null}}function compare(start,end,mode,fyMonth){
-var s=parse(start),e=parse(end),len;if(mode==="prev_year")return{start:iso(D(s.getUTCFullYear()-1,s.getUTCMonth()+1,Math.min(s.getUTCDate(),eom(s.getUTCFullYear()-1,s.getUTCMonth()+1).getUTCDate()))),end:iso(D(e.getUTCFullYear()-1,e.getUTCMonth()+1,Math.min(e.getUTCDate(),eom(e.getUTCFullYear()-1,e.
-getUTCMonth()+1).getUTCDate())))};if(mode==="ytd")return{start:iso(fyStartOf(e,fyMonth||7)),end};if(s.getUTCDate()===1&&iso(e)===iso(eom(e.getUTCFullYear(),e.getUTCMonth()+1))){var months=(e.getUTCFullYear()-s.getUTCFullYear())*12+(e.getUTCMonth()-s.getUTCMonth())+1;return{start:iso(D(s.getUTCFullYear(),
-s.getUTCMonth()+1-months,1)),end:iso(addDays(s,-1))}}return len=Math.round((e-s)/864e5),{start:iso(addDays(s,-len-1)),end:iso(addDays(s,-1))}}var MON=["January","February","March","April","May","June","July","August","September","October","November","December"];function longDate(x){return x.getUTCDate()+" "+MON[x.getUTCMonth()]+" "+x.getUTCFullYear()}function periodLine(start,end){var s=parse(start),e=parse(end),ey=e.getUTCFullYear();if(s.getUTCDate()===1&&iso(e)===iso(eom(ey,e.getUTCMonth()+1))){var months=(ey-s.getUTCFullYear())*12+(e.getUTCMonth()-s.getUTCMonth())+
+cur)+abs+(d.k?"k":"");return n<0&&Number(abs.replace(/,/g,""))!==0&&(s=d.neg==="paren"?"("+s+")":d.neg==="trail"?s+"-":"-"+s),s}function pct(v,dp){return v==null||!isFinite(v)?"":(v*100).toFixed(dp==null?1:dp)+"%"}function isNeg(v){return v!=null&&Number(v)<0}function iso(dt){return dt.getUTCFullYear()+
+"-"+String(dt.getUTCMonth()+1).padStart(2,"0")+"-"+String(dt.getUTCDate()).padStart(2,"0")}function D(y,m,d){return new Date(Date.UTC(y,m-1,d))}function parse(s){var p=String(s).split("-");return D(+p[0],+p[1],+p[2])}function addDays(dt,n){return new Date(dt.getTime()+n*864e5)}function eom(y,m){return D(
+y,m+1,0)}function today(){var t=new Date;return D(t.getFullYear(),t.getMonth()+1,t.getDate())}function fyStartOf(dt,fyMonth){var y=dt.getUTCFullYear();return dt.getUTCMonth()+1<fyMonth&&(y-=1),D(y,fyMonth,1)}var PRESETS=[["today","Today"],["this_week","This week"],["this_week_td","This week to date"],
+["this_month","This month"],["this_month_td","This month to date"],["this_quarter","This quarter"],["this_quarter_td","This quarter to date"],["this_fy","This financial year"],["this_fy_td","This financial year to date"],["last_week","Last week"],["last_month","Last month"],["last_quarter","Last qua\
+rter"],["last_fy","Last financial year"],["last_30","Last 30 days"],["since_60","Since 60 days ago"],["since_90","Since 90 days ago"],["since_365","Since 365 days ago"],["custom","Custom"]];function preset(key,fyMonth,now){var t=now?parse(now):today(),y=t.getUTCFullYear(),m=t.getUTCMonth()+1,dow=(t.
+getUTCDay()+6)%7,qs=Math.floor((m-1)/3)*3+1,fs=fyStartOf(t,fyMonth||7),r;switch(key){case"today":r=[t,t];break;case"this_week":r=[addDays(t,-dow),addDays(t,6-dow)];break;case"this_week_td":r=[addDays(t,-dow),t];break;case"this_month":r=[D(y,m,1),eom(y,m)];break;case"this_month_td":r=[D(y,m,1),t];break;case"\
+this_quarter":r=[D(y,qs,1),eom(y,qs+2)];break;case"this_quarter_td":r=[D(y,qs,1),t];break;case"this_fy":r=[fs,addDays(D(fs.getUTCFullYear()+1,fs.getUTCMonth()+1,1),-1)];break;case"this_fy_td":r=[fs,t];break;case"last_week":r=[addDays(t,-dow-7),addDays(t,-dow-1)];break;case"last_month":r=[D(y,m-1,1),
+eom(y,m-1)];break;case"last_quarter":r=[D(y,qs-3,1),eom(y,qs-1)];break;case"last_fy":r=[D(fs.getUTCFullYear()-1,fs.getUTCMonth()+1,1),addDays(fs,-1)];break;case"last_30":r=[addDays(t,-29),t];break;case"since_60":r=[addDays(t,-60),t];break;case"since_90":r=[addDays(t,-90),t];break;case"since_365":r=[
+addDays(t,-365),t];break;case"last_12m":r=[D(y,m-12,1),eom(y,m-1)];break;case"last_24m":r=[D(y,m-24,1),eom(y,m-1)];break;default:return null}return{start:iso(r[0]),end:iso(r[1])}}var ASAT=[["today","Today"],["end_this_month","End of this month"],["end_last_month","End of last month"],["end_last_quar\
+ter","End of last quarter"],["end_last_fy","End of last financial year"],["custom","Custom"]];function asAt(key,fyMonth,now){var t=now?parse(now):today(),y=t.getUTCFullYear(),m=t.getUTCMonth()+1,qs=Math.floor((m-1)/3)*3+1;switch(key){case"today":return iso(t);case"end_this_month":return iso(eom(y,m));case"\
+end_last_month":return iso(eom(y,m-1));case"end_last_quarter":return iso(eom(y,qs-1));case"end_last_fy":return iso(addDays(fyStartOf(t,fyMonth||7),-1));default:return null}}function compare(start,end,mode,fyMonth){var s=parse(start),e=parse(end),len;if(mode==="prev_year")return{start:iso(D(s.getUTCFullYear()-
+1,s.getUTCMonth()+1,Math.min(s.getUTCDate(),eom(s.getUTCFullYear()-1,s.getUTCMonth()+1).getUTCDate()))),end:iso(D(e.getUTCFullYear()-1,e.getUTCMonth()+1,Math.min(e.getUTCDate(),eom(e.getUTCFullYear()-1,e.getUTCMonth()+1).getUTCDate())))};if(mode==="ytd")return{start:iso(fyStartOf(e,fyMonth||7)),end};
+if(s.getUTCDate()===1&&iso(e)===iso(eom(e.getUTCFullYear(),e.getUTCMonth()+1))){var months=(e.getUTCFullYear()-s.getUTCFullYear())*12+(e.getUTCMonth()-s.getUTCMonth())+1;return{start:iso(D(s.getUTCFullYear(),s.getUTCMonth()+1-months,1)),end:iso(addDays(s,-1))}}return len=Math.round((e-s)/864e5),{start:iso(
+addDays(s,-len-1)),end:iso(addDays(s,-1))}}var MON=["January","February","March","April","May","June","July","August","September","October","November","December"];function longDate(x){return x.getUTCDate()+" "+MON[x.getUTCMonth()]+" "+x.getUTCFullYear()}function periodLine(start,end){var s=parse(start),e=parse(end),ey=e.getUTCFullYear();if(s.getUTCDate()===1&&iso(e)===iso(eom(ey,e.getUTCMonth()+1))){var months=(ey-s.getUTCFullYear())*12+(e.getUTCMonth()-s.getUTCMonth())+
 1;if(months===1)return"For the month ended "+longDate(e);if(months===12)return"For the year ended "+longDate(e);if(months>1)return"For the "+months+" months ended "+longDate(e)}return"For the period "+longDate(s)+" to "+longDate(e)}function asOfLine(d){var x=parse(d);return"As at "+x.getUTCDate()+" "+MON[x.getUTCMonth()]+" "+x.getUTCFullYear()}function footerStamp(basis,fetchedAt,cur){var t=fetchedAt?new Date(fetchedAt):new Date,wd=t.toLocaleDateString("en-AU",{weekday:"long"}),dm=t.getDate()+" "+MON[t.getMonth()]+", "+t.getFullYear(),
 hm=t.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",hour12:!0}),off=-t.getTimezoneOffset(),sign=off>=0?"+":"-",a=Math.abs(off),tz="GMT"+sign+String(Math.floor(a/60)).padStart(2,"0")+":"+String(a%60).padStart(2,"0");return(basis==null?cur||"":(basis==="Cash"?"Cash basis":"Accrual basis")+
 (cur?" \xB7 "+cur:""))+" | "+wd+", "+dm+" "+hm+" "+tz}function dateWhere(field,from,to,extra){var dt=function(s){var p=String(s).split("-");return"DateTime("+p[0]+","+p[1]+","+p[2]+")"};return(extra?extra+" AND ":"")+(from?field+">="+dt(from):"")+(from&&to?" AND ":"")+(to?field+"<="+dt(to):"")}var CRC=(function(){var t=[],c,n,k;for(n=0;n<256;n++){for(c=
@@ -521,15 +544,17 @@ basis&&S.inputs[I.basis],org:I.org&&(S.inputs[I.org]||c.organisation.active||"")
 c.currency],[],["Data as of",S.fetchedAt||""],["Source",cfg.mechanism||MECHANISM]]),widths:[28,60]});var name=[c.company||"Xero",cfg.title,I.start?S.inputs[I.start]+" to "+S.inputs[I.end]:I.asAt?"as at "+S.inputs[I.asAt]:""].filter(Boolean).join(" - ").replace(/[\\\/:*?"<>|]+/g," ");download(xlsx(sheets,
 c.currency),name+".xlsx")}function boot(bundle){if(S.data={},S.errors=Object.assign({},bundle.errors||{}),S.fetchedAt=bundle.fetchedAt||null,Object.keys(bundle.data||{}).forEach(function(id){S.errors[id]||absorb(id,bundle.data[id])}),adoptHeader(),status(""),S.first){S.first=!1;var roll=rollPresets();
 if(roll){change(roll);return}if(announce(),heal())return}render(),retryLimited(1).then(pageAll).then(fanAll)}return MH?(MyHubReport.onData(function(bundle){window.__reportStarted=!0,boot(bundle)}),MH.onRefresh&&MH.onRefresh(function(){status("Refreshing\u2026")}),MH.onThemeChange&&MH.onThemeChange(function(){
-render()}),{state:S,change,render,exportXlsx,ctx,retryLimited}):(status("Open this report in mySMB to load Xero data."),{state:S})}window.XK={addDaysIso:function(s,k){return iso(addDays(parse(s),k))},app,asOfLine,dateWhere,grid,h,iso,isoDate,money,near,num,parse,periodLine,preset,walk};})();</script>
+render()}),{state:S,change,render,exportXlsx,ctx,retryLimited}):(status("Open this report in mySMB to load Xero data."),{state:S})}window.XK={addDaysIso:function(s,k){return iso(addDays(parse(s),k))},app,asOfLine,dateWhere,grid,h,iso,isoDate,money,near,num,parse,pct,periodLine,preset,sum,walk};})();</script>
 <script>XK.app({
   title: 'GST summary', basisLabel: 'Accrual (invoice)', primary: 'bs_end', dated: ['bs_end'], org: 'org', conns: 'connections', noBasis: true,
   inputs: { start: 'from_date', end: 'to_date', org: 'org', display: 'display' },
   defaults: { from_date: '2026-04-01', to_date: '2026-06-30', prev_end: '2026-03-31', date_where: 'Date>=DateTime(2026,04,01) AND Date<=DateTime(2026,06,30)', org: '', page: 1,
     display: '{"cents":1,"k":0,"zeros":1,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"last_quarter","a":"custom","c":"none","v":"statement"}' },
-  uses: { invoices: ['date_where', 'org'], credit_notes: ['date_where', 'org'], bank_tx: ['date_where', 'org'], tax_rates: ['org'], accounts: ['org'], bs_end: ['to_date', 'org'], bs_start: ['prev_end', 'org'], org: ['org'], connections: [] },
-  paged: { invoices: { input: 'page', key: 'Invoices' }, credit_notes: { input: 'page', key: 'CreditNotes' }, bank_tx: { input: 'page', key: 'BankTransactions' } },
-  tools: { invoices: 'list_invoices (sales invoices and bills in the period, with lines)', credit_notes: 'list_credit_notes (in the period)', bank_tx: 'list_bank_transactions (spend / receive money in the period)', tax_rates: 'list_tax_rates (BAS reporting type of each tax rate)', accounts: 'list_accounts (the GST account)', bs_end: 'get_balance_sheet (GST at the period end)', bs_start: 'get_balance_sheet (GST the day before the period)', org: 'get_organisation (GST basis and period)', connections: 'list_connections' },
+  uses: { pay_runs: ['org'], invoices: ['date_where', 'org'], credit_notes: ['date_where', 'org'], bank_tx: ['date_where', 'org'], tax_rates: ['org'], accounts: ['org'], bs_end: ['to_date', 'org'], bs_start: ['prev_end', 'org'], org: ['org'], connections: [] },
+  paged: { invoices: { input: 'page', key: 'Invoices' }, credit_notes: { input: 'page', key: 'CreditNotes' }, bank_tx: { input: 'page', key: 'BankTransactions' }, pay_runs: { input: 'page', key: 'PayRuns' } },
+  sources: { pay_runs: { name: 'Xero Payroll (Australia)', optional: true } },
+  mechanism: 'xero-accounting and xero-payroll-au connectors — mySMB custom MCPs on the Xero Accounting and Payroll AU APIs (AGT-001)',
+  tools: { pay_runs: 'list_pay_runs (xero-payroll-au — W1 / W2)', invoices: 'list_invoices (sales invoices and bills in the period, with lines)', credit_notes: 'list_credit_notes (in the period)', bank_tx: 'list_bank_transactions (spend / receive money in the period)', tax_rates: 'list_tax_rates (BAS reporting type of each tax rate)', accounts: 'list_accounts (the GST account)', bs_end: 'get_balance_sheet (GST at the period end)', bs_start: 'get_balance_sheet (GST the day before the period)', org: 'get_organisation (GST basis and period)', connections: 'list_connections' },
   presets: [['this_quarter', 'This quarter'], ['last_quarter', 'Last quarter'], ['this_month', 'This month'], ['last_month', 'Last month'], ['this_fy', 'This financial year'], ['last_fy', 'Last financial year'], ['custom', 'Custom']],
   views: [['statement', 'Statement'], ['list', 'Statements list'], ['lines', 'Tax lines']],
   derive: function (inp) { return { prev_end: XK.addDaysIso(inp.from_date, -1), date_where: XK.dateWhere('Date', inp.from_date, inp.to_date) }; },
@@ -560,6 +585,10 @@ render()}),{state:S,change,render,exportXlsx,ctx,retryLimited}):(status("Open th
     c.rows('credit_notes').forEach(function (d) { if (/^(AUTHORISED|PAID)$/.test(d.Status || '')) add(d, d.Type === 'ACCRECCREDIT' ? 'sales' : 'purchases', -1, 'Credit note'); });
     c.rows('bank_tx').forEach(function (d) { if (d.Status === 'AUTHORISED' && (d.Type === 'RECEIVE' || d.Type === 'SPEND')) add(d, d.Type === 'RECEIVE' ? 'sales' : 'purchases', 1, d.Type === 'RECEIVE' ? 'Receive money' : 'Spend money'); });
     var net = r2(F['1A'] - F['1B']);
+    // PAYG withholding: W1 = gross wages and W2 = tax withheld on pay runs posted with a payment date in the period
+    var prOk = !c.errors.pay_runs && !!c.data.pay_runs, runs = prOk ? c.rows('pay_runs').map(function (r) { return { pay: XK.isoDate(r.PaymentDate), status: r.PayRunStatus || '', wages: XK.num(r.Wages) || 0, tax: XK.num(r.Tax) || 0 }; }).filter(function (r) { return inP(r.pay); }) : [];
+    var posted = runs.filter(function (r) { return r.status === 'POSTED'; }), drafts = runs.length - posted.length;
+    var W1 = prOk ? XK.sum(posted.map(function (r) { return r.wages; })) : null, W2 = prOk ? XK.sum(posted.map(function (r) { return r.tax; })) : null;
     // due date: ATO standard lodgement dates (quarterly 28th of the month after, Oct–Dec 28 Feb; monthly 21st)
     var pe = XK.parse(to), monthly = /MONTH/i.test(org.SalesTaxPeriod || '') && !/TWO/i.test(org.SalesTaxPeriod || ''), dueDate = (function () { var y = pe.getUTCFullYear(), m = pe.getUTCMonth() + 1; if (monthly) return XK.iso(new Date(Date.UTC(y, m, 21))); if (m === 12) return (y + 1) + '-02-28'; return XK.iso(new Date(Date.UTC(y, m, 28))); })();
     // GST account movement on the Balance Sheet vs net GST − payments / refunds coded to the GST account in the period
@@ -571,8 +600,9 @@ render()}),{state:S,change,render,exportXlsx,ctx,retryLimited}):(status("Open th
     var html = '<div class="xk-banner na" style="margin-bottom:12px"><strong>This is not your Activity Statement</strong> — a GST summary calculated from your Xero transactions. Lodge from Xero → Tax → Activity statements.' + (cashBasis ? ' Your GST is reported on the <strong>cash</strong> basis; these figures are on the invoice (accrual) basis and can differ from the lodged amounts.' : '') + '</div>';
     if (view === 'statement') {
       html += '<div class="xk-grid2"><div class="xk-card"><h3>GST — ' + XK.h(XK.periodLine(from, to).replace(/^For the /, '')) + '</h3><table class="xk-grid"><tbody>' + fld('G1', 'Total sales (including any GST)', F.G1) + fld('G2', 'Export sales', F.G2) + fld('G3', 'Other GST-free sales', F.G3) + fld('G4', 'Input taxed sales', F.G4) + fld('G10', 'Capital purchases (including any GST)', F.G10) + fld('G11', 'Non-capital purchases (including any GST)', F.G11) + fld('1A', 'GST on sales', F['1A']) + fld('1B', 'GST on purchases', F['1B']) + '</tbody></table></div>' +
-        '<div class="xk-card"><h3>PAYG and summary</h3><table class="xk-grid"><tbody>' + fld('W1', 'Total salary, wages and other payments', null) + fld('W2', 'Amounts withheld from payments at W1', null) + fld('W4', 'Amounts withheld where no ABN is quoted', null) + fld('W3', 'Other amounts withheld', null) +
+        '<div class="xk-card"><h3>PAYG and summary</h3><table class="xk-grid"><tbody>' + fld('W1', 'Total salary, wages and other payments', W1) + fld('W2', 'Amounts withheld from payments at W1', W2) + fld('W4', 'Amounts withheld where no ABN is quoted', null) + fld('W3', 'Other amounts withheld', null) +
         fld('T1', 'PAYG instalment income', null) + fld('T2', 'New varied rate / instalment rate', null) + fld('5A', 'PAYG instalment amount', null) + '</tbody></table>' +
+        '<p class="muted">' + (prOk ? 'W1 / W2: ' + posted.length + ' pay run' + (posted.length === 1 ? '' : 's') + ' posted with a payment date in the period (Xero Payroll AU)' + (drafts ? '; ' + drafts + ' draft pay run' + (drafts === 1 ? ' is' : 's are') + ' not included' : '') + '.' : 'W1 / W2: ' + XK.h(c.err('pay_runs') || 'Xero Payroll (Australia) is not available') + '') + ' W3, W4 and PAYG instalments (T1, T2, 5A) are not in the Xero APIs.</p>' +
         '<div class="xk-kpi" style="margin-top:12px"><div class="lbl">' + (net >= 0 ? 'Net GST payable' : 'Net GST refundable') + ' (1A − 1B)</div><div class="val">' + money(Math.abs(net)) + '</div><div class="sub">Due ' + XK.asOfLine(dueDate).replace(/^As at /, '') + ' (ATO standard date; lodgement programs can differ)</div></div></div></div>';
     } else if (view === 'list') {
       var step = monthly ? 1 : 3, q0 = XK.parse(XK.preset(monthly ? 'this_month' : 'this_quarter', c.fy.month).start), qs = []; for (var i = 1; i <= (monthly ? 6 : 4); i++) { var qa = new Date(Date.UTC(q0.getUTCFullYear(), q0.getUTCMonth() - step * i, 1)), qb = new Date(Date.UTC(q0.getUTCFullYear(), q0.getUTCMonth() - step * i + step, 0)); qs.push({ start: XK.iso(qa), end: XK.iso(qb) }); }
@@ -591,14 +621,16 @@ render()}),{state:S,change,render,exportXlsx,ctx,retryLimited}):(status("Open th
         : { name: 'GST account movement on the Balance Sheet = net GST − GST paid to the ATO', pass: code ? XK.near(move, r2(net - settled)) : null, detail: code ? money(move) + ' = ' + money(net) + ' − ' + money(settled) + ' paid' : 'GST account code unknown' },
       { name: 'All documents in the period loaded', pass: ids.some(function (id) { return c.errors[id] || c.truncated(id); }) ? false : true, detail: docs + ' document(s)' }
     ];
-    this._x = { F: F, net: net, lines: lines, dueDate: dueDate };
+    if (prOk) checks.push({ name: 'W2 consistent with W1 (tax withheld between 0% and 47% of wages — the top marginal rate with the Medicare levy)', pass: W1 > 0 ? W2 >= 0 && W2 <= W1 * 0.47 + 0.005 : XK.near(W2, 0), detail: W1 > 0 ? money(W2) + ' = ' + XK.pct(W2 / W1) + ' of ' + money(W1) : 'No wages paid in the period' },
+      { name: 'All pay runs loaded', pass: c.truncated('pay_runs') ? false : true, detail: runs.length + ' pay run(s) paid in the period' });
+    this._x = { F: F, net: net, lines: lines, dueDate: dueDate, W1: W1, W2: W2 };
     return { checks: checks, notes: ['Calculated from the GST on invoice, bill, credit-note and spend / receive money lines dated in the period (invoice basis), mapped through each tax rate\'s BAS reporting type.', 'Manual journals with GST are not included.'],
-      na: ['BAS lodgement status, ATO connection and PAYG withholding / instalments (W1, W2, T1) — not in the Xero Accounting API'], period: XK.periodLine(from, to) };
+      na: ['BAS lodgement status, ATO connection, W3 / W4 and PAYG instalments (T1, T2, 5A) — not in the Xero APIs'].concat(prOk ? [] : ['W1 / W2 (Xero Payroll (Australia) not available for this organisation)']), period: XK.periodLine(from, to) };
   },
   excel: function (c) {
     var x = this._x; if (!x) return [];
     var rows = [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: 'GST summary (not your Activity Statement)', s: 'bold' }], [XK.periodLine(c.inputs.from_date, c.inputs.to_date)], [], [{ v: 'Field', s: 'bold' }, { v: 'Amount', s: 'bold' }]]
-      .concat(['G1', 'G2', 'G3', 'G4', 'G10', 'G11', '1A', '1B'].map(function (k) { return [k, { v: x.F[k], s: 'money' }]; })).concat([[{ v: '1A − 1B', s: 'bold' }, { v: x.net, s: 'moneyBold' }], ['Due', x.dueDate]]);
+      .concat(['G1', 'G2', 'G3', 'G4', 'G10', 'G11', '1A', '1B'].map(function (k) { return [k, { v: x.F[k], s: 'money' }]; })).concat([[{ v: '1A − 1B', s: 'bold' }, { v: x.net, s: 'moneyBold' }], ['Due', x.dueDate], [], ['W1', x.W1 == null ? 'N/A — not in source' : { v: x.W1, s: 'money' }], ['W2', x.W2 == null ? 'N/A — not in source' : { v: x.W2, s: 'money' }]]);
     var ln = [[{ v: 'Date', s: 'bold' }, { v: 'Document', s: 'bold' }, { v: 'Contact', s: 'bold' }, { v: 'Account', s: 'bold' }, { v: 'Tax type', s: 'bold' }, { v: 'Amount incl. GST', s: 'bold' }, { v: 'GST', s: 'bold' }, { v: 'BAS fields', s: 'bold' }]].concat(x.lines.map(function (l) { return [l.date, l.doc, l.contact, l.account, l.tax, { v: l.gross, s: 'money' }, { v: l.gst, s: 'money' }, l.fields]; }));
     return [{ name: 'GST summary', rows: rows, widths: [20, 18] }, { name: 'Tax lines', rows: ln, widths: [12, 20, 28, 10, 14, 16, 12, 14] }];
   }
