@@ -1,5 +1,5 @@
 XK.app({
-  title: 'Business overview', primary: 'pnl_ytd', org: 'org', conns: 'connections', noBasis: true,
+  title: 'Business overview', basisLabel: 'Accrual', primary: 'pnl_ytd', org: 'org', conns: 'connections', noBasis: true,
   inputs: { org: 'org', display: 'display' },
   defaults: { as_at: '2026-09-25', fy_start: '2026-07-01', prior_from: '2025-07-01', prior_to: '2025-09-25', month_from: '2026-09-01', org: '', page: 1,
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"today","c":"none","v":"","o":"w="}' },
@@ -31,7 +31,7 @@ XK.app({
         '<p class="muted">Draft: ' + S.draft.n + ' (' + money(S.draft.v) + ') · Awaiting approval: ' + S.approval.n + ' (' + money(S.approval.v) + ')</p></div>';
     };
     // recent invoice payments
-    var pays = ((c.data.payments || {}).Payments || []).filter(function (p) { return p.PaymentType === 'ACCRECPAYMENT' && p.Status !== 'DELETED'; }).slice(0, 9).map(function (p) { var i = p.Invoice || {}; return { number: i.InvoiceNumber || '', contact: (i.Contact || {}).Name || '', date: XK.isoDate(p.Date), amount: XK.num(p.Amount) }; });
+    var pays = ((c.data.payments || {}).Payments || []).filter(function (p) { return p.PaymentType === 'ACCRECPAYMENT' && p.Status !== 'DELETED'; }).slice(0, 9).map(function (p) { var i = p.Invoice || {}; return { number: i.InvoiceNumber || '', contact: (i.Contact || {}).Name || '', date: XK.shortDate(XK.isoDate(p.Date)), amount: XK.num(p.Amount) }; });
     // cash in and out — last 6 months (Bank Summary per month)
     var fan = c.fan('bank'), months = XK.monthsEnding(asAt, 6), cash = fan ? fan.map(function (it, i) {
       if (it.error || !it.value) return { key: months[i].key, error: it.error || 'no data' };
@@ -47,7 +47,7 @@ XK.app({
     var watch = chosen.map(function (code) { var l = rowByCode[code]; return { code: byId[l.id] ? code : '', name: l.label, month: monthVal(code), ytd: l.values[0] }; });
     var npDelta = pl && plp && plp.np ? (pl.np - plp.np) / Math.abs(plp.np) : null;
     body.innerHTML = '<div class="xk-grid2">' +
-      '<div class="xk-card"><h3>Bank accounts</h3>' + (banks.length ? banks.map(function (b) { var a = byId[b.id] || {}, num = a.BankAccountNumber ? '•••• ' + String(a.BankAccountNumber).slice(-4) : ''; return '<div class="xk-kpi" style="margin-bottom:8px"><div class="lbl">' + XK.h((a.CurrencyCode && a.CurrencyCode !== base ? a.CurrencyCode + ' ' : '') + b.name) + (num ? ' · ' + num : '') + '</div><div class="val' + (b.close < 0 ? ' neg' : '') + '">' + money(b.close) + '</div><div class="sub">Balance in Xero · Statement balance: N/A — not in source</div></div>'; }).join('') : '<p class="xk-err">' + XK.h(c.err('bank') || 'Bank Summary unavailable') + '</p>') + '</div>' +
+      '<div class="xk-card"><h3>Bank accounts</h3>' + (banks.length ? banks.map(function (b) { var a = byId[b.id] || {}, num = a.BankAccountNumber ? '•••• ' + String(a.BankAccountNumber).slice(-4) : ''; return '<div class="xk-kpi" style="margin-bottom:8px"><div class="lbl">' + XK.h((a.CurrencyCode && a.CurrencyCode !== base ? a.CurrencyCode + ' ' : '') + b.name) + (num ? ' · ' + num : '') + '</div><div class="val' + (b.close < 0 ? ' neg' : '') + '">' + money(b.close) + '</div><div class="sub">Balance in Xero · Statement balance: N/A — not in source · Balance difference: N/A</div></div>'; }).join('') : '<p class="xk-err">' + XK.h(c.err('bank') || 'Bank Summary unavailable') + '</p>') + '</div>' +
       box('Invoices owed to you', P, agI, 'bo-ai') + box('Bills to pay', Q, agB, 'bo-ab') +
       '<div class="xk-card"><h3>Tasks</h3><ul><li>' + (P.overdue.n ? 'Chase ' + P.overdue.n + ' overdue invoice' + (P.overdue.n === 1 ? '' : 's') + ' (' + money(P.overdue.v) + ')' : 'No overdue invoices') + '</li><li>' + (Q.overdue.n ? 'Pay ' + Q.overdue.n + ' overdue bill' + (Q.overdue.n === 1 ? '' : 's') + ' (' + money(Q.overdue.v) + ')' : 'No overdue bills') + '</li><li class="muted">Reconcile items: N/A — bank-feed statement lines are not in the Xero API</li></ul></div>' +
       '<div class="xk-card"><h3>Recent invoice payments</h3><div id="bo-pay"></div></div>' +
@@ -78,7 +78,7 @@ XK.app({
       { name: 'Invoices owed vs Accounts Receivable (information)', pass: null, info: true, detail: bs && bs.ar != null ? money(P.awaiting.v) + ' vs ' + money(bs.ar) + (XK.near(P.awaiting.v, bs.ar) ? '' : ' — Accounts Receivable also nets unallocated credit notes, overpayments and prepayments, and excludes future-dated invoices (see Aged Receivables)') : 'N/A' },
       { name: 'All invoices and bills loaded', pass: (c.errors.invoices || c.errors.bills) ? false : (c.truncated('invoices') || c.truncated('bills')) ? false : true, detail: c.errors.invoices ? c.err('invoices') : c.errors.bills ? c.err('bills') : (c.truncated('invoices') || c.truncated('bills')) ? 'May be truncated (over 20 pages)' : c.rows('invoices').length + ' invoice(s), ' + c.rows('bills').length + ' bill(s)' }
     ];
-    this._x = { banks: banks, P: P, Q: Q, cash: cash, pl: pl, plp: plp, watch: watch, pays: pays };
+    this._x = { banks: banks, P: P, Q: Q, cash: cash, pl: pl, plp: plp, watch: watch, pays: pays, agI: agI, agB: agB };
     return { checks: checks, notes: ['Net profit, income and expenses come from one Profit and Loss (' + XK.rangeLabel(c.inputs.fy_start, asAt) + '); the comparison is the same dates last year.', 'Cash in and out is Xero\'s Bank Summary for each month (includes transfers between your accounts).'],
       na: ['Bank statement balances and reconcile counts (bank-feed data is not in the Xero API)'], period: XK.asOfLine(asAt) };
   },
@@ -89,6 +89,10 @@ XK.app({
       .concat([[], [{ v: '', s: 'bold' }, { v: 'Invoices owed', s: 'bold' }, { v: 'Bills to pay', s: 'bold' }], ['Awaiting payment', { v: x.P.awaiting.v, s: 'money' }, { v: x.Q.awaiting.v, s: 'money' }], ['Overdue', { v: x.P.overdue.v, s: 'money' }, { v: x.Q.overdue.v, s: 'money' }], ['Draft', { v: x.P.draft.v, s: 'money' }, { v: x.Q.draft.v, s: 'money' }], ['Awaiting approval', { v: x.P.approval.v, s: 'money' }, { v: x.Q.approval.v, s: 'money' }]]);
     if (x.pl) rows = rows.concat([[], [{ v: 'Year to date', s: 'bold' }, { v: 'This year', s: 'bold' }, { v: 'Last year', s: 'bold' }], ['Income', { v: x.pl.income, s: 'money' }, x.plp ? { v: x.plp.income, s: 'money' } : null], ['Expenses', { v: x.pl.expenses, s: 'money' }, x.plp ? { v: x.plp.expenses, s: 'money' } : null], [{ v: 'Net profit', s: 'bold' }, { v: x.pl.np, s: 'moneyBold' }, x.plp ? { v: x.plp.np, s: 'moneyBold' } : null]]);
     if (x.cash && x.cash.every(function (m) { return !m.error; })) rows = rows.concat([[], [{ v: 'Month', s: 'bold' }, { v: 'Cash in', s: 'bold' }, { v: 'Cash out', s: 'bold' }, { v: 'Difference', s: 'bold' }]]).concat(x.cash.map(function (m) { return [XK.monthLabel(m.key), { v: m.rin, s: 'money' }, { v: -m.rout, s: 'money' }, { v: Math.round((m.rin - m.rout) * 100) / 100, s: 'money' }]; }));
-    return [{ name: 'Business overview', rows: rows, widths: [34, 18, 18, 18] }];
+    rows = rows.concat([[], [{ v: 'Ageing (awaiting payment)', s: 'bold' }, { v: 'Invoices owed', s: 'bold' }, { v: 'Bills to pay', s: 'bold' }]]).concat(x.agI.map(function (b, i) { return [b.label, { v: b.v, s: 'money' }, { v: (x.agB[i] || {}).v, s: 'money' }]; }));
+    rows = rows.concat([[], [{ v: 'Counts', s: 'bold' }, { v: 'Invoices', s: 'bold' }, { v: 'Bills', s: 'bold' }], ['Awaiting payment', x.P.awaiting.n, x.Q.awaiting.n], ['Overdue', x.P.overdue.n, x.Q.overdue.n], ['Draft', x.P.draft.n, x.Q.draft.n], ['Awaiting approval', x.P.approval.n, x.Q.approval.n]]);
+    var pays = [[{ v: 'Invoice #', s: 'bold' }, { v: 'Contact', s: 'bold' }, { v: 'Date received', s: 'bold' }, { v: 'Amount', s: 'bold' }]].concat(x.pays.map(function (p) { return [p.number, p.contact, p.date, { v: p.amount, s: 'money' }]; }));
+    var watch = [[{ v: 'Code', s: 'bold' }, { v: 'Account', s: 'bold' }, { v: 'This month', s: 'bold' }, { v: 'YTD', s: 'bold' }]].concat(x.watch.map(function (w) { return [w.code, w.name, { v: w.month, s: 'money' }, { v: w.ytd, s: 'money' }]; }));
+    return [{ name: 'Business overview', rows: rows, widths: [34, 18, 18, 18] }, { name: 'Recent payments', rows: pays, widths: [14, 34, 16, 16] }, { name: 'Watchlist', rows: watch, widths: [10, 40, 16, 16] }];
   }
 });

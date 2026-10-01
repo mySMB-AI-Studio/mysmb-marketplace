@@ -48,7 +48,7 @@ XK.app({
       { name: 'All invoices and bills awaiting payment loaded', pass: (c.errors.receivables || c.errors.payables || c.truncated('receivables') || c.truncated('payables')) ? false : true, detail: rec.length + ' invoice(s), ' + pay.length + ' bill(s)' }
     ];
     this._x = { keys: keys, bal: bal, flows: fOk ? flows : null, ra: ra, pa: pa, cols: ag.cols };
-    return { checks: checks, notes: ['Cash in and out is Xero\'s Bank Summary for each month (includes transfers between your accounts).', 'Ageing uses today\'s balances of invoices and bills awaiting payment.'], na: [], period: '12 months ending ' + XK.asOfLine(end).replace(/^As at /, '') };
+    return { checks: checks, notes: ['Cash in and out is Xero\'s Bank Summary for each month (includes transfers between your accounts).', 'Ageing uses today\'s balances of invoices and bills awaiting payment.'], na: ['Xero Analytics widget columns and filter settings (Xero Analytics is not in the Xero API)'], period: '12 months ending ' + XK.asOfLine(end).replace(/^As at /, '') };
   },
   excel: function (c) {
     var x = this._x; if (!x) return [];

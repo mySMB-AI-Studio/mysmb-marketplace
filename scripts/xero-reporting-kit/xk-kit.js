@@ -264,6 +264,7 @@ var XK = (function () {
   var MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   // Xero period line: 'For the month ended 31 August 2026' | 'For the 3 months ended 30 September 2026' |
   // 'For the year ended 30 June 2026' | 'For the period 1 July 2026 to 25 September 2026'
+  function shortDate(d) { var x = parse(d); return x ? x.getUTCDate() + ' ' + MON[x.getUTCMonth()].slice(0, 3) + ' ' + x.getUTCFullYear() : ''; }
   function longDate(x) { return x.getUTCDate() + ' ' + MON[x.getUTCMonth()] + ' ' + x.getUTCFullYear(); }
   function periodLine(start, end) {
     var s = parse(start), e = parse(end), ey = e.getUTCFullYear();
@@ -415,7 +416,7 @@ var XK = (function () {
   // cur = currency code for the money format (A$ for AUD).
   function xlsx(sheets, cur) {
     var sym = esc(symbol(cur || 'AUD').trim()).replace(/"/g, '');
-    var moneyFmt = '&quot;' + sym + '&quot;#,##0.00;-&quot;' + sym + '&quot;#,##0.00';
+    var moneyFmt = '#,##0.00;(#,##0.00)'; // the library: #,##0.00 with negatives in brackets; the currency is in the header footnote
     var STY = { none: 0, bold: 1, money: 2, moneyBold: 3, title: 4, pct: 5, muted: 6 };
     var styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
       '<numFmts count="1"><numFmt numFmtId="164" formatCode="' + moneyFmt + '"/></numFmts>' +
@@ -535,7 +536,8 @@ var XK = (function () {
   // ---------- SVG charts (no libraries; colours from CSS custom properties) ----------
   function scale(vals) { var mn = Math.min(0, Math.min.apply(null, vals)), mx = Math.max(0, Math.max.apply(null, vals)); if (mn === mx) mx = mn + 1; return { mn: mn, mx: mx }; }
   function legend(series) { return '<div class="xk-legend">' + series.map(function (s, i) { return '<span><i style="background:' + (s.color || 'var(--c' + (i + 1) + ')') + '"></i>' + h(s.name) + '</span>'; }).join('') + '</div>'; }
-  // bars(el, {labels:[], series:[{name, values:[]}], title}) — grouped bars, negatives below the zero line
+  // bars(el, {labels:[], series:[{name, values:[], tips:[]}], title, every, mark:{at, label}, fadeFrom}) — grouped bars, negatives below the
+  // zero line; mark = a dashed divider (e.g. Today) whose label is always drawn; bars after fadeFrom are lighter (projected)
   function bars(el, o, ctx) {
     var W = 640, H = 220, P = 28, all = [], fmt = o.fmt || function (v) { return money(v, ctx.currency, ctx.display); };
     if (o.stacked) { o.labels.forEach(function (_, i) { var pos = 0, neg = 0; o.series.forEach(function (s) { var v = s.values[i] || 0; if (v >= 0) pos += v; else neg += v; }); all.push(pos, neg); }); }
@@ -547,9 +549,11 @@ var XK = (function () {
     o.labels.forEach(function (lb, i) {
       o.series.forEach(function (s, j) { var v = s.values[i]; if (v == null) return; var base0 = 0; if (o.stacked) { var k = v >= 0 ? stackP : stackN; base0 = k[i] || 0; k[i] = base0 + v; }
         var x = P + gw * i + gw * 0.15 + (o.stacked ? 0 : bw * j), y0 = y(base0), y1 = y(base0 + v), fill = (s.colors && s.colors[i]) || s.color || 'var(--c' + (j + 1) + ')';
-        svg += '<rect x="' + x.toFixed(1) + '" y="' + Math.min(y0, y1).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(1, Math.abs(y1 - y0)).toFixed(1) + '" fill="' + fill + '"><title>' + h(s.name + ' · ' + lb + ': ' + fmt(v)) + '</title></rect>'; });
-      if (n <= 16 || (o.every && i % o.every === 0)) svg += '<text x="' + (P + gw * i + gw / 2).toFixed(1) + '" y="' + (H - 8) + '" class="tick" text-anchor="middle">' + h(lb) + '</text>';
+        svg += '<rect x="' + x.toFixed(1) + '" y="' + Math.min(y0, y1).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(1, Math.abs(y1 - y0)).toFixed(1) + '" fill="' + fill + '"' + (o.fadeFrom != null && i > o.fadeFrom ? ' fill-opacity="0.45" class="proj"' : '') + '><title>' + h(s.name + ' · ' + lb + ': ' + fmt(v) + (s.tips && s.tips[i] ? '\n' + s.tips[i] : '')) + '</title></rect>'; });
+      var nearMark = o.mark && i !== o.mark.at && Math.abs(i - o.mark.at) < (o.every || 1) / 2;
+      if (!nearMark && (n <= 16 || (o.every && i % o.every === 0) || (o.mark && i === o.mark.at))) svg += '<text x="' + (P + gw * i + gw / 2).toFixed(1) + '" y="' + (H - 8) + '" class="tick" text-anchor="middle">' + h(lb) + '</text>';
     });
+    if (o.mark) { var mx = (P + gw * o.mark.at + gw / 2).toFixed(1); svg += '<line x1="' + mx + '" x2="' + mx + '" y1="' + (P - 6) + '" y2="' + (H - P + 4) + '" class="xk-mark" stroke="var(--ink)" stroke-dasharray="4 3" stroke-width="1"/><text x="' + mx + '" y="' + (P - 10) + '" class="tick" text-anchor="middle" font-weight="600">' + h(o.mark.label || '') + '</text>'; }
     el.innerHTML = svg + '</svg>' + legend(o.series);
   }
   // line(el, {labels, series:[{name, values}], area:bool, band:{low:[], high:[], name}, title})
@@ -609,7 +613,7 @@ var XK = (function () {
     return '<div class="xk-kpis">' + items.map(function (k) {
       var v = k.text != null ? h(k.text) : k.money === false ? h(k.value == null ? 'N/A' : k.value) : (k.value == null ? 'N/A — not in source' : money(k.value, ctx.currency, ctx.display));
       var chip = k.delta == null || !isFinite(k.delta) ? '' : '<span class="chip ' + (k.delta >= 0 ? 'up' : 'down') + '">' + (k.delta >= 0 ? '▲ ' : '▼ ') + pct(Math.abs(k.delta), 0) + '</span>';
-      return '<div class="xk-kpi"><div class="lbl">' + h(k.label) + '</div><div class="val' + negCls(k.value, ctx.display) + '">' + v + '</div>' + chip + (k.sub ? '<div class="sub">' + h(k.sub) + '</div>' : '') + '</div>';
+      return '<div class="xk-kpi"><div class="lbl">' + h(k.label) + '</div><div class="val' + (k.red ? ' neg' : negCls(k.value, ctx.display)) + '">' + v + '</div>' + chip + (k.sub ? '<div class="sub">' + h(k.sub) + '</div>' : '') + '</div>';
     }).join('') + '</div>';
   }
 
@@ -828,8 +832,8 @@ var XK = (function () {
         var sc = srcOf(id); last.checks.unshift({ name: 'Data loaded: ' + ((cfg.tools || {})[id] || id), pass: sc && sc.optional ? null : false, detail: msg });
       });
       var hd = $('xk-head');
-      if (hd) { hd.hidden = !d.hdr || !!cfg.noHead; var per = out.period || (I.start ? periodLine(S.inputs[I.start], S.inputs[I.end]) : I.asAt ? asOfLine(S.inputs[I.asAt]) : ''); hd.innerHTML = '<div class="co">' + h(c.company || 'N/A — not in source') + '</div><div class="ti">' + h(out.title || cfg.title) + '</div><div class="pe">' + h(per) + '</div><div class="xk-src">' + (d.style === 'mysmb' ? '<span class="xk-badge">mySMB</span>mySMB Reporting · data from Xero' : '<span class="xk-badge">Xero</span>Prepared from Xero') + '</div>'; }
-      var ft = $('xk-foot'); if (ft) { ft.hidden = !d.ftr; var stamp = footerStamp(I.basis ? S.inputs[I.basis] : cfg.noBasis ? null : 'Accrual', S.fetchedAt, c.currency); ft.textContent = d.style === 'mysmb' ? [c.company || 'Xero organisation', out.title || cfg.title, stamp].join(' | ') : stamp; }
+      if (hd) { hd.hidden = !d.hdr || !!cfg.noHead; var per = out.period || (I.start ? periodLine(S.inputs[I.start], S.inputs[I.end]) : I.asAt ? asOfLine(S.inputs[I.asAt]) : ''); hd.innerHTML = '<div class="ti">' + h(out.title || cfg.title) + '</div><div class="co">' + h(c.company || 'N/A — not in source') + '</div><div class="pe">' + h(per) + '</div><div class="xk-src">' + (d.style === 'mysmb' ? '<span class="xk-badge">mySMB</span>mySMB Reporting · data from Xero' : '<span class="xk-badge">Xero</span>Prepared from Xero') + '</div>'; }
+      var ft = $('xk-foot'); if (ft) { ft.hidden = !d.ftr; var stamp = footerStamp(basisOf(), S.fetchedAt, c.currency); ft.textContent = d.style === 'mysmb' ? [c.company || 'Xero organisation', out.title || cfg.title, stamp].join(' | ') : stamp; }
       banner(c); sources(c);
     }
     function banner(c) {
@@ -846,12 +850,13 @@ var XK = (function () {
         ' · Financial year starts ' + h(MONTHS[c.fy.month - 1]) + ' (' + h(c.fy.source) + ')' +
         '<ul>' + ch.map(function (k) { return '<li class="' + (k.pass === false ? 'bad' : k.pass === true ? 'ok' : isInfo(k) ? 'na info' : 'na') + '">' + (k.pass === false ? '✗ ' : k.pass === true ? '✓ ' : isInfo(k) ? 'ℹ ' : '– ') + h(k.name) + (k.detail ? ' — ' + h(k.detail) : '') + '</li>'; }).join('') + '</ul>';
     }
+    function basisOf() { return I.basis ? S.inputs[I.basis] : cfg.basisLabel || (cfg.noBasis ? null : 'Accrual'); }
     function sources(c) {
       var el = $('xk-sources'); if (!el) return; var t = cfg.tools || {};
       var items = Object.keys(t).map(function (id) { var sc = srcOf(id); return h(t[id]) + (S.errors[id] ? ' — <span class="' + (sc && sc.optional ? 'muted' : 'xk-err') + '">' + h(err(id)) + '</span>' : ''); });
       var na = last.na.slice(); if (!c.company) na.unshift('Organisation name (Xero returned no organisation details)');
       el.innerHTML = '<h2>Sources &amp; limitations</h2><ul><li>Mechanism: ' + h(cfg.mechanism || MECHANISM) + '</li><li>Tool calls: ' + items.join(' · ') + '</li>' +
-        '<li>Basis: ' + h(I.basis ? S.inputs[I.basis] : 'n/a') + ' · Currency: ' + h(c.currency) + ' · Organisation: ' + h(c.company || 'N/A — not in source') + ' (one Xero organisation per report)</li>' +
+        '<li>Basis: ' + h(basisOf() || 'n/a') + ' · Currency: ' + h(c.currency) + ' (the organisation\'s base currency — Xero\'s reports have no other presentation currency) · Organisation: ' + h(c.company || 'N/A — not in source') + ' (one Xero organisation per report)</li>' +
         (/^assumed/.test(c.fy.source) ? '<li>Financial year: ' + h(c.fy.source) + ' (starts ' + h(MONTHS[c.fy.month - 1]) + '). Adjust the dates if this organisation uses a different year.</li>' : '') +
         last.notes.map(function (n) { return '<li>' + h(n) + '</li>'; }).join('') +
         (na.length ? '<li>N/A — not in source: ' + na.map(h).join('; ') + '</li>' : '') + '<li>Decision support only — not audit, tax or legal advice.</li></ul>';
@@ -859,10 +864,17 @@ var XK = (function () {
     function exportXlsx() {
       var c = ctx(), sheets = [];
       try { sheets = (cfg.excel && cfg.excel(c)) || []; } catch (e) { sheets = [{ name: 'Error', rows: [['Excel export failed: ' + e.message]] }]; }
+      var foot = [basisOf() ? basisOf() + ' basis' : null, c.currency].filter(Boolean).join(' · ');
+      sheets.forEach(function (sh) { // report sheets open with [organisation], [report name], [period], [] — reorder to the library's header block
+        var r = sh.rows || [], a = r[0] && r[0][0], b = r[1] && r[1][0];
+        if (!a || !b || a.s !== 'title' || b.s !== 'bold') return;
+        r[0] = [{ v: b.v, s: 'title' }]; r[1] = [{ v: a.v, s: 'bold' }];
+        if (r[3] && !r[3].length) r[3] = [{ v: foot, s: 'muted' }];
+      });
       sheets.push({ name: 'Validation', rows: [[{ v: 'Check', s: 'bold' }, { v: 'Result', s: 'bold' }, { v: 'Detail', s: 'bold' }]].concat(last.checks.map(function (k) { return [k.name, k.pass === true ? 'Pass' : k.pass === false ? 'FAIL' : 'N/A', k.detail || '']; })), widths: [60, 10, 60] });
       var pr = reportParams({ start: I.start && S.inputs[I.start], end: I.end && S.inputs[I.end], asAt: I.asAt && S.inputs[I.asAt], basis: I.basis && S.inputs[I.basis], org: I.org && (S.inputs[I.org] || c.organisation.active || ''), display: c.display });
-      sheets.push({ name: 'Parameters', rows: [[{ v: 'Parameter', s: 'bold' }, { v: 'Value', s: 'bold' }]].concat(Object.keys(pr).map(function (k) { return [k, String(pr[k])]; })).concat([[], ['Data as of', S.fetchedAt || ''], ['Source', MECHANISM]]), widths: [28, 60] });
-      var name = [(c.company || 'Xero'), cfg.title, (I.start ? S.inputs[I.start] + ' to ' + S.inputs[I.end] : I.asAt ? 'as at ' + S.inputs[I.asAt] : '')].join(' - ').replace(/[\\\/:*?"<>|]+/g, ' ');
+      sheets.push({ name: 'Parameters', rows: [[{ v: 'Parameter', s: 'bold' }, { v: 'Value', s: 'bold' }]].concat(Object.keys(pr).map(function (k) { return [k, String(pr[k])]; })).concat([['basis', basisOf() || 'n/a'], ['currency', c.currency], [], ['Data as of', S.fetchedAt || ''], ['Source', cfg.mechanism || MECHANISM]]), widths: [28, 60] });
+      var name = [(c.company || 'Xero'), cfg.title, (I.start ? S.inputs[I.start] + ' to ' + S.inputs[I.end] : I.asAt ? 'as at ' + S.inputs[I.asAt] : '')].filter(Boolean).join(' - ').replace(/[\\\/:*?"<>|]+/g, ' ');
       download(xlsx(sheets, c.currency), name + '.xlsx');
     }
     function boot(bundle) {
@@ -879,7 +891,7 @@ var XK = (function () {
     return { state: S, change: change, render: render, exportXlsx: exportXlsx, ctx: ctx, retryLimited: retryLimited };
   }
 
-  return { doc: doc, openDocs: openDocs, ageingCols: ageingCols, byContact: byContact, pipeline: pipeline, plParts: plParts, bsParts: bsParts, monthKey: monthKey, monthLabel: monthLabel, monthsEnding: monthsEnding, monthCols: monthCols, dateWhere: dateWhere, addDaysIso: function (s, k) { return iso(addDays(parse(s), k)); },
+  return { doc: doc, openDocs: openDocs, ageingCols: ageingCols, byContact: byContact, pipeline: pipeline, plParts: plParts, bsParts: bsParts, monthKey: monthKey, monthLabel: monthLabel, shortDate: shortDate, monthsEnding: monthsEnding, monthCols: monthCols, dateWhere: dateWhere, addDaysIso: function (s, k) { return iso(addDays(parse(s), k)); },
     errorOf: errorOf, isoDate: isoDate, reportOf: reportOf, walk: walk, isDeduction: isDeduction, sectionTotal: sectionTotal, sectionBy: sectionBy, parentTies: parentTies, runningTies: runningTies,
     CYE_RE: CYE_RE, currentYearEarnings: currentYearEarnings, linesTies: linesTies, orgOf: orgOf, connections: connections, companyOf: companyOf, fiscalStart: fiscalStart, homeCurrency: homeCurrency, titleDates: titleDates,
     applyBrand: applyBrand, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app,
