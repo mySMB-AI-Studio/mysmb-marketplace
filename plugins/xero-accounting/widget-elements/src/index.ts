@@ -1588,10 +1588,111 @@ const time_ago: ComputedFunction = (args) => {
 };
 
 
+// ── analyze_autopay_exclusions ──────────────────────────────────────────
+// Classifies every repeating ACCPAY bill template (`list_repeating_invoices`)
+// by how automated it really is in Xero:
+//  - AUTHORISED templates post without a human touching them each cycle —
+//    the real "autopay" signal — so they're "Excluded from Check" (a
+//    routine manual bill review doesn't need to re-examine them).
+//  - DRAFT templates require a person to approve every generated bill —
+//    "Needs Review".
+// "New Exclusions" counts AUTHORISED templates whose Schedule.StartDate
+// falls within the last ~40 days — the closest real proxy available, since
+// Xero's RepeatingInvoice object carries no "date authorised"/created
+// timestamp. `organisation` supplies the real ShortCode for the documented
+// go.xero.com deep-link format (same mechanism as analyze_bill_duplicates),
+// redirected to the general bills list (no single invoice to point at here).
+// Returns a fresh `scannedAt` ISO timestamp every call — recomputes (and so
+// updates) both on the initial mount fetch and every manual "Rescan Data"
+// click, since both re-fire the same list_repeating_invoices watch chain.
+// `filter` ('' | 'excluded' | 'needsReview' | 'new') narrows the returned
+// `rows` to one stat tile's slice — set by clicking that tile, same
+// click-to-filter pattern as the MYOB Duplicate Bills Queue tabs. The counts
+// themselves always reflect the FULL set regardless of `filter`, so the tiles
+// stay accurate while only the table below them narrows.
+// Args: { repeatingInvoices?: RepeatingInvoice[], organisation?: unknown, newExclusionWindowDays?: number, filter?: string }
+const analyze_autopay_exclusions: ComputedFunction = (args) => {
+  const all = Array.isArray(args.repeatingInvoices) ? (args.repeatingInvoices as Record<string, unknown>[]) : [];
+  const newWindowDays = Number(args.newExclusionWindowDays) > 0 ? Number(args.newExclusionWindowDays) : 40;
+
+  const org = (args.organisation as Record<string, unknown> | undefined) ?? {};
+  const orgs = Array.isArray(org.Organisations) ? (org.Organisations as Record<string, unknown>[]) : [];
+  const shortCode = String(orgs[0]?.ShortCode ?? '');
+
+  const parseDate = (raw: unknown): number => {
+    const m = String(raw ?? '').match(/\/Date\((-?\d+)(?:[+-]\d{4})?\)\//);
+    return m ? Number(m[1]) : NaN;
+  };
+  const fmtDate = (ms: number): string =>
+    Number.isFinite(ms) ? new Date(ms).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+
+  const bills = all.filter((r) => r.Type === 'ACCPAY' && r.Status !== 'DELETED');
+  const now = Date.now();
+
+  const rows = bills
+    .map((r) => {
+      const contact = r.Contact as Record<string, unknown> | undefined;
+      const startMs = parseDate((r.Schedule as Record<string, unknown> | undefined)?.StartDate);
+      const ageDays = Number.isFinite(startMs) ? (now - startMs) / 86_400_000 : NaN;
+      const autopayEnabled = r.Status === 'AUTHORISED';
+      const isNewExclusion = autopayEnabled && Number.isFinite(ageDays) && ageDays >= 0 && ageDays <= newWindowDays;
+      return {
+        contactId: String(contact?.ContactID ?? contact?.Name ?? Math.random()),
+        vendor: String(contact?.Name ?? 'Unknown'),
+        autopayEnabled,
+        autopayStatusLabel: autopayEnabled ? 'Enabled' : 'Disabled',
+        autopayStatusTone: autopayEnabled ? 'success' : 'muted',
+        exclusionReason: autopayEnabled ? 'AutoPay Enabled' : 'Requires manual approval',
+        added: fmtDate(startMs),
+        startMs,
+        isNewExclusion,
+        status: autopayEnabled ? 'Excluded' : 'Needs Review',
+        statusTone: autopayEnabled ? 'success' : 'warning',
+      };
+    })
+    .sort((a, b) => (Number.isFinite(b.startMs) ? b.startMs : 0) - (Number.isFinite(a.startMs) ? a.startMs : 0));
+
+  const vendorCount = rows.length;
+  const excludedCount = rows.filter((r) => r.autopayEnabled).length;
+  const needsReviewCount = rows.filter((r) => !r.autopayEnabled).length;
+  const newExclusionsCount = rows.filter((r) => r.isNewExclusion).length;
+
+  const reviewUrl = shortCode
+    ? `https://go.xero.com/organisationlogin/default.aspx?shortcode=${encodeURIComponent(shortCode)}&redirecturl=${encodeURIComponent('/AccountsPayable/Bills')}`
+    : 'https://go.xero.com/';
+
+  const filter = ['excluded', 'needsReview', 'new'].includes(String(args.filter)) ? String(args.filter) : '';
+  const filteredRows =
+    filter === 'excluded'
+      ? rows.filter((r) => r.autopayEnabled)
+      : filter === 'needsReview'
+        ? rows.filter((r) => !r.autopayEnabled)
+        : filter === 'new'
+          ? rows.filter((r) => r.isNewExclusion)
+          : rows;
+
+  return {
+    vendorCount,
+    excludedCount,
+    needsReviewCount,
+    newExclusionsCount,
+    reviewUrl,
+    filter,
+    filterLabel: filter === 'excluded' ? 'Excluded from Check' : filter === 'needsReview' ? 'Needs Review' : filter === 'new' ? 'New Exclusions' : '',
+    filterIsAll: filter === '',
+    filterIsExcluded: filter === 'excluded',
+    filterIsNeedsReview: filter === 'needsReview',
+    filterIsNew: filter === 'new',
+    rows: filteredRows.map(({ startMs, isNewExclusion, ...r }) => r),
+    scannedAt: new Date().toISOString(),
+  };
+};
+
 const elements: PluginElementsModule = {
   slug: 'xero-accounting',
   functions: {
     analyze_bill_duplicates,
+    analyze_autopay_exclusions,
     time_ago,
     paginate,
     rate_variance_rows,
