@@ -18,7 +18,7 @@ XK.app({
     var credits = XK.openDocs({ credit_notes: c.rows('credit_notes'), overpayments: c.rows('overpayments'), prepayments: c.rows('prepayments'), types: { credit_notes: K.cn, overpayments: K.op, prepayments: K.pp } }, base, null);
     var creditSum = XK.sum(credits.map(function (d) { return d.amount; }));
     var strip = '<div class="xk-kpis">' + [['Draft', P.draft], ['Awaiting approval', P.approval], ['Awaiting payment', P.awaiting], ['Overdue', P.overdue]].map(function (k, i) {
-      return '<div class="xk-kpi"><div class="lbl">' + XK.h(k[0]) + ' (' + k[1].n + ')</div><div class="val' + (i === 3 && k[1].v > 0 ? ' neg' : '') + '">' + (k[1].n ? money(k[1].v) : 'None') + '</div></div>'; }).join('') + '</div>';
+      return '<div class="xk-kpi"><div class="lbl">' + XK.h(k[0]) + ' (' + k[1].n + ')</div><div class="val' + (i === 3 && k[1].v > 0 ? ' neg' : '') + '">' + money(k[1].v || 0) + '</div></div>'; }).join('') + '</div>';
     var view = c.view || 'docs', extra = { checks: [], html: '', na: [] };
     // ---- per-kind panels ----
     var A = XK.parse(asAt), dow = (A.getUTCDay() + 6) % 7, wk0 = XK.addDaysIso(asAt, -dow), wk1 = XK.addDaysIso(wk0, 6), nw0 = XK.addDaysIso(wk0, 7), nw1 = XK.addDaysIso(wk0, 13);
@@ -41,7 +41,8 @@ XK.app({
           '<div class="xk-card detail-block"><h3>Create new (in Xero)</h3><ul><li>Invoice</li><li>Payment link</li><li>Repeating invoice</li></ul><p class="muted">Reports only read from Xero — create these in Xero → Sales.</p></div></div>';
         extra.after.push(function () {
           XK.bars(document.getElementById('so-ch'), { title: 'Money coming in by due date', labels: buckets.map(function (b) { return b.label; }), series: [{ name: 'Awaiting payment', values: buckets.map(function (b) { return b.v; }), colors: buckets.map(function (b, i) { return i === 3 ? 'var(--c1)' : 'var(--c2)'; }) }] }, c);
-          XK.grid(document.getElementById('so-top'), { rows: top, columns: [{ key: 'name', title: K.who }, { key: 'due', title: 'Due', money: true }, { key: 'overdue', title: 'Overdue', num: true, fmt: function (v) { return v ? '<span class="neg">' + XK.h(money(v)) + '</span>' : money(v); }, html: true }], empty: 'Nothing owing.' }, c);
+          var av = function (n) { var w = String(n || '').replace(/[^A-Za-z0-9 ]/g, ' ').split(' ').filter(function (x) { return x; }); return ((w[0] || '?').charAt(0) + (w.length > 1 ? w[w.length - 1].charAt(0) : '')).toUpperCase(); };
+          XK.grid(document.getElementById('so-top'), { rows: top, columns: [{ key: 'name', title: K.who, html: true, fmt: function (v) { return '<span class="xk-av" aria-hidden="true">' + XK.h(av(v)) + '</span>' + XK.h(v); } }, { key: 'due', title: 'Due', money: true }, { key: 'overdue', title: 'Overdue', num: true, fmt: function (v) { return v ? '<span class="neg">' + XK.h(money(v)) + '</span>' : money(v); }, html: true }], empty: 'Nothing owing.' }, c);
           var b = document.getElementById('so-all'); if (b) b.addEventListener('click', function () { self._all = !self._all; c.change({}, {}); });
         });
       } else if (view === 'repeating') {

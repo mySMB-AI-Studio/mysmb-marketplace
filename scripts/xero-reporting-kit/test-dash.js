@@ -17,6 +17,7 @@ const busy = (fn, n) => { let left = n; return (q) => { if (left-- > 0) throw ne
 const tamper = (base, fn) => (q) => { const r = base(q); fn(r.Reports[0].Rows, r); return r; };
 const cellOf = (rows, label) => { for (const r of rows) { for (const k of r.Rows || [r]) if (k.Cells && k.Cells[0].Value === label) return k.Cells; } return null; };
 const E = L.expect;
+const xlsxOf = async (t) => { t.doc.getElementById('xk-xlsx').click(); await t.settle(); const b = t.downloads.filter((d) => d.blob).pop(); return b ? Buffer.from(await b.blob.arrayBuffer()).toString('utf8') : ''; };
 
 const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes, overpayments: L.listOverpayments, prepayments: L.listPrepayments, bs: L.bs, org: L.organisation, connections: L.connections });
 
@@ -27,16 +28,21 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     const a = await run('ar', man('ar'), AGED());
     const ab = body(a), an = banner(a), head = [...a.doc.querySelectorAll('#ag-all thead th')].map((x) => x.textContent.replace(/[▲▼]/g, '').trim());
     ok('ar: as at end of this month by default, Xero wording', /As at 30 September 2026 · Ageing by due date/.test(text(a.doc, '#xk-head')) && a.doc.getElementById('xk-asat').value === '2026-09-30', text(a.doc, '#xk-head'));
-    ok('ar: columns Customer | Current | < 1 Month | 1–3 Months | Older | Total', head.join('|') === 'Customer|Current|< 1 Month|1 Month|2 Months|3 Months|Older|Total', head);
+    ok('ar: columns Contact | Current | < 1 Month | 1–3 Months | Older | Total (Xero\'s header)', head.join('|') === 'Contact|Current|< 1 Month|1 Month|2 Months|3 Months|Older|Total', head);
     ok('ar: total = Accounts Receivable in the books', re('Total receivable', AR).test(ab), [AR, ab.slice(0, 200)]);
     ok('ar: 5/5 checks pass incl. the Balance Sheet tie, green', green(a) && /5\/5 checks passed/.test(an) && new RegExp('✓ Total = Accounts Receivable on the Balance Sheet at 2026-09-30 — ' + fmt(AR) + ' vs ' + fmt(AR)).test(an) && a.errs.length === 0, an);
     const tf = [...a.doc.querySelectorAll('#ag-all tfoot tr')].map((tr) => tr.textContent.replace(/\s+/g, ' ').trim());
-    ok('ar: TOTAL row and "Percentage of total" row (sums to 100%)', tf.length === 2 && /^Total/.test(tf[0]) && /^Percentage of total.*100\.0%$/.test(tf[1]), tf);
+    ok('ar: TOTAL row and "Percentage of total" row (sums to 100%)', tf.length === 2 && /^Total/.test(tf[0]) && /^Percentage of total.*100\.00%$/.test(tf[1]), tf);
     ok('ar: overpayment shown negative in its bucket', /Eastside Motors\$[\d,.]+\(\$55\.00\)/.test(text(a.doc, '#ag-all')), text(a.doc, '#ag-all').slice(0, 900));
     const futureNo = L.listInvoices({ where: 'Type=="ACCREC"', statuses: 'AUTHORISED' }).Invoices.find((i) => i.DateString.startsWith('2026-10')).InvoiceNumber;
     // drill-down
     const link = a.doc.querySelector('#ag-all a.xk-drill'); link.dispatchEvent(new a.w.MouseEvent('click', { bubbles: true })); await a.settle();
+    const cellLink = [...a.doc.querySelectorAll('#ag-all tbody a.xk-drill[data-b]')].find((x) => x.getAttribute('data-b') && x.getAttribute('data-b') !== 'Current');
+    ok('ar: every amount cell is a drill link (contact + bucket)', !!cellLink, a.doc.querySelector('#ag-all tbody tr') && a.doc.querySelector('#ag-all tbody tr').innerHTML.slice(0, 300));
     ok('ar: clicking a customer lists its open documents', /open documents/.test(text(a.doc, '#ag-drill')) && /Invoice/.test(text(a.doc, '#ag-drill')) && !text(a.doc, '#ag-drill').includes(futureNo), text(a.doc, '#ag-drill').slice(0, 300));
+    { const bk = cellLink.getAttribute('data-b'); cellLink.dispatchEvent(new a.w.MouseEvent('click', { bubbles: true })); await a.settle();
+      const rows = [...a.doc.querySelectorAll('#ag-docs tbody tr')].map((tr) => [...tr.children].map((td) => td.textContent.trim()));
+      ok('ar: clicking an amount lists only that contact’s documents in that bucket', text(a.doc, '#ag-drill').includes('open documents · ' + bk) && rows.length > 0 && rows.every((r) => r[5] === bk), [bk, rows.slice(0, 3)]); }
     // options
     const before = a.calls.length;
     await set(a, 'xk-opt-by', 'inv');
@@ -44,7 +50,7 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     ok('ar: ageing by invoice date → no Current column, same total, no refetch', h2[1] === '< 1 Month' && re('Total receivable', AR).test(body(a)) && a.calls.length === before && /Ageing by invoice date/.test(text(a.doc, '#xk-head')), h2);
     await set(a, 'xk-opt-by', 'due'); await set(a, 'xk-opt-n', '6'); await set(a, 'xk-opt-len', '30');
     const h3 = [...a.doc.querySelectorAll('#ag-all thead th')].map((x) => x.textContent.replace(/[▲▼]/g, '').trim());
-    ok('ar: 6 periods of 30 days → day buckets, total unchanged, still green', h3.join('|') === 'Customer|Current|1–30 days|31–60 days|61–90 days|91–120 days|121–150 days|151–180 days|Older|Total' && re('Total receivable', AR).test(body(a)) && green(a), h3);
+    ok('ar: 6 periods of 30 days → day buckets, total unchanged, still green', h3.join('|') === 'Contact|Current|1–30 days|31–60 days|61–90 days|91–120 days|121–150 days|151–180 days|Older|Total' && re('Total receivable', AR).test(body(a)) && green(a), h3);
     await set(a, 'xk-opt-g', 'type');
     ok('ar: group by document type → invoices, credit notes (Redwood Dental −$165.00), overpayments', /Sales invoices/.test(body(a)) && /Credit notes.*Redwood Dental[^A-Z]*\(\$165\.00\)/.test(body(a)) && /Overpayments/.test(body(a)) && /All documents/.test(body(a)), body(a).slice(0, 900));
     ok('ar: options kept in the display input', /by=due;n=6;len=30;g=type|g=type/.test(JSON.parse(a.setInputsLog[a.setInputsLog.length - 1].display).o), a.setInputsLog.slice(-1));
@@ -74,7 +80,7 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     // ---------------- P09 Aged Payables Summary ----------------
     const p = await run('ap', man('ap'), AGED());
     const ph = [...p.doc.querySelectorAll('#ag-all thead th')].map((x) => x.textContent.replace(/[▲▼]/g, '').trim());
-    ok('ap: suppliers as rows, same engine', ph[0] === 'Supplier' && /Aged Payables Summary/.test(text(p.doc, '#xk-head')), ph);
+    ok('ap: suppliers as rows, same engine', ph[0] === 'Contact' && /Suppliers you owe/.test(body(p)) && /Aged Payables Summary/.test(text(p.doc, '#xk-head')), ph);
     ok('ap: total = Accounts Payable in the books, tie passes, green', re('Total payable', AP).test(body(p)) && new RegExp('✓ Total = Accounts Payable on the Balance Sheet at 2026-09-30 — ' + fmt(AP)).test(banner(p)) && green(p), [AP, banner(p).slice(0, 500)]);
     const apTot = [...p.doc.querySelectorAll('#ag-all tfoot tr')][0].textContent.replace(/\s+/g, ' '), notDue = L.listInvoices({ where: 'Type=="ACCPAY"', statuses: 'AUTHORISED' }).Invoices.filter((d) => d.DueDateString.slice(0, 10) >= '2026-09-30' && d.DateString.slice(0, 10) <= '2026-09-30').reduce((s, d) => s + d.AmountDue, 0);
     ok('ap: bills not yet due are kept in Current, not dropped (live finding #987: AP aged by due date must still equal Balance Sheet AP)', notDue > 0 && apTot.startsWith('Total' + '$' + L.r2(notDue).toLocaleString('en-AU', { minimumFractionDigits: 2 })), [L.r2(notDue), apTot]);
@@ -91,6 +97,9 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     const exp = (type) => { const l = all(type), aw = l.filter((d) => d.Status === 'AUTHORISED' && d.AmountDue > 0), od = aw.filter((d) => d.DueDateString.slice(0, 10) < L.TODAY);
       return { draft: l.filter((d) => d.Status === 'DRAFT'), sub: l.filter((d) => d.Status === 'SUBMITTED'), aw, od }; };
     const S = exp('ACCREC'), s = await run('so', man('so'), PIPE());
+    { const av = [...s.doc.querySelectorAll('#so-top tbody tr')].map((tr) => tr.querySelector('.xk-av'));
+      ok('so: customers owing the most carry avatar initials', av.length > 0 && av.every((a) => a && /^[A-Z0-9]{1,2}$/.test(a.textContent)), av.map((a) => a && a.textContent));
+      ok('so: the status strip shows (n) and an amount for every status, never "None"', [...s.doc.querySelectorAll('#xk-body .xk-kpis')[0].querySelectorAll('.xk-kpi')].every((k) => /\(\d+\)/.test(k.textContent) && /\$/.test(k.textContent))); }
     const sk = [...s.doc.querySelectorAll('.xk-kpis')[0].querySelectorAll('.xk-kpi')].map((k) => k.textContent.replace(/\s+/g, ' ').trim());
     const kpi = (lbl, list, k) => lbl + ' (' + list.length + ')' + (list.length ? '$' + sumOf(list, k).toLocaleString('en-AU', { minimumFractionDigits: 2 }) : 'None');
     ok('so: KPI strip Draft / Awaiting approval / Awaiting payment / Overdue — counts and amounts from the invoice list', sk.join('|') === [kpi('Draft', S.draft, 'Total'), kpi('Awaiting approval', S.sub, 'Total'), kpi('Awaiting payment', S.aw, 'AmountDue'), kpi('Overdue', S.od, 'AmountDue')].join('|'), [sk, [kpi('Draft', S.draft, 'Total'), kpi('Awaiting approval', S.sub, 'Total'), kpi('Awaiting payment', S.aw, 'AmountDue'), kpi('Overdue', S.od, 'AmountDue')]]);
@@ -110,6 +119,8 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     ok('so: voided invoices are not counted', green(sd) && sk[2] === [...sd.doc.querySelectorAll('.xk-kpis')[0].querySelectorAll('.xk-kpi')].map((k) => k.textContent.replace(/\s+/g, ' ').trim())[2]);
     // ---------------- P03 Purchases overview ----------------
     const B = exp('ACCPAY'), u = await run('pu', man('pu'), PIPE());
+    ok('pu: the Xero actions (New bill, Import bills…) are offered as a read-only "Create new (in Xero)" card', /Create new \(in Xero\)/.test(body(u)) && /New bill/.test(body(u)) && /Import bills/.test(body(u)));
+    ok('pu: Excel carries the money-going-out series', /Money going out — next 30 days/.test(await xlsxOf(u)));
     const uk = [...u.doc.querySelectorAll('.xk-kpis')[0].querySelectorAll('.xk-kpi')].map((k) => k.textContent.replace(/\s+/g, ' ').trim());
     ok('pu: bills strip from the bill list', uk.join('|') === [kpi('Draft', B.draft, 'Total'), kpi('Awaiting approval', B.sub, 'Total'), kpi('Awaiting payment', B.aw, 'AmountDue'), kpi('Overdue', B.od, 'AmountDue')].join('|'), uk);
     ok('pu: every check passes incl. AP tie and money going out = awaiting payment', green(u) && /✓ Money going out \(overdue \+ next 30 days \+ later\) = awaiting payment/.test(banner(u)) && /✓ Awaiting payment − credits = Accounts Payable on the Balance Sheet today/.test(banner(u)), banner(u));
@@ -124,6 +135,10 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     // ---------------- P01 Business overview ----------------
     const BO = (extra) => Object.assign({ bank: L.bankSummary, invoices: L.listInvoices, bills: L.listInvoices, payments: L.listPayments, pnl_ytd: L.pnl, pnl_prior: L.pnl, pnl_month: L.pnl, accounts: L.listAccounts, bs: L.bs, org: L.organisation, connections: L.connections }, extra || {});
     const o = await run('bo', man('bo'), BO()); await wait(40);
+    ok('bo: bank cards say Statement balance and Balance difference are N/A (bank-feed data is not in the API)', /Balance difference: N\/A/.test(body(o)));
+    { const dates = [...o.doc.querySelectorAll('#bo-pay tbody tr')].map((tr) => tr.children[2].textContent);
+      ok('bo: recent payments use Xero\u2019s date format (25 Sep 2026)', dates.length > 0 && dates.every((d) => /^\d{1,2} [A-Z][a-z]{2} \d{4}$/.test(d)), dates.slice(0, 3)); }
+    { const x = await xlsxOf(o); ok('bo: Excel carries ageing, counts, recent payments and the watchlist', /Ageing \(awaiting payment\)/.test(x) && /name="Recent payments"/.test(x) && /name="Watchlist"/.test(x)); }
     const np = E.netProfit('2026-07-01', L.TODAY), npPrior = E.netProfit('2025-07-01', '2025-09-25'), bank = L.r2(E.bankBalance('090', L.TODAY) + E.bankBalance('091', L.TODAY));
     const ob = body(o), on = banner(o);
     ok('bo: YTD net profit from one P&L (1 Jul – today) = the books', re('1 Jul 2026–25 Sep 2026', np).test(ob), [np, ob.slice(0, 1500)]);
@@ -153,6 +168,8 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     // ---------------- P11 Performance overview ----------------
     const PF = (extra) => Object.assign({ pnl_12: L.pnl, pnl_p12: L.pnl, pnl_total: L.pnl, bs: L.bs, org: L.organisation, connections: L.connections }, extra || {});
     const f = await run('pf', man('pf'), PF());
+    ok('pf: insight lines are labelled as computed, not as Xero\u2019s AI insights', f.doc.querySelectorAll('.insight').length > 0 && [...f.doc.querySelectorAll('.insight')].every((i) => /^Insight \(computed\):/.test(i.textContent)) && !/AI insight/.test(body(f)));
+    ok('pf: the bank widget shows last year\u2019s balance and the change', /Bank accounts balance.*Prior: \(?\$[\d,.]+\)? · a year earlier/.test(body(f)), body(f).slice(body(f).indexOf('Bank accounts balance'), body(f).indexOf('Bank accounts balance') + 200));
     const np = E.netProfit('2025-09-01', '2026-08-31'), npp = E.netProfit('2024-09-01', '2025-08-31');
     const inc = (a, b) => { const p = E.plByAccount(a, b, false); return L.r2(Object.keys(p).filter((k) => /REVENUE|OTHERINCOME/.test(L.ACC[k].Type)).reduce((s, k) => s + p[k], 0)); };
     const I = inc('2025-09-01', '2026-08-31'), ar = E.balances('2026-08-31')['610'];
@@ -243,7 +260,7 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     const CS = (extra) => Object.assign({ pnl_cash: L.pnl, bank: L.bankSummary, org: L.organisation, connections: L.connections }, extra || {});
     const s = await run('cs', man('cs'), CS()); await wait(80);
     const st = text(s.doc, '.xk-stmt'), head = [...s.doc.querySelectorAll('.xk-stmt thead th')].map((x) => x.textContent);
-    ok('cs: header Cash Summary / organisation / period · Cash basis', /^Northwind Trading Pty Ltd\s*Cash Summary\s*For the period 1 July 2026 to 25 September 2026 · Cash basis/.test(text(s.doc, '#xk-head')), text(s.doc, '#xk-head'));
+    ok('cs: header Cash Summary / organisation / period · Cash basis', /^Cash Summary\s*Northwind Trading Pty Ltd\s*For the period 1 July 2026 to 25 September 2026 · Cash basis/.test(text(s.doc, '#xk-head')), text(s.doc, '#xk-head'));
     ok('cs: month columns Jul | Aug | Sep + Total', head.join('|') === '|Jul 2026|Aug 2026|Sep 2026|Total', head);
     ok('cs: sections in order — Cash Received, Cash Spent, Net Cash Flows, other movements, bank balances', ['Cash Received', 'Total Cash Received', 'Cash Spent', 'Total Cash Spent', 'Net Cash Flows', 'Other cash movements', 'Net Movement in Bank', 'Opening bank balance', 'Closing bank balance'].every((x, i, a) => st.indexOf(x) >= 0 && (i === 0 || st.indexOf(x) > st.indexOf(a[i - 1]))), st.slice(0, 400));
     const cashNp = E.netProfit('2026-07-01', L.TODAY, true);
@@ -271,6 +288,12 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     ok('cf: every check passes (projection identity, KPIs = daily series, BS bank, 30-day actuals = Bank Summary), green', green(f) && /5\/5 checks passed · 1 for information/.test(banner(f)) && f.errs.length === 0, banner(f));
     ok('cf: bank transactions and payments filtered to the last 30 days (where from the dates)', f.calls.some((x) => x.id === 'bank_tx' && x.params.where === 'Date>=DateTime(2026,08,26) AND Date<=DateTime(2026,09,25)') && f.calls.some((x) => x.id === 'payments' && /DateTime\(2026,08,26\)/.test(x.params.where)), f.calls.filter((x) => x.id === 'bank_tx').map((x) => x.params.where));
     const pb = [...f.doc.querySelectorAll('.xk-kpis')[1].querySelectorAll('.xk-kpi')].map((k) => k.textContent.replace(/\s+/g, ' ').trim());
+    { const svg = f.doc.querySelector('#cf-ch svg'), mk = svg && svg.querySelector('line.xk-mark'), labels = svg ? [...svg.querySelectorAll('text')].map((t) => t.textContent) : [];
+      const proj = svg ? svg.querySelectorAll('rect.proj').length : 0, act = svg ? svg.querySelectorAll('rect:not(.proj)').length : 0;
+      ok('cf: a dashed Today divider with its label; projected bars lighter than actuals', !!mk && labels.includes('Today') && proj > 0 && act > 0, { mk: !!mk, labels: labels.slice(0, 12), proj, act });
+      const tipped = svg ? [...svg.querySelectorAll('rect.proj title')].map((t) => t.textContent).find((t) => t.includes('\n')) : null;
+      ok('cf: hovering a projected bar names its largest invoices or bills', !!tipped && /: \(?\$/.test(tipped.split('\n')[1] || ''), tipped);
+      ok('cf: Overview / Manage cash in / Manage cash out as tabs', [...f.doc.querySelectorAll('#xk-body .xk-tab')].map((b) => b.textContent).join('|') === 'Overview|Manage cash in|Manage cash out'); }
     ok('cf: summary row — today, 30 days projected balance, cash runway', /^30 days projected balance/.test(pb[1]) && /^Cash runway/.test(pb[2]), pb);
     await set(f, 'xk-opt-d', '90');
     ok('cf: graph days 90 → "Next 8–90 days", still reconciles', /Next 8–90 days cash movement/.test(body(f)) && green(f));
@@ -300,6 +323,10 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     ok('gst: due 28 July 2026 (quarterly)', /Due 28 July 2026/.test(body(g)), body(g).slice(0, 900));
     ok('gst: every check passes incl. GST account movement = net GST − BAS paid, green', green(g) && /6\/6 checks passed/.test(banner(g)) && /✓ GST account movement on the Balance Sheet = net GST − GST paid to the ATO — .* paid/.test(banner(g)) && g.errs.length === 0, banner(g));
     ok('gst: documents filtered to the period in Xero (where from the dates)', g.calls.some((x) => x.id === 'invoices' && x.params.where === 'Date>=DateTime(2026,04,01) AND Date<=DateTime(2026,06,30)' && x.params.statuses === 'AUTHORISED,PAID'), g.calls.filter((x) => x.id === 'invoices').map((x) => x.params.where));
+    ok('gst: every PAYG code the library lists is shown — W1, W2, W4, W3, T1, T2, 5A (N/A until a source exists)', ['W1', 'W2', 'W4', 'W3', 'T1', 'T2', '5A'].every((k) => fv(k) === 'N/A — not in source'), ['W1', 'W2', 'W4', 'W3', 'T1', 'T2', '5A'].map(fv));
+    { const gm = await run('gst', man('gst'), GS({ org: (q) => { const o = L.organisation(q); o.Organisations[0].SalesTaxPeriod = 'MONTHLY'; return o; } })); await set(gm, 'xk-view', 'list');
+      const per = [...gm.doc.querySelectorAll('#xk-body .xk-grid tbody tr')].map((tr) => tr.children[0].textContent);
+      ok('gst: a monthly GST filer’s statements list shows the last 6 months, not quarters', /monthly GST/.test(body(gm)) && per.length === 6 && per.every((p) => /^month ended/.test(p)), per); }
     await set(g, 'xk-view', 'lines');
     ok('gst: Tax lines view lists every line with its BAS fields', g.doc.querySelectorAll('#gst-lines tbody tr').length === lines.length && /G1, 1A/.test(text(g.doc, '#gst-lines')), [g.doc.querySelectorAll('#gst-lines tbody tr').length, lines.length]);
     await set(g, 'xk-view', 'list');
@@ -325,6 +352,12 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
     ok('rc: both checks pass, green', green(r) && /2\/2 checks passed/.test(banner(r)), banner(r));
     const qi = r.doc.getElementById('rc-q'); qi.value = 'aged'; qi.dispatchEvent(new r.w.Event('change')); await r.settle();
     ok('rc: search filters the catalogue (display only)', /Aged Payables Summary/.test(body(r)) && !/Journal Report/.test(body(r)), body(r).slice(0, 300));
+    { const r2 = await run('rc', man('rc'), { org: L.organisation, connections: L.connections }); const favs = () => [...r2.doc.querySelectorAll('#xk-body .xk-card')][1].textContent;
+      const st = [...r2.doc.querySelectorAll('.rc-star')].find((b) => /Trial Balance/.test(b.parentNode.textContent)); st.click(); await r2.settle(); await r2.settle();
+      ok('rc: starring a report adds it to Favourites (saved in the display settings)', /Favourites/.test(favs()) && /Trial Balance/.test(favs()) && /fav=/.test(JSON.parse(r2.setInputsLog[r2.setInputsLog.length - 1].display).o), r2.setInputsLog.slice(-1));
+      const un = [...r2.doc.querySelectorAll('.rc-star')].find((b) => /Balance Sheet/.test(b.parentNode.textContent) && b.textContent === '★'); un.click(); await r2.settle(); await r2.settle();
+      ok('rc: un-starring removes it', !/^Favourites[\s\S]*★Balance Sheet/.test(favs()), favs().slice(0, 300));
+      const x = await xlsxOf(r2); ok('rc: Download Excel carries the catalogue', /Aged Receivables Summary/.test(x) && /No prompt yet/.test(x) && /Prompt ID/.test(x)); }
   }
   if (!only || only === 'tb') {
     // ---------------- Trial Balance (added skill, not in the library) ----------------

@@ -1,5 +1,5 @@
 XK.app({
-  title: 'Cash Summary', primary: 'pnl_cash', dated: ['pnl_cash'], org: 'org', conns: 'connections', noBasis: true,
+  title: 'Cash Summary', basisLabel: 'Cash', primary: 'pnl_cash', dated: ['pnl_cash'], org: 'org', conns: 'connections', noBasis: true,
   inputs: { start: 'from_date', end: 'to_date', org: 'org', persona: 'persona', display: 'display' },
   defaults: { from_date: '2026-07-01', to_date: '2026-09-25', org: '', persona: 'Bookkeeper',
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":"months"}' },

@@ -21,7 +21,8 @@ ${TABS}
           '<div class="xk-card detail-block"><h3>Create new (in Xero)</h3><ul><li>Invoice</li><li>Payment link</li><li>Repeating invoice</li></ul><p class="muted">Reports only read from Xero — create these in Xero → Sales.</p></div></div>';
         extra.after.push(function () {
           XK.bars(document.getElementById('so-ch'), { title: 'Money coming in by due date', labels: buckets.map(function (b) { return b.label; }), series: [{ name: 'Awaiting payment', values: buckets.map(function (b) { return b.v; }), colors: buckets.map(function (b, i) { return i === 3 ? 'var(--c1)' : 'var(--c2)'; }) }] }, c);
-          XK.grid(document.getElementById('so-top'), { rows: top, columns: [{ key: 'name', title: K.who }, { key: 'due', title: 'Due', money: true }, { key: 'overdue', title: 'Overdue', num: true, fmt: function (v) { return v ? '<span class="neg">' + XK.h(money(v)) + '</span>' : money(v); }, html: true }], empty: 'Nothing owing.' }, c);
+          var av = function (n) { var w = String(n || '').replace(/[^A-Za-z0-9 ]/g, ' ').split(' ').filter(function (x) { return x; }); return ((w[0] || '?').charAt(0) + (w.length > 1 ? w[w.length - 1].charAt(0) : '')).toUpperCase(); };
+          XK.grid(document.getElementById('so-top'), { rows: top, columns: [{ key: 'name', title: K.who, html: true, fmt: function (v) { return '<span class="xk-av" aria-hidden="true">' + XK.h(av(v)) + '</span>' + XK.h(v); } }, { key: 'due', title: 'Due', money: true }, { key: 'overdue', title: 'Overdue', num: true, fmt: function (v) { return v ? '<span class="neg">' + XK.h(money(v)) + '</span>' : money(v); }, html: true }], empty: 'Nothing owing.' }, c);
           var b = document.getElementById('so-all'); if (b) b.addEventListener('click', function () { self._all = !self._all; c.change({}, {}); });
         });
       } else if (view === 'repeating') {
@@ -43,10 +44,11 @@ ${TABS}
       var po = { DRAFT: { n: 0, v: 0 }, SUBMITTED: { n: 0, v: 0 }, AUTHORISED: { n: 0, v: 0 }, BILLED: { n: 0, v: 0 } }, pos = c.rows('purchase_orders');
       pos.forEach(function (p) { var s = po[p.Status]; if (s) { s.n++; s.v = r2(s.v + (XK.num(p.Total) || 0)); } });
       var rep = ((c.data.repeating || {}).RepeatingInvoices || []).filter(function (r) { return r.Type === K.inv && r.Status === 'AUTHORISED'; });
-      var poStrip = '<div class="xk-kpis">' + [['Draft', 'DRAFT'], ['Awaiting approval', 'SUBMITTED'], ['Approved', 'AUTHORISED'], ['Billed', 'BILLED']].map(function (k) { return '<div class="xk-kpi"><div class="lbl">' + k[0] + ' (' + po[k[1]].n + ')</div><div class="val">' + (po[k[1]].n ? money(po[k[1]].v) : 'None') + '</div></div>'; }).join('') + '</div>';
+      var poStrip = '<div class="xk-kpis">' + [['Draft', 'DRAFT'], ['Awaiting approval', 'SUBMITTED'], ['Approved', 'AUTHORISED'], ['Billed', 'BILLED']].map(function (k) { return '<div class="xk-kpi"><div class="lbl">' + k[0] + ' (' + po[k[1]].n + ')</div><div class="val">' + money(po[k[1]].v || 0) + '</div></div>'; }).join('') + '</div>';
       if (view === 'docs') {
         extra.html = '<div class="xk-card" style="margin-top:12px"><h3>Money going out — next ' + RD + ' days</h3><p>Overdue ' + money(od) + ' · due in the next ' + RD + ' days ' + money(XK.sum(days.map(function (x) { return x.v; }))) + (later ? ' · later ' + money(later) : '') + '</p><div id="pu-ch"></div></div>' +
-          '<div class="xk-card detail-block" style="margin-top:12px"><h3>Purchase orders</h3>' + poStrip + '</div>';
+          '<div class="xk-grid2" style="margin-top:12px"><div class="xk-card detail-block"><h3>Purchase orders</h3>' + poStrip + '</div>' +
+          '<div class="xk-card detail-block"><h3>Create new (in Xero)</h3><ul><li>New bill</li><li>Import bills</li><li>Purchase order</li><li>Repeating bill</li></ul><p class="muted">Reports only read from Xero — create or import these in Xero → Purchases.</p></div></div>';
         extra.after.push(function () { XK.bars(document.getElementById('pu-ch'), { title: 'Money going out', every: 7, labels: ['Overdue'].concat(days.map(function (x) { return x.d.slice(8) + '/' + x.d.slice(5, 7); })), series: [{ name: 'Bills due', values: [od].concat(days.map(function (x) { return x.v; })), colors: ['var(--neg)'] }] }, c); });
       } else if (view === 'orders') {
         extra.viewTitle = 'Purchase orders';
@@ -60,7 +62,8 @@ ${TABS}
       extra.checks = [{ name: 'Money going out (overdue + next ' + RD + ' days + later) = awaiting payment', pass: XK.near(r2(od + XK.sum(days.map(function (x) { return x.v; })) + later), P.awaiting.v), detail: money(r2(od + XK.sum(days.map(function (x) { return x.v; })) + later)) },
         { name: 'Purchase orders loaded', pass: c.errors.purchase_orders ? false : c.truncated('purchase_orders') ? false : true, detail: c.errors.purchase_orders ? c.err('purchase_orders') : pos.length + ' purchase order(s)' }];
       extra.na = ['Paid bills list (open Xero → Purchases → Bills → Paid)', 'Bill search and import (Xero actions)'];
-      extra.sheet = [[], [{ v: 'Purchase orders', s: 'bold' }]].concat([['Draft', 'DRAFT'], ['Awaiting approval', 'SUBMITTED'], ['Approved', 'AUTHORISED'], ['Billed', 'BILLED']].map(function (k) { return [k[0], po[k[1]].n, { v: po[k[1]].v, s: 'money' }]; }));`;
+      extra.sheet = [[], [{ v: 'Purchase orders', s: 'bold' }]].concat([['Draft', 'DRAFT'], ['Awaiting approval', 'SUBMITTED'], ['Approved', 'AUTHORISED'], ['Billed', 'BILLED']].map(function (k) { return [k[0], po[k[1]].n, { v: po[k[1]].v, s: 'money' }]; }))
+        .concat([[], [{ v: 'Money going out — next ' + RD + ' days', s: 'bold' }, null, { v: 'Bills due', s: 'bold' }], ['Overdue', null, { v: od, s: 'money' }]]).concat(days.map(function (x) { return [x.d, null, { v: x.v, s: 'money' }]; })).concat(later ? [['Later', null, { v: later, s: 'money' }]] : []);`;
 const KINDS = {
   so: { TITLE: 'Sales overview', KIND: 'sales', INV: 'ACCREC', CN: 'ACCRECCREDIT', OP: 'RECEIVE-OVERPAYMENT', PP: 'RECEIVE-PREPAYMENT', WHO: 'Customer', WHOPL: 'Customers', DOCS: 'invoices', DOCSCAP: 'Invoices', BSNAME: 'Accounts Receivable', PANELS: SALES,
     EXTRAUSES: "linked: ['org'], repeating: ['org']", EXTRAPAGED: "linked: { input: 'page', key: 'LinkedTransactions' }", EXTRATOOLS: "linked: 'list_linked_transactions (billable expenses)', repeating: 'list_repeating_invoices'",

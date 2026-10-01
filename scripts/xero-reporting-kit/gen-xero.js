@@ -96,6 +96,12 @@ FAM.forEach((f) => {
   JSON.parse(manifest).bindings.forEach((b) => { (byMcp[b.tool.mcp] = byMcp[b.tool.mcp] || new Set()).add('`' + b.tool.name + '`'); });
   const mcps = Object.keys(byMcp).map((m) => '`' + m + '` (' + [...byMcp[m]].join(', ') + ')');
   const tools = mcps.length === 1 ? 'the ' + mcps[0].replace(' (', ' connector (') : 'the connectors ' + mcps.slice(0, -1).join(', ') + ' and ' + mcps[mcps.length - 1];
+  const names = JSON.parse(manifest).inputs.map((i) => i.name), cfgSrc = rd('reports/' + f.report + '.cfg.js');
+  const step4 = ['Change every control and confirm the report refetches and still validates']
+    .concat(names.includes('basis') ? ['switch Accounting method'] : [])
+    .concat(names.includes('persona') ? ['switch View as to Client, then Bookkeeper'] : [])
+    .concat(/views:\s*\[/.test(cfgSrc) ? ['switch every tab / Report view'] : [])
+    .concat(['toggle Branding and the dark theme']).join('; ') + '.';
   const md = `---
 name: ${f.skill}
 description: ${f.description}
@@ -133,7 +139,7 @@ ${f.chat ? '\n## In the chat reply\n\n' + f.chat.map((c) => '- ' + c).join('\n')
 1. On the golden-set organisation, ask for this report at the library's example period; confirm the discovery call succeeded and the report saved.
 2. Compare the headline figures: ${f.golden}.
 3. Validation banner: every check passes (the independent tie included), or shows N/A / information with a stated reason.
-4. Change every control and confirm the report refetches and still validates; switch Accounting method; switch View as to Client, then Bookkeeper; toggle Branding and the dark theme.
+4. ${step4}
 5. Download PDF and Download Excel and confirm they match the screen (the Excel file has Validation and Parameters sheets).
 6. Download or Share from the report window: the snapshot keeps the period and figures and disables the refetching controls.
 7. Cross-client isolation (LIB-002): with several organisations on the connection, switch organisation — the report, its name and every export carry only that organisation's figures.

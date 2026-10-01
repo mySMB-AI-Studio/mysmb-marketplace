@@ -26,19 +26,20 @@ XK.app({
     var contacts = agg(docs), tot = zero(); contacts.forEach(function (x) { x.b.forEach(function (v, j) { tot[j] = r2(tot[j] + v); }); });
     var grand = XK.sum(contacts.map(function (x) { return x.total; })), docSum = XK.sum(docs.map(function (d) { return d.amount; }));
     var showCur = cur0 && contacts.some(function (x) { return Math.abs(x.b[0]) >= 0.005; }), vis = cols.filter(function (col, j) { return j > 0 || !cur0 || showCur; });
-    var cell = function (v, r) { return r.pctRow ? (v == null ? '' : XK.pct(v)) : money(v); };
+    var cell = function (v, r) { return r.pctRow ? (v == null ? '' : XK.pct(v, 2)) : money(v); };
+    var link = function (b) { return function (v, r) { var t = cell(v, r); return r.isTotal || !v || Math.abs(v) < 0.005 ? XK.h(t) : '<a href="#" class="xk-drill" data-c="' + XK.h(r.cid) + '" data-b="' + XK.h(b) + '" title="' + XK.h(r.name + (b ? ' · ' + b : '')) + '">' + XK.h(t) + '</a>'; }; };
     var gridSpec = function (list, totalLabel) {
       var t = zero(); list.forEach(function (x) { x.b.forEach(function (v, j) { t[j] = r2(t[j] + v); }); });
       var gt = XK.sum(list.map(function (x) { return x.total; })), row = function (x) { var o = { name: x.name, cid: x.cid, total: x.total }; cols.forEach(function (col, j) { o[col.key] = x.b[j]; }); return o; };
       var totalRow = { name: totalLabel || 'Total', total: gt, isTotal: true }, pctRow = { name: 'Percentage of total', pctRow: true, isTotal: true, total: gt ? 1 : null };
       cols.forEach(function (col, j) { totalRow[col.key] = t[j]; pctRow[col.key] = gt ? t[j] / gt : null; });
       return { rows: list.map(row), foot: [totalRow, pctRow], filter: true, empty: 'No open ' + K.docs + ' at this date.',
-        columns: [{ key: 'name', title: K.who, html: true, fmt: function (v, r) { return r.isTotal ? XK.h(v) : '<a href="#" class="xk-drill" data-c="' + XK.h(r.cid) + '">' + XK.h(v) + '</a>'; } }]
-          .concat(vis.map(function (col) { return { key: col.key, title: col.title, num: true, fmt: cell }; })).concat([{ key: 'total', title: 'Total', num: true, fmt: cell }]) };
+        columns: [{ key: 'name', title: 'Contact', html: true, fmt: function (v, r) { return r.isTotal ? XK.h(v) : '<a href="#" class="xk-drill" data-c="' + XK.h(r.cid) + '">' + XK.h(v) + '</a>'; } }]
+          .concat(vis.map(function (col) { return { key: col.key, title: col.title, num: true, html: true, fmt: link(col.title) }; })).concat([{ key: 'total', title: 'Total', num: true, html: true, fmt: link('') }]) };
     };
     var overdue = cur0 ? r2(grand - tot[0]) : null, owing = contacts.filter(function (x) { return x.total > 0.005; }).length;
     var groups = grp ? ['Invoice', 'Credit note', 'Overpayment', 'Prepayment'].filter(function (t) { return docs.some(function (d) { return d.kind === t; }); }) : [];
-    body.innerHTML = XK.kpis([{ label: K.total, value: grand }, { label: 'Not yet due', value: cur0 ? tot[0] : null, text: cur0 ? null : '—' }, { label: 'Overdue', value: overdue, text: cur0 ? null : '—' }, { label: K.owing, value: owing, money: false }], c) +
+    body.innerHTML = XK.kpis([{ label: K.total, value: grand }, { label: 'Not yet due', value: cur0 ? tot[0] : null, text: cur0 ? null : '—' }, { label: 'Overdue', value: overdue, text: cur0 ? null : '—', red: overdue > 0.005 }, { label: K.owing, value: owing, money: false }], c) +
       (grp ? groups.map(function (t, gi) { return '<div class="xk-card" style="margin-top:12px"><h3>' + XK.h(t === 'Invoice' ? K.docs.charAt(0).toUpperCase() + K.docs.slice(1) : t + 's') + '</h3><div id="ag-g' + gi + '"></div></div>'; }).join('') + '<div class="xk-card" style="margin-top:12px"><h3>All documents</h3><div id="ag-all"></div></div>'
         : '<div id="ag-all" style="margin-top:12px"></div>') +
       '<div id="ag-drill" class="detail-block"></div>' +
@@ -50,11 +51,12 @@ XK.app({
     var drill = function () {
       var el = document.getElementById('ag-drill'), x = contacts.filter(function (y) { return y.cid === self._sel; })[0]; if (!el) return;
       if (!x) { el.innerHTML = ''; return; }
-      el.innerHTML = '<div class="xk-card" style="margin-top:12px"><h3>' + XK.h(x.name) + ' — open documents</h3><div id="ag-docs"></div></div>';
-      XK.grid(document.getElementById('ag-docs'), { filter: true, rows: x.docs.map(function (d) { return { type: d.kind, number: d.number, date: d.date, due: d.due, days: d.due && d.due < asAt ? Math.round((A - XK.parse(d.due)) / 86400000) : 0, bucket: d.bucket, amount: d.amount, cur: d.cur }; }),
+      var bk = self._bucket || '', list = x.docs.filter(function (d) { return !bk || d.bucket === bk; });
+      el.innerHTML = '<div class="xk-card" style="margin-top:12px"><h3>' + XK.h(x.name) + ' — open documents' + (bk ? ' · ' + XK.h(bk) : '') + '</h3><div id="ag-docs"></div></div>';
+      XK.grid(document.getElementById('ag-docs'), { filter: true, rows: list.map(function (d) { return { type: d.kind, number: d.number, date: d.date, due: d.due, days: d.due && d.due < asAt ? Math.round((A - XK.parse(d.due)) / 86400000) : 0, bucket: d.bucket, amount: d.amount, cur: d.cur }; }),
         columns: [{ key: 'type', title: 'Type' }, { key: 'number', title: 'Number' }, { key: 'date', title: 'Date' }, { key: 'due', title: 'Due date' }, { key: 'days', title: 'Days overdue', num: true }, { key: 'bucket', title: 'Ageing' }, { key: 'amount', title: 'Amount (' + base + ')', money: true }, { key: 'cur', title: 'Currency' }] }, c);
     };
-    if (!body.__agDrill) { body.__agDrill = true; body.addEventListener('click', function (e) { var a = e.target.closest && e.target.closest('.xk-drill'); if (!a) return; e.preventDefault(); self._sel = self._sel === a.getAttribute('data-c') ? null : a.getAttribute('data-c'); self._drill && self._drill(); }); }
+    if (!body.__agDrill) { body.__agDrill = true; body.addEventListener('click', function (e) { var a = e.target.closest && e.target.closest('.xk-drill'); if (!a) return; e.preventDefault(); var cid = a.getAttribute('data-c'), b = a.getAttribute('data-b') || ''; if (self._sel === cid && (self._bucket || '') === b) { self._sel = null; self._bucket = ''; } else { self._sel = cid; self._bucket = b; } self._drill && self._drill(); }); }
     this._drill = drill; drill();
 
     // Checks. Contact totals are summed from the documents and compared with their buckets; the grand total is re-summed from
@@ -84,7 +86,7 @@ XK.app({
   },
   excel: function (c) {
     var x = this._x; if (!x) return [];
-    var head = [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: 'Aged Receivables Summary', s: 'bold' }], [XK.asOfLine(c.inputs.as_at)], [], [{ v: 'Customer', s: 'bold' }].concat(x.cols.map(function (col) { return { v: col.title, s: 'bold' }; })).concat([{ v: 'Total', s: 'bold' }])];
+    var head = [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: 'Aged Receivables Summary', s: 'bold' }], [XK.asOfLine(c.inputs.as_at) + ' · Ageing by ' + (c.opt('by') === 'inv' ? 'invoice date' : 'due date')], [], [{ v: 'Contact', s: 'bold' }].concat(x.cols.map(function (col) { return { v: col.title, s: 'bold' }; })).concat([{ v: 'Total', s: 'bold' }])];
     var rows = head.concat(x.contacts.map(function (k) { return [k.name].concat(x.cols.map(function (col) { return { v: k.b[col.j], s: 'money' }; })).concat([{ v: k.total, s: 'money' }]); }));
     rows.push([{ v: 'Total', s: 'bold' }].concat(x.cols.map(function (col) { return { v: x.tot[col.j], s: 'moneyBold' }; })).concat([{ v: x.grand, s: 'moneyBold' }]));
     rows.push([{ v: 'Percentage of total', s: 'bold' }].concat(x.cols.map(function (col) { return x.grand ? { v: x.tot[col.j] / x.grand, s: 'pct' } : null; })).concat([x.grand ? { v: 1, s: 'pct' } : null]));
