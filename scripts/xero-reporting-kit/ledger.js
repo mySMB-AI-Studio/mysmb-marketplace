@@ -172,14 +172,25 @@ function windows(from, to, periods, timeframe) {
   for (let i = 1; i <= (periods || 0); i++) out.push([shiftMonths(from, -k * i, false), shiftMonths(to, -k * i, whole)]);
   return out;
 }
+const TRACKING = [{ TrackingCategoryID: 'trk-region-0000-4000-8000-000000000001', Name: 'Region', Status: 'ACTIVE', Options: [{ TrackingOptionID: 'opt-north', Name: 'North', Status: 'ACTIVE' }, { TrackingOptionID: 'opt-south', Name: 'South', Status: 'ACTIVE' }] }];
+const SHARE = [0.6, 0.3]; // each account's amount by option; the rest is Unassigned
+function listTrackingCategories() { return { TrackingCategories: JSON.parse(JSON.stringify(TRACKING)) }; }
 function pnlReport(p) {
-  const B = books(p.xero_tenant_id), cash = p.paymentsOnly === true, W = windows(p.fromDate, p.toDate, p.periods, p.timeframe), cols = W.map(([a, b]) => plByAccount(B, a, b, cash));
+  const B = books(p.xero_tenant_id), cash = p.paymentsOnly === true, W = windows(p.fromDate, p.toDate, p.periods, p.timeframe);
+  let cols = W.map(([a, b]) => plByAccount(B, a, b, cash)), heads = W.map(([, b]) => short(b));
+  if (p.trackingCategoryID !== undefined) {
+    const cat = TRACKING.find((t) => t.TrackingCategoryID === p.trackingCategoryID);
+    if (!cat) throw new Error('Xero API GET https://api.xero.com/api.xro/2.0/Reports/ProfitAndLoss 400: {"Message":"A validation exception occurred","Elements":[{"ValidationErrors":[{"Message":"TrackingCategoryID is invalid"}]}]}');
+    const base = cols[0], part = (f) => { const o = {}; Object.keys(base).forEach((k) => { o[k] = r2(base[k] * f); }); return o; }, opts = SHARE.map(part), un = {};
+    Object.keys(base).forEach((k) => { un[k] = r2(base[k] - opts.reduce((s, o) => s + o[k], 0)); });
+    cols = opts.concat([un, base]); heads = cat.Options.map((o) => o.Name).concat(['Unassigned', 'Total']);
+  }
   const sec = (title, total, types) => { const codes = ACCOUNTS.filter((a) => types.includes(a.Type) && cols.some((c) => c[a.Code] != null)).map((a) => a.Code); if (!codes.length) return null;
     const rows = codes.map((c) => rowOf(ACC[c].Name, cols.map((col) => col[c] || 0), ACC[c].AccountID)), tot = cols.map((col) => r2(codes.reduce((s, c) => s + (col[c] || 0), 0)));
     return { row: { RowType: 'Section', Title: title, Rows: rows.concat([sumRow(total, tot)]) }, tot }; };
   const inc = sec('Income', 'Total Income', ['REVENUE']), cos = sec('Less Cost of Sales', 'Total Cost of Sales', ['DIRECTCOSTS']), oi = sec('Other Income', 'Total Other Income', ['OTHERINCOME']), ex = sec('Less Operating Expenses', 'Total Operating Expenses', ['EXPENSE']);
-  const z = W.map(() => 0), v = (s) => (s ? s.tot : z), gp = W.map((_, i) => r2(v(inc)[i] - v(cos)[i])), np = W.map((_, i) => r2(gp[i] + v(oi)[i] - v(ex)[i]));
-  const Rows = [{ RowType: 'Header', Cells: [cell('')].concat(W.map(([a, b]) => cell(short(b)))) }];
+  const z = cols.map(() => 0), v = (s) => (s ? s.tot : z), gp = cols.map((_, i) => r2(v(inc)[i] - v(cos)[i])), np = cols.map((_, i) => r2(gp[i] + v(oi)[i] - v(ex)[i]));
+  const Rows = [{ RowType: 'Header', Cells: [cell('')].concat(heads.map((t) => cell(t))) }];
   [inc, cos].forEach((s) => s && Rows.push(s.row)); Rows.push(calc('Gross Profit', gp)); [oi, ex].forEach((s) => s && Rows.push(s.row)); Rows.push(calc('Net Profit', np));
   return { Reports: [{ ReportID: 'ProfitAndLoss', ReportName: 'Profit and Loss', ReportType: 'ProfitAndLoss', ReportTitles: ['Profit and Loss', B.O.Name, long(p.fromDate) + ' to ' + long(p.toDate)], ReportDate: short(TODAY), Rows }] };
 }
@@ -295,4 +306,4 @@ const expect = {
   balances: (date, t) => balances(books(t), date), netProfit: (a, b, cash, t) => netProfit(books(t), a, b, cash), bankBalance: (code, date, t) => bankBalance(books(t), code, date),
   flows: (code, a, b, t) => flows(books(t), code, a, b), gst: (a, b, t) => gstMovement(books(t), a, b), plByAccount: (a, b, cash, t) => plByAccount(books(t), a, b, cash), books,
 };
-module.exports = { TODAY, T1, T2, ORG, ACCOUNTS, ACC, pnl: pnlReport, bs: bsReport, bankSummary, trialBalance, listManualJournals, listPayRuns, listTimesheets, listEmployees, listAssets, listInvoices, listCreditNotes, listOverpayments, listPrepayments, listPayments, listBankTransactions, listPurchaseOrders, listLinked, listRepeating, listAccounts, listTaxRates, organisation, connections, expect, fyStart, addDays, shiftMonths, eom, r2 };
+module.exports = { TODAY, T1, T2, ORG, ACCOUNTS, ACC, TRACKING, listTrackingCategories, pnl: pnlReport, bs: bsReport, bankSummary, trialBalance, listManualJournals, listPayRuns, listTimesheets, listEmployees, listAssets, listInvoices, listCreditNotes, listOverpayments, listPrepayments, listPayments, listBankTransactions, listPurchaseOrders, listLinked, listRepeating, listAccounts, listTaxRates, organisation, connections, expect, fyStart, addDays, shiftMonths, eom, r2 };

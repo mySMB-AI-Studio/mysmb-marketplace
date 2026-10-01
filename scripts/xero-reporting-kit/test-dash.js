@@ -359,6 +359,39 @@ const AGED = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes,
       ok('rc: un-starring removes it', !/^Favourites[\s\S]*★Balance Sheet/.test(favs()), favs().slice(0, 300));
       const x = await xlsxOf(r2); ok('rc: Download Excel carries the catalogue', /Aged Receivables Summary/.test(x) && /No prompt yet/.test(x) && /Prompt ID/.test(x)); }
   }
+  if (!only || only === 'pnlx') {
+    // ---------------- P06 Profit and Loss: tracking columns, several comparison periods, View as (ledger) ----------------
+    const PLX = (extra) => Object.assign({ pnl: L.pnl, pnl_cash: L.pnl, pnl_compare: L.pnl, pnl_compare_cash: L.pnl, bs_end: L.bs, pnl_tracking: L.pnl, pnl_tracking_cash: L.pnl, tracking_cats: L.listTrackingCategories, org: L.organisation, connections: L.connections }, extra || {});
+    const npOf = (r, col) => { const x = r.Reports[0].Rows.find((y) => y.Title === '' && y.Rows[0].Cells[0].Value === 'Net Profit'); return +x.Rows[0].Cells[col == null ? 1 : col].Value; };
+    const t = await run('pnl', man('pnl'), PLX()); await wait(40);
+    const REG = L.TRACKING[0].TrackingCategoryID;
+    ok('pnlx: tracking picker lists the organisation\u2019s tracking categories; none chosen → no tracking section, nothing about it in the banner, green', [...t.doc.querySelectorAll('#pl-track option')].map((o) => o.textContent).join('|') === 'None|Region' && !/by Region/.test(body(t)) && !/tracking/i.test(banner(t)) && green(t), [banner(t).slice(0, 300)]);
+    await set(t, 'pl-track', REG); await wait(40);
+    const heads = [...t.doc.querySelectorAll('#xk-body .xk-card .xk-stmt thead th')].map((x) => x.textContent);
+    ok('pnlx: choosing Region refetches the P&L by tracking category and shows North / South / Unassigned / Total', t.calls.some((x) => x.requery && x.id === 'pnl_tracking' && x.params.trackingCategoryID === REG) && /Profit and Loss by Region/.test(body(t)) && heads.join('|') === '|North|South|Unassigned|Total', heads);
+    ok('pnlx: tracking checks pass — columns add up to Total, and Total Net Profit = this P&L (separate Xero reports)', /✓ Tracking columns add up to the Total column/.test(banner(t)) && /✓ Tracking Total Net Profit = this Profit and Loss/.test(banner(t)) && green(t), banner(t).slice(0, 500));
+    { t.doc.getElementById('xk-xlsx').click(); await t.settle(); const b = t.downloads.filter((d) => d.blob).pop(), x = b ? Buffer.from(await b.blob.arrayBuffer()).toString('utf8') : '';
+      ok('pnlx: Excel adds a "By Region" sheet', /name="By Region"/.test(x)); }
+    const tt = await run('pnl', man('pnl'), PLX({ pnl_tracking: tamper(L.pnl, (rows) => { const npRow = rows.find((y) => y.Title === '' && y.Rows[0].Cells[0].Value === 'Net Profit').Rows[0]; npRow.Cells[npRow.Cells.length - 1].Value = '1.00'; }) })); await set(tt, 'pl-track', REG); await wait(40);
+    ok('pnlx: tracking report disagreeing with the P&L → Fail (and its Total no longer adds up)', /✗ Tracking Total Net Profit = this Profit and Loss/.test(banner(tt)) && red(tt), banner(tt).slice(0, 400));
+    // several periods
+    const m = await run('pnl', man('pnl'), PLX()); await wait(40);
+    await set(m, 'xk-cmp', 'periods'); await set(m, 'xk-opt-np', '3'); await wait(80);
+    const W = [['2026-06-01', '2026-08-25'], ['2026-05-01', '2026-07-25'], ['2026-04-01', '2026-06-25']];
+    ok('pnlx: Several periods → Periods / Period of controls appear, and the previous 3 months are fetched', !!m.doc.getElementById('xk-opt-np') && !!m.doc.getElementById('xk-opt-tf') && W.every(([a, b]) => m.calls.some((x) => x.id === 'pnl_compare' && x.params.fromDate === a && x.params.toDate === b)), m.calls.filter((x) => x.id === 'pnl_compare').map((x) => x.params.fromDate + '..' + x.params.toDate));
+    const npRow = [...m.doc.querySelectorAll('.xk-stmt tbody tr')].find((tr) => /^Net Profit/.test(tr.children[0].textContent));
+    const vals = npRow ? [...npRow.children].slice(1).map((td) => td.textContent) : [];
+    const exp = [npOf(L.pnl({ fromDate: '2026-07-01', toDate: '2026-09-25' }))].concat(W.map(([a, b]) => npOf(L.pnl({ fromDate: a, toDate: b }))));
+    ok('pnlx: one Net Profit column per period, each = the books for that window', vals.length === 4 && exp.every((v, i) => vals[i] === (v < 0 ? '(' : '') + '$' + Math.abs(v).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + (v < 0 ? ')' : '')), [vals, exp]);
+    ok('pnlx: "Comparison periods loaded" passes, still green', /✓ Comparison periods loaded — 3 period/.test(banner(m)) && green(m), banner(m).slice(0, 400));
+    await set(m, 'xk-opt-tf', 'y'); await wait(80);
+    ok('pnlx: Period of Year → the same months in the 3 previous years', [['2025-07-01', '2025-09-25'], ['2024-07-01', '2024-09-25'], ['2023-07-01', '2023-09-25']].every(([a, b]) => m.calls.some((x) => x.id === 'pnl_compare' && x.params.fromDate === a && x.params.toDate === b)));
+    { const a = m.doc.querySelector('input[name="xk-basis"][value="Cash"]'); a.checked = true; a.dispatchEvent(new m.w.Event('change')); await m.settle(); await wait(80); }
+    ok('pnlx: Cash basis → the comparison periods come from the cash-basis P&L', m.calls.some((x) => x.id === 'pnl_compare_cash' && x.params.paymentsOnly === true && x.params.fromDate === '2025-07-01'));
+    // View as lives in the display settings now
+    await set(m, 'xk-persona', 'Client');
+    ok('pnlx: View as Client → summary mode, kept in the display settings (no input slot)', m.doc.body.classList.contains('persona-summary') && JSON.parse(m.setInputsLog[m.setInputsLog.length - 1].display).pv === 'Client' && !('persona' in m.setInputsLog[m.setInputsLog.length - 1]), m.setInputsLog.slice(-1));
+  }
   if (!only || only === 'tb') {
     // ---------------- Trial Balance (added skill, not in the library) ----------------
     const TB = (extra) => Object.assign({ tb: L.trialBalance, tb_cash: L.trialBalance, bs_tie: L.bs, org: L.organisation, connections: L.connections }, extra || {});
