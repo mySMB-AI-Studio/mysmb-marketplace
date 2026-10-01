@@ -26,9 +26,6 @@
   "connectorsUsed": [
     "xero-accounting"
   ],
-  "branding": {
-    "color": "#EA580C"
-  },
   "popularity": 0,
   "sizing": {
     "preferred": {
@@ -399,7 +396,12 @@
             "action": "open_url",
             "params": {
               "url": {
-                "$item": "reviewUrl"
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "reviewUrl"
+                  }
+                }
               },
               "target": "_blank"
             }
@@ -502,7 +504,7 @@
         "type": "ProgressBar",
         "props": {
           "value": 100,
-          "tone": "brand"
+          "tone": "warning"
         }
       },
       "barRightBand": {
@@ -573,7 +575,7 @@
         "type": "Dot",
         "props": {
           "size": "sm",
-          "tone": "brand"
+          "tone": "warning"
         }
       },
       "legOverText": {
