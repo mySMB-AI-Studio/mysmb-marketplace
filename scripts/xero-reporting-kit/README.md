@@ -63,6 +63,7 @@ Open the PR only when `npm run roundtrip` and `validate.ts` both pass.
   - an optional source that fails is an N/A line, not a red banner.
 
   Both connectors accept `xero_tenant_id`. Bind the organisation input to them too, or a report could mix two organisations' data.
+- **Every document checks itself.** The agent retypes the document when it saves it, and in QA it once turned `isFinite` into `isfinite`. The skeleton's last script hashes the kit and the config from `render:` on (whitespace ignored; the agent edits only the defaults above it) and compares the result with the sum `build.js` embeds. A damaged copy shows a red "This copy of the report is damaged" line at once, and the kit adds a failed check. `test-conformance.js` checks a good copy passes and a one-character change is caught on every report.
 - **A report config owns its body.** Statements use `XK.statement`; dashboards and task lists (e.g. `me.cfg.js`) build their own layout from the kit pieces. Findings such as month-end tasks are content, not checks; the banner is for data-integrity ties.
 
 ## Kit reference (for writing a report config)
