@@ -1,0 +1,227 @@
+{
+  "category": "hris",
+  "connectorsUsed": [],
+  "dataProvider": {
+    "kind": "portal-snapshot",
+    "recipe": {
+      "entityType": "leave_balance",
+      "writeTo": "/portal/leaveBalances"
+    }
+  },
+  "description": "Per-employee PTO for the month — ending balance and days used.",
+  "id": "hammerjack-pto",
+  "sizing": {
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 8
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 3
+    },
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 4
+    }
+  },
+  "spec": {
+    "elements": {
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "table"
+        ],
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "header",
+          "body"
+        ],
+        "type": "Card"
+      },
+      "empty": {
+        "props": {
+          "message": "No leave balances synced yet."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/portal/snapshot/leave_balance",
+              "not": true
+            },
+            {
+              "$state": "/portal/leaveBalances/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "type": "Header"
+      },
+      "loadBar1": {
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "loadBar2": {
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "loadBar3": {
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "loading": {
+        "children": [
+          "loadBar1",
+          "loadBar2",
+          "loadBar3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/portal/snapshot/leave_balance"
+        }
+      },
+      "subtitle": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "month": {
+                "$state": "/portal/leaveBalances/0/month"
+              },
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/portal/leaveBalances"
+                  }
+                }
+              },
+              "pattern": "{month} · {n} employees"
+            }
+          }
+        },
+        "type": "Eyebrow"
+      },
+      "table": {
+        "props": {
+          "columns": [
+            {
+              "field": "employee_name",
+              "header": "Employee",
+              "id": "name",
+              "priority": 1,
+              "width": 180
+            },
+            {
+              "align": "right",
+              "field": "pto_balance_ending",
+              "header": "Ending balance",
+              "id": "ending",
+              "priority": 1,
+              "width": 130
+            },
+            {
+              "align": "right",
+              "field": "pto_used_month",
+              "header": "Used this month",
+              "id": "used",
+              "priority": 1,
+              "width": 130
+            }
+          ],
+          "rows": {
+            "$computed": "sort_by_priority",
+            "args": {
+              "by": [
+                {
+                  "direction": "asc",
+                  "field": "employee_name"
+                }
+              ],
+              "value": {
+                "$state": "/portal/leaveBalances"
+              }
+            }
+          }
+        },
+        "type": "Table",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/portal/snapshot/leave_balance",
+              "not": true
+            },
+            {
+              "$state": "/portal/leaveBalances/0"
+            }
+          ]
+        }
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "PTO"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "start",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "CalendarDays",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "subtitle"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      }
+    },
+    "root": "card"
+  },
+  "status": "published",
+  "tags": [
+    "portal",
+    "leave",
+    "hris",
+    "sprout"
+  ],
+  "title": "Hammerjack PTO"
+}

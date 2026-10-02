@@ -1,0 +1,226 @@
+{
+  "contentHash": "e5746e70fa05b6d40bd570ef844ae98716140109560378ce3944d15b6ce8c821",
+  "definition": {
+    "steps": [
+      {
+        "connectors": [
+          {
+            "key": "sprout_employee",
+            "label": "Sprout Employee",
+            "required": true,
+            "scope": "either",
+            "server": "sprout-employee"
+          },
+          {
+            "key": "sprout_time_attendance",
+            "label": "Sprout Time & Attendance",
+            "required": true,
+            "scope": "either",
+            "server": "sprout-time-attendance"
+          },
+          {
+            "key": "sprout_hr_general",
+            "label": "Sprout company lookups (optional)",
+            "scope": "either",
+            "server": "sprout-hr-general"
+          }
+        ],
+        "description": "Use existing Connections for credentials. Hammerjack stores account identifiers only. Payroll is not required for these client HR use cases.",
+        "fields": [
+          {
+            "key": "company_id",
+            "label": "Sprout company ID",
+            "required": true,
+            "type": "number"
+          },
+          {
+            "default": "Asia/Manila",
+            "key": "timezone",
+            "label": "Reporting timezone",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "id": "connections",
+        "title": "Connect Sprout HR"
+      },
+      {
+        "connectors": [],
+        "description": "Use approved company attendance rules. An unrecognized or incomplete source response stops the run; it never fabricates absence, lateness, leave usage or balances.",
+        "fields": [
+          {
+            "default": 10,
+            "key": "sync_page_limit",
+            "label": "Maximum source pages per run",
+            "required": true,
+            "type": "number"
+          },
+          {
+            "default": 100,
+            "key": "sync_rows_per_page",
+            "label": "Rows per source page",
+            "required": true,
+            "type": "number"
+          },
+          {
+            "default": 35,
+            "key": "sync_lookback_days",
+            "label": "Attendance lookback days",
+            "required": true,
+            "type": "number"
+          },
+          {
+            "default": 50,
+            "key": "max_portals",
+            "label": "Maximum portals per run",
+            "required": true,
+            "type": "number"
+          },
+          {
+            "default": "mon_fri",
+            "key": "work_week",
+            "label": "Approved working week",
+            "options": [
+              {
+                "label": "Monday to Friday",
+                "value": "mon_fri"
+              },
+              {
+                "label": "Monday to Saturday",
+                "value": "mon_sat"
+              }
+            ],
+            "required": true,
+            "type": "select"
+          },
+          {
+            "default": "09:00",
+            "key": "work_start_time",
+            "label": "Approved regular start time (HH:mm)",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "default": 15,
+            "key": "late_grace_minutes",
+            "label": "Approved late grace period",
+            "required": true,
+            "type": "number"
+          },
+          {
+            "key": "attendance_log_type_in",
+            "label": "Sprout inOutMode value for clock-in",
+            "required": true,
+            "type": "number"
+          },
+          {
+            "default": false,
+            "key": "source_mapping_reviewed",
+            "label": "Source mappings and company attendance rules were reviewed",
+            "required": true,
+            "type": "boolean"
+          }
+        ],
+        "id": "sync_limits",
+        "title": "Synchronization and attendance rules"
+      },
+      {
+        "connectors": [],
+        "description": "Official Sprout response fields define the mapper. Review the account-specific status and leave-bank identifiers and company working calendar before activation.",
+        "fields": [
+          {
+            "helpText": "Choose only the approved PTO leave banks. Values are Sprout leave type identifiers, not API credentials.",
+            "key": "pto_leave_type_ids",
+            "label": "PTO leave type IDs (comma-separated)",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "key": "leave_approved_status_id",
+            "label": "Sprout approved leave status ID",
+            "required": true,
+            "type": "number"
+          },
+          {
+            "default": "",
+            "key": "work_holidays",
+            "label": "Approved non-working dates (comma-separated ISO dates)",
+            "type": "string"
+          },
+          {
+            "key": "work_location_office_codes",
+            "label": "Approved office work location codes (comma-separated)",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "default": false,
+            "key": "company_uniform_schedule_reviewed",
+            "label": "All selected staff use this reviewed working calendar and shift",
+            "type": "boolean"
+          }
+        ],
+        "id": "source_mappings",
+        "title": "Review leave and attendance source mappings"
+      },
+      {
+        "connectors": [],
+        "description": "Use the bundled review templates. Publish the platform Monthly Report before PDF generation. Automations remain draft until a human reviews scopes, ownership, mappings and schedules.",
+        "fields": [
+          {
+            "default": "Performance Review",
+            "key": "review_form_name_prefix",
+            "label": "Monthly review form name prefix",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "default": false,
+            "key": "scorecard_enabled",
+            "label": "Enable verified scorecard calculations",
+            "type": "boolean"
+          },
+          {
+            "default": false,
+            "key": "sync_enabled",
+            "label": "Enable verified live Sprout synchronization",
+            "type": "boolean"
+          },
+          {
+            "default": false,
+            "key": "reviews_enabled",
+            "label": "Enable reviewed monthly review requests",
+            "type": "boolean"
+          },
+          {
+            "default": false,
+            "key": "report_generation_enabled",
+            "label": "Enable reviewed client PDF generation",
+            "type": "boolean"
+          }
+        ],
+        "id": "reviews_reports",
+        "title": "Reviews, scorecards and reports"
+      },
+      {
+        "connectors": [],
+        "description": "The manual demo requires an explicitly selected synthetic portal. It writes only the hammerjack_demo source and never replaces Sprout rows.",
+        "fields": [
+          {
+            "default": false,
+            "key": "demo_enabled",
+            "label": "Allow manual synthetic demonstrations",
+            "type": "boolean"
+          }
+        ],
+        "id": "safe_demo",
+        "title": "Optional synthetic demonstration"
+      }
+    ],
+    "version": 1
+  },
+  "description": "Choose existing Sprout accounts, review field mappings and staffing, then enable only the operations that have been verified.",
+  "kind": "setup",
+  "name": "Hammerjack configuration",
+  "originKey": "77bddb69-b388-5464-8710-ad568ae8295f"
+}
