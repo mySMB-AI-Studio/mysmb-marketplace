@@ -66,6 +66,7 @@ async function run(name, manifest, fx, opts) {
   const w = dom.window;
   const errs = []; w.addEventListener('error', (e) => errs.push(e.message));
   const bundle = opts.bundle || hydrate(manifest, fx, opts.snapshotInputs || {}, calls, opts.fail);
+  if (opts.bundleInputs) bundle.inputs = resolve(manifest, opts.snapshotInputs || {}); // myHubV2 ≥ artifact_from_template: bundle.inputs
   w.MyHubReport._deliver(bundle);
   await new Promise((r) => setTimeout(r, 30));
   return { w, doc: w.document, calls, setInputsLog, downloads, errs, settle: () => new Promise((r) => setTimeout(r, 30)) };

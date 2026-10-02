@@ -9,7 +9,15 @@ console.log('1. extract from', SKILLS); run('node', ['extract-skills.js', SKILLS
 console.log('2. tests on the extracted copy'); for (const t of ['test-ledger.js', 'test-xero.js', 'test-dash.js', 'test-conformance.js']) run('node', [t], { KIT_DIR: OUT });
 console.log('3. build every report'); for (const f of FAM) run('node', ['build.js', f.report], { KIT_DIR: OUT });
 console.log('4. platform validators'); run('npx', ['tsx', 'check-reports.mts', OUT]);
-console.log('5. limits: markdown ≤ 128 × 1024 characters, description ≤ 500, no line over 1,500 characters, report document + dataBindings ≤ 35,000 tokens');
+console.log('5. templates = the skills: reports/<skill>/report.html and report.json dataBindings equal the extracted blocks');
+for (const f of FAM) {
+  const T = path.resolve(K, '..', '..', 'plugins', 'xero-reporting-studio', 'reports', f.skill), rdx = (p) => fs.readFileSync(p, 'utf8').replace(/\r\n/g, '\n');
+  const same = fs.existsSync(T) && rdx(path.join(T, 'report.html')) === rdx(path.join(OUT, 'reports', f.report + '.doc.html')) &&
+    JSON.stringify(JSON.parse(rdx(path.join(T, 'report.json'))).dataBindings) === JSON.stringify(JSON.parse(rdx(path.join(OUT, 'reports', f.report + '.manifest.json'))));
+  if (!same) { console.log('  TEMPLATE DIFFERS FROM SKILL', f.skill, '(run npm run gen)'); process.exit(1); }
+}
+console.log('  all', FAM.length, 'templates match their skills');
+console.log('6. limits: markdown ≤ 128 × 1024 characters, description ≤ 500, no line over 1,500 characters, report document + dataBindings ≤ 35,000 tokens');
 const { countTokens } = require('@anthropic-ai/tokenizer'), tok = (f) => countTokens(fs.readFileSync(path.join(OUT, 'reports', f.report + '.doc.html'), 'utf8')) + countTokens(JSON.stringify(JSON.parse(fs.readFileSync(path.join(OUT, 'reports', f.report + '.manifest.json'), 'utf8'))));
 let bad = 0;
 for (const f of fs.readdirSync(SKILLS)) {
