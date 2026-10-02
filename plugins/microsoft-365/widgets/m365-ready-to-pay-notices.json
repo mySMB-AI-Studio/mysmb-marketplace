@@ -53,7 +53,7 @@
       "newBadge": {
         "type": "Badge",
         "props": {
-          "label": { "$state": "/m365-mail-read/list_ready_to_pay_notices/summary/newBadgeText" },
+          "text": { "$state": "/m365-mail-read/list_ready_to_pay_notices/summary/newBadgeText" },
           "tone":  "info"
         },
         "visible": { "$state": "/m365-mail-read/list_ready_to_pay_notices/summary/newCount" }
@@ -108,7 +108,7 @@
       "tabAll": {
         "type": "Badge",
         "props": {
-          "label": { "$state": "/m365-mail-read/list_ready_to_pay_notices/summary/allTabText" },
+          "text": { "$state": "/m365-mail-read/list_ready_to_pay_notices/summary/allTabText" },
           "tone":  "info",
           "variant": "soft"
         }
@@ -116,14 +116,14 @@
       "tabUnread": {
         "type": "Badge",
         "props": {
-          "label": { "$state": "/m365-mail-read/list_ready_to_pay_notices/summary/unreadTabText" },
+          "text": { "$state": "/m365-mail-read/list_ready_to_pay_notices/summary/unreadTabText" },
           "tone":  "muted"
         }
       },
       "tabAwaiting": {
         "type": "Badge",
         "props": {
-          "label": { "$state": "/m365-mail-read/list_ready_to_pay_notices/summary/awaitingTabText" },
+          "text": { "$state": "/m365-mail-read/list_ready_to_pay_notices/summary/awaitingTabText" },
           "tone":  "muted"
         }
       },
@@ -203,20 +203,27 @@
       "badgeRow": {
         "type": "Row",
         "props": { "gap": "xs", "align": "center" },
-        "repeat": {
-          "statePath": "/badges",
-          "key": "label"
-        },
-        "children": ["messageBadge"],
-        "visible": { "$item": "badges/0" }
+        "children": ["billBadge", "statusBadge"]
       },
 
-      "messageBadge": {
+      "billBadge": {
         "type": "Badge",
         "props": {
-          "label": { "$item": "label" },
-          "tone":  { "$item": "tone" }
-        }
+          "text": { "$item": "billBadge" },
+          "tone": "success",
+          "variant": "soft"
+        },
+        "visible": { "$item": "billBadge" }
+      },
+
+      "statusBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "statusBadge" },
+          "tone": { "$item": "statusTone" },
+          "variant": "soft"
+        },
+        "visible": { "$item": "statusBadge" }
       },
 
       "messageTime": {
