@@ -1,0 +1,253 @@
+{
+  "title": "Cash flow manager",
+  "description": "Live, validated Xero Cash flow manager (P13) — today's bank balance, today's movement, the next 1–7 and 8–30 days, a daily chart of the last 30 days (actual) and the next 30 (projected from invoices and bills), projected balance and cash runway.",
+  "tags": [
+    "xero",
+    "cash-flow-manager",
+    "P13",
+    "cash"
+  ],
+  "fileName": "xero-cash-flow-manager.html",
+  "dataBindings": {
+    "inputs": [
+      {
+        "name": "as_at",
+        "label": "Today",
+        "type": "date",
+        "default": "today"
+      },
+      {
+        "name": "past_from",
+        "label": "Actuals from",
+        "type": "date",
+        "default": "2026-08-26"
+      },
+      {
+        "name": "past_where",
+        "label": "Actuals window",
+        "type": "string",
+        "maxLength": 200,
+        "default": "Date>=DateTime(2026,08,26) AND Date<=DateTime(2026,09,25)"
+      },
+      {
+        "name": "planned",
+        "label": "Planned cash in / out",
+        "type": "string",
+        "maxLength": 500,
+        "default": "[]"
+      },
+      {
+        "name": "org",
+        "label": "Organisation",
+        "type": "string",
+        "maxLength": 64,
+        "default": ""
+      },
+      {
+        "name": "page",
+        "label": "Page",
+        "type": "number",
+        "min": 1,
+        "max": 20,
+        "default": 1
+      },
+      {
+        "name": "display",
+        "label": "Display settings",
+        "type": "string",
+        "maxLength": 300,
+        "default": "{\"cents\":0,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"today\",\"c\":\"none\",\"v\":\"overview\",\"o\":\"d=30;od=ex\"}"
+      }
+    ],
+    "bindings": [
+      {
+        "id": "bank",
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_bank_summary"
+        },
+        "params": {
+          "fromDate": {
+            "kind": "input",
+            "input": "as_at"
+          },
+          "toDate": {
+            "kind": "input",
+            "input": "as_at"
+          },
+          "xero_tenant_id": {
+            "kind": "input",
+            "input": "org"
+          }
+        }
+      },
+      {
+        "id": "bank_past",
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_bank_summary"
+        },
+        "params": {
+          "fromDate": {
+            "kind": "input",
+            "input": "past_from"
+          },
+          "toDate": {
+            "kind": "input",
+            "input": "as_at"
+          },
+          "xero_tenant_id": {
+            "kind": "input",
+            "input": "org"
+          }
+        }
+      },
+      {
+        "id": "receivables",
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_invoices"
+        },
+        "params": {
+          "where": {
+            "kind": "static",
+            "value": "Type==\"ACCREC\""
+          },
+          "statuses": {
+            "kind": "static",
+            "value": "AUTHORISED"
+          },
+          "order": {
+            "kind": "static",
+            "value": "DueDate ASC"
+          },
+          "page": {
+            "kind": "input",
+            "input": "page"
+          },
+          "xero_tenant_id": {
+            "kind": "input",
+            "input": "org"
+          }
+        }
+      },
+      {
+        "id": "payables",
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_invoices"
+        },
+        "params": {
+          "where": {
+            "kind": "static",
+            "value": "Type==\"ACCPAY\""
+          },
+          "statuses": {
+            "kind": "static",
+            "value": "AUTHORISED"
+          },
+          "order": {
+            "kind": "static",
+            "value": "DueDate ASC"
+          },
+          "page": {
+            "kind": "input",
+            "input": "page"
+          },
+          "xero_tenant_id": {
+            "kind": "input",
+            "input": "org"
+          }
+        }
+      },
+      {
+        "id": "bank_tx",
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_bank_transactions"
+        },
+        "params": {
+          "where": {
+            "kind": "input",
+            "input": "past_where"
+          },
+          "page": {
+            "kind": "input",
+            "input": "page"
+          },
+          "xero_tenant_id": {
+            "kind": "input",
+            "input": "org"
+          }
+        }
+      },
+      {
+        "id": "payments",
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_payments"
+        },
+        "params": {
+          "where": {
+            "kind": "input",
+            "input": "past_where"
+          },
+          "page": {
+            "kind": "input",
+            "input": "page"
+          },
+          "xero_tenant_id": {
+            "kind": "input",
+            "input": "org"
+          }
+        }
+      },
+      {
+        "id": "bs",
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_balance_sheet"
+        },
+        "params": {
+          "date": {
+            "kind": "input",
+            "input": "as_at"
+          },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": false
+          },
+          "xero_tenant_id": {
+            "kind": "input",
+            "input": "org"
+          }
+        }
+      },
+      {
+        "id": "org",
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_organisation"
+        },
+        "params": {
+          "xero_tenant_id": {
+            "kind": "input",
+            "input": "org"
+          }
+        }
+      },
+      {
+        "id": "connections",
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_connections"
+        },
+        "params": {}
+      }
+    ]
+  }
+}

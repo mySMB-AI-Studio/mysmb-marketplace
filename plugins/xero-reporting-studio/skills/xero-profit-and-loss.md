@@ -4,7 +4,7 @@ description: Build a live, validated Xero Profit and Loss (P06) on the tested re
 ---
 # Profit and Loss (P06)
 
-Use when the user asks for a profit and loss, P&L, income statement, trading statement, net profit, income and expenses for a period, or a P&L comparison with last year. Load `xero-report-foundation` first and follow its *Build a kit report* steps with the blocks below — copy them, do not rewrite them. This skill needs the `xero-accounting` connector (`get_profit_and_loss`, `get_balance_sheet`, `list_tracking_categories`, `get_organisation`, `list_connections`).
+Use when the user asks for a profit and loss, P&L, income statement, trading statement, net profit, income and expenses for a period, or a P&L comparison with last year. Load `xero-report-foundation` first and follow its *Build a kit report* steps. Template: `xero-reporting-studio` / `xero-profit-and-loss` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `xero-accounting` connector (`get_profit_and_loss`, `get_balance_sheet`, `list_tracking_categories`, `get_organisation`, `list_connections`).
 
 Xero location: Reporting → Profit and Loss. Library: Xero Reports Prompt Library v1.2 → Prompts → P06. Delivery: Wave 1 (delivery order 1).
 
@@ -358,7 +358,7 @@ Call `get_organisation` once (the organisation's `Name`, `BaseCurrency`, `Financ
 }
 ```
 
-## Report document (copy verbatim — change only the config's `defaults`)
+## Report document (copy path only — copy verbatim, change only the config's `defaults`)
 
 ```html
 <!doctype html>
@@ -635,10 +635,11 @@ h(c.company||"N/A \u2014 not in source")+" (one Xero organisation per report)</l
 length&&(r[3]=[{v:foot,s:"muted"}]))}),sheets.push({name:"Validation",rows:[[{v:"Check",s:"bold"},{v:"Result",s:"bold"},{v:"Detail",s:"bold"}]].concat(last.checks.map(function(k){return[k.name,k.pass===!0?"Pass":k.pass===!1?"FAIL":"N/A",k.detail||""]})),widths:[60,10,60]});var pr=reportParams({start:I.
 start&&S.inputs[I.start],end:I.end&&S.inputs[I.end],asAt:I.asAt&&S.inputs[I.asAt],basis:I.basis&&S.inputs[I.basis],org:I.org&&(S.inputs[I.org]||c.organisation.active||""),display:c.display});sheets.push({name:"Parameters",rows:[[{v:"Parameter",s:"bold"},{v:"Value",s:"bold"}]].concat(Object.keys(pr).
 map(function(k){return[k,String(pr[k])]})).concat([["basis",basisOf()||"n/a"],["currency",c.currency],[],["Data as of",S.fetchedAt||""],["Source",cfg.mechanism||MECHANISM]]),widths:[28,60]});var name=[c.company||"Xero",cfg.title,I.start?S.inputs[I.start]+" to "+S.inputs[I.end]:I.asAt?"as at "+S.inputs[I.
-asAt]:""].filter(Boolean).join(" - ").replace(/[\\\/:*?"<>|]+/g," ");download(xlsx(sheets,c.currency),name+".xlsx")}function boot(bundle){if(S.data={},S.errors=Object.assign({},bundle.errors||{}),S.fetchedAt=bundle.fetchedAt||null,Object.keys(bundle.data||{}).forEach(function(id){S.errors[id]||absorb(
-id,bundle.data[id])}),adoptHeader(),status(""),S.first){S.first=!1;var roll=rollPresets();if(roll){change(roll);return}if(announce(),heal())return}render(),retryLimited(1).then(pageAll).then(fanAll)}return MH?(MyHubReport.onData(function(bundle){window.__reportStarted=!0,boot(bundle)}),MH.onRefresh&&
-MH.onRefresh(function(){status("Refreshing\u2026")}),MH.onThemeChange&&MH.onThemeChange(function(){render()}),{state:S,change,render,exportXlsx,ctx,retryLimited}):(status("Open this report in mySMB to load Xero data."),{state:S})}window.XK={app,bars,compareCols,currentYearEarnings,eom,find,footerStamp,
-fyStartOf:function(isoDate,m){return iso(fyStartOf(parse(isoDate),m))},h,iso,kpis,linesTies,money,near,parse,pct,periodLine,rangeLabel,runningTies,sectionBy,sheetFromLines,statement,sum,val,walk,waterfall};})();</script>
+asAt]:""].filter(Boolean).join(" - ").replace(/[\\\/:*?"<>|]+/g," ");download(xlsx(sheets,c.currency),name+".xlsx")}function boot(bundle){var bi=bundle.inputs,k0;if(bi&&typeof bi=="object")for(k0 in bi)Object.prototype.hasOwnProperty.call(S.inputs,k0)&&(S.inputs[k0]=bi[k0]);if(S.data={},S.errors=Object.
+assign({},bundle.errors||{}),S.fetchedAt=bundle.fetchedAt||null,Object.keys(bundle.data||{}).forEach(function(id){S.errors[id]||absorb(id,bundle.data[id])}),adoptHeader(),status(""),S.first){S.first=!1;var roll=rollPresets();if(roll){change(roll);return}if(announce(),heal())return}render(),retryLimited(
+1).then(pageAll).then(fanAll)}return MH?(MyHubReport.onData(function(bundle){window.__reportStarted=!0,boot(bundle)}),MH.onRefresh&&MH.onRefresh(function(){status("Refreshing\u2026")}),MH.onThemeChange&&MH.onThemeChange(function(){render()}),{state:S,change,render,exportXlsx,ctx,retryLimited}):(status(
+"Open this report in mySMB to load Xero data."),{state:S})}window.XK={app,bars,compareCols,currentYearEarnings,eom,find,footerStamp,fyStartOf:function(isoDate,m){return iso(fyStartOf(parse(isoDate),m))},h,iso,kpis,linesTies,money,near,parse,pct,periodLine,rangeLabel,runningTies,sectionBy,sheetFromLines,
+statement,sum,val,walk,waterfall};})();</script>
 <script>function XK_PERIODS(inp, c) {
   var n = Math.max(1, Math.min(11, +c.opt('np') || 2)), k = { m: 1, q: 3, y: 12 }[c.opt('tf') || 'm'] || 1, a = XK.parse(inp.from_date), b = XK.parse(inp.to_date), out = [];
   var whole = a.getUTCDate() === 1 && XK.iso(b) === XK.iso(XK.eom(b.getUTCFullYear(), b.getUTCMonth() + 1));
@@ -749,7 +750,7 @@ XK.app({
       .concat(this._track ? [XK.sheetFromLines('By ' + this._track.name, c.company, XK.periodLine(c.inputs.from_date, c.inputs.to_date), [''].concat(this._track.cols), this._track.lines, null)] : []);
   }
 });</script>
-<script data-xk-check>(function(){var s=document.scripts,k="",f="",i,t;for(i=0;i<s.length;i++){t=s[i].text;if(s[i].type||s[i].hasAttribute("data-xk-check"))continue;if(!k&&t.indexOf("window.XK")>=0)k=t;else if(t.indexOf("XK.app(")>=0)f=t}var r=f.indexOf("render: function"),x=(k+(r<0?f:f.slice(r))).replace(/\s+/g,""),h=2166136261;for(i=0;i<x.length;i++)h=Math.imul(h^x.charCodeAt(i),16777619)>>>0;window.__xkIntegrity={ok:h.toString(16)=="d8f2be9f"};if(!window.__xkIntegrity.ok){var d=document.createElement("div");d.className="xk-banner fail";d.setAttribute("role","alert");d.textContent="This copy of the report is damaged (its code differs from the tested version), so its figures can't be trusted. Ask the agent to create it again.";document.body.prepend(d)}})()</script>
+<script data-xk-check>(function(){var s=document.scripts,k="",f="",i,t;for(i=0;i<s.length;i++){t=s[i].text;if(s[i].type||s[i].hasAttribute("data-xk-check"))continue;if(!k&&t.indexOf("window.XK")>=0)k=t;else if(t.indexOf("XK.app(")>=0)f=t}var r=f.indexOf("render: function"),x=(k+(r<0?f:f.slice(r))).replace(/\s+/g,""),h=2166136261;for(i=0;i<x.length;i++)h=Math.imul(h^x.charCodeAt(i),16777619)>>>0;window.__xkIntegrity={ok:h.toString(16)=="3488b8f2"};if(!window.__xkIntegrity.ok){var d=document.createElement("div");d.className="xk-banner fail";d.setAttribute("role","alert");d.textContent="This copy of the report is damaged (its code differs from the tested version), so its figures can't be trusted. Ask the agent to create it again.";document.body.prepend(d)}})()</script>
 </body>
 </html>
 ```
