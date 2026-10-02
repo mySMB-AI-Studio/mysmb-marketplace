@@ -1556,6 +1556,222 @@ const time_ago = (args) => {
     const days = Math.floor(hours / 24);
     return `${days} day${days !== 1 ? 's' : ''} ago`;
 };
+// ── Bill Entry (record + validate a draft bill) ──────────────────────
+// Helpers for the "Bill-Entry" tile: a form that builds a raw Xero
+// invoice body (Type ACCPAY, Status DRAFT) from user input and submits
+// it via create_invoice. No `checks` prop validation exists on this
+// system's current TextInput/NumberInput/Select/DateInput components
+// (confirmed against widgets-system/system/components.tsx — the
+// underlying @json-render/core library supports a `checks` config, but
+// no component here declares the prop), so validation is done here:
+// bill_entry_is_invalid gates the submit button's `disabled` (a real
+// boolean return — NOT a bare `$or`/`$and`, which only evaluate inside
+// a `visible` condition and pass through as a literal truthy object
+// anywhere else, exactly the bug already hit and fixed on the
+// ApprovalMax Pending Approvals tile's Table `loading` prop).
+function formatAUD(value) {
+    try {
+        return new Intl.NumberFormat('en-AU', {
+            style: 'currency',
+            currency: 'AUD',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }).format(value);
+    }
+    catch {
+        return `$${value.toFixed(2)}`;
+    }
+}
+/** Appends one blank editable row. `id` is a client-only row key (never sent to Xero). */
+const bill_entry_add_line = (args) => {
+    const lines = Array.isArray(args.lines) ? args.lines : [];
+    const id = `line-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+    return [...lines, { id, description: '', quantity: 1, unitAmount: 0, accountCode: '', taxType: '' }];
+};
+/** quantity * unitAmount for one row, formatted. Args: { quantity, unitAmount } */
+const bill_entry_line_total = (args) => {
+    const qty = Number(args.quantity) || 0;
+    const unit = Number(args.unitAmount) || 0;
+    return formatAUD(qty * unit);
+};
+/**
+ * Maps each TaxType code to its EffectiveRate (confirmed live: a plain
+ * percentage number, e.g. 10 for 10% GST — NOT a 0–1 fraction). Built once
+ * when list_tax_rates resolves, so per-line tax math never needs to re-scan
+ * the full rates list. Args: { taxRates }
+ */
+const bill_entry_tax_rate_lookup = (args) => {
+    const rates = Array.isArray(args.taxRates) ? args.taxRates : [];
+    const map = {};
+    for (const r of rates) {
+        const taxType = String(r.TaxType ?? '');
+        if (!taxType)
+            continue;
+        map[taxType] = Number(r.EffectiveRate) || 0;
+    }
+    return map;
+};
+/**
+ * Tax amount for one row — quantity * unitAmount * (rate / 100) — using the
+ * row's own selected taxType looked up in taxRateMap (from
+ * bill_entry_tax_rate_lookup). Blank (not "$0.00") until a tax rate is
+ * actually selected, so an untouched row doesn't read as "no tax" before
+ * the user has made a choice.
+ * Args: { quantity, unitAmount, taxType, taxRateMap }
+ */
+const bill_entry_line_tax = (args) => {
+    const taxType = String(args.taxType ?? '').trim();
+    if (!taxType)
+        return '';
+    const qty = Number(args.quantity) || 0;
+    const unit = Number(args.unitAmount) || 0;
+    const map = (args.taxRateMap ?? {});
+    const rate = Number(map[taxType]) || 0;
+    return formatAUD(qty * unit * (rate / 100));
+};
+/** Sum of quantity * unitAmount across all rows, formatted. Args: { lines } */
+const bill_entry_grand_total = (args) => {
+    const lines = Array.isArray(args.lines) ? args.lines : [];
+    const total = lines.reduce((sum, l) => sum + (Number(l.quantity) || 0) * (Number(l.unitAmount) || 0), 0);
+    return formatAUD(total);
+};
+/**
+ * True when the form is NOT ready to submit — supplier, date, and every
+ * line item's description/quantity(>0)/unitAmount(>=0)/account/tax must
+ * be filled. Args: { contactId, date, lines }
+ */
+const bill_entry_is_invalid = (args) => {
+    const contactId = String(args.contactId ?? '').trim();
+    const date = String(args.date ?? '').trim();
+    const lines = Array.isArray(args.lines) ? args.lines : [];
+    if (!contactId || !date || lines.length === 0)
+        return true;
+    for (const l of lines) {
+        const desc = String(l.description ?? '').trim();
+        const qty = Number(l.quantity);
+        const unit = Number(l.unitAmount);
+        const accountCode = String(l.accountCode ?? '').trim();
+        const taxType = String(l.taxType ?? '').trim();
+        if (!desc || !accountCode || !taxType)
+            return true;
+        if (!Number.isFinite(qty) || qty <= 0)
+            return true;
+        if (!Number.isFinite(unit) || unit < 0)
+            return true;
+    }
+    return false;
+};
+/** Human-readable reason the form can't submit yet, mirroring bill_entry_is_invalid's checks in order. */
+const bill_entry_validation_message = (args) => {
+    const contactId = String(args.contactId ?? '').trim();
+    const date = String(args.date ?? '').trim();
+    const lines = Array.isArray(args.lines) ? args.lines : [];
+    if (!contactId)
+        return 'Select a supplier';
+    if (!date)
+        return 'Set the bill date';
+    if (lines.length === 0)
+        return 'Add at least one line item';
+    for (let i = 0; i < lines.length; i++) {
+        const l = lines[i];
+        const n = i + 1;
+        const desc = String(l.description ?? '').trim();
+        const qty = Number(l.quantity);
+        const unit = Number(l.unitAmount);
+        const accountCode = String(l.accountCode ?? '').trim();
+        const taxType = String(l.taxType ?? '').trim();
+        if (!desc)
+            return `Line ${n}: enter a description`;
+        if (!Number.isFinite(qty) || qty <= 0)
+            return `Line ${n}: quantity must be greater than 0`;
+        if (!Number.isFinite(unit) || unit < 0)
+            return `Line ${n}: unit price can't be negative`;
+        if (!accountCode)
+            return `Line ${n}: choose an account`;
+        if (!taxType)
+            return `Line ${n}: choose a tax rate`;
+    }
+    return '';
+};
+/**
+ * Builds the raw Xero invoice body create_invoice expects. Status is set
+ * explicitly to DRAFT (rather than relying on the tool's own default) so
+ * this tile's intent — record a draft, not submit a live bill — is
+ * unambiguous in the request itself.
+ * Args: { contactId, date, dueDate, reference, lines }
+ */
+const bill_entry_build_payload = (args) => {
+    const lines = Array.isArray(args.lines) ? args.lines : [];
+    const date = String(args.date ?? '').trim();
+    const dueDate = String(args.dueDate ?? '').trim();
+    const reference = String(args.reference ?? '').trim();
+    return {
+        Type: 'ACCPAY',
+        Status: 'DRAFT',
+        Contact: { ContactID: String(args.contactId ?? '') },
+        ...(date ? { Date: date } : {}),
+        ...(dueDate ? { DueDate: dueDate } : {}),
+        ...(reference ? { Reference: reference } : {}),
+        LineItems: lines.map((l) => ({
+            Description: String(l.description ?? ''),
+            Quantity: Number(l.quantity) || 0,
+            UnitAmount: Number(l.unitAmount) || 0,
+            AccountCode: String(l.accountCode ?? ''),
+            TaxType: String(l.taxType ?? ''),
+        })),
+    };
+};
+/**
+ * Outstanding balances for the currently selected supplier, read straight
+ * off list_contacts' own response — Xero already returns a `Balances`
+ * block per contact (AccountsPayable/AccountsReceivable, each with
+ * Outstanding/Overdue), so no extra API call is needed.
+ * `AccountsPayable.Outstanding` = what we owe them; `AccountsReceivable
+ * .Outstanding` = what they owe us (normally 0 for a pure supplier, but
+ * shown in case the same contact is also set up as a customer).
+ * Args: { contacts, contactId }
+ */
+const bill_entry_supplier_balances = (args) => {
+    const contacts = Array.isArray(args.contacts) ? args.contacts : [];
+    const contactId = String(args.contactId ?? '').trim();
+    const empty = {
+        hasSelection: false,
+        weOwe: '',
+        weOweOverdue: '',
+        weOweTone: 'muted',
+        theyOwe: '',
+        theyOweOverdue: '',
+        theyOweTone: 'muted',
+    };
+    if (!contactId)
+        return empty;
+    const contact = contacts.find((c) => String(c.ContactID ?? '') === contactId);
+    if (!contact)
+        return empty;
+    const balances = (contact.Balances ?? {});
+    const ap = (balances.AccountsPayable ?? {});
+    const ar = (balances.AccountsReceivable ?? {});
+    const apOutstanding = Number(ap.Outstanding) || 0;
+    const apOverdue = Number(ap.Overdue) || 0;
+    const arOutstanding = Number(ar.Outstanding) || 0;
+    const arOverdue = Number(ar.Overdue) || 0;
+    return {
+        hasSelection: true,
+        weOwe: formatAUD(apOutstanding),
+        weOweOverdue: formatAUD(apOverdue),
+        weOweIsOverdue: apOverdue > 0,
+        // Destructive once any of it is overdue (we're late paying them) —
+        // muted while current, same as this tile's amount-owed is otherwise
+        // neutral data, not a status.
+        weOweTone: apOverdue > 0 ? 'destructive' : apOutstanding > 0 ? 'default' : 'muted',
+        theyOwe: formatAUD(arOutstanding),
+        theyOweOverdue: formatAUD(arOverdue),
+        theyOweIsOverdue: arOverdue > 0,
+        // Warning rather than destructive — a customer paying us late isn't
+        // this tile's own obligation the way an overdue bill to a supplier is.
+        theyOweTone: arOverdue > 0 ? 'warning' : arOutstanding > 0 ? 'default' : 'muted',
+    };
+};
 const elements = {
     slug: 'xero-accounting',
     functions: {
@@ -1592,6 +1808,15 @@ const elements = {
         report_find_row,
         analyze_duplicates,
         analyze_excluded_documents,
+        bill_entry_add_line,
+        bill_entry_line_total,
+        bill_entry_grand_total,
+        bill_entry_is_invalid,
+        bill_entry_validation_message,
+        bill_entry_build_payload,
+        bill_entry_supplier_balances,
+        bill_entry_tax_rate_lookup,
+        bill_entry_line_tax,
     },
 };
 export default elements;
