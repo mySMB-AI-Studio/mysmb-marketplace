@@ -4,7 +4,8 @@
     { "name": "org", "label": "Organisation", "type": "string", "maxLength": 64, "default": "" },
     { "name": "page", "label": "Page", "type": "number", "min": 1, "max": 20, "default": 1 },
     { "name": "persona", "label": "View as", "type": "enum", "options": ["Client", "Bookkeeper", "Practitioner", "Executive"], "default": "Bookkeeper" },
-    { "name": "display", "label": "Display settings", "type": "string", "maxLength": 300, "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"today\",\"c\":\"none\",\"v\":\"docs\",\"o\":\"r=30\"}" }
+    { "name": "display", "label": "Display settings", "type": "string", "maxLength": 300, "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"today\",\"c\":\"none\",\"v\":\"docs\",\"o\":\"r=30\"}" },
+    { "name": "src_id", "label": "Source bill", "type": "string", "maxLength": 64, "default": "" }
   ],
   "bindings": [
     { "id": "invoices", "tool": { "mcp": "xero-accounting", "name": "list_invoices" }, "params": { "where": { "kind": "static", "value": "Type==\"ACCREC\"" }, "statuses": { "kind": "static", "value": "DRAFT,SUBMITTED,AUTHORISED" }, "order": { "kind": "static", "value": "DueDate ASC" }, "page": { "kind": "input", "input": "page" }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
@@ -13,6 +14,7 @@
     { "id": "prepayments", "tool": { "mcp": "xero-accounting", "name": "list_prepayments" }, "params": { "where": { "kind": "static", "value": "Type==\"RECEIVE-PREPAYMENT\" AND Status==\"AUTHORISED\"" }, "page": { "kind": "input", "input": "page" }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
     { "id": "linked", "tool": { "mcp": "xero-accounting", "name": "list_linked_transactions" }, "params": { "status": { "kind": "static", "value": "APPROVED" }, "page": { "kind": "input", "input": "page" }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
     { "id": "repeating", "tool": { "mcp": "xero-accounting", "name": "list_repeating_invoices" }, "params": { "where": { "kind": "static", "value": "Type==\"ACCREC\" AND Status==\"AUTHORISED\"" }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
+    { "id": "bill", "tool": { "mcp": "xero-accounting", "name": "get_invoice" }, "params": { "invoiceId": { "kind": "input", "input": "src_id" }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
     { "id": "bs", "tool": { "mcp": "xero-accounting", "name": "get_balance_sheet" }, "params": { "date": { "kind": "input", "input": "as_at" }, "standardLayout": { "kind": "static", "value": true }, "paymentsOnly": { "kind": "static", "value": false }, "xero_tenant_id": { "kind": "input", "input": "org" } } },
     { "id": "org", "tool": { "mcp": "xero-accounting", "name": "get_organisation" }, "params": { "xero_tenant_id": { "kind": "input", "input": "org" } } },
     { "id": "connections", "tool": { "mcp": "xero-accounting", "name": "list_connections" }, "params": {  } }

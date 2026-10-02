@@ -54,7 +54,7 @@ Open the PR only when `npm run roundtrip` and `validate.ts` both pass.
 - **Skill limits:** markdown up to 128 × 1024 characters and a description of at most 500 characters (myHubV2 developer skills). The generator enforces both.
 - **What the agent can produce in one turn.** An agent chat turn is aborted after **10 minutes** (and 15 steps), and an aborted turn shows **no reply at all** (myHubV2 `apps/web/src/lib/chat/service.ts`, `TURN_BUDGET_MS`). The agent writes the whole document in a single `artifact_save` call, so the document size decides how long that takes. Keep it small:
   - **No line over 1,500 characters** in any skill. A long skill result can reach the model as a file, and reading it back cuts lines over 2,000 characters. In #1015 the whole kit sat on one 65,000-character line in a 115 KB foundation, and Month-End got no reply in QA.
-  - **Report document ≤ 85,000 characters.** That's about 30k tokens: the largest is Business overview at about 32.6k, under QuickBooks Forecasts at 35.3k, which works in QA. That's why each report carries only the kit parts it uses.
+  - **Report document + dataBindings ≤ 35,000 tokens** (counted with `@anthropic-ai/tokenizer`). QuickBooks Forecasts, which works in QA, counts about 35,300 on the same tokenizer. That's why each report carries only the kit parts it uses — and why new features should stay lean.
   - Both limits are enforced by `gen-xero.js` and `roundtrip.js`.
 - **The save check** is a plain text match on `MyHubReport.onData`. The kit calls it in full.
 - **Bindings from other connectors** (e.g. `xero-payroll-au`, `xero-assets`) work like any other binding. Declare them in `cfg.sources` (`{ bindingId: { name: 'Xero Payroll AU', optional: true } }`):

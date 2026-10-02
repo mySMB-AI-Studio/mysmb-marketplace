@@ -1,0 +1,125 @@
+{
+  "attachments": [],
+  "contentHash": "cbeb0572a03880d5d4acee99d97c7b860eb15a8551e9755567aec398d2c37d5e",
+  "declaredScopes": [
+    "artifacts:write",
+    "connectors:xero-payroll-au",
+    "files:read",
+    "files:write",
+    "workq:write"
+  ],
+  "dependencies": [
+    {
+      "entityKind": "form",
+      "originKey": "64982edb-3de7-46fb-a62b-ee218a70b259",
+      "sourceId": "a40a3d23-cb3c-48d9-943b-a71c48b8f84f"
+    },
+    {
+      "entityKind": "form",
+      "originKey": "75948259-14d3-4168-a53c-1bf24716c992",
+      "sourceId": "c37ad04f-249b-47fe-a0f8-f1309daf4f04"
+    }
+  ],
+  "description": "When the payroll officer chooses Ready for review on a pay run item: reads the draft pay run from Xero Payroll and builds the review pack (totals, each employee’s pay, the last check, this period’s changes and notes), then sends it to the internal reviewer as a WorkQ item with the Payroll review form.",
+  "flowIr": {
+    "description": "When the payroll officer chooses Ready for review on a pay run item: reads the draft pay run from Xero Payroll and builds the review pack (totals, each employee’s pay, the last check, this period’s changes and notes), then sends it to the internal reviewer as a WorkQ item with the Payroll review form.",
+    "irVersion": 1,
+    "name": "Bookkeeping: Build payroll review pack (Xero Payroll)",
+    "nodes": [
+      {
+        "code": "# ── bookkeeping kit: shared helpers (inlined into each node by gen-ext.js) ──\nimport json\nimport re\nimport datetime\nfrom zoneinfo import ZoneInfo\n\n# Knowledge layout. Folders may nest at most 2 levels, so inbox folders are top-level.\nBK_SETTINGS = \"Bookkeeping/settings.json\"\nBK_CLIENTS = \"Bookkeeping/Clients\"\nBK_RULES = \"Bookkeeping/Rules\"\nBK_BILLS = \"Bookkeeping/Bills\"\nBK_INBOX = \"Bookkeeping Inbox\"\nBK_PROCESSED = \"Bookkeeping Processed\"\nBK_FAILED = \"Bookkeeping Failed\"\nBK_MAIL = \"Bookkeeping/Mail\"\nBK_REQUESTS = \"Bookkeeping Requests\"\n\n\ndef bk_slug(name):\n    s = re.sub(r\"[^a-z0-9]+\", \"-\", str(name or \"\").lower()).strip(\"-\")\n    return s[:40].strip(\"-\") or \"client\"\n\n\ndef bk_read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\n\ndef bk_write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True))\n\n\ndef bk_money(value):\n    \"\"\"Parse 1234.5, \"1,234.50\", \"$12\" or \"A$ 12.00\" into a float; None when blank or not a number.\"\"\"\n    if value is None or isinstance(value, bool):\n        return None\n    if isinstance(value, (int, float)):\n        return float(value)\n    s = re.sub(r\"[^0-9.\\-]\", \"\", str(value))\n    if s in (\"\", \"-\", \".\", \"-.\"):\n        return None\n    try:\n        return float(s)\n    except ValueError:\n        return None\n\n\ndef bk_fmt(amount, currency=\"\"):\n    if amount is None:\n        return \"—\"\n    return (currency + \" \" if currency else \"\") + \"{:,.2f}\".format(amount)\n\n\ndef bk_tz(settings):\n    # The sandbox may lack the tz database; fall back to AEST (UTC+10) rather than failing the run.\n    try:\n        return ZoneInfo((settings or {}).get(\"timezone\") or \"Australia/Sydney\")\n    except Exception:\n        return datetime.timezone(datetime.timedelta(hours=10))\n\n\ndef bk_now_iso(settings):\n    return datetime.datetime.now(bk_tz(settings)).replace(microsecond=0).isoformat()\n\n\ndef bk_answer(responses, qid):\n    \"\"\"A form answer: str, bool, list, or a lookup {id, label}.\"\"\"\n    return (responses or {}).get(qid)\n\n\n# ── bookkeeping kit: payroll adapter (inlined into payroll nodes by gen-ext.js) ──\n# Xero Payroll AU through xero-payroll-au (reads take xero_tenant_id, so each call lands in the client's own\n# organisation) and Deputy through deputy. Read-only: the checks list corrections, the payroll officer makes them.\nimport csv\nimport io\n\nfrom openpyxl import Workbook, load_workbook\n\nBK_PAYROLL = \"Bookkeeping/Payroll\"\nBK_PAYRUNS = \"Bookkeeping/PayRuns\"\nBK_PAYROLL_FILES = \"Bookkeeping Payroll\"\nPAYROLL = \"xero-payroll-au\"\nDEPUTY = \"deputy\"\nPAY_WEEKDAYS = [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\", \"Sunday\"]\nPAY_BANDS = [\"ordinary\", \"early\", \"late\", \"saturday\", \"sunday\", \"public_holiday\", \"ot_first\", \"ot_after\"]\nPAY_BAND_NAMES = {\"ordinary\": \"ordinary\", \"early\": \"early (before start of day)\", \"late\": \"late (after end of day)\",\n                  \"saturday\": \"Saturday\", \"sunday\": \"Sunday\", \"public_holiday\": \"public holiday\",\n                  \"ot_first\": \"overtime (first hours)\", \"ot_after\": \"overtime (after that)\"}\n\n\ndef pay_call(tool, tenant_id=None, **args):\n    if tenant_id:\n        args[\"xero_tenant_id\"] = tenant_id\n    exc = None  # bound first for the platform lint (see xero_call)\n    try:\n        return api.connectors.invoke(server=PAYROLL, tool=tool, args=args)\n    except Exception as exc:\n        raise RuntimeError(\"Xero Payroll: \" + str(exc)[:500]) from None\n\n\ndef pay_rows(result, key):\n    if isinstance(result, dict):\n        rows = result.get(key)\n        return rows if isinstance(rows, list) else []\n    return result if isinstance(result, list) else []\n\n\ndef pay_date(value):\n    \"\"\"Xero Payroll dates arrive as '/Date(1759276800000+0000)/' or ISO; Deputy's as ISO or epoch seconds.\"\"\"\n    s = str(value or \"\")\n    m = re.match(r\"/Date\\((-?\\d+)\", s)\n    if m:\n        return datetime.datetime.fromtimestamp(int(m.group(1)) / 1000, datetime.timezone.utc).date()\n    try:\n        return datetime.date.fromisoformat(s[:10])\n    except ValueError:\n        return None\n\n\ndef pay_name(e):\n    return re.sub(r\"\\s+\", \" \", (str(e.get(\"FirstName\") or \"\") + \" \" + str(e.get(\"LastName\") or \"\")).strip())\n\n\ndef pay_draft_run(tenant_id, calendar_id, start):\n    \"\"\"The draft pay run for the period with its payslip summaries, or None.\"\"\"\n    where = 'PayrollCalendarID==Guid(\"%s\") AND PayRunStatus==\"DRAFT\"' % calendar_id\n    for r in pay_rows(pay_call(\"list_pay_runs\", tenant_id, where=where), \"PayRuns\"):\n        if pay_date(r.get(\"PayRunPeriodStartDate\")) == start:\n            full = pay_rows(pay_call(\"get_pay_run\", tenant_id, payRunId=r[\"PayRunID\"]), \"PayRuns\")\n            return full[0] if full else r\n    return None\n\n\ndef pay_run_load(todo_id=\"\", client_name=\"\"):\n    \"\"\"(path, run) for a pay run's WorkQ item (or its review / approval item), or a client's newest open pay run.\"\"\"\n    if todo_id:\n        link = bk_read_json(BK_PAYRUNS + \"/\" + todo_id + \".json\") or {}\n        if link.get(\"link\"):\n            path = BK_PAYRUNS + \"/\" + link[\"link\"] + \".json\"\n            return path, bk_read_json(path) or {}\n        return \"\", {}\n    if client_name:\n        slug = bk_slug(client_name)\n        runs = [f for f in api.files.list(path=BK_PAYRUNS)\n                if str(f.get(\"name\") or \"\").startswith(slug + \"-\") and str(f.get(\"name\") or \"\").endswith(\".json\")]\n        for f in sorted(runs, key=lambda f: str(f.get(\"name\")), reverse=True):\n            run = bk_read_json(f[\"path\"]) or {}\n            if run.get(\"period_start\") and run.get(\"status\") not in (\"done\", \"cancelled\"):\n                return f[\"path\"], run\n    return \"\", {}\n\n\ndef pay_link(todo_id, run):\n    \"\"\"Point a WorkQ item at its pay run record, so its form submissions find the pay run.\"\"\"\n    bk_write_json(BK_PAYRUNS + \"/\" + todo_id + \".json\", {\"link\": run[\"slug\"] + \"-\" + run[\"period_start\"]})\n\n\n# ── Build the review pack ──\n\n\nimport html as _html\n\ntodo_id = params.get(\"todo_id\") or \"\"\nresponses = params.get(\"responses\") or {}\nmanual_client = str(params.get(\"client_name\") or \"\").strip()\nanswer = str(bk_answer(responses, \"q_action\") or \"\").lower()\nwanted = answer.startswith(\"ready\") if todo_id else bool(manual_client)\nsettings = bk_read_json(BK_SETTINGS) or {}\noutcome = \"ignored\"\npack_url = \"\"\n\n\ndef _esc(v):\n    return _html.escape(str(v if v is not None else \"—\"))\n\n\npath, run = pay_run_load(todo_id, manual_client) if wanted else (\"\", {})\nif wanted and run:\n    ps = bk_read_json(BK_PAYROLL + \"/\" + run[\"slug\"] + \".json\") or {}\n    note = str(bk_answer(responses, \"q_notes\") or \"\").strip()\n    if note:\n        run.setdefault(\"notes\", []).append({\"at\": bk_now_iso(settings), \"by\": params.get(\"actor\") or \"\", \"text\": note[:4000]})\n    try:\n        draft = pay_draft_run(run[\"tenant_id\"], (run.get(\"calendar\") or {}).get(\"id\") or \"\",\n                              datetime.date.fromisoformat(run[\"period_start\"]))\n    except Exception as exc:\n        draft = None\n        api.workq.comment(todo_id=run[\"item_id\"], body=\"Couldn't read the draft pay run from Xero Payroll: \" + str(exc)[:300])\n    if not draft:\n        outcome = \"no_draft\"\n        api.workq.comment(todo_id=run[\"item_id\"], body=(\n            \"There's no draft pay run in Xero Payroll for \" + run[\"period_start\"] + \" yet. Create it in Xero (Payroll → Pay \"\n            \"employees), then choose **Ready for review** again.\"))\n    else:\n        totals = {k: bk_money(draft.get(k)) for k in (\"Wages\", \"Tax\", \"Super\", \"Deductions\", \"Reimbursement\", \"NetPay\")}\n        slips = sorted(draft.get(\"Payslips\") or [], key=lambda s: pay_name(s))\n        check = run.get(\"last_check\") or {}\n        page = [\"<!doctype html><html><head><meta charset='utf-8'><title>Pay run review pack</title><style>\"\n                \"body{font-family:system-ui,sans-serif;margin:24px;color:#1f2937}h1{font-size:20px}h2{font-size:16px;margin-top:24px}\"\n                \"table{border-collapse:collapse;width:100%;font-size:13px}th,td{border-bottom:1px solid #e5e7eb;padding:6px 8px;\"\n                \"text-align:left}th{background:#f9fafb}td.n,th.n{text-align:right}.warn{color:#b45309}.muted{color:#6b7280}</style></head><body>\",\n                \"<h1>Pay run review pack: \" + _esc(run[\"name\"]) + \"</h1>\",\n                \"<p>Pay period \" + _esc(run[\"period_start\"]) + \" to \" + _esc(run[\"period_end\"]) + \" · pay day <b>\"\n                + _esc(run[\"payment_date\"]) + \"</b> · \" + str(len(slips)) + \" employees · prepared by \"\n                + _esc(ps.get(\"officer_name\") or \"the payroll officer\") + \"</p>\",\n                \"<h2>Totals</h2><table><tr>\" + \"\".join(\"<th class='n'>\" + k + \"</th>\" for k in\n                                                       (\"Wages\", \"Tax\", \"Super\", \"Deductions\", \"Reimbursements\", \"Net pay\")) + \"</tr><tr>\"\n                + \"\".join(\"<td class='n'>\" + _esc(bk_fmt(totals[k])) + \"</td>\" for k in\n                          (\"Wages\", \"Tax\", \"Super\", \"Deductions\", \"Reimbursement\", \"NetPay\")) + \"</tr></table>\",\n                \"<h2>Employees</h2><table><tr><th>Employee</th><th class='n'>Wages</th><th class='n'>Tax</th><th class='n'>Super</th>\"\n                \"<th class='n'>Reimbursements</th><th class='n'>Net pay</th></tr>\"]\n        for s in slips:\n            page.append(\"<tr><td>\" + _esc(pay_name(s)) + \"</td>\" + \"\".join(\n                \"<td class='n'>\" + _esc(bk_fmt(bk_money(s.get(k)))) + \"</td>\" for k in (\"Wages\", \"Tax\", \"Super\", \"Reimbursements\", \"NetPay\")) + \"</tr>\")\n        page.append(\"</table><h2>Checks</h2>\")\n        if not check:\n            page.append(\"<p class='warn'>The checks weren't run for this pay run.</p>\")\n        elif check.get(\"open_items\"):\n            page.append(\"<p class='warn'>The last check (\" + _esc(check.get(\"at\")) + \") still had \" + str(check[\"open_items\"])\n                        + \" open item(s):</p><ul>\" + \"\".join(\"<li>\" + _esc(x) + \"</li>\" for x in check.get(\"summary\") or []) + \"</ul>\")\n        else:\n            page.append(\"<p>The last check (\" + _esc(check.get(\"at\")) + \") found nothing to fix.</p>\")\n        if check.get(\"url\"):\n            page.append(\"<p><a href='\" + _esc(check[\"url\"]) + \"'>Full check report</a></p>\")\n        if check.get(\"changes\"):\n            page.append(\"<h2>Changes this period</h2><ul>\" + \"\".join(\"<li>\" + _esc(x) + \"</li>\" for x in check[\"changes\"]) + \"</ul>\")\n        page.append(\"<h2>Notes</h2>\")\n        notes = ([{\"text\": ps[\"notes\"], \"at\": \"settings\"}] if ps.get(\"notes\") else []) + (run.get(\"notes\") or [])\n        page.append(\"<ul>\" + \"\".join(\"<li>\" + _esc(n.get(\"text\")) + \" <span class='muted'>(\" + _esc(n.get(\"at\")) + \")</span></li>\"\n                                     for n in notes) + \"</ul>\" if notes else \"<p class='muted'>No notes.</p>\")\n        page.append(\"</body></html>\")\n        saved = api.artifacts.put(title=(\"Pay run review pack: \" + run[\"name\"] + \" \" + run[\"period_start\"])[:200], content=\"\".join(page),\n                                  file_name=\"pay-run-pack-\" + run[\"slug\"] + \"-\" + run[\"period_start\"] + \".html\",\n                                  description=\"Pay run review pack\")\n        pack_url = str((saved or {}).get(\"url\") or \"\")\n        item = api.workq.create(\n            title=(\"Review pay run: \" + run[\"name\"] + \", \" + run[\"period_start\"] + \" to \" + run[\"period_end\"])[:200],\n            scope=\"org\",\n            description=(\"**\" + run[\"name\"] + \"**, pay day **\" + run[\"payment_date\"] + \"**: \" + str(len(slips)) + \" employees, \"\n                         \"wages \" + bk_fmt(totals[\"Wages\"]) + \", net pay \" + bk_fmt(totals[\"NetPay\"]) + \".\\n\\n\"\n                         + (\"The last check still had **\" + str(check.get(\"open_items\")) + \" open item(s)**.\\n\\n\" if check.get(\"open_items\") else \"\")\n                         + \"[Open the review pack](\" + pack_url + \")\\n\\nFill in the **Payroll review** form: approve it for the \"\n                         \"client, or send it back with the changes needed.\"),\n            priority=\"high\",\n            due_date=run[\"payment_date\"],\n            assignee_ids=[ps[\"reviewer_id\"]] if ps.get(\"reviewer_id\") else None,\n            labels=[\"bookkeeping\", \"payroll-review\", run[\"slug\"]],\n        )\n        api.workq.attach_form(todo_id=item[\"id\"], form_id=params[\"review_form\"])\n        pay_link(item[\"id\"], run)\n        run.update(status=\"in_review\", review_item_id=item[\"id\"], pack_url=pack_url, pack_totals=totals, staff=len(slips))\n        api.workq.comment(todo_id=run[\"item_id\"], body=(\"Review pack sent to \" + (ps.get(\"reviewer_name\") or \"the reviewer\")\n                                                        + \". [Open the review pack](\" + pack_url + \")\"))\n        outcome = \"in_review\"\n    bk_write_json(path, run)\nelif wanted and manual_client:\n    outcome = \"no_pay_run\"\n",
+        "id": "build_pack",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "in_review, no_draft, no_pay_run or ignored",
+            "name": "outcome",
+            "type": "str"
+          },
+          {
+            "description": "The review pack",
+            "name": "pack_url",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ trigger.event.subject.todo_id }}",
+            "control": "hidden",
+            "label": "Pay run item",
+            "name": "todo_id",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ trigger.event.payload.responses }}",
+            "control": "hidden",
+            "label": "Form answers",
+            "name": "responses",
+            "required": false,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ params.client_name }}",
+            "control": "hidden",
+            "label": "Client",
+            "name": "client_name",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ trigger.actor_user_id }}",
+            "control": "hidden",
+            "label": "Person",
+            "name": "actor",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "control": "form-picker",
+            "label": "Payroll review form",
+            "name": "review_form",
+            "required": true,
+            "type": "uuid",
+            "value": "c37ad04f-249b-47fe-a0f8-f1309daf4f04"
+          }
+        ],
+        "summary": "Builds the review pack from the draft pay run and sends it to the internal reviewer.",
+        "title": "Build the review pack"
+      }
+    ],
+    "params": [
+      {
+        "control": "text",
+        "label": "Client business (manual runs only)",
+        "name": "client_name",
+        "required": false,
+        "type": "str",
+        "value": ""
+      }
+    ],
+    "rootOrder": [
+      "build_pack"
+    ],
+    "triggers": [
+      {
+        "eventType": "form.response_submitted",
+        "filter": {
+          "form_id": "a40a3d23-cb3c-48d9-943b-a71c48b8f84f"
+        },
+        "kind": "event"
+      },
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "knowledgeFiles": [],
+  "level": "org",
+  "name": "Bookkeeping: Build payroll review pack (Xero Payroll)",
+  "originKey": "5c69e142-76e7-4da0-9cfc-c6a12a5588c7",
+  "tags": [
+    "bookkeeping"
+  ]
+}

@@ -42,14 +42,18 @@ This self-hosted server sidesteps the limitation entirely with a **dedicated too
 
 ## Widgets
 
-All four widgets carry over the same aggregation logic as the `geotab` plugin's widgets (client-side computation in `widget-elements/src/index.ts`), renamed and rewired to this plugin's `geotab-direct` MCP server and `$computed` prefix:
+All four widgets compute client-side in `widget-elements/src/index.ts` (one `*_dashboard` function per widget, called from the card's `watch`) and draw with the system chart elements (`Donut`, `BarChart`, and segmented bars built from a `template`d `Row` of `ProgressBar`s):
 
-- **Vehicles On Site Now** (`geotab-direct-vehicle-geofence-status.json`) -- real on-site/in-transit/offline classification per vehicle via `get_vehicle_geofence_status`, with the matched zone name for on-site vehicles. This is the widget that was rebuilt for this plugin -- see above.
-- **After-Hours & Private Use** -- quarter-to-date after-hours km/trip count and 12-week logbook coverage, computed from `Trip` records. Unchanged in behaviour from the `geotab` plugin, just repointed at `geotab-direct`.
-- **Travel vs On-Site Time** -- today's on-site/travel/idle split and per-vehicle productive ratio, computed from `Trip` records. Unchanged in behaviour.
-- **Fuel & Efficiency** -- month-to-date fuel cost and per-vehicle L/100km, computed fill-to-fill from `FuelTransaction` records. Unchanged in behaviour.
+- **Vehicles On Site Now** (`geotab-direct-vehicle-geofence-status.json`) -- a Donut of on-site / in-transit / offline counts via `get_vehicle_geofence_status`, and a per-vehicle list with the matched zone name for on-site vehicles. This is the widget that was rebuilt for this plugin -- see above.
+- **After-Hours & Private Use** -- after-hours km over the last 30 days by weekday (peak day highlighted, weekend share), a BarChart of the top vehicles, and the minor-and-infrequent flag, from `Trip` records.
+- **Travel vs On-Site Time** -- today's on-site / travel / idle split as a segmented bar for the fleet and for each vehicle, from `Trip` records.
+- **Fuel & Efficiency** -- month-to-date fuel cost, fleet-average L/100km, litres per day for the last 7 days, MTD litres by vehicle (Donut), and the highest fill-to-fill L/100km vehicles, from `FuelTransaction` records.
 
-None of the other three widgets were ever blocked by the state-key platform limitation (each only calls one MyGeotab entity type), so they needed no redesign -- only the `dataProvider.mcp` value, `/geotab/...` state paths, and `geotab_*` -> `geotab-direct_*` `$computed` prefixes changed.
+The `Get`-backed widgets pass `search.fromDate`/`toDate` as instant tokens (`$today`, `$days_ago_30`, `$now`), not the `*_date` calendar tokens: MyGeotab treats a date-only `toDate` as midnight, so `fromDate == toDate == $today_date` is a zero-length window that always returns nothing.
+
+None of the other three widgets were ever blocked by the state-key platform limitation (each only calls one MyGeotab entity type).
+
+**Known gap:** `Trip`, `FuelTransaction` and `DeviceStatusInfo` reference the vehicle by id only, so vehicle labels currently show the device id (e.g. `b1`) rather than the Device name. Fixing it means resolving names server-side; a second `Get` for `Device` in the same widget would collide with the first (state-key limitation above).
 
 ## Destructive / mutating operations
 

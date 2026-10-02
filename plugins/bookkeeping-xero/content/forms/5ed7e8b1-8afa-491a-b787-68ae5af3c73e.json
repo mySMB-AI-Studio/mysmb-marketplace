@@ -1,0 +1,138 @@
+{
+  "contentHash": "c15b1c0b7a564e529014ff265af60e909e1f0bf2da7e6eed793fa9c2d3e90659",
+  "kind": "form",
+  "originKey": "5ed7e8b1-8afa-491a-b787-68ae5af3c73e",
+  "schema": {
+    "description": "How this client's payroll runs. The payroll automations read it every pay period.",
+    "sections": [
+      {
+        "id": "client",
+        "questions": [
+          {
+            "id": "q_client_name",
+            "label": "Business name (as in its bookkeeping settings)",
+            "maxLength": 200,
+            "required": true,
+            "type": "short_text"
+          },
+          {
+            "id": "q_calendar",
+            "label": "Pay calendar name in Xero Payroll (exactly as it appears)",
+            "maxLength": 200,
+            "placeholder": "Fortnightly",
+            "required": true,
+            "type": "short_text"
+          },
+          {
+            "id": "q_prep_day",
+            "label": "Which day do we prepare the pay run (in the week of the pay day)?",
+            "options": [
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday"
+            ],
+            "required": true,
+            "type": "single_choice"
+          },
+          {
+            "id": "q_prep_time",
+            "label": "From what time? (24-hour, e.g. 09:00)",
+            "maxLength": 5,
+            "placeholder": "09:00",
+            "type": "short_text"
+          },
+          {
+            "id": "q_states",
+            "label": "States staff work in (for public holidays), e.g. NSW, VIC, QLD, WA",
+            "maxLength": 200,
+            "type": "short_text"
+          }
+        ],
+        "title": "The client and its pay calendar"
+      },
+      {
+        "id": "hours",
+        "questions": [
+          {
+            "id": "q_timesheets",
+            "label": "Where do the hours come from?",
+            "options": [
+              "Deputy (the client exports them to Xero)",
+              "Entered in Xero Payroll",
+              "Emailed timesheets (we key them in)",
+              "None: salaried staff only"
+            ],
+            "required": true,
+            "type": "single_choice"
+          },
+          {
+            "id": "q_ts_owner",
+            "label": "Who exports or sends the timesheets? (name)",
+            "maxLength": 200,
+            "type": "short_text"
+          },
+          {
+            "id": "q_ts_email",
+            "label": "Their email address",
+            "maxLength": 200,
+            "type": "short_text"
+          },
+          {
+            "id": "q_chase_after",
+            "label": "Chase them if timesheets aren't in Xero this many minutes after the start time (blank: 60)",
+            "maxLength": 5,
+            "type": "short_text"
+          }
+        ],
+        "title": "Timesheets"
+      },
+      {
+        "id": "people",
+        "questions": [
+          {
+            "entity": "user",
+            "id": "q_officer",
+            "label": "Payroll officer (prepares the pay run)",
+            "required": true,
+            "type": "lookup"
+          },
+          {
+            "entity": "user",
+            "id": "q_reviewer",
+            "label": "Internal reviewer (checks the pay run before the client sees it)",
+            "required": true,
+            "type": "lookup"
+          },
+          {
+            "id": "q_approvers",
+            "label": "Client approvers (names and email addresses)",
+            "maxLength": 400,
+            "type": "short_text"
+          },
+          {
+            "id": "q_who_posts",
+            "label": "Who posts the pay run in Xero and files STP?",
+            "options": [
+              "The client",
+              "Our practice"
+            ],
+            "required": true,
+            "type": "single_choice"
+          },
+          {
+            "id": "q_notes",
+            "label": "Notes for the payroll officer (special arrangements, reimbursements, anything unusual)",
+            "maxLength": 4000,
+            "type": "long_text"
+          }
+        ],
+        "title": "Who does what"
+      }
+    ],
+    "title": "Client payroll settings",
+    "version": 1
+  },
+  "title": "Client payroll settings"
+}

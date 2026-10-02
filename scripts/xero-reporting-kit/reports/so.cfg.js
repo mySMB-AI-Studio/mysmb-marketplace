@@ -1,12 +1,14 @@
 XK.app({
   title: 'Sales overview', primary: 'invoices', org: 'org', conns: 'connections', noBasis: true,
   inputs: { org: 'org', persona: 'persona', display: 'display' },
-  defaults: { as_at: '2026-09-25', org: '', page: 1, persona: 'Bookkeeper',
+  defaults: { as_at: '2026-09-25', org: '', page: 1, persona: 'Bookkeeper', src_id: '',
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"today","c":"none","v":"docs","o":"r=30"}' },
-  uses: { invoices: ['org'], credit_notes: ['org'], overpayments: ['org'], prepayments: ['org'], linked: ['org'], repeating: ['org'], bs: ['as_at', 'org'], org: ['org'], connections: [] },
+  uses: { invoices: ['org'], credit_notes: ['org'], overpayments: ['org'], prepayments: ['org'], linked: ['org'], repeating: ['org'], bill: ['src_id', 'org'], bs: ['as_at', 'org'], org: ['org'], connections: [] },
   paged: { invoices: { input: 'page', key: 'Invoices' }, credit_notes: { input: 'page', key: 'CreditNotes' }, overpayments: { input: 'page', key: 'Overpayments' }, prepayments: { input: 'page', key: 'Prepayments' }, linked: { input: 'page', key: 'LinkedTransactions' } },
-  tools: { invoices: 'list_invoices (invoices: draft, awaiting approval, awaiting payment)', credit_notes: 'list_credit_notes (unallocated)', overpayments: 'list_overpayments (unallocated)', prepayments: 'list_prepayments (unallocated)', linked: 'list_linked_transactions (billable expenses)', repeating: 'list_repeating_invoices', bs: 'get_balance_sheet (Accounts Receivable today)', org: 'get_organisation', connections: 'list_connections' },
+  tools: { invoices: 'list_invoices (invoices: draft, awaiting approval, awaiting payment)', credit_notes: 'list_credit_notes (unallocated)', overpayments: 'list_overpayments (unallocated)', prepayments: 'list_prepayments (unallocated)', bill: 'get_invoice (source bill of a billable expense)', linked: 'list_linked_transactions (billable expenses)', repeating: 'list_repeating_invoices', bs: 'get_balance_sheet (Accounts Receivable today)', org: 'get_organisation', connections: 'list_connections' },
   roll: function () { return { as_at: XK.asAt('today') }; }, // a dashboard is always "now"
+  sources: { bill: { name: 'Source bill', optional: true, quiet: function (i) { return !i.src_id; } } },
+  fan: { bill: function (inp, c) { if ((c.display.v || 'docs') !== 'docs') return []; var ids = {}; c.rows('linked').forEach(function (l) { if (l && l.Status === 'APPROVED' && l.SourceTransactionID) ids[l.SourceTransactionID] = 1; }); return Object.keys(ids).slice(0, 20).map(function (id) { return { key: id, inputs: { src_id: id } }; }); } },
   views: [['docs', 'Invoices'], ['repeating', 'Repeating invoices'], ['links', 'Payment links'], ['statements', 'Statements']],
   options: [],
   render: function (c) {
@@ -18,7 +20,7 @@ XK.app({
     var credits = XK.openDocs({ credit_notes: c.rows('credit_notes'), overpayments: c.rows('overpayments'), prepayments: c.rows('prepayments'), types: { credit_notes: K.cn, overpayments: K.op, prepayments: K.pp } }, base, null);
     var creditSum = XK.sum(credits.map(function (d) { return d.amount; }));
     var strip = '<div class="xk-kpis">' + [['Draft', P.draft], ['Awaiting approval', P.approval], ['Awaiting payment', P.awaiting], ['Overdue', P.overdue]].map(function (k, i) {
-      return '<div class="xk-kpi"><div class="lbl">' + XK.h(k[0]) + ' (' + k[1].n + ')</div><div class="val' + (i === 3 && k[1].v > 0 ? ' neg' : '') + '">' + (k[1].n ? money(k[1].v) : 'None') + '</div></div>'; }).join('') + '</div>';
+      return '<div class="xk-kpi"><div class="lbl">' + XK.h(k[0]) + ' (' + k[1].n + ')</div><div class="val' + (i === 3 && k[1].v > 0 ? ' neg' : '') + '">' + money(k[1].v || 0) + '</div></div>'; }).join('') + '</div>';
     var view = c.view || 'docs', extra = { checks: [], html: '', na: [] };
     // ---- per-kind panels ----
     var A = XK.parse(asAt), dow = (A.getUTCDay() + 6) % 7, wk0 = XK.addDaysIso(asAt, -dow), wk1 = XK.addDaysIso(wk0, 6), nw0 = XK.addDaysIso(wk0, 7), nw1 = XK.addDaysIso(wk0, 13);
@@ -32,16 +34,21 @@ XK.app({
       var byC = {}; P.awaiting.docs.forEach(function (d) { if (!byC[d.cid]) byC[d.cid] = { name: d.contact, due: 0, overdue: 0 }; byC[d.cid].due = r2(byC[d.cid].due + d.amount); if (d.due < asAt) byC[d.cid].overdue = r2(byC[d.cid].overdue + d.amount); });
       var owing = Object.keys(byC).map(function (k) { return byC[k]; }).sort(function (a, b) { return b.due - a.due || a.name.localeCompare(b.name); }), top = self._all ? owing : owing.slice(0, 9);
       var names = {}; inv.forEach(function (d) { if (d.Contact) names[d.Contact.ContactID] = d.Contact.Name; });
-      var lc = {}; c.rows('linked').forEach(function (l) { if (l && l.Status === 'APPROVED') lc[l.ContactID] = (lc[l.ContactID] || 0) + 1; });
+      var lc = {}, la = {}, src = {}, fb = c.fan('bill') || []; fb.forEach(function (x) { var b = x.value && (x.value.Invoices || [])[0]; if (b) src[b.InvoiceID] = b; });
+      var lineAmt = function (l) { var b = src[l.SourceTransactionID]; if (!b) return null; var li = (b.LineItems || []).filter(function (y) { return y.LineItemID === l.SourceLineItemID; })[0]; return li ? XK.num(li.LineAmount) : null; };
+      var links = c.rows('linked').filter(function (l) { return l && l.Status === 'APPROVED'; }), amtKnown = fb.length > 0 && links.every(function (l) { return lineAmt(l) != null; });
+      links.forEach(function (l) { lc[l.ContactID] = (lc[l.ContactID] || 0) + 1; var a = lineAmt(l); if (a != null) la[l.ContactID] = r2((la[l.ContactID] || 0) + a); });
+      var billTotal = XK.sum(Object.keys(la).map(function (k) { return la[k]; })), capped = Object.keys(links.reduce(function (o, l) { o[l.SourceTransactionID] = 1; return o; }, {})).length > 20;
       var lkeys = Object.keys(lc), rep = ((c.data.repeating || {}).RepeatingInvoices || []).filter(function (r) { return r.Type === K.inv && r.Status === 'AUTHORISED'; });
       if (view === 'docs') {
         extra.html = '<div class="xk-grid2" style="margin-top:12px"><div class="xk-card"><h3>Money coming in</h3><div class="xk-kpis"><div class="xk-kpi"><div class="lbl">Due this week</div><div class="val">' + money(dueW) + '</div></div><div class="xk-kpi"><div class="lbl">Due next week</div><div class="val">' + money(dueN) + '</div></div></div><div id="so-ch"></div></div>' +
           '<div class="xk-card"><h3>' + K.whoPl + ' owing the most</h3><div id="so-top"></div>' + (owing.length > 9 ? '<button type="button" id="so-all" class="xk-link">' + (self._all ? 'Show top 9' : 'View all ' + owing.length) + '</button>' : '') + '</div>' +
-          '<div class="xk-card detail-block"><h3>Billable expenses</h3>' + (lkeys.length ? '<p>' + lkeys.length + ' customer' + (lkeys.length === 1 ? '' : 's') + ' · ' + lkeys.reduce(function (a, k) { return a + lc[k]; }, 0) + ' item(s) not yet invoiced</p><ul>' + lkeys.map(function (k) { return '<li>' + XK.h(names[k] || 'Customer ' + k.slice(0, 8)) + ' — ' + lc[k] + ' item(s)</li>'; }).join('') + '</ul><p class="muted">Amount owing: N/A — Xero\'s billable-expense API returns no amounts.</p>' : '<p class="muted">No billable expenses waiting to be invoiced.</p>') + '</div>' +
+          '<div class="xk-card detail-block"><h3>Billable expenses</h3>' + (lkeys.length ? '<p>' + lkeys.length + ' customer' + (lkeys.length === 1 ? '' : 's') + ' · ' + lkeys.reduce(function (a, k) { return a + lc[k]; }, 0) + ' item(s) not yet invoiced</p><ul>' + lkeys.map(function (k) { return '<li>' + XK.h(names[k] || 'Customer ' + k.slice(0, 8)) + ' — ' + lc[k] + ' item(s)' + (la[k] != null ? ' · ' + money(la[k]) : '') + '</li>'; }).join('') + '</ul>' + (amtKnown ? '<p><strong>' + money(billTotal) + '</strong> to invoice (the linked bill lines, excluding GST)' + (capped ? ' — the first 20 source bills' : '') + '.</p>' : fb.length ? '<p class="muted">Amounts for some items could not be read from their bills.</p>' : c.live ? '<p class="muted">Loading the amounts from the source bills…</p>' : '<p class="muted">Amounts need the live report.</p>') : '<p class="muted">No billable expenses waiting to be invoiced.</p>') + '</div>' +
           '<div class="xk-card detail-block"><h3>Create new (in Xero)</h3><ul><li>Invoice</li><li>Payment link</li><li>Repeating invoice</li></ul><p class="muted">Reports only read from Xero — create these in Xero → Sales.</p></div></div>';
         extra.after.push(function () {
           XK.bars(document.getElementById('so-ch'), { title: 'Money coming in by due date', labels: buckets.map(function (b) { return b.label; }), series: [{ name: 'Awaiting payment', values: buckets.map(function (b) { return b.v; }), colors: buckets.map(function (b, i) { return i === 3 ? 'var(--c1)' : 'var(--c2)'; }) }] }, c);
-          XK.grid(document.getElementById('so-top'), { rows: top, columns: [{ key: 'name', title: K.who }, { key: 'due', title: 'Due', money: true }, { key: 'overdue', title: 'Overdue', num: true, fmt: function (v) { return v ? '<span class="neg">' + XK.h(money(v)) + '</span>' : money(v); }, html: true }], empty: 'Nothing owing.' }, c);
+          var av = function (n) { var w = String(n || '').replace(/[^A-Za-z0-9 ]/g, ' ').split(' ').filter(function (x) { return x; }); return ((w[0] || '?').charAt(0) + (w.length > 1 ? w[w.length - 1].charAt(0) : '')).toUpperCase(); };
+          XK.grid(document.getElementById('so-top'), { rows: top, columns: [{ key: 'name', title: K.who, html: true, fmt: function (v) { return '<span class="xk-av" aria-hidden="true">' + XK.h(av(v)) + '</span>' + XK.h(v); } }, { key: 'due', title: 'Due', money: true }, { key: 'overdue', title: 'Overdue', num: true, fmt: function (v) { return v ? '<span class="neg">' + XK.h(money(v)) + '</span>' : money(v); }, html: true }], empty: 'Nothing owing.' }, c);
           var b = document.getElementById('so-all'); if (b) b.addEventListener('click', function () { self._all = !self._all; c.change({}, {}); });
         });
       } else if (view === 'repeating') {
@@ -53,7 +60,8 @@ XK.app({
         { name: 'Due ≥ Overdue for every ' + K.who.toLowerCase(), pass: owing.every(function (o) { return o.due + 0.005 >= o.overdue; }), detail: owing.length + ' ' + K.whoPl.toLowerCase() },
         { name: K.whoPl + ' owing the most ≤ total awaiting payment', pass: XK.sum(owing.slice(0, 9).map(function (o) { return o.due; })) <= P.awaiting.v + 0.005, detail: 'Top ' + Math.min(9, owing.length) + ': ' + money(XK.sum(owing.slice(0, 9).map(function (o) { return o.due; }))) + ' of ' + money(P.awaiting.v) },
         { name: 'Money coming in (by due date) = awaiting payment', pass: XK.near(XK.sum(buckets.map(function (b) { return b.v; })), P.awaiting.v), detail: money(XK.sum(buckets.map(function (b) { return b.v; }))) }];
-      extra.na = ['Payment links and statements (not in the Xero Accounting API)', 'Billable expense amounts (the linked-transaction API has no amounts)'];
+      extra.na = ['Payment links and statements (not in the Xero Accounting API)'];
+      if (links.length) extra.checks.push({ name: 'Billable expense amounts read from their source bills', pass: !c.live ? null : fb.length ? amtKnown : null, detail: !c.live ? 'Needs the live report' : fb.length ? links.length + ' item(s) · ' + money(billTotal) : 'Loading…' });
       extra.sheet = [[], [{ v: 'Money coming in', s: 'bold' }]].concat(buckets.map(function (b) { return [b.label, null, { v: b.v, s: 'money' }]; })).concat([[], [{ v: K.whoPl + ' owing the most', s: 'bold' }, null, { v: 'Due', s: 'bold' }, { v: 'Overdue', s: 'bold' }]]).concat(owing.map(function (o) { return [o.name, null, { v: o.due, s: 'money' }, { v: o.overdue, s: 'money' }]; }));
     // ---- checks ----
     var docCount = P.draft.n + P.approval.n + P.awaiting.n, listed = inv.filter(function (d) { return /^(DRAFT|SUBMITTED)$/.test(d.Status) || (d.Status === 'AUTHORISED' && XK.num(d.AmountDue)); });

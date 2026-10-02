@@ -54,11 +54,14 @@
  * Exits 1 on any failure.
  */
 import { readFileSync, existsSync, statSync, readdirSync } from "node:fs";
-import { join, resolve, dirname, relative, sep } from "node:path";
+import { join, resolve, dirname, relative, sep, isAbsolute } from "node:path";
+import { setupKeys, validatePortableContent } from "./extension-content";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const repoRoot = resolve(__dirname, "..");
+// Alternate roots permit full CLI fixtures without changing published plugins.
+const rootFlag = process.argv.find((arg) => arg.startsWith("--root="));
+const repoRoot = rootFlag ? resolve(rootFlag.slice("--root=".length)) : resolve(__dirname, "..");
 
 const errors: string[] = [];
 const fail = (msg: string) => errors.push(msg);
@@ -319,7 +322,7 @@ function validateWidgetElements(
 // packages/shared/src/plugins/authoring/validate.ts (see its parity map).
 // ──────────────────────────────────────────────────────────────────────────
 
-type ContentKind = "automation" | "workq_template" | "form_template" | "form" | "agent";
+type ContentKind = "automation" | "workq_template" | "form_template" | "form" | "agent" | "record_type" | "setup";
 
 /** plugin.json `content` section key → the `kind` its payloads must carry.
  *  Parity with myHubV2 packages/shared/src/plugins/authoring/validate.ts —
@@ -331,6 +334,8 @@ const CONTENT_SECTION_KINDS: Record<string, ContentKind> = {
   formTemplates: "form_template",
   forms: "form",
   agents: "agent",
+  recordTypes: "record_type",
+  setups: "setup",
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -351,6 +356,8 @@ function validateContent(pluginDirName: string, content: unknown) {
     entry: string;
     payload: Record<string, unknown>;
   }> = [];
+  const portableKeys = new Set<string>();
+  const setupOrigins = new Set<string>();
 
   for (const [section, expectedKind] of Object.entries(CONTENT_SECTION_KINDS)) {
     const listed = content[section];
@@ -368,11 +375,28 @@ function validateContent(pluginDirName: string, content: unknown) {
         );
         continue;
       }
-      const filePath = join(pluginDir, entry);
+      if ((section === "recordTypes" && listed.length > 20) || (section === "setups" && listed.length > 30)) {
+        fail(`plugins/${pluginDirName}: content.${section} exceeds its component limit`);
+        break;
+      }
+      const filePath = resolve(pluginDir, entry);
+      const relativePath = relative(pluginDir, filePath);
+      if (isAbsolute(entry) || relativePath.startsWith("..") || isAbsolute(relativePath)) {
+        fail(`plugins/${pluginDirName}: content path "${entry}" escapes the plugin directory`);
+        continue;
+      }
+      if ((expectedKind === "record_type" || expectedKind === "setup") && (entry.length > 200 || !entry.startsWith(expectedKind === "record_type" ? "content/record-types/" : "content/setups/"))) {
+        fail(`plugins/${pluginDirName}: ${entry} is not a canonical portable component path`);
+        continue;
+      }
       if (!existsSync(filePath) || !statSync(filePath).isFile()) {
         fail(
           `plugins/${pluginDirName}: content file "${entry}" listed in plugin.json is missing`,
         );
+        continue;
+      }
+      if ((expectedKind === "record_type" || expectedKind === "setup") && statSync(filePath).size > 1_000_000) {
+        fail(`plugins/${pluginDirName}: ${entry} portable component exceeds the 1 MB limit`);
         continue;
       }
       const payload = readJson<unknown>(filePath);
@@ -380,6 +404,22 @@ function validateContent(pluginDirName: string, content: unknown) {
       if (!isRecord(payload)) {
         fail(`plugins/${pluginDirName}: ${entry} content payload must be a JSON object`);
         continue;
+      }
+      if (expectedKind === "record_type" || expectedKind === "setup") {
+        try {
+          validatePortableContent(expectedKind, payload);
+          const directory = expectedKind === "record_type" ? "record-types" : "setups";
+          if (entry !== `content/${directory}/${payload.originKey}.json`) throw new Error("Portable component must use its canonical origin path");
+          if (expectedKind === "setup" && !setupOrigins.has(String(payload.originKey))) {
+            for (const key of setupKeys(payload.definition)) {
+              if (portableKeys.has(key)) throw new Error(`Setup key ${key} is duplicated across components`);
+              portableKeys.add(key);
+            }
+            setupOrigins.add(String(payload.originKey));
+          }
+        } catch (error) {
+          fail(`plugins/${pluginDirName}: ${entry} ${error instanceof Error ? error.message : String(error)}`);
+        }
       }
       if (payload.kind !== expectedKind) {
         fail(

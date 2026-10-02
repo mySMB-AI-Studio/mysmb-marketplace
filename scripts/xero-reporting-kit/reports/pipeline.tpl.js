@@ -1,12 +1,13 @@
 XK.app({
   title: '__TITLE__', primary: 'invoices', org: 'org', conns: 'connections', noBasis: true,
   inputs: { org: 'org', persona: 'persona', display: 'display' },
-  defaults: { as_at: '2026-09-25', org: '', page: 1, persona: 'Bookkeeper',
+  defaults: { as_at: '2026-09-25', org: '', page: 1, persona: 'Bookkeeper',__EXTRADEF__
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"today","c":"none","v":"docs","o":"r=30"}' },
   uses: { invoices: ['org'], credit_notes: ['org'], overpayments: ['org'], prepayments: ['org'], __EXTRAUSES__, bs: ['as_at', 'org'], org: ['org'], connections: [] },
   paged: { invoices: { input: 'page', key: 'Invoices' }, credit_notes: { input: 'page', key: 'CreditNotes' }, overpayments: { input: 'page', key: 'Overpayments' }, prepayments: { input: 'page', key: 'Prepayments' }, __EXTRAPAGED__ },
   tools: { invoices: 'list_invoices (__DOCS__: draft, awaiting approval, awaiting payment)', credit_notes: 'list_credit_notes (unallocated)', overpayments: 'list_overpayments (unallocated)', prepayments: 'list_prepayments (unallocated)', __EXTRATOOLS__, bs: 'get_balance_sheet (__BSNAME__ today)', org: 'get_organisation', connections: 'list_connections' },
   roll: function () { return { as_at: XK.asAt('today') }; }, // a dashboard is always "now"
+__EXTRAHEAD__
   views: __VIEWS__,
   options: __OPTIONS__,
   render: function (c) {
@@ -18,7 +19,7 @@ XK.app({
     var credits = XK.openDocs({ credit_notes: c.rows('credit_notes'), overpayments: c.rows('overpayments'), prepayments: c.rows('prepayments'), types: { credit_notes: K.cn, overpayments: K.op, prepayments: K.pp } }, base, null);
     var creditSum = XK.sum(credits.map(function (d) { return d.amount; }));
     var strip = '<div class="xk-kpis">' + [['Draft', P.draft], ['Awaiting approval', P.approval], ['Awaiting payment', P.awaiting], ['Overdue', P.overdue]].map(function (k, i) {
-      return '<div class="xk-kpi"><div class="lbl">' + XK.h(k[0]) + ' (' + k[1].n + ')</div><div class="val' + (i === 3 && k[1].v > 0 ? ' neg' : '') + '">' + (k[1].n ? money(k[1].v) : 'None') + '</div></div>'; }).join('') + '</div>';
+      return '<div class="xk-kpi"><div class="lbl">' + XK.h(k[0]) + ' (' + k[1].n + ')</div><div class="val' + (i === 3 && k[1].v > 0 ? ' neg' : '') + '">' + money(k[1].v || 0) + '</div></div>'; }).join('') + '</div>';
     var view = c.view || 'docs', extra = { checks: [], html: '', na: [] };
     // ---- per-kind panels ----
     var A = XK.parse(asAt), dow = (A.getUTCDay() + 6) % 7, wk0 = XK.addDaysIso(asAt, -dow), wk1 = XK.addDaysIso(wk0, 6), nw0 = XK.addDaysIso(wk0, 7), nw1 = XK.addDaysIso(wk0, 13);

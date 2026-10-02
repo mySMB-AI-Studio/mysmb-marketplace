@@ -1,0 +1,122 @@
+{
+  "attachments": [],
+  "contentHash": "5d9dcb15a8742b5b43b191fc8df19c4486d16209f44147a1f4d1c2ceb91b6549",
+  "declaredScopes": [
+    "ai:generate",
+    "files:read",
+    "files:write",
+    "workq:write"
+  ],
+  "dependencies": [
+    {
+      "entityKind": "form",
+      "originKey": "75948259-14d3-4168-a53c-1bf24716c992",
+      "sourceId": "c37ad04f-249b-47fe-a0f8-f1309daf4f04"
+    },
+    {
+      "entityKind": "form",
+      "originKey": "aaf25383-6d5a-417d-a5c9-d2bf4624749a",
+      "sourceId": "e9955e74-18e9-4395-aaea-595a9b9ec279"
+    }
+  ],
+  "description": "When the Payroll review or Client payroll approval form is submitted: an approved internal review creates the client approval item with a drafted email; changes go back to the payroll officer; the client’s approval completes the pay run (or asks the practice to post it, per the settings).",
+  "flowIr": {
+    "description": "When the Payroll review or Client payroll approval form is submitted: an approved internal review creates the client approval item with a drafted email; changes go back to the payroll officer; the client’s approval completes the pay run (or asks the practice to post it, per the settings).",
+    "irVersion": 1,
+    "name": "Bookkeeping: Apply payroll review",
+    "nodes": [
+      {
+        "code": "# ── bookkeeping kit: shared helpers (inlined into each node by gen-ext.js) ──\nimport json\nimport re\nimport datetime\nfrom zoneinfo import ZoneInfo\n\n# Knowledge layout. Folders may nest at most 2 levels, so inbox folders are top-level.\nBK_SETTINGS = \"Bookkeeping/settings.json\"\nBK_CLIENTS = \"Bookkeeping/Clients\"\nBK_RULES = \"Bookkeeping/Rules\"\nBK_BILLS = \"Bookkeeping/Bills\"\nBK_INBOX = \"Bookkeeping Inbox\"\nBK_PROCESSED = \"Bookkeeping Processed\"\nBK_FAILED = \"Bookkeeping Failed\"\nBK_MAIL = \"Bookkeeping/Mail\"\nBK_REQUESTS = \"Bookkeeping Requests\"\n\n\ndef bk_slug(name):\n    s = re.sub(r\"[^a-z0-9]+\", \"-\", str(name or \"\").lower()).strip(\"-\")\n    return s[:40].strip(\"-\") or \"client\"\n\n\ndef bk_read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\n\ndef bk_write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True))\n\n\ndef bk_fmt(amount, currency=\"\"):\n    if amount is None:\n        return \"—\"\n    return (currency + \" \" if currency else \"\") + \"{:,.2f}\".format(amount)\n\n\ndef bk_tz(settings):\n    # The sandbox may lack the tz database; fall back to AEST (UTC+10) rather than failing the run.\n    try:\n        return ZoneInfo((settings or {}).get(\"timezone\") or \"Australia/Sydney\")\n    except Exception:\n        return datetime.timezone(datetime.timedelta(hours=10))\n\n\ndef bk_today(settings):\n    return datetime.datetime.now(bk_tz(settings)).date()\n\n\ndef bk_now_iso(settings):\n    return datetime.datetime.now(bk_tz(settings)).replace(microsecond=0).isoformat()\n\n\ndef bk_answer(responses, qid):\n    \"\"\"A form answer: str, bool, list, or a lookup {id, label}.\"\"\"\n    return (responses or {}).get(qid)\n\n\n# ── bookkeeping kit: payroll adapter (inlined into payroll nodes by gen-ext.js) ──\n# Xero Payroll AU through xero-payroll-au (reads take xero_tenant_id, so each call lands in the client's own\n# organisation) and Deputy through deputy. Read-only: the checks list corrections, the payroll officer makes them.\nimport csv\nimport io\n\nfrom openpyxl import Workbook, load_workbook\n\nBK_PAYROLL = \"Bookkeeping/Payroll\"\nBK_PAYRUNS = \"Bookkeeping/PayRuns\"\nBK_PAYROLL_FILES = \"Bookkeeping Payroll\"\nPAYROLL = \"xero-payroll-au\"\nDEPUTY = \"deputy\"\nPAY_WEEKDAYS = [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\", \"Sunday\"]\nPAY_BANDS = [\"ordinary\", \"early\", \"late\", \"saturday\", \"sunday\", \"public_holiday\", \"ot_first\", \"ot_after\"]\nPAY_BAND_NAMES = {\"ordinary\": \"ordinary\", \"early\": \"early (before start of day)\", \"late\": \"late (after end of day)\",\n                  \"saturday\": \"Saturday\", \"sunday\": \"Sunday\", \"public_holiday\": \"public holiday\",\n                  \"ot_first\": \"overtime (first hours)\", \"ot_after\": \"overtime (after that)\"}\n\n\ndef pay_run_load(todo_id=\"\", client_name=\"\"):\n    \"\"\"(path, run) for a pay run's WorkQ item (or its review / approval item), or a client's newest open pay run.\"\"\"\n    if todo_id:\n        link = bk_read_json(BK_PAYRUNS + \"/\" + todo_id + \".json\") or {}\n        if link.get(\"link\"):\n            path = BK_PAYRUNS + \"/\" + link[\"link\"] + \".json\"\n            return path, bk_read_json(path) or {}\n        return \"\", {}\n    if client_name:\n        slug = bk_slug(client_name)\n        runs = [f for f in api.files.list(path=BK_PAYRUNS)\n                if str(f.get(\"name\") or \"\").startswith(slug + \"-\") and str(f.get(\"name\") or \"\").endswith(\".json\")]\n        for f in sorted(runs, key=lambda f: str(f.get(\"name\")), reverse=True):\n            run = bk_read_json(f[\"path\"]) or {}\n            if run.get(\"period_start\") and run.get(\"status\") not in (\"done\", \"cancelled\"):\n                return f[\"path\"], run\n    return \"\", {}\n\n\ndef pay_link(todo_id, run):\n    \"\"\"Point a WorkQ item at its pay run record, so its form submissions find the pay run.\"\"\"\n    bk_write_json(BK_PAYRUNS + \"/\" + todo_id + \".json\", {\"link\": run[\"slug\"] + \"-\" + run[\"period_start\"]})\n\n\n# ── Apply the review ──\n\n\nAPPROVAL_PROMPT = (\n    \"Draft a short email from a payroll officer at a bookkeeping practice to the client's approvers, asking them to \"\n    \"review and approve this pay run before it's finalised. Give the pay period, pay day, number of employees and the \"\n    \"totals, mention anything in the notes, and ask them to reply to approve or with changes. Plain text, no subject \"\n    \"line, sign off as the payroll team. Use only the facts given.\"\n)\n\ntodo_id = params.get(\"todo_id\") or \"\"\nform_id = params.get(\"form_id\") or \"\"\nresponses = params.get(\"responses\") or {}\nactor = params.get(\"actor\") or \"\"\nsettings = bk_read_json(BK_SETTINGS) or {}\noutcome = \"ignored\"\n\npath, run = pay_run_load(todo_id) if (todo_id and responses) else (\"\", {})\nif run:\n    ps = bk_read_json(BK_PAYROLL + \"/\" + run[\"slug\"] + \".json\") or {}\n    period = run[\"period_start\"] + \" to \" + run[\"period_end\"]\n    officer = [ps[\"officer_id\"]] if ps.get(\"officer_id\") else None\n    notes = str(bk_answer(responses, \"q_notes\") or bk_answer(responses, \"q_client_reply\") or \"\").strip()\n    run.setdefault(\"history\", []).append({\"at\": bk_now_iso(settings), \"by\": actor, \"form\": form_id,\n                                          \"answer\": str(bk_answer(responses, \"q_decision\") or bk_answer(responses, \"q_client_decision\") or \"\"),\n                                          \"notes\": notes})\n    if form_id == params[\"review_form\"]:\n        if str(bk_answer(responses, \"q_decision\") or \"\").lower().startswith(\"approve\"):\n            t = run.get(\"pack_totals\") or {}\n            email = api.ai.generate(prompt=APPROVAL_PROMPT, input=json.dumps({\n                \"business\": run[\"name\"], \"approvers\": ps.get(\"approvers\") or \"the approvers\", \"pay_period\": period,\n                \"pay_day\": run[\"payment_date\"], \"employees\": run.get(\"staff\"), \"wages\": bk_fmt(t.get(\"Wages\")),\n                \"tax\": bk_fmt(t.get(\"Tax\")), \"super\": bk_fmt(t.get(\"Super\")), \"net_pay\": bk_fmt(t.get(\"NetPay\")),\n                \"notes\": notes}))\n            item = api.workq.create(\n                title=(\"Client approval: \" + run[\"name\"] + \" pay run, \" + period)[:200],\n                scope=\"org\",\n                description=(\"The internal review approved this pay run.\\n\\n1. Email \" + (ps.get(\"approvers\") or \"the client's approvers\")\n                             + \" using the draft below, with the [review pack](\" + str(run.get(\"pack_url\") or \"\") + \").\\n\"\n                             \"2. When they reply, fill in the **Client payroll approval** form on this item.\\n\\n\"\n                             \"**Draft email**\\n\\n\" + str(email)),\n                priority=\"high\",\n                due_date=run[\"payment_date\"],\n                assignee_ids=officer,\n                labels=[\"bookkeeping\", \"payroll-approval\", run[\"slug\"]],\n            )\n            api.workq.attach_form(todo_id=item[\"id\"], form_id=params[\"client_form\"])\n            pay_link(item[\"id\"], run)\n            run.update(status=\"client_approval\", client_item_id=item[\"id\"])\n            api.workq.comment(todo_id=todo_id, body=\"Approved. The client approval item has a draft email for the payroll officer.\")\n            api.workq.comment(todo_id=run[\"item_id\"], body=\"The internal review approved the pay run. It's waiting for the client's approval.\")\n            outcome = \"client_approval\"\n        else:\n            run[\"status\"] = \"changes\"\n            api.workq.comment(todo_id=todo_id, body=\"Sent back to the payroll officer.\")\n            api.workq.comment(todo_id=run[\"item_id\"], body=\"The internal review asked for changes:\\n\\n\" + (notes or \"(no notes)\")\n                              + \"\\n\\nFix them, run the checks again and choose **Ready for review**.\")\n            api.workq.set_status(todo_id=run[\"item_id\"], status=\"in_progress\")\n            outcome = \"changes\"\n        api.workq.complete(todo_id=todo_id)\n    elif form_id == params[\"client_form\"]:\n        if str(bk_answer(responses, \"q_client_decision\") or \"\").lower().startswith(\"they approved\"):\n            run[\"client_approved_at\"] = str(bk_answer(responses, \"q_reply_date\") or bk_today(settings))\n            if ps.get(\"who_posts\") == \"practice\":\n                run[\"status\"] = \"approved\"\n                api.workq.comment(todo_id=run[\"item_id\"], body=(\n                    \"The client approved the pay run. **Post it in Xero Payroll** and make sure STP is filed, then complete \"\n                    \"this item.\"))\n                outcome = \"approved_practice_posts\"\n            else:\n                run[\"status\"] = \"done\"\n                api.workq.comment(todo_id=run[\"item_id\"], body=\"The client approved the pay run. They post it in Xero Payroll.\")\n                api.workq.complete(todo_id=run[\"item_id\"])\n                outcome = \"approved_client_posts\"\n        else:\n            run[\"status\"] = \"changes\"\n            api.workq.comment(todo_id=run[\"item_id\"], body=\"The client asked for changes:\\n\\n\" + (notes or \"(no notes)\")\n                              + \"\\n\\nFix them, run the checks again and choose **Ready for review**.\")\n            api.workq.set_status(todo_id=run[\"item_id\"], status=\"in_progress\")\n            outcome = \"client_changes\"\n        api.workq.complete(todo_id=todo_id)\n    bk_write_json(path, run)\n",
+        "id": "apply_payroll_review",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "What happened",
+            "name": "outcome",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ trigger.event.subject.todo_id }}",
+            "control": "hidden",
+            "label": "Review item",
+            "name": "todo_id",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ trigger.event.subject.form_id }}",
+            "control": "hidden",
+            "label": "Submitted form",
+            "name": "form_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ trigger.event.payload.responses }}",
+            "control": "hidden",
+            "label": "Form answers",
+            "name": "responses",
+            "required": false,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ trigger.actor_user_id }}",
+            "control": "hidden",
+            "label": "Person",
+            "name": "actor",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "control": "form-picker",
+            "label": "Payroll review form",
+            "name": "review_form",
+            "required": true,
+            "type": "uuid",
+            "value": "c37ad04f-249b-47fe-a0f8-f1309daf4f04"
+          },
+          {
+            "control": "form-picker",
+            "label": "Client payroll approval form",
+            "name": "client_form",
+            "required": true,
+            "type": "uuid",
+            "value": "e9955e74-18e9-4395-aaea-595a9b9ec279"
+          }
+        ],
+        "summary": "Moves the pay run to client approval, back to the officer, or to done.",
+        "title": "Apply the review"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "apply_payroll_review"
+    ],
+    "triggers": [
+      {
+        "eventType": "form.response_submitted",
+        "filter": {
+          "form_id": "c37ad04f-249b-47fe-a0f8-f1309daf4f04"
+        },
+        "kind": "event"
+      },
+      {
+        "eventType": "form.response_submitted",
+        "filter": {
+          "form_id": "e9955e74-18e9-4395-aaea-595a9b9ec279"
+        },
+        "kind": "event"
+      }
+    ]
+  },
+  "kind": "automation",
+  "knowledgeFiles": [],
+  "level": "org",
+  "name": "Bookkeeping: Apply payroll review",
+  "originKey": "a3cdc001-fa21-46aa-8c00-3cf265c24e8d",
+  "tags": [
+    "bookkeeping"
+  ]
+}

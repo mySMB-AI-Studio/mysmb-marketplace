@@ -108,6 +108,11 @@ function books(tenant) {
     const qe = addDays(shiftMonths(qs, 3), -1), pay = shiftMonths(qs, 3).slice(0, 8) + '28', net = gstMovement(B, qs, qe);
     if (pay <= TODAY && net > 0) { const lines = [{ Description: 'BAS ' + qs, Quantity: 1, UnitAmount: net, AccountCode: '820', TaxType: 'BASEXCLUDED', TaxAmount: 0, LineAmount: net, LineItemID: 'bas-' + qs }]; bank.push({ Type: 'SPEND', BankTransactionID: 'bt-' + t.slice(-1) + '-bas-' + qs, Contact: contact('Australian Taxation Office', 'bt'), date: pay, status: 'AUTHORISED', LineAmountTypes: 'Exclusive', LineItems: lines, SubTotal: net, TotalTax: 0, Total: net, BankAccount: { AccountID: ACC['090'].AccountID, Code: '090', Name: ACC['090'].Name }, IsReconciled: true }); }
   });
+  // a transfer from the cheque account to the savings account on the 15th of every month (18 months)
+  B.transfers = [];
+  for (let k = 0; k < 18; k++) { const date = shiftMonths('2025-04-15', k, false); if (date > TODAY) break; const amt = r2((1500 + 100 * (k % 4)) * S), id = 'tr-' + t.slice(-1) + '-' + k, acc = (c) => ({ AccountID: ACC[c].AccountID, Code: c, Name: ACC[c].Name });
+    B.transfers.push({ BankTransferID: id, FromBankAccount: acc('090'), ToBankAccount: acc('091'), Amount: amt, date });
+    [['SPEND-TRANSFER', '090'], ['RECEIVE-TRANSFER', '091']].forEach(([Type, c]) => bank.push({ Type, BankTransactionID: id + '-' + c, Contact: contact('Transfer', 'bt'), date, status: 'AUTHORISED', LineAmountTypes: 'NoTax', LineItems: [], SubTotal: amt, TotalTax: 0, Total: amt, BankAccount: acc(c), IsReconciled: true })); }
   bank.sort((a, b) => a.date.localeCompare(b.date));
   BOOKS[t] = B; return B;
 }
@@ -126,13 +131,13 @@ function paidBy(B, doc, date) { return r2(B.pays.filter((p) => p.doc === doc && 
 function bankBalance(B, code, date) { // opening + inflows − outflows up to date
   let v = code === '090' ? 15000 * B.O.scale : 10000 * B.O.scale;
   B.pays.filter((p) => p.acct === code && p.date <= date).forEach((p) => { v += (p.doc.Type === 'ACCREC' ? 1 : -1) * p.amount; });
-  B.bank.filter((x) => x.BankAccount.Code === code && x.date <= date).forEach((x) => { v += (x.Type === 'RECEIVE' ? 1 : -1) * x.Total; });
+  B.bank.filter((x) => x.BankAccount.Code === code && x.date <= date).forEach((x) => { v += (/^RECEIVE/.test(x.Type) ? 1 : -1) * x.Total; });
   B.overs.filter((o) => o.acct === code && o.date <= date).forEach((o) => { v += o.Total; });
   return r2(v);
 }
 function flows(B, code, a, b) { let rin = 0, rout = 0;
   B.pays.filter((p) => p.acct === code && p.date >= a && p.date <= b).forEach((p) => { if (p.doc.Type === 'ACCREC') rin += p.amount; else rout += p.amount; });
-  B.bank.filter((x) => x.BankAccount.Code === code && x.date >= a && x.date <= b).forEach((x) => { if (x.Type === 'RECEIVE') rin += x.Total; else rout += x.Total; });
+  B.bank.filter((x) => x.BankAccount.Code === code && x.date >= a && x.date <= b).forEach((x) => { if (/^RECEIVE/.test(x.Type)) rin += x.Total; else rout += x.Total; });
   B.overs.filter((o) => o.acct === code && o.date >= a && o.date <= b).forEach((o) => { rin += o.Total; });
   return { rin: r2(rin), rout: r2(rout) };
 }
@@ -172,21 +177,37 @@ function windows(from, to, periods, timeframe) {
   for (let i = 1; i <= (periods || 0); i++) out.push([shiftMonths(from, -k * i, false), shiftMonths(to, -k * i, whole)]);
   return out;
 }
+const TRACKING = [{ TrackingCategoryID: 'trk-region-0000-4000-8000-000000000001', Name: 'Region', Status: 'ACTIVE', Options: [{ TrackingOptionID: 'opt-north', Name: 'North', Status: 'ACTIVE' }, { TrackingOptionID: 'opt-south', Name: 'South', Status: 'ACTIVE' }] }];
+const SHARE = [0.6, 0.3]; // each account's amount by option; the rest is Unassigned
+function listTrackingCategories() { return { TrackingCategories: JSON.parse(JSON.stringify(TRACKING)) }; }
 function pnlReport(p) {
-  const B = books(p.xero_tenant_id), cash = p.paymentsOnly === true, W = windows(p.fromDate, p.toDate, p.periods, p.timeframe), cols = W.map(([a, b]) => plByAccount(B, a, b, cash));
+  const B = books(p.xero_tenant_id), cash = p.paymentsOnly === true, W = windows(p.fromDate, p.toDate, p.periods, p.timeframe);
+  let cols = W.map(([a, b]) => plByAccount(B, a, b, cash)), heads = W.map(([, b]) => short(b));
+  if (p.trackingCategoryID !== undefined) {
+    const cat = TRACKING.find((t) => t.TrackingCategoryID === p.trackingCategoryID);
+    if (!cat) throw new Error('Xero API GET https://api.xero.com/api.xro/2.0/Reports/ProfitAndLoss 400: {"Message":"A validation exception occurred","Elements":[{"ValidationErrors":[{"Message":"TrackingCategoryID is invalid"}]}]}');
+    const base = cols[0], part = (f) => { const o = {}; Object.keys(base).forEach((k) => { o[k] = r2(base[k] * f); }); return o; }, opts = SHARE.map(part), un = {};
+    Object.keys(base).forEach((k) => { un[k] = r2(base[k] - opts.reduce((s, o) => s + o[k], 0)); });
+    cols = opts.concat([un, base]); heads = cat.Options.map((o) => o.Name).concat(['Unassigned', 'Total']);
+  }
   const sec = (title, total, types) => { const codes = ACCOUNTS.filter((a) => types.includes(a.Type) && cols.some((c) => c[a.Code] != null)).map((a) => a.Code); if (!codes.length) return null;
     const rows = codes.map((c) => rowOf(ACC[c].Name, cols.map((col) => col[c] || 0), ACC[c].AccountID)), tot = cols.map((col) => r2(codes.reduce((s, c) => s + (col[c] || 0), 0)));
     return { row: { RowType: 'Section', Title: title, Rows: rows.concat([sumRow(total, tot)]) }, tot }; };
   const inc = sec('Income', 'Total Income', ['REVENUE']), cos = sec('Less Cost of Sales', 'Total Cost of Sales', ['DIRECTCOSTS']), oi = sec('Other Income', 'Total Other Income', ['OTHERINCOME']), ex = sec('Less Operating Expenses', 'Total Operating Expenses', ['EXPENSE']);
-  const z = W.map(() => 0), v = (s) => (s ? s.tot : z), gp = W.map((_, i) => r2(v(inc)[i] - v(cos)[i])), np = W.map((_, i) => r2(gp[i] + v(oi)[i] - v(ex)[i]));
-  const Rows = [{ RowType: 'Header', Cells: [cell('')].concat(W.map(([a, b]) => cell(short(b)))) }];
+  const z = cols.map(() => 0), v = (s) => (s ? s.tot : z), gp = cols.map((_, i) => r2(v(inc)[i] - v(cos)[i])), np = cols.map((_, i) => r2(gp[i] + v(oi)[i] - v(ex)[i]));
+  const Rows = [{ RowType: 'Header', Cells: [cell('')].concat(heads.map((t) => cell(t))) }];
   [inc, cos].forEach((s) => s && Rows.push(s.row)); Rows.push(calc('Gross Profit', gp)); [oi, ex].forEach((s) => s && Rows.push(s.row)); Rows.push(calc('Net Profit', np));
   return { Reports: [{ ReportID: 'ProfitAndLoss', ReportName: 'Profit and Loss', ReportType: 'ProfitAndLoss', ReportTitles: ['Profit and Loss', B.O.Name, long(p.fromDate) + ' to ' + long(p.toDate)], ReportDate: short(TODAY), Rows }] };
+}
+function cashBalances(B, date) {
+  const a = balances(B, date), fy = fyStart(date, B.O.FinancialYearEndMonth), openRE = (15000 + 10000 + 8400 - 1680 - 10000) * B.O.scale;
+  const cye = netProfit(B, fy, date, true), re = r2(openRE + netProfit(B, '2000-01-01', addDays(fy, -1), true)), o = Object.assign({}, a, { '610': 0, '800': 0, CYE: cye, '960': re });
+  o['820'] = r2(o['090'] + o['091'] + o['620'] + o['710'] + o['711'] - o['850'] - o['900'] - cye - re); return o;
 }
 function bsReport(p) {
   const B = books(p.xero_tenant_id), whole = isEom(p.date), dates = [p.date]; const k = p.timeframe === 'QUARTER' ? 3 : p.timeframe === 'YEAR' ? 12 : 1;
   for (let i = 1; i <= (p.periods || 0); i++) dates.push(shiftMonths(p.date, -k * i, whole));
-  const cols = dates.map((d) => balances(B, d)), val = (code) => cols.map((c) => c[code] || 0);
+  const cols = dates.map((d) => (p.paymentsOnly === true ? cashBalances(B, d) : balances(B, d))), val = (code) => cols.map((c) => c[code] || 0);
   const sec = (title, total, codes) => ({ RowType: 'Section', Title: title, Rows: codes.map((c) => rowOf(ACC[c].Name, val(c), ACC[c].AccountID)).concat([sumRow(total, cols.map((col) => r2(codes.reduce((s, c) => s + (col[c] || 0), 0))))]) });
   const sumc = (codes) => cols.map((col) => r2(codes.reduce((s, c) => s + (col[c] || 0), 0)));
   const TA = sumc(['090', '091', '610', '620', '710', '711']), TL = sumc(['800', '820', '850', '900']);
@@ -241,11 +262,14 @@ function invoiceOut(B, d) {
   return { Type: d.Type, InvoiceID: d.InvoiceID, InvoiceNumber: d.InvoiceNumber, Reference: d.Reference, Contact: d.Contact, Date: msDate(d.date), DateString: d.date + 'T00:00:00', DueDate: msDate(d.due), DueDateString: d.due + 'T00:00:00', Status: st, LineAmountTypes: d.LineAmountTypes, LineItems: d.LineItems, SubTotal: d.SubTotal, TotalTax: d.TotalTax, Total: d.Total, AmountDue: st === 'DRAFT' || st === 'SUBMITTED' ? d.Total : due, AmountPaid: paid, AmountCredited: 0, CurrencyCode: d.CurrencyCode, CurrencyRate: d.CurrencyRate, _Date: d.date, _DueDate: d.due };
 }
 function listInvoices(p) {
-  const B = books(p.xero_tenant_id), f = whereFilter(p.where), st = p.statuses ? String(p.statuses).split(',') : null;
-  let list = B.docs.map((d) => invoiceOut(B, d)).filter((o) => f(o) && (!st || st.includes(o.Status)));
-  if (/DueDate ASC/.test(p.order || '')) list.sort((a, b) => a._DueDate.localeCompare(b._DueDate)); else list.sort((a, b) => a._Date.localeCompare(b._Date));
-  return page(list.map((o) => { const c = Object.assign({}, o); delete c._Date; delete c._DueDate; return c; }), p, 'Invoices');
+  const B = books(p.xero_tenant_id), f = whereFilter(p.where), st = p.statuses ? String(p.statuses).split(',') : null, ids = p.ids != null ? String(p.ids).split(',').filter(Boolean) : null;
+  if (ids && !ids.length) throw new Error('Xero API GET https://api.xero.com/api.xro/2.0/Invoices 400: {"Message":"IDs is empty"}');
+  let list = B.docs.filter((d) => !ids || ids.includes(d.InvoiceID)).map((d) => { const o = invoiceOut(B, d); if (o.Status === 'PAID') { const last = B.pays.filter((x) => x.doc === d).map((x) => x.date).sort().pop(); if (last) { o.FullyPaidOnDate = msDate(last); o._FullyPaidOnDate = last; } } return o; }).filter((o) => f(o) && (!st || st.includes(o.Status)));
+  if (/DueDate ASC/.test(p.order || '')) list.sort((a, b) => a._DueDate.localeCompare(b._DueDate)); else if (/Date DESC/.test(p.order || '')) list.sort((a, b) => b._Date.localeCompare(a._Date)); else list.sort((a, b) => a._Date.localeCompare(b._Date));
+  return page(list.map((o) => { const c = Object.assign({}, o); delete c._Date; delete c._DueDate; delete c._FullyPaidOnDate; return c; }), p, 'Invoices');
 }
+function getInvoice(p) { const B = books(p.xero_tenant_id), d = B.docs.find((x) => x.InvoiceID === p.invoiceId); if (!d) throw new Error('Xero API GET https://api.xero.com/api.xro/2.0/Invoices/' + (p.invoiceId || '') + ' 404: {"Title":"Not Found"}'); const o = invoiceOut(B, d); delete o._Date; delete o._DueDate; return { Invoices: [o] }; }
+function listBankTransfers(p) { const B = books(p.xero_tenant_id); const list = B.transfers.map((x) => ({ BankTransferID: x.BankTransferID, FromBankAccount: x.FromBankAccount, ToBankAccount: x.ToBankAccount, Amount: x.Amount, Date: msDate(x.date), DateString: x.date + 'T00:00:00' })); if (/Date DESC/.test(p.order || '')) list.reverse(); return { BankTransfers: list }; }
 function listCreditNotes(p) { const B = books(p.xero_tenant_id), f = whereFilter(p.where); return page(B.credits.map((c) => Object.assign({}, c, { Date: msDate(c.date), DateString: c.date + 'T00:00:00', Status: c.status, _Date: c.date })).filter(f).map((c) => { delete c._Date; delete c.date; delete c.status; return c; }), p, 'CreditNotes'); }
 function listOverpayments(p) { const B = books(p.xero_tenant_id), f = whereFilter(p.where); return page(B.overs.map((o) => ({ Type: o.Type, OverpaymentID: o.OverpaymentID, Contact: o.Contact, Date: msDate(o.date), DateString: o.date + 'T00:00:00', Status: o.status, Total: o.Total, RemainingCredit: o.RemainingCredit, CurrencyCode: o.CurrencyCode, _Date: o.date })).filter(f).map((o) => { delete o._Date; return o; }), p, 'Overpayments'); }
 function listPrepayments(p) { return page([], p, 'Prepayments'); }
@@ -295,4 +319,4 @@ const expect = {
   balances: (date, t) => balances(books(t), date), netProfit: (a, b, cash, t) => netProfit(books(t), a, b, cash), bankBalance: (code, date, t) => bankBalance(books(t), code, date),
   flows: (code, a, b, t) => flows(books(t), code, a, b), gst: (a, b, t) => gstMovement(books(t), a, b), plByAccount: (a, b, cash, t) => plByAccount(books(t), a, b, cash), books,
 };
-module.exports = { TODAY, T1, T2, ORG, ACCOUNTS, ACC, pnl: pnlReport, bs: bsReport, bankSummary, trialBalance, listManualJournals, listPayRuns, listTimesheets, listEmployees, listAssets, listInvoices, listCreditNotes, listOverpayments, listPrepayments, listPayments, listBankTransactions, listPurchaseOrders, listLinked, listRepeating, listAccounts, listTaxRates, organisation, connections, expect, fyStart, addDays, shiftMonths, eom, r2 };
+module.exports = { TODAY, T1, T2, ORG, ACCOUNTS, ACC, TRACKING, listTrackingCategories, getInvoice, listBankTransfers, pnl: pnlReport, bs: bsReport, bankSummary, trialBalance, listManualJournals, listPayRuns, listTimesheets, listEmployees, listAssets, listInvoices, listCreditNotes, listOverpayments, listPrepayments, listPayments, listBankTransactions, listPurchaseOrders, listLinked, listRepeating, listAccounts, listTaxRates, organisation, connections, expect, fyStart, addDays, shiftMonths, eom, r2 };

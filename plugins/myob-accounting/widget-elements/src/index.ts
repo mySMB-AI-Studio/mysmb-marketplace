@@ -1508,6 +1508,119 @@ const paginate: ComputedFunction = (args) => {
   };
 };
 
+// ── classify_bill_queue ──────────────────────────────────────────────
+// Classifies every MYOB bill into one of three queue states:
+//  - Duplicate Risk: same supplier + same amount, dated the SAME day as
+//    at least one other bill (a real same-day double-entry pattern).
+//  - Needs Review: supplier name closely matches (normalized — case/
+//    punctuation-insensitive) a supplier already flagged Duplicate Risk,
+//    but this bill's amount differs — not an exact duplicate, but the
+//    same underlying vendor under a slightly different name variant is
+//    worth a second look (confirmed real pattern: "QA Dup Test Supplies
+//    Pty Ltd" vs "...Pty. Ltd.").
+//  - Ready: no match of either kind.
+// `filter` narrows `rows` to one status — the full filtered list is
+// returned every time (no pagination; the widget scrolls natively via the
+// system Body component's own overflow-y-auto instead). `expandedBillId`
+// toggles which row's "why" reason is shown — same echo-and-compare
+// pattern as analyze_bill_duplicates (xero-accounting). Only Needs Review
+// and Duplicate Risk rows get a reason and are clickable — Ready is
+// self-explanatory and needs no explanation.
+// Args: { bills?: Bill[], filter?: string, expandedBillId?: string, clickedBillId?: string }
+const classify_bill_queue: ComputedFunction = (args) => {
+  const bills = Array.isArray(args.bills) ? (args.bills as Record<string, unknown>[]) : [];
+  const filter = ['Ready', 'Needs Review', 'Duplicate Risk'].includes(String(args.filter)) ? String(args.filter) : '';
+
+  const parseDate = (raw: unknown): number => {
+    const m = String(raw ?? '').match(/\/Date\((-?\d+)(?:[+-]\d{4})?\)\//);
+    if (m) return Number(m[1]);
+    const t = new Date(String(raw ?? '')).getTime();
+    return Number.isFinite(t) ? t : NaN;
+  };
+  const fmtAmt = (n: unknown): string => {
+    const v = Number(n);
+    if (!Number.isFinite(v)) return '';
+    return 'A$' + new Intl.NumberFormat('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+  };
+  const fmtDate = (ms: number): string =>
+    Number.isFinite(ms) ? new Date(ms).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+  const normName = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ');
+
+  // Same supplier (by name) + same amount + same day = Duplicate Risk.
+  const sameDayGroups = new Map<string, Record<string, unknown>[]>();
+  for (const b of bills) {
+    const supplier = b.Supplier as Record<string, unknown> | undefined;
+    const dateKey = Math.floor(parseDate(b.Date) / 86_400_000);
+    const key = `${normName(String(supplier?.Name ?? ''))}|${Number(b.TotalAmount) || 0}|${dateKey}`;
+    (sameDayGroups.get(key) ?? sameDayGroups.set(key, []).get(key)!).push(b);
+  }
+  const duplicateRiskUids = new Set<string>();
+  const flaggedNormNames = new Set<string>();
+  for (const [, arr] of sameDayGroups) {
+    if (arr.length < 2) continue;
+    for (const b of arr) duplicateRiskUids.add(String(b.UID ?? ''));
+    const supplier = arr[0].Supplier as Record<string, unknown> | undefined;
+    flaggedNormNames.add(normName(String(supplier?.Name ?? '')));
+  }
+
+  const rows = bills
+    .map((b) => {
+      const uid = String(b.UID ?? '');
+      const supplier = b.Supplier as Record<string, unknown> | undefined;
+      const supplierName = String(supplier?.Name ?? 'Unknown');
+      const dateMs = parseDate(b.Date);
+      let status: 'Ready' | 'Needs Review' | 'Duplicate Risk' = 'Ready';
+      let reason = '';
+      if (duplicateRiskUids.has(uid)) {
+        status = 'Duplicate Risk';
+        reason = 'Same supplier and amount as another bill, dated the same day.';
+      } else if (flaggedNormNames.has(normName(supplierName))) {
+        status = 'Needs Review';
+        reason = "Supplier name closely matches a flagged duplicate, but the amount differs — may be the same vendor.";
+      }
+      return {
+        uid,
+        supplier: supplierName,
+        invoiceNumber: String(b.Number ?? '—'),
+        date: fmtDate(dateMs),
+        dateMs,
+        amount: fmtAmt(b.TotalAmount),
+        status,
+        statusTone: status === 'Duplicate Risk' ? 'destructive' : status === 'Needs Review' ? 'warning' : 'success',
+        reason,
+        hasReason: status !== 'Ready',
+      };
+    })
+    .sort((a, b) => b.dateMs - a.dateMs);
+
+  const counts = {
+    all: rows.length,
+    ready: rows.filter((r) => r.status === 'Ready').length,
+    needsReview: rows.filter((r) => r.status === 'Needs Review').length,
+    duplicateRisk: rows.filter((r) => r.status === 'Duplicate Risk').length,
+  };
+
+  const filteredRows = filter ? rows.filter((r) => r.status === filter) : rows;
+
+  const prevExpandedId = String(args.expandedBillId ?? '');
+  const clickedBillId = args.clickedBillId !== undefined ? String(args.clickedBillId) : undefined;
+  const expandedBillId = clickedBillId !== undefined ? (clickedBillId === prevExpandedId ? '' : clickedBillId) : prevExpandedId;
+
+  const resultRows = filteredRows.map((r, i, arr) => ({
+    ...r,
+    expanded: r.uid === expandedBillId,
+    isLast: i === arr.length - 1,
+  }));
+
+  return {
+    counts,
+    filter,
+    filteredCount: filteredRows.length,
+    rows: resultRows,
+    expandedBillId,
+  };
+};
+
 const elements: PluginElementsModule = {
   slug: 'myob-accounting',
   functions: {
@@ -1543,6 +1656,7 @@ const elements: PluginElementsModule = {
     duplicate_check_status_label,
     duplicate_check_status_tone,
     paginate,
+    classify_bill_queue,
   },
 };
 

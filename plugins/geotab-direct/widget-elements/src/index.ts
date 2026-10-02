@@ -56,24 +56,7 @@ function deviceIdAndLabel(entity: Record<string, unknown>): { id: string; label:
   return { id, label: name || id || 'Unknown vehicle' };
 }
 
-// ── Tone / format helpers (existing) ────────────────────────────────────
-
-const efficiency_tone: ComputedFunction = (args) => {
-  const n = parseFloat(String(args.value ?? 0));
-  if (n >= 15) return 'destructive';
-  if (n >= 11.5) return 'warning';
-  return 'muted';
-};
-
-const productivity_tone: ComputedFunction = (args) => {
-  const n = parseFloat(String(args.value ?? 0));
-  return n < 70 ? 'info' : 'muted';
-};
-
-const private_km_tone: ComputedFunction = (args) => {
-  const n = parseFloat(String(args.value ?? 0));
-  return n >= 150 ? 'warning' : 'muted';
-};
+// ── Format helpers ──────────────────────────────────────────────────────
 
 /**
  * ISO date (yyyy-mm-dd) for the start of the current calendar month, local
@@ -105,7 +88,7 @@ const format_duration_hm: ComputedFunction = (args) => {
  * are excluded (not enough data), not fabricated.
  *
  * Also returns MTD cost/volume totals and a daily-volume series (last 7
- * calendar days) for the sparkline.
+ * calendar days).
  *
  * Args: { transactions: FuelTransaction[], monthStartIso: string }
  */
@@ -231,60 +214,6 @@ const after_hours_dashboard: ComputedFunction = (args) => {
   };
 };
 
-// ── Travel vs On-Site Time ───────────────────────────────────────────────
-
-/**
- * Trip.stopDuration is documented as including idling time, so "on-site
- * productive" time = stopDuration − idlingDuration, kept separate from
- * idle time. Grouped by DEVICE, not driver. Args: { trips: Trip[] }
- */
-const travel_onsite_dashboard: ComputedFunction = (args) => {
-  const trips = Array.isArray(args.trips) ? (args.trips as Record<string, unknown>[]) : [];
-
-  const byDevice = new Map<string, { travel: number; onSite: number; idle: number }>();
-  const labelById = new Map<string, string>();
-  for (const t of trips) {
-    const { id, label } = deviceIdAndLabel(t);
-    if (!id) continue;
-    labelById.set(id, label);
-    const travel = durationToMinutes(t.drivingDuration);
-    const stop = durationToMinutes(t.stopDuration);
-    const idle = durationToMinutes(t.idlingDuration);
-    const onSite = Math.max(0, stop - idle);
-    const cur = byDevice.get(id) ?? { travel: 0, onSite: 0, idle: 0 };
-    cur.travel += travel;
-    cur.onSite += onSite;
-    cur.idle += idle;
-    byDevice.set(id, cur);
-  }
-
-  const rows = [...byDevice.entries()]
-    .map(([id, v]) => {
-      const total = v.travel + v.onSite + v.idle;
-      const pct = total > 0 ? Math.round((v.onSite / total) * 100) : 0;
-      return { deviceId: id, deviceName: labelById.get(id) ?? id, productivePercent: pct };
-    })
-    .sort((a, b) => b.productivePercent - a.productivePercent)
-    .slice(0, 20);
-
-  let totalTravel = 0, totalOnSite = 0, totalIdle = 0;
-  for (const v of byDevice.values()) {
-    totalTravel += v.travel;
-    totalOnSite += v.onSite;
-    totalIdle += v.idle;
-  }
-
-  const fleetTotal = totalTravel + totalOnSite + totalIdle;
-  return {
-    rows,
-    onSiteMinutes: Math.round(totalOnSite),
-    travelMinutes: Math.round(totalTravel),
-    idleMinutes: Math.round(totalIdle),
-    vehicleCount: byDevice.size,
-    fleetProductivePercent: fleetTotal > 0 ? Math.round((totalOnSite / fleetTotal) * 100) : 0,
-  };
-};
-
 // ── Vehicles On Site Now (real geofencing) ───────────────────────────────
 
 /**
@@ -361,26 +290,260 @@ const vehicle_geofence_dashboard: ComputedFunction = (args) => {
   };
 };
 
-const vehicle_geofence_tone: ComputedFunction = (args) => {
-  const classification = String(args.value ?? '');
-  if (classification === 'in-transit') return 'info';
-  if (classification === 'offline') return 'warning';
-  return 'muted'; // on-site
+// ── Chart tiles ─────────────────────────────────────────────────────────
+//
+// Each tile below calls one dashboard function from its card `watch`; the
+// per-entity aggregations above are reused rather than duplicated.
+
+const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0]; // Mon..Sun, as Date#getDay indices
+const WEEKDAY_LABEL = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/**
+ * Builds a segmented bar out of a `template`d Row of full ProgressBars: the
+ * row's `grid-template-columns` sizes each segment proportionally. Zero
+ * segments are dropped from the template AND flagged hidden, so the visible
+ * children line up with the columns (a 0fr column would still take a gap).
+ */
+function splitBar(parts: { key: string; value: number }[]): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  const cols: string[] = [];
+  for (const p of parts) {
+    const v = Math.max(0, Math.round(p.value));
+    out[`show_${p.key}`] = v > 0;
+    if (v > 0) cols.push(`minmax(0, ${v}fr)`);
+  }
+  out.template = cols.join(' ');
+  return out;
+}
+
+const classificationDotTone: Record<string, string> = {
+  'on-site': 'success',
+  'in-transit': 'info',
+  offline: 'warning',
+};
+
+/**
+ * Vehicles On Site Now — vehicle_geofence_dashboard plus Donut segments
+ * and a per-row dot tone. Args: { statuses: VehicleGeofenceStatus[] }
+ */
+const fleet_snapshot_dashboard: ComputedFunction = (args) => {
+  const base = vehicle_geofence_dashboard(args) as {
+    rows: { classification: string }[];
+    totalCount: number;
+    onSiteCount: number;
+    inTransitCount: number;
+    offlineCount: number;
+  };
+  return {
+    ...base,
+    rows: base.rows.map((r) => ({ ...r, dotTone: classificationDotTone[r.classification] ?? 'muted' })),
+    segments: [
+      { label: 'On site', value: base.onSiteCount, tone: 'success' },
+      { label: 'In transit', value: base.inTransitCount, tone: 'info' },
+      { label: 'Offline', value: base.offlineCount, tone: 'warning' },
+    ],
+  };
+};
+
+/**
+ * Travel vs On-Site Time — Trip.stopDuration is documented as including
+ * idling time, so on-site time = stopDuration − idlingDuration, kept separate
+ * from idle. Grouped by DEVICE, not driver. Keeps each vehicle's three minute
+ * totals so every row can draw its own on-site / travel / idle segmented bar.
+ * Args: { trips: Trip[] }
+ */
+const time_split_dashboard: ComputedFunction = (args) => {
+  const trips = Array.isArray(args.trips) ? (args.trips as Record<string, unknown>[]) : [];
+
+  const byDevice = new Map<string, { label: string; travel: number; onSite: number; idle: number }>();
+  for (const t of trips) {
+    const { id, label } = deviceIdAndLabel(t);
+    if (!id) continue;
+    const stop = durationToMinutes(t.stopDuration);
+    const idle = durationToMinutes(t.idlingDuration);
+    const cur = byDevice.get(id) ?? { label, travel: 0, onSite: 0, idle: 0 };
+    cur.travel += durationToMinutes(t.drivingDuration);
+    cur.onSite += Math.max(0, stop - idle);
+    cur.idle += idle;
+    byDevice.set(id, cur);
+  }
+
+  const hm = (minutes: number) => format_duration_hm({ minutes }) as string;
+  const pctOf = (part: number, total: number) => (total > 0 ? Math.round((part / total) * 100) : 0);
+
+  let onSite = 0, travel = 0, idle = 0;
+  const rows = [...byDevice.entries()]
+    .map(([id, v]) => {
+      onSite += v.onSite;
+      travel += v.travel;
+      idle += v.idle;
+      const total = v.onSite + v.travel + v.idle;
+      return {
+        deviceId: id,
+        deviceName: v.label,
+        productivePercent: pctOf(v.onSite, total),
+        summary: `${hm(v.onSite)} on site · ${hm(v.travel)} travel · ${hm(v.idle)} idle`,
+        bar: splitBar([
+          { key: 'onSite', value: v.onSite },
+          { key: 'travel', value: v.travel },
+          { key: 'idle', value: v.idle },
+        ]),
+      };
+    })
+    .sort((a, b) => b.productivePercent - a.productivePercent)
+    .slice(0, 20);
+
+  const total = onSite + travel + idle;
+  return {
+    rows,
+    vehicleCount: byDevice.size,
+    onSiteText: hm(onSite),
+    travelText: hm(travel),
+    idleText: hm(idle),
+    onSitePercent: pctOf(onSite, total),
+    travelPercent: pctOf(travel, total),
+    idlePercent: pctOf(idle, total),
+    bar: splitBar([
+      { key: 'onSite', value: onSite },
+      { key: 'travel', value: travel },
+      { key: 'idle', value: idle },
+    ]),
+  };
+};
+
+/**
+ * After-Hours & Private Use — sums Trip.afterHoursDistance (km) by the
+ * local weekday of Trip.start, Mon..Sun, for a "by day" bar strip, plus the
+ * top vehicles for a BarChart. Args: { trips: Trip[] }
+ */
+const after_hours_weekday_dashboard: ComputedFunction = (args) => {
+  const trips = Array.isArray(args.trips) ? (args.trips as Record<string, unknown>[]) : [];
+
+  const kmByDay = new Map<number, number>();
+  const tripsByDay = new Map<number, number>();
+  for (const t of trips) {
+    const km = Number(t.afterHoursDistance ?? 0);
+    if (!(km > 0)) continue;
+    const ts = Date.parse(String(t.start ?? ''));
+    if (Number.isNaN(ts)) continue;
+    const day = new Date(ts).getDay();
+    kmByDay.set(day, (kmByDay.get(day) ?? 0) + km);
+    tripsByDay.set(day, (tripsByDay.get(day) ?? 0) + 1);
+  }
+
+  const maxKm = Math.max(0, ...kmByDay.values());
+  const totalKm = [...kmByDay.values()].reduce((a, b) => a + b, 0);
+  const weekendKm = (kmByDay.get(0) ?? 0) + (kmByDay.get(6) ?? 0);
+
+  // -1 = no after-hours km at all (kmByDay.get(-1) reads as 0).
+  const peakDay = WEEKDAY_ORDER.reduce(
+    (best, d) => ((kmByDay.get(d) ?? 0) > (kmByDay.get(best) ?? 0) ? d : best),
+    -1,
+  );
+
+  const days = WEEKDAY_ORDER.map((d) => {
+    const km = kmByDay.get(d) ?? 0;
+    const n = tripsByDay.get(d) ?? 0;
+    return {
+      key: WEEKDAY_LABEL[d],
+      dayLabel: WEEKDAY_LABEL[d],
+      kmText: km > 0 ? `${Math.round(km)} km` : '–',
+      tripsText: n > 0 ? `${n} trip${n === 1 ? '' : 's'}` : '–',
+      pct: maxKm > 0 ? Math.round((km / maxKm) * 100) : 0,
+      isPeak: d === peakDay,
+      tone: d === peakDay ? 'warning' : 'info',
+    };
+  });
+
+  // Top vehicles reuse the original per-device ranking.
+  const base = after_hours_dashboard(args) as { rows: { deviceName: string; afterHoursKm: number }[]; flagNote: string };
+
+  return {
+    days,
+    vehicles: base.rows.slice(0, 5),
+    totalKm: Math.round(totalKm),
+    weekendPercent: totalKm > 0 ? Math.round((weekendKm / totalKm) * 100) : 0,
+    peakDayLabel: peakDay >= 0 ? WEEKDAY_LABEL[peakDay] : '–',
+    flagNote: base.flagNote,
+  };
+};
+
+/**
+ * Fuel & Efficiency — litres per calendar day for the last 7 days (oldest
+ * first, for a chronological BarChart) plus MTD litres split by vehicle
+ * (top 4 + "Other") for a Donut. Fleet-average efficiency still comes from
+ * fuel_dashboard. Args: { transactions: FuelTransaction[], monthStartIso: string }
+ */
+const fuel_daily_dashboard: ComputedFunction = (args) => {
+  const transactions = Array.isArray(args.transactions) ? (args.transactions as Record<string, unknown>[]) : [];
+  const monthStart = String(args.monthStartIso ?? '');
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dayKey = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  const daily: { key: string; label: string; litres: number }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    daily.push({ key: dayKey(d), label: `${WEEKDAY_LABEL[d.getDay()]} ${d.getDate()}`, litres: 0 });
+  }
+  const dailyByKey = new Map(daily.map((d) => [d.key, d]));
+
+  const mtdByDevice = new Map<string, { label: string; litres: number }>();
+  let mtdLitres = 0;
+  for (const t of transactions) {
+    const volume = Number(t.volume ?? 0);
+    if (!(volume > 0)) continue;
+    const ts = Date.parse(String(t.dateTime ?? ''));
+    if (!Number.isNaN(ts)) {
+      const bucket = dailyByKey.get(dayKey(new Date(ts)));
+      if (bucket) bucket.litres += volume;
+    }
+    if (String(t.dateTime ?? '') >= monthStart) {
+      mtdLitres += volume;
+      const { id, label } = deviceIdAndLabel(t);
+      const cur = mtdByDevice.get(id || label) ?? { label, litres: 0 };
+      cur.litres += volume;
+      mtdByDevice.set(id || label, cur);
+    }
+  }
+
+  const ranked = [...mtdByDevice.values()].sort((a, b) => b.litres - a.litres);
+  const tones = ['chart-1', 'chart-2', 'chart-3', 'chart-4'];
+  const segments = ranked.slice(0, 4).map((v, i) => ({ label: v.label, value: Math.round(v.litres), tone: tones[i] }));
+  const otherLitres = ranked.slice(4).reduce((a, v) => a + v.litres, 0);
+  if (otherLitres > 0) segments.push({ label: 'Other vehicles', value: Math.round(otherLitres), tone: 'muted' });
+
+  const base = fuel_dashboard(args) as {
+    rows: { deviceName: string; l100km: number }[];
+    totalCost: number;
+    fleetAvgL100km: number;
+    outlierNote: string;
+  };
+  const weekLitres = daily.reduce((a, d) => a + d.litres, 0);
+
+  return {
+    daily: daily.map((d) => ({ ...d, litres: Math.round(d.litres) })),
+    weekLitres: Math.round(weekLitres),
+    mtdLitres: Math.round(mtdLitres),
+    segments,
+    efficiency: base.rows.slice(0, 5),
+    totalCost: base.totalCost,
+    fleetAvgL100km: base.fleetAvgL100km,
+    outlierNote: base.outlierNote,
+  };
 };
 
 const elements: PluginElementsModule = {
   slug: 'geotab-direct',
   functions: {
-    efficiency_tone,
-    productivity_tone,
-    private_km_tone,
     month_start_iso,
-    format_duration_hm,
-    fuel_dashboard,
-    after_hours_dashboard,
-    travel_onsite_dashboard,
-    vehicle_geofence_dashboard,
-    vehicle_geofence_tone,
+    fleet_snapshot_dashboard,
+    time_split_dashboard,
+    after_hours_weekday_dashboard,
+    fuel_daily_dashboard,
   },
 };
 

@@ -24,6 +24,17 @@ A condensed one-page PDF version of this same content exists for sharing outside
 
 **Retire:** `format_date_au` / `due_date_au` (`DD/MM/YYYY`) — confirmed unused by any shipped widget. Superseded by `dd-Mmm-yy` above, not worth reviving.
 
+### Date-range params in `dataProvider` (confirmed 2026-10-01)
+
+Everything above is about *displaying* dates. Passing a date range *to a tool* is a separate choice between two token families in `myHubV2/apps/web/src/features/widgets-system/resolve-params.ts`:
+
+- **Instant tokens** (`$today`, `$today_end`, `$now`, `$days_ago_30`, `$month_start`, `$quarter_start`, …) — UTC ISO timestamps of local boundaries. **Default for any API that filters by timestamp.**
+- **Calendar-date tokens** (`$today_date`, `$month_start_date`, `$days_ago_30_date`, …) — local `YYYY-MM-DD`. Only for APIs that genuinely take a calendar date (Xero report endpoints).
+
+**Trap: a date-only `toDate` usually means midnight at the *start* of that day.** `fromDate == toDate == $today_date` is then a zero-length window that always returns nothing. Found on `geotab-direct`'s Travel vs On-Site Time tile, which was empty for every account since it shipped (live check: `2026-09-03 → 2026-09-03` = 0 trips, `→ 2026-09-04` = 375). For "today", use `$today` → `$now`.
+
+**Prefer rolling windows for pattern charts.** A period-to-date window (`$quarter_start`, `$month_start`) is empty or near-empty on the first day of every period. A tile whose point is a *pattern* (usage by weekday, a trend) should use a rolling window like `$days_ago_30` → `$now` and say so in its Eyebrow (§9, §13).
+
 ## 2. Currency
 
 **Standard format: `A$x,xxx.xx`** — currency-symbol prefix (not a suffix code like `x.xx AUD`), comma thousands separators, always 2 decimal places. E.g. `A$1,234.56`.
@@ -185,6 +196,43 @@ This standard's tone rules will sometimes disagree with the exact colors a conne
 **Known violators (found 2026-08-13, sampled from ~70 shipped Eyebrow strings):** plain Title Case throughout — `Bank Accounts`, `Gross Profit`, `Net Income`, `Total Employees`, `Total Expenses`, `Recent Donations`, `Recurring Gifts`, `Top 5 Agents`, `On Leave Today`, `Overdue Buckets`, `Revenue by Customer`, `Industry Benchmark`, `Lowest Registered Attendance`; a leading number that should leave the following word lowercase but doesn't — `3 Campaigns`, `3 Open`, `3 Pending`, `3 Recent` (contrast with the same file's own correct `4 products`); Title-Casing the second `·`-clause instead of just its first word — `Charitabl · Last 30 Days` (should be `Last 30 days`), `Charitabl · Curator`, `Charitabl · Featured`, `Charitabl · Featured Charity`; and one plain ALL CAPS, `SUMMARY`. Snapshot, not exhaustive — re-verify before treating as current.
 
 **Not yet enforced or retroactively fixed** — same rollout policy as everything else in this doc (see §14): new/touched tiles must comply going forward, a full retrofit of the violators above is a separate scoped initiative, not required before this section "counts."
+
+## 10. Charts & visual summaries (confirmed 2026-10-01)
+
+**The system has four chart elements, and they're enough:** `Donut`, `BarChart`, `Sparkline`, `ProgressBar`. Richer layouts like segmented bars and "by day" strips are built by combining these with a `template`d `Row`, not with new components. Reference implementations: Xero's Duplicate Audit tile (`plugins/xero-accounting`), its Ready to Pay tile (PR #1012, open at time of writing), and all four `geotab-direct` tiles.
+
+**Compute first, draw second.** Give each chart tile one `<slug>_<tile>_dashboard` function, called once from the `Card`'s `watch` into `setState` (e.g. `/ui/dashboard`). It returns everything already display-ready: `segments` arrays, percentages, column `template` strings, per-item `tone`, formatted text. The tile JSON then only binds values, with no maths of its own. This keeps the logic testable outside a browser, and it avoids the watch-chain timing trap, where a `watch` chain can't read a state write made earlier in the same chain.
+
+| Need | Use | Notes |
+|---|---|---|
+| Share of a whole, 2–5 parts | `Donut` with `segments` | It renders its **own legend** (label, count, %), so don't add a second one. The centre shows the raw total via `toLocaleString()`, so use it for counts or units, never currency. In a 6-column tile use `size` 84–96 and `thickness` 9–10; the default 132 is for large tiles. |
+| Ranking (top N) | `BarChart` (`labelField`, `valueField`, `limit`) | Horizontal, sorted descending by default. `valueFormat` is only `currency` / `minutes` / `number`, with no unit suffix, so put the unit in the label above it ("Most after-hours km"). `currency` is AUD-only, the same gap as `Table` (§2). |
+| Value per discrete period (day, week) | `BarChart` with `sort: "none"`, rows pre-ordered oldest first | Or the day strip below when columns read better than rows. |
+| Trend shape only, no values | `Sparkline` | Renders "Not enough data" under 2 points. |
+| A whole split into parts on one line, including per row | Segmented bar (below) | |
+| One 0–100 value | `ProgressBar` | |
+
+**Tones:** status tones (§7) only when a segment is a real state (on site / offline, ready / held back). Arbitrary categories such as vehicles or customers use `chart-1`..`chart-5`, with `muted` for an "Other" bucket.
+
+### Segmented bar
+
+A `Row` whose `template` is computed (e.g. `minmax(0, 150fr) minmax(0, 60fr) minmax(0, 30fr)`), with one child per segment: a `ProgressBar` at `value: 100` in that segment's tone.
+- **Leave zero segments out of the template, and hide their element** with `visible`. A `0fr` column still takes a gap and shifts the others. Have the dashboard function return the template plus a `show_<segment>` flag per segment.
+- Use `gap: "xs"`. `"none"` is not a real `gap` value: it renders zero gap by accident, the same way `"xxs"` does (§5).
+- Use `minmax(0, …)` so content can't widen a column, and whole-number `fr` values.
+- Add a legend underneath: a `Dot` plus a `Caption` per segment.
+- It works per row inside a `repeat` too, using `$item` paths (`{ "$item": "bar/template" }`).
+
+### Day strip
+
+A `Row` with `template: "repeat(N, minmax(0, 1fr))"` and a `repeat` over the periods. Each cell is a `Stack` holding a value `Text`, a `ProgressBar` scaled to the period's share of the maximum, and a label. Highlight a cell (today, the peak) with a per-item `tone` from the dashboard function, not a duplicate element. Every cell gets an equal fixed share, so §6's alignment bugs don't apply.
+
+### Gotchas
+
+- **Props an element doesn't declare are silently dropped**, with no error and no warning. Found on three `geotab-direct` tiles that passed `label` to `Stat` (it only takes `value` and `tone`), so the label never rendered. Check props against `componentDefs` in `myHubV2/apps/web/src/features/widgets-system/catalog.ts`. That strict list doesn't yet include `Row.template` or the chart elements, though the renderer supports both.
+- **Name what you count.** When an API returns related records by id only (Geotab's `device: { id }`), resolve the display name inside the MCP tool, not with a second tool call from the tile. A second call to the same tool collides on the `<mcp>.<tool>` state key. See `myhub-mcp-servers`'s Geotab `api/device-names.ts`.
+- **Redesign a shipped tile in place.** Keep its `id` and filename so tiles already on dashboards upgrade. Adding a new id leaves the old design wherever it's placed, and deleting the old id removes it from those dashboards.
+- **Preview in the harness first.** The harness's component list (`tile-harness/harness/src/system.tsx`) is maintained by hand. An element missing from it renders as `?ElementName`, which is a harness gap, not a tile bug.
 
 ## 11. Row limits & pagination (confirmed 2026-08-14)
 

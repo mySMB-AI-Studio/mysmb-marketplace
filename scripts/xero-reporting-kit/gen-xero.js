@@ -17,9 +17,10 @@ const built = FAM.map((f) => '`' + SLUG + ':' + f.skill + '`' + (/^P\d\d$/.test(
 const specSkills = fs.readdirSync(path.join(P, 'skills')).map((f) => f.replace(/\.md$/, '')).filter((s) => s !== 'xero-report-foundation' && !FAM.some((f) => f.skill === s)).sort();
 const spec = specSkills.map((s) => '`' + SLUG + ':' + s + '`').join(', ');
 const LIMIT = 128 * 1024, DESC = 500; // myHubV2 developer skills: markdown ≤ 128 × 1024 characters, description ≤ 500
-// What the agent can handle (README "Platform facts"): no line over LINE characters, and a report document of at most DOC
-// characters — the agent writes the whole document in one artifact_save call, inside a 10-minute turn.
-const LINE = 1500, DOC = 85000;
+// What the agent can handle (README "Platform facts"): no line over LINE characters, and a report document + its dataBindings of
+// at most DOC tokens — the agent writes both in one artifact_save call, inside a 10-minute turn. Tokens are counted with
+// @anthropic-ai/tokenizer; the largest document proven in QA (QuickBooks Forecasts) counts about 35,300 on it.
+const LINE = 1500, DOC = 35000, { countTokens } = require('@anthropic-ai/tokenizer');
 const guard = (name, md, desc) => {
   if (md.length > LIMIT) throw new Error(name + ' is ' + md.length + ' characters (limit ' + LIMIT + ')');
   if (desc && desc.length > DESC) throw new Error(name + ' description is ' + desc.length + ' characters (limit ' + DESC + ')');
@@ -46,7 +47,7 @@ Spec: Xero Reports Prompt Library v1.2 (P01–P15) with the v1.2 patch (one agen
 ## Build a kit report
 
 1. **Discovery call.** Call the report's primary tool once with its default inputs (the report skill says which), plus \`get_organisation\` and \`list_connections\` once each — together, in one step. Confirm Xero is connected (a connection error → tell the user to connect Xero under Settings → Connections and stop). A failed call is an error message, not data: report it. Read the organisation's name from \`get_organisation\`. Never copy a returned figure into the document.
-2. **dataBindings.** Copy the report skill's \`dataBindings\` JSON exactly. Change only the \`default\` values of date inputs, as its *Date defaults* line says (\`YYYY-MM-DD\` or \`"today"\`), and the \`display\` JSON string's \`p\` (period preset), \`a\` (as-at preset), \`c\` (compare: \`none\` | \`prev_period\` | \`prev_year\` | \`ytd\`) and \`v\` (report view) to match the request. Leave \`org\` empty (the connection's default organisation) unless the user names another organisation that \`list_connections\` returned — then use its \`tenantId\`. For a cash-basis request set the \`basis\` default to \`Cash\`. **Branding:** leave \`style\` = \`xero\` (Xero branding, the default). Set \`style\` = \`mysmb\` when the user asks for mySMB branding or the mySMB report template. Set \`b\` to \`#rrggbb\` only when the user asks for their own or their customer's colour. Keep every other key, input name, option, binding id, tool name and param.
+2. **dataBindings.** Copy the report skill's \`dataBindings\` JSON exactly. Change only the \`default\` values of date inputs, as its *Date defaults* line says (\`YYYY-MM-DD\` or \`"today"\`), and the \`display\` JSON string's \`p\` (period preset), \`a\` (as-at preset), \`c\` (compare: \`none\` | \`prev_period\` | \`prev_year\` | \`ytd\`) and \`v\` (report view) to match the request; on reports without a \`persona\` input, View as is the display's \`pv\` (\`Client\` | \`Bookkeeper\` | \`Practitioner\` | \`Executive\`). Leave \`org\` empty (the connection's default organisation) unless the user names another organisation that \`list_connections\` returned — then use its \`tenantId\`. For a cash-basis request set the \`basis\` default to \`Cash\` (P&L, Balance Sheet, Trial Balance, Performance overview, Business health scorecard and Visualise have it). **Branding:** leave \`style\` = \`xero\` (Xero branding, the default). Set \`style\` = \`mysmb\` when the user asks for mySMB branding or the mySMB report template. Set \`b\` to \`#rrggbb\` only when the user asks for their own or their customer's colour. Keep every other key, input name, option, binding id, tool name and param.
 3. **Report document.** Copy the report skill's *Report document* exactly. It is the whole report: the page, the stylesheet, the tested kit (only the parts this report uses) and, in the last \`<script>\`, the report config. Change only the config's \`defaults\` object so it equals the manifest defaults **exactly** (the same dates — the platform opens the report with the manifest defaults), with \`"today"\` written as today's date. Change nothing else: never edit, shorten, reformat or "improve" any other part — it is tested as one unit and the platform validates it against the bindings. (If the dates ever differ, the kit sees it in Xero's report title and refetches at the dates the controls show.)
 4. **Save** with \`artifact_save\`: \`title\` = "<Organisation> — <Report name>" (no period — the reader can change it; put the opening period in the one-line \`description\`), \`fileName\` and \`tags\` from the report skill, \`content\` = the document, \`dataBindings\` = the manifest. Do not pass \`connectors\` (a live report derives them). Write the document once, directly in this call — never in chat, in a draft or in a note first.
 5. **Completion note** (3–6 lines): the report is live and refreshes on open; the controls the reader can change; the validation checks and whether they passed on the discovery data; any N/A items (the report skill lists them); Download PDF / Download Excel are in the report, and the report window's Download and Share save a frozen snapshot.
@@ -56,8 +57,8 @@ The user never has to choose an output format: every report is HTML with Downloa
 ## Controls contract (kit reports)
 
 - **Organisation (LIB-002).** The organisations this Xero connection can access (\`list_connections\`). With one organisation the box shows its name. With several it is a picker bound to \`org\`, which every binding sends as \`xero_tenant_id\` — switching refetches everything for that organisation only, and its name, base currency and financial year come from \`get_organisation\`. Never type or guess a client name.
-- **Period.** A preset (Today … Last financial year, Custom) next to editable From / To dates, or As at with presets. The **financial year comes from the organisation's settings** (\`FinancialYearEndMonth\`); the banner names the source, and says "assumed" only if \`get_organisation\` failed. **Relative presets roll forward**: a saved "This financial year to date" report is recomputed to today's window each time it opens, and again when the reader switches to an organisation with a different year end. The header uses Xero's wording ("For the 3 months ended 30 September 2026", "As at 30 September 2026").
-- **Accounting method** (Accrual | Cash): both are loaded (\`paymentsOnly\` false / true), so switching never refetches. Compare to (previous period / previous year / year to date, with $ and % change); Report (the members); View as (persona).
+- **Period.** A preset (Today … Last financial year, Custom) next to editable From / To dates, or As at with presets. The **financial year comes from the organisation's settings** (\`FinancialYearEndMonth\`); the banner names the source, and says "assumed" only if \`get_organisation\` failed. The reader can change it with **Year end** (kept in the display settings as \`fy\`, the month the year ends, 1–12); financial-year presets follow it. **Relative presets roll forward**: a saved "This financial year to date" report is recomputed to today's window each time it opens, and again when the reader switches to an organisation with a different year end. The header uses Xero's wording ("For the 3 months ended 30 September 2026", "As at 30 September 2026").
+- **Accounting method** (Accrual | Cash): both are loaded (\`paymentsOnly\` false / true), so switching never refetches. Compare to (previous period / previous year / year to date, with $ and % change; on the Profit and Loss also several previous months, quarters or years, each its own Xero P&L); Columns by tracking category (Profit and Loss: Xero's P&L by tracking category); Report (the members); View as (persona).
 - **Branding** (under Customise; display only — never refetches): **Xero** (default: white cards, Xero blue #13B5EA accents and charts, navy ink, red negatives, Xero badge, "Prepared from Xero") or **mySMB** (the mySMB Reporting template: teal header band with a white title, white-on-teal table headers, light-teal alternating rows, mySMB badge, and the footer "Business | Report | Generated"). It is stored in the \`display\` input as \`style\`, so downloads and snapshots keep it.
 - **Customise** (display only, never refetches): Show cents, Divide by 1000, Except zero amounts (on by default — zero rows are hidden), negatives (-100 / **(100)** / 100-), Show in red (on by default, Xero style), Header, Footer, Compact | 100%, and Brand colour for a client's own colour ("Use Xero branding" resets it; not used under mySMB branding).
 - **Delivery.** Download PDF (print stylesheet), Download Excel (a real .xlsx: a sheet per table with a header block, number format, bold totals, a Validation sheet and a Parameters sheet). Host Download and Share produce a self-contained snapshot.
@@ -90,12 +91,19 @@ w('skills/xero-report-foundation.md', foundation);
 FAM.forEach((f) => {
   const manifest = JSON.stringify(JSON.parse(rd('reports/' + f.report + '.manifest.json')), null, 2);
   const doc = assemble(f.report).trim();
-  if (doc.length > DOC) throw new Error(f.skill + ' report document is ' + doc.length + ' characters (limit ' + DOC + ')');
+  const docTok = countTokens(doc) + countTokens(JSON.stringify(JSON.parse(manifest)));
+  if (docTok > DOC) throw new Error(f.skill + ' report document + dataBindings is ' + docTok + ' tokens (limit ' + DOC + ')');
   if (doc.includes('```')) throw new Error(f.skill + ' report document contains a code fence');
   const byMcp = {};
   JSON.parse(manifest).bindings.forEach((b) => { (byMcp[b.tool.mcp] = byMcp[b.tool.mcp] || new Set()).add('`' + b.tool.name + '`'); });
   const mcps = Object.keys(byMcp).map((m) => '`' + m + '` (' + [...byMcp[m]].join(', ') + ')');
   const tools = mcps.length === 1 ? 'the ' + mcps[0].replace(' (', ' connector (') : 'the connectors ' + mcps.slice(0, -1).join(', ') + ' and ' + mcps[mcps.length - 1];
+  const names = JSON.parse(manifest).inputs.map((i) => i.name), cfgSrc = rd('reports/' + f.report + '.cfg.js');
+  const step4 = ['Change every control and confirm the report refetches and still validates']
+    .concat(names.includes('basis') ? ['switch Accounting method'] : [])
+    .concat(names.includes('persona') || /personaDisplay: true/.test(cfgSrc) ? ['switch View as to Client, then Bookkeeper'] : [])
+    .concat(/views:\s*\[/.test(cfgSrc) ? ['switch every tab / Report view'] : [])
+    .concat(['toggle Branding and the dark theme']).join('; ') + '.';
   const md = `---
 name: ${f.skill}
 description: ${f.description}
@@ -133,7 +141,7 @@ ${f.chat ? '\n## In the chat reply\n\n' + f.chat.map((c) => '- ' + c).join('\n')
 1. On the golden-set organisation, ask for this report at the library's example period; confirm the discovery call succeeded and the report saved.
 2. Compare the headline figures: ${f.golden}.
 3. Validation banner: every check passes (the independent tie included), or shows N/A / information with a stated reason.
-4. Change every control and confirm the report refetches and still validates; switch Accounting method; switch View as to Client, then Bookkeeper; toggle Branding and the dark theme.
+4. ${step4}
 5. Download PDF and Download Excel and confirm they match the screen (the Excel file has Validation and Parameters sheets).
 6. Download or Share from the report window: the snapshot keeps the period and figures and disables the refetching controls.
 7. Cross-client isolation (LIB-002): with several organisations on the connection, switch organisation — the report, its name and every export carry only that organisation's figures.
