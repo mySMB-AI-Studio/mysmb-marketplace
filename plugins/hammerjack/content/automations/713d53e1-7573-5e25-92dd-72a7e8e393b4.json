@@ -1,0 +1,54 @@
+{
+  "contentHash": "ba59a1b2e54f1afd3107c452a50c2d602393484dd16fab2575e555e3bd74a7a3",
+  "declaredScopes": [
+    "extension_setup:read",
+    "records:hj_scorecards:read",
+    "records:hj_scorecards:write",
+    "records:hj_attendance_month:read",
+    "forms:read",
+    "portals:read",
+    "snapshots:write"
+  ],
+  "dependencies": [],
+  "description": "Compute 10% attendance + 90% submitted review average using server-validated form response links. Requires the reviewed paginated Forms reader before publication.",
+  "flowIr": {
+    "irVersion": 1,
+    "name": "Hammerjack Nightly Employee Scorecards",
+    "nodes": [
+      {
+        "code": "\"\"\"Draft server-linked monthly scorecards; no response identity is inferred from labels.\"\"\"\nfrom datetime import datetime, timezone, timedelta\nfrom zoneinfo import ZoneInfo\n\n\ndef run_scorecards(api):\n    settings = api.extension.settings()\n    if settings.get(\"scorecard_enabled\") is not True:\n        raise ValueError(\"Scorecard production is disabled in reviewed Hammerjack setup\")\n    now = datetime.now(ZoneInfo(str(settings.get(\"timezone\", \"Asia/Manila\"))))\n    month = now.strftime(\"%Y-%m\")\n    expected_cutoff = (now.date() - timedelta(days=1)).isoformat()\n    stamp = datetime.now(timezone.utc).isoformat()\n\n    def records(slug, portal_id):\n        rows, cursor = [], None\n        for _ in range(10):\n            args = {\"type_slug\": slug, \"portal_id\": portal_id, \"limit\": 200}\n            if cursor is not None:\n                args[\"cursor\"] = cursor\n            page = api.records.list(**args)\n            if not isinstance(page, dict) or not isinstance(page.get(\"records\"), list):\n                raise ValueError(\"Unknown Records page for \" + slug)\n            rows.extend(page[\"records\"])\n            next_cursor = page.get(\"nextCursor\")\n            if next_cursor is None:\n                return rows\n            if not isinstance(next_cursor, str) or next_cursor == cursor:\n                raise ValueError(\"Invalid Records cursor\")\n            cursor = next_cursor\n        raise ValueError(\"Scorecard source exceeds the reviewed 2000-row bound\")\n\n    response_cache = {}\n    def responses(form_id):\n        if form_id in response_cache:\n            return response_cache[form_id]\n        rows, cursor = [], None\n        for _ in range(10):\n            args = {\"form_id\": form_id, \"limit\": 200}\n            if cursor is not None:\n                args[\"cursor\"] = cursor\n            page = api.forms.list_responses(**args)\n            if not isinstance(page, dict) or not isinstance(page.get(\"items\"), list):\n                raise ValueError(\"Scorecards need the reviewed paginated Forms response contract\")\n            rows.extend(page[\"items\"])\n            next_cursor = page.get(\"nextCursor\")\n            if next_cursor is None:\n                response_cache[form_id] = rows\n                return rows\n            if not isinstance(next_cursor, str) or next_cursor == cursor:\n                raise ValueError(\"Invalid Forms response cursor\")\n            cursor = next_cursor\n        raise ValueError(\"Review responses exceed the reviewed 2000-response bound; no partial score is written\")\n\n    portals = api.portals.list()\n    if not isinstance(portals, list) or len(portals) > 100:\n        raise ValueError(\"Portal inventory exceeds the reviewed 100-portal bound\")\n    planned = []\n    for portal in portals:\n        portal_id = portal[\"portalId\"]\n        attendance = {str(row[\"data\"][\"sprout_system_id\"]): row for row in records(\"hj_attendance_month\", portal_id) if row[\"data\"].get(\"month\") == month}\n        review_rows = [row for row in records(\"hj_scorecards\", portal_id) if row[\"data\"].get(\"month\") == month]\n        for current in review_rows:\n            data = current[\"data\"]\n            system_id = data[\"sprout_system_id\"]\n            monthly = attendance.get(str(system_id))\n            if not monthly:\n                raise ValueError(\"A reviewed monthly attendance record is required before scorecard projection\")\n            if monthly[\"data\"].get(\"calculation_end_date\") != expected_cutoff:\n                raise ValueError(\"Attendance calculation must cover every completed local day through yesterday before scorecards run\")\n            try:\n                source_stamp = datetime.fromisoformat(str(monthly[\"data\"].get(\"synced_at\", \"\")).replace(\"Z\", \"+00:00\"))\n            except ValueError as error:\n                raise ValueError(\"Attendance record has no valid source sync timestamp\") from error\n            if source_stamp.tzinfo is None:\n                raise ValueError(\"Attendance source sync timestamp must include its timezone\")\n            age_seconds = (now - source_stamp).total_seconds()\n            if not 0 <= age_seconds <= 86400:\n                raise ValueError(\"Attendance source is stale or future-dated; run the reviewed Sprout sync before scorecards\")\n            rate = monthly[\"data\"].get(\"attendance_rate\")\n            if isinstance(rate, bool) or not isinstance(rate, (int, float)) or not 0 <= rate <= 100:\n                raise ValueError(\"Attendance rate must be a verified percentage\")\n            relevant = []\n            if data.get(\"review_form_id\"):\n                for response in responses(data[\"review_form_id\"]):\n                    if not all(key in response for key in (\"portalId\", \"todoId\", \"subjectRef\", \"subjectKind\", \"submittedAt\", \"responses\")):\n                        raise ValueError(\"Forms automation reader is missing trusted employee linkage; do not infer it from names\")\n                    if response[\"portalId\"] != portal_id or not response[\"submittedAt\"]:\n                        continue\n                    linked_item = response[\"todoId\"] == data.get(\"review_item_id\") and response[\"todoId\"] is not None\n                    if linked_item:\n                        relevant.append(response)\n            ratings = []\n            for response in relevant:\n                answer = response[\"responses\"]\n                for key in (\"q_overall\", \"q_quality\", \"q_comms\"):\n                    value = answer.get(key)\n                    if isinstance(value, bool) or not isinstance(value, (int, float)) or not 1 <= value <= 5:\n                        raise ValueError(\"Submitted review is missing a valid 1–5 rating: \" + key)\n                    ratings.append(value)\n            attendance_component = rate / 100.0 * 5.0\n            review_component = sum(ratings) / len(ratings) if ratings else None\n            score = 0.10 * attendance_component + 0.90 * review_component if review_component is not None else None\n            payload = dict(data, employee_name=current[\"title\"], score=score, attendance_component=attendance_component,\n                           review_component=review_component, review_count=len(relevant), synced_at=stamp)\n            planned.append({\"portal_id\": portal_id, \"system_id\": system_id, \"key\": data[\"sync_key\"], \"title\": current[\"title\"], \"data\": payload})\n    # Validate all source pages and ratings before publishing any score. A source\n    # problem on a later employee cannot publish an earlier partial calculation.\n    for item in planned:\n        stored = api.records.upsert(type_slug=\"hj_scorecards\", portal_id=item[\"portal_id\"],\n                                    key={\"field\": \"sync_key\", \"value\": item[\"key\"]}, record={\"title\": item[\"title\"], \"data\": item[\"data\"]})\n        canonical = stored[\"data\"]\n        api.snapshots.upsert(portal_id=item[\"portal_id\"], source=\"sprout\", entity_type=\"scorecard\", replace=False,\n                             rows=[{\"external_id\": str(item[\"system_id\"]) + \":\" + month, \"observed_at\": stamp,\n                                    \"payload\": {\"employee_name\": stored[\"title\"], \"month\": month, \"score\": canonical.get(\"score\"),\n                                                \"attendance_component\": canonical[\"attendance_component\"],\n                                                \"review_component\": canonical.get(\"review_component\"), \"review_count\": canonical[\"review_count\"]}}])\n    return {\"month\": month, \"scorecards\": len(planned)}\n\n\nresult = run_scorecards(api)\n",
+        "id": "run",
+        "kind": "python",
+        "outputs": [
+          {
+            "name": "result",
+            "type": "dict"
+          }
+        ],
+        "params": [],
+        "title": "Hammerjack Nightly Employee Scorecards"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "run"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      },
+      {
+        "cron": "0 2 * * *",
+        "kind": "schedule",
+        "timezone": "Asia/Manila"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Hammerjack Nightly Employee Scorecards",
+  "originKey": "713d53e1-7573-5e25-92dd-72a7e8e393b4",
+  "tags": [
+    "hammerjack"
+  ]
+}

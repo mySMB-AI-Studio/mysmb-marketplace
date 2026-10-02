@@ -1,0 +1,202 @@
+{
+  "category": "hris",
+  "connectorsUsed": [],
+  "dataProvider": {
+    "kind": "portal-snapshot",
+    "recipe": {
+      "entityType": "scorecard",
+      "writeTo": "/portal/scorecards"
+    }
+  },
+  "description": "Monthly per-employee scorecard — 10% attendance + 90% client Employee Review average, on a 1–5 scale.",
+  "id": "hammerjack-scorecard",
+  "sizing": {
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 3
+    },
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 3
+    }
+  },
+  "spec": {
+    "elements": {
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "table"
+        ],
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "header",
+          "body"
+        ],
+        "type": "Card"
+      },
+      "empty": {
+        "props": {
+          "message": "No scorecards computed yet."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/portal/snapshot/scorecard",
+              "not": true
+            },
+            {
+              "$state": "/portal/scorecards/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "type": "Header"
+      },
+      "loading": {
+        "props": {
+          "height": "8rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton",
+        "visible": {
+          "$state": "/_loading/portal/snapshot/scorecard"
+        }
+      },
+      "subtitle": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "month": {
+                "$state": "/portal/scorecards/0/month"
+              },
+              "pattern": "{month}"
+            }
+          }
+        },
+        "type": "Eyebrow"
+      },
+      "table": {
+        "props": {
+          "columns": [
+            {
+              "field": "employee_name",
+              "header": "Employee",
+              "id": "name",
+              "priority": 1,
+              "width": 180
+            },
+            {
+              "align": "right",
+              "field": "score",
+              "format": "score_dash",
+              "header": "Score",
+              "id": "score",
+              "priority": 1,
+              "toneFormat": "score_tone",
+              "variant": "badge",
+              "width": 100
+            },
+            {
+              "align": "right",
+              "field": "review_component",
+              "format": "score_dash",
+              "header": "Review avg",
+              "id": "review",
+              "priority": 2,
+              "width": 110
+            },
+            {
+              "align": "right",
+              "field": "attendance_component",
+              "format": "score_dash",
+              "header": "Attendance",
+              "id": "att",
+              "priority": 2,
+              "width": 110
+            }
+          ],
+          "rows": {
+            "$computed": "filter_max_field",
+            "args": {
+              "field": "month",
+              "value": {
+                "$state": "/portal/scorecards"
+              }
+            }
+          }
+        },
+        "type": "Table",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/portal/snapshot/scorecard",
+              "not": true
+            },
+            {
+              "$state": "/portal/scorecards/0"
+            }
+          ]
+        }
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Scorecard"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "start",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Award",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "subtitle"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      }
+    },
+    "root": "card"
+  },
+  "status": "published",
+  "tags": [
+    "portal",
+    "scorecard",
+    "hris",
+    "sprout"
+  ],
+  "title": "Hammerjack Scorecard"
+}
