@@ -1,0 +1,117 @@
+{
+  "contentHash": "b3ee1ebf4cc24c9a409338e8fd8ee874376596e87b90b76f5a8e4ece4989b128",
+  "definition": {
+    "fields": [
+      {
+        "key": "sync_key",
+        "kind": "text",
+        "label": "Synchronization key",
+        "required": true,
+        "rules": [
+          {
+            "kind": "unique_within_type"
+          }
+        ],
+        "searchable": true,
+        "showInList": false
+      },
+      {
+        "key": "employee_name",
+        "kind": "text",
+        "label": "Employee",
+        "promoted": "title",
+        "required": true,
+        "searchable": true,
+        "showInList": true
+      },
+      {
+        "key": "sprout_system_id",
+        "kind": "number",
+        "label": "Sprout system ID",
+        "required": true
+      },
+      {
+        "key": "month",
+        "kind": "text",
+        "label": "Review month"
+      },
+      {
+        "key": "review_form_id",
+        "kind": "text",
+        "label": "Shared review form ID"
+      },
+      {
+        "key": "review_item_id",
+        "kind": "text",
+        "label": "Review WorkQ item ID"
+      },
+      {
+        "key": "review_form_attached",
+        "kind": "boolean",
+        "label": "Review form attached"
+      },
+      {
+        "key": "score",
+        "kind": "number",
+        "label": "Weighted score",
+        "rules": [
+          {
+            "kind": "min",
+            "value": 0
+          },
+          {
+            "kind": "max",
+            "value": 5
+          }
+        ]
+      },
+      {
+        "key": "attendance_component",
+        "kind": "number",
+        "label": "Attendance component"
+      },
+      {
+        "key": "review_component",
+        "kind": "number",
+        "label": "Review component"
+      },
+      {
+        "key": "review_count",
+        "kind": "number",
+        "label": "Review count"
+      },
+      {
+        "key": "synced_at",
+        "kind": "datetime",
+        "label": "Data as of",
+        "showInList": true
+      }
+    ],
+    "icon": "Users",
+    "labelPlural": "Staff monthly scorecards",
+    "labelSingular": "Staff monthly scorecard",
+    "settings": {
+      "portalAccess": {
+        "editableFields": [],
+        "enabled": true,
+        "operations": [
+          "read"
+        ],
+        "visibleFields": [
+          "employee_name",
+          "month",
+          "score",
+          "attendance_component",
+          "review_component",
+          "review_count",
+          "synced_at"
+        ]
+      }
+    },
+    "slug": "hj_scorecards",
+    "titleFieldKey": "employee_name"
+  },
+  "kind": "record_type",
+  "name": "Staff monthly scorecards",
+  "originKey": "b32bba80-17e2-5dc8-bb6c-d2ac96470473"
+}
