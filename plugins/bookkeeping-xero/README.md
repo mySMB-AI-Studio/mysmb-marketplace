@@ -10,7 +10,11 @@ Supplier bills and sales invoices from email or PDF into Xero, for bookkeeping p
 - **Automations (13):**
   - *Bookkeeping: Start setup* (run by hand): creates the setup items.
   - *Bookkeeping: Apply setup (Xero)*: saves the setup answers and matches each client to its Xero organisation.
-  - *Bookkeeping: Process bill or invoice (Xero)*: runs when a PDF lands in `Bookkeeping Inbox/<client>/`. It works out whether it's a supplier bill (addressed to the client) or a sales invoice (issued by the client, matched on the client's Xero organisation name and ABN).
+  - *Bookkeeping: Process bill, invoice or statement (Xero)*: runs when a PDF lands in `Bookkeeping Inbox/<client>/`.
+    - **Supplier bill** (addressed to the client) or **sales invoice** (issued by the client, matched on its Xero organisation name and ABN): checked, coded and sent for review.
+    - **Bank or credit card statement:** attached to its bank account in Xero (matched on the last four digits of the account or card, then the name), and its closing balance compared with Xero's for the period end.
+    - **Statement of account:** attached to the supplier or customer in Xero, with the amount owing and the listed invoices compared with what Xero shows open.
+    - Statements are logged in `Bookkeeping/Statements/<client>.json`; a WorkQ item appears only for differences, an unknown account or contact, or an unreadable file.
   - *Bookkeeping: Apply bill or invoice review (Xero)*: runs when a Bill review, Invoice review or Client bill approval form is submitted.
   - *Bookkeeping: Draft requested invoice (Xero)*: runs when Email intake files a request in `Bookkeeping Requests/<client>/`, or by hand with the client's name and the request text (a phone request, say).
   - *Bookkeeping: Weekly AP digest (Xero)*: Mondays at 8am.
