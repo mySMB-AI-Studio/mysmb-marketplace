@@ -895,6 +895,9 @@ var XK = (function () {
       download(xlsx(sheets, c.currency), name + '.xlsx');
     }
     function boot(bundle) {
+      // The platform says which input values this bundle ran at (a copy whose manifest defaults differ from this config's, a
+      // snapshot captured at the reader's inputs): take them, so the controls, header and organisation match the figures.
+      var bi = bundle.inputs, k0; if (bi && typeof bi === 'object') for (k0 in bi) if (Object.prototype.hasOwnProperty.call(S.inputs, k0)) S.inputs[k0] = bi[k0];
       S.data = {}; S.errors = Object.assign({}, bundle.errors || {}); S.fetchedAt = bundle.fetchedAt || null;
       Object.keys(bundle.data || {}).forEach(function (id) { if (!S.errors[id]) absorb(id, bundle.data[id]); });
       adoptHeader(); status('');

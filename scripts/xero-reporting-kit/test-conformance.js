@@ -2,6 +2,8 @@
 // - LIB-002 cross-client isolation (Reporting Library Patch v1.2): switching organisation refetches every Xero binding for
 //   that organisation, and nothing of the first organisation (its name or any of its figures) is left on the page or in
 //   the Excel download;
+// - a template copy (artifact_from_template: the tested document unchanged, only the manifest defaults set) opened on
+//   organisation 2 shows organisation 2 only, and never refetches organisation 1;
 // - the library's Excel contract: header block = report name / organisation / period / basis + currency, #,##0.00 with
 //   negatives in brackets, and a file name without empty parts.
 const { run } = require('./harness.js'); const L = require('./ledger.js'); const fs = require('fs'), path = require('path');
@@ -49,6 +51,13 @@ const onlyT2 = (fx) => { const g = {}; Object.keys(fx).forEach((k) => { g[k] = f
     ok(f.report + ': the Excel download after the switch carries only organisation 2', name2.startsWith(N2 + ' - ') && xs2.includes(N2) && !xs2.includes(N1), name2);
     ok(f.report + ': no script errors', t.errs.length === 0, t.errs.slice(0, 3));
     ok(f.report + ': the copy checks itself against the tested version (a good copy passes)', t.w.__xkIntegrity && t.w.__xkIntegrity.ok === true && !t.doc.querySelector('body > .xk-banner.fail'), t.w.__xkIntegrity);
+    { // template copy: manifest default org = organisation 2, document unchanged (its config still says org ''); the bundle says which inputs it ran at
+      const orgIn = (m.bindings.map((b) => (b.params || {}).xero_tenant_id).filter((p) => p && p.kind === 'input')[0] || {}).input;
+      const m2 = JSON.parse(JSON.stringify(m)); m2.inputs.forEach((i) => { if (i.name === orgIn) i.default = L.T2; });
+      const c = await run(f.report, m2, fixtures(m2), { bundleInputs: true }); await wait(120);
+      const asked = c.calls.filter((x) => x.params && x.params.xero_tenant_id !== undefined), page = report(c.doc), f1 = figures(page1), f3 = figures(report(t3.doc)), left = [...figures(page)].filter((x) => f1.has(x) && !f3.has(x));
+      ok(f.report + ': a template copy set to organisation 2 opens on organisation 2 only (name, figures, every call)', !!orgIn && text(c.doc, '#xk-head .co') === N2 && !page.includes(N1) && left.length === 0 && asked.every((x) => x.params.xero_tenant_id === L.T2) && (c.setInputsLog[0] || {})[orgIn] === L.T2 && c.errs.length === 0,
+        { orgIn, head: text(c.doc, '#xk-head'), left: left.slice(0, 8), wrong: asked.filter((x) => x.params.xero_tenant_id !== L.T2).map((x) => x.id), announced: (c.setInputsLog[0] || {})[orgIn], errs: c.errs.slice(0, 2) }); }
     { const d = await run(f.report, m, fixtures(m), { htmlPatch: (h) => { const i = h.indexOf('isFinite('); return i < 0 ? h.replace('Math.round', 'Math.floor') : h.slice(0, i) + 'isfinite(' + h.slice(i + 9); } }); await wait(60);
       ok(f.report + ': a copy with one character changed is flagged in red at the top (damaged — create it again)', d.w.__xkIntegrity && d.w.__xkIntegrity.ok === false && /This copy of the report is damaged/.test(text(d.doc, 'body > .xk-banner.fail')), d.w.__xkIntegrity); }
   }

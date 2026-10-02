@@ -1,6 +1,13 @@
 # Xero Reporting Studio — report kit (source, tests, generator)
 
-This folder is the source of the **kit reports** in `plugins/xero-reporting-studio/skills/`. Each kit skill carries a `dataBindings` manifest and its complete report document: the skeleton, the stylesheet (`xk.css`), the kit (`xk-kit.js`) cut down to what that report uses, and the report config. The agent copies them verbatim, changing only the dates; it never writes report code. The foundation skill carries the build steps and rules, not code.
+This folder is the source of the **kit reports** in `plugins/xero-reporting-studio/skills/` and their **report templates** in `plugins/xero-reporting-studio/reports/<skill name>/` (`report.json` + `report.html`). Each kit skill carries a `dataBindings` manifest and its complete report document: the skeleton, the stylesheet (`xk.css`), the kit (`xk-kit.js`) cut down to what that report uses, and the report config. The template is the same document and manifest.
+
+- **With myHubV2's `artifact_from_template` tool**, the agent creates the report from the template: the platform saves an exact copy and the agent sets only the starting inputs (period, organisation …), the title and the description. Nothing is retyped. The templates also appear in Reports → Templates ("Use this report").
+- **Without it**, the agent copies the skill's blocks verbatim, changing only the dates.
+
+Either way it never writes report code. The foundation skill carries the build steps and rules, not code.
+
+> **Never Pull this extension into the Developer Instance, and never save it there.** The Developer Instance does not keep `reports/`: its next save to dev deletes the 17 templates and the `reports` key. Change it only here, then publish from dev in Admin Center.
 
 **Never hand-edit the report document or `dataBindings` blocks in the skill `.md` files.** Change the files here, run the tests, then regenerate.
 
@@ -50,7 +57,7 @@ Open the PR only when `npm run roundtrip` and `validate.ts` both pass.
 
 - **Inputs:** at most 8 per report, of type string, date, enum or number (no boolean). Boolean tool params such as `paymentsOnly` are static, so a switchable cash/accrual basis needs two bindings.
 - **Bindings:** at most 12. The host hydrates all of them at once and Xero allows 5 calls in progress per organisation, so the kit retries 429s sequentially.
-- **Opening a report:** the host hydrates with the **manifest** defaults. The kit compares the dates in Xero's report title with its controls and refetches if they differ.
+- **Opening a report:** the host hydrates with the **manifest** defaults. A newer platform also sends the input values the bundle ran at (`bundle.inputs`), and the kit takes them first — so a template copy whose manifest defaults the agent set (and a snapshot captured at the reader's inputs) shows the right period and organisation. The kit then compares the dates in Xero's report title with its controls and refetches if they differ.
 - **Skill limits:** markdown up to 128 × 1024 characters and a description of at most 500 characters (myHubV2 developer skills). The generator enforces both.
 - **What the agent can produce in one turn.** An agent chat turn is aborted after **10 minutes** (and 15 steps), and an aborted turn shows **no reply at all** (myHubV2 `apps/web/src/lib/chat/service.ts`, `TURN_BUDGET_MS`). The agent writes the whole document in a single `artifact_save` call, so the document size decides how long that takes. Keep it small:
   - **No line over 1,500 characters** in any skill. A long skill result can reach the model as a file, and reading it back cuts lines over 2,000 characters. In #1015 the whole kit sat on one 65,000-character line in a 115 KB foundation, and Month-End got no reply in QA.
