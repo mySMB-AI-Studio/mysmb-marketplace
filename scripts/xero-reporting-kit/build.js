@@ -9,7 +9,9 @@ function assemble(name, title) {
   const { reportKit } = require('./kit-prune.js');
   const cfg = rd(path.join('reports', name + '.cfg.js')).trim();
   const t = title || (cfg.match(/title:\s*'([^']+)'/) || [])[1] || name;
-  return rd('skeleton.html').trim().replace('{{TITLE}}', t).replace('{{CSS}}', () => rd('xk.css').trim()).replace('{{KIT}}', () => reportKit(cfg)).replace('{{CFG}}', () => cfg) + '\n';
+  const kit = reportKit(cfg), r = cfg.indexOf('render: function'), x = (kit + (r >= 0 ? cfg.slice(r) : cfg)).replace(/\s+/g, '');
+  let h = 2166136261; for (let j = 0; j < x.length; j++) { h ^= x.charCodeAt(j); h = Math.imul(h, 16777619) >>> 0; }
+  return rd('skeleton.html').trim().replace('{{TITLE}}', t).replace('{{CSS}}', () => rd('xk.css').trim()).replace('{{KIT}}', () => kit).replace('{{CFG}}', () => cfg).replace('{{SUM}}', h.toString(16)) + '\n';
 }
 function build(name, title) {
   const doc = path.join(dir, 'reports', name + '.doc.html');

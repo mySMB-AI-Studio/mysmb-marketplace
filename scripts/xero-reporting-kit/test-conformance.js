@@ -48,6 +48,9 @@ const onlyT2 = (fx) => { const g = {}; Object.keys(fx).forEach((k) => { g[k] = f
     const name2 = (t.downloads.filter((d) => d.name).pop() || {}).name || '', xs2 = await xlsxText(t);
     ok(f.report + ': the Excel download after the switch carries only organisation 2', name2.startsWith(N2 + ' - ') && xs2.includes(N2) && !xs2.includes(N1), name2);
     ok(f.report + ': no script errors', t.errs.length === 0, t.errs.slice(0, 3));
+    ok(f.report + ': the copy checks itself against the tested version (a good copy passes)', t.w.__xkIntegrity && t.w.__xkIntegrity.ok === true && !t.doc.querySelector('body > .xk-banner.fail'), t.w.__xkIntegrity);
+    { const d = await run(f.report, m, fixtures(m), { htmlPatch: (h) => { const i = h.indexOf('isFinite('); return i < 0 ? h.replace('Math.round', 'Math.floor') : h.slice(0, i) + 'isfinite(' + h.slice(i + 9); } }); await wait(60);
+      ok(f.report + ': a copy with one character changed is flagged in red at the top (damaged — create it again)', d.w.__xkIntegrity && d.w.__xkIntegrity.ok === false && /This copy of the report is damaged/.test(text(d.doc, 'body > .xk-banner.fail')), d.w.__xkIntegrity); }
   }
   console.log(fails ? `\n${fails}/${total} checks FAILED` : `\nALL ${total} checks passed`);
   process.exit(fails ? 1 : 0);

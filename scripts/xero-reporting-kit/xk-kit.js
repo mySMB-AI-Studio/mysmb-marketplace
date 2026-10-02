@@ -835,6 +835,7 @@ var XK = (function () {
       var out = {};
       try { out = cfg.render(c) || {}; } catch (e) { if (c.body) c.body.innerHTML = '<p class="xk-err">This report could not render: ' + h(e.message) + '</p>'; out = { checks: [{ name: 'Report rendered', pass: false, detail: e.message }] }; }
       last = { checks: out.checks || [], na: out.na || [], notes: out.notes || [] };
+      if (window.__xkIntegrity && !window.__xkIntegrity.ok) last.checks.unshift({ name: 'Report code = the tested version', pass: false, detail: 'This copy was damaged when it was created — ask the agent to create the report again' });
       stale().forEach(function (x) { last.checks.unshift({ name: 'Xero report dates = the selected dates', pass: false, detail: (cfg.tools || {})[x.id] + ' returned "' + x.title + '" — press Refresh' }); });
       // Not connected: always say so at the top of the report, whichever view is showing.
       var nc = Object.keys(S.errors).some(function (id) { return S.errors[id] && S.errors[id].code === 'needs_connection' && !srcOf(id); });
