@@ -4,7 +4,7 @@ Packaged from a MyHub workspace via the /developer Plugins page.
 
 ## What's in the box
 
-- **Automations:** Monthly Client Report PDF Generator (installed as Draft — publish in the installing workspace)
+- **Automations:** Monthly Client Report PDF Generator, Weekly WorkQ Bottleneck Report (installed as Draft — publish in the installing workspace)
 
 ## Configuration
 
