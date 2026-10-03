@@ -153,6 +153,11 @@ if (!bsRep) return null; walk(bsRep).forEach(function (l) { if (l.kind === 'row'
 return hit ? Math.round(tot * 100) / 100 : null;
 }
 function gstConfirmed(ctx, probeId) { var p = ctx.data[probeId]; return !!(p && !ctx.errors[probeId] && !noData(p)); }
+function gstUS(ctx, ids) {
+var hit = ids.some(function (id) { var e = ctx.errors[id]; return e && /permission denied|\b5020\b/i.test(e.message || ''); });
+return hit && /^(us|usa|united states)$/i.test(ctx.country || '') ? GST_US : null;
+}
+var GST_US = 'This is a US company: it collects sales tax, not GST, so QuickBooks has no GST Tax Summary for it.', GST_US_NA = 'GST (US company: sales tax, no GST)';
 var GST_UNCONFIRMED = 'QuickBooks returned no GST figures for this tax agency in this period or at any time before it, so GST is unavailable, not zero. If this company records GST, the QuickBooks connector may not be passing the tax agency (agency_id).';
 var GST_LIAB_RE = /^(gst|bas)\b.*\b(liabilit(y|ies)|payable|control)\b|^tax (payable|control)$/i;
 var ATO_RE = /australian tax(ation)? office|^ato$/i;
@@ -685,7 +690,7 @@ on('qb-xlsx', 'click', function () { exportXlsx(); });
 function ctx() {
 var d = disp(), ci = companyInfo(S.data[cfg.company]), f = fy();
 return { data: S.data, errors: S.errors, err: err, inputs: S.inputs, I: I, display: d, view: d.v || (cfg.views ? cfg.views[0][0] : ''), compareMode: cfg.compare ? d.c : 'none',
-persona: I.persona ? S.inputs[I.persona] : 'Bookkeeper', company: ci && ci.name, fy: f, currency: homeCurrency(S.data[cfg.prefs], S.data[cfg.primary]), live: live,
+persona: I.persona ? S.inputs[I.persona] : 'Bookkeeper', company: ci && ci.name, country: ci && ci.country, fy: f, currency: homeCurrency(S.data[cfg.prefs], S.data[cfg.primary]), live: live,
 fetchedAt: S.fetchedAt, lines: function (id) { return walk(S.data[id]); }, body: $('qb-body'), change: change, disp: disp, today: iso(today()) };
 }
 var last = { checks: [], na: [], notes: [] };
@@ -703,6 +708,7 @@ var nc = Object.keys(S.errors).some(function (id) { return S.errors[id] && S.err
 if (nc && c.body && c.body.textContent.indexOf(FRIENDLY.needs_connection) < 0) { var dv = document.createElement('div'); dv.className = 'qb-banner fail'; dv.textContent = FRIENDLY.needs_connection; c.body.insertBefore(dv, c.body.firstChild); }
 Object.keys(S.errors).forEach(function (id) {
 if (id === cfg.company || id === cfg.prefs) return;
+if (/tax_summary/.test((cfg.tools || {})[id] || '') && gstUS(c, [id])) { if (last.na.indexOf(GST_US_NA) < 0) last.na.push(GST_US_NA); return; } // US company: N/A, not red
 var msg = err(id);
 if (last.checks.some(function (k) { return k.pass === false && k.detail === msg; })) return;
 last.checks.unshift({ name: 'Data loaded: ' + ((cfg.tools || {})[id] || id), pass: false, detail: msg });
@@ -757,7 +763,7 @@ if (MH.onRefresh) MH.onRefresh(function () { status('Refreshing…'); });
 if (MH.onThemeChange) MH.onThemeChange(function () { render(); });
 return { state: S, change: change, render: render, exportXlsx: exportXlsx, ctx: ctx };
 }
-return { gstConfirmed: gstConfirmed, GST_UNCONFIRMED: GST_UNCONFIRMED, cashEnd: cashEnd, bankCash: bankCash, GST_LIAB_RE: GST_LIAB_RE, taxAgency: taxAgency, CF_END_RE: CF_END_RE, CF_BEG_RE: CF_BEG_RE, CF_INC_RE: CF_INC_RE, NI_RE: NI_RE, bsParts: bsParts, applyBrand: applyBrand, bas: bas, sectionTies: sectionTies, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, mergeCompare: mergeCompare, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app, MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays,
+return { gstConfirmed: gstConfirmed, gstUS: gstUS, GST_UNCONFIRMED: GST_UNCONFIRMED, cashEnd: cashEnd, bankCash: bankCash, GST_LIAB_RE: GST_LIAB_RE, taxAgency: taxAgency, CF_END_RE: CF_END_RE, CF_BEG_RE: CF_BEG_RE, CF_INC_RE: CF_INC_RE, NI_RE: NI_RE, bsParts: bsParts, applyBrand: applyBrand, bas: bas, sectionTies: sectionTies, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, mergeCompare: mergeCompare, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app, MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays,
 num: num, cols: cols, walk: walk, find: find, val: val, header: header, noData: noData, totalFor: totalFor, near: near, sum: sum,
 companyInfo: companyInfo, fiscalStart: fiscalStart, homeCurrency: homeCurrency, symbol: symbol,
 DISPLAY_DEFAULT: DISPLAY_DEFAULT, readDisplay: readDisplay, writeDisplay: writeDisplay, money: money, pct: pct, isNeg: isNeg,
@@ -767,8 +773,8 @@ xlsx: xlsx, sheetFromLines: sheetFromLines, download: download, reportv2Params: 
 <script>QB.app({
   title: 'Management Report', token: null, noHead: true, primary: 'pnl', company: 'company_info', prefs: 'prefs',
   inputs: { start: 'start_date', end: 'end_date', basis: 'basis', persona: 'persona', display: 'display' },
-  defaults: { start_date: '2026-07-01', end_date: '2026-08-31', basis: 'Accrual', agency_id: '', persona: 'Executive',
-    display: '{"cents":1,"k":0,"zeros":0,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"custom","a":"custom","c":"none","v":"basic","x":""}' },
+  defaults: { start_date: '2026-09-01', end_date: '2026-09-30', basis: 'Accrual', agency_id: '', persona: 'Executive',
+    display: '{"cents":1,"k":0,"zeros":0,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"last_month","a":"custom","c":"none","v":"basic","x":""}' },
   uses: { pnl: ['start_date', 'end_date', 'basis'], balance_sheet: ['end_date', 'basis'], cash_flow: ['start_date', 'end_date'], gst_summary: ['start_date', 'end_date', 'basis', 'agency_id'], gst_probe: ['basis', 'agency_id'], tax_agencies: [], aged_receivables: [], aged_payables: [], company_info: [], prefs: [] },
   tools: { pnl: 'get_report_profit_and_loss', balance_sheet: 'get_report_balance_sheet', cash_flow: 'get_report_cash_flow', aged_receivables: 'get_report_aged_receivables', aged_payables: 'get_report_aged_payables', gst_summary: 'get_report_tax_summary', gst_probe: 'get_report_tax_summary (all history — confirms a nil period)', company_info: 'qbo_query (CompanyInfo)', prefs: 'get_preferences' },
   views: [['basic', 'Basic Company Financials'], ['expanded', 'Expanded Company Financials'], ['bas', 'BAS workpapers']],
@@ -788,7 +794,8 @@ xlsx: xlsx, sheetFromLines: sheetFromLines, download: download, reportv2Params: 
     if (tpl !== 'bas') pages.push(['Profit and Loss', function () { return stmt('pnl', pl); }], ['Balance Sheet', function () { return stmt('balance_sheet', bs); }]);
     if (tpl === 'expanded') pages.push(['Statement of Cash Flows', function () { return stmt('cash_flow', cf); }], ['A/R Ageing Summary', function () { return ageTable('aged_receivables', 'Customer'); }], ['A/P Ageing Summary', function () { return ageTable('aged_payables', 'Supplier'); }]);
     var basNil = !!(c.data.gst_summary && QB.noData(c.data.gst_summary) && ag.id && QB.gstConfirmed(c, 'gst_probe')), basB = c.data.gst_summary && !QB.noData(c.data.gst_summary) ? QB.bas(c.data.gst_summary) : null;
-    if (tpl === 'bas') pages.push(['GST Summary', function () { return c.errors.gst_summary ? '<p class="qb-err">' + QB.h(c.err('gst_summary')) + '</p>' : basB ? QB.statement(basB.lines, ['', 'TOTAL'], c) : basNil ? '<div class="qb-card detail-block"><h3>Nil period</h3><p>QuickBooks has no GST transactions for <strong>' + QB.h(ag.name) + '</strong> in this period, so every BAS label is ' + QB.h(money(0)) + '.</p></div>' : '<p class="qb-err">' + (ag.id ? QB.h(QB.GST_UNCONFIRMED) : 'No tax agency is set up in QuickBooks — GST is unavailable, not zero.') + '</p>'; }], ['Profit and Loss', function () { return stmt('pnl', pl); }]);
+    var usNA = QB.gstUS(c, ['gst_summary', 'gst_probe']);
+    if (tpl === 'bas') pages.push(['GST Summary', function () { return usNA ? '<div class="qb-banner na"><strong>GST does not apply to this company.</strong> ' + QB.h(usNA) + '</div>' : c.errors.gst_summary ?'<p class="qb-err">' + QB.h(c.err('gst_summary')) + '</p>' : basB ? QB.statement(basB.lines, ['', 'TOTAL'], c) : basNil ? '<div class="qb-card detail-block"><h3>Nil period</h3><p>QuickBooks has no GST transactions for <strong>' + QB.h(ag.name) + '</strong> in this period, so every BAS label is ' + QB.h(money(0)) + '.</p></div>' : '<p class="qb-err">' + (ag.id ? QB.h(QB.GST_UNCONFIRMED) : 'No tax agency is set up in QuickBooks — GST is unavailable, not zero.') + '</p>'; }], ['Profit and Loss', function () { return stmt('pnl', pl); }]);
     pages.push(['End notes', function () { return '<p>Prepared from QuickBooks Online via the ' + QB.h('quickbooks-accounting') + ' connector on ' + QB.h(new Date(c.fetchedAt || Date.now()).toLocaleString('en-AU')) + '. ' + QB.h(c.inputs.basis) + ' basis. Amounts in ' + QB.h(c.currency) + '.</p><p>These reports are decision support. They have not been audited or reviewed.</p>'; }]);
     var cover = '<section class="page mr-cover" style="background:var(--cover);color:var(--cover-ink);border-radius:8px;padding:72px 40px;margin-bottom:16px"><div style="font-size:30px;font-weight:700">Management Report</div><div style="font-size:20px;margin-top:12px">' + QB.h(c.company || 'N/A — not in source') + '</div><div style="margin-top:8px">For the period ended ' + QB.h(ended) + '</div><div style="margin-top:24px;opacity:.8">' + QB.h({ basic: 'Basic Company Financials', expanded: 'Expanded Company Financials', bas: 'BAS workpapers' }[tpl]) + '</div></section>';
     var toc = '<section class="page qb-card"><h2>Table of contents</h2><ol>' + pages.map(function (p, i) { return '<li>' + QB.h(p[0]) + ' <span class="muted">— page ' + (i + 3) + '</span></li>'; }).join('') + '</ol></section>';
@@ -800,7 +807,7 @@ xlsx: xlsx, sheetFromLines: sheetFromLines, download: download, reportv2Params: 
       { name: 'P&L: Gross Profit = Income − Cost of Sales; Net Earnings = GP + Other Income − Expenses − Other Expenses', pass: gp == null || inc == null || ni == null ? null : QB.near(gp, inc - cogs) && QB.near(ni, gp + oi - exp - oe), detail: money(ni) },
       { name: 'Balance Sheet: Total for Assets = Total for Liabilities + Equity', pass: A == null || LE == null ? null : QB.near(A, LE), detail: c.errors.balance_sheet ? c.err('balance_sheet') : money(A) }];
     if (tpl === 'expanded') checks.push(cend == null && beg == null && cinc != null ? { name: 'Cash Flows: net increase in cash (information)', pass: null, info: true, detail: money(cinc) + " — QuickBooks' cash flow report has no opening or closing cash lines for this company" } : { name: 'Cash Flows: Cash at end = beginning + net increase', pass: cend == null ? null : QB.near(cend, beg + cinc), detail: money(cend) }, { name: 'A/R and A/P ageing: TOTAL = Σ rows', pass: ageOk('aged_receivables') === false || ageOk('aged_payables') === false ? false : true, detail: '' });
-    if (tpl === 'bas') checks.push(basNil ? { name: 'GST Summary: GST activity in the period (information)', pass: null, info: true, detail: 'None — nil period for ' + ag.name } : { name: 'GST Summary: 1A − 1B = 9', pass: basB && basB.a1 != null && basB.nine != null ? QB.near(basB.a1 - basB.b1, basB.nine) : null, detail: basB ? money(basB.nine) : 'No GST rows' });
+    if (tpl === 'bas') checks.push(usNA ? { name: 'GST Summary: 1A − 1B = 9', pass: null, detail: 'N/A — US company (sales tax, no GST)' } : basNil ?{ name: 'GST Summary: GST activity in the period (information)', pass: null, info: true, detail: 'None — nil period for ' + ag.name } : { name: 'GST Summary: 1A − 1B = 9', pass: basB && basB.a1 != null && basB.nine != null ? QB.near(basB.a1 - basB.b1, basB.nine) : null, detail: basB ? money(basB.nine) : 'No GST rows' });
     checks.push({ name: 'Table of contents page numbers match the page order', pass: pages.every(function (p, i) { return !!document.getElementById('qb-mr-' + i); }), detail: pages.length + ' pages after cover and contents' });
     this._x = { pl: pl, bs: bs, cf: cf, tpl: tpl, basB: basB, ended: ended };
     return { checks: checks, title: 'Management Report', period: 'For the period ended ' + ended,

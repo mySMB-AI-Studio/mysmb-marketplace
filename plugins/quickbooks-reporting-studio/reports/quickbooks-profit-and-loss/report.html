@@ -153,6 +153,11 @@ if (!bsRep) return null; walk(bsRep).forEach(function (l) { if (l.kind === 'row'
 return hit ? Math.round(tot * 100) / 100 : null;
 }
 function gstConfirmed(ctx, probeId) { var p = ctx.data[probeId]; return !!(p && !ctx.errors[probeId] && !noData(p)); }
+function gstUS(ctx, ids) {
+var hit = ids.some(function (id) { var e = ctx.errors[id]; return e && /permission denied|\b5020\b/i.test(e.message || ''); });
+return hit && /^(us|usa|united states)$/i.test(ctx.country || '') ? GST_US : null;
+}
+var GST_US = 'This is a US company: it collects sales tax, not GST, so QuickBooks has no GST Tax Summary for it.', GST_US_NA = 'GST (US company: sales tax, no GST)';
 var GST_UNCONFIRMED = 'QuickBooks returned no GST figures for this tax agency in this period or at any time before it, so GST is unavailable, not zero. If this company records GST, the QuickBooks connector may not be passing the tax agency (agency_id).';
 var GST_LIAB_RE = /^(gst|bas)\b.*\b(liabilit(y|ies)|payable|control)\b|^tax (payable|control)$/i;
 var ATO_RE = /australian tax(ation)? office|^ato$/i;
@@ -685,7 +690,7 @@ on('qb-xlsx', 'click', function () { exportXlsx(); });
 function ctx() {
 var d = disp(), ci = companyInfo(S.data[cfg.company]), f = fy();
 return { data: S.data, errors: S.errors, err: err, inputs: S.inputs, I: I, display: d, view: d.v || (cfg.views ? cfg.views[0][0] : ''), compareMode: cfg.compare ? d.c : 'none',
-persona: I.persona ? S.inputs[I.persona] : 'Bookkeeper', company: ci && ci.name, fy: f, currency: homeCurrency(S.data[cfg.prefs], S.data[cfg.primary]), live: live,
+persona: I.persona ? S.inputs[I.persona] : 'Bookkeeper', company: ci && ci.name, country: ci && ci.country, fy: f, currency: homeCurrency(S.data[cfg.prefs], S.data[cfg.primary]), live: live,
 fetchedAt: S.fetchedAt, lines: function (id) { return walk(S.data[id]); }, body: $('qb-body'), change: change, disp: disp, today: iso(today()) };
 }
 var last = { checks: [], na: [], notes: [] };
@@ -703,6 +708,7 @@ var nc = Object.keys(S.errors).some(function (id) { return S.errors[id] && S.err
 if (nc && c.body && c.body.textContent.indexOf(FRIENDLY.needs_connection) < 0) { var dv = document.createElement('div'); dv.className = 'qb-banner fail'; dv.textContent = FRIENDLY.needs_connection; c.body.insertBefore(dv, c.body.firstChild); }
 Object.keys(S.errors).forEach(function (id) {
 if (id === cfg.company || id === cfg.prefs) return;
+if (/tax_summary/.test((cfg.tools || {})[id] || '') && gstUS(c, [id])) { if (last.na.indexOf(GST_US_NA) < 0) last.na.push(GST_US_NA); return; } // US company: N/A, not red
 var msg = err(id);
 if (last.checks.some(function (k) { return k.pass === false && k.detail === msg; })) return;
 last.checks.unshift({ name: 'Data loaded: ' + ((cfg.tools || {})[id] || id), pass: false, detail: msg });
@@ -757,7 +763,7 @@ if (MH.onRefresh) MH.onRefresh(function () { status('Refreshing…'); });
 if (MH.onThemeChange) MH.onThemeChange(function () { render(); });
 return { state: S, change: change, render: render, exportXlsx: exportXlsx, ctx: ctx };
 }
-return { gstConfirmed: gstConfirmed, GST_UNCONFIRMED: GST_UNCONFIRMED, cashEnd: cashEnd, bankCash: bankCash, GST_LIAB_RE: GST_LIAB_RE, taxAgency: taxAgency, CF_END_RE: CF_END_RE, CF_BEG_RE: CF_BEG_RE, CF_INC_RE: CF_INC_RE, NI_RE: NI_RE, bsParts: bsParts, applyBrand: applyBrand, bas: bas, sectionTies: sectionTies, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, mergeCompare: mergeCompare, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app, MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays,
+return { gstConfirmed: gstConfirmed, gstUS: gstUS, GST_UNCONFIRMED: GST_UNCONFIRMED, cashEnd: cashEnd, bankCash: bankCash, GST_LIAB_RE: GST_LIAB_RE, taxAgency: taxAgency, CF_END_RE: CF_END_RE, CF_BEG_RE: CF_BEG_RE, CF_INC_RE: CF_INC_RE, NI_RE: NI_RE, bsParts: bsParts, applyBrand: applyBrand, bas: bas, sectionTies: sectionTies, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, mergeCompare: mergeCompare, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app, MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays,
 num: num, cols: cols, walk: walk, find: find, val: val, header: header, noData: noData, totalFor: totalFor, near: near, sum: sum,
 companyInfo: companyInfo, fiscalStart: fiscalStart, homeCurrency: homeCurrency, symbol: symbol,
 DISPLAY_DEFAULT: DISPLAY_DEFAULT, readDisplay: readDisplay, writeDisplay: writeDisplay, money: money, pct: pct, isNeg: isNeg,
@@ -785,7 +791,9 @@ xlsx: xlsx, sheetFromLines: sheetFromLines, download: download, reportv2Params: 
     var T = function (g, re) { return QB.val(QB.find(lines, g, re)); };
     var inc = T('Income', /^total (for )?income$/i), cogs = T('COGS', /^total (for )?cost of (sales|goods sold)$/i) || 0, gp = T('GrossProfit', /^gross profit$/i),
       exp = T('Expenses', /^total (for )?expenses$/i), oi = T('OtherIncome', /^total (for )?other income$/i) || 0, oe = T('OtherExpenses', /^total (for )?other expenses$/i) || 0, ni = T('NetIncome', QB.NI_RE);
-    var incHdr = QB.find(lines, 'Income', null, 'header'), incRows = lines.filter(function (l) { return l.kind === 'row' && incHdr && l.path[0] === incHdr.label; });
+    // a parent account's own amount is on its section header (its sub-accounts are the rows below) — live QA, 4 Oct 2026:
+    // Landscaping Services on the US sandbox
+    var incHdr = QB.find(lines, 'Income', null, 'header'), incRows = lines.filter(function (l) { return incHdr && l.path[0] === incHdr.label && (l.kind === 'row' || (l.kind === 'header' && l !== incHdr)); }), incSum = QB.sum(incRows.map(function (l) { return QB.val(l); }));
     var extra = [];
     if (cmpOn) extra = QB.compareCols({ prev_period: 'Previous period', prev_year: 'Previous year', ytd: 'Year-to-date' }[c.compareMode]);
     if (c.view === 'pct') extra.push({ title: '% of Income', fmt: 'pct', value: function (l) { return inc ? QB.val(l) / inc : null; } });
@@ -805,7 +813,7 @@ xlsx: xlsx, sheetFromLines: sheetFromLines, download: download, reportv2Params: 
       QB.waterfall(document.getElementById('ch2'), { title: 'Income to net earnings', steps: [{ label: 'Income', value: inc, total: true }, { label: 'Cost of Sales', value: -cogs }, { label: 'Other income', value: oi }, { label: 'Expenses', value: -exp }, { label: 'Other exp.', value: -oe }, { label: 'Net Earnings', value: ni, total: true }] }, c);
     }
     var hd = QB.header(rep), checks = [
-      { name: 'Total for Income = Σ income accounts', pass: inc == null ? null : QB.near(inc, QB.sum(incRows.map(function (l) { return QB.val(l); }))), detail: QB.money(inc, c.currency, c.display) },
+      { name: 'Total for Income = Σ income accounts', pass: inc == null ? null : QB.near(inc, incSum), detail: QB.money(inc, c.currency, c.display) + (inc == null || QB.near(inc, incSum) ? '' : ' vs Σ ' + QB.money(incSum, c.currency, c.display)) },
       { name: 'Gross Profit = Income − Cost of Sales', pass: gp == null || inc == null ? null : QB.near(gp, inc - cogs), detail: QB.money(gp, c.currency, c.display) },
       { name: 'Net Earnings = Gross Profit + Other Income − Expenses − Other Expenses', pass: ni == null || gp == null || exp == null ? null : QB.near(ni, gp + oi - exp - oe), detail: QB.money(ni, c.currency, c.display) },
       { name: 'QuickBooks returned the requested period', pass: !c.live ? null : hd.StartPeriod === c.inputs.start_date && hd.EndPeriod === c.inputs.end_date, detail: (hd.StartPeriod || '?') + ' to ' + (hd.EndPeriod || '?') + ', ' + (hd.ReportBasis || '?') + ' basis' }
