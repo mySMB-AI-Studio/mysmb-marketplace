@@ -6,7 +6,7 @@ description: Shared build recipe, controls contract, validation rules, MYOB styl
 
 Use when you build any MYOB report, dashboard or report pack. Load this skill first, then the report skill. Two kinds of report skill exist:
 
-- **Kit reports** — `myob-reporting-studio:profit-and-loss` (M04), `myob-reporting-studio:balance-sheet` (M02), `myob-reporting-studio:trial-balance` (M03), `myob-reporting-studio:unpaid-invoices` (M32), `myob-reporting-studio:aged-receivables` (M32), `myob-reporting-studio:receivables-reconciliation` (M33, M34), `myob-reporting-studio:sales-register` (M38), `myob-reporting-studio:customer-sales` (M35), `myob-reporting-studio:cash-movement` (M05), `myob-reporting-studio:general-ledger` (M08), `myob-reporting-studio:dashboard` (M00), `myob-reporting-studio:exceptions-dashboard` (M59). The report skill carries a tested `dataBindings` manifest and a report config; this file carries the tested kit and stylesheet. **You assemble them — you do not write report code.** Follow *Build a kit report* below.
+- **Kit reports** — `myob-reporting-studio:profit-and-loss` (M04), `myob-reporting-studio:balance-sheet` (M02), `myob-reporting-studio:trial-balance` (M03), `myob-reporting-studio:unpaid-invoices` (M32), `myob-reporting-studio:aged-receivables` (M32), `myob-reporting-studio:receivables-reconciliation` (M33, M34), `myob-reporting-studio:sales-register` (M38), `myob-reporting-studio:customer-sales` (M35), `myob-reporting-studio:cash-movement` (M05), `myob-reporting-studio:general-ledger` (M08), `myob-reporting-studio:dashboard` (M00), `myob-reporting-studio:exceptions-dashboard` (M59), `myob-reporting-studio:myob-statement-of-cash-flows` (M19), `myob-reporting-studio:myob-report-pack` (M60). The report skill carries a tested `dataBindings` manifest and a report config; this file carries the tested kit and stylesheet. **You assemble them — you do not write report code.** Follow *Build a kit report* below.
 - **Every other report skill** is still a written specification. Follow *Rules for report skills without a kit config* at the end of this file.
 
 Spec: MYOB Reports Prompt Library v1.2 (M00–M63) with the v1.2 patch (one agent per platform; LIB-002 client selector; cross-client isolation). Connector: `myob-accounting` (the mySMB custom MCP on the MYOB Business / AccountRight API v2).
@@ -162,6 +162,7 @@ main.mk-card{border-top:4px solid var(--accent)}
 .mk-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--line);margin:8px 0}.mk-bar i{display:block;height:100%}
 .mk-bul{list-style:none;padding:0;margin:8px 0 0}.mk-bul li{display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--line);font-size:13px}.mk-bul b{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
 .mk-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:8px}.mk-tiles .lbl{font-size:12px;color:var(--muted)}
+@media print{.noprint{display:none}}
 ```
 
 ## Report kit ({{KIT}}) — copy verbatim
@@ -263,6 +264,15 @@ function signNotes(totals, col) {
 var out = [], i = col || 0, credit = { Income: 1, OtherIncome: 1 }, what = function (k) { return /Income/.test(k) ? 'income' : /Expense|CostOfSales/.test(k) ? 'expense' : 'account'; };
 Object.keys(totals).forEach(function (k) { var v = totals[k][i]; if (v < -0.005) out.push(SECTION_LABEL[k] + ' is negative (' + (credit[k] || k === 'Asset' ? 'a net debit' : k === 'Liability' || k === 'Equity' ? 'a net debit' : 'a net credit') + ') — review the ' + what(k) + ' postings.'); });
 return out;
+}
+function cashMoves(bs2, pl, from, to, fyMonth) {
+var r2 = function (v) { return Math.round(v * 100) / 100; }, np = pl.calc.NetProfit[0], fyCross = iso(fyStartOf(parse(to), fyMonth || 7)) >= from;
+var CYE = function (r) { return CYE_RE.test(r.name); }, RE = function (r) { return /retained (earnings|profits)/i.test(r.name); };
+var rows = bs2.rows.filter(function (r) { return !r.header && /^(Asset|Liability|Equity)$/.test(r.cls); }).map(function (r) { var d = r2((r.values[1] || 0) - (r.values[0] || 0));
+return { code: r.code, name: r.name, cls: r.cls, type: r.type, open: r.values[0] || 0, close: r.values[1] || 0, effect: r.cls === 'Asset' ? -d : d, bank: r.type === 'Bank', skip: CYE(r) || (fyCross && RE(r)) }; });
+var moves = rows.filter(function (r) { return !r.bank && !r.skip; }), bank = rows.filter(function (r) { return r.bank; }), rolled = rows.filter(function (r) { return fyCross && r.skip; });
+var open = sum(bank.map(function (r) { return r.open; })), close = sum(bank.map(function (r) { return r.close; }));
+return { np: np, moves: moves, bank: bank, open: open, close: close, net: r2(np + sum(moves.map(function (r) { return r.effect; }))), fyCross: fyCross, rollAdj: fyCross ? r2(-(sum(rolled.map(function (r) { return r.close - r.open; })) - np)) : 0 };
 }
 function linesTies(lines, tol) {
 var res = { checked: 0, failed: [] };
@@ -795,7 +805,7 @@ if (MH.onRefresh) MH.onRefresh(function () { status('Refreshing…'); });
 if (MH.onThemeChange) MH.onThemeChange(function () { render(); });
 return { state: S, change: change, render: render, exportXlsx: exportXlsx, ctx: ctx };
 }
-return { signNotes: signNotes, errorOf: errorOf, items: items, isoDate: isoDate, accounts: accounts, classOf: classOf, breakdown: breakdown, PL_LAYOUT: PL_LAYOUT, BS_LAYOUT: BS_LAYOUT, PL_CLASSES: PL_CLASSES, BS_CLASSES: BS_CLASSES,
+return { signNotes: signNotes, cashMoves: cashMoves, errorOf: errorOf, items: items, isoDate: isoDate, accounts: accounts, classOf: classOf, breakdown: breakdown, PL_LAYOUT: PL_LAYOUT, BS_LAYOUT: BS_LAYOUT, PL_CLASSES: PL_CLASSES, BS_CLASSES: BS_CLASSES,
 CYE_RE: CYE_RE, currentYearEarnings: currentYearEarnings, linesTies: linesTies, companyFiles: companyFiles, companyOf: companyOf, fiscalStart: fiscalStart, homeCurrency: homeCurrency,
 applyBrand: applyBrand, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app,
 MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays, num: num, find: find, val: val, totalFor: totalFor, near: near, sum: sum, symbol: symbol,
@@ -807,7 +817,7 @@ xlsx: xlsx, sheetFromLines: sheetFromLines, download: download, reportParams: re
 
 ## Rules for report skills without a kit config
 
-These rules apply to every report skill that is still a written specification (all except `myob-reporting-studio:profit-and-loss` (M04), `myob-reporting-studio:balance-sheet` (M02), `myob-reporting-studio:trial-balance` (M03), `myob-reporting-studio:unpaid-invoices` (M32), `myob-reporting-studio:aged-receivables` (M32), `myob-reporting-studio:receivables-reconciliation` (M33, M34), `myob-reporting-studio:sales-register` (M38), `myob-reporting-studio:customer-sales` (M35), `myob-reporting-studio:cash-movement` (M05), `myob-reporting-studio:general-ledger` (M08), `myob-reporting-studio:dashboard` (M00), `myob-reporting-studio:exceptions-dashboard` (M59)). When you build one of those, write the report yourself following these rules.
+These rules apply to every report skill that is still a written specification (all except `myob-reporting-studio:profit-and-loss` (M04), `myob-reporting-studio:balance-sheet` (M02), `myob-reporting-studio:trial-balance` (M03), `myob-reporting-studio:unpaid-invoices` (M32), `myob-reporting-studio:aged-receivables` (M32), `myob-reporting-studio:receivables-reconciliation` (M33, M34), `myob-reporting-studio:sales-register` (M38), `myob-reporting-studio:customer-sales` (M35), `myob-reporting-studio:cash-movement` (M05), `myob-reporting-studio:general-ledger` (M08), `myob-reporting-studio:dashboard` (M00), `myob-reporting-studio:exceptions-dashboard` (M59), `myob-reporting-studio:myob-statement-of-cash-flows` (M19), `myob-reporting-studio:myob-report-pack` (M60)). When you build one of those, write the report yourself following these rules.
 
 Resolve the MYOB company file, period or as-at date, and accounting basis (`Accrual` or `Cash`, where the underlying tool takes `reporting_basis`) — but prefer declaring them as report inputs with sensible defaults over asking the user up front; ask only when a required choice genuinely cannot be defaulted. Do not ask for an output format: every report is a single self-contained HTML document saved through artifact_save with a .html filename.
 
