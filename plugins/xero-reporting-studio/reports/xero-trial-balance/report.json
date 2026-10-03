@@ -16,6 +16,12 @@
         "default": "today"
       },
       {
+        "name": "fy_start",
+        "label": "Financial year start",
+        "type": "date",
+        "default": "2026-07-01"
+      },
+      {
         "name": "basis",
         "label": "Accounting basis",
         "type": "enum",
@@ -96,13 +102,17 @@
         }
       },
       {
-        "id": "bs_tie",
+        "id": "pnl_tie",
         "tool": {
           "mcp": "xero-accounting",
-          "name": "get_balance_sheet"
+          "name": "get_profit_and_loss"
         },
         "params": {
-          "date": {
+          "fromDate": {
+            "kind": "input",
+            "input": "fy_start"
+          },
+          "toDate": {
             "kind": "input",
             "input": "as_at"
           },

@@ -1,13 +1,14 @@
 XK.app({
-  title: 'Balance Sheet', primary: 'bs', dated: ['bs', 'bs_cash'], org: 'org', conns: 'connections',
+  title: 'Balance Sheet', primary: 'bs', dated: ['bs', 'bs_cash', 'pnl_ytd'], org: 'org', conns: 'connections',
   inputs: { asAt: 'as_at', basis: 'basis', cmpAsAt: 'compare_as_at', org: 'org', persona: 'persona', display: 'display' },
-  defaults: { as_at: '2026-09-25', basis: 'Accrual', compare_as_at: '2025-09-25', fy_start: '2026-07-01', org: '', persona: 'Bookkeeper',
-    display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"today","c":"none","v":"bs"}' },
+  defaults: { as_at: '2026-09-30', basis: 'Accrual', compare_as_at: '2025-09-30', fy_start: '2026-07-01', org: '', persona: 'Bookkeeper',
+    display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"end_this_month","c":"none","v":"bs"}' },
   uses: { bs: ['as_at', 'org'], bs_cash: ['as_at', 'org'], bs_compare: ['compare_as_at', 'org'], bs_compare_cash: ['compare_as_at', 'org'], pnl_ytd: ['fy_start', 'as_at', 'org'], org: ['org'], connections: [] },
   tools: { bs: 'get_balance_sheet', bs_cash: 'get_balance_sheet (cash basis)', bs_compare: 'get_balance_sheet (comparison date)', bs_compare_cash: 'get_balance_sheet (comparison date, cash basis)', pnl_ytd: 'get_profit_and_loss (financial year to date, for the Current Year Earnings tie)', org: 'get_organisation', connections: 'list_connections' },
   compare: true,
   views: [['bs', 'Balance Sheet'], ['summary', 'Summary (totals only)']],
-  derive: function (inp, fyMonth) { return { fy_start: XK.fyStartOf(inp.as_at, fyMonth) }; },
+  asats: [['end_this_month', 'End of this month'], ['end_last_month', 'End of last month'], ['end_last_quarter', 'End of last quarter'], ['end_last_fy', 'End of last financial year'], ['custom', 'Custom (its month end)']],
+  derive: function (inp, fyMonth) { var p = inp.as_at.split('-'), e = XK.iso(XK.eom(+p[0], +p[1])); return { as_at: e, fy_start: XK.fyStartOf(e, fyMonth) }; },
   render: function (c) {
     var body = c.body, money = function (v) { return XK.money(v, c.currency, c.display); }, cash = c.inputs.basis === 'Cash';
     var id = cash ? 'bs_cash' : 'bs', cid = cash ? 'bs_compare_cash' : 'bs_compare';
@@ -50,7 +51,7 @@ XK.app({
         : { name: 'Current Year Earnings vs P&L Net Profit (information)', pass: null, info: true, detail: 'The tie is checked on the accrual basis' }
     ];
     if (cmpOn) checks.push({ name: 'Comparison date loaded', pass: c.errors[cid] ? false : c.data[cid] ? true : null, detail: c.errors[cid] ? c.err(cid) : c.inputs.compare_as_at });
-    var notes = [];
+    var notes = ['Xero\'s Balance Sheet is only available at month ends (its API answers any date with that month\'s end), so a date you pick is moved to its month end. For balances on a day within the month, use the Trial Balance.'];
     if (cash) notes.push('Cash basis: Xero\'s Balance Sheet with payments only (paymentsOnly = true) — receivables and payables are excluded.');
     var od = bankSec ? bankSec.rows.filter(function (l) { return l.values[0] < 0; }) : [];
     if (od.length) notes.push('Overdrawn bank account(s): ' + od.map(function (l) { return l.label + ' ' + money(l.values[0]); }).join(', ') + '.');

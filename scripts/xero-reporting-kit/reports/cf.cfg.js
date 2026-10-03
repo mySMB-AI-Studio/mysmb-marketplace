@@ -3,9 +3,9 @@ XK.app({
   inputs: { org: 'org', display: 'display' },
   defaults: { planned: '[]', as_at: '2026-09-25', past_from: '2026-08-26', past_where: 'Date>=DateTime(2026,08,26) AND Date<=DateTime(2026,09,25)', org: '', page: 1,
     display: '{"cents":0,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"today","c":"none","v":"overview","o":"d=30;od=ex"}' },
-  uses: { bank: ['as_at', 'org'], bank_past: ['past_from', 'as_at', 'org'], receivables: ['org'], payables: ['org'], bank_tx: ['past_where', 'org'], payments: ['past_where', 'org'], bs: ['as_at', 'org'], org: ['org'], connections: [] },
+  uses: { bank: ['as_at', 'org'], bank_past: ['past_from', 'as_at', 'org'], receivables: ['org'], payables: ['org'], bank_tx: ['past_where', 'org'], payments: ['past_where', 'org'], tb: ['as_at', 'org'], org: ['org'], connections: [] },
   paged: { receivables: { input: 'page', key: 'Invoices' }, payables: { input: 'page', key: 'Invoices' }, bank_tx: { input: 'page', key: 'BankTransactions' }, payments: { input: 'page', key: 'Payments' } },
-  tools: { bank: 'get_bank_summary (today)', bank_past: 'get_bank_summary (the last 30 days — tie)', receivables: 'list_invoices (sales invoices awaiting payment)', payables: 'list_invoices (bills awaiting payment)', bank_tx: 'list_bank_transactions (last 30 days)', payments: 'list_payments (last 30 days)', bs: 'get_balance_sheet (today)', org: 'get_organisation', connections: 'list_connections' },
+  tools: { bank: 'get_bank_summary (today)', bank_past: 'get_bank_summary (the last 30 days — tie)', receivables: 'list_invoices (sales invoices awaiting payment)', payables: 'list_invoices (bills awaiting payment)', bank_tx: 'list_bank_transactions (last 30 days)', payments: 'list_payments (last 30 days)', tb: 'get_trial_balance (today, exact — the tie; Xero\'s Balance Sheet is only at month ends)', org: 'get_organisation', connections: 'list_connections' },
   roll: function () { return { as_at: XK.asAt('today') }; },
   derive: function (inp) { var pf = XK.addDaysIso(inp.as_at, -30); return { past_from: pf, past_where: XK.dateWhere('Date', pf, inp.as_at) }; },
   views: [['overview', 'Overview'], ['in', 'Manage cash in'], ['out', 'Manage cash out']],
@@ -63,12 +63,12 @@ XK.app({
     // Checks
     var pastIn = XK.sum(days.filter(function (x) { return x.off <= 0; }).map(function (x) { return x.ain; })), pastOut = XK.sum(days.filter(function (x) { return x.off <= 0; }).map(function (x) { return x.aout; }));
     var bp = c.data.bank_past ? XK.walk(c.data.bank_past).lines.filter(function (l) { return l.kind === 'row' && useA(l.id); }) : null, bpIn = bp ? XK.sum(bp.map(function (l) { return l.values[1]; })) : null, bpOut = bp ? XK.sum(bp.map(function (l) { return l.values[2]; })) : null;
-    var bs = c.data.bs ? XK.bsParts(XK.walk(c.data.bs)) : null, lists = ['receivables', 'payables', 'bank_tx', 'payments'];
+    var tbT = c.data.tb ? XK.tbYtd(c.data.tb) : null, seen = tbT && mine.some(function (l) { return l.id && tbT.bal(l.id) != null; }), bs = tbT ? { bank: seen ? XK.sum(mine.map(function (l) { return tbT.bal(l.id) || 0; })) : null } : null, lists = ['receivables', 'payables', 'bank_tx', 'payments'];
     var checks = [
       { name: 'Every invoice and bill awaiting payment is projected, overdue or due later (none dropped)', pass: XK.near(r2(dIn + od.in + later.in), XK.sum(rec.map(function (d) { return d.amount; })), 0.05) && XK.near(r2(dOut + od.out + later.out), XK.sum(pay.map(function (d) { return d.amount; })), 0.05), detail: 'In ' + money(XK.sum(rec.map(function (d) { return d.amount; }))) + ' · out ' + money(XK.sum(pay.map(function (d) { return d.amount; }))) + (plan.length ? ' · ' + plan.length + ' planned item(s) on top' : '') },
       { name: 'Projected balance (information)', pass: null, info: true, detail: money(bal) + ' + ' + money(pin) + ' − ' + money(pout) + ' = ' + money(projBal) },
       { name: 'Cash runway method (information)', pass: null, info: true, detail: 'Today\'s balance ÷ average daily net outflow over the ' + N + '-day projection; "Over a year" when the projection is not negative' },
-      { name: 'Today\'s bank balance = Total Bank on the Balance Sheet today', pass: acct ? null : bs && bs.bank != null ? XK.near(bal, bs.bank) : null, detail: acct ? 'One account selected' : bs ? money(bal) + ' vs ' + money(bs.bank) : c.err('bs') },
+      { name: 'Today\'s bank balance = the same accounts on the Trial Balance today (a separate Xero report)', pass: bs && bs.bank != null ? XK.near(bal, bs.bank) : null, detail: bs ? (bs.bank == null ? 'N/A — the bank accounts are not on the Trial Balance' : money(bal) + ' vs ' + money(bs.bank)) : c.err('tb') },
       { name: 'Last 30 days: bank transactions + payments = the Bank Summary for the same days', pass: bp ? XK.near(pastIn, bpIn, 0.05) && XK.near(pastOut, bpOut, 0.05) : null, detail: bp ? 'In ' + money(pastIn) + ' vs ' + money(bpIn) + ' · out ' + money(pastOut) + ' vs ' + money(bpOut) : c.err('bank_past') },
       { name: 'All invoices, bills and transactions loaded', pass: lists.some(function (id) { return c.errors[id] || c.truncated(id); }) ? false : true, detail: rec.length + ' invoice(s), ' + pay.length + ' bill(s), ' + c.rows('bank_tx').length + ' transaction(s), ' + c.rows('payments').length + ' payment(s)' }
     ];

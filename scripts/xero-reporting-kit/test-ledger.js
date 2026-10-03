@@ -6,9 +6,11 @@ for (const t of [L.T1, L.T2]) {
     const w = X.walk(L.bs({ date: d, xero_tenant_id: t })), f = (re) => X.val(X.find(w.lines, null, re, 'total'));
     const A = f(/^total assets$/i), Li = f(/^total liabilities$/i), E = X.val(X.find(w.lines, 'Equity', null, 'total'));
     ok('A = L + E ' + t.slice(-1) + ' ' + d, X.near(A, Li + E), [A, Li, E]);
-    const fy = L.fyStart(d, L.ORG[t].FinancialYearEndMonth), np = X.val(X.find(X.walk(L.pnl({ fromDate: fy, toDate: d, xero_tenant_id: t })).lines, null, /^net profit$/i, 'total'));
+    // Xero's Balance Sheet is at the END of the month asked for: compare it with the P&L and Bank Summary to that month end
+    const me = L.eom(+d.slice(0, 4), +d.slice(5, 7)); ok('Balance Sheet for ' + d + ' is as at its month end (Xero)', L.bs({ date: d, xero_tenant_id: t }).Reports[0].ReportTitles[2] === 'As at ' + new Date(me + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }), L.bs({ date: d, xero_tenant_id: t }).Reports[0].ReportTitles);
+    const fy = L.fyStart(me, L.ORG[t].FinancialYearEndMonth), np = X.val(X.find(X.walk(L.pnl({ fromDate: fy, toDate: me, xero_tenant_id: t })).lines, null, /^net profit$/i, 'total'));
     ok('CYE = P&L ' + d, X.near(X.val(X.currentYearEarnings(w.lines)), np), [X.val(X.currentYearEarnings(w.lines)), np]);
-    const bsum = X.walk(L.bankSummary({ fromDate: fy, toDate: d, xero_tenant_id: t })), tot = X.find(bsum.lines, null, /^total$/i, 'total');
+    const bsum = X.walk(L.bankSummary({ fromDate: fy, toDate: me, xero_tenant_id: t })), tot = X.find(bsum.lines, null, /^total$/i, 'total');
     ok('Bank Summary closing = BS Total Bank ' + d, X.near(tot.values[3], f(/^total bank$/i) != null ? f(/^total bank$/i) : X.val(X.find(w.lines, null, /^total bank$/i, 'total'))), [tot.values, X.find(w.lines, null, /^total bank$/i, 'total')]);
     ok('Bank Summary: opening + received − spent = closing ' + d, X.near(tot.values[0] + tot.values[1] - tot.values[2], tot.values[3]), tot.values);
   }

@@ -1,11 +1,11 @@
 XK.app({
-  title: '__TITLE__', primary: 'invoices', dated: ['bs'], org: 'org', conns: 'connections', noBasis: true,
+  title: '__TITLE__', primary: 'invoices', dated: ['tb'], org: 'org', conns: 'connections', noBasis: true,
   inputs: { asAt: 'as_at', org: 'org', persona: 'persona', display: 'display' },
   defaults: { as_at: '2026-09-30', paid_where: 'Type=="__INV__" AND FullyPaidOnDate>DateTime(2026,09,30)', pay_where: 'PaymentType=="__PAYTYPE__" AND Date>DateTime(2026,09,30)', org: '', page: 1, persona: 'Bookkeeper',
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"end_this_month","c":"none","v":"","o":"by=due;n=4;len=m;g=none"}' },
-  uses: { paid_after: ['paid_where', 'org'], pays_after: ['pay_where', 'org'], invoices: ['org'], credit_notes: ['org'], overpayments: ['org'], prepayments: ['org'], bs: ['as_at', 'org'], org: ['org'], connections: [] },
+  uses: { paid_after: ['paid_where', 'org'], pays_after: ['pay_where', 'org'], invoices: ['org'], credit_notes: ['org'], overpayments: ['org'], prepayments: ['org'], tb: ['as_at', 'org'], org: ['org'], connections: [] },
   paged: { paid_after: { input: 'page', key: 'Invoices' }, pays_after: { input: 'page', key: 'Payments' }, invoices: { input: 'page', key: 'Invoices' }, credit_notes: { input: 'page', key: 'CreditNotes' }, overpayments: { input: 'page', key: 'Overpayments' }, prepayments: { input: 'page', key: 'Prepayments' } },
-  tools: { paid_after: 'list_invoices (__DOCS__ fully paid after the as-at date)', pays_after: 'list_payments (made after the as-at date)', invoices: 'list_invoices (__DOCS__, awaiting payment)', credit_notes: 'list_credit_notes (unallocated)', overpayments: 'list_overpayments (unallocated)', prepayments: 'list_prepayments (unallocated)', bs: 'get_balance_sheet (__BSNAME__ at the as-at date)', org: 'get_organisation', connections: 'list_connections' },
+  tools: { paid_after: 'list_invoices (__DOCS__ fully paid after the as-at date)', pays_after: 'list_payments (made after the as-at date)', invoices: 'list_invoices (__DOCS__, awaiting payment)', credit_notes: 'list_credit_notes (unallocated)', overpayments: 'list_overpayments (unallocated)', prepayments: 'list_prepayments (unallocated)', tb: 'get_trial_balance (__BSNAME__ at the as-at date — exact; Xero\'s Balance Sheet is only at month ends)', org: 'get_organisation', connections: 'list_connections' },
   derive: function (inp) { var d = 'DateTime(' + inp.as_at.split('-').map(Number).join(',') + ')'; return { paid_where: 'Type=="__INV__" AND FullyPaidOnDate>' + d, pay_where: 'PaymentType=="__PAYTYPE__" AND Date>' + d }; },
   asats: [['end_this_month', 'End of this month'], ['today', 'Today'], ['end_last_month', 'End of last month'], ['custom', 'Custom']],
   options: [{ id: 'by', label: 'Ageing by', options: [['due', 'Due date'], ['inv', 'Invoice date']], def: 'due' },
@@ -13,7 +13,7 @@ XK.app({
     { id: 'len', label: 'Period of', options: [['m', '1 month'], ['30', '30 days'], ['14', '14 days'], ['7', '7 days']], def: 'm' },
     { id: 'g', label: 'Group by', options: [['none', 'None'], ['type', 'Document type']], def: 'none' }],
   render: function (c) {
-    var K = { inv: '__INV__', cn: '__CN__', op: '__OP__', pp: '__PP__', who: '__WHO__', owing: '__OWING__', total: '__TOTAL__', bs: /^__BSNAME__$/i, bsName: '__BSNAME__', docs: '__DOCS__' };
+    var K = { inv: '__INV__', cn: '__CN__', op: '__OP__', pp: '__PP__', who: '__WHO__', owing: '__OWING__', total: '__TOTAL__', bs: /^__BSNAME__$/i, bsName: '__BSNAME__', sign: __SIGN__, docs: '__DOCS__' };
     var self = this, body = c.body, money = function (v) { return XK.money(v, c.currency, c.display); }, asAt = c.inputs.as_at;
     if (c.errors.invoices) { body.innerHTML = '<p class="xk-err">' + XK.h(c.err('invoices')) + '</p>'; return { checks: [{ name: K.docs + ' loaded', pass: false, detail: c.err('invoices') }] }; }
     if (!c.data.invoices) return {};
@@ -66,19 +66,19 @@ XK.app({
     // the documents; the independent tie is Xero's Balance Sheet (a separate report) at the as-at date.
     var past = asAt < c.today, fxDocs = docs.filter(function (d) { return d.fx; }).length;
     var ids = ['invoices', 'credit_notes', 'overpayments', 'prepayments'], failed = ids.filter(function (id) { return c.errors[id]; }), cut = ids.filter(function (id) { return c.truncated(id); });
-    var bsRow = c.data.bs ? XK.find(XK.walk(c.data.bs).lines, null, K.bs, 'row') : null, bsv = bsRow ? XK.val(bsRow) : null, diff = bsv == null ? null : r2(grand - bsv);
+    var tbT = c.data.tb ? XK.tbYtd(c.data.tb) : null, tbv = tbT ? tbT.named(K.bs) : null, bsv = tbv == null ? null : r2(K.sign * tbv), diff = bsv == null ? null : r2(grand - bsv);
     var pctSum = grand ? vis.reduce(function (a, col) { return a + tot[cols.indexOf(col)] / grand; }, 0) : null;
     var checks = [
       { name: 'Every ' + K.who.toLowerCase() + ' total = Σ its ageing buckets', pass: contacts.length ? contacts.every(function (x) { return XK.near(x.total, XK.sum(x.b)); }) : null, detail: contacts.length + ' ' + K.who.toLowerCase() + (contacts.length === 1 ? '' : 's') },
       { name: 'Total = Σ ' + K.who.toLowerCase() + ' totals = Σ open documents', pass: XK.near(grand, docSum) && XK.near(grand, XK.sum(tot)), detail: money(grand) + ' — ' + docs.length + ' document' + (docs.length === 1 ? '' : 's') },
       { name: 'Percentage of total sums to 100%', pass: pctSum == null ? null : Math.abs(pctSum - 1) < 0.0005, detail: pctSum == null ? 'Nothing outstanding' : XK.pct(pctSum) },
       { name: 'All open documents loaded', pass: failed.length ? false : cut.length ? false : true, detail: failed.length ? 'Not loaded: ' + failed.map(function (id) { return c.err(id); }).join('; ') : cut.length ? 'May be truncated: ' + cut.join(', ') + (c.pageError(cut[0]) ? ' (' + c.pageError(cut[0]) + ')' : ' — over 20 pages') : docs.length + ' document(s)' },
-      c.errors.bs ? { name: 'Total = ' + K.bsName + ' on the Balance Sheet', pass: null, detail: c.err('bs') }
-        : bsv == null ? { name: 'Total = ' + K.bsName + ' on the Balance Sheet', pass: null, detail: 'No ' + K.bsName + ' line on the Balance Sheet' }
-        : past && docs.some(function (d) { return d.kind !== 'Invoice'; }) && !XK.near(grand, bsv) ? { name: 'Total vs ' + K.bsName + ' on the Balance Sheet (information)', pass: null, info: true, detail: money(grand) + ' vs ' + money(bsv) + ' — credit notes, overpayments or prepayments allocated after ' + asAt + ' are not added back' }
-        : XK.near(grand, bsv) ? { name: 'Total = ' + K.bsName + ' on the Balance Sheet at ' + asAt, pass: true, detail: money(grand) + ' vs ' + money(bsv) }
-        : fxDocs ? { name: 'Total vs ' + K.bsName + ' on the Balance Sheet (information)', pass: null, info: true, detail: 'Difference ' + money(diff) + ' — ' + fxDocs + ' foreign-currency document(s) are converted at their own rates; Xero revalues them on the Balance Sheet' }
-        : { name: 'Total = ' + K.bsName + ' on the Balance Sheet at ' + asAt, pass: false, detail: money(grand) + ' vs ' + money(bsv) + ' — difference ' + money(diff) + ' (e.g. a manual journal to ' + K.bsName + ')' }
+      c.errors.tb ? { name: 'Total = ' + K.bsName + ' on the Trial Balance', pass: null, detail: c.err('tb') }
+        : bsv == null ? { name: 'Total = ' + K.bsName + ' on the Trial Balance', pass: null, detail: 'No ' + K.bsName + ' line on the Trial Balance' }
+        : past && docs.some(function (d) { return d.kind !== 'Invoice'; }) && !XK.near(grand, bsv) ? { name: 'Total vs ' + K.bsName + ' on the Trial Balance (information)', pass: null, info: true, detail: money(grand) + ' vs ' + money(bsv) + ' — credit notes, overpayments or prepayments allocated after ' + asAt + ' are not added back' }
+        : XK.near(grand, bsv) ? { name: 'Total = ' + K.bsName + ' on the Trial Balance at ' + asAt, pass: true, detail: money(grand) + ' vs ' + money(bsv) }
+        : fxDocs ? { name: 'Total vs ' + K.bsName + ' on the Trial Balance (information)', pass: null, info: true, detail: 'Difference ' + money(diff) + ' — ' + fxDocs + ' foreign-currency document(s) are converted at their own rates; Xero revalues them on the Balance Sheet' }
+        : { name: 'Total = ' + K.bsName + ' on the Trial Balance at ' + asAt, pass: false, detail: money(grand) + ' vs ' + money(bsv) + ' — difference ' + money(diff) + ' (e.g. a manual journal to ' + K.bsName + ')' }
     ];
     if (past) checks.push({ name: 'Balances rebuilt at ' + asAt + ' (information)', pass: null, info: true, detail: 'Today\'s amounts due plus ' + nBack + ' payment(s) made after ' + asAt + ' (' + c.rows('paid_after').length + ' document(s) fully paid since)' + (c.errors.pays_after || c.errors.paid_after ? ' — ' + (c.err('pays_after') || c.err('paid_after')) : '') });
     if (past && (c.errors.pays_after || c.errors.paid_after || c.truncated('pays_after') || c.truncated('paid_after'))) checks.push({ name: 'Payments after the as-at date loaded', pass: false, detail: c.err('pays_after') || c.err('paid_after') || 'May be truncated (over 20 pages)' });

@@ -70,6 +70,12 @@ Call `get_organisation` and `list_connections` once, and `get_profit_and_loss` o
       "default": "2026-07-01"
     },
     {
+      "name": "bs_date",
+      "label": "Balance Sheet date (month end)",
+      "type": "date",
+      "default": "2026-08-31"
+    },
+    {
       "name": "org",
       "label": "Organisation",
       "type": "string",
@@ -135,7 +141,7 @@ Call `get_organisation` and `list_connections` once, and `get_profit_and_loss` o
         },
         "toDate": {
           "kind": "input",
-          "input": "to_date"
+          "input": "bs_date"
         },
         "standardLayout": {
           "kind": "static",
@@ -160,7 +166,7 @@ Call `get_organisation` and `list_connections` once, and `get_profit_and_loss` o
       "params": {
         "date": {
           "kind": "input",
-          "input": "to_date"
+          "input": "bs_date"
         },
         "standardLayout": {
           "kind": "static",
@@ -422,8 +428,8 @@ label,parent:null,calc:!closes,closes,fixed:!0,values:vals(kc),path:[]}),closes&
 [parent]:[]}),kids.forEach(function(k){var kc=k.Cells||[],label=lbl(kc),line;k.RowType==="SummaryRow"?(line={kind:"total",depth:d,label,group:title,parent,fixed:!0,values:vals(kc),path:[]},sec.summary=line):(line={kind:"row",depth:d+1,label,id:attr(kc[0],"account")||attr(kc[1],"account"),group:title,
 parent,values:vals(kc),path:(parent?[parent]:[]).concat([shown])},sec.rows.push(line)),out.lines.push(line)}),out.sections.push(sec)}}),out}function sectionTotal(sec,col){var i=col||0;return sec.summary?sec.summary.values[i]:sum(sec.rows.map(function(l){return l.values[i]}))}function linesTies(lines,tol){
 var res={checked:0,failed:[]};return lines.forEach(function(t){if(!(t.kind!=="total"||t.calc||t.closes)){var mem=lines.filter(function(l){return l.kind==="row"&&l.group===t.group});res.checked++,t.values.forEach(function(v,i){near(v,sum(mem.map(function(l){return l.values[i]})),tol)||res.failed.indexOf(
-t.label)<0&&res.failed.push(t.label)})}}),res}var CYE_RE=/^current year('s)? earnings$|^current earnings$/i;function currentYearEarnings(bsLines){var r=bsLines.filter(function(l){return l.kind==="row"&&/^equity$/i.test(l.group)&&CYE_RE.test(l.label)})[0];return r||null}function find(lines,group,labelRe,kind){var kinds=kind?[kind]:["total","row"],
-i,j;for(j=0;j<kinds.length;j++){if(group){for(i=0;i<lines.length;i++)if(lines[i].group===group&&lines[i].kind===kinds[j])return lines[i]}if(labelRe){for(i=0;i<lines.length;i++)if(lines[i].kind===kinds[j]&&labelRe.test(lines[i].label))return lines[i]}}return null}function orgOf(v){var o=v&&!errorOf(v)&&Array.isArray(v.Organisations)?v.Organisations[0]:null;return o?{name:o.Name||o.LegalName||null,currency:o.BaseCurrency||null,country:o.CountryCode||null,fyEndMonth:Number(o.FinancialYearEndMonth)||null,fyEndDay:Number(o.FinancialYearEndDay)||null,shortCode:o.
+t.label)<0&&res.failed.push(t.label)})}}),res}var CYE_RE=/^current year('s)? earnings$|^current earnings$/i;function currentYearEarnings(bsLines){var r=bsLines.filter(function(l){return l.kind==="row"&&/^equity$/i.test(l.group)&&CYE_RE.test(l.label)})[0];return r||null}function find(lines,group,labelRe,kind){var kinds=kind?[kind]:["total","row"],i,j;for(j=0;j<kinds.length;j++){if(group){for(i=0;i<lines.length;i++)
+if(lines[i].group===group&&lines[i].kind===kinds[j])return lines[i]}if(labelRe){for(i=0;i<lines.length;i++)if(lines[i].kind===kinds[j]&&labelRe.test(lines[i].label))return lines[i]}}return null}function orgOf(v){var o=v&&!errorOf(v)&&Array.isArray(v.Organisations)?v.Organisations[0]:null;return o?{name:o.Name||o.LegalName||null,currency:o.BaseCurrency||null,country:o.CountryCode||null,fyEndMonth:Number(o.FinancialYearEndMonth)||null,fyEndDay:Number(o.FinancialYearEndDay)||null,shortCode:o.
 ShortCode||null,id:o.OrganisationID||null}:null}function connections(v){var t=!v||errorOf(v)?[]:Array.isArray(v.tenants)?v.tenants:Array.isArray(v)?v:[];return{active:v&&v.activeTenantId||null,list:t.map(function(x){return{id:String(x.tenantId||""),name:x.tenantName||"",type:x.tenantType||""}}).filter(
 function(x){return x.id})}}function companyOf(orgResp,connResp,chosenId,titles){var o=orgOf(orgResp),cn=connections(connResp),id=chosenId||cn.active||null,t=cn.list.filter(function(x){return x.id===id})[0],fromTitle=titles&&titles[1]?String(titles[1]):null;return{name:o&&o.name||t&&t.name||fromTitle,
 id,currency:o?o.currency:null,country:o?o.country:null,org:o,orgs:cn.list,active:cn.active,source:o?"get_organisation":t?"list_connections":fromTitle?"report title":null}}var MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];function fiscalStart(org,fyMonth){
@@ -579,17 +585,17 @@ active||""),display:c.display});sheets.push({name:"Parameters",rows:[[{v:"Parame
 MECHANISM]]),widths:[28,60]});var name=[c.company||"Xero",cfg.title,I.start?S.inputs[I.start]+" to "+S.inputs[I.end]:I.asAt?"as at "+S.inputs[I.asAt]:""].filter(Boolean).join(" - ").replace(/[\\\/:*?"<>|]+/g," ");download(xlsx(sheets,c.currency),name+".xlsx")}function boot(bundle){var bi=bundle.inputs,
 k0;if(bi&&typeof bi=="object")for(k0 in bi)Object.prototype.hasOwnProperty.call(S.inputs,k0)&&(S.inputs[k0]=bi[k0]);if(S.data={},S.errors=Object.assign({},bundle.errors||{}),S.fetchedAt=bundle.fetchedAt||null,Object.keys(bundle.data||{}).forEach(function(id){S.errors[id]||absorb(id,bundle.data[id])}),
 adoptHeader(),status(""),S.first){S.first=!1;var roll=rollPresets();if(roll){change(roll);return}if(announce(),heal())return}render(),retryLimited(1).then(pageAll).then(fanAll)}return MH?(MyHubReport.onData(function(bundle){window.__reportStarted=!0,boot(bundle)}),MH.onRefresh&&MH.onRefresh(function(){
-status("Refreshing\u2026")}),MH.onThemeChange&&MH.onThemeChange(function(){render()}),{state:S,change,render,exportXlsx,ctx,retryLimited}):(status("Open this report in mySMB to load Xero data."),{state:S})}window.XK={ageingCols,app,asOfLine,bsParts,byContact,footerStamp,fyStartOf:function(isoDate2,m){
-return iso(fyStartOf(parse(isoDate2),m))},h,linesTies,money,near,openDocs,periodLine,plParts,rangeLabel,sheetFromLines,shortDate,statement,sum,walk};})();</script>
+status("Refreshing\u2026")}),MH.onThemeChange&&MH.onThemeChange(function(){render()}),{state:S,change,render,exportXlsx,ctx,retryLimited}):(status("Open this report in mySMB to load Xero data."),{state:S})}window.XK={ageingCols,app,asOfLine,bsParts,byContact,eom,footerStamp,fyStartOf:function(isoDate2,m){
+return iso(fyStartOf(parse(isoDate2),m))},h,iso,linesTies,money,near,openDocs,periodLine,plParts,rangeLabel,sheetFromLines,shortDate,statement,sum,walk};})();</script>
 <script>XK.app({
   title: 'Report Pack', basisLabel: 'Accrual', primary: 'pnl', dated: ['pnl'], org: 'org', conns: 'connections', noBasis: true,
   inputs: { start: 'from_date', end: 'to_date', org: 'org', display: 'display' },
-  defaults: { from_date: '2026-08-01', to_date: '2026-08-31', fy_start: '2026-07-01', org: '', page: 1,
+  defaults: { from_date: '2026-08-01', to_date: '2026-08-31', fy_start: '2026-07-01', bs_date: '2026-08-31', org: '', page: 1,
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"last_month","a":"custom","c":"none","v":"","o":"s=pl,bs,ar,ap"}' },
-  uses: { pnl: ['from_date', 'to_date', 'org'], pnl_ytd: ['fy_start', 'to_date', 'org'], bs: ['to_date', 'org'], invoices: ['org'], bills: ['org'], credit_notes: ['org'], overpayments: ['org'], org: ['org'], connections: [] },
+  uses: { pnl: ['from_date', 'to_date', 'org'], pnl_ytd: ['fy_start', 'bs_date', 'org'], bs: ['bs_date', 'org'], invoices: ['org'], bills: ['org'], credit_notes: ['org'], overpayments: ['org'], org: ['org'], connections: [] },
   paged: { invoices: { input: 'page', key: 'Invoices' }, bills: { input: 'page', key: 'Invoices' }, credit_notes: { input: 'page', key: 'CreditNotes' }, overpayments: { input: 'page', key: 'Overpayments' } },
-  tools: { pnl: 'get_profit_and_loss (the period)', pnl_ytd: 'get_profit_and_loss (financial year to the period end — for the tie)', bs: 'get_balance_sheet (at the period end)', invoices: 'list_invoices (sales invoices awaiting payment)', bills: 'list_invoices (bills awaiting payment)', credit_notes: 'list_credit_notes (unallocated)', overpayments: 'list_overpayments (unallocated)', org: 'get_organisation', connections: 'list_connections' },
-  derive: function (inp, fyMonth) { return { fy_start: XK.fyStartOf(inp.to_date, fyMonth || 7) }; },
+  tools: { pnl: 'get_profit_and_loss (the period)', pnl_ytd: 'get_profit_and_loss (financial year to the Balance Sheet date — for the tie)', bs: 'get_balance_sheet (at the month end of the period end — Xero gives month-end balance sheets)', invoices: 'list_invoices (sales invoices awaiting payment)', bills: 'list_invoices (bills awaiting payment)', credit_notes: 'list_credit_notes (unallocated)', overpayments: 'list_overpayments (unallocated)', org: 'get_organisation', connections: 'list_connections' },
+  derive: function (inp, fyMonth) { var p = inp.to_date.split('-'); return { fy_start: XK.fyStartOf(inp.to_date, fyMonth || 7), bs_date: XK.iso(XK.eom(+p[0], +p[1])) }; },
   render: function (c) {
     var body = c.body, money = function (v) { return XK.money(v, c.currency, c.display); }, r2 = function (v) { return Math.round(v * 100) / 100; }, from = c.inputs.from_date, to = c.inputs.to_date, today = c.today, base = c.currency;
     var on = String(c.opt('s') == null ? 'pl,bs,ar,ap' : c.opt('s')).split(',').filter(Boolean), SECTIONS = [['pl', 'Profit and Loss'], ['bs', 'Balance Sheet'], ['ar', 'Aged Receivables'], ['ap', 'Aged Payables']];
@@ -605,9 +611,9 @@ return iso(fyStartOf(parse(isoDate2),m))},h,linesTies,money,near,openDocs,period
     // 2. Balance Sheet
     var bw = c.data.bs ? XK.walk(c.data.bs) : null, bp = bw ? XK.bsParts(bw) : null, wy = c.data.pnl_ytd ? XK.walk(c.data.pnl_ytd) : null, ytd = wy ? XK.plParts(wy).np : null;
     if (on.indexOf('bs') >= 0) {
-      out.push(['bs', 'Balance Sheet', XK.asOfLine(to), c.errors.bs ? '<p class="xk-err">' + XK.h(c.err('bs')) + '</p>' : bw ? XK.statement(bw.lines, ['', XK.asOfLine(to).replace('As at ', '')], c) : '<p class="muted">Loading…</p>']);
+      var bsd = c.inputs.bs_date || to; out.push(['bs', 'Balance Sheet', XK.asOfLine(bsd) + (bsd !== to ? ' · Xero gives the Balance Sheet at month ends' : ''), c.errors.bs ? '<p class="xk-err">' + XK.h(c.err('bs')) + '</p>' : bw ? XK.statement(bw.lines, ['', XK.asOfLine(bsd).replace('As at ', '')], c) : '<p class="muted">Loading…</p>']);
       checks.push({ name: 'Balance Sheet: Total Assets = Total Liabilities + Equity', pass: bp && bp.totalAssets != null && bp.totalLiabilities != null && bp.equity != null ? XK.near(bp.totalAssets, r2(bp.totalLiabilities + bp.equity)) : null, detail: bp ? money(bp.totalAssets) + ' = ' + money(bp.totalLiabilities) + ' + ' + money(bp.equity) : c.err('bs') });
-      checks.push({ name: 'Current Year Earnings on the Balance Sheet = Net Profit from the financial-year start to ' + to + ' (a separate Profit and Loss)', pass: bp && bp.cye != null && ytd != null ? XK.near(bp.cye, ytd) : null, detail: bp && ytd != null ? money(bp.cye) + ' vs ' + money(ytd) : (c.err('pnl_ytd') || c.err('bs') || 'N/A') });
+      checks.push({ name: 'Current Year Earnings on the Balance Sheet = Net Profit from the financial-year start to ' + (c.inputs.bs_date || to) + ' (a separate Profit and Loss)', pass: bp && bp.cye != null && ytd != null ? XK.near(bp.cye, ytd) : null, detail: bp && ytd != null ? money(bp.cye) + ' vs ' + money(ytd) : (c.err('pnl_ytd') || c.err('bs') || 'N/A') });
     }
     // 3–4. Ageing — open documents as at today, by due date (Current, 1–30, 31–60, 61–90, 90+ days)
     var ag = XK.ageingCols(today, 'due', 3, '30'), aged = function (kind) {
@@ -622,8 +628,8 @@ return iso(fyStartOf(parse(isoDate2),m))},h,linesTies,money,near,openDocs,period
     ['ar', 'ap'].forEach(function (k) {
       if (on.indexOf(k) < 0) return; var A = parts[k] = aged(k), name = k === 'ar' ? 'Aged Receivables' : 'Aged Payables', acct = k === 'ar' ? 'Accounts Receivable' : 'Accounts Payable';
       out.push([k, name, XK.asOfLine(today) + ' · by due date', A.html]);
-      checks.push(to === today ? { name: name + ' total = ' + acct + ' on the Balance Sheet', pass: A.bsv == null ? null : XK.near(A.all, A.bsv), detail: A.bsv == null ? 'N/A — no ' + acct + ' line' : money(A.all) + ' vs ' + money(A.bsv) }
-        : { name: name + ' (today) vs ' + acct + ' on the Balance Sheet at ' + to + ' (information — different dates)', pass: null, info: true, detail: money(A.all) + ' vs ' + (A.bsv == null ? 'N/A' : money(A.bsv)) });
+      checks.push((c.inputs.bs_date || to) === today ? { name: name + ' total = ' + acct + ' on the Balance Sheet', pass: A.bsv == null ? null : XK.near(A.all, A.bsv), detail: A.bsv == null ? 'N/A — no ' + acct + ' line' : money(A.all) + ' vs ' + money(A.bsv) }
+        : { name: name + ' (today) vs ' + acct + ' on the Balance Sheet at ' + (c.inputs.bs_date || to) + ' (information — different dates)', pass: null, info: true, detail: money(A.all) + ' vs ' + (A.bsv == null ? 'N/A' : money(A.bsv)) });
     });
     var trunc = ['invoices', 'bills', 'credit_notes', 'overpayments'].some(function (id) { return c.truncated(id); });
     if (on.indexOf('ar') >= 0 || on.indexOf('ap') >= 0) checks.push({ name: 'All open invoices, bills and credits loaded', pass: trunc ? false : true, detail: trunc ? 'May be truncated (over 20 pages)' : c.rows('invoices').length + ' invoice(s), ' + c.rows('bills').length + ' bill(s)' });
@@ -648,7 +654,7 @@ return iso(fyStartOf(parse(isoDate2),m))},h,linesTies,money,near,openDocs,period
     return sheets;
   }
 });</script>
-<script data-xk-check>(function(){var s=document.scripts,k="",f="",i,t;for(i=0;i<s.length;i++){t=s[i].text;if(s[i].type||s[i].hasAttribute("data-xk-check"))continue;if(!k&&t.indexOf("window.XK")>=0)k=t;else if(t.indexOf("XK.app(")>=0)f=t}var r=f.indexOf("render: function"),x=(k+(r<0?f:f.slice(r))).replace(/\s+/g,""),h=2166136261;for(i=0;i<x.length;i++)h=Math.imul(h^x.charCodeAt(i),16777619)>>>0;window.__xkIntegrity={ok:h.toString(16)=="bf135b09"};if(!window.__xkIntegrity.ok){var d=document.createElement("div");d.className="xk-banner fail";d.setAttribute("role","alert");d.textContent="This copy of the report is damaged (its code differs from the tested version), so its figures can't be trusted. Ask the agent to create it again.";document.body.prepend(d)}})()</script>
+<script data-xk-check>(function(){var s=document.scripts,k="",f="",i,t;for(i=0;i<s.length;i++){t=s[i].text;if(s[i].type||s[i].hasAttribute("data-xk-check"))continue;if(!k&&t.indexOf("window.XK")>=0)k=t;else if(t.indexOf("XK.app(")>=0)f=t}var r=f.indexOf("render: function"),x=(k+(r<0?f:f.slice(r))).replace(/\s+/g,""),h=2166136261;for(i=0;i<x.length;i++)h=Math.imul(h^x.charCodeAt(i),16777619)>>>0;window.__xkIntegrity={ok:h.toString(16)=="f13a3187"};if(!window.__xkIntegrity.ok){var d=document.createElement("div");d.className="xk-banner fail";d.setAttribute("role","alert");d.textContent="This copy of the report is damaged (its code differs from the tested version), so its figures can't be trusted. Ask the agent to create it again.";document.body.prepend(d)}})()</script>
 </body>
 </html>
 ```

@@ -3,8 +3,8 @@
 const fs = require('fs'), path = require('path'), R = path.join(__dirname, 'reports');
 const tpl = fs.readFileSync(path.join(R, 'aged.tpl.js'), 'utf8').replace(/\r\n/g, '\n');
 const KINDS = {
-  ar: { PAYTYPE: 'ACCRECPAYMENT', TITLE: 'Aged Receivables', INV: 'ACCREC', CN: 'ACCRECCREDIT', OP: 'RECEIVE-OVERPAYMENT', PP: 'RECEIVE-PREPAYMENT', WHO: 'Customer', OWING: 'Customers owing', TOTAL: 'Total receivable', BSNAME: 'Accounts Receivable', DOCS: 'sales invoices' },
-  ap: { PAYTYPE: 'ACCPAYPAYMENT', TITLE: 'Aged Payables', INV: 'ACCPAY', CN: 'ACCPAYCREDIT', OP: 'SPEND-OVERPAYMENT', PP: 'SPEND-PREPAYMENT', WHO: 'Supplier', OWING: 'Suppliers you owe', TOTAL: 'Total payable', BSNAME: 'Accounts Payable', DOCS: 'bills' },
+  ar: { SIGN: '1', PAYTYPE: 'ACCRECPAYMENT', TITLE: 'Aged Receivables', INV: 'ACCREC', CN: 'ACCRECCREDIT', OP: 'RECEIVE-OVERPAYMENT', PP: 'RECEIVE-PREPAYMENT', WHO: 'Customer', OWING: 'Customers owing', TOTAL: 'Total receivable', BSNAME: 'Accounts Receivable', DOCS: 'sales invoices' },
+  ap: { SIGN: '-1', PAYTYPE: 'ACCPAYPAYMENT', TITLE: 'Aged Payables', INV: 'ACCPAY', CN: 'ACCPAYCREDIT', OP: 'SPEND-OVERPAYMENT', PP: 'SPEND-PREPAYMENT', WHO: 'Supplier', OWING: 'Suppliers you owe', TOTAL: 'Total payable', BSNAME: 'Accounts Payable', DOCS: 'bills' },
 };
 const fmt = (v) => Array.isArray(v) ? '[' + v.map(fmt).join(', ') + ']' : v && typeof v === 'object' ? '{ ' + Object.keys(v).map((k) => JSON.stringify(k) + ': ' + fmt(v[k])).join(', ') + ' }' : JSON.stringify(v);
 const inp = (name) => ({ kind: 'input', input: name }), st = (value) => ({ kind: 'static', value });
@@ -30,7 +30,7 @@ for (const [id, K] of Object.entries(KINDS)) {
       { id: 'credit_notes', tool: { mcp: 'xero-accounting', name: 'list_credit_notes' }, params: { where: st('Type=="' + K.CN + '" AND Status=="AUTHORISED"'), page: inp('page'), xero_tenant_id: inp('org') } },
       { id: 'overpayments', tool: { mcp: 'xero-accounting', name: 'list_overpayments' }, params: { where: st('Type=="' + K.OP + '" AND Status=="AUTHORISED"'), page: inp('page'), xero_tenant_id: inp('org') } },
       { id: 'prepayments', tool: { mcp: 'xero-accounting', name: 'list_prepayments' }, params: { where: st('Type=="' + K.PP + '" AND Status=="AUTHORISED"'), page: inp('page'), xero_tenant_id: inp('org') } },
-      { id: 'bs', tool: { mcp: 'xero-accounting', name: 'get_balance_sheet' }, params: { date: inp('as_at'), standardLayout: st(true), paymentsOnly: st(false), xero_tenant_id: inp('org') } },
+      { id: 'tb', tool: { mcp: 'xero-accounting', name: 'get_trial_balance' }, params: { date: inp('as_at'), paymentsOnly: st(false), xero_tenant_id: inp('org') } },
       { id: 'org', tool: { mcp: 'xero-accounting', name: 'get_organisation' }, params: { xero_tenant_id: inp('org') } },
       { id: 'connections', tool: { mcp: 'xero-accounting', name: 'list_connections' }, params: {} },
     ],

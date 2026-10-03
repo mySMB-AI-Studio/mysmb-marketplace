@@ -41,14 +41,14 @@ const d10 = (v) => new Date(+/-?\d+/.exec(v)[0]).toISOString().slice(0, 10);
     ok('sr: a document with total ≠ subtotal + tax → that check fails, red', /✗ Each document: subtotal \+ tax = total/.test(banner(tb)) && red(tb), banner(tb).slice(0, 400));
   }
   if (!only || only === 'ex') {
-    const FX = () => ({ invoices: L.listInvoices, bills: L.listInvoices, bs: L.bs, org: L.organisation, connections: L.connections });
+    const FX = () => ({ invoices: L.listInvoices, bills: L.listInvoices, tb: L.trialBalance, org: L.organisation, connections: L.connections });
     const t = await run('ex', man('ex'), FX()); await wait(40);
     const out = (type) => L.listInvoices({ where: 'Type=="' + type + '"', statuses: 'DRAFT,SUBMITTED,AUTHORISED' }).Invoices;
     const drafts = out('ACCREC').filter((d) => /DRAFT|SUBMITTED/.test(d.Status)), over = out('ACCREC').filter((d) => d.Status === 'AUTHORISED' && d.AmountDue > 0 && d.DueDateString.slice(0, 10) < TO);
     ok('ex: as at today, Xero wording', /As at 25 September 2026/.test(text(t.doc, '#xk-head')), text(t.doc, '#xk-head'));
     ok('ex: draft sales card = draft + awaiting approval sales invoices in the books', new RegExp('Draft sales \\(' + drafts.length + '\\)\\s*' + fmt(L.r2(drafts.reduce((a, d) => a + d.Total, 0)))).test(body(t)), body(t).slice(0, 200));
     ok('ex: overdue sales card = approved invoices past due with an amount due', new RegExp('Overdue sales \\(' + over.length + '\\)\\s*' + fmt(L.r2(over.reduce((a, d) => a + d.AmountDue, 0)))).test(body(t)), body(t).slice(0, 300));
-    ok('ex: every check passes, green; the Balance Sheet line is information', green(t) && /3\/3 checks passed · 1 for information/.test(banner(t)) && t.errs.length === 0, banner(t).slice(0, 400));
+    ok('ex: every check passes, green; the Trial Balance line is information', green(t) && /3\/3 checks passed · 1 for information/.test(banner(t)) && t.errs.length === 0, banner(t).slice(0, 400));
     const first = [...t.doc.querySelectorAll('#ex-grid tbody tr')][0], days = [...t.doc.querySelectorAll('#ex-grid tbody tr')].map((tr) => tr.children[6].textContent).filter(Boolean).map(Number);
     ok('ex: most overdue first, with an age band', first && days.every((d, i) => !i || d <= days[i - 1]) && /90\+ days|61–90 days|31–60 days|1–30 days/.test(first.textContent), days.slice(0, 6));
     await view(t, 'drafts');
@@ -159,7 +159,10 @@ const d10 = (v) => new Date(+/-?\d+/.exec(v)[0]).toISOString().slice(0, 10);
     const AR = E.balances(TO)['610'];
     const m2 = man('rp'); m2.inputs.find((i) => i.name === 'to_date').default = 'today'; m2.inputs.find((i) => i.name === 'from_date').default = FY; const dd = m2.inputs.find((i) => i.name === 'display'); dd.default = dd.default.replace('"p":"last_month"', '"p":"this_fy_td"');
     const t2 = await run('rp', m2, FX(), { bundleInputs: true }); await wait(150);
-    ok('rp: ending today → the ageing ties to the Balance Sheet (6/6)', green(t2) && /6\/6 checks passed/.test(banner(t2)) && new RegExp('✓ Aged Receivables total = Accounts Receivable on the Balance Sheet — ' + fmt(AR) + ' vs ' + fmt(AR)).test(banner(t2)), banner(t2).slice(0, 600));
+    // live QA, 4 Oct 2026: Xero's Balance Sheet answers any date with that month's end — a pack ending today (mid-month) shows the
+    // Balance Sheet at the month end, says so, ties its Current Year Earnings to the P&L to that month end, and the ageing (today)
+    // against it is information (different dates)
+    ok('rp: ending today (mid-month) → Balance Sheet at the month end, said on the page; CYE ties at that date; ageing vs it is information; green', green(t2) && /4\/4 checks passed · 2 for information/.test(banner(t2)) && /✓ Current Year Earnings on the Balance Sheet = Net Profit from the financial-year start to 2026-09-30/.test(banner(t2)) && /ℹ Aged Receivables \(today\) vs Accounts Receivable on the Balance Sheet at 2026-09-30 \(information — different dates\)/.test(banner(t2)) && /As at 30 September 2026 · Xero gives the Balance Sheet at month ends/.test(text(t2.doc, '#xk-body')), banner(t2).slice(0, 600));
     const cb = [...t.doc.querySelectorAll('.rp-sec')].find((x) => x.value === 'ap'); cb.checked = false; cb.dispatchEvent(new t.w.Event('change')); await t.settle(); await wait(30);
     ok('rp: switching a section off removes it, no refetch, kept in the display input', t.doc.querySelectorAll('#xk-body ol li').length === 3 && !/Aged Payables/.test(text(t.doc, '#xk-body ol')) && /s=pl,bs,ar/.test(JSON.parse(t.setInputsLog[t.setInputsLog.length - 1].display).o) && t.calls.filter((c) => c.requery).length === 0);
     const xs = await xlsx(t); ok('rp: Excel — one sheet per section shown', /Profit and Loss/.test(xs) && /Balance Sheet/.test(xs) && /Aged Receivables/.test(xs));

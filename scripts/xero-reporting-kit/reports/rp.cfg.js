@@ -1,12 +1,12 @@
 XK.app({
   title: 'Report Pack', basisLabel: 'Accrual', primary: 'pnl', dated: ['pnl'], org: 'org', conns: 'connections', noBasis: true,
   inputs: { start: 'from_date', end: 'to_date', org: 'org', display: 'display' },
-  defaults: { from_date: '2026-08-01', to_date: '2026-08-31', fy_start: '2026-07-01', org: '', page: 1,
+  defaults: { from_date: '2026-08-01', to_date: '2026-08-31', fy_start: '2026-07-01', bs_date: '2026-08-31', org: '', page: 1,
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"last_month","a":"custom","c":"none","v":"","o":"s=pl,bs,ar,ap"}' },
-  uses: { pnl: ['from_date', 'to_date', 'org'], pnl_ytd: ['fy_start', 'to_date', 'org'], bs: ['to_date', 'org'], invoices: ['org'], bills: ['org'], credit_notes: ['org'], overpayments: ['org'], org: ['org'], connections: [] },
+  uses: { pnl: ['from_date', 'to_date', 'org'], pnl_ytd: ['fy_start', 'bs_date', 'org'], bs: ['bs_date', 'org'], invoices: ['org'], bills: ['org'], credit_notes: ['org'], overpayments: ['org'], org: ['org'], connections: [] },
   paged: { invoices: { input: 'page', key: 'Invoices' }, bills: { input: 'page', key: 'Invoices' }, credit_notes: { input: 'page', key: 'CreditNotes' }, overpayments: { input: 'page', key: 'Overpayments' } },
-  tools: { pnl: 'get_profit_and_loss (the period)', pnl_ytd: 'get_profit_and_loss (financial year to the period end — for the tie)', bs: 'get_balance_sheet (at the period end)', invoices: 'list_invoices (sales invoices awaiting payment)', bills: 'list_invoices (bills awaiting payment)', credit_notes: 'list_credit_notes (unallocated)', overpayments: 'list_overpayments (unallocated)', org: 'get_organisation', connections: 'list_connections' },
-  derive: function (inp, fyMonth) { return { fy_start: XK.fyStartOf(inp.to_date, fyMonth || 7) }; },
+  tools: { pnl: 'get_profit_and_loss (the period)', pnl_ytd: 'get_profit_and_loss (financial year to the Balance Sheet date — for the tie)', bs: 'get_balance_sheet (at the month end of the period end — Xero gives month-end balance sheets)', invoices: 'list_invoices (sales invoices awaiting payment)', bills: 'list_invoices (bills awaiting payment)', credit_notes: 'list_credit_notes (unallocated)', overpayments: 'list_overpayments (unallocated)', org: 'get_organisation', connections: 'list_connections' },
+  derive: function (inp, fyMonth) { var p = inp.to_date.split('-'); return { fy_start: XK.fyStartOf(inp.to_date, fyMonth || 7), bs_date: XK.iso(XK.eom(+p[0], +p[1])) }; },
   render: function (c) {
     var body = c.body, money = function (v) { return XK.money(v, c.currency, c.display); }, r2 = function (v) { return Math.round(v * 100) / 100; }, from = c.inputs.from_date, to = c.inputs.to_date, today = c.today, base = c.currency;
     var on = String(c.opt('s') == null ? 'pl,bs,ar,ap' : c.opt('s')).split(',').filter(Boolean), SECTIONS = [['pl', 'Profit and Loss'], ['bs', 'Balance Sheet'], ['ar', 'Aged Receivables'], ['ap', 'Aged Payables']];
@@ -22,9 +22,9 @@ XK.app({
     // 2. Balance Sheet
     var bw = c.data.bs ? XK.walk(c.data.bs) : null, bp = bw ? XK.bsParts(bw) : null, wy = c.data.pnl_ytd ? XK.walk(c.data.pnl_ytd) : null, ytd = wy ? XK.plParts(wy).np : null;
     if (on.indexOf('bs') >= 0) {
-      out.push(['bs', 'Balance Sheet', XK.asOfLine(to), c.errors.bs ? '<p class="xk-err">' + XK.h(c.err('bs')) + '</p>' : bw ? XK.statement(bw.lines, ['', XK.asOfLine(to).replace('As at ', '')], c) : '<p class="muted">Loading…</p>']);
+      var bsd = c.inputs.bs_date || to; out.push(['bs', 'Balance Sheet', XK.asOfLine(bsd) + (bsd !== to ? ' · Xero gives the Balance Sheet at month ends' : ''), c.errors.bs ? '<p class="xk-err">' + XK.h(c.err('bs')) + '</p>' : bw ? XK.statement(bw.lines, ['', XK.asOfLine(bsd).replace('As at ', '')], c) : '<p class="muted">Loading…</p>']);
       checks.push({ name: 'Balance Sheet: Total Assets = Total Liabilities + Equity', pass: bp && bp.totalAssets != null && bp.totalLiabilities != null && bp.equity != null ? XK.near(bp.totalAssets, r2(bp.totalLiabilities + bp.equity)) : null, detail: bp ? money(bp.totalAssets) + ' = ' + money(bp.totalLiabilities) + ' + ' + money(bp.equity) : c.err('bs') });
-      checks.push({ name: 'Current Year Earnings on the Balance Sheet = Net Profit from the financial-year start to ' + to + ' (a separate Profit and Loss)', pass: bp && bp.cye != null && ytd != null ? XK.near(bp.cye, ytd) : null, detail: bp && ytd != null ? money(bp.cye) + ' vs ' + money(ytd) : (c.err('pnl_ytd') || c.err('bs') || 'N/A') });
+      checks.push({ name: 'Current Year Earnings on the Balance Sheet = Net Profit from the financial-year start to ' + (c.inputs.bs_date || to) + ' (a separate Profit and Loss)', pass: bp && bp.cye != null && ytd != null ? XK.near(bp.cye, ytd) : null, detail: bp && ytd != null ? money(bp.cye) + ' vs ' + money(ytd) : (c.err('pnl_ytd') || c.err('bs') || 'N/A') });
     }
     // 3–4. Ageing — open documents as at today, by due date (Current, 1–30, 31–60, 61–90, 90+ days)
     var ag = XK.ageingCols(today, 'due', 3, '30'), aged = function (kind) {
@@ -39,8 +39,8 @@ XK.app({
     ['ar', 'ap'].forEach(function (k) {
       if (on.indexOf(k) < 0) return; var A = parts[k] = aged(k), name = k === 'ar' ? 'Aged Receivables' : 'Aged Payables', acct = k === 'ar' ? 'Accounts Receivable' : 'Accounts Payable';
       out.push([k, name, XK.asOfLine(today) + ' · by due date', A.html]);
-      checks.push(to === today ? { name: name + ' total = ' + acct + ' on the Balance Sheet', pass: A.bsv == null ? null : XK.near(A.all, A.bsv), detail: A.bsv == null ? 'N/A — no ' + acct + ' line' : money(A.all) + ' vs ' + money(A.bsv) }
-        : { name: name + ' (today) vs ' + acct + ' on the Balance Sheet at ' + to + ' (information — different dates)', pass: null, info: true, detail: money(A.all) + ' vs ' + (A.bsv == null ? 'N/A' : money(A.bsv)) });
+      checks.push((c.inputs.bs_date || to) === today ? { name: name + ' total = ' + acct + ' on the Balance Sheet', pass: A.bsv == null ? null : XK.near(A.all, A.bsv), detail: A.bsv == null ? 'N/A — no ' + acct + ' line' : money(A.all) + ' vs ' + money(A.bsv) }
+        : { name: name + ' (today) vs ' + acct + ' on the Balance Sheet at ' + (c.inputs.bs_date || to) + ' (information — different dates)', pass: null, info: true, detail: money(A.all) + ' vs ' + (A.bsv == null ? 'N/A' : money(A.bsv)) });
     });
     var trunc = ['invoices', 'bills', 'credit_notes', 'overpayments'].some(function (id) { return c.truncated(id); });
     if (on.indexOf('ar') >= 0 || on.indexOf('ap') >= 0) checks.push({ name: 'All open invoices, bills and credits loaded', pass: trunc ? false : true, detail: trunc ? 'May be truncated (over 20 pages)' : c.rows('invoices').length + ' invoice(s), ' + c.rows('bills').length + ' bill(s)' });

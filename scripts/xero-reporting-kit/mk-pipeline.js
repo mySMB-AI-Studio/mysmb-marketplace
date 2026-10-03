@@ -88,11 +88,11 @@ ${TABS}
       extra.sheet = [[], [{ v: 'Purchase orders', s: 'bold' }]].concat([['Draft', 'DRAFT'], ['Awaiting approval', 'SUBMITTED'], ['Approved', 'AUTHORISED'], ['Billed', 'BILLED']].map(function (k) { return [k[0], po[k[1]].n, { v: po[k[1]].v, s: 'money' }]; }))
         .concat([[], [{ v: 'Money going out — next ' + RD + ' days', s: 'bold' }, null, { v: 'Bills due', s: 'bold' }], ['Overdue', null, { v: od, s: 'money' }]]).concat(days.map(function (x) { return [x.d, null, { v: x.v, s: 'money' }]; })).concat(later ? [['Later', null, { v: later, s: 'money' }]] : []);`;
 const KINDS = {
-  so: { TITLE: 'Sales Overview', KIND: 'sales', INV: 'ACCREC', CN: 'ACCRECCREDIT', OP: 'RECEIVE-OVERPAYMENT', PP: 'RECEIVE-PREPAYMENT', WHO: 'Customer', WHOPL: 'Customers', DOCS: 'invoices', DOCSCAP: 'Invoices', BSNAME: 'Accounts Receivable', PANELS: SALES,
+  so: { SIGN: '1', TITLE: 'Sales Overview', KIND: 'sales', INV: 'ACCREC', CN: 'ACCRECCREDIT', OP: 'RECEIVE-OVERPAYMENT', PP: 'RECEIVE-PREPAYMENT', WHO: 'Customer', WHOPL: 'Customers', DOCS: 'invoices', DOCSCAP: 'Invoices', BSNAME: 'Accounts Receivable', PANELS: SALES,
     EXTRADEF: " src_id: '',", EXTRAHEAD: "  sources: { bill: { name: 'Source bill', optional: true, quiet: function (i) { return !i.src_id; } } },\n  fan: { bill: function (inp, c) { if ((c.display.v || 'docs') !== 'docs') return []; var ids = {}; c.rows('linked').forEach(function (l) { if (l && l.Status === 'APPROVED' && l.SourceTransactionID) ids[l.SourceTransactionID] = 1; }); return Object.keys(ids).slice(0, 20).map(function (id) { return { key: id, inputs: { src_id: id } }; }); } },",
     EXTRAUSES: "linked: ['org'], repeating: ['org'], bill: ['src_id', 'org']", EXTRAPAGED: "linked: { input: 'page', key: 'LinkedTransactions' }", EXTRATOOLS: "bill: 'get_invoice (source bill of a billable expense)', linked: 'list_linked_transactions (billable expenses)', repeating: 'list_repeating_invoices'",
     VIEWS: "[['docs', 'Invoices'], ['repeating', 'Repeating invoices'], ['links', 'Payment links'], ['statements', 'Statements']]", OPTIONS: '[]' },
-  pu: { TITLE: 'Purchases Overview', KIND: 'purchases', INV: 'ACCPAY', CN: 'ACCPAYCREDIT', OP: 'SPEND-OVERPAYMENT', PP: 'SPEND-PREPAYMENT', WHO: 'Supplier', WHOPL: 'Suppliers', DOCS: 'bills', DOCSCAP: 'Bills', BSNAME: 'Accounts Payable', PANELS: PURCH,
+  pu: { SIGN: '-1', TITLE: 'Purchases Overview', KIND: 'purchases', INV: 'ACCPAY', CN: 'ACCPAYCREDIT', OP: 'SPEND-OVERPAYMENT', PP: 'SPEND-PREPAYMENT', WHO: 'Supplier', WHOPL: 'Suppliers', DOCS: 'bills', DOCSCAP: 'Bills', BSNAME: 'Accounts Payable', PANELS: PURCH,
     EXTRADEF: '', EXTRAHEAD: '', EXTRAUSES: "purchase_orders: ['org'], repeating: ['org'], paid: ['org']", EXTRAPAGED: "purchase_orders: { input: 'page', key: 'PurchaseOrders' }", EXTRATOOLS: "purchase_orders: 'list_purchase_orders', repeating: 'list_repeating_invoices (repeating bills)', paid: 'list_invoices (recently paid bills)'",
     VIEWS: "[['docs', 'Bills'], ['all', 'All bills'], ['paid', 'Paid'], ['repeating', 'Repeating bills'], ['orders', 'Purchase orders']]", OPTIONS: "[{ id: 'r', label: 'Money going out', options: [['30', 'Next 30 days'], ['60', 'Next 60 days'], ['90', 'Next 90 days']], def: '30' }]" },
 };
@@ -126,7 +126,7 @@ for (const [id, K] of Object.entries(KINDS)) {
       { id: 'overpayments', tool: { mcp: 'xero-accounting', name: 'list_overpayments' }, params: { where: st('Type=="' + K.OP + '" AND Status=="AUTHORISED"'), page: inp('page'), xero_tenant_id: inp('org') } },
       { id: 'prepayments', tool: { mcp: 'xero-accounting', name: 'list_prepayments' }, params: { where: st('Type=="' + K.PP + '" AND Status=="AUTHORISED"'), page: inp('page'), xero_tenant_id: inp('org') } },
     ].concat(extra).concat([
-      { id: 'bs', tool: { mcp: 'xero-accounting', name: 'get_balance_sheet' }, params: { date: inp('as_at'), standardLayout: st(true), paymentsOnly: st(false), xero_tenant_id: inp('org') } },
+      { id: 'tb', tool: { mcp: 'xero-accounting', name: 'get_trial_balance' }, params: { date: inp('as_at'), paymentsOnly: st(false), xero_tenant_id: inp('org') } },
       { id: 'org', tool: { mcp: 'xero-accounting', name: 'get_organisation' }, params: { xero_tenant_id: inp('org') } },
       { id: 'connections', tool: { mcp: 'xero-accounting', name: 'list_connections' }, params: {} },
     ]),

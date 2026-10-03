@@ -32,7 +32,7 @@ const ACCOUNTS = [
   ['200', 'Sales', 'REVENUE'], ['260', 'Consulting Fees', 'REVENUE'], ['270', 'Interest Income', 'OTHERINCOME'],
   ['310', 'Purchases', 'DIRECTCOSTS'], ['320', 'Freight & Courier', 'DIRECTCOSTS'],
   ['400', 'Advertising', 'EXPENSE'], ['404', 'Bank Fees', 'EXPENSE'], ['429', 'General Expenses', 'EXPENSE'], ['469', 'Rent', 'EXPENSE'], ['477', 'Wages and Salaries', 'EXPENSE'], ['485', 'Subscriptions', 'EXPENSE'],
-].map(([Code, Name, Type], i) => ({ AccountID: 'acc-' + Code + '-' + String(i).padStart(4, '0'), Code, Name, Type, Status: 'ACTIVE', Class: { BANK: 'ASSET', CURRENT: 'ASSET', FIXED: 'ASSET', CURRLIAB: 'LIABILITY', TERMLIAB: 'LIABILITY', EQUITY: 'EQUITY', REVENUE: 'REVENUE', OTHERINCOME: 'REVENUE', DIRECTCOSTS: 'EXPENSE', EXPENSE: 'EXPENSE' }[Type] }));
+].map(([Code, Name, Type], i) => ({ AccountID: 'acc-' + Code + '-' + String(i).padStart(4, '0'), Code, Name, Type, Status: 'ACTIVE', Class: { BANK: 'ASSET', CURRENT: 'ASSET', FIXED: 'ASSET', CURRLIAB: 'LIABILITY', TERMLIAB: 'LIABILITY', EQUITY: 'EQUITY', REVENUE: 'REVENUE', OTHERINCOME: 'REVENUE', DIRECTCOSTS: 'EXPENSE', EXPENSE: 'EXPENSE' }[Type], SystemAccount: { '610': 'DEBTORS', '800': 'CREDITORS', '820': 'GST' }[Code] }));
 const ACC = Object.fromEntries(ACCOUNTS.map((a) => [a.Code, a]));
 const TAX_RATES = [
   ['GST on Income', 'OUTPUT', 'OUTPUT', 10], ['GST on Expenses', 'INPUT', 'INPUT', 10], ['GST on Capital', 'CAPEXINPUT', 'CAPEXINPUT', 10],
@@ -84,6 +84,9 @@ function books(tenant) {
   extra('ACCREC', 'DRAFT', '2026-09-22', 1850, CUSTOMERS[0]); extra('ACCREC', 'DRAFT', '2026-09-24', 920, CUSTOMERS[5]); extra('ACCREC', 'SUBMITTED', '2026-09-23', 2400, CUSTOMERS[2]);
   extra('ACCPAY', 'DRAFT', '2026-09-21', 640, SUPPLIERS[5]); extra('ACCPAY', 'SUBMITTED', '2026-09-24', 1100, SUPPLIERS[0]);
   extra('ACCREC', 'AUTHORISED', '2026-10-02', 1300, CUSTOMERS[1]); // future-dated: in lists, not yet on the Balance Sheet
+  // dated later THIS month (after "today", before the month end): Xero's Balance Sheet — always at a month end — already holds them,
+  // the Trial Balance today does not, so a report tied to "today" must read the Trial Balance (live QA, 4 Oct 2026)
+  extra('ACCREC', 'AUTHORISED', '2026-09-29', 880, CUSTOMERS[0]); extra('ACCPAY', 'AUTHORISED', '2026-09-28', 260, SUPPLIERS[2]);
   // one unallocated sales credit note, one unallocated supplier credit note, one customer overpayment
   const cn = (type, date, net, who) => { const lines = [line(type === 'ACCRECCREDIT' ? '200' : '310', r2(net * S), type === 'ACCRECCREDIT' ? 'OUTPUT' : 'INPUT')]; const c = Object.assign({ Type: type, CreditNoteID: 'cn-' + t.slice(-1) + '-' + cnNo, CreditNoteNumber: 'CN-' + (cnNo++), Contact: who, date, status: 'AUTHORISED', LineAmountTypes: 'Exclusive', LineItems: lines, CurrencyCode: O.BaseCurrency, CurrencyRate: 1 }, totals(lines)); c.RemainingCredit = c.Total; credits.push(c); };
   cn('ACCRECCREDIT', '2026-08-14', 150, contact(CUSTOMERS[3], 'cus')); cn('ACCPAYCREDIT', '2026-09-03', 80, contact(SUPPLIERS[4], 'sup'));
@@ -228,9 +231,12 @@ function cashBalances(B, date) {
   const cye = netProfit(B, fy, date, true), re = r2(openRE + netProfit(B, '2000-01-01', addDays(fy, -1), true)), o = Object.assign({}, a, { '610': 0, '800': 0, CYE: cye, '960': re });
   o['820'] = r2(o['090'] + o['091'] + o['620'] + o['710'] + o['711'] - o['850'] - o['900'] - cye - re); return o;
 }
+// Xero's Balance Sheet API returns the balance sheet at the END OF THE MONTH of the date asked for (confirmed live, 4 Oct 2026:
+// date=2026-10-04 came back "As at 31 October 2026"), so a mid-month date is never a balance "today". The Trial Balance and the
+// P&L take exact dates.
 function bsReport(p) {
-  const B = books(p.xero_tenant_id), whole = isEom(p.date), dates = [p.date]; const k = p.timeframe === 'QUARTER' ? 3 : p.timeframe === 'YEAR' ? 12 : 1;
-  for (let i = 1; i <= (p.periods || 0); i++) dates.push(shiftMonths(p.date, -k * i, whole));
+  const B = books(p.xero_tenant_id), d0 = p.date || TODAY, at = eom(+d0.slice(0, 4), +d0.slice(5, 7)), dates = [at]; const k = p.timeframe === 'QUARTER' ? 3 : p.timeframe === 'YEAR' ? 12 : 1;
+  for (let i = 1; i <= (p.periods || 0); i++) dates.push(shiftMonths(at, -k * i, true));
   const cols = dates.map((d) => (p.paymentsOnly === true ? cashBalances(B, d) : balances(B, d))), val = (code) => cols.map((c) => c[code] || 0);
   const sec = (title, total, codes) => ({ RowType: 'Section', Title: title, Rows: codes.map((c) => rowOf(ACC[c].Name, val(c), ACC[c].AccountID)).concat([sumRow(total, cols.map((col) => r2(codes.reduce((s, c) => s + (col[c] || 0), 0))))]) });
   const sumc = (codes) => cols.map((col) => r2(codes.reduce((s, c) => s + (col[c] || 0), 0)));
@@ -240,7 +246,7 @@ function bsReport(p) {
     { RowType: 'Section', Title: 'Liabilities', Rows: [] }, sec('Current Liabilities', 'Total Current Liabilities', ['800', '820', '850']), sec('Non-Current Liabilities', 'Total Non-Current Liabilities', ['900']), calc('Total Liabilities', TL),
     calc('Net Assets', TA.map((a, i) => r2(a - TL[i]))),
     { RowType: 'Section', Title: 'Equity', Rows: [rowOf('Current Year Earnings', val('CYE')), rowOf('Retained Earnings', val('960'), ACC['960'].AccountID), sumRow('Total Equity', cols.map((c) => r2(c.CYE + c['960'])))] }];
-  return { Reports: [{ ReportID: 'BalanceSheet', ReportName: 'Balance Sheet', ReportType: 'BalanceSheet', ReportTitles: ['Balance Sheet', B.O.Name, 'As at ' + long(p.date)], ReportDate: short(TODAY), Rows }] };
+  return { Reports: [{ ReportID: 'BalanceSheet', ReportName: 'Balance Sheet', ReportType: 'BalanceSheet', ReportTitles: ['Balance Sheet', B.O.Name, 'As at ' + long(at)], ReportDate: short(TODAY), Rows }] };
 }
 function bankSummary(p) {
   const B = books(p.xero_tenant_id), a = p.fromDate, b = p.toDate, prev = addDays(a, -1);
@@ -255,9 +261,12 @@ function bankSummary(p) {
 // financial year to date; balance-sheet accounts their balance; equity holds Retained Earnings (no Current Year Earnings row —
 // the P&L accounts are listed instead), so debits = credits by construction.
 function trialBalance(p) {
+  // Debit / Credit = the movement in the month to the date (live Xero: $0.00 on every row a few days into a quiet month);
+  // YTD Debit / YTD Credit = the balance (balance-sheet accounts) or the financial year to date (income and expenses).
   const B = books(p.xero_tenant_id), d = p.date, b = balances(B, d), pl = plByAccount(B, fyStart(d, B.O.FinancialYearEndMonth), d, false);
+  const m1 = d.slice(0, 8) + '01', bPrev = balances(B, addDays(m1, -1)), plM = plByAccount(B, m1, d, false), month = (c) => (c in pl || c in plM ? plM[c] || 0 : r2((b[c] || 0) - (bPrev[c] || 0)));
   const dc = (code, v, debitNormal) => { const x = debitNormal ? v : -v; return x >= 0 ? [x, 0] : [0, -x]; };
-  const row = (a, v, debitNormal) => { const [db, cr] = dc(a.Code, v, debitNormal), at = a.AccountID; return { RowType: 'Row', Cells: [cell(a.Name + ' (' + a.Code + ')', at)].concat([db, cr, db, cr].map((x) => cell(x ? s2(x) : '', at))) }; };
+  const row = (a, v, debitNormal) => { const [db, cr] = dc(a.Code, v, debitNormal), [mdb, mcr] = dc(a.Code, month(a.Code), debitNormal), at = a.AccountID; return { RowType: 'Row', Cells: [cell(a.Name + ' (' + a.Code + ')', at)].concat([mdb, mcr, db, cr].map((x) => cell(x ? s2(x) : '', at))) }; };
   const sec = (title, list) => ({ RowType: 'Section', Title: title, Rows: list });
   const accts = (types) => ACCOUNTS.filter((a) => types.includes(a.Type));
   const rev = accts(['REVENUE', 'OTHERINCOME']).filter((a) => pl[a.Code]).map((a) => row(a, pl[a.Code], false));

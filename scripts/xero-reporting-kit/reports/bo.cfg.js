@@ -3,10 +3,10 @@ XK.app({
   inputs: { org: 'org', display: 'display' },
   defaults: { as_at: '2026-09-25', fy_start: '2026-07-01', prior_from: '2025-07-01', prior_to: '2025-09-25', month_from: '2026-09-01', org: '', page: 1,
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"today","c":"none","v":"","o":"w="}' },
-  uses: { bank: ['month_from', 'as_at', 'org'], invoices: ['org'], bills: ['org'], payments: ['org'], pnl_ytd: ['fy_start', 'as_at', 'org'], pnl_prior: ['prior_from', 'prior_to', 'org'], pnl_month: ['month_from', 'as_at', 'org'], accounts: ['org'], bs: ['as_at', 'org'], org: ['org'], connections: [] },
+  uses: { bank: ['month_from', 'as_at', 'org'], invoices: ['org'], bills: ['org'], payments: ['org'], pnl_ytd: ['fy_start', 'as_at', 'org'], pnl_prior: ['prior_from', 'prior_to', 'org'], pnl_month: ['month_from', 'as_at', 'org'], accounts: ['org'], tb: ['as_at', 'org'], org: ['org'], connections: [] },
   paged: { invoices: { input: 'page', key: 'Invoices' }, bills: { input: 'page', key: 'Invoices' } },
   fan: { bank: function (inp) { return XK.monthsEnding(inp.as_at, 6).map(function (m) { return { key: m.key, inputs: { month_from: m.start, as_at: m.end < inp.as_at ? m.end : inp.as_at } }; }); } },
-  tools: { bank: 'get_bank_summary (this month; and each of the last 6 months)', invoices: 'list_invoices (sales invoices)', bills: 'list_invoices (bills)', payments: 'list_payments (recent invoice payments)', pnl_ytd: 'get_profit_and_loss (financial year to date)', pnl_prior: 'get_profit_and_loss (same period last year)', pnl_month: 'get_profit_and_loss (this month, for the watchlist)', accounts: 'list_accounts (codes)', bs: 'get_balance_sheet (today, for the ties)', org: 'get_organisation', connections: 'list_connections' },
+  tools: { bank: 'get_bank_summary (this month; and each of the last 6 months)', invoices: 'list_invoices (sales invoices)', bills: 'list_invoices (bills)', payments: 'list_payments (recent invoice payments)', pnl_ytd: 'get_profit_and_loss (financial year to date)', pnl_prior: 'get_profit_and_loss (same period last year)', pnl_month: 'get_profit_and_loss (this month, for the watchlist)', accounts: 'list_accounts (codes)', tb: 'get_trial_balance (today, exact — for the ties; Xero\'s Balance Sheet is only at month ends)', org: 'get_organisation', connections: 'list_connections' },
   roll: function () { return { as_at: XK.asAt('today') }; }, // a dashboard is always "now"
   derive: function (inp, fyMonth) {
     var f = XK.fyStartOf(inp.as_at, fyMonth), y = function (s) { var p = s.split('-'), yy = +p[0] - 1, last = XK.eom(yy, +p[1]).getUTCDate(); return yy + '-' + p[1] + '-' + String(Math.min(+p[2], last)).padStart(2, '0'); };
@@ -66,15 +66,17 @@ XK.app({
 
     // Checks
     var sumB = function (b) { return XK.sum(b.map(function (x) { return x.v; })); };
-    var bs = c.data.bs ? XK.bsParts(XK.walk(c.data.bs)) : null, bankTot = banks.length ? XK.sum(banks.map(function (b) { return b.close; })) : null;
+    var tbT = c.data.tb ? XK.tbYtd(c.data.tb) : null, bankTot = banks.length ? XK.sum(banks.map(function (b) { return b.close; })) : null;
+    var deb = ((c.data.accounts || {}).Accounts || []).filter(function (a) { return a.SystemAccount === 'DEBTORS'; })[0], seen = tbT && banks.some(function (b) { return b.id && tbT.bal(b.id) != null; });
+    var bs = tbT ? { bank: seen ? XK.sum(banks.map(function (b) { return tbT.bal(b.id) || 0; })) : null, cye: tbT.net, ar: deb ? tbT.bal(deb.AccountID) || 0 : null } : null;
     var checks = [
       { name: 'Invoices owed = Σ ageing buckets', pass: XK.near(sumB(agI), P.awaiting.v), detail: money(P.awaiting.v) },
       { name: 'Bills to pay = Σ ageing buckets', pass: XK.near(sumB(agB), Q.awaiting.v), detail: money(Q.awaiting.v) },
       { name: 'Each bank account: opening + cash in − cash out = balance', pass: banks.length ? banks.every(function (b) { return XK.near(b.open + b.rin - b.rout, b.close); }) : null, detail: banks.length + ' account(s)' },
       cash == null ? { name: 'Cash difference = cash in − cash out (last 6 months)', pass: null, detail: c.live ? 'Loading' : 'N/A in a snapshot' } : { name: 'Cash difference = cash in − cash out; each month closes where the next opens', pass: cashOk ? cash.every(function (m, i) { return i === 0 || XK.near(cash[i - 1].close, m.open); }) : false, detail: cashOk ? money(r2(cin - cout)) + ' over 6 months' : 'Some months failed to load' },
       { name: 'YTD net profit = income − expenses', pass: pl ? XK.near(pl.np, pl.income - pl.expenses) : null, detail: pl ? money(pl.np) + ' = ' + money(pl.income) + ' − ' + money(pl.expenses) : c.err('pnl_ytd') },
-      { name: 'Bank accounts = Total Bank on the Balance Sheet today', pass: bs && bankTot != null && bs.bank != null ? XK.near(bankTot, bs.bank) : null, detail: bs && bankTot != null ? money(bankTot) + ' vs ' + money(bs.bank) : c.err('bs') || c.err('bank') },
-      { name: 'YTD net profit = Current Year Earnings on the Balance Sheet', pass: bs && pl && bs.cye != null ? XK.near(pl.np, bs.cye) : null, detail: bs && pl ? money(pl.np) + ' vs ' + money(bs.cye) : c.err('bs') || c.err('pnl_ytd') },
+      { name: 'Bank accounts = the same accounts on the Trial Balance today (a separate Xero report)', pass: bs && bankTot != null && bs.bank != null ? XK.near(bankTot, bs.bank) : null, detail: bs && bankTot != null ? (bs.bank == null ? 'N/A — the bank accounts are not on the Trial Balance' : money(bankTot) + ' vs ' + money(bs.bank)) : c.err('tb') || c.err('bank') },
+      { name: 'YTD net profit = income − expenses for the year on the Trial Balance today', pass: bs && pl && bs.cye != null ? XK.near(pl.np, bs.cye) : null, detail: bs && pl ? money(pl.np) + ' vs ' + money(bs.cye) : c.err('tb') || c.err('pnl_ytd') },
       { name: 'Invoices owed vs Accounts Receivable (information)', pass: null, info: true, detail: bs && bs.ar != null ? money(P.awaiting.v) + ' vs ' + money(bs.ar) + (XK.near(P.awaiting.v, bs.ar) ? '' : ' — Accounts Receivable also nets unallocated credit notes, overpayments and prepayments, and excludes future-dated invoices (see Aged Receivables)') : 'N/A' },
       { name: 'All invoices and bills loaded', pass: (c.errors.invoices || c.errors.bills) ? false : (c.truncated('invoices') || c.truncated('bills')) ? false : true, detail: c.errors.invoices ? c.err('invoices') : c.errors.bills ? c.err('bills') : (c.truncated('invoices') || c.truncated('bills')) ? 'May be truncated (over 20 pages)' : c.rows('invoices').length + ' invoice(s), ' + c.rows('bills').length + ' bill(s)' }
     ];
