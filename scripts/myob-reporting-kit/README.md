@@ -4,6 +4,7 @@ This folder is the source for the kit reports of `plugins/myob-reporting-studio`
 
 - `mk-kit.js` holds the report kit (`MK.app` controller, the MYOB account walker with the P&L and Balance Sheet layouts, presets, tables, charts, the .xlsx writer). `mk.css` is the stylesheet and `skeleton.html` is the page.
 - `reports/<id>.manifest.json` and `reports/<id>.cfg.js` hold each kit report's `dataBindings` and report config.
+- A kit report that replaces a written specification keeps that skill's file name; a **new** report skill is named `myob-…` (a Developer Instance Pull keys components by file name, and an unprefixed name could overwrite someone's standalone Dev Tools skill). `gen-myob.js` adds new skills to the agent (blueprint and agent file) and recomputes the blueprint's `contentHash`.
 - `families.js` holds the skill prose for each kit report (library M-id, triggers, members, checks, golden-set figures). Report skills not listed there are still written specifications; their rules come from `foundation-prose.md`.
 - `fixtures.js` holds MYOB-shaped fixtures that mirror the live mySMB.com file (the P&L and Balance Sheet tests in `test-myob.js`).
 - `ledger.js` is a MYOB company file as one set of books, with two company files: every response the reports read (P&L and Balance Sheet summaries at any dates, the chart of accounts with default tax codes, the tax codes, open and closed invoices and bills, journal transactions, the connector's ageing) is derived from the same transactions, so a report's ties must pass on it and a tampered response must fail. The books include pay runs (PAYG withholding and superannuation accrued, paid quarterly), a credit card and quarterly BAS payments. `test-wave1.js`, `test-wave1b.js` and `test-conformance.js` run on it.
@@ -22,7 +23,7 @@ Run `npm i` once in this folder, then:
 
 ```bash
 npm test             # P&L and Balance Sheet on the live-shaped fixtures (test-myob.js), the other kit reports on the ledger
-                     # (test-wave1.js; the dashboards in test-wave1b.js), and conformance on every report (test-conformance.js): LIB-002 company-file isolation and
+                     # (test-wave1.js; Wave 1B — dashboards, cash flows, report pack — in test-wave1b.js), and conformance on every report (test-conformance.js): LIB-002 company-file isolation and
                      # template copies opened on another company file and dates
 npm run gen          # the variants, then the foundation, the kit report skills, the templates and the manifest keys
 npm run roundtrip    # before a PR: extract the code from the generated skills, re-run the tests on it, build every kit report,

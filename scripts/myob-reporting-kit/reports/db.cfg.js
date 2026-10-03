@@ -5,7 +5,7 @@ MK.app({
   defaults: { as_at: '2026-09-28', m3_start: '2026-07-01', fy_start: '2026-07-01', chart_from: '2026-07-01', company_file: '', persona: 'Bookkeeper',
     display: '{"cents":1,"k":0,"zeros":0,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"custom","a":"today","c":"none","v":""}' },
   uses: { pnl_3m: ['m3_start', 'as_at', 'company_file'], pnl_fy: ['fy_start', 'as_at', 'company_file'], bs: ['as_at', 'company_file'], journals: ['chart_from', 'as_at', 'company_file'], invoices: ['company_file'], accounts: ['company_file'], tax_codes: ['company_file'], company_files: [] },
-  tools: { pnl_3m: 'get_profit_and_loss_3m (income and expenses, last 3 months)', pnl_fy: 'get_profit_and_loss (this financial year to date)', bs: 'get_balance_sheet (today: bank, GST, receivables, payroll liabilities)', journals: 'list_journal_transactions (the months for the chart — every page)', invoices: 'list_invoices (open sales invoices — every page)', accounts: 'list_accounts (classification and account types)', tax_codes: 'list_tax_codes (the accounts GST posts to)', company_files: 'list_company_files' },
+  tools: { pnl_3m: 'get_profit_and_loss_3m (last 3 months)', pnl_fy: 'get_profit_and_loss (financial year to date)', bs: 'get_balance_sheet (today)', journals: 'list_journal_transactions (the chart\'s months)', invoices: 'list_invoices (open invoices)', accounts: 'list_accounts', tax_codes: 'list_tax_codes (GST accounts)', company_files: 'list_company_files' },
   roll: function () { return { as_at: MK.asAt('today') }; },
   // the widget periods: last 3 calendar months (this month and the two before it) to today; this financial year to today
   derive: function (inp, fyMonth) { var a = MK.parse(inp.as_at), m3 = MK.iso(new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth() - 2, 1))), fy = MK.fyStartOf(inp.as_at, fyMonth); return { m3_start: m3, fy_start: fy, chart_from: fy < m3 ? fy : m3 }; },
@@ -93,12 +93,11 @@ MK.app({
   },
   excel: function (c) {
     var x = this._x; if (!x) return [];
-    var mv = function (v) { return v == null ? 'N/A' : { v: v, s: 'money' }; }, head = [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: 'Dashboard', s: 'bold' }], [MK.asOfLine(c.inputs.as_at)], []];
-    var rows = head.concat([[{ v: 'Widget', s: 'bold' }, { v: 'Figure', s: 'bold' }, { v: 'Amount ($)', s: 'bold' }], ['Your business', 'Income (last 3 months)', mv(x.inc3)], ['Your business', 'Expenses (last 3 months)', mv(x.exp3)], ['Your business', 'Financial position (this financial year)', mv(x.fp)],
-      ['Accounts', 'Bank balance', mv(x.bank.total)], ['Accounts', 'Money owed (credit cards)', mv(x.card.total)], ['GST', x.gstNet != null && x.gstNet < 0 ? 'To claim' : 'To pay', mv(x.gstNet == null ? null : Math.abs(x.gstNet))], ['GST', 'GST collected', mv(x.gstCol)], ['GST', 'GST paid', mv(x.gstPaid)],
-      ['Overdue invoices', 'Total overdue (' + x.od.length + ')', mv(x.odTot)]].concat(x.bands.map(function (b) { return ['Overdue invoices', b.label + ' (' + b.n + ')', mv(b.amt)]; })).concat([['Overdue invoices', 'Owed to you (all open invoices)', mv(x.owedToYou)], ['Superannuation payable', '', mv(x.sup.total)], ['PAYG withholding', '', mv(x.payg.total)]]));
-    var mo = head.concat([['Month', 'Income ($)', 'Expense ($)', 'Net profit ($)'].map(function (t) { return { v: t, s: 'bold' }; })]).concat(x.months.filter(function (m) { return m.inc != null; }).map(function (m) { return [m.key, mv(m.inc), mv(m.exp), mv(m.net)]; }));
-    var od = head.concat([['Customer', 'Invoice no.', 'Due date', 'Days overdue', 'Balance due ($)'].map(function (t) { return { v: t, s: 'bold' }; })]).concat(x.od.slice().sort(function (a, b) { return b.days - a.days; }).map(function (r) { return [r.customer, r.number, r.due, r.days, mv(r.bal)]; }));
-    return [{ name: 'Dashboard', rows: rows, widths: [24, 40, 16] }, { name: 'Monthly', rows: mo, widths: [12, 16, 16, 16] }, { name: 'Overdue invoices', rows: od, widths: [32, 14, 12, 12, 16] }];
+    var mv = function (v) { return v == null ? 'N/A' : { v: v, s: 'money' }; }, hd = function (cols) { return [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: 'Dashboard', s: 'bold' }], [MK.asOfLine(c.inputs.as_at)], [], cols.map(function (t) { return { v: t, s: 'bold' }; })]; };
+    var R = [['Income (last 3 months)', x.inc3], ['Expenses (last 3 months)', x.exp3], ['Financial position (this financial year)', x.fp], ['Bank balance', x.bank.total], ['Money owed (credit cards)', x.card.total], ['GST to pay (negative: to claim)', x.gstNet], ['GST collected', x.gstCol], ['GST paid', x.gstPaid], ['Overdue invoices (' + x.od.length + ')', x.odTot]]
+      .concat(x.bands.map(function (b) { return [b.label + ' (' + b.n + ')', b.amt]; }), [['Owed to you (all open invoices)', x.owedToYou], ['Superannuation payable', x.sup.total], ['PAYG withholding', x.payg.total]]);
+    return [{ name: 'Dashboard', rows: hd(['Figure', 'Amount ($)']).concat(R.map(function (r) { return [r[0], mv(r[1])]; })), widths: [44, 16] },
+      { name: 'Monthly', rows: hd(['Month', 'Income ($)', 'Expense ($)', 'Net profit ($)']).concat(x.months.filter(function (m) { return m.inc != null; }).map(function (m) { return [m.key, mv(m.inc), mv(m.exp), mv(m.net)]; })), widths: [12, 16, 16, 16] },
+      { name: 'Overdue invoices', rows: hd(['Customer', 'Invoice no.', 'Due date', 'Days overdue', 'Balance due ($)']).concat(x.od.map(function (r) { return [r.customer, r.number, r.due, r.days, mv(r.bal)]; })), widths: [32, 14, 12, 12, 16] }];
   }
 });

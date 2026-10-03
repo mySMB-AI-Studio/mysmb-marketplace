@@ -1,6 +1,8 @@
 // node gen-myob.js [mysmb-marketplace root] (default: this repository)
 // Writes the MYOB report foundation (build recipe + tested kit + the Phase A rules kept for prose skills) and one skill per
-// kit-built family, under the EXISTING file stems so the agent blueprint's skill ids and contentHash do not change.
+// kit-built family. A family that replaces a written specification keeps its file stem (the blueprint's skill ids do not change);
+// a new one is named myob-… (so a Developer Instance Pull cannot collide with a standalone Dev Tools key) and is added to the
+// agent's skills, with the blueprint's contentHash recomputed.
 // reports/<skill>/ carries each kit report as a report template (artifact_from_template, "Use this report"): the same document
 // the copy path assembles, and the skill's dataBindings.
 const fs = require('fs'), path = require('path'), crypto = require('crypto');
@@ -165,8 +167,12 @@ const STEP5_OLD = '5. Create one responsive, self-contained HTML document using 
 const STEP5 = '5. For a kit report, follow the foundation\'s "Build a kit report" steps: create it from its template with artifact_from_template when you have that tool, otherwise copy its blocks and save with artifact_save. For any other report skill, create one responsive, self-contained HTML document using the shared visual system, then save it with artifact_save to the owner\'s Reports library.';
 const amd = path.join(P, 'agents', 'myob-reporting-specialist.md'), bpDir = path.join(P, 'content', 'agents'), bpFile = path.join(bpDir, fs.readdirSync(bpDir).find((x) => x.endsWith('.json')));
 const md0 = fs.readFileSync(amd, 'utf8').replace(/\r\n/g, '\n'), bp = JSON.parse(fs.readFileSync(bpFile, 'utf8'));
-if (md0.includes(STEP5_OLD)) fs.writeFileSync(amd, md0.replace(STEP5_OLD, STEP5));
-if (bp.rolePrompt.includes(STEP5_OLD) || !bp.contentHash) {
+// a kit report with a new skill file joins the agent: its blueprint skills (the foundation first, then by name) and the agent file's skills line
+const missing = FAM.map((f) => SLUG + ':' + f.skill).filter((s, i, a) => a.indexOf(s) === i && !bp.skills.includes(s));
+if (missing.length) bp.skills = [bp.skills[0]].concat(bp.skills.slice(1).concat(missing).sort());
+let md1 = md0.replace(STEP5_OLD, STEP5).replace(/^skills: .*$/m, 'skills: ' + bp.skills.join(', '));
+if (md1 !== md0) fs.writeFileSync(amd, md1);
+if (bp.rolePrompt.includes(STEP5_OLD) || missing.length || !bp.contentHash) {
   bp.rolePrompt = bp.rolePrompt.replace(STEP5_OLD, STEP5);
   const sortDeep = (v) => (Array.isArray(v) ? v.map(sortDeep) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, sortDeep(v[k])])) : v);
   const payload = Object.assign({}, bp); delete payload.contentHash;

@@ -118,6 +118,19 @@ var MK = (function () {
     Object.keys(totals).forEach(function (k) { var v = totals[k][i]; if (v < -0.005) out.push(SECTION_LABEL[k] + ' is negative (' + (credit[k] || k === 'Asset' ? 'a net debit' : k === 'Liability' || k === 'Equity' ? 'a net debit' : 'a net credit') + ') — review the ' + what(k) + ' postings.'); });
     return out;
   }
+  // Cash: each balance-sheet account's change between two Balance Sheets (bs2 = breakdown of [the day before the period, its end])
+  // as its effect on cash, with the P&L for the period (pl = its breakdown): an asset going up uses cash; a liability or equity going up
+  // provides it. Bank accounts (type Bank) are the cash. Current Year Earnings is the P&L itself, so it is not counted again; when the
+  // period spans a financial-year start, Retained Earnings moves by last year's profit closing — not cash either (rollAdj ≈ 0 checks it).
+  function cashMoves(bs2, pl, from, to, fyMonth) {
+    var r2 = function (v) { return Math.round(v * 100) / 100; }, np = pl.calc.NetProfit[0], fyCross = iso(fyStartOf(parse(to), fyMonth || 7)) >= from;
+    var CYE = function (r) { return CYE_RE.test(r.name); }, RE = function (r) { return /retained (earnings|profits)/i.test(r.name); };
+    var rows = bs2.rows.filter(function (r) { return !r.header && /^(Asset|Liability|Equity)$/.test(r.cls); }).map(function (r) { var d = r2((r.values[1] || 0) - (r.values[0] || 0));
+      return { code: r.code, name: r.name, cls: r.cls, type: r.type, open: r.values[0] || 0, close: r.values[1] || 0, effect: r.cls === 'Asset' ? -d : d, bank: r.type === 'Bank', skip: CYE(r) || (fyCross && RE(r)) }; });
+    var moves = rows.filter(function (r) { return !r.bank && !r.skip; }), bank = rows.filter(function (r) { return r.bank; }), rolled = rows.filter(function (r) { return fyCross && r.skip; });
+    var open = sum(bank.map(function (r) { return r.open; })), close = sum(bank.map(function (r) { return r.close; }));
+    return { np: np, moves: moves, bank: bank, open: open, close: close, net: r2(np + sum(moves.map(function (r) { return r.effect; }))), fyCross: fyCross, rollAdj: fyCross ? r2(-(sum(rolled.map(function (r) { return r.close - r.open; })) - np)) : 0 };
+  }
   // Totals re-added from the rows (independent of breakdown's own sums): every section total = Σ its rows.
   function linesTies(lines, tol) {
     var res = { checked: 0, failed: [] };
@@ -701,7 +714,7 @@ var MK = (function () {
     return { state: S, change: change, render: render, exportXlsx: exportXlsx, ctx: ctx };
   }
 
-  return { signNotes: signNotes, errorOf: errorOf, items: items, isoDate: isoDate, accounts: accounts, classOf: classOf, breakdown: breakdown, PL_LAYOUT: PL_LAYOUT, BS_LAYOUT: BS_LAYOUT, PL_CLASSES: PL_CLASSES, BS_CLASSES: BS_CLASSES,
+  return { signNotes: signNotes, cashMoves: cashMoves, errorOf: errorOf, items: items, isoDate: isoDate, accounts: accounts, classOf: classOf, breakdown: breakdown, PL_LAYOUT: PL_LAYOUT, BS_LAYOUT: BS_LAYOUT, PL_CLASSES: PL_CLASSES, BS_CLASSES: BS_CLASSES,
     CYE_RE: CYE_RE, currentYearEarnings: currentYearEarnings, linesTies: linesTies, companyFiles: companyFiles, companyOf: companyOf, fiscalStart: fiscalStart, homeCurrency: homeCurrency,
     applyBrand: applyBrand, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app,
     MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays, num: num, find: find, val: val, totalFor: totalFor, near: near, sum: sum, symbol: symbol,
