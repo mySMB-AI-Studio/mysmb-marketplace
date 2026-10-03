@@ -42,6 +42,9 @@ const E = L.expect, T = L.TODAY, FY = '2026-07-01';
     ok('ar: a receivables account $50 off → the tie fails with the out-of-balance amount', /✗ Total due = the receivables account/.test(banner(ta)) && /out of balance \(\$50\.00\)/.test(banner(ta)) && red(ta), banner(ta).slice(0, 400));
     const ag = await go('ag');
     ok('ag (Aged receivables): opens aged by due date, same total', /Aged Receivables/.test(text(ag.doc, 'header')) && /Not due/.test(body(ag)) && green(ag), text(ag.doc, 'header'));
+    // live QA: MYOB returns "*None" as the card ID of a customer without one — shown blank, as on MYOB's reports
+    const nc = await go('ar', { invoices: (p) => { const r = L.listInvoices(p); r.Items.forEach((i) => { i.Customer.DisplayID = '*None'; }); return r; } });
+    ok('ar: a customer without a card ID ("*None") shows a blank customer number', !/\*None/.test(body(nc)) && green(nc), body(nc).slice(0, 300));
   }
   if (!only || only === 'rr') {
     const t = await go('rr');
@@ -53,7 +56,13 @@ const E = L.expect, T = L.TODAY, FY = '2026-07-01';
   }
   if (!only || only === 'sr') {
     const t = await go('sr'), inc = E.plByAccount(FY, T, false, L.CF1), income = Math.round(((inc['4-1300'] || 0) + (inc['4-1400'] || 0)) * 100) / 100;
-    ok('sr: Σ sale amount = P&L income for the period, amount due = receivables, green', green(t) && new RegExp('Income on the Profit and Loss for the period.*' + fmt(income) + ' vs ' + fmt(income)).test(banner(t)), banner(t).slice(0, 500));
+    const invs = L.listInvoices({ myob_company_file_id: L.CF1, status: 'All', from_date: FY, to_date: T }).Items, invTot = Math.round(invs.reduce((s, i) => s + i.TotalAmount, 0) * 100) / 100;
+    ok('sr: Σ invoices = the receivables account\'s movement in the journals (payments left out); P&L income for information; amount due = receivables; green', green(t) && new RegExp('movement in the period\'s journals, leaving out customer payments.*' + fmt(invTot) + ' vs ' + fmt(invTot)).test(banner(t)) && new RegExp('ℹ Income on the Profit and Loss vs the invoices\' sale amount \\(information\\) — ' + fmt(income) + ' — all of the period\'s income is invoiced').test(banner(t)), banner(t).slice(0, 600));
+    // live QA, 4 Oct 2026: a cash sale entered as receive money ($420 incl. GST) is income on the P&L but not an invoice — information, not a failure
+    const rm = await go('sr', { pnl: (p) => { const r = L.profitAndLoss(p); r.AccountsBreakdown.find((x) => x.Account.DisplayID === '4-1400').AccountTotal += 381.82; return r; } });
+    ok('sr: income from receive money (P&L above the invoices by $381.82) → an information line, still green', green(rm) && /ℹ Income on the Profit and Loss.*\$381\.82 of income is not from invoices/.test(banner(rm)), banner(rm).slice(0, 600));
+    const miss = await go('sr', { inv: (p) => { const r = L.listInvoices(p); r.Items.pop(); r.Count--; return r; } });
+    ok('sr: an invoice the list did not return → the journals tie fails, red', /✗ Σ invoice amounts \(with tax\) = the receivables account's movement/.test(banner(miss)) && red(miss), banner(miss).slice(0, 500));
     const st = t.doc.getElementById('mk-enum-0'); st.value = 'Open'; st.dispatchEvent(new t.w.Event('change')); await t.settle(); await wait(30);
     ok('sr: Sale status = Open → only open invoices listed', [...t.doc.querySelectorAll('#sr-grid tbody tr')].every((tr) => /Open$/.test(tr.textContent.trim())), body(t).slice(0, 200));
     const m = onFile(man('sr')); m.inputs.find((i) => i.name === 'from_date').default = '2026-09-01'; m.inputs.find((i) => i.name === 'display').default = m.inputs.find((i) => i.name === 'display').default.replace('this_fy_td', 'custom');
