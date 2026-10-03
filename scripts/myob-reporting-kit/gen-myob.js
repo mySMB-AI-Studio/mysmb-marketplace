@@ -98,7 +98,7 @@ description: MYOB ${f.title} (${f.m}) as a live, validated report in MYOB stylin
 ---
 # ${f.title} (${f.m})
 
-Use when ${f.trigger}. Load \`myob-report-foundation\` first and follow its *Build a kit report* steps. Report title: **MYOB ${f.title}**. Report title: **MYOB ${f.title}**. Report title: **MYOB ${f.title}**. Template: \`${SLUG}\` / \`${f.skill}\` (for \`artifact_from_template\`); without that tool, copy the blocks below — do not rewrite them. This skill needs the \`myob-accounting\` connector (${tools}).
+Use when ${f.trigger}. Load \`myob-report-foundation\` first and follow its *Build a kit report* steps. Report title: **MYOB ${f.title}**. Template: \`${SLUG}\` / \`${f.skill}\` (for \`artifact_from_template\`); without that tool, copy the blocks below — do not rewrite them. This skill needs the \`myob-accounting\` connector (${tools}).
 
 MYOB location: ${f.menu}. Library: MYOB Reports Prompt Library v1.2 → Prompts → ${f.m}. Delivery: ${f.wave}.
 

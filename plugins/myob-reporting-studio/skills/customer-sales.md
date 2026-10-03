@@ -4,7 +4,7 @@ description: MYOB Customer Sales (M35) as a live, validated report in MYOB styli
 ---
 # Customer Sales (M35)
 
-Use when the user asks for customer sales, sales by customer, top customers, or how much each customer bought in a period. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Customer Sales**. Report title: **MYOB Customer Sales**. Report title: **MYOB Customer Sales**. Template: `myob-reporting-studio` / `customer-sales` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_invoices`, `get_profit_and_loss_3m`, `get_balance_sheet`, `list_accounts`, `list_company_files`).
+Use when the user asks for customer sales, sales by customer, top customers, or how much each customer bought in a period. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Customer Sales**. Template: `myob-reporting-studio` / `customer-sales` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_invoices`, `get_profit_and_loss_3m`, `get_balance_sheet`, `list_accounts`, `list_company_files`).
 
 MYOB location: Reporting → Reports → Sales → Customer sales. Library: MYOB Reports Prompt Library v1.2 → Prompts → M35. Delivery: Wave 1 (P1, delivery order 11).
 
