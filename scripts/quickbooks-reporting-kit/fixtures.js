@@ -190,7 +190,7 @@ function vendorExpenses(p) {
   const tot = r2(VEND.reduce((s, v) => s + v[2], 0));
   return { Header: header('VendorExpenses', p), Columns: COLT(['', 'Total']), Rows: { Row: VEND.map(([n, id, v]) => ({ type: 'Data', ColData: [{ value: n, id }, cell(v)] })).concat([{ type: 'Section', group: 'GrandTotal', Summary: { ColData: [cell('TOTAL'), cell(tot)] } }]) } };
 }
-// P&L whose totals tie to the sales / vendor fixtures (used for the Σ customers = income and Σ suppliers = expenses ties)
+// P&L whose totals tie to the sales / vendor fixtures (used for the sales-by-customer and expenses-by-supplier information lines)
 function pnlTied(p) {
   const inc = r2(CUST.reduce((s, c) => s + c[2], 0)), exp = r2(VEND.reduce((s, v) => s + v[2], 0));
   const I = section('Income', 'Income', [['Sales', '80', [inc]]], 1), E = section('Expenses', 'Expenses', [['Supplier costs', '60', [exp]]], 1);

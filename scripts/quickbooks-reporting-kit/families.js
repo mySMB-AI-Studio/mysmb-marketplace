@@ -101,7 +101,7 @@ module.exports = [
   { id: 'management-reports', q: 'Q04', skill: 'quickbooks-management-reports', title: 'Management reports (report packs)', menu: 'Reports › Management reports',
     trigger: 'the user asks for a management report, board pack, report pack, company financials pack, month-end pack, BAS workpapers or a PDF pack of the statements',
     discovery: "`get_report_profit_and_loss`, `get_report_balance_sheet`, `get_report_cash_flow`, ageing reports and `get_report_tax_summary`",
-    dates: 'Custom period — the pack period the user asks for (default: financial year to the end of last month).',
+    dates: 'Preset `last_month` (a month-end pack): `start_date` / `end_date` = last month. For a user-named period, set `p` in `display` to the matching preset (`last_quarter`, `this_fy_td`, `last_fy` …), or `custom` with both dates. Never open on a one-day period unless the user asks for one.',
     fileName: 'quickbooks-management-report.html', tags: ['quickbooks', 'management-report', 'pack'],
     members: [['Basic Company Financials', 'Cover, contents, executive summary, P&L, Balance Sheet, end notes'], ['Expanded Company Financials', 'Adds Statement of Cash Flows, A/R and A/P ageing'], ['BAS workpapers', 'Cover, contents, GST Summary, P&L, end notes'], ['SPFR Company', 'N/A — needs accountant-authored notes and policies']],
     checks: ['P&L identities', 'Balance Sheet: Total for Assets = Total for Liabilities + Equity', 'Cash Flows: Cash at end = beginning + net increase (Expanded)', 'A/R and A/P ageing TOTAL = Σ rows (Expanded)', 'GST Summary: 1A − 1B = 9 (BAS workpapers)', 'Table of contents page numbers match the page order'],

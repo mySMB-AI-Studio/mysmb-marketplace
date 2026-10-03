@@ -14,6 +14,8 @@ QB.app({
     }
     var ag = QB.taxAgency(c, 'tax_agencies', 'agency_id');
     if (ag.pending) { body.innerHTML = '<p class="muted">Loading GST for ' + QB.h(ag.name) + '…</p>'; return {}; }
+    var usNA = QB.gstUS(c, ['gst_summary', 'gst_probe']);
+    if (usNA) { body.innerHTML = '<div class="qb-banner na"><strong>GST does not apply to this company.</strong> ' + QB.h(usNA) + '</div>'; this._x = null; return { checks: [{ name: 'GST Summary loaded', pass: null, detail: 'N/A — US company (sales tax, no GST)' }] }; }
     if (c.errors.gst_summary) { body.innerHTML = '<p class="qb-err">' + QB.h(c.err('gst_summary')) + '</p>'; return { checks: [{ name: 'GST Summary loaded', pass: false, detail: c.err('gst_summary') }] }; }
     if (!rep) return {};
     var bsl = c.data.bs_end ? QB.walk(c.data.bs_end) : [], gstRow = QB.find(bsl, null, QB.GST_LIAB_RE, 'row'), gstLiab = QB.val(gstRow), hd = QB.header(rep);

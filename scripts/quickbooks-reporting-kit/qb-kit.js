@@ -76,6 +76,12 @@ var QB = (function () {
   // A period with no Tax Summary rows is a nil period only if QuickBooks returns GST for the agency over the company's
   // history (gst_probe). Otherwise the connector may not be passing agency_id, so GST is unavailable, not zero.
   function gstConfirmed(ctx, probeId) { var p = ctx.data[probeId]; return !!(p && !ctx.errors[probeId] && !noData(p)); }
+  // A US company's Tax Summary answers 400 Permission Denied (5020): no GST there, so N/A, not a failure (live QA, 4 Oct 2026)
+  function gstUS(ctx, ids) {
+    var hit = ids.some(function (id) { var e = ctx.errors[id]; return e && /permission denied|\b5020\b/i.test(e.message || ''); });
+    return hit && /^(us|usa|united states)$/i.test(ctx.country || '') ? GST_US : null;
+  }
+  var GST_US = 'This is a US company: it collects sales tax, not GST, so QuickBooks has no GST Tax Summary for it.', GST_US_NA = 'GST (US company: sales tax, no GST)';
   var GST_UNCONFIRMED = 'QuickBooks returned no GST figures for this tax agency in this period or at any time before it, so GST is unavailable, not zero. If this company records GST, the QuickBooks connector may not be passing the tax agency (agency_id).';
   // GST liability account on the balance sheet ("GST Liabilities Payable", "BAS Liabilities Payable", "GST Payable", "GST Control")
   var GST_LIAB_RE = /^(gst|bas)\b.*\b(liabilit(y|ies)|payable|control)\b|^tax (payable|control)$/i;
@@ -665,7 +671,7 @@ var QB = (function () {
     function ctx() {
       var d = disp(), ci = companyInfo(S.data[cfg.company]), f = fy();
       return { data: S.data, errors: S.errors, err: err, inputs: S.inputs, I: I, display: d, view: d.v || (cfg.views ? cfg.views[0][0] : ''), compareMode: cfg.compare ? d.c : 'none',
-        persona: I.persona ? S.inputs[I.persona] : 'Bookkeeper', company: ci && ci.name, fy: f, currency: homeCurrency(S.data[cfg.prefs], S.data[cfg.primary]), live: live,
+        persona: I.persona ? S.inputs[I.persona] : 'Bookkeeper', company: ci && ci.name, country: ci && ci.country, fy: f, currency: homeCurrency(S.data[cfg.prefs], S.data[cfg.primary]), live: live,
         fetchedAt: S.fetchedAt, lines: function (id) { return walk(S.data[id]); }, body: $('qb-body'), change: change, disp: disp, today: iso(today()) };
     }
     var last = { checks: [], na: [], notes: [] };
@@ -685,6 +691,7 @@ var QB = (function () {
       // A failed data source is never silent: it turns the banner red even when the report's own checks still pass.
       Object.keys(S.errors).forEach(function (id) {
         if (id === cfg.company || id === cfg.prefs) return;
+        if (/tax_summary/.test((cfg.tools || {})[id] || '') && gstUS(c, [id])) { if (last.na.indexOf(GST_US_NA) < 0) last.na.push(GST_US_NA); return; } // US company: N/A, not red
         var msg = err(id);
         if (last.checks.some(function (k) { return k.pass === false && k.detail === msg; })) return;
         last.checks.unshift({ name: 'Data loaded: ' + ((cfg.tools || {})[id] || id), pass: false, detail: msg });
@@ -743,7 +750,7 @@ var QB = (function () {
     return { state: S, change: change, render: render, exportXlsx: exportXlsx, ctx: ctx };
   }
 
-  return { gstConfirmed: gstConfirmed, GST_UNCONFIRMED: GST_UNCONFIRMED, cashEnd: cashEnd, bankCash: bankCash, GST_LIAB_RE: GST_LIAB_RE, taxAgency: taxAgency, CF_END_RE: CF_END_RE, CF_BEG_RE: CF_BEG_RE, CF_INC_RE: CF_INC_RE, NI_RE: NI_RE, bsParts: bsParts, applyBrand: applyBrand, bas: bas, sectionTies: sectionTies, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, mergeCompare: mergeCompare, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app, MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays,
+  return { gstConfirmed: gstConfirmed, gstUS: gstUS, GST_UNCONFIRMED: GST_UNCONFIRMED, cashEnd: cashEnd, bankCash: bankCash, GST_LIAB_RE: GST_LIAB_RE, taxAgency: taxAgency, CF_END_RE: CF_END_RE, CF_BEG_RE: CF_BEG_RE, CF_INC_RE: CF_INC_RE, NI_RE: NI_RE, bsParts: bsParts, applyBrand: applyBrand, bas: bas, sectionTies: sectionTies, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, mergeCompare: mergeCompare, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app, MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays,
     num: num, cols: cols, walk: walk, find: find, val: val, header: header, noData: noData, totalFor: totalFor, near: near, sum: sum,
     companyInfo: companyInfo, fiscalStart: fiscalStart, homeCurrency: homeCurrency, symbol: symbol,
     DISPLAY_DEFAULT: DISPLAY_DEFAULT, readDisplay: readDisplay, writeDisplay: writeDisplay, money: money, pct: pct, isNeg: isNeg,
