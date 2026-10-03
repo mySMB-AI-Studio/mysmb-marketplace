@@ -1,0 +1,20 @@
+{
+  "inputs": [
+    { "name": "as_at", "label": "As at", "type": "date", "default": "today" },
+    { "name": "basis", "label": "Accounting method", "type": "enum", "options": ["Accrual", "Cash"], "default": "Accrual" },
+    { "name": "compare_as_at", "label": "Compare as at", "type": "date", "default": "2025-09-28" },
+    { "name": "fy_start", "label": "Financial year start", "type": "date", "default": "2026-07-01" },
+    { "name": "prev_fy_start", "label": "Last financial year start", "type": "date", "default": "2025-07-01" },
+    { "name": "company_file", "label": "Company file", "type": "string", "maxLength": 64, "default": "" },
+    { "name": "persona", "label": "View as", "type": "enum", "options": ["Client", "Bookkeeper", "Practitioner", "Executive"], "default": "Bookkeeper" },
+    { "name": "display", "label": "Display settings", "type": "string", "maxLength": 300, "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"today\",\"c\":\"none\",\"v\":\"bs\"}" }
+  ],
+  "bindings": [
+    { "id": "bs", "tool": { "mcp": "myob-accounting", "name": "get_balance_sheet" }, "params": { "date": { "kind": "input", "input": "as_at" }, "reporting_basis": { "kind": "input", "input": "basis" }, "myob_company_file_id": { "kind": "input", "input": "company_file" } } },
+    { "id": "bs_compare", "tool": { "mcp": "myob-accounting", "name": "get_balance_sheet" }, "params": { "date": { "kind": "input", "input": "compare_as_at" }, "reporting_basis": { "kind": "input", "input": "basis" }, "myob_company_file_id": { "kind": "input", "input": "company_file" } } },
+    { "id": "pnl_ytd", "tool": { "mcp": "myob-accounting", "name": "get_profit_and_loss_3m" }, "params": { "from_date": { "kind": "input", "input": "fy_start" }, "to_date": { "kind": "input", "input": "as_at" }, "reporting_basis": { "kind": "input", "input": "basis" }, "myob_company_file_id": { "kind": "input", "input": "company_file" } } },
+    { "id": "pnl_since_prev", "tool": { "mcp": "myob-accounting", "name": "get_profit_and_loss_3m" }, "params": { "from_date": { "kind": "input", "input": "prev_fy_start" }, "to_date": { "kind": "input", "input": "as_at" }, "reporting_basis": { "kind": "input", "input": "basis" }, "myob_company_file_id": { "kind": "input", "input": "company_file" } } },
+    { "id": "accounts", "tool": { "mcp": "myob-accounting", "name": "list_accounts" }, "params": { "myob_company_file_id": { "kind": "input", "input": "company_file" } } },
+    { "id": "company_files", "tool": { "mcp": "myob-accounting", "name": "list_company_files" }, "params": {  } }
+  ]
+}
