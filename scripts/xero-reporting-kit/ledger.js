@@ -195,6 +195,7 @@ function pnlReport(p) {
     const base = cols[0], part = (f) => { const o = {}; Object.keys(base).forEach((k) => { o[k] = r2(base[k] * f); }); return o; }, opts = SHARE.map(part), un = {};
     Object.keys(base).forEach((k) => { un[k] = r2(base[k] - opts.reduce((s, o) => s + o[k], 0)); });
     cols = opts.concat([un, base]); heads = cat.Options.map((o) => o.Name).concat(['Unassigned', 'Total']);
+    if (p.trackingOptionID !== undefined && p.trackingOptionID !== '') { const oi = cat.Options.findIndex((o) => o.TrackingOptionID === p.trackingOptionID); if (oi < 0) throw new Error('Xero API GET https://api.xero.com/api.xro/2.0/Reports/ProfitAndLoss 400: {"Message":"TrackingOptionID is invalid"}'); cols = [opts[oi]]; heads = [short(p.toDate)]; }
   }
   const sec = (title, total, types) => { const codes = ACCOUNTS.filter((a) => types.includes(a.Type) && cols.some((c) => c[a.Code] != null)).map((a) => a.Code); if (!codes.length) return null;
     const rows = codes.map((c) => rowOf(ACC[c].Name, cols.map((col) => col[c] || 0), ACC[c].AccountID)), tot = cols.map((col) => r2(codes.reduce((s, c) => s + (col[c] || 0), 0)));
@@ -204,6 +205,23 @@ function pnlReport(p) {
   const Rows = [{ RowType: 'Header', Cells: [cell('')].concat(heads.map((t) => cell(t))) }];
   [inc, cos].forEach((s) => s && Rows.push(s.row)); Rows.push(calc('Gross Profit', gp)); [oi, ex].forEach((s) => s && Rows.push(s.row)); Rows.push(calc('Net Profit', np));
   return { Reports: [{ ReportID: 'ProfitAndLoss', ReportName: 'Profit and Loss', ReportType: 'ProfitAndLoss', ReportTitles: ['Profit and Loss', B.O.Name, long(p.fromDate) + ' to ' + long(p.toDate)], ReportDate: short(TODAY), Rows }] };
+}
+// Budgets: one overall budget (and one tracking budget, which get_budget_summary never returns). The overall budget for a month is
+// the same month a year earlier × 1.05 (the month itself when there is no earlier year), per P&L account.
+function listBudgets(p) { return { Budgets: [{ BudgetID: 'bud-overall', Type: 'OVERALL', Description: 'Overall Budget', UpdatedDateUTC: '/Date(1782864000000+0000)/', Tracking: [] }, { BudgetID: 'bud-north', Type: 'TRACKING', Description: 'Region North', UpdatedDateUTC: '/Date(1782864000000+0000)/', Tracking: [{ TrackingCategoryID: TRACKING[0].TrackingCategoryID, Name: 'Region', Option: 'North' }] }] }; }
+function budgetMonth(B, ym) { const a = ym + '-01', b = eom(+ym.slice(0, 4), +ym.slice(5, 7)), pa = shiftMonths(a, -12, false), pb = shiftMonths(b, -12, true), base = pa >= '2024-07-01' ? plByAccount(B, pa, pb, false) : plByAccount(B, a, b, false), o = {}; Object.keys(base).forEach((k) => { o[k] = Math.round(base[k] * 1.05); }); return o; }
+// Budget Summary: `periods` columns of `timeframe` months (1 | 3 | 12), starting with the month of `date` (Xero's layout, headers like "Sep-26").
+function budgetSummary(p) {
+  const B = books(p.xero_tenant_id), k = +(p.timeframe || 1), n = Math.max(1, Math.min(12, +(p.periods || 1))), start = (p.date || TODAY).slice(0, 7) + '-01', cols = [], heads = [];
+  for (let i = 0; i < n; i++) { const a = shiftMonths(start, i * k, false), months = []; for (let j = 0; j < k; j++) months.push(shiftMonths(a, j, false).slice(0, 7)); const c = {}; months.forEach((ym) => { const m = budgetMonth(B, ym); Object.keys(m).forEach((x) => { c[x] = (c[x] || 0) + m[x]; }); }); cols.push(c); heads.push(MON[+a.slice(5, 7) - 1].slice(0, 3) + '-' + a.slice(2, 4)); }
+  const sec = (title, total, types) => { const codes = ACCOUNTS.filter((a) => types.includes(a.Type) && cols.some((c) => c[a.Code] != null)).map((a) => a.Code); if (!codes.length) return null;
+    const rows = codes.map((c) => rowOf(ACC[c].Name, cols.map((col) => col[c] || 0), ACC[c].AccountID)), tot = cols.map((col) => r2(codes.reduce((s, c) => s + (col[c] || 0), 0)));
+    return { row: { RowType: 'Section', Title: title, Rows: rows.concat([sumRow(total, tot)]) }, tot }; };
+  const inc = sec('Income', 'Total Income', ['REVENUE']), cos = sec('Less Cost of Sales', 'Total Cost of Sales', ['DIRECTCOSTS']), oi = sec('Other Income', 'Total Other Income', ['OTHERINCOME']), ex = sec('Less Operating Expenses', 'Total Operating Expenses', ['EXPENSE']);
+  const z = cols.map(() => 0), v = (x) => (x ? x.tot : z), gp = cols.map((_, i) => r2(v(inc)[i] - v(cos)[i])), np = cols.map((_, i) => r2(gp[i] + v(oi)[i] - v(ex)[i]));
+  const Rows = [{ RowType: 'Header', Cells: [cell('Account')].concat(heads.map((t) => cell(t))) }];
+  [inc, cos].forEach((x) => x && Rows.push(x.row)); Rows.push(calc('Gross Profit', gp)); [oi, ex].forEach((x) => x && Rows.push(x.row)); Rows.push(calc('Net Profit', np));
+  return { Reports: [{ ReportID: 'BudgetSummary', ReportName: 'Budget Summary', ReportType: 'BudgetSummary', ReportTitles: ['Overall Budget', 'Budget Summary', B.O.Name, heads[0] + ' to ' + heads[heads.length - 1]], ReportDate: short(TODAY), Rows }] };
 }
 function cashBalances(B, date) {
   const a = balances(B, date), fy = fyStart(date, B.O.FinancialYearEndMonth), openRE = (15000 + 10000 + 8400 - 1680 - 10000) * B.O.scale;
@@ -345,4 +363,4 @@ const expect = {
   balances: (date, t) => balances(books(t), date), netProfit: (a, b, cash, t) => netProfit(books(t), a, b, cash), bankBalance: (code, date, t) => bankBalance(books(t), code, date),
   flows: (code, a, b, t) => flows(books(t), code, a, b), gst: (a, b, t) => gstMovement(books(t), a, b), plByAccount: (a, b, cash, t) => plByAccount(books(t), a, b, cash), books,
 };
-module.exports = { TODAY, T1, T2, ORG, ACCOUNTS, ACC, TRACKING, listTrackingCategories, listJournals, getInvoice, listBankTransfers, pnl: pnlReport, bs: bsReport, bankSummary, trialBalance, listManualJournals, listPayRuns, listTimesheets, listEmployees, listAssets, listInvoices, listCreditNotes, listOverpayments, listPrepayments, listPayments, listBankTransactions, listPurchaseOrders, listLinked, listRepeating, listAccounts, listTaxRates, organisation, connections, expect, fyStart, addDays, shiftMonths, eom, r2 };
+module.exports = { TODAY, T1, T2, ORG, ACCOUNTS, ACC, TRACKING, listTrackingCategories, listJournals, listBudgets, budgetSummary, budgetMonth: (ym, t) => budgetMonth(books(t), ym), getInvoice, listBankTransfers, pnl: pnlReport, bs: bsReport, bankSummary, trialBalance, listManualJournals, listPayRuns, listTimesheets, listEmployees, listAssets, listInvoices, listCreditNotes, listOverpayments, listPrepayments, listPayments, listBankTransactions, listPurchaseOrders, listLinked, listRepeating, listAccounts, listTaxRates, organisation, connections, expect, fyStart, addDays, shiftMonths, eom, r2 };

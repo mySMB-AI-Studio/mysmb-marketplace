@@ -1,14 +1,638 @@
 ---
 name: xero-budget-vs-actual
-description: Build a live Xero Budget vs Actual comparison from list_budgets and get_budget_summary, composing Actual and Variance from get_profit_and_loss when the budget report itself doesn't return them. Use for "budget vs actual", "budget variance", "how are we tracking against budget", "budget report".
+description: Build a live, validated Xero Budget vs Actual on the tested report kit — the overall budget against the Profit and Loss by account and by month, with $ and % variance coloured favourable or unfavourable. Use for "budget vs actual", "budget variance", "how are we tracking against budget", "budget report".
 ---
-# Budget vs Actual
+# Budget vs Actual (BV)
 
-Call `list_budgets` (`dateFrom` / `dateTo` bracketing the requested period) to find which budget(s) exist and their own date coverage and status — for context and disclosure only. `get_budget_summary` (`date` = the period's last month, `periods`, `timeframe`: an INTEGER `1` (monthly), `3` (quarterly) or `12` (yearly) column split — **not** the `MONTH`/`QUARTER`/`YEAR` string enum used by `get_profit_and_loss` / `get_balance_sheet`; do not conflate the two) has **no budget-selector parameter** — it always returns Xero's one overall budget. If `list_budgets` shows more than one budget, say so plainly and note the report can only show the overall figures Xero returns for `get_budget_summary`, never a figure picked out for one named budget. The response shape has not been exercised live: if its Rows already carry Budget, Actual and Variance columns (detect by header label, the same way the Trial Balance skill detects Debit/Credit), read them directly; if the Rows carry budget figures only, compose Actual from a parallel `get_profit_and_loss` call over the same date range and compute Variance = Actual − Budget per account line client-side, and disclose in Sources & limitations which path was used.
+Use when the user asks for budget vs actual, a budget variance, how the business is tracking against budget, or a budget report. Load `xero-report-foundation` first and follow its *Build a kit report* steps. Template: `xero-reporting-studio` / `xero-budget-vs-actual` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `xero-accounting` connector (`get_budget_summary`, `get_profit_and_loss`, `list_budgets`, `get_organisation`, `list_connections`).
 
-Show budgeted, actual and variance ($ and %) per account line and section, grouped exactly as Xero returns the rows, with over/under highlighted as favourable or unfavourable per account type (a revenue shortfall and an expense overrun are both unfavourable).
+Xero location: Reporting → Budget Variance / Budget Summary. Library: Xero Reports Prompt Library v1.2 → Prompts → BV. Delivery: Added skill (not in the P01–P15 library).
 
-Validate every section total = Σ its account rows, Variance = Actual − Budget on every line, and — only when Actual was composed from `get_profit_and_loss` — that the composed Actual total ties to that report's own section total as an independent check. A line with no budget figure is N/A (a gap in the budget), never shown as 0.
-## Interactivity
+## Discovery call
 
-Declare `period_end` (date) mapped 1:1 to `get_budget_summary`'s `date`, `periods` (number) mapped 1:1, and `timeframe` (number, default `3`) mapped 1:1 to `get_budget_summary`'s integer `timeframe` — present it as a 1 / 3 / 12 picker, never a free-typed number. Declare `period_start` (date) and map it with `period_end` onto `list_budgets`' `dateFrom` / `dateTo` (context only). When Actual must be composed, add a `get_profit_and_loss` binding with `fromDate` / `toDate` mapped from the same two dates, `standardLayout` static `true`, `paymentsOnly` static `false`. Plus `organisation` per the foundation. Column split and highlight thresholds are client-side.
+Call `get_organisation` and `list_connections` once, and `list_budgets` once. If there is no budget, say so: the report then says to set one up under Business → Budget manager. If there are several, say that Xero's Budget Summary returns the overall budget only. An error is a failed call: report its message.
+
+## Date defaults
+
+`from_date` / `to_date` = the period (default: the financial year to the end of last month — display preset `p` = `fy_lm`; also `this_fy_td`, `last_month`, `this_month`, `last_quarter`, `this_quarter`, `this_fy`, `last_fy` or `custom`). Up to 12 months. `m_from` and `m_n` (the monthly columns) are derived by the kit — leave them. The view is display `v` (`accounts` | `months`).
+
+## Members
+
+| Member / view | How |
+|---|---|
+| By account | Budget, actual, variance and variance % per account and section, favourable green and unfavourable red |
+| By month | Net profit budget vs actual per month, with a chart |
+| Tracking-category budgets | N/A — the Budget Summary returns the overall budget only |
+
+## Validation checks (shown in the banner)
+
+- Budget: every section total = Σ its account rows (Xero's Budget Summary)
+- Budget columns cover every month of the period
+- Actual: every section total = Σ its account rows (Xero's Profit and Loss)
+- **Independent tie:** monthly actuals (a separate Profit and Loss, month by month) add up to the period's net profit — information when the period ends part-way through a month
+- A line with no budget shows N/A, never $0 (information)
+
+## Save as
+
+`fileName`: `xero-budget-vs-actual.html` · `tags`: ["xero","budget","variance","profit-and-loss"]
+
+## QA test script (golden set)
+
+1. On the golden-set organisation, ask for this report at the library's example period; confirm the discovery call succeeded and the report saved.
+2. Compare the headline figures: Not in the library, so no golden-set figures. On Irvine Jackson Pty Ltd in QA, the budget figures equal Xero → Budget Summary for the same months, and the actuals equal the Profit and Loss.
+3. Validation banner: every check passes (the independent tie included), or shows N/A / information with a stated reason.
+4. Change every control and confirm the report refetches and still validates; switch every tab / Report view; toggle Branding and the dark theme.
+5. Download PDF and Download Excel and confirm they match the screen (the Excel file has Validation and Parameters sheets).
+6. Download or Share from the report window: the snapshot keeps the period and figures and disables the refetching controls.
+7. Cross-client isolation (LIB-002): with several organisations on the connection, switch organisation — the report, its name and every export carry only that organisation's figures.
+
+## dataBindings
+
+```json
+{
+  "inputs": [
+    {
+      "name": "from_date",
+      "label": "From",
+      "type": "date",
+      "default": "2026-07-01"
+    },
+    {
+      "name": "to_date",
+      "label": "To",
+      "type": "date",
+      "default": "2026-08-31"
+    },
+    {
+      "name": "m_from",
+      "label": "Last month of the period (start)",
+      "type": "date",
+      "default": "2026-08-01"
+    },
+    {
+      "name": "m_n",
+      "label": "Earlier months",
+      "type": "number",
+      "min": 1,
+      "max": 11,
+      "default": 1
+    },
+    {
+      "name": "org",
+      "label": "Organisation",
+      "type": "string",
+      "maxLength": 64,
+      "default": ""
+    },
+    {
+      "name": "display",
+      "label": "Display settings",
+      "type": "string",
+      "maxLength": 300,
+      "default": "{\"cents\":0,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"fy_lm\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"accounts\"}"
+    }
+  ],
+  "bindings": [
+    {
+      "id": "budget_fwd",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "get_budget_summary"
+      },
+      "params": {
+        "date": {
+          "kind": "input",
+          "input": "from_date"
+        },
+        "periods": {
+          "kind": "static",
+          "value": 12
+        },
+        "timeframe": {
+          "kind": "static",
+          "value": 1
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "budget_back",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "get_budget_summary"
+      },
+      "params": {
+        "date": {
+          "kind": "input",
+          "input": "to_date"
+        },
+        "periods": {
+          "kind": "static",
+          "value": 12
+        },
+        "timeframe": {
+          "kind": "static",
+          "value": 1
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "actual",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "get_profit_and_loss"
+      },
+      "params": {
+        "fromDate": {
+          "kind": "input",
+          "input": "from_date"
+        },
+        "toDate": {
+          "kind": "input",
+          "input": "to_date"
+        },
+        "standardLayout": {
+          "kind": "static",
+          "value": true
+        },
+        "paymentsOnly": {
+          "kind": "static",
+          "value": false
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "actual_m",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "get_profit_and_loss"
+      },
+      "params": {
+        "fromDate": {
+          "kind": "input",
+          "input": "m_from"
+        },
+        "toDate": {
+          "kind": "input",
+          "input": "to_date"
+        },
+        "periods": {
+          "kind": "input",
+          "input": "m_n"
+        },
+        "timeframe": {
+          "kind": "static",
+          "value": "MONTH"
+        },
+        "standardLayout": {
+          "kind": "static",
+          "value": true
+        },
+        "paymentsOnly": {
+          "kind": "static",
+          "value": false
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "budgets",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "list_budgets"
+      },
+      "params": {
+        "dateFrom": {
+          "kind": "input",
+          "input": "from_date"
+        },
+        "dateTo": {
+          "kind": "input",
+          "input": "to_date"
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "org",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "get_organisation"
+      },
+      "params": {
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "connections",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "list_connections"
+      },
+      "params": {}
+    }
+  ]
+}
+```
+
+## Report document (copy path only — copy verbatim, change only the config's `defaults`)
+
+```html
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Budget vs Actual</title>
+<style>:root{--accent:#13B5EA;--btn:#0078C8;--btn-ink:#FFFFFF;--ink:#393A3D;--muted:#6B6C72;--line:#E3E5E8;--canvas:#F4F5F8;--card:#FFFFFF;--th:#6B6C72;--zebra:transparent;--neg:#D52B1E;--pos:#1B7F4B;--pass-bg:#EAF6E8;--fail-bg:#FDECEA;--band:#FFFFFF;--band-ink:#393A3D;--cover:#1B2A4A;--cover-ink:#FFFFFF;--c1:#13B5EA;--c2:#9E9E9E;--c3:#172B4D;--c4:#00B0A0;--c5:#E0457B;--c6:#6F2CBA;--d1:#13B5EA;--d2:#172B4D;--d3:#00B0A0;--d4:#E0457B;--d5:#6F2CBA;--d6:#9E9E9E}
+:root[data-myhub-theme='dark']{--accent:#3CC4F0;--btn:#1590D4;--btn-ink:#FFFFFF;--ink:#E6E8EB;--muted:#A3A7AE;--line:#33363C;--canvas:#16181B;--card:#1F2226;--th:#A3A7AE;--neg:#FF6B5E;--pos:#4CC38A;--pass-bg:#18301A;--fail-bg:#3A1B19;--band:#1F2226;--band-ink:#E6E8EB;--cover:#22324F;--cover-ink:#FFFFFF;--c1:#3CC4F0;--c2:#80858D;--c3:#9FB3D1;--c4:#2BC4B3;--c5:#F06A96;--c6:#A77BE8;--d1:#3CC4F0;--d2:#9FB3D1;--d3:#2BC4B3;--d4:#F06A96;--d5:#A77BE8;--d6:#80858D}
+:root.style-mysmb{--accent:#00B0A0;--btn:#007A6E;--zebra:#E6F7F5;--band:#007A6E;--band-ink:#FFFFFF;--cover:#007A6E;--th-bg:#007A6E;--th-ink:#FFFFFF;--c1:#007A6E;--c2:#00B0A0;--c3:#6F2CBA;--c4:#9E9E9E;--c5:#1B7F4B;--c6:#C8102E;--d1:#007A6E;--d2:#00B0A0;--d3:#6F2CBA;--d4:#9E9E9E;--d5:#1B7F4B;--d6:#C8102E;--pos:#1B7F4B;--neg:#C8102E}
+:root[data-myhub-theme='dark'].style-mysmb{--accent:#2BC4B3;--btn:#138A7D;--zebra:#15302D;--band:#0E5A52;--band-ink:#FFFFFF;--cover:#0E5A52;--th-bg:#0E5A52;--th-ink:#FFFFFF;--c1:#2BB3A3;--c2:#3CCFBF;--c3:#A77BE8;--c4:#80858D;--c5:#4CC38A;--c6:#FF6B5E;--d1:#2BB3A3;--d2:#3CCFBF;--d3:#A77BE8;--d4:#80858D;--d5:#4CC38A;--d6:#FF6B5E;--pos:#4CC38A;--neg:#FF6B5E}
+*{box-sizing:border-box}
+body{margin:0;padding:16px;background:var(--canvas);color:var(--ink);font:14px/1.45 "Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif;font-variant-numeric:tabular-nums}
+a{color:var(--accent)}
+#xk-controls{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:flex-end;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin-bottom:12px}
+.ctl{display:flex;flex-direction:column;font-size:12px;color:var(--muted);gap:4px}
+.ctl select,.ctl input[type=date],.xk-filter{font:inherit;font-size:13px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:4px;padding:6px 8px}
+.ctl select:disabled,.ctl input:disabled{opacity:.6}
+.seg{border:0;padding:0;margin:0;flex-direction:row;gap:0}
+.seg legend{font-size:12px;color:var(--muted);padding:0 0 4px}
+.seg label{border:1px solid var(--line);padding:6px 12px;color:var(--ink);cursor:pointer;font-size:13px}
+.seg label:first-of-type{border-radius:4px 0 0 4px}.seg label:last-of-type{border-radius:0 4px 4px 0;border-left:0}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label:has(input:checked){background:var(--card);box-shadow:inset 0 0 0 2px var(--accent);font-weight:600}
+.customise summary{cursor:pointer;color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 10px;font-size:13px}
+.cz{display:grid;grid-template-columns:repeat(2,minmax(160px,1fr));gap:6px 16px;padding:8px 0;font-size:13px;color:var(--ink)}
+.btns{flex-direction:row;gap:8px;margin-left:auto}
+.btns button,.btns a{font:inherit;font-size:13px;font-weight:600;border-radius:4px;padding:7px 14px;cursor:pointer;text-decoration:none;border:1px solid var(--btn);background:var(--card);color:var(--btn)}
+.btns button#xk-xlsx{background:var(--btn);color:var(--btn-ink)}
+#xk-status{font-size:12px;color:var(--muted);min-height:16px;margin:0 0 6px}
+.xk-banner{border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;border:1px solid var(--line)}
+.xk-banner.pass{background:var(--pass-bg)}.xk-banner.na{border-color:var(--muted)}.xk-banner.fail{background:var(--fail-bg);border-color:var(--neg)}
+.xk-banner ul{margin:6px 0 0;padding-left:18px}.xk-banner li.bad{color:var(--neg);font-weight:600}.xk-banner li.na{color:var(--muted)}
+.xk-card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:20px 24px;margin-bottom:12px}
+#xk-head{text-align:center;padding:8px 0 16px;background:var(--band);color:var(--band-ink);border-radius:6px}
+:root.style-mysmb #xk-head{text-align:left;padding:14px 18px;margin-bottom:12px}
+#xk-head .ti{font-size:18px;font-weight:700}#xk-head .co{font-size:14px}#xk-head .pe{font-size:14px;font-weight:600}
+table{border-collapse:collapse;width:100%}
+th{font-size:11px;font-variant:small-caps;letter-spacing:.04em;text-transform:lowercase;color:var(--th);font-weight:600;text-align:left;padding:8px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--card)}
+.xk-grid th{cursor:pointer;user-select:none}
+td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+tbody tr:nth-child(even) td{background:var(--zebra)}
+.num{text-align:right;white-space:nowrap}
+.k-header td{font-weight:600;border-bottom:0}.k-total td{font-weight:700;border-top:1px solid var(--ink)}
+.neg{color:var(--neg)}
+.muted{color:var(--muted)}.xk-err{color:var(--neg)}
+.xk-scroll{overflow-x:auto}
+.xk-filter{margin:0 0 8px;min-width:220px}
+:root.dens-compact td{padding:3px 8px}:root.dens-compact body{font-size:12.5px}
+.xk-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:0 0 16px}
+.xk-kpi{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.xk-kpi .lbl{font-size:11px;font-variant:small-caps;text-transform:lowercase;letter-spacing:.04em;color:var(--muted);font-weight:600}
+.xk-kpi .val{font-size:22px;font-weight:700;margin-top:2px}.xk-kpi .sub{font-size:12px;color:var(--muted)}
+.chip{display:inline-block;font-size:11px;font-weight:700;border-radius:10px;padding:1px 8px;margin-top:4px}
+.chip.up{background:var(--pass-bg);color:var(--pos)}.chip.down{background:var(--fail-bg);color:var(--neg)}
+.xk-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.xk-card h2,.xk-card h3{font-size:15px;margin:0 0 10px}
+svg{width:100%;height:auto;max-height:300px;display:block;margin:0 auto}svg .axis{stroke:var(--line);stroke-width:1}svg .tick{fill:var(--muted);font-size:11px}
+svg .donut-c{fill:var(--ink);font-size:15px;font-weight:700}
+.xk-legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);margin-top:6px}
+.xk-legend i,.xk-donut li i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.xk-donut{display:flex;gap:16px;align-items:center}.xk-donut svg{max-width:180px}.xk-donut ul{list-style:none;padding:0;margin:0;font-size:13px}.xk-donut li{margin:3px 0}
+#xk-foot{color:var(--muted);font-size:12px;text-align:center;padding:12px 0 4px}
+#xk-sources{font-size:12.5px;color:var(--muted)}#xk-sources h2{font-size:13px;color:var(--ink)}
+.persona-summary .detail-block{display:none}
+.persona-summary .keep-detail tr.detail-block{display:table-row}
+.skel{height:14px;border-radius:4px;background:var(--line);margin:8px 0;opacity:.6}
+.page{break-after:page}
+@media (max-width:720px){.btns{margin-left:0}.cz{grid-template-columns:1fr}}
+.xk-av{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:10px;font-weight:700;margin-right:6px;vertical-align:middle}
+.xk-tabs{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 12px;border-bottom:1px solid var(--line)}
+.xk-tab{background:none;border:0;border-bottom:3px solid transparent;padding:8px 12px;font:inherit;color:var(--muted);cursor:pointer}
+.xk-tab.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+.xk-link{background:none;border:0;padding:6px 0;color:var(--btn);cursor:pointer;font:inherit;text-decoration:underline}
+.xk-grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.xk-widget .cur{font-size:22px;font-weight:700}.xk-widget .pri{color:var(--muted);font-size:12px}.xk-widget .insight{font-size:12px;color:var(--muted);margin-top:8px;border-top:1px dashed var(--line);padding-top:6px}
+.xk-chip{display:inline-block;border:1px solid var(--line);border-radius:14px;padding:3px 10px;margin:2px;font-size:12px;background:var(--card);cursor:pointer}
+.xk-chip.on{border-color:var(--accent);color:var(--ink);font-weight:600}
+.xk-ok{color:var(--pos)}.xk-bad{color:var(--neg)}
+.print-only{display:none}
+@media print{.print-only{display:inline!important}body{background:var(--card);padding:0}#xk-controls,#xk-status,.no-print,.xk-filter{display:none!important}.xk-card{border:0;padding:0 0 12px}th{position:static}@page{size:A4 landscape;margin:12mm}}
+/* QuickBooks branding accents (the accent follows the house-style toggle and the optional brand colour) */
+#xk-controls{border-top:3px solid var(--accent)}
+main.xk-card{border-top:4px solid var(--accent)}
+.xk-kpi{border-left:4px solid var(--accent)}
+.xk-stmt thead th,.xk-grid thead th{border-bottom:2px solid var(--accent)}
+.xk-stmt tr.k-row td:first-child{color:var(--btn)}:root.style-mysmb .xk-stmt tr.k-row td:first-child{color:inherit}
+.xk-src{font-size:12px;color:var(--muted);margin-top:4px}.xk-src i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:6px;vertical-align:middle}
+:root.style-mysmb #xk-head .xk-src{color:var(--band-ink);opacity:.85}:root.style-mysmb #xk-head .xk-src i{background:var(--band-ink)}
+/* keep the right-hand amounts clear of the workspace's floating chat button */
+@media (min-width:900px){body{padding-right:64px}}
+@media print{body{padding-right:0}}
+.xk-badge{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.06em;border-radius:10px;padding:1px 8px;margin-right:6px;vertical-align:middle;background:var(--accent);color:#FFFFFF}.xk-src .xk-badge+*{vertical-align:middle}
+:root.style-mysmb .xk-stmt thead th,:root.style-mysmb .xk-grid thead th{background:var(--th-bg);color:var(--th-ink);border-bottom:0}
+:root.style-mysmb #xk-head .ti{font-size:18px;font-weight:700}:root.style-mysmb #xk-head .co{font-size:14px}:root.style-mysmb .xk-badge{background:var(--band-ink);color:var(--band)}:root.style-mysmb .xk-kpi{border-left-color:var(--band)}</style>
+</head>
+<body class="persona-detail">
+<div id="xk-controls" aria-label="Report controls"></div>
+<div id="xk-status" role="status" aria-live="polite">Loading Xero data…</div>
+<div id="xk-banner" class="xk-banner" role="region" aria-label="Validation"></div>
+<main class="xk-card">
+<header id="xk-head"></header>
+<div id="xk-body"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
+<footer id="xk-foot"></footer>
+</main>
+<section id="xk-sources" class="xk-card" aria-label="Sources and limitations"></section>
+<script>setTimeout(function () { if (!window.__reportStarted) { var s = document.getElementById("xk-status"); if (s) s.textContent = "This report failed to start. Press Refresh; if it keeps happening, ask for the report to be regenerated."; } }, 20000);</script>
+<script>"use strict";(()=>{function num(v){if(v==null||v==="")return null;var n=Number(String(v).replace(/,/g,""));return isFinite(n)?n:null}function near(a,b,tol){return a!=null&&b!=null&&Math.abs(a-b)<=(tol==null?.01:tol)}function sum(arr){var s=0;return arr.forEach(function(v){v!=null&&(s+=v)}),Math.round(s*100)/100}function errorOf(v){return v&&typeof v=="object"&&!Array.isArray(v)&&v.__error!=null?String(v.__error):null}function reportOf(v){return!v||errorOf(v)?null:Array.isArray(v.Reports)?v.Reports[0]||null:Array.isArray(v.Rows)?v:null}function attr(cell,id){var a=(cell&&cell.Attributes||[]).filter(function(x){return x&&(x.Id===id||id==="account"&&/^accountid$/i.test(x.Id||""))})[0];return a?a.Value:null}function isDeduction(title){
+return/^less\b/i.test(title||"")||/cost of sales|expense/i.test(title||"")}function walk(v){var rep=reportOf(v),out={lines:[],columns:[],titles:[],date:null,name:null,sections:[]};if(!rep)return out;out.titles=rep.ReportTitles||[],out.date=rep.ReportDate||null,out.name=rep.ReportName||null;var parent=null,
+vals=function(c){return c.slice(1).map(function(x){return num(x&&x.Value)})},lbl=function(c){return String((c[0]||{}).Value||"")};return(rep.Rows||[]).forEach(function(r){if(r){var c=r.Cells||[];if(r.RowType==="Header"){out.columns=c.slice(1).map(function(x){return x&&x.Value||""});return}if(r.RowType!==
+"Section"){c.length&&out.lines.push({kind:"total",depth:0,label:lbl(c),group:lbl(c),parent:null,calc:!0,fixed:!0,values:vals(c),path:[]});return}var title=String(r.Title||""),kids=r.Rows||[];if(title&&!kids.length){parent=title,out.lines.push({kind:"header",depth:0,label:title,group:title,parent:null,
+values:[],path:[]});return}var hasRow=kids.some(function(k){return k&&k.RowType==="Row"}),real=kids.some(function(k){return k&&k.RowType==="Row"&&attr((k.Cells||[])[0],"account")})||hasRow&&kids.some(function(k){return k&&k.RowType==="SummaryRow"});if(!title&&!real){kids.forEach(function(k){var kc=k.
+Cells||[],label=lbl(kc),closes=parent&&label.toLowerCase()===("total "+parent).toLowerCase()?parent:null;out.lines.push({kind:"total",depth:0,label,group:closes||label,parent:null,calc:!closes,closes,fixed:!0,values:vals(kc),path:[]}),closes&&(parent=null)});return}var d=parent?1:0,shown=title.replace(
+/^Less\s+/i,""),sec={title,label:shown,parent,rows:[],summary:null};title&&out.lines.push({kind:"header",depth:d,label:shown,group:title,parent,values:[],path:parent?[parent]:[]}),kids.forEach(function(k){var kc=k.Cells||[],label=lbl(kc),line;k.RowType==="SummaryRow"?(line={kind:"total",depth:d,label,
+group:title,parent,fixed:!0,values:vals(kc),path:[]},sec.summary=line):(line={kind:"row",depth:d+1,label,id:attr(kc[0],"account")||attr(kc[1],"account"),group:title,parent,values:vals(kc),path:(parent?[parent]:[]).concat([shown])},sec.rows.push(line)),out.lines.push(line)}),out.sections.push(sec)}}),
+out}function sectionTotal(sec,col){var i=col||0;return sec.summary?sec.summary.values[i]:sum(sec.rows.map(function(l){return l.values[i]}))}function find(lines,group,labelRe,kind){var kinds=kind?[kind]:["total","row"],i,j;for(j=0;j<kinds.length;j++){if(group){for(i=0;i<lines.length;i++)if(lines[i].group===group&&lines[i].kind===kinds[j])return lines[i]}if(labelRe){for(i=0;i<lines.length;i++)if(lines[i].kind===kinds[j]&&labelRe.test(lines[i].
+label))return lines[i]}}return null}function orgOf(v){var o=v&&!errorOf(v)&&Array.isArray(v.Organisations)?v.Organisations[0]:null;return o?{name:o.Name||o.LegalName||null,currency:o.BaseCurrency||null,country:o.CountryCode||null,fyEndMonth:Number(o.FinancialYearEndMonth)||null,fyEndDay:Number(o.FinancialYearEndDay)||null,shortCode:o.
+ShortCode||null,id:o.OrganisationID||null}:null}function connections(v){var t=!v||errorOf(v)?[]:Array.isArray(v.tenants)?v.tenants:Array.isArray(v)?v:[];return{active:v&&v.activeTenantId||null,list:t.map(function(x){return{id:String(x.tenantId||""),name:x.tenantName||"",type:x.tenantType||""}}).filter(
+function(x){return x.id})}}function companyOf(orgResp,connResp,chosenId,titles){var o=orgOf(orgResp),cn=connections(connResp),id=chosenId||cn.active||null,t=cn.list.filter(function(x){return x.id===id})[0],fromTitle=titles&&titles[1]?String(titles[1]):null;return{name:o&&o.name||t&&t.name||fromTitle,
+id,currency:o?o.currency:null,country:o?o.country:null,org:o,orgs:cn.list,active:cn.active,source:o?"get_organisation":t?"list_connections":fromTitle?"report title":null}}var MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];function fiscalStart(org,fyMonth){
+return fyMonth?{month:fyMonth,source:"report setting"}:org&&org.fyEndMonth>=1&&org.fyEndMonth<=12?{month:org.fyEndMonth%12+1,source:"Xero organisation settings \u2014 year ends "+(org.fyEndDay||eom(2026,org.fyEndMonth).getUTCDate())+" "+MONTHS[org.fyEndMonth-1]}:org&&/^nz/i.test(org.country||"")?{month:4,
+source:"assumed \u2014 NZ default; Xero did not return the organisation's financial year"}:{month:7,source:"assumed \u2014 AU default; Xero did not return the organisation's financial year"}}function homeCurrency(org){return org&&org.currency||(org&&/^nz/i.test(org.country||"")?"NZD":"AUD")}function titleDates(s){
+for(var out=[],re=/(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/g,m;m=re.exec(String(s||""));)out.push(iso(D(+m[3],MONTHS.indexOf(m[2])+1,+m[1])));return out}var SYM={AUD:"$",NZD:"$",USD:"US$",CAD:"C$",GBP:"\xA3",EUR:"\u20AC",PHP:"\u20B1",
+SGD:"S$",HKD:"HK$",JPY:"\xA5",INR:"\u20B9"};function symbol(code){return SYM[code]||(code?code+" ":"")}var DISPLAY_DEFAULT={cents:1,k:0,zeros:1,neg:"minus",red:0,hdr:1,ftr:1,style:"xero",dens:"100",p:"custom",a:"custom",c:"none",v:"",x:"",b:"",o:"",pv:"",fy:""},HEX=/^#[0-9a-f]{6}$/i;function shade(hex,f){
+var n=parseInt(hex.slice(1),16),r=n>>16,g=n>>8&255,b=n&255,t=function(c){return Math.max(0,Math.min(255,Math.round(f<0?c*(1+f):c+(255-c)*f)))};return"#"+[t(r),t(g),t(b)].map(function(x){return x.toString(16).padStart(2,"0")}).join("")}function applyBrand(root,hex){var props=["--accent","--btn","--c1",
+"--d1","--pos"];if(!HEX.test(hex||""))return props.forEach(function(p){root.style.removeProperty(p)}),!1;var dark=root.getAttribute("data-myhub-theme")==="dark",a=dark?shade(hex,.25):hex;return root.style.setProperty("--accent",a),root.style.setProperty("--btn",dark?hex:shade(hex,-.2)),root.style.setProperty(
+"--c1",a),root.style.setProperty("--d1",a),root.style.setProperty("--pos",a),!0}function readDisplay(str){var d={},k,src={};try{src=JSON.parse(str||"{}")||{}}catch(e){src={}}for(k in DISPLAY_DEFAULT)d[k]=src[k]!=null?src[k]:DISPLAY_DEFAULT[k];return d}function writeDisplay(d){var o={},k;for(k in DISPLAY_DEFAULT)
+o[k]=d[k];return JSON.stringify(o)}function money(v,cur,d){if(v==null||v==="")return"";d=d||DISPLAY_DEFAULT;var n=Number(v);if(!isFinite(n))return String(v);d.k&&(n=n/1e3);var dp=d.cents&&!d.k?2:d.k?1:0,abs=Math.abs(n).toLocaleString("en-AU",{minimumFractionDigits:dp,maximumFractionDigits:dp}),s=symbol(
+cur)+abs+(d.k?"k":"");return n<0&&Number(abs.replace(/,/g,""))!==0&&(s=d.neg==="paren"?"("+s+")":d.neg==="trail"?s+"-":"-"+s),s}function pct(v,dp){return v==null||!isFinite(v)?"":(v*100).toFixed(dp==null?1:dp)+"%"}function isNeg(v){return v!=null&&Number(v)<0}function iso(dt){return dt.getUTCFullYear()+
+"-"+String(dt.getUTCMonth()+1).padStart(2,"0")+"-"+String(dt.getUTCDate()).padStart(2,"0")}function D(y,m,d){return new Date(Date.UTC(y,m-1,d))}function parse(s){var p=String(s).split("-");return D(+p[0],+p[1],+p[2])}function addDays(dt,n){return new Date(dt.getTime()+n*864e5)}function eom(y,m){return D(
+y,m+1,0)}function today(){var t=new Date;return D(t.getFullYear(),t.getMonth()+1,t.getDate())}function fyStartOf(dt,fyMonth){var y=dt.getUTCFullYear();return dt.getUTCMonth()+1<fyMonth&&(y-=1),D(y,fyMonth,1)}var PRESETS=[["today","Today"],["this_week","This week"],["this_week_td","This week to date"],
+["this_month","This month"],["this_month_td","This month to date"],["this_quarter","This quarter"],["this_quarter_td","This quarter to date"],["this_fy","This financial year"],["this_fy_td","This financial year to date"],["last_week","Last week"],["last_month","Last month"],["last_quarter","Last qua\
+rter"],["last_fy","Last financial year"],["last_30","Last 30 days"],["since_60","Since 60 days ago"],["since_90","Since 90 days ago"],["since_365","Since 365 days ago"],["custom","Custom"]];function preset(key,fyMonth,now){var t=now?parse(now):today(),y=t.getUTCFullYear(),m=t.getUTCMonth()+1,dow=(t.
+getUTCDay()+6)%7,qs=Math.floor((m-1)/3)*3+1,fs=fyStartOf(t,fyMonth||7),r;switch(key){case"today":r=[t,t];break;case"this_week":r=[addDays(t,-dow),addDays(t,6-dow)];break;case"this_week_td":r=[addDays(t,-dow),t];break;case"this_month":r=[D(y,m,1),eom(y,m)];break;case"this_month_td":r=[D(y,m,1),t];break;case"\
+this_quarter":r=[D(y,qs,1),eom(y,qs+2)];break;case"this_quarter_td":r=[D(y,qs,1),t];break;case"this_fy":r=[fs,addDays(D(fs.getUTCFullYear()+1,fs.getUTCMonth()+1,1),-1)];break;case"this_fy_td":r=[fs,t];break;case"last_week":r=[addDays(t,-dow-7),addDays(t,-dow-1)];break;case"last_month":r=[D(y,m-1,1),
+eom(y,m-1)];break;case"last_quarter":r=[D(y,qs-3,1),eom(y,qs-1)];break;case"last_fy":r=[D(fs.getUTCFullYear()-1,fs.getUTCMonth()+1,1),addDays(fs,-1)];break;case"last_30":r=[addDays(t,-29),t];break;case"since_60":r=[addDays(t,-60),t];break;case"since_90":r=[addDays(t,-90),t];break;case"since_365":r=[
+addDays(t,-365),t];break;case"last_12m":r=[D(y,m-12,1),eom(y,m-1)];break;case"last_24m":r=[D(y,m-24,1),eom(y,m-1)];break;default:return null}return{start:iso(r[0]),end:iso(r[1])}}var ASAT=[["today","Today"],["end_this_month","End of this month"],["end_last_month","End of last month"],["end_last_quar\
+ter","End of last quarter"],["end_last_fy","End of last financial year"],["custom","Custom"]];function asAt(key,fyMonth,now){var t=now?parse(now):today(),y=t.getUTCFullYear(),m=t.getUTCMonth()+1,qs=Math.floor((m-1)/3)*3+1;switch(key){case"today":return iso(t);case"end_this_month":return iso(eom(y,m));case"\
+end_last_month":return iso(eom(y,m-1));case"end_last_quarter":return iso(eom(y,qs-1));case"end_last_fy":return iso(addDays(fyStartOf(t,fyMonth||7),-1));default:return null}}function compare(start,end,mode,fyMonth){var s=parse(start),e=parse(end),len;if(mode==="prev_year")return{start:iso(D(s.getUTCFullYear()-
+1,s.getUTCMonth()+1,Math.min(s.getUTCDate(),eom(s.getUTCFullYear()-1,s.getUTCMonth()+1).getUTCDate()))),end:iso(D(e.getUTCFullYear()-1,e.getUTCMonth()+1,Math.min(e.getUTCDate(),eom(e.getUTCFullYear()-1,e.getUTCMonth()+1).getUTCDate())))};if(mode==="ytd")return{start:iso(fyStartOf(e,fyMonth||7)),end};
+if(s.getUTCDate()===1&&iso(e)===iso(eom(e.getUTCFullYear(),e.getUTCMonth()+1))){var months=(e.getUTCFullYear()-s.getUTCFullYear())*12+(e.getUTCMonth()-s.getUTCMonth())+1;return{start:iso(D(s.getUTCFullYear(),s.getUTCMonth()+1-months,1)),end:iso(addDays(s,-1))}}return len=Math.round((e-s)/864e5),{start:iso(
+addDays(s,-len-1)),end:iso(addDays(s,-1))}}var MON=["January","February","March","April","May","June","July","August","September","October","November","December"];function longDate(x){return x.getUTCDate()+" "+MON[x.getUTCMonth()]+" "+x.getUTCFullYear()}function periodLine(start,end){var s=parse(start),e=parse(end),ey=e.getUTCFullYear();if(s.getUTCDate()===1&&iso(e)===iso(eom(ey,e.getUTCMonth()+1))){var months=(ey-s.getUTCFullYear())*12+(e.getUTCMonth()-s.getUTCMonth())+
+1;if(months===1)return"For the month ended "+longDate(e);if(months===12)return"For the year ended "+longDate(e);if(months>1)return"For the "+months+" months ended "+longDate(e)}return"For the period "+longDate(s)+" to "+longDate(e)}function rangeLabel(start,end){var s=parse(start),e=parse(end),m=function(x){
+return MON[x.getUTCMonth()].slice(0,3)},sy=s.getUTCFullYear(),ey=e.getUTCFullYear();return s.getUTCDate()===1&&iso(e)===iso(eom(ey,e.getUTCMonth()+1))?sy===ey&&s.getUTCMonth()===e.getUTCMonth()?m(e)+" "+ey:sy===ey?m(s)+"\u2013"+m(e)+" "+ey:m(s)+" "+sy+"\u2013"+m(e)+" "+ey:s.getUTCDate()+" "+m(s)+" "+
+sy+"\u2013"+e.getUTCDate()+" "+m(e)+" "+ey}function asOfLine(d){var x=parse(d);return"As at "+x.getUTCDate()+" "+MON[x.getUTCMonth()]+" "+x.getUTCFullYear()}function footerStamp(basis,fetchedAt,cur){var t=fetchedAt?new Date(fetchedAt):new Date,wd=t.toLocaleDateString("en-AU",{weekday:"long"}),dm=t.getDate()+
+" "+MON[t.getMonth()]+", "+t.getFullYear(),hm=t.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",hour12:!0}),off=-t.getTimezoneOffset(),sign=off>=0?"+":"-",a=Math.abs(off),tz="GMT"+sign+String(Math.floor(a/60)).padStart(2,"0")+":"+String(a%60).padStart(2,"0");return(basis==null?cur||"":(basis===
+"Cash"?"Cash basis":"Accrual basis")+(cur?" \xB7 "+cur:""))+" | "+wd+", "+dm+" "+hm+" "+tz}function plParts(w,col){var i=col||0,tot=function(re){var s=w.sections.filter(function(x){return re.test(x.title)});return s.length?sum(s.map(function(x){return sectionTotal(x,i)})):null},calcL=function(re){var l=find(w.lines,null,re,"total");return l?l.values[i]:null},inc=sum(w.sections.filter(function(x){
+return!isDeduction(x.title)}).map(function(x){return sectionTotal(x,i)})),exp=sum(w.sections.filter(function(x){return isDeduction(x.title)}).map(function(x){return sectionTotal(x,i)})),trading=tot(/^(trading )?income$|^revenue$|^sales$/i);return{income:inc,expenses:exp,trading:trading==null?inc:trading,
+cos:tot(/cost of sales/i)||0,otherIncome:tot(/^other income$/i)||0,opex:tot(/operating expenses|^(less )?expenses$/i)||0,otherExpenses:tot(/other expenses/i)||0,gp:calcL(/^gross profit$/i),np:calcL(/^net (profit|loss)$/i)}}var MS3=["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];function monthKey(label){var m=/([A-Za-z]{3})[a-z]*\.?[\s-]+(\d{2,4})\b/.exec(String(label||""));if(!m)return null;var mi=MS3.indexOf(m[1].toLowerCase());if(mi<0)return null;var y=+m[2];return y<100&&(y+=2e3),y+"-"+String(
+mi+1).padStart(2,"0")}function monthLabel(key){var p=String(key).split("-");return MON[+p[1]-1].slice(0,3)+" "+p[0]}function monthCols(w){var keys=w.columns.map(monthKey);if(!keys.length||keys.some(function(k){return!k}))return null;var idx={};return keys.forEach(function(k,i){idx[k]=i}),{keys:keys.slice().sort(),idx}}var CRC=(function(){var t=[],c,n,k;for(n=0;n<256;n++){for(c=n,k=0;k<8;k++)c=c&1?3988292384^c>>>1:c>>>1;t[n]=c>>>0}return t})();function crc32(b){for(var c=4294967295,i=0;i<b.length;i++)c=CRC[(c^b[i])&255]^c>>>8;return(c^4294967295)>>>0}function utf8(s){return new TextEncoder().encode(s)}function zip(files){
+var parts=[],central=[],off=0;function u16(v){return[v&255,v>>>8&255]}function u32(v){return[v&255,v>>>8&255,v>>>16&255,v>>>24&255]}files.forEach(function(f){var name=utf8(f.name),data=utf8(f.data),crc=crc32(data),head=[].concat([80,75,3,4],u16(20),u16(2048),u16(0),u16(0),u16(33),u32(crc),u32(data.length),
+u32(data.length),u16(name.length),u16(0));parts.push(new Uint8Array(head),name,data),central.push(new Uint8Array([].concat([80,75,1,2],u16(20),u16(20),u16(2048),u16(0),u16(0),u16(33),u32(crc),u32(data.length),u32(data.length),u16(name.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(off))),name),off+=
+head.length+name.length+data.length});var csize=0;central.forEach(function(p){csize+=p.length});var end=new Uint8Array([].concat([80,75,5,6],u16(0),u16(0),u16(files.length),u16(files.length),u32(csize),u32(off),u16(0))),all=parts.concat(central,[end]),total=0;all.forEach(function(p){total+=p.length});
+var out=new Uint8Array(total),pos=0;return all.forEach(function(p){out.set(p,pos),pos+=p.length}),out}function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}function colName(i){var s="";for(i++;i>0;){var m=(i-1)%26;s=String.fromCharCode(
+65+m)+s,i=Math.floor((i-1)/26)}return s}function xlsx(sheets,cur){var sym=esc(symbol(cur||"AUD").trim()).replace(/"/g,""),moneyFmt="#,##0.00;(#,##0.00)",STY={none:0,bold:1,money:2,moneyBold:3,title:4,pct:5,muted:6},styles='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="htt\
+p://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="'+moneyFmt+'"/></numFmts><fonts count="4"><font><sz val="10"/><name val="Arial"/></font><font><b/><sz val="10"/><name val="Arial"/></font><font><b/><sz val="12"/><name val="Arial"/></font><f\
+ont><sz val="9"/><color rgb="FF6B6C72"/><name val="Arial"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count\
+="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="7"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNu\
+mberFormat="1"/><xf numFmtId="164" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="10" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId\
+="3" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>',files=[],wbSheets="",wbRels="",ct="",used={};sheets.forEach(function(sh,si){for(var n=si+1,rowsXml="",nm=String(sh.name||"Sheet"+n).replace(
+/[\\\/\?\*\[\]:]/g," ").slice(0,31)||"Sheet"+n;used[nm.toLowerCase()];)nm=nm.slice(0,28)+" "+n;used[nm.toLowerCase()]=1,(sh.rows||[]).forEach(function(row,ri){var cells="";(row||[]).forEach(function(c,ci){if(!(c==null||c==="")){var o=typeof c=="object"?c:{v:c},ref=colName(ci)+(ri+1),s=STY[o.s||(typeof o.
+v=="number"?"money":"none")]||0;o.f?cells+='<c r="'+ref+'" s="'+s+'"><f>'+esc(o.f)+"</f>"+(typeof o.v=="number"?"<v>"+o.v+"</v>":"")+"</c>":typeof o.v=="number"&&isFinite(o.v)?cells+='<c r="'+ref+'" s="'+s+'"><v>'+o.v+"</v></c>":cells+='<c r="'+ref+'" s="'+s+'" t="inlineStr"><is><t xml:space="preser\
+ve">'+esc(new Array((o.indent||0)+1).join("   ")+(o.v==null?"":o.v))+"</t></is></c>"}}),rowsXml+='<row r="'+(ri+1)+'">'+cells+"</row>"});var colsXml=sh.widths?"<cols>"+sh.widths.map(function(w,i){return'<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"/>'}).join("")+"</cols>":"";files.
+push({name:"xl/worksheets/sheet"+n+".xml",data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+colsXml+"<sheetData>"+rowsXml+"</sheetData></worksheet>"}),wbSheets+='<sheet name="'+esc(nm)+'" sheetId="'+n+'" r:id="\
+rId'+n+'"/>',wbRels+='<Relationship Id="rId'+n+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet'+n+'.xml"/>',ct+='<Override PartName="/xl/worksheets/sheet'+n+'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetm\
+l.worksheet+xml"/>'});var k=sheets.length+1;return wbRels+='<Relationship Id="rId'+k+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>',files.unshift({name:"[Content_Types].xml",data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Typ\
+es xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxml\
+formats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'+ct+"</Types>"},{name:"_rels/.rels",data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http\
+://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'},{name:"xl/workbook.xml",data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"\
+?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'+wbSheets+"</sheets></workbook>"},{name:"xl/_rels/workbook.xml.rels",data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Rela\
+tionships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+wbRels+"</Relationships>"},{name:"xl/styles.xml",data:styles}),zip(files)}function download(bytes,name,mime){var blob=new Blob([bytes],{type:mime||"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),a=document.createElement("a");a.href=URL.createObjectURL(blob),a.download=name,document.body.appendChild(a),a.click(),setTimeout(function(){URL.revokeObjectURL(
+a.href),a.remove()},1500)}function reportParams(v){var d=v.display||DISPLAY_DEFAULT,p={from_date:v.start||null,to_date:v.end||null,as_at:v.asAt||null,accounting_basis:v.basis||null,xero_tenant_id:v.org||null,cents:d.cents?"shown":"hidden",divide_by_1000:d.k?"yes":"no",zero_rows:d.zeros?"shown":"hidd\
+en",negatives:d.neg,negatives_in_red:d.red?"yes":"no",header:d.hdr?"shown":"hidden",footer:d.ftr?"shown":"hidden"};return Object.keys(p).forEach(function(k){p[k]==null&&delete p[k]}),p}function h(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,
+"&quot;")}function negCls(v,d){return d&&d.red&&isNeg(v)?" neg":""}function grid(el,spec,ctx){var st={key:null,dir:1,q:""};function draw(){var rows=spec.rows.filter(function(r){if(!st.q)return!0;var q=st.q.toLowerCase();return spec.columns.some(function(c){return String(r[c.key]==null?"":r[c.key]).toLowerCase().indexOf(q)>=0})});st.key&&(rows=rows.slice().sort(function(a,b){
+var x=a[st.key],y=b[st.key];return x==null?1:y==null?-1:(typeof x=="number"&&typeof y=="number"?x-y:String(x).localeCompare(String(y)))*st.dir}));function cell(c,r,tag){var v=r[c.key],txt=c.fmt?c.fmt(v,r):c.money?money(v,ctx.currency,ctx.display):v==null?"":v;return"<"+tag+' class="'+(c.num||c.money?
+"num":"")+(c.money?negCls(v,ctx.display):"")+'">'+(c.html?txt:h(txt))+"</"+tag+">"}var html=(spec.filter&&spec.rows.length>8?'<input class="xk-filter" type="search" placeholder="Filter\u2026" aria-label="Filter rows" value="'+h(st.q)+'">':"")+'<div class="xk-scroll"><table class="xk-grid"><thead><tr\
+>'+spec.columns.map(function(c){return'<th scope="col" data-k="'+h(c.key)+'" class="'+(c.num||c.money?"num":"")+'" aria-sort="'+(st.key===c.key?st.dir>0?"ascending":"descending":"none")+'">'+h(c.title)+(st.key===c.key?st.dir>0?" \u25B2":" \u25BC":"")+"</th>"}).join("")+"</tr></thead><tbody>"+(rows.length?
+rows.map(function(r){return"<tr>"+spec.columns.map(function(c){return cell(c,r,"td")}).join("")+"</tr>"}).join(""):'<tr><td colspan="'+spec.columns.length+'" class="muted">'+h(spec.empty||"Data appears once it's available.")+"</td></tr>")+"</tbody>"+((spec.foot||(spec.total?[spec.total]:[])).length?
+"<tfoot>"+(spec.foot||[spec.total]).map(function(f2){return'<tr class="k-total">'+spec.columns.map(function(c){return cell(c,f2,"td")}).join("")+"</tr>"}).join("")+"</tfoot>":"")+"</table></div>";el.innerHTML=html,el.querySelectorAll("th[data-k]").forEach(function(thEl){thEl.addEventListener("click",
+function(){var k=thEl.getAttribute("data-k");st.dir=st.key===k?-st.dir:1,st.key=k,draw()})});var f=el.querySelector(".xk-filter");f&&f.addEventListener("input",function(){st.q=f.value;var pos=f.selectionStart;draw();var g=el.querySelector(".xk-filter");g.focus(),g.setSelectionRange(pos,pos)})}draw()}
+function scale(vals){var mn=Math.min(0,Math.min.apply(null,vals)),mx=Math.max(0,Math.max.apply(null,vals));return mn===mx&&(mx=mn+1),{mn,mx}}function legend(series){return'<div class="xk-legend">'+series.map(function(s,i){return'<span><i style="background:'+(s.color||"var(--c"+(i+1)+")")+'"></i>'+h(
+s.name)+"</span>"}).join("")+"</div>"}function bars(el,o,ctx){var W=640,H=220,P=28,all=[],fmt=o.fmt||function(v){return money(v,ctx.currency,ctx.display)};if(o.stacked?o.labels.forEach(function(_,i){var pos=0,neg=0;o.series.forEach(function(s){var v=s.values[i]||0;v>=0?pos+=v:neg+=v}),all.push(pos,neg)}):
+o.series.forEach(function(s){all=all.concat(s.values.filter(function(v){return v!=null}))}),!all.length){el.innerHTML=`<p class="muted">Data appears once it's available.</p>`;return}var sc=scale(all),n=o.labels.length,gw=(W-P*2)/Math.max(n,1),bw=Math.max(2,gw*.7/(o.stacked?1:o.series.length)),stackP=[],
+stackN=[];function y(v){return P+(H-P*2)*(1-(v-sc.mn)/(sc.mx-sc.mn))}var svg='<svg viewBox="0 0 '+W+" "+H+'" role="img" aria-label="'+h(o.title||"Bar chart")+'"><line x1="'+P+'" x2="'+(W-P)+'" y1="'+y(0)+'" y2="'+y(0)+'" class="axis"/>';if(o.labels.forEach(function(lb,i){o.series.forEach(function(s,j){
+var v=s.values[i];if(v!=null){var base0=0;if(o.stacked){var k=v>=0?stackP:stackN;base0=k[i]||0,k[i]=base0+v}var x=P+gw*i+gw*.15+(o.stacked?0:bw*j),y0=y(base0),y1=y(base0+v),fill=s.colors&&s.colors[i]||s.color||"var(--c"+(j+1)+")";svg+='<rect x="'+x.toFixed(1)+'" y="'+Math.min(y0,y1).toFixed(1)+'" wi\
+dth="'+bw.toFixed(1)+'" height="'+Math.max(1,Math.abs(y1-y0)).toFixed(1)+'" fill="'+fill+'"'+(o.fadeFrom!=null&&i>o.fadeFrom?' fill-opacity="0.45" class="proj"':"")+"><title>"+h(s.name+" \xB7 "+lb+": "+fmt(v)+(s.tips&&s.tips[i]?`
+`+s.tips[i]:""))+"</title></rect>"}});var nearMark=o.mark&&i!==o.mark.at&&Math.abs(i-o.mark.at)<(o.every||1)/2;!nearMark&&(n<=16||o.every&&i%o.every===0||o.mark&&i===o.mark.at)&&(svg+='<text x="'+(P+gw*i+gw/2).toFixed(1)+'" y="'+(H-8)+'" class="tick" text-anchor="middle">'+h(lb)+"</text>")}),o.mark){
+var mx=(P+gw*o.mark.at+gw/2).toFixed(1);svg+='<line x1="'+mx+'" x2="'+mx+'" y1="'+(P-6)+'" y2="'+(H-P+4)+'" class="xk-mark" stroke="var(--ink)" stroke-dasharray="4 3" stroke-width="1"/><text x="'+mx+'" y="'+(P-10)+'" class="tick" text-anchor="middle" font-weight="600">'+h(o.mark.label||"")+"</text>"}
+el.innerHTML=svg+"</svg>"+legend(o.series)}function kpis(items,ctx){return'<div class="xk-kpis">'+items.map(function(k){var v=k.text!=null?h(k.text):k.money===!1?h(k.value==null?"N/A":k.value):k.value==null?"N/A \u2014 not in source":money(k.value,ctx.currency,ctx.display),chip=k.delta==null||!isFinite(k.delta)?"":'<span class="chip '+(k.delta>=
+0?"up":"down")+'">'+(k.delta>=0?"\u25B2 ":"\u25BC ")+pct(Math.abs(k.delta),0)+"</span>";return'<div class="xk-kpi"><div class="lbl">'+h(k.label)+'</div><div class="val'+(k.red?" neg":negCls(k.value,ctx.display))+'">'+v+"</div>"+chip+(k.sub?'<div class="sub">'+h(k.sub)+"</div>":"")+"</div>"}).join("")+
+"</div>"}var FRIENDLY={needs_connection:"Connect Xero (Settings \u2192 Connections) to see this data.",connection_unavailable:"Xero is temporarily unavailable \u2014 press Refresh to try again.",tool_not_found:"This Xero report is not available on the connected connector.",tool_error:"Xero returned \
+an error for this section.",invalid_inputs:"One of the report controls has an invalid value."},MECHANISM="xero-accounting connector \u2014 mySMB custom MCP on the Xero Accounting API (AGT-001)";function app(cfg){var MH=window.MyHubReport,live=!!(MH&&MH.mode!=="snapshot"),I=cfg.inputs||{},S={inputs:Object.
+assign({},cfg.defaults),data:{},errors:{},fetchedAt:null,first:!0,busy:0,pages:{},trunc:{}},$=function(id){return document.getElementById(id)};function disp(){return readDisplay(I.display?S.inputs[I.display]:"")}function setDisp(patch){if(I.display){var d=disp(),k;for(k in patch)d[k]=patch[k];S.inputs[I.
+display]=writeDisplay(d)}}function co(){return companyOf(S.data[cfg.org],S.data[cfg.conns],I.org?S.inputs[I.org]:"",(reportOf(S.data[cfg.primary])||{}).ReportTitles)}function fy(){var e=+disp().fy;return e>=1&&e<=12?{month:e%12+1,source:"set in this report \u2014 year ends "+MONTHS[e-1],set:!0}:fiscalStart(
+co().org,cfg.fyMonth)}function absorb(id,v){var e=errorOf(v);S.pages[id]=null,S.trunc[id]=!1,e?(delete S.data[id],S.errors[id]={code:"tool_error",message:e}):(S.data[id]=v,delete S.errors[id])}function srcOf(id){return(cfg.sources||{})[id]||null}function quiet(id){var sc=srcOf(id);return!!(sc&&sc.quiet&&
+sc.quiet(Object.assign({},S.inputs)))}function err(id){var e=S.errors[id],sc=srcOf(id);return e?e.code==="needs_connection"&&sc?sc.name+" is not connected \u2014 add the "+sc.name+" extension and connect it (Settings \u2192 Connections) to include this.":(FRIENDLY[e.code]||e.message||"Unavailable")+
+(e.code==="tool_error"&&e.message?" ("+e.message+")":""):null}function announce(){MH&&live&&MH.setInputs(Object.assign({},S.inputs))}function status(t){var el=$("xk-status");el&&(el.textContent=t||"")}var RATE=/\b429\b|rate.?limit|too many requests/i;function limited(){return Object.keys(S.errors).filter(
+function(id){var e=S.errors[id];return e&&RATE.test(String(e.message||""))})}function fetchOne(id,inputs){S.req=S.req||{};var tok=S.req[id]=(S.req[id]||0)+1,latest=function(){return S.req[id]===tok};return MH.getData(id,inputs).then(function(v){latest()&&absorb(id,v)},function(e){latest()&&(S.errors[id]=
+{code:e&&e.code||"tool_error",message:e&&e.message||String(e)})})}function retryLimited(round){var ids=limited();if(!MH||!live||!ids.length||round>3)return Promise.resolve(!1);S.busy++,status("Xero is busy \u2014 loading "+ids.length+" more section"+(ids.length>1?"s":"")+"\u2026");var inputs=Object.
+assign({},S.inputs),wait=function(ms){return new Promise(function(r){setTimeout(r,ms)})};return ids.reduce(function(p,id){return p.then(function(){return wait(round*(cfg.retryMs==null?700:cfg.retryMs))}).then(function(){return fetchOne(id,inputs)})},Promise.resolve()).then(function(){return S.busy--,
+status(""),S.fetchedAt=new Date().toISOString(),render(),retryLimited(round+1)})}function pageAll(){var P=cfg.paged||{},ids=Object.keys(P).filter(function(id){return S.data[id]&&!S.pages[id]});return!MH||!live||!ids.length?Promise.resolve(!1):(S.busy++,ids.reduce(function(p,id){return p.then(function(){
+return more(id)})},Promise.resolve()).then(function(){return S.busy--,status(""),render(),!0}))}function more(id){var P=cfg.paged[id],size=P.size||100,max=P.max||20,got=S.pages[id]=[S.data[id]],first=S.data[id],tries=0,wait=function(ms){return new Promise(function(r){setTimeout(r,ms)})};function step(){
+if(S.data[id]!==first)return Promise.resolve();var rows2=(got[got.length-1]||{})[P.key]||[];if(rows2.length<size)return Promise.resolve();if(got.length>=max)return S.trunc[id]=!0,Promise.resolve();var inp=Object.assign({},S.inputs);return inp[P.input]=got.length+1,status("Loading "+((cfg.tools||{})[id]||
+id)+" \u2014 page "+(got.length+1)+"\u2026"),MH.getData(id,inp).then(function(v){if(errorOf(v))throw new Error(errorOf(v));return S.data[id]===first&&(got.push(v),tries=0),step()},function(e){var msg=e&&e.message||String(e);if(RATE.test(msg)&&tries++<3)return wait(tries*(cfg.retryMs==null?700:cfg.retryMs)).
+then(step);S.data[id]===first&&(S.trunc[id]=!0,S.pageError=S.pageError||{},S.pageError[id]=msg)})}return step()}function fanAll(){var F=cfg.fan||{},ids=Object.keys(F);if(!MH||!live||!ids.length)return Promise.resolve(!1);S.fan=S.fan||{};var c=ctx(),jobs=[];if(ids.forEach(function(id){var list=F[id](
+Object.assign({},S.inputs),c)||[],sig=JSON.stringify([S.inputs[I.org]||"",list]);if(!(S.fan[id]&&S.fan[id].sig===sig)){var st=S.fan[id]={sig,items:list.map(function(x){return{key:x.key,value:null,error:null,done:!1}})};list.forEach(function(x,i){jobs.push({id,st,i,inputs:Object.assign({},S.inputs,x.
+inputs)})})}}),!jobs.length)return Promise.resolve(!1);var conc=cfg.fanConc||2,next=0,wait=function(ms){return new Promise(function(r){setTimeout(r,ms)})};S.busy++,status("Loading "+jobs.length+" more figures from Xero\u2026");function run(j,tries){return MH.getData(j.id,j.inputs).then(function(v){var e=errorOf(
+v);j.st.items[j.i].value=e?null:v,j.st.items[j.i].error=e,j.st.items[j.i].done=!0},function(e){var msg=e&&e.message||String(e);if(RATE.test(msg)&&tries<3)return wait((tries+1)*(cfg.retryMs==null?700:cfg.retryMs)).then(function(){return run(j,tries+1)});j.st.items[j.i].error=msg,j.st.items[j.i].done=
+!0})}function worker(){if(next>=jobs.length)return Promise.resolve();var j=jobs[next++];return run(j,0).then(worker)}for(var ws=[],k=0;k<conc;k++)ws.push(worker());return Promise.all(ws).then(function(){return S.busy--,status(""),render(),!0})}function fan(id){var st=(S.fan||{})[id];return!st||!live?
+null:st.items.every(function(x){return x.done})?st.items:null}function rows(id){var P=(cfg.paged||{})[id]||{},list=S.pages[id]||(S.data[id]?[S.data[id]]:[]),out=[];return list.forEach(function(v){(v&&v[P.key]||[]).forEach(function(r){out.push(r)})}),out}function truncated(id){var P=(cfg.paged||{})[id];
+return!P||!S.data[id]?!1:S.trunc[id]?!0:!live&&((S.data[id]||{})[P.key]||[]).length>=(P.size||100)}function requery(changed){if(!MH||!live)return render(),Promise.resolve();var ids=Object.keys(cfg.uses||{}).filter(function(id){return!changed||(cfg.uses[id]||[]).some(function(n){return changed.indexOf(
+n)>=0})});if(!ids.length)return render(),Promise.resolve();S.busy++,status("Loading\u2026");var inputs=Object.assign({},S.inputs);return Promise.all(ids.map(function(id){return fetchOne(id,inputs)})).then(function(){S.fetchedAt=new Date().toISOString(),S.busy--,status("");var roll=rollPresets();if(roll)
+return change(roll);var hl=heal();return hl||(render(),retryLimited(1).then(pageAll).then(fanAll))})}function change(patch,dispPatch){var changed=[],k;S.healed=!1;for(k in patch)k&&S.inputs[k]!==patch[k]&&(S.inputs[k]=patch[k],changed.push(k));if(dispPatch&&setDisp(dispPatch),cfg.derive){var dv=cfg.
+derive(Object.assign({},S.inputs),fy().month,disp())||{};for(k in dv)S.inputs[k]!==dv[k]&&(S.inputs[k]=dv[k],changed.push(k))}var d=disp();if(cfg.compare&&d.c!=="none"&&d.c!=="periods"){if(I.cmpStart&&I.start){var c=compare(S.inputs[I.start],S.inputs[I.end],d.c,fy().month);(S.inputs[I.cmpStart]!==c.
+start||S.inputs[I.cmpEnd]!==c.end)&&(S.inputs[I.cmpStart]=c.start,S.inputs[I.cmpEnd]=c.end,changed.push(I.cmpStart,I.cmpEnd))}if(I.cmpAsAt&&I.asAt){var ca=compareAsAt(S.inputs[I.asAt],d.c);S.inputs[I.cmpAsAt]!==ca&&(S.inputs[I.cmpAsAt]=ca,changed.push(I.cmpAsAt))}}return announce(),changed.length?requery(
+changed):(render(),fanAll())}function compareAsAt(asAtIso,mode){var x=parse(asAtIso);return iso(mode==="prev_year"?D(x.getUTCFullYear()-1,x.getUTCMonth()+1,Math.min(x.getUTCDate(),eom(x.getUTCFullYear()-1,x.getUTCMonth()+1).getUTCDate())):eom(x.getUTCFullYear(),x.getUTCMonth()))}function rollPresets(){
+if(!live)return null;var d=disp(),p={},f=fy().month;if(I.start&&d.p&&d.p!=="custom"){var r=preset(d.p,f);r&&(r.start!==S.inputs[I.start]||r.end!==S.inputs[I.end])&&(p[I.start]=r.start,p[I.end]=r.end)}if(I.asAt&&d.a&&d.a!=="custom"){var a=asAt(d.a,f);a&&a!==S.inputs[I.asAt]&&(p[I.asAt]=a)}if(cfg.roll){
+var cr=cfg.roll(Object.assign({},S.inputs),f,d)||{},k2;for(k2 in cr)cr[k2]!==S.inputs[k2]&&(p[k2]=cr[k2])}if(cfg.derive){var dv=cfg.derive(Object.assign({},S.inputs,p),f,d)||{},k3;for(k3 in dv)dv[k3]!==S.inputs[k3]&&(p[k3]=dv[k3])}return Object.keys(p).length?p:null}function adoptHeader(){var r=reportOf(
+S.data[cfg.primary]);if(!(live||!r)){var ds=titleDates((r.ReportTitles||[]).slice(2).join(" "));I.start&&ds.length>=2&&(S.inputs[I.start]=ds[0],I.end&&cfg.headerEnd!==!1&&(S.inputs[I.end]=ds[1])),I.asAt&&ds.length&&(S.inputs[I.asAt]=ds[ds.length-1])}}function stale(){var want=I.start?[S.inputs[I.start],
+S.inputs[I.end]]:I.asAt?[S.inputs[I.asAt]]:null;return want?(cfg.dated||[cfg.primary]).filter(function(id){var r=reportOf(S.data[id]);if(!r)return!1;var ds=titleDates((r.ReportTitles||[]).slice(2).join(" "));return ds.length?want.length===2?ds.length>=2?!(ds[0]===want[0]&&ds[ds.length-1]===want[1]):
+ds[0]!==want[1]:ds[ds.length-1]!==want[0]:!1}).map(function(id){var r=reportOf(S.data[id]);return{id,title:String((r.ReportTitles||[]).slice(2).join(" "))}}):[]}function dateKeys(){return Object.keys(S.inputs).filter(function(k){return k!==I.org&&k!==I.persona&&k!==I.display&&k!==I.basis})}function heal(){
+return!live||S.healed||!stale().length?null:(S.healed=!0,requery(dateKeys()))}function optv(id){var o=(cfg.options||[]).filter(function(x){return x.id===id})[0],m=new RegExp("(?:^|;)"+id+"=([^;]*)").exec(disp().o||"");return m?m[1]:o?o.def:null}function setOpt(id,v){var kv={};return String(disp().o||
+"").split(";").forEach(function(p){var i=p.indexOf("=");i>0&&(kv[p.slice(0,i)]=p.slice(i+1))}),kv[id]=v,Object.keys(kv).map(function(k){return k+"="+kv[k]}).join(";")}function opt(list,cur){return list.map(function(o){return'<option value="'+h(o[0])+'"'+(String(o[0])===String(cur)?" selected":"")+">"+
+h(o[1])+"</option>"}).join("")}function controls(){var el=$("xk-controls");if(el){var d=disp(),c0=co(),dis=live?"":" disabled",x="";I.org&&c0.orgs.length>1?x+='<label class="ctl">Organisation<select id="xk-client"'+dis+' title="The Xero organisations this connection can access \u2014 one organisation per\
+ report.">'+opt(c0.orgs.map(function(f){return[f.id,f.name||f.id]}),S.inputs[I.org]||c0.active||"")+"</select></label>":x+='<label class="ctl">Organisation<select id="xk-client" title="The Xero organisation this connection uses."><option>'+h(c0.name||"Connected Xero organisation")+"</option></select\
+></label>",I.start&&(x+='<label class="ctl">Report period<select id="xk-preset"'+dis+">"+opt(cfg.presets||PRESETS,d.p)+'</select></label><label class="ctl">From<input type="date" id="xk-from" value="'+h(S.inputs[I.start])+'"'+dis+'></label><label class="ctl">To<input type="date" id="xk-to" value="'+
+h(S.inputs[I.end])+'"'+dis+"></label>"),I.asAt&&(x+='<label class="ctl">As at<select id="xk-asat-preset"'+dis+">"+opt(cfg.asats||ASAT,d.a)+'</select></label><label class="ctl">Date<input type="date" id="xk-asat" value="'+h(S.inputs[I.asAt])+'"'+dis+"></label>"),I.basis&&(x+='<fieldset class="ctl seg\
+"'+dis+"><legend>Accounting method</legend>"+["Cash","Accrual"].map(function(b){return'<label><input type="radio" name="xk-basis" value="'+b+'"'+(S.inputs[I.basis]===b?" checked":"")+dis+">"+b+"</label>"}).join("")+"</fieldset>"),I.columnsBy&&cfg.columnsBy&&(x+='<label class="ctl">Display columns by\
+<select id="xk-cols"'+dis+">"+opt(cfg.columnsBy,S.inputs[I.columnsBy])+"</select></label>");var xfy=fiscalStart(c0.org,cfg.fyMonth),xend=(xfy.month+10)%12+1;x+='<label class="ctl">Year end<select id="xk-fy"'+dis+` title="The month the financial year ends \u2014 from the organisation's Xero settings unles\
+s you change it">`+opt([["","Xero ("+MONTHS[xend-1]+")"]].concat(MONTHS.map(function(m,i){return[String(i+1),m]})),d.fy||"")+"</select></label>",cfg.compare&&(x+='<label class="ctl">Compare to<select id="xk-cmp"'+dis+">"+opt(cfg.compareModes||(I.asAt?[["none","None"],["prev_period","Previous month e\
+nd"],["prev_year","Previous year"]]:[["none","None"],["prev_period","Previous period"],["prev_year","Previous year"],["ytd","Year-to-date"]]),d.c)+"</select></label>"),(cfg.enums||[]).forEach(function(e,i){var rq=Object.keys(cfg.uses||{}).some(function(id){return(cfg.uses[id]||[]).indexOf(e.input)>=
+0});x+='<label class="ctl">'+h(e.label)+'<select id="xk-enum-'+i+'"'+(rq?dis:"")+">"+opt(e.options,S.inputs[e.input])+"</select></label>"}),cfg.views&&(x+='<label class="ctl">Report<select id="xk-view">'+opt(cfg.views,d.v||cfg.views[0][0])+"</select></label>"),(cfg.options||[]).forEach(function(o){o.
+when&&!o.when(d)||(x+='<label class="ctl">'+h(o.label)+'<select id="xk-opt-'+h(o.id)+'"'+(o.title?' title="'+h(o.title)+'"':"")+">"+opt(o.options,optv(o.id))+"</select></label>")}),(I.persona||cfg.personaDisplay)&&(x+='<label class="ctl">View as<select id="xk-persona">'+opt([["Client","Client"],["Bo\
+okkeeper","Bookkeeper"],["Practitioner","Practitioner"],["Executive","Executive"]],I.persona?S.inputs[I.persona]:d.pv||"Bookkeeper")+"</select></label>"),x+='<details class="ctl customise"><summary>Customise</summary><div class="cz"><label><input type="checkbox" id="xk-cents"'+(d.cents?" checked":"")+
+'> Show cents</label><label><input type="checkbox" id="xk-k"'+(d.k?" checked":"")+'> Divide by 1000</label><label><input type="checkbox" id="xk-zeros"'+(d.zeros?"":" checked")+'> Except zero amounts</label><label>Negative numbers<select id="xk-neg">'+opt([["minus","-100"],["paren","(100)"],["trail",
+"100-"]],d.neg)+'</select></label><label><input type="checkbox" id="xk-red"'+(d.red?" checked":"")+'> Show in red</label><label><input type="checkbox" id="xk-hdr"'+(d.hdr?" checked":"")+'> Header</label><label><input type="checkbox" id="xk-ftr"'+(d.ftr?" checked":"")+'> Footer</label><label>View<sel\
+ect id="xk-dens">'+opt([["compact","Compact"],["100","100%"]],d.dens)+'</select></label><label>Branding<select id="xk-branding" title="Xero branding (default) or the mySMB Reporting template \u2014 display only, the data does not change">'+opt([["xero","Xero"],["mysmb","mySMB"]],d.style==="mysmb"?"m\
+ysmb":"xero")+'</select></label><label>Brand colour<input type="color" id="xk-brand" value="'+h(HEX.test(d.b)?d.b:"#13b5ea")+'"></label><label>&nbsp;<button type="button" id="xk-brand-reset"'+(HEX.test(d.b)?"":" disabled")+">Use Xero branding</button></label></div></details>",x+='<div class="ctl btn\
+s"><button type="button" id="xk-pdf">Download PDF</button><button type="button" id="xk-xlsx">Download Excel</button></div>',el.innerHTML=x,wire()}}function on(id,ev,fn){var e=$(id);e&&e.addEventListener(ev,fn)}function wire(){on("xk-client","change",function(){if(I.org){var p={};p[I.org]=this.value,
+change(p)}}),on("xk-preset","change",function(){var k=this.value,r=preset(k,fy().month),p={};r&&(p[I.start]=r.start,p[I.end]=r.end),change(p,{p:k})}),on("xk-from","change",function(){var p={};p[I.start]=this.value,change(p,{p:"custom"})}),on("xk-to","change",function(){var p={};p[I.end]=this.value,change(
+p,{p:"custom"})}),on("xk-asat-preset","change",function(){var k=this.value,a=asAt(k,fy().month),p={};a&&(p[I.asAt]=a),change(p,{a:k})}),on("xk-asat","change",function(){var p={};p[I.asAt]=this.value,change(p,{a:"custom"})}),document.querySelectorAll('input[name="xk-basis"]').forEach(function(r){r.addEventListener(
+"change",function(){var p={};p[I.basis]=this.value,change(p)})}),on("xk-cols","change",function(){var p={};p[I.columnsBy]=this.value,change(p)}),on("xk-cmp","change",function(){change({},{c:this.value})}),on("xk-fy","change",function(){setDisp({fy:this.value}),change(rollPresets()||{},{})}),(cfg.enums||
+[]).forEach(function(e,i){on("xk-enum-"+i,"change",function(){var p={};p[e.input]=this.value,change(p)})}),on("xk-view","change",function(){change({},{v:this.value})}),(cfg.options||[]).forEach(function(o){on("xk-opt-"+o.id,"change",function(){change({},{o:setOpt(o.id,this.value)})})}),on("xk-person\
+a","change",function(){if(!I.persona)return change({},{pv:this.value});var p={};p[I.persona]=this.value,change(p)}),[["xk-cents","cents"],["xk-k","k"],["xk-red","red"],["xk-hdr","hdr"],["xk-ftr","ftr"]].forEach(function(c){on(c[0],"change",function(){var p={};p[c[1]]=this.checked?1:0,change({},p)})}),
+on("xk-zeros","change",function(){change({},{zeros:this.checked?0:1})}),on("xk-neg","change",function(){change({},{neg:this.value})}),on("xk-dens","change",function(){change({},{dens:this.value})}),on("xk-branding","change",function(){change({},{style:this.value})}),on("xk-brand","change",function(){
+HEX.test(this.value)&&change({},{b:this.value.toLowerCase()})}),on("xk-brand-reset","click",function(){change({},{b:""})}),on("xk-pdf","click",function(){window.print()}),on("xk-xlsx","click",function(){exportXlsx()})}function ctx(){var d=disp(),c0=co(),f=fy();return{data:S.data,errors:S.errors,err,
+inputs:S.inputs,I,display:d,view:d.v||(cfg.views?cfg.views[0][0]:""),compareMode:cfg.compare?d.c:"none",persona:I.persona?S.inputs[I.persona]:cfg.personaDisplay&&d.pv||"Bookkeeper",company:c0.name,organisation:c0,fy:f,currency:homeCurrency(c0.org),live,fetchedAt:S.fetchedAt,source:srcOf,body:$("xk-b\
+ody"),change,disp,today:iso(today()),opt:optv,setOpt:function(id,v){return change({},{o:setOpt(id,v)})},rows,truncated,fan,pageError:function(id){return(S.pageError||{})[id]||null}}}var last={checks:[],na:[],notes:[]};function render(){var c=ctx(),d=c.display,root=document.documentElement;root.classList.
+toggle("style-mysmb",d.style==="mysmb"),root.classList.toggle("dens-compact",d.dens==="compact"),root.classList.toggle("brand-custom",applyBrand(root,d.style==="mysmb"?"":d.b)),document.body.classList.toggle("persona-summary",c.persona==="Client"||c.persona==="Executive"),document.body.classList.toggle(
+"persona-detail",!(c.persona==="Client"||c.persona==="Executive")),controls();var out={};try{out=cfg.render(c)||{}}catch(e){c.body&&(c.body.innerHTML='<p class="xk-err">This report could not render: '+h(e.message)+"</p>"),out={checks:[{name:"Report rendered",pass:!1,detail:e.message}]}}last={checks:out.
+checks||[],na:out.na||[],notes:out.notes||[]},window.__xkIntegrity&&!window.__xkIntegrity.ok&&last.checks.unshift({name:"Report code = the tested version",pass:!1,detail:"This copy was damaged when it was created \u2014 ask the agent to create the report again"}),stale().forEach(function(x){last.checks.
+unshift({name:"Xero report dates = the selected dates",pass:!1,detail:(cfg.tools||{})[x.id]+' returned "'+x.title+'" \u2014 press Refresh'})});var nc=Object.keys(S.errors).some(function(id){return S.errors[id]&&S.errors[id].code==="needs_connection"&&!srcOf(id)});if(nc&&c.body&&c.body.textContent.indexOf(
+FRIENDLY.needs_connection)<0){var dv=document.createElement("div");dv.className="xk-banner fail",dv.textContent=FRIENDLY.needs_connection,c.body.insertBefore(dv,c.body.firstChild)}Object.keys(S.errors).forEach(function(id){if(!(id===cfg.conns&&S.data[cfg.org])&&!quiet(id)){var msg=err(id);if(!last.checks.
+some(function(k){return k.pass===!1&&k.detail===msg})){var sc=srcOf(id);last.checks.unshift({name:"Data loaded: "+((cfg.tools||{})[id]||id),pass:sc&&sc.optional?null:!1,detail:msg})}}});var hd=$("xk-head");if(hd){hd.hidden=!d.hdr||!!cfg.noHead;var per=out.period||(I.start?periodLine(S.inputs[I.start],
+S.inputs[I.end]):I.asAt?asOfLine(S.inputs[I.asAt]):"");hd.innerHTML='<div class="ti">'+h(out.title||cfg.title)+'</div><div class="co">'+h(c.company||"N/A \u2014 not in source")+'</div><div class="pe">'+h(per)+'</div><div class="xk-src">'+(d.style==="mysmb"?'<span class="xk-badge">mySMB</span>mySMB R\
+eporting \xB7 data from Xero':'<span class="xk-badge">Xero</span>Prepared from Xero')+"</div>"}var ft=$("xk-foot");if(ft){ft.hidden=!d.ftr;var stamp=footerStamp(basisOf(),S.fetchedAt,c.currency);ft.textContent=d.style==="mysmb"?[c.company||"Xero organisation",out.title||cfg.title,stamp].join(" | "):
+stamp}banner(c),sources(c)}function banner(c){var el=$("xk-banner");if(el){var ch=last.checks,isInfo=function(k){return!!k.info},fails=ch.filter(function(k){return k.pass===!1}),done=ch.filter(function(k){return k.pass===!0}),nInfo=ch.filter(isInfo).length,nNA=ch.filter(function(k){return k.pass==null&&
+!isInfo(k)}).length,real=ch.length-nInfo,none=!fails.length&&!done.length&&ch.length>0,extra=(nNA?" \xB7 "+nNA+" N/A":"")+(nInfo?" \xB7 "+nInfo+" for information":"");el.className="xk-banner "+(fails.length?"fail":none?"na":"pass"),el.innerHTML="<strong>"+(fails.length?"\u26A0 Validation: "+fails.length+
+" check"+(fails.length>1?"s":"")+" failed"+(done.length?" \xB7 "+done.length+" passed":"")+extra:none?real?"\u2013 Validation: no check could run ("+nNA+" N/A"+(nInfo?" \xB7 "+nInfo+" for information":"")+")":"\u2139 Validation: "+nInfo+" line"+(nInfo>1?"s":"")+" for information":"\u2713 Validation: "+
+done.length+"/"+done.length+" check"+(done.length>1?"s":"")+" passed"+extra)+"</strong> \xB7 Data as of "+h(S.fetchedAt?new Date(S.fetchedAt).toLocaleString("en-AU"):"\u2014")+(live?"":" \xB7 Snapshot: figures frozen at capture time")+" \xB7 Financial year starts "+h(MONTHS[c.fy.month-1])+" ("+h(c.fy.
+source)+")<ul>"+ch.map(function(k){return'<li class="'+(k.pass===!1?"bad":k.pass===!0?"ok":isInfo(k)?"na info":"na")+'">'+(k.pass===!1?"\u2717 ":k.pass===!0?"\u2713 ":isInfo(k)?"\u2139 ":"\u2013 ")+h(k.name)+(k.detail?" \u2014 "+h(k.detail):"")+"</li>"}).join("")+"</ul>"}}function basisOf(){return I.
+basis?S.inputs[I.basis]:cfg.basisLabel||(cfg.noBasis?null:"Accrual")}function sources(c){var el=$("xk-sources");if(el){var t=cfg.tools||{},items=Object.keys(t).map(function(id){var sc=srcOf(id);return h(t[id])+(S.errors[id]&&!quiet(id)?' \u2014 <span class="'+(sc&&sc.optional?"muted":"xk-err")+'">'+
+h(err(id))+"</span>":"")}),na=last.na.slice();c.company||na.unshift("Organisation name (Xero returned no organisation details)"),el.innerHTML="<h2>Sources &amp; limitations</h2><ul><li>Mechanism: "+h(cfg.mechanism||MECHANISM)+"</li><li>Tool calls: "+items.join(" \xB7 ")+"</li><li>Basis: "+h(basisOf()||
+"n/a")+" \xB7 Currency: "+h(c.currency)+" (the organisation's base currency \u2014 Xero's reports have no other presentation currency) \xB7 Organisation: "+h(c.company||"N/A \u2014 not in source")+" (one Xero organisation per report)</li>"+(/^assumed/.test(c.fy.source)?"<li>Financial year: "+h(c.fy.
+source)+" (starts "+h(MONTHS[c.fy.month-1])+"). Adjust the dates if this organisation uses a different year.</li>":"")+last.notes.map(function(n){return"<li>"+h(n)+"</li>"}).join("")+(na.length?"<li>N/A \u2014 not in source: "+na.map(h).join("; ")+"</li>":"")+"<li>Decision support only \u2014 not audit, \
+tax or legal advice.</li></ul>"}}function exportXlsx(){var c=ctx(),sheets=[];try{sheets=cfg.excel&&cfg.excel(c)||[]}catch(e){sheets=[{name:"Error",rows:[["Excel export failed: "+e.message]]}]}var foot=[basisOf()?basisOf()+" basis":null,c.currency].filter(Boolean).join(" \xB7 ");sheets.forEach(function(sh){
+var r=sh.rows||[],a=r[0]&&r[0][0],b=r[1]&&r[1][0];!a||!b||a.s!=="title"||b.s!=="bold"||(r[0]=[{v:b.v,s:"title"}],r[1]=[{v:a.v,s:"bold"}],r[3]&&!r[3].length&&(r[3]=[{v:foot,s:"muted"}]))}),sheets.push({name:"Validation",rows:[[{v:"Check",s:"bold"},{v:"Result",s:"bold"},{v:"Detail",s:"bold"}]].concat(
+last.checks.map(function(k){return[k.name,k.pass===!0?"Pass":k.pass===!1?"FAIL":"N/A",k.detail||""]})),widths:[60,10,60]});var pr=reportParams({start:I.start&&S.inputs[I.start],end:I.end&&S.inputs[I.end],asAt:I.asAt&&S.inputs[I.asAt],basis:I.basis&&S.inputs[I.basis],org:I.org&&(S.inputs[I.org]||c.organisation.
+active||""),display:c.display});sheets.push({name:"Parameters",rows:[[{v:"Parameter",s:"bold"},{v:"Value",s:"bold"}]].concat(Object.keys(pr).map(function(k){return[k,String(pr[k])]})).concat([["basis",basisOf()||"n/a"],["currency",c.currency],[],["Data as of",S.fetchedAt||""],["Source",cfg.mechanism||
+MECHANISM]]),widths:[28,60]});var name=[c.company||"Xero",cfg.title,I.start?S.inputs[I.start]+" to "+S.inputs[I.end]:I.asAt?"as at "+S.inputs[I.asAt]:""].filter(Boolean).join(" - ").replace(/[\\\/:*?"<>|]+/g," ");download(xlsx(sheets,c.currency),name+".xlsx")}function boot(bundle){var bi=bundle.inputs,
+k0;if(bi&&typeof bi=="object")for(k0 in bi)Object.prototype.hasOwnProperty.call(S.inputs,k0)&&(S.inputs[k0]=bi[k0]);if(S.data={},S.errors=Object.assign({},bundle.errors||{}),S.fetchedAt=bundle.fetchedAt||null,Object.keys(bundle.data||{}).forEach(function(id){S.errors[id]||absorb(id,bundle.data[id])}),
+adoptHeader(),status(""),S.first){S.first=!1;var roll=rollPresets();if(roll){change(roll);return}if(announce(),heal())return}render(),retryLimited(1).then(pageAll).then(fanAll)}return MH?(MyHubReport.onData(function(bundle){window.__reportStarted=!0,boot(bundle)}),MH.onRefresh&&MH.onRefresh(function(){
+status("Refreshing\u2026")}),MH.onThemeChange&&MH.onThemeChange(function(){render()}),{state:S,change,render,exportXlsx,ctx,retryLimited}):(status("Open this report in mySMB to load Xero data."),{state:S})}window.XK={addDaysIso:function(s,k){return iso(addDays(parse(s),k))},app,asAt,bars,eom,fyStartOf:function(isoDate,m){
+return iso(fyStartOf(parse(isoDate),m))},grid,h,iso,kpis,money,monthCols,monthKey,monthLabel,near,pct,periodLine,plParts,rangeLabel,sectionTotal,sum,walk};})();</script>
+<script>XK.app({
+  title: 'Budget vs Actual', basisLabel: 'Accrual', primary: 'actual', dated: ['actual'], org: 'org', conns: 'connections', noBasis: true,
+  inputs: { start: 'from_date', end: 'to_date', org: 'org', display: 'display' },
+  defaults: { from_date: '2026-07-01', to_date: '2026-08-31', m_from: '2026-08-01', m_n: 1, org: '',
+    display: '{"cents":0,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"fy_lm","a":"custom","c":"none","v":"accounts"}' },
+  uses: { budget_fwd: ['from_date', 'org'], budget_back: ['to_date', 'org'], actual: ['from_date', 'to_date', 'org'], actual_m: ['m_from', 'to_date', 'm_n', 'org'], budgets: ['from_date', 'to_date', 'org'], org: ['org'], connections: [] },
+  // Xero's Budget Summary takes a date, a number of periods and a period size, but says nothing about whether the date is the
+  // first or the last period: ask both ways (12 months from the start, 12 months to the end) and use the columns that cover the period.
+  tools: { budget_fwd: 'get_budget_summary (12 months from the period start)', budget_back: 'get_budget_summary (12 months to the period end)', actual: 'get_profit_and_loss (the period)', actual_m: 'get_profit_and_loss (month by month, for the monthly view and the tie)', budgets: 'list_budgets (which budgets exist)', org: 'get_organisation', connections: 'list_connections' },
+  presets: [['fy_lm', 'Financial year to last month'], ['this_fy_td', 'This financial year to date'], ['last_month', 'Last month'], ['this_month', 'This month'], ['last_quarter', 'Last quarter'], ['this_quarter', 'This quarter'], ['this_fy', 'This financial year'], ['last_fy', 'Last financial year'], ['custom', 'Custom']],
+  views: [['accounts', 'By account'], ['months', 'By month']],
+  derive: function (inp, fyMonth, d) {
+    var o = {};
+    if (d && d.p === 'fy_lm') { // financial year to the end of last month (all of last year in the year's first month)
+      var t = XK.asAt('today'), fs = XK.fyStartOf(t, fyMonth || 7), lm = XK.iso(XK.eom(+t.slice(0, 4), +t.slice(5, 7) - 1));
+      if (lm < fs) { var pe = XK.addDaysIso(fs, -1); o.from_date = XK.fyStartOf(pe, fyMonth || 7); o.to_date = pe; } else { o.from_date = fs; o.to_date = lm; }
+    }
+    var f = o.from_date || inp.from_date, e = o.to_date || inp.to_date, n = (+e.slice(0, 4) - +f.slice(0, 4)) * 12 + (+e.slice(5, 7) - +f.slice(5, 7)) + 1;
+    o.m_from = e.slice(0, 8) + '01'; o.m_n = Math.max(1, Math.min(11, n - 1)); // at least 1: Xero's periods counts the earlier months shown
+    return o;
+  },
+  render: function (c) {
+    var body = c.body, money = function (v) { return XK.money(v, c.currency, c.display); }, r2 = function (v) { return Math.round(v * 100) / 100; }, from = c.inputs.from_date, to = c.inputs.to_date;
+    if (c.errors.actual) { body.innerHTML = '<p class="xk-err">' + XK.h(c.err('actual')) + '</p>'; return { checks: [{ name: 'Profit and Loss loaded', pass: false, detail: c.err('actual') }] }; }
+    if (!c.data.actual) return {};
+    // the months of the period
+    var months = [], k = from.slice(0, 7); while (k <= to.slice(0, 7) && months.length < 24) { months.push(k); var y = +k.slice(0, 4), m = +k.slice(5, 7) + 1; if (m > 12) { m = 1; y++; } k = y + '-' + String(m).padStart(2, '0'); }
+    // the budget: whichever Budget Summary has a column for every month of the period
+    var pick = ['budget_fwd', 'budget_back'].map(function (id) { var w = c.data[id] ? XK.walk(c.data[id]) : null, keys = w ? w.columns.map(XK.monthKey) : []; return { id: id, w: w, keys: keys, hit: months.filter(function (mm) { return keys.indexOf(mm) >= 0; }).length }; })
+      .sort(function (a, b) { return b.hit - a.hit; })[0], bw = pick.w, covered = pick.hit === months.length;
+    var cols = bw ? pick.keys.map(function (kk, i) { return months.indexOf(kk) >= 0 ? i : -1; }).filter(function (i) { return i >= 0; }) : [];
+    var bsum = function (l) { return XK.sum(cols.map(function (i) { return l.values[i]; })); };
+    var hasBudget = bw && bw.lines.some(function (l) { return l.kind === 'row' && cols.some(function (i) { return Math.abs(l.values[i] || 0) > 0.004; }); });
+    // actual by account (and section) from the period P&L
+    var aw = XK.walk(c.data.actual), act = {}, actSec = {}; aw.lines.filter(function (l) { return l.kind === 'row'; }).forEach(function (l) { act[l.id || l.label] = { v: l.values[0] || 0, label: l.label, group: l.group }; });
+    aw.sections.forEach(function (s) { actSec[s.title] = XK.sectionTotal(s, 0); });
+    var incomeRe = /^(?!less)(.*income|revenue|sales|trading)/i, fav = function (group, v) { return v == null || Math.abs(v) < 0.005 ? null : incomeRe.test(group) ? v > 0 : v < 0; };
+    // rows: every account in the budget, then actual-only accounts; grouped as Xero returns them
+    var rows = [], seen = {}, groups = [];
+    (bw ? bw.sections : aw.sections).forEach(function (s) { groups.push(s.title); });
+    aw.sections.forEach(function (s) { if (groups.indexOf(s.title) < 0) groups.push(s.title); });
+    groups.forEach(function (g) {
+      var bs = bw ? bw.sections.filter(function (s) { return s.title === g; })[0] : null, as = aw.sections.filter(function (s) { return s.title === g; })[0];
+      var list = [];
+      (bs ? bs.rows : []).forEach(function (l) { var key = l.id || l.label, a = act[key]; seen[key] = 1; list.push({ group: g, label: l.label, budget: hasBudget ? bsum(l) : null, actual: a ? a.v : 0 }); });
+      (as ? as.rows : []).forEach(function (l) { var key = l.id || l.label; if (seen[key]) return; seen[key] = 1; list.push({ group: g, label: l.label, budget: null, actual: l.values[0] || 0 }); });
+      if (!list.length) return;
+      list.forEach(function (r) { r.variance = r.budget == null ? null : r2(r.actual - r.budget); r.pct = r.budget ? r.variance / Math.abs(r.budget) : null; r.fav = fav(g, r.variance); });
+      var bt = bs ? (hasBudget ? bsum(bs.summary || { values: [] }) : null) : null, at = as ? actSec[g] : XK.sum(list.map(function (r) { return r.actual; }));
+      rows.push({ kind: 'header', label: g.replace(/^Less\s+/i, '') });
+      rows = rows.concat(list.map(function (r) { return Object.assign({ kind: 'row' }, r); }));
+      var tv = bt == null ? null : r2(at - bt);
+      rows.push({ kind: 'total', group: g, label: 'Total ' + g.replace(/^Less\s+/i, ''), budget: bt, actual: at, variance: tv, pct: bt ? tv / Math.abs(bt) : null, fav: fav(g, tv), bs: bs, list: list });
+    });
+    var calcOf = function (w, re, col) { var l = w ? w.lines.filter(function (x) { return x.kind === 'total' && re.test(x.label); })[0] : null; return l ? (col == null ? l : l.values[col]) : null; };
+    var npB = hasBudget && bw ? (function () { var l = calcOf(bw, /^net profit$/i); return l ? bsum(l) : null; })() : null, plp = XK.plParts(aw), npA = plp.np;
+    var npV = npB == null ? null : r2(npA - npB);
+    rows.push({ kind: 'total', label: 'Net Profit', budget: npB, actual: npA, variance: npV, pct: npB ? npV / Math.abs(npB) : null, fav: fav('income', npV), net: true });
+    // by month: budget vs actual net profit and income
+    var mw = c.data.actual_m ? XK.walk(c.data.actual_m) : null, mc = mw ? XK.monthCols(mw) : null, byM = months.map(function (mm) {
+      var bi = pick.keys.indexOf(mm), b = hasBudget && bi >= 0 && bw ? calcOf(bw, /^net profit$/i, bi) : null, ai = mc ? mc.idx[mm] : null, a = ai != null ? calcOf(mw, /^net profit$/i, ai) : null;
+      return { month: XK.monthLabel(mm), budget: b, actual: a, variance: b == null || a == null ? null : r2(a - b) }; });
+    var view = c.view || 'accounts', cls = function (r) { return r.fav === true ? 'pos' : r.fav === false ? 'neg' : ''; };
+    var cell = function (v) { return v == null ? '<td class="num muted">N/A</td>' : '<td class="num">' + money(v) + '</td>'; };
+    var table = '<div class="xk-scroll"><table class="xk-grid"><thead><tr><th>Account</th><th class="num">Budget</th><th class="num">Actual</th><th class="num">Variance</th><th class="num">Variance %</th></tr></thead><tbody>' +
+      rows.map(function (r) { if (r.kind === 'header') return '<tr class="k-head"><td colspan="5"><strong>' + XK.h(r.label) + '</strong></td></tr>';
+        return '<tr class="' + (r.kind === 'total' ? 'k-total' : '') + '"><td' + (r.kind === 'row' ? ' style="padding-left:18px"' : '') + '>' + XK.h(r.label) + '</td>' + cell(r.budget) + cell(r.actual) + '<td class="num ' + cls(r) + '">' + (r.variance == null ? 'N/A' : money(r.variance)) + '</td><td class="num ' + cls(r) + '">' + (r.pct == null ? '' : XK.pct(r.pct, 1)) + '</td></tr>'; }).join('') + '</tbody></table></div>';
+    var budgetsList = ((c.data.budgets || {}).Budgets || []), several = budgetsList.length > 1;
+    body.innerHTML = XK.kpis([{ label: 'Net profit — budget', value: npB, text: npB == null ? 'N/A — no budget' : null }, { label: 'Net profit — actual', value: npA }, { label: 'Variance', value: npV, text: npV == null ? 'N/A' : null, red: npV != null && npV < 0 }, { label: 'Months', value: months.length, money: false }], c) +
+      (!hasBudget ? '<p class="xk-err">' + (bw ? 'There is no budget in Xero for ' + XK.rangeLabel(from, to) + ' — set one up under Business → Budget manager.' : XK.h(c.err('budget_fwd') || c.err('budget_back') || 'Budget Summary unavailable')) + '</p>' : '') +
+      (several ? '<p class="muted">Xero has ' + budgetsList.length + ' budgets (' + XK.h(budgetsList.map(function (b) { return b.Description || b.Type; }).join(', ')) + '). The Budget Summary always returns the overall budget, so that is the one shown.</p>' : '') +
+      '<div class="xk-card" style="margin-top:16px"><h3>' + (view === 'months' ? 'Net profit by month — budget vs actual' : 'Budget vs actual by account') + '</h3><div id="bv-main">' + (view === 'months' ? '' : table) + '</div></div>';
+    if (view === 'months') { var el = document.getElementById('bv-main'); XK.bars(el, { title: 'Net profit by month', labels: byM.map(function (x) { return x.month.slice(0, 3); }), series: [{ name: 'Budget', values: byM.map(function (x) { return x.budget; }) }, { name: 'Actual', values: byM.map(function (x) { return x.actual; }) }] }, c);
+      var g = document.createElement('div'); el.appendChild(g); XK.grid(g, { rows: byM, columns: [{ key: 'month', title: 'Month' }, { key: 'budget', title: 'Budget', money: true }, { key: 'actual', title: 'Actual', money: true }, { key: 'variance', title: 'Variance', money: true }] }, c); }
+    // checks
+    var budTies = hasBudget && bw ? rows.filter(function (r) { return r.kind === 'total' && r.bs && r.bs.summary; }).filter(function (r) { return !XK.near(XK.sum(r.bs.rows.map(bsum)), r.budget); }) : null;
+    var actTies = rows.filter(function (r) { return r.kind === 'total' && !r.net && r.list; }).filter(function (r) { return !XK.near(XK.sum(r.list.map(function (x) { return x.actual; })), r.actual); });
+    var monthEnd = to === XK.iso(XK.eom(+to.slice(0, 4), +to.slice(5, 7))), mSum = byM.every(function (x) { return x.actual != null; }) ? XK.sum(byM.map(function (x) { return x.actual; })) : null;
+    var checks = [
+      { name: 'Budget: every section total = Σ its account rows (Xero\'s Budget Summary)', pass: budTies == null ? null : budTies.length === 0, detail: budTies == null ? (bw ? 'N/A — no budget for the period' : (c.err('budget_fwd') || 'N/A')) : budTies.length ? budTies.length + ' section(s) differ, e.g. ' + budTies[0].label : 'Every section' },
+      { name: 'Budget columns cover every month of the period', pass: bw ? covered : null, detail: bw ? (covered ? months.length + ' month(s), ' + XK.monthLabel(months[0]) + ' to ' + XK.monthLabel(months[months.length - 1]) : 'The Budget Summary has ' + pick.hit + ' of the ' + months.length + ' months') : (c.err('budget_fwd') || 'N/A') },
+      { name: 'Actual: every section total = Σ its account rows (Xero\'s Profit and Loss)', pass: actTies.length === 0, detail: actTies.length ? actTies.length + ' section(s) differ, e.g. ' + actTies[0].label : 'Net profit ' + money(npA) },
+      !mw || mSum == null ? { name: 'Monthly actuals = the period\'s Profit and Loss', pass: null, detail: c.err('actual_m') || 'N/A — monthly columns unavailable' }
+        : monthEnd ? { name: 'Monthly actuals (a separate Xero report, month by month) add up to the period\'s net profit', pass: XK.near(mSum, npA), detail: money(mSum) + ' vs ' + money(npA) }
+        : { name: 'Monthly actuals vs the period\'s net profit (information — the period ends part-way through a month)', pass: null, info: true, detail: money(mSum) + ' vs ' + money(npA) },
+      { name: 'A line with no budget shows N/A, never $0 (information)', pass: null, info: true, detail: rows.filter(function (r) { return r.kind === 'row' && r.budget == null; }).length + ' line(s) without a budget' }
+    ];
+    var notes = ['Budget = Xero\'s overall budget (Budget Summary), summed over the months of the period; actual = the Profit and Loss for the same dates (accrual). Variance = actual − budget: favourable is green (more income, less cost), unfavourable red.'];
+    if (!monthEnd) notes.push('The period ends on ' + to + ', part-way through a month; budgets are whole months, so that month\'s variance is not like for like.');
+    this._x = { rows: rows, byM: byM };
+    return { checks: checks, notes: notes, na: ['Tracking-category budgets (Xero\'s Budget Summary returns the overall budget only)'] };
+  },
+  excel: function (c) {
+    var x = this._x; if (!x) return [];
+    var head = function (name) { return [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: name, s: 'bold' }], [XK.periodLine(c.inputs.from_date, c.inputs.to_date)], []]; }, mv = function (v) { return v == null ? 'N/A' : { v: v, s: 'money' }; };
+    var a = head('Budget vs Actual').concat([['Account', 'Budget', 'Actual', 'Variance', 'Variance %'].map(function (t) { return { v: t, s: 'bold' }; })])
+      .concat(x.rows.map(function (r) { return r.kind === 'header' ? [{ v: r.label, s: 'bold' }] : [r.kind === 'total' ? { v: r.label, s: 'bold' } : r.label, mv(r.budget), mv(r.actual), mv(r.variance), r.pct == null ? '' : Math.round(r.pct * 1000) / 10 + '%']; }));
+    var m = head('By month').concat([['Month', 'Budget', 'Actual', 'Variance'].map(function (t) { return { v: t, s: 'bold' }; })]).concat(x.byM.map(function (r) { return [r.month, mv(r.budget), mv(r.actual), mv(r.variance)]; }));
+    return [{ name: 'Budget vs Actual', rows: a, widths: [36, 16, 16, 16, 12] }, { name: 'By month', rows: m, widths: [16, 16, 16, 16] }];
+  }
+});</script>
+<script data-xk-check>(function(){var s=document.scripts,k="",f="",i,t;for(i=0;i<s.length;i++){t=s[i].text;if(s[i].type||s[i].hasAttribute("data-xk-check"))continue;if(!k&&t.indexOf("window.XK")>=0)k=t;else if(t.indexOf("XK.app(")>=0)f=t}var r=f.indexOf("render: function"),x=(k+(r<0?f:f.slice(r))).replace(/\s+/g,""),h=2166136261;for(i=0;i<x.length;i++)h=Math.imul(h^x.charCodeAt(i),16777619)>>>0;window.__xkIntegrity={ok:h.toString(16)=="b8bfa7a0"};if(!window.__xkIntegrity.ok){var d=document.createElement("div");d.className="xk-banner fail";d.setAttribute("role","alert");d.textContent="This copy of the report is damaged (its code differs from the tested version), so its figures can't be trusted. Ask the agent to create it again.";document.body.prepend(d)}})()</script>
+</body>
+</html>
+```
