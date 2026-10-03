@@ -114,6 +114,12 @@ function books(tenant) {
     B.transfers.push({ BankTransferID: id, FromBankAccount: acc('090'), ToBankAccount: acc('091'), Amount: amt, date });
     [['SPEND-TRANSFER', '090'], ['RECEIVE-TRANSFER', '091']].forEach(([Type, c]) => bank.push({ Type, BankTransactionID: id + '-' + c, Contact: contact('Transfer', 'bt'), date, status: 'AUTHORISED', LineAmountTypes: 'NoTax', LineItems: [], SubTotal: amt, TotalTax: 0, Total: amt, BankAccount: acc(c), IsReconciled: true })); }
   bank.sort((a, b) => a.date.localeCompare(b.date));
+  // Bank reconciliation: spend / receive money and payments older than three weeks are reconciled; one June bank fee and one
+  // August customer payment were never matched (the oldest unreconciled items). Transfers and BAS payments are reconciled.
+  const RECON = addDays(TODAY, -21), oldFee = bank.find((x) => x.Type === 'SPEND' && x.date.startsWith('2026-06') && x.LineItems[0] && x.LineItems[0].AccountCode === '404');
+  bank.forEach((x) => { if (!/TRANSFER/.test(x.Type) && !/-bas-/.test(x.BankTransactionID)) x.IsReconciled = x.date <= RECON && x !== oldFee; });
+  const oldPay = pays.filter((x) => x.doc.Type === 'ACCREC' && x.date.startsWith('2026-08'))[0];
+  pays.forEach((x) => { x.IsReconciled = x.date <= RECON && x !== oldPay; });
   BOOKS[t] = B; return B;
 }
 // ---------- derived balances ----------
@@ -252,6 +258,7 @@ function whereFilter(where) { // tiny subset of Xero's where: A=="x", A!="x", Da
   const parts = String(where).split(/\s+AND\s+/i).map((s) => s.trim());
   return (o) => parts.every((pt) => { let m;
     if ((m = /^(\w+)\s*(==|!=)\s*"([^"]*)"$/.exec(pt))) { const v = String(o[m[1]] == null ? '' : o[m[1]]); return m[2] === '==' ? v === m[3] : v !== m[3]; }
+    if ((m = /^(\w+)\s*(==|!=)\s*(true|false)$/.exec(pt))) { const v = o[m[1]] === true ? 'true' : 'false'; return m[2] === '==' ? v === m[3] : v !== m[3]; }
     if ((m = /^(\w+)\s*(>=|<=|>|<)\s*DateTime\((\d+),\s*(\d+),\s*(\d+)\)$/.exec(pt))) { const d = m[3] + '-' + m[4].padStart(2, '0') + '-' + m[5].padStart(2, '0'), v = String(o['_' + m[1]] || '').slice(0, 10); return m[2] === '>=' ? v >= d : m[2] === '<=' ? v <= d : m[2] === '>' ? v > d : v < d; }
     throw new Error('fixture where: unsupported clause ' + pt);
   });
@@ -275,7 +282,7 @@ function listOverpayments(p) { const B = books(p.xero_tenant_id), f = whereFilte
 function listPrepayments(p) { return page([], p, 'Prepayments'); }
 function listPayments(p) {
   const B = books(p.xero_tenant_id), f = whereFilter(p.where);
-  let list = B.pays.map((x, i) => ({ PaymentID: 'pay-' + i, Date: msDate(x.date), Amount: x.amount, PaymentType: x.doc.Type === 'ACCREC' ? 'ACCRECPAYMENT' : 'ACCPAYPAYMENT', Status: 'AUTHORISED', Reference: '', Invoice: { InvoiceID: x.doc.InvoiceID, InvoiceNumber: x.doc.InvoiceNumber, Type: x.doc.Type, Contact: x.doc.Contact }, Account: { AccountID: ACC[x.acct].AccountID, Code: x.acct }, _Date: x.date })).filter(f);
+  let list = B.pays.map((x, i) => ({ PaymentID: 'pay-' + i, Date: msDate(x.date), Amount: x.amount, PaymentType: x.doc.Type === 'ACCREC' ? 'ACCRECPAYMENT' : 'ACCPAYPAYMENT', Status: 'AUTHORISED', IsReconciled: x.IsReconciled, Reference: '', Invoice: { InvoiceID: x.doc.InvoiceID, InvoiceNumber: x.doc.InvoiceNumber, Type: x.doc.Type, Contact: x.doc.Contact }, Account: { AccountID: ACC[x.acct].AccountID, Code: x.acct }, _Date: x.date })).filter(f);
   if (/Date DESC/.test(p.order || '')) list.sort((a, b) => b._Date.localeCompare(a._Date));
   return page(list.map((o) => { delete o._Date; return o; }), p, 'Payments');
 }
@@ -290,6 +297,25 @@ function listTaxRates() { return { TaxRates: TAX_RATES.map((t) => Object.assign(
 function organisation(p) { const o = Object.assign({}, ORG[(p && p.xero_tenant_id) || T1]); delete o.seed; delete o.scale; return { Id: 'x', Status: 'OK', ProviderName: 'mySMB', Organisations: [o] }; }
 function connections() { return { activeTenantId: T1, tenants: [{ tenantId: T1, tenantName: ORG[T1].Name, tenantType: 'ORGANISATION' }, { tenantId: T2, tenantName: ORG[T2].Name, tenantType: 'ORGANISATION' }] }; }
 // manual journals (list_manual_journals: where on Date, 100 per page)
+// The journal feed (list_journals): every approved transaction as one balanced journal (NetAmount: debit positive, credit
+// negative), numbered in the order it was created. Xero pages it by `offset` = the last JournalNumber read, 100 at a time.
+function journalFeed(B) {
+  if (B.feed) return B.feed;
+  const out = [], seen = { n: 0 }, L = (code, net, tax, desc) => { const a = ACC[code]; return { JournalLineID: 'jl-' + (++seen.n), AccountID: a.AccountID, AccountCode: code, AccountType: a.Type, AccountName: a.Name, Description: desc || '', NetAmount: r2(net), GrossAmount: r2(net + (tax || 0)), TaxAmount: r2(tax || 0), TaxType: '', TaxName: '' }; };
+  const J = (date, type, src, ref, lines) => out.push({ date, created: date <= TODAY ? date : addDays(TODAY, -3), SourceType: type, SourceID: src, Reference: ref || '', lines: lines.filter((l) => Math.abs(l.NetAmount) >= 0.005) });
+  const docLines = (d, sg, ctl) => { const ls = d.LineItems.map((l) => L(l.AccountCode, sg * l.LineAmount, 0, l.Description)); if (d.TotalTax) ls.push(L('820', sg * d.TotalTax)); ls.push(L(ctl, -sg * d.Total)); return ls; };
+  B.docs.filter(approved).forEach((d) => J(d.date, d.Type, d.InvoiceID, d.InvoiceNumber, docLines(d, d.Type === 'ACCREC' ? -1 : 1, d.Type === 'ACCREC' ? '610' : '800')));
+  B.credits.forEach((c) => J(c.date, c.Type, c.CreditNoteID, c.CreditNoteNumber, docLines(c, c.Type === 'ACCRECCREDIT' ? 1 : -1, c.Type === 'ACCRECCREDIT' ? '610' : '800')));
+  B.pays.forEach((x) => { const inn = x.doc.Type === 'ACCREC'; J(x.date, inn ? 'ACCRECPAYMENT' : 'ACCPAYPAYMENT', x.doc.InvoiceID, x.doc.InvoiceNumber, [L(x.acct, inn ? x.amount : -x.amount), L(inn ? '610' : '800', inn ? -x.amount : x.amount)]); });
+  B.bank.filter((x) => !/TRANSFER/.test(x.Type)).forEach((x) => { const inn = /^RECEIVE/.test(x.Type), sg = inn ? -1 : 1; J(x.date, inn ? 'CASHREC' : 'CASHPAID', x.BankTransactionID, x.Reference || '', x.LineItems.map((l) => L(l.AccountCode, sg * l.LineAmount, 0, l.Description)).concat(x.TotalTax ? [L('820', sg * x.TotalTax)] : []).concat([L(x.BankAccount.Code, -sg * x.Total)])); });
+  B.overs.forEach((o) => J(o.date, 'AROVERPAYMENT', o.OverpaymentID, 'Overpayment', [L(o.acct, o.Total), L('610', -o.Total)]));
+  B.transfers.forEach((x) => J(x.date, 'TRANSFER', x.BankTransferID, 'Transfer', [L(x.ToBankAccount.Code, x.Amount), L(x.FromBankAccount.Code, -x.Amount)]));
+  B.journals.filter((j) => j.Status === 'POSTED').forEach((j) => J(j.date, 'MANJOURNAL', j.ManualJournalID, j.Narration, j.JournalLines.map((l) => L(l.AccountCode, l.LineAmount, 0, l.Description))));
+  out.sort((a, b) => a.created.localeCompare(b.created) || a.date.localeCompare(b.date));
+  B.feed = out.map((j, i) => ({ JournalID: 'jn-' + B.t.slice(-1) + '-' + (i + 1), JournalDate: msDate(j.date), JournalNumber: i + 1, CreatedDateUTC: msDate(j.created), Reference: j.Reference, SourceID: j.SourceID, SourceType: j.SourceType, JournalLines: j.lines }));
+  return B.feed;
+}
+function listJournals(p) { const B = books(p.xero_tenant_id), off = +(p.offset || 0); return { Id: 'x', Status: 'OK', ProviderName: 'mySMB', DateTimeUTC: '/Date(1790296320000)/', Journals: JSON.parse(JSON.stringify(journalFeed(B).filter((j) => j.JournalNumber > off).slice(0, 100))) }; }
 function listManualJournals(p) { const B = books(p.xero_tenant_id), f = whereFilter(p.where); return page(B.journals.map((j) => ({ ManualJournalID: j.ManualJournalID, Date: msDate(j.date), Status: j.Status, Narration: j.Narration, LineAmountTypes: j.LineAmountTypes, ShowOnCashBasisReports: j.ShowOnCashBasisReports, JournalLines: j.JournalLines, _Date: j.date })).filter(f).map((j) => { delete j._Date; return j; }), p, 'ManualJournals'); }
 // Xero Payroll AU (payroll.xro/1.0, raw JSON, /Date()/ dates). AU organisations only: the NZ organisation gets Xero's error.
 const auOnly = (p) => { if (ORG[(p && p.xero_tenant_id) || T1].CountryCode !== 'AU') throw new Error('Xero API GET https://api.xero.com/payroll.xro/1.0/PayRuns 403: {"Message":"The organisation does not use Australian payroll"}'); };
@@ -319,4 +345,4 @@ const expect = {
   balances: (date, t) => balances(books(t), date), netProfit: (a, b, cash, t) => netProfit(books(t), a, b, cash), bankBalance: (code, date, t) => bankBalance(books(t), code, date),
   flows: (code, a, b, t) => flows(books(t), code, a, b), gst: (a, b, t) => gstMovement(books(t), a, b), plByAccount: (a, b, cash, t) => plByAccount(books(t), a, b, cash), books,
 };
-module.exports = { TODAY, T1, T2, ORG, ACCOUNTS, ACC, TRACKING, listTrackingCategories, getInvoice, listBankTransfers, pnl: pnlReport, bs: bsReport, bankSummary, trialBalance, listManualJournals, listPayRuns, listTimesheets, listEmployees, listAssets, listInvoices, listCreditNotes, listOverpayments, listPrepayments, listPayments, listBankTransactions, listPurchaseOrders, listLinked, listRepeating, listAccounts, listTaxRates, organisation, connections, expect, fyStart, addDays, shiftMonths, eom, r2 };
+module.exports = { TODAY, T1, T2, ORG, ACCOUNTS, ACC, TRACKING, listTrackingCategories, listJournals, getInvoice, listBankTransfers, pnl: pnlReport, bs: bsReport, bankSummary, trialBalance, listManualJournals, listPayRuns, listTimesheets, listEmployees, listAssets, listInvoices, listCreditNotes, listOverpayments, listPrepayments, listPayments, listBankTransactions, listPurchaseOrders, listLinked, listRepeating, listAccounts, listTaxRates, organisation, connections, expect, fyStart, addDays, shiftMonths, eom, r2 };

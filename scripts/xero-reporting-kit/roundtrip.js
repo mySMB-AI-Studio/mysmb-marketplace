@@ -6,7 +6,7 @@ const K = __dirname, SKILLS = path.resolve(K, '..', '..', 'plugins', 'xero-repor
 const OUT = fs.mkdtempSync(path.join(os.tmpdir(), 'xero-rt-')), FAM = require('./families.js');
 const run = (cmd, args, env) => execFileSync(cmd, args, { cwd: K, stdio: 'inherit', env: Object.assign({}, process.env, env || {}), shell: process.platform === 'win32' });
 console.log('1. extract from', SKILLS); run('node', ['extract-skills.js', SKILLS, OUT]);
-console.log('2. tests on the extracted copy'); for (const t of ['test-ledger.js', 'test-xero.js', 'test-dash.js', 'test-conformance.js']) run('node', [t], { KIT_DIR: OUT });
+console.log('2. tests on the extracted copy'); for (const t of ['test-ledger.js', 'test-xero.js', 'test-dash.js', 'test-spec.js', 'test-conformance.js']) run('node', [t], { KIT_DIR: OUT });
 console.log('3. build every report'); for (const f of FAM) run('node', ['build.js', f.report], { KIT_DIR: OUT });
 console.log('4. platform validators'); run('npx', ['tsx', 'check-reports.mts', OUT]);
 console.log('5. templates = the skills: reports/<skill>/report.html and report.json dataBindings equal the extracted blocks');

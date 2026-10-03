@@ -643,7 +643,7 @@ var XK = (function () {
     function co() { return companyOf(S.data[cfg.org], S.data[cfg.conns], I.org ? S.inputs[I.org] : '', (reportOf(S.data[cfg.primary]) || {}).ReportTitles); }
     function fy() { var e = +disp().fy; if (e >= 1 && e <= 12) return { month: e % 12 + 1, source: 'set in this report — year ends ' + MONTHS[e - 1], set: true }; return fiscalStart(co().org, cfg.fyMonth); }
     // An {__error} object (if a proxy returns one) moves to S.errors so every section and check treats it as a failed source.
-    function absorb(id, v) { var e = errorOf(v); S.pages[id] = null; S.trunc[id] = false; if (e) { delete S.data[id]; S.errors[id] = { code: 'tool_error', message: e }; } else { S.data[id] = v; delete S.errors[id]; } }
+    function absorb(id, v) { var e = errorOf(v); S.pages[id] = null; S.trunc[id] = false; /* feed: */ if (S.seekFrom) delete S.seekFrom[id]; /* :feed */ if (e) { delete S.data[id]; S.errors[id] = { code: 'tool_error', message: e }; } else { S.data[id] = v; delete S.errors[id]; } }
     function srcOf(id) { return (cfg.sources || {})[id] || null; }
     function quiet(id) { var sc = srcOf(id); return !!(sc && sc.quiet && sc.quiet(Object.assign({}, S.inputs))); }
     function err(id) { var e = S.errors[id], sc = srcOf(id); if (!e) return null; if (e.code === 'needs_connection' && sc) return sc.name + ' is not connected — add the ' + sc.name + ' extension and connect it (Settings → Connections) to include this.'; return (FRIENDLY[e.code] || e.message || 'Unavailable') + (e.code === 'tool_error' && e.message ? ' (' + e.message + ')' : ''); }
@@ -673,6 +673,23 @@ var XK = (function () {
       return ids.reduce(function (p, id) { return p.then(function () { return more(id); }); }, Promise.resolve())
         .then(function () { S.busy--; status(''); render(); return true; });
     }
+    // paged[id].cursor(lastPage) → the next request's input value, for a feed paged by a cursor instead of a page number (Xero
+    // journals: offset = the last JournalNumber read). paged[id].seek = { target(inputs) → 'YYYY-MM-DD', dateOf(row) → 'YYYY-MM-DD'
+    // (rising with the cursor), step }: the feed starts at the beginning of the books, so first find the page where the rows reach
+    // the target — doubling the offset, then halving back — and page forward from there. S.seekFrom[id] = the offset it started at.
+    /* feed: */
+    function seekStart(id, first) {
+      var P = cfg.paged[id], K = P.seek, size = P.size || 100, target = K.target(Object.assign({}, S.inputs)), calls = 0;
+      var rowsOf = function (v) { return (v && v[P.key]) || []; }, before = function (v) { var r = rowsOf(v); return r.length >= size && String(K.dateOf(r[r.length - 1]) || '') < target; };
+      if (!target || !before(first)) return Promise.resolve(null);
+      var at = function (off) { calls++; var inp = Object.assign({}, S.inputs); inp[P.input] = off; return MH.getData(id, inp).then(function (v) { if (errorOf(v)) throw new Error(errorOf(v)); return v; }); };
+      var lo = 0, loV = first, hi = null, step = K.step || 1000, live1 = function () { return S.data[id] === first && calls < 40; };
+      status('Finding ' + (K.label || 'the period') + '…');
+      function grow() { if (!live1()) return Promise.resolve(); return at(lo + step).then(function (v) { if (before(v)) { lo += step; loV = v; step *= 2; return grow(); } hi = lo + step; return narrow(); }); }
+      function narrow() { if (!live1() || hi - lo <= size) return Promise.resolve(); var mid = Math.floor((lo + hi) / 2); return at(mid).then(function (v) { if (before(v)) { lo = mid; loV = v; } else hi = mid; return narrow(); }); }
+      return grow().then(function () { S.seekFrom = S.seekFrom || {}; S.seekFrom[id] = lo; return lo ? loV : null; }, function () { return null; }); // a failed probe pages from the start instead
+    }
+    /* :feed */
     function more(id) {
       var P = cfg.paged[id], size = P.size || 100, max = P.max || 20, got = S.pages[id] = [S.data[id]], first = S.data[id], tries = 0;
       var wait = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
@@ -681,7 +698,7 @@ var XK = (function () {
         var rows = (got[got.length - 1] || {})[P.key] || [];
         if (rows.length < size) return Promise.resolve();
         if (got.length >= max) { S.trunc[id] = true; return Promise.resolve(); }
-        var inp = Object.assign({}, S.inputs); inp[P.input] = got.length + 1;
+        var inp = Object.assign({}, S.inputs); inp[P.input] = /* feed: */ P.cursor ? P.cursor(got[got.length - 1]) : /* :feed */ got.length + 1;
         status('Loading ' + ((cfg.tools || {})[id] || id) + ' — page ' + (got.length + 1) + '…');
         return MH.getData(id, inp).then(function (v) {
           if (errorOf(v)) throw new Error(errorOf(v));
@@ -692,6 +709,7 @@ var XK = (function () {
           if (S.data[id] === first) { S.trunc[id] = true; S.pageError = S.pageError || {}; S.pageError[id] = msg; }
         });
       }
+      /* feed: */ if (P.seek) return seekStart(id, first).then(function (start) { if (start && S.data[id] === first) got.splice(0, got.length, start); return step(); }); /* :feed */
       return step();
     }
     function fanAll() {
@@ -822,7 +840,7 @@ var XK = (function () {
       var d = disp(), c0 = co(), f = fy();
       return { data: S.data, errors: S.errors, err: err, inputs: S.inputs, I: I, display: d, view: d.v || (cfg.views ? cfg.views[0][0] : ''), compareMode: cfg.compare ? d.c : 'none',
         persona: I.persona ? S.inputs[I.persona] : cfg.personaDisplay ? d.pv || 'Bookkeeper' : 'Bookkeeper', company: c0.name, organisation: c0, fy: f, currency: homeCurrency(c0.org), live: live,
-        fetchedAt: S.fetchedAt, source: srcOf, body: $('xk-body'), change: change, disp: disp, today: iso(today()), opt: optv, setOpt: function (id, v) { return change({}, { o: setOpt(id, v) }); }, rows: rows, truncated: truncated, fan: fan, pageError: function (id) { return (S.pageError || {})[id] || null; } };
+        fetchedAt: S.fetchedAt, source: srcOf, body: $('xk-body'), change: change, disp: disp, today: iso(today()), opt: optv, setOpt: function (id, v) { return change({}, { o: setOpt(id, v) }); }, rows: rows, truncated: truncated, fan: fan, pageError: function (id) { return (S.pageError || {})[id] || null; }/* feed: */, seekFrom: function (id) { return (S.seekFrom || {})[id] || 0; } /* :feed */ };
     }
     var last = { checks: [], na: [], notes: [] };
     function render() {
