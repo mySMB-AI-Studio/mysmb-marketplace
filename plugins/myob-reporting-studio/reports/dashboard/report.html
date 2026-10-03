@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Receivables Reconciliation</title>
+<title>Dashboard</title>
 <style>:root{--accent:#6F2CBA;--btn:#5A1F9E;--btn-ink:#FFFFFF;--ink:#393A3D;--muted:#6B6C72;--line:#E3E5E8;--canvas:#F4F5F8;--card:#FFFFFF;--th:#6B6C72;--zebra:transparent;--neg:#D52B1E;--pos:#1B7F4B;--pass-bg:#EAF6E8;--fail-bg:#FDECEA;--band:#FFFFFF;--band-ink:#393A3D;--cover:#1B2A4A;--cover-ink:#FFFFFF;--c1:#6F2CBA;--c2:#9E9E9E;--c3:#00B0A0;--c4:#007A6E;--c5:#E0457B;--c6:#0077C5;--d1:#6F2CBA;--d2:#00B0A0;--d3:#B28DE6;--d4:#E0457B;--d5:#0077C5;--d6:#9E9E9E}
 :root[data-myhub-theme='dark']{--accent:#A77BE8;--btn:#7A45C9;--btn-ink:#FFFFFF;--ink:#E6E8EB;--muted:#A3A7AE;--line:#33363C;--canvas:#16181B;--card:#1F2226;--th:#A3A7AE;--neg:#FF6B5E;--pos:#4CC38A;--pass-bg:#18301A;--fail-bg:#3A1B19;--band:#1F2226;--band-ink:#E6E8EB;--cover:#22324F;--cover-ink:#FFFFFF;--c1:#A77BE8;--c2:#80858D;--c3:#2BC4B3;--c4:#3CCFBF;--c5:#F06A96;--c6:#3FA2E8;--d1:#A77BE8;--d2:#2BC4B3;--d3:#CDB4F2;--d4:#F06A96;--d5:#3FA2E8;--d6:#80858D}
 :root.style-mysmb{--accent:#00B0A0;--btn:#007A6E;--zebra:#E6F7F5;--band:#007A6E;--band-ink:#FFFFFF;--cover:#007A6E;--th-bg:#007A6E;--th-ink:#FFFFFF;--c1:#007A6E;--c2:#00B0A0;--c3:#6F2CBA;--c4:#9E9E9E;--c5:#1B7F4B;--c6:#C8102E;--d1:#007A6E;--d2:#00B0A0;--d3:#6F2CBA;--d4:#9E9E9E;--d5:#1B7F4B;--d6:#C8102E;--pos:#1B7F4B;--neg:#C8102E}
@@ -744,52 +744,106 @@ PRESETS: PRESETS, preset: preset, ASAT: ASAT, asAt: asAt, compare: compare, peri
 xlsx: xlsx, sheetFromLines: sheetFromLines, download: download, reportParams: reportParams };
 })();</script>
 <script>MK.app({
-  title: 'Receivables Reconciliation', primary: 'bs', files: 'company_files',
-  // no as-at control: MYOB's API gives today's open balances, so the reconciliation is always as at today
+  title: 'Dashboard', primary: 'bs', files: 'company_files', optional: ['tax_codes'],
+  // no date control: MYOB's dashboard periods are fixed (last 3 months, this financial year, today) and its API gives today's open balances
   inputs: { companyFile: 'company_file', persona: 'persona', display: 'display' },
-  defaults: { as_at: '2026-09-28', company_file: '', persona: 'Bookkeeper',
-    display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"custom","a":"today","c":"none","v":"recon"}' },
-  uses: { invoices: ['company_file'], bs: ['as_at', 'company_file'], accounts: ['company_file'], company_files: [] },
-  tools: { invoices: 'list_invoices (open sales invoices — every page)', bs: 'get_balance_sheet (the receivables account today)', accounts: 'list_accounts (which accounts are receivables)', company_files: 'list_company_files' },
+  defaults: { as_at: '2026-09-28', m3_start: '2026-07-01', fy_start: '2026-07-01', chart_from: '2026-07-01', company_file: '', persona: 'Bookkeeper',
+    display: '{"cents":1,"k":0,"zeros":0,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"custom","a":"today","c":"none","v":""}' },
+  uses: { pnl_3m: ['m3_start', 'as_at', 'company_file'], pnl_fy: ['fy_start', 'as_at', 'company_file'], bs: ['as_at', 'company_file'], journals: ['chart_from', 'as_at', 'company_file'], invoices: ['company_file'], accounts: ['company_file'], tax_codes: ['company_file'], company_files: [] },
+  tools: { pnl_3m: 'get_profit_and_loss_3m (last 3 months)', pnl_fy: 'get_profit_and_loss (financial year to date)', bs: 'get_balance_sheet (today)', journals: 'list_journal_transactions (the chart\'s months)', invoices: 'list_invoices (open invoices)', accounts: 'list_accounts', tax_codes: 'list_tax_codes (GST accounts)', company_files: 'list_company_files' },
   roll: function () { return { as_at: MK.asAt('today') }; },
-  views: [['recon', 'Reconciliation with tax'], ['exceptions', 'Reconciliation exceptions']],
+  // the widget periods: last 3 calendar months (this month and the two before it) to today; this financial year to today
+  derive: function (inp, fyMonth) { var a = MK.parse(inp.as_at), m3 = MK.iso(new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth() - 2, 1))), fy = MK.fyStartOf(inp.as_at, fyMonth); return { m3_start: m3, fy_start: fy, chart_from: fy < m3 ? fy : m3 }; },
   render: function (c) {
-    var body = c.body, money = function (v) { return MK.money(v, c.currency, c.display); }, r2 = function (v) { return Math.round(v * 100) / 100; }, asAt = c.inputs.as_at;
-    if (c.errors.invoices) { body.innerHTML = '<p class="mk-err">' + MK.h(c.err('invoices')) + '</p>'; return { checks: [{ name: 'Open invoices loaded', pass: false, detail: c.err('invoices') }] }; }
-    if (!c.data.invoices) return {};
-    var inv = MK.items(c.data.invoices).filter(function (i) { return i && (MK.num(i.BalanceDueAmount) || 0) !== 0; }).map(function (i) {
-      var cu = i.Customer || {}, bal = MK.num(i.BalanceDueAmount) || 0, tot = MK.num(i.TotalAmount) || 0, tax = MK.num(i.TotalTax) || 0;
-      return { number: i.Number || '', date: MK.isoDate(i.Date), customer: cu.Name || '(no customer)', cid: cu.UID || cu.Name || '', balance: r2(bal), tax: tot ? r2(bal * tax / tot) : 0, total: tot, taxFull: tax, sub: MK.num(i.Subtotal) }; });
-    var byC = {}; inv.forEach(function (x) { if (!byC[x.cid]) byC[x.cid] = { name: x.customer, amount: 0, tax: 0, docs: [] }; var y = byC[x.cid]; y.amount = r2(y.amount + x.balance); y.tax = r2(y.tax + x.tax); y.docs.push(x); });
-    var cust = Object.keys(byC).map(function (k) { return byC[k]; }).sort(function (a, b) { return a.name.localeCompare(b.name); });
-    var total = MK.sum(cust.map(function (x) { return x.amount; })), taxTot = MK.sum(cust.map(function (x) { return x.tax; }));
-    var idx = MK.accounts(c.data.accounts), bsB = c.data.bs ? MK.breakdown([c.data.bs], idx, MK.BS_LAYOUT) : null;
-    var arRows = bsB ? bsB.rows.filter(function (r) { return !r.header && (r.type === 'AccountReceivable' || (!idx.loaded && /receivable|debtors/i.test(r.name))); }) : [], control = arRows.length ? MK.sum(arRows.map(function (r) { return r.values[0]; })) : null;
-    var oob = control == null ? null : r2(total - control), ok = oob != null && MK.near(oob, 0);
-    var tie = '<table class="mk-grid" style="margin-top:12px"><tbody><tr class="k-total"><td>Total outstanding</td><td class="num">' + money(total) + '</td></tr><tr class="k-total"><td>Receivables account' + (arRows.length ? ' (' + MK.h(arRows.map(function (r) { return (r.code ? r.code + ' ' : '') + r.name; }).join(', ')) + ')' : '') + '</td><td class="num">' + (control == null ? 'N/A — not in source' : money(control)) + '</td></tr>' +
-      '<tr class="k-total"><td>Out of balance amount</td><td class="num' + (oob != null && !ok ? ' neg' : '') + '">' + (oob == null ? 'N/A' : money(oob)) + '</td></tr></tbody></table><p><span class="chip ' + (ok ? 'up' : 'down') + '">' + (oob == null ? 'Not checked' : ok ? 'In balance' : 'Out of balance') + '</span></p>';
-    var view = c.view || 'recon';
-    body.innerHTML = MK.kpis([{ label: 'Total outstanding', value: total }, { label: 'Tax outstanding', value: taxTot }, { label: 'Receivables account', value: control }, { label: 'Out of balance', value: oob }], c) +
-      '<div class="mk-card" style="margin-top:16px"><h3>' + (view === 'exceptions' ? 'Receivables reconciliation exceptions' : 'Receivables reconciliation with tax') + ' — ' + MK.asOfLine(asAt).replace(/^As at /, '') + '</h3>' + (view === 'exceptions' ? tie + (ok ? '<p class="muted">No exceptions: the customers\' outstanding invoices equal the receivables account.</p>' : oob == null ? '' : '<p class="muted">Possible causes (not checked): a general journal or bank transaction posted straight to the receivables account; a customer payment or credit not applied to an invoice; an invoice dated after today.</p>') : '<div id="rr-grid"></div>' + tie) + '</div>';
-    if (view !== 'exceptions') MK.grid(document.getElementById('rr-grid'), { rows: cust, filter: true, columns: [{ key: 'name', title: 'Name' }, { key: 'amount', title: 'Amount outstanding ($)', money: true }, { key: 'tax', title: 'Tax outstanding ($)', money: true }], total: { name: 'Total', amount: total, tax: taxTot }, empty: 'No outstanding invoices.' }, c);
-    var taxDocs = inv.filter(function (x) { return x.total && x.sub != null && !MK.near(r2(x.sub + x.taxFull), x.total); });
+    var body = c.body, d = c.display, money = function (v) { return MK.money(v, c.currency, d); }, r2 = function (v) { return Math.round(v * 100) / 100; }, h = MK.h, asAt = c.inputs.as_at, m3 = c.inputs.m3_start, fy = c.inputs.fy_start;
+    var need = ['pnl_3m', 'pnl_fy', 'bs', 'invoices'].filter(function (id) { return c.errors[id]; });
+    if (need.length === 4) { body.innerHTML = '<p class="mk-err">' + h(c.err(need[0])) + '</p>'; return { checks: [{ name: 'MYOB data loaded', pass: false, detail: c.err(need[0]) }] }; }
+    if (['pnl_3m', 'pnl_fy', 'bs', 'invoices'].some(function (id) { return !c.data[id] && !c.errors[id]; })) return {};
+    var idx = MK.accounts(c.data.accounts), na = function (id) { return '<p class="mk-err">' + h(c.err(id) || 'N/A — not in source') + '</p>'; };
+    var big = function (v, neg) { if (v == null) return '<div class="mk-big">N/A</div>'; var s = money(v), m = d.cents && !d.k ? /^(.*)(\.\d\d)(\)?-?)$/.exec(s) : null; return '<div class="mk-big' + (neg && v < 0 ? ' neg' : '') + '">' + (m ? h(m[1]) + '<sup>' + h(m[2]) + '</sup>' + h(m[3]) : h(s)) + '</div>'; };
+    // ---- Your business: MYOB's tiles — income (income + other income) and expenses (cost of sales + expenses + other expenses) for the
+    // last 3 months; financial position = this financial year's net profit
+    var p3 = c.data.pnl_3m ? MK.breakdown([c.data.pnl_3m], idx, MK.PL_LAYOUT) : null, pf = c.data.pnl_fy ? MK.breakdown([c.data.pnl_fy], idx, MK.PL_LAYOUT) : null;
+    var inc = function (b) { return b ? r2(b.totals.Income[0] + b.totals.OtherIncome[0]) : null; }, exp = function (b) { return b ? r2(b.totals.CostOfSales[0] + b.totals.Expense[0] + b.totals.OtherExpense[0]) : null; };
+    var inc3 = inc(p3), exp3 = exp(p3), fp = pf ? pf.calc.NetProfit[0] : null;
+    // the chart: each financial-year month from the journals (income credit-positive, expenses debit-positive)
+    var jl = c.data.journals ? MK.items(c.data.journals) : null, mon = {}, jInc3 = 0, jExp3 = 0;
+    if (jl) jl.forEach(function (t) { var dt = MK.isoDate(t.DateOccurred || t.DatePosted); if (!dt || dt > asAt) return; (t.Lines || []).forEach(function (l) {
+      var cls = MK.classOf(l.Account || {}, idx).cls, amt = Math.abs(MK.num(l.Amount) || 0), sg = l.IsCredit ? 1 : -1, k = dt.slice(0, 7), isInc = /^(Income|OtherIncome)$/.test(cls), isExp = /^(CostOfSales|Expense|OtherExpense)$/.test(cls);
+      if (!isInc && !isExp) return; var v = isInc ? sg * amt : -sg * amt; if (!mon[k]) mon[k] = { inc: 0, exp: 0 }; mon[k][isInc ? 'inc' : 'exp'] += v;
+      if (dt >= m3) { if (isInc) jInc3 += v; else jExp3 += v; } }); });
+    jInc3 = r2(jInc3); jExp3 = r2(jExp3);
+    var f0 = MK.parse(fy), months = [], lastKey = asAt.slice(0, 7);
+    for (var i = 0; i < 12; i++) { var dm = new Date(Date.UTC(f0.getUTCFullYear(), f0.getUTCMonth() + i, 1)), key = MK.iso(dm).slice(0, 7), o = mon[key] || { inc: 0, exp: 0 }, past = key <= lastKey;
+      months.push({ key: key, label: MK.MONTHS[dm.getUTCMonth()].slice(0, 3), inc: past ? r2(o.inc) : null, exp: past ? r2(o.exp) : null, net: past ? r2(o.inc - o.exp) : null }); }
+    var chartFy = MK.sum(months.map(function (x) { return x.net; }));
+    // ---- Balance Sheet today: bank, credit cards, receivables, GST, payroll liabilities
+    var bsb = c.data.bs ? MK.breakdown([c.data.bs], idx, MK.BS_LAYOUT) : null, rows = bsb ? bsb.rows.filter(function (r) { return !r.header; }) : [];
+    var pick = function (f) { var l = rows.filter(f); return { rows: l, total: l.length ? MK.sum(l.map(function (r) { return r.values[0]; })) : null }; };
+    var bank = pick(function (r) { return r.type === 'Bank' || (!idx.loaded && r.cls === 'Asset' && /bank|cheque|savings/i.test(r.name)); }), card = pick(function (r) { return r.type === 'CreditCard'; });
+    var ar = pick(function (r) { return r.type === 'AccountReceivable' || (!idx.loaded && /receivable|debtors/i.test(r.name)); });
+    var sup = pick(function (r) { return r.cls === 'Liability' && /superannuation|\bsuper\b/i.test(r.name); }), payg = pick(function (r) { return r.cls === 'Liability' && /\bPAYG\b|withholding/i.test(r.name); });
+    // GST: the accounts the GST tax codes post to (TaxCollectedAccount / TaxPaidAccount, matched to this file's chart by UID); else by name
+    var colU = {}, paidU = {}, viaCodes = false;
+    MK.items(c.data.tax_codes).forEach(function (t) { if (!t || /wine|luxury|import|withhold|abn|tfn|sales ?tax/i.test(t.Type || '')) return; if (t.TaxCollectedAccount && t.TaxCollectedAccount.UID) colU[t.TaxCollectedAccount.UID] = 1; if (t.TaxPaidAccount && t.TaxPaidAccount.UID) paidU[t.TaxPaidAccount.UID] = 1; });
+    var gstRows = rows.filter(function (r) { return r.uid && (colU[r.uid] || paidU[r.uid]); }); if (gstRows.length) viaCodes = true; else gstRows = rows.filter(function (r) { return /^(Asset|Liability)$/.test(r.cls) && /\bGST\b/i.test(r.name); });
+    var owe = function (r) { return r.cls === 'Liability' ? r.values[0] : -r.values[0]; }; // + = owed to the ATO
+    var isCol = function (r) { return viaCodes ? !!colU[r.uid] && !paidU[r.uid] : /collected/i.test(r.name); }, isPaid = function (r) { return viaCodes ? !!paidU[r.uid] && !colU[r.uid] : /paid/i.test(r.name); };
+    var gstNet = gstRows.length ? MK.sum(gstRows.map(owe)) : null, split = gstRows.length && gstRows.every(function (r) { return isCol(r) || isPaid(r); });
+    var gstCol = split ? MK.sum(gstRows.filter(isCol).map(owe)) : null, gstPaid = split ? r2(-MK.sum(gstRows.filter(isPaid).map(owe))) : null;
+    // ---- Overdue invoices: open invoices past their due date today, in MYOB's three bands
+    var inv = MK.items(c.data.invoices).filter(function (x) { return x && (MK.num(x.BalanceDueAmount) || 0) !== 0; }).map(function (x) { var due = MK.isoDate((x.Terms || {}).DueDate) || MK.isoDate(x.Date); return { number: x.Number || '', customer: (x.Customer || {}).Name || '(no customer)', date: MK.isoDate(x.Date), due: due, bal: r2(MK.num(x.BalanceDueAmount) || 0), days: Math.round((MK.parse(asAt) - MK.parse(due)) / 86400000) }; });
+    var owedToYou = MK.sum(inv.map(function (x) { return x.bal; })), od = inv.filter(function (x) { return x.days > 0; });
+    var BANDS = [['Over 30 days overdue', function (n) { return n > 30; }, '#A4161A'], ['16 to 30 days overdue', function (n) { return n >= 16 && n <= 30; }, '#E8730C'], ['1 to 15 days overdue', function (n) { return n >= 1 && n <= 15; }, '#F2C200']];
+    var bands = BANDS.map(function (b) { var l = od.filter(function (x) { return b[1](x.days); }); return { label: b[0], color: b[2], n: l.length, amt: MK.sum(l.map(function (x) { return x.bal; })) }; });
+    var odTot = MK.sum(od.map(function (x) { return x.bal; }));
+    // ---- the page
+    var hr = new Date().getHours(), greet = hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening';
+    var acctList = function (p) { return p.rows.length ? '<ul class="mk-bul detail-block">' + p.rows.map(function (r) { return '<li><span>' + h((r.code ? r.code + ' ' : '') + r.name) + '</span><span>' + money(r.values[0]) + '</span></li>'; }).join('') + '</ul>' : ''; };
+    var tile = function (label, v, sub) { return '<div><div class="lbl">' + h(label) + '</div>' + big(v, true) + '<div class="lbl">' + h(sub) + '</div></div>'; };
+    var gstCard = gstNet == null ? '<p class="muted">N/A — no GST account found on the Balance Sheet</p>' : big(Math.abs(gstNet)) + '<div class="lbl">' + (gstNet >= 0 ? 'to pay' : 'to claim') + '</div>' +
+      (split ? '<div class="mk-bar" title="GST paid as a share of GST collected"><i style="width:' + Math.min(100, gstCol > 0 ? Math.max(0, gstPaid) / gstCol * 100 : 0).toFixed(1) + '%;background:var(--c1)"></i></div><ul class="mk-bul"><li><span>GST collected</span><span>' + money(gstCol) + '</span></li><li><span>GST paid</span><span>' + money(gstPaid) + '</span></li></ul>' : '<p class="muted">One GST account: collected and paid are not reported separately.</p>') + acctList({ rows: gstRows });
+    body.innerHTML = '<p class="mk-greet">' + h(greet) + ', ' + h(c.company || 'your business') + '</p><div class="mk-dash">' +
+      '<div class="mk-card wide mk-next"><h3>Up next</h3>' + (c.errors.invoices ? na('invoices') : '<span class="mk-big">' + od.length + '</span> <span>Overdue invoice' + (od.length === 1 ? '' : 's') + '</span> <span class="muted">· see MYOB Unpaid Invoices for the list</span>') + '</div>' +
+      '<div class="mk-card wide"><h3>Your business</h3><div class="mk-tiles">' + (p3 ? tile('Income', inc3, 'Last 3 months') + tile('Expenses', exp3, 'Last 3 months') : na('pnl_3m')) + (pf ? tile('Financial position', fp, 'This financial year') : na('pnl_fy')) + '</div><div id="db-chart"></div></div>' +
+      '<div class="mk-card"><h3>Accounts</h3>' + (bsb ? '<div class="lbl">Bank balance</div>' + big(bank.total, true) + acctList(bank) + '<div class="lbl">Money owed (credit cards)</div>' + (card.rows.length ? big(card.total) + acctList(card) : '<p class="muted">No credit card accounts.</p>') : na('bs')) + '</div>' +
+      '<div class="mk-card"><h3>GST</h3>' + (bsb ? gstCard : na('bs')) + '</div>' +
+      '<div class="mk-card"><h3>Overdue invoices</h3>' + (c.errors.invoices ? na('invoices') : big(odTot) + '<div class="mk-bar" title="Overdue by age">' + bands.map(function (b) { return odTot > 0 && b.amt > 0 ? '<i style="width:' + (b.amt / odTot * 100).toFixed(1) + '%;background:' + b.color + '"></i>' : ''; }).join('') + '</div><ul class="mk-bul">' +
+        bands.map(function (b) { return '<li><span><b style="background:' + b.color + '"></b>' + h(b.label) + ' (' + b.n + ')</span><span>' + money(b.amt) + '</span></li>'; }).join('') + '</ul><p class="muted">Of ' + money(owedToYou) + ' owed to you on ' + inv.length + ' open invoice' + (inv.length === 1 ? '' : 's') + '.</p>') + '</div>' +
+      '<div class="mk-card"><h3>Pay runs</h3><p class="muted">N/A — the MYOB connector has no list of pay runs.</p></div>' +
+      '<div class="mk-card"><h3>Superannuation payable</h3>' + (bsb ? (sup.rows.length ? big(sup.total) + acctList(sup) : '<p class="muted">No superannuation payable account.</p>') : na('bs')) + '</div>' +
+      '<div class="mk-card"><h3>PAYG withholding</h3>' + (bsb ? (payg.rows.length ? big(payg.total) + '<div class="lbl">Withheld, not yet paid to the ATO</div>' + acctList(payg) : '<p class="muted">No PAYG withholding account.</p>') : na('bs')) + '</div></div>';
+    var ch = document.getElementById('db-chart');
+    if (c.errors.journals) ch.innerHTML = na('journals');
+    else MK.line(ch, { title: 'Income, expenses and net profit by month', solid: true, labels: months.map(function (x) { return x.label; }), series: [{ name: 'Income', values: months.map(function (x) { return x.inc; }), color: '#1B7F4B' }, { name: 'Expense', values: months.map(function (x) { return x.exp; }), color: '#D52B1E' }, { name: 'Net profit', values: months.map(function (x) { return x.net; }), color: 'var(--accent)' }] }, c);
+    // ---- checks: two of them tie two different MYOB sources; the third ties the P&L to the Balance Sheet
+    var per3 = MK.periodLine(m3, asAt), cye = bsb ? MK.currentYearEarnings(bsb.lines) : null, bandSum = MK.sum(bands.map(function (b) { return b.amt; })), bandN = bands.reduce(function (s, b) { return s + b.n; }, 0);
     var checks = [
-      control == null ? { name: 'Total outstanding − receivables account = out of balance (0.00 expected)', pass: null, detail: c.err('bs') || 'N/A — no receivables account found in the chart of accounts' }
-        : { name: 'Total outstanding − receivables account = out of balance (0.00 expected; the Balance Sheet is a separate MYOB report)', pass: ok, detail: money(total) + ' − ' + money(control) + ' = ' + money(oob) },
-      { name: 'Tax outstanding = Σ the invoices\' tax, pro rata to what is still owed', pass: MK.near(taxTot, MK.sum(inv.map(function (x) { return x.tax; }))), detail: money(taxTot) + ' on ' + inv.length + ' invoice(s)' },
-      { name: 'Each invoice: subtotal + tax = total', pass: taxDocs.length === 0, detail: taxDocs.length ? taxDocs.length + ' invoice(s) differ, e.g. ' + taxDocs[0].number : inv.length + ' invoice(s)' }
-    ];
-    this._x = { cust: cust, total: total, taxTot: taxTot, control: control, oob: oob };
-    return { checks: checks, notes: ['Open sales invoices with their balance due today, by customer; tax outstanding is each invoice\'s tax in proportion to what is still owed. The receivables account is every account of type Accounts Receivable on the Balance Sheet today.'],
-      na: ['A reconciliation as at an earlier date (MYOB\'s API gives today\'s open balances)'], period: MK.asOfLine(asAt) };
+      !p3 || !jl ? { name: 'Last 3 months: income and expenses on the Profit and Loss = the journals', pass: null, detail: c.err(!p3 ? 'pnl_3m' : 'journals') || 'N/A' }
+        : { name: 'Last 3 months (' + per3 + '): income and expenses on the Profit and Loss = the journals (two MYOB sources)', pass: MK.near(inc3, jInc3) && MK.near(exp3, jExp3), detail: 'income ' + money(inc3) + ' vs ' + money(jInc3) + ' · expenses ' + money(exp3) + ' vs ' + money(jExp3) },
+      !pf || !jl ? { name: 'Financial position = the chart\'s months', pass: null, detail: c.err(!pf ? 'pnl_fy' : 'journals') || 'N/A' }
+        : { name: 'Financial position (this year\'s net profit) = the chart\'s months added up', pass: MK.near(fp, chartFy), detail: money(fp) + ' vs ' + money(chartFy) },
+      !pf || !cye ? { name: 'Financial position = Current Year Earnings on the Balance Sheet', pass: null, detail: !pf ? c.err('pnl_fy') : c.err('bs') || 'N/A — no Current Year Earnings account on the Balance Sheet' }
+        : { name: 'Financial position = Current Year Earnings on the Balance Sheet (a separate MYOB report)', pass: MK.near(fp, cye.values[0]), detail: money(fp) + ' vs ' + money(cye.values[0]) },
+      c.errors.invoices || ar.total == null ? { name: 'Money owed to you (open invoices) = the receivables account on the Balance Sheet', pass: null, detail: c.err('invoices') || c.err('bs') || 'N/A — no receivables account in the chart of accounts' }
+        : { name: 'Money owed to you (open invoices) = the receivables account on the Balance Sheet (' + ar.rows.map(function (r) { return r.code || r.name; }).join(', ') + ')', pass: MK.near(owedToYou, ar.total), detail: money(owedToYou) + ' vs ' + money(ar.total) + (MK.near(owedToYou, ar.total) ? '' : ' — see MYOB Receivables Reconciliation') },
+      c.errors.invoices ? null : { name: 'Overdue invoices: the three age bands add up to the overdue total, and Up next counts every overdue invoice', pass: MK.near(bandSum, odTot) && bandN === od.length, detail: money(odTot) + ' on ' + od.length + ' invoice(s)' },
+      gstNet == null ? null : { name: 'GST to pay = GST collected − GST paid (' + gstRows.map(function (r) { return r.code || r.name; }).join(', ') + (viaCodes ? ', the accounts the GST tax codes post to' : ', found by name') + ')', pass: null, info: true, detail: money(gstNet) + (gstNet < 0 ? ' to claim' : ' to pay') }
+    ].filter(Boolean);
+    this._x = { inc3: inc3, exp3: exp3, fp: fp, months: months, bank: bank, card: card, gstNet: gstNet, gstCol: gstCol, gstPaid: gstPaid, bands: bands, odTot: odTot, od: od, owedToYou: owedToYou, sup: sup, payg: payg };
+    var notes = ['Income = income + other income; Expenses = cost of sales + expenses + other expenses (so Income − Expenses = net profit). Last 3 months = ' + per3 + '; this financial year = ' + MK.periodLine(fy, asAt) + '.',
+      'Balances are MYOB\'s as at today (bank, credit cards, GST, superannuation and PAYG withholding payable). The bank balance is MYOB\'s ledger balance, not the bank feed\'s.'];
+    if (c.errors.tax_codes) notes.push('Tax codes did not load (' + c.err('tax_codes') + '): GST accounts were found by name.');
+    return { checks: checks, notes: notes, period: MK.asOfLine(asAt), na: ['Pay runs (the MYOB connector has no list of pay runs)', 'Uploads (not part of a report)', 'The dashboard as at an earlier date (MYOB\'s API gives today\'s open balances)'] };
   },
   excel: function (c) {
     var x = this._x; if (!x) return [];
-    var mv = function (v) { return v == null ? 'N/A' : { v: v, s: 'money' }; };
-    var rows = [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: 'Receivables reconciliation with tax', s: 'bold' }], [MK.asOfLine(c.inputs.as_at)], [], ['Name', 'Amount outstanding ($)', 'Tax outstanding ($)'].map(function (t) { return { v: t, s: 'bold' }; })]
-      .concat(x.cust.map(function (r) { return [r.name, mv(r.amount), mv(r.tax)]; }))
-      .concat([[{ v: 'Total', s: 'bold' }, { v: x.total, s: 'moneyBold' }, { v: x.taxTot, s: 'moneyBold' }], [{ v: 'Receivables account', s: 'bold' }, mv(x.control)], [{ v: 'Out of balance amount', s: 'bold' }, mv(x.oob)]]);
-    return [{ name: 'Receivables reconciliation', rows: rows, widths: [36, 22, 20] }];
+    var mv = function (v) { return v == null ? 'N/A' : { v: v, s: 'money' }; }, hd = function (cols) { return [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: 'Dashboard', s: 'bold' }], [MK.asOfLine(c.inputs.as_at)], [], cols.map(function (t) { return { v: t, s: 'bold' }; })]; };
+    var R = [['Income (last 3 months)', x.inc3], ['Expenses (last 3 months)', x.exp3], ['Financial position (this financial year)', x.fp], ['Bank balance', x.bank.total], ['Money owed (credit cards)', x.card.total], ['GST to pay (negative: to claim)', x.gstNet], ['GST collected', x.gstCol], ['GST paid', x.gstPaid], ['Overdue invoices (' + x.od.length + ')', x.odTot]]
+      .concat(x.bands.map(function (b) { return [b.label + ' (' + b.n + ')', b.amt]; }), [['Owed to you (all open invoices)', x.owedToYou], ['Superannuation payable', x.sup.total], ['PAYG withholding', x.payg.total]]);
+    return [{ name: 'Dashboard', rows: hd(['Figure', 'Amount ($)']).concat(R.map(function (r) { return [r[0], mv(r[1])]; })), widths: [44, 16] },
+      { name: 'Monthly', rows: hd(['Month', 'Income ($)', 'Expense ($)', 'Net profit ($)']).concat(x.months.filter(function (m) { return m.inc != null; }).map(function (m) { return [m.key, mv(m.inc), mv(m.exp), mv(m.net)]; })), widths: [12, 16, 16, 16] },
+      { name: 'Overdue invoices', rows: hd(['Customer', 'Invoice no.', 'Due date', 'Days overdue', 'Balance due ($)']).concat(x.od.map(function (r) { return [r.customer, r.number, r.due, r.days, mv(r.bal)]; })), widths: [32, 14, 12, 12, 16] }];
   }
 });</script>
 </body>

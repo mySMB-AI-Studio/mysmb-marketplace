@@ -4,7 +4,7 @@ description: MYOB Cash Movement (M05) as a live, validated report in MYOB stylin
 ---
 # Cash Movement (M05)
 
-Use when the user asks for cash movement, where the cash went, cash in and out, or how the bank balance changed over a period. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Cash Movement**. Report title: **MYOB Cash Movement**. Report title: **MYOB Cash Movement**. Template: `myob-reporting-studio` / `cash-movement` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`get_profit_and_loss_3m`, `get_balance_sheet`, `list_accounts`, `list_company_files`).
+Use when the user asks for cash movement, where the cash went, cash in and out, or how the bank balance changed over a period. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Cash Movement**. Template: `myob-reporting-studio` / `cash-movement` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`get_profit_and_loss_3m`, `get_balance_sheet`, `list_accounts`, `list_company_files`).
 
 MYOB location: Reporting → Reports → Business → Cash movement. Library: MYOB Reports Prompt Library v1.2 → Prompts → M05. Delivery: Wave 1 (P1, delivery order 3).
 
@@ -206,18 +206,11 @@ MK.app({
     if (need.length) { body.innerHTML = '<p class="mk-err">' + MK.h(c.err(need[0])) + '</p>'; return { checks: [{ name: 'Profit and Loss and both Balance Sheets loaded', pass: false, detail: c.err(need[0]) }] }; }
     if (!c.data.pnl || !c.data.bs_open || !c.data.bs_close) return {};
     var idx = MK.accounts(c.data.accounts), pl = MK.breakdown([c.data.pnl], idx, MK.PL_LAYOUT), bs = MK.breakdown([c.data.bs_open, c.data.bs_close], idx, MK.BS_LAYOUT);
-    var np = pl.calc.NetProfit[0], isBank = function (r) { return r.type === 'Bank'; };
-    // MYOB's layout: the P&L for the period, then each balance-sheet account's movement as its effect on cash (an asset going up uses
-    // cash; a liability or equity going up provides it). Current Year Earnings is the P&L itself, so it is not counted again; Retained
-    // Earnings moving at a financial-year end is the same profit closing, also not cash.
-    var rows = bs.rows.filter(function (r) { return !r.header && /^(Asset|Liability|Equity)$/.test(r.cls); }), CYE = function (r) { return MK.CYE_RE.test(r.name); }, RE = function (r) { return /retained (earnings|profits)/i.test(r.name); };
-    var fyCross = MK.fyStartOf(to, (c.fy && c.fy.month) || 7) >= from; // the period spans a financial-year start: Retained Earnings moves by last year's profit
-    var lines = [], effect = function (r) { var d = r2((r.values[1] || 0) - (r.values[0] || 0)); return r.cls === 'Asset' ? -d : d; };
-    var nonCash = rows.filter(function (r) { return !isBank(r) && !CYE(r) && !(fyCross && RE(r)); }), bank = rows.filter(isBank);
-    var sec = function (cls, label) { var l = nonCash.filter(function (r) { return r.cls === cls; }).map(function (r) { return { label: (r.code ? r.code + ' ' : '') + r.name, value: effect(r) }; }).filter(function (x) { return Math.abs(x.value) >= 0.005 || c.display.zeros; }); return { label: label, rows: l, total: MK.sum(l.map(function (x) { return x.value; })) }; };
+    // MYOB's layout: the P&L for the period, then each balance-sheet account's movement as its effect on cash (MK.cashMoves).
+    var cf = MK.cashMoves(bs, pl, from, to, c.fy && c.fy.month), np = cf.np, fyCross = cf.fyCross, rollAdj = cf.rollAdj;
+    var sec = function (cls, label) { var l = cf.moves.filter(function (r) { return r.cls === cls; }).map(function (r) { return { label: (r.code ? r.code + ' ' : '') + r.name, value: r.effect }; }).filter(function (x) { return Math.abs(x.value) >= 0.005 || c.display.zeros; }); return { label: label, rows: l, total: MK.sum(l.map(function (x) { return x.value; })) }; };
     var A = sec('Asset', 'Assets (increase uses cash)'), L = sec('Liability', 'Liabilities (increase provides cash)'), E = sec('Equity', 'Equity (excluding this year\'s profit)');
-    var rolled = fyCross ? rows.filter(function (r) { return CYE(r) || RE(r); }) : [], rollAdj = fyCross ? r2(-(MK.sum(rolled.map(function (r) { return r.values[1] - r.values[0]; })) - np)) : 0; // a year-end close leaves equity unchanged in total
-    var net = r2(np + A.total + L.total + E.total), open = MK.sum(bank.map(function (r) { return r.values[0]; })), close = MK.sum(bank.map(function (r) { return r.values[1]; })), bankMove = r2(close - open);
+    var net = cf.net, bank = cf.bank, open = cf.open, close = cf.close, bankMove = r2(close - open);
     var tr = function (label, v, cls) { return '<tr class="' + (cls || '') + '"><td>' + MK.h(label) + '</td><td class="num">' + money(v) + '</td></tr>'; };
     var plRows = pl.lines.filter(function (l) { return l.kind !== 'header'; }).map(function (l) { return tr(l.kind === 'row' ? '  ' + (l.code ? l.code + ' ' : '') + l.label : l.label, l.values[0], l.kind === 'total' ? 'k-total' : ''); }).join('');
     var block = function (s) { return '<tr class="k-head"><td colspan="2"><strong>' + MK.h(s.label) + '</strong></td></tr>' + s.rows.map(function (x) { return tr('  ' + x.label, x.value); }).join('') + tr('Total ' + s.label.replace(/ \(.*\)$/, ''), s.total, 'k-total'); };
@@ -225,7 +218,7 @@ MK.app({
     body.innerHTML = MK.kpis([{ label: 'Net profit', value: np }, { label: 'Net cash movement', value: net }, { label: 'Opening bank', value: open }, { label: 'Closing bank', value: close }], c) +
       '<div class="mk-card" style="margin-top:16px"><h3>' + (view === 'bank' ? 'Bank accounts' : 'Cash movement') + ' — ' + MK.h(MK.periodLine(from, to)) + '</h3>' + (view === 'bank' ? '<div id="cm-bank"></div>'
         : '<div class="mk-scroll"><table class="mk-grid"><tbody>' + plRows + block(A) + block(L) + block(E) + tr('Net Cash Movement in (Out)', net, 'k-total') + tr('Opening Balance (bank accounts)', open) + tr('Closing Balance (bank accounts)', close, 'k-total') + '</tbody></table></div>') + '</div>';
-    if (view === 'bank') MK.grid(document.getElementById('cm-bank'), { rows: bank.map(function (r) { return { code: r.code, name: r.name, open: r.values[0], move: r2(r.values[1] - r.values[0]), close: r.values[1] }; }), columns: [{ key: 'code', title: 'Code' }, { key: 'name', title: 'Bank account' }, { key: 'open', title: 'Opening balance', money: true }, { key: 'move', title: 'Movement', money: true }, { key: 'close', title: 'Closing balance', money: true }], total: { code: 'Total', open: open, move: bankMove, close: close } }, c);
+    if (view === 'bank') MK.grid(document.getElementById('cm-bank'), { rows: bank.map(function (r) { return { code: r.code, name: r.name, open: r.open, move: r2(r.close - r.open), close: r.close }; }), columns: [{ key: 'code', title: 'Code' }, { key: 'name', title: 'Bank account' }, { key: 'open', title: 'Opening balance', money: true }, { key: 'move', title: 'Movement', money: true }, { key: 'close', title: 'Closing balance', money: true }], total: { code: 'Total', open: open, move: bankMove, close: close } }, c);
     var checks = [
       { name: 'Closing balance = opening balance + net cash movement (bank accounts on two Balance Sheets vs the P&L and every other account\'s movement)', pass: MK.near(close, r2(open + net)), detail: money(open) + ' + ' + money(net) + ' = ' + money(r2(open + net)) + ' vs ' + money(close) + (MK.near(close, r2(open + net)) ? '' : ' — difference ' + money(r2(close - open - net))) },
       { name: 'Net cash movement = net profit + the change in every non-bank account (as laid out)', pass: MK.near(net, r2(np + A.total + L.total + E.total)), detail: money(np) + ' + ' + money(r2(A.total + L.total + E.total)) },

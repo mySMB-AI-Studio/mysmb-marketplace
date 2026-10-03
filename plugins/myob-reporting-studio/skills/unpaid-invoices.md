@@ -4,7 +4,7 @@ description: MYOB Unpaid Invoices (M32) as a live, validated report in MYOB styl
 ---
 # Unpaid Invoices (M32)
 
-Use when the user asks for unpaid invoices, who owes them money, outstanding sales invoices, a chase list, or receivables by customer with ageing. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Unpaid Invoices**. Report title: **MYOB Unpaid Invoices**. Report title: **MYOB Unpaid Invoices**. Template: `myob-reporting-studio` / `unpaid-invoices` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_invoices`, `get_balance_sheet`, `list_accounts`, `list_company_files`).
+Use when the user asks for unpaid invoices, who owes them money, outstanding sales invoices, a chase list, or receivables by customer with ageing. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Unpaid Invoices**. Template: `myob-reporting-studio` / `unpaid-invoices` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_invoices`, `get_balance_sheet`, `list_accounts`, `list_company_files`).
 
 MYOB location: Reporting → Reports → Sales → Unpaid invoices. Library: MYOB Reports Prompt Library v1.2 → Prompts → M32. Delivery: Wave 1 (P1, delivery order 4).
 

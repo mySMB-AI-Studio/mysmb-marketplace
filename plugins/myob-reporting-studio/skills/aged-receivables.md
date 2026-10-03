@@ -4,7 +4,7 @@ description: MYOB Aged Receivables (M32) as a live, validated report in MYOB sty
 ---
 # Aged Receivables (M32)
 
-Use when the user asks for aged receivables, aged debtors, an ageing of what customers owe, or overdue invoices by age. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Aged Receivables**. Report title: **MYOB Aged Receivables**. Report title: **MYOB Aged Receivables**. Template: `myob-reporting-studio` / `aged-receivables` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_invoices`, `get_balance_sheet`, `list_accounts`, `list_company_files`).
+Use when the user asks for aged receivables, aged debtors, an ageing of what customers owe, or overdue invoices by age. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Aged Receivables**. Template: `myob-reporting-studio` / `aged-receivables` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_invoices`, `get_balance_sheet`, `list_accounts`, `list_company_files`).
 
 MYOB location: Reporting → Reports → Sales → Unpaid invoices (ageing by due date). Library: MYOB Reports Prompt Library v1.2 → Prompts → M32. Delivery: Wave 1 (P1 — the unpaid invoices report aged by due date).
 

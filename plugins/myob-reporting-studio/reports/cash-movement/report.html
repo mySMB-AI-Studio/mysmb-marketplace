@@ -79,7 +79,14 @@ main.mk-card{border-top:4px solid var(--accent)}
 @media print{body{padding-right:0}}
 .mk-badge{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.06em;border-radius:10px;padding:1px 8px;margin-right:6px;vertical-align:middle;background:var(--accent);color:#FFFFFF}.mk-src .mk-badge+*{vertical-align:middle}
 :root.style-mysmb .mk-stmt thead th,:root.style-mysmb .mk-grid thead th{background:var(--th-bg);color:var(--th-ink);border-bottom:0}
-:root.style-mysmb #mk-head .ti{font-size:18px;font-weight:700}:root.style-mysmb #mk-head .co{font-size:14px}:root.style-mysmb .mk-badge{background:var(--band-ink);color:var(--band)}:root.style-mysmb .mk-kpi{border-left-color:var(--band)}</style>
+:root.style-mysmb #mk-head .ti{font-size:18px;font-weight:700}:root.style-mysmb #mk-head .co{font-size:14px}:root.style-mysmb .mk-badge{background:var(--band-ink);color:var(--band)}:root.style-mysmb .mk-kpi{border-left-color:var(--band)}
+.mk-greet{font-size:20px;font-weight:600;margin:0 0 12px}
+.mk-dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}.mk-dash>.mk-card{margin:0;padding:16px 18px}.mk-dash>.wide{grid-column:1/-1}.mk-dash .wide svg{max-height:260px}.mk-next{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}.mk-next h3{margin:0 8px 0 0}
+.mk-big{font-size:26px;font-weight:700;margin:2px 0 6px;font-variant-numeric:tabular-nums}.mk-big sup{font-size:.55em;font-weight:600;vertical-align:.6em}.mk-big.neg{color:var(--neg)}
+.mk-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--line);margin:8px 0}.mk-bar i{display:block;height:100%}
+.mk-bul{list-style:none;padding:0;margin:8px 0 0}.mk-bul li{display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--line);font-size:13px}.mk-bul b{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.mk-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:8px}.mk-tiles .lbl{font-size:12px;color:var(--muted)}
+@media print{.noprint{display:none}}</style>
 </head>
 <body class="persona-detail">
 <div id="mk-controls" aria-label="Report controls"></div>
@@ -187,6 +194,15 @@ function signNotes(totals, col) {
 var out = [], i = col || 0, credit = { Income: 1, OtherIncome: 1 }, what = function (k) { return /Income/.test(k) ? 'income' : /Expense|CostOfSales/.test(k) ? 'expense' : 'account'; };
 Object.keys(totals).forEach(function (k) { var v = totals[k][i]; if (v < -0.005) out.push(SECTION_LABEL[k] + ' is negative (' + (credit[k] || k === 'Asset' ? 'a net debit' : k === 'Liability' || k === 'Equity' ? 'a net debit' : 'a net credit') + ') — review the ' + what(k) + ' postings.'); });
 return out;
+}
+function cashMoves(bs2, pl, from, to, fyMonth) {
+var r2 = function (v) { return Math.round(v * 100) / 100; }, np = pl.calc.NetProfit[0], fyCross = iso(fyStartOf(parse(to), fyMonth || 7)) >= from;
+var CYE = function (r) { return CYE_RE.test(r.name); }, RE = function (r) { return /retained (earnings|profits)/i.test(r.name); };
+var rows = bs2.rows.filter(function (r) { return !r.header && /^(Asset|Liability|Equity)$/.test(r.cls); }).map(function (r) { var d = r2((r.values[1] || 0) - (r.values[0] || 0));
+return { code: r.code, name: r.name, cls: r.cls, type: r.type, open: r.values[0] || 0, close: r.values[1] || 0, effect: r.cls === 'Asset' ? -d : d, bank: r.type === 'Bank', skip: CYE(r) || (fyCross && RE(r)) }; });
+var moves = rows.filter(function (r) { return !r.bank && !r.skip; }), bank = rows.filter(function (r) { return r.bank; }), rolled = rows.filter(function (r) { return fyCross && r.skip; });
+var open = sum(bank.map(function (r) { return r.open; })), close = sum(bank.map(function (r) { return r.close; }));
+return { np: np, moves: moves, bank: bank, open: open, close: close, net: r2(np + sum(moves.map(function (r) { return r.effect; }))), fyCross: fyCross, rollAdj: fyCross ? r2(-(sum(rolled.map(function (r) { return r.close - r.open; })) - np)) : 0 };
 }
 function linesTies(lines, tol) {
 var res = { checked: 0, failed: [] };
@@ -470,7 +486,7 @@ var f = el.querySelector('.mk-filter'); if (f) f.addEventListener('input', funct
 draw();
 }
 function scale(vals) { var mn = Math.min(0, Math.min.apply(null, vals)), mx = Math.max(0, Math.max.apply(null, vals)); if (mn === mx) mx = mn + 1; return { mn: mn, mx: mx }; }
-function legend(series) { return '<div class="mk-legend">' + series.map(function (s, i) { return '<span><i style="background:var(--c' + (i + 1) + ')"></i>' + h(s.name) + '</span>'; }).join('') + '</div>'; }
+function legend(series) { return '<div class="mk-legend">' + series.map(function (s, i) { return '<span><i style="background:' + (s.color || 'var(--c' + (i + 1) + ')') + '"></i>' + h(s.name) + '</span>'; }).join('') + '</div>'; }
 function bars(el, o, ctx) {
 var W = 640, H = 220, P = 28, all = []; o.series.forEach(function (s) { all = all.concat(s.values.filter(function (v) { return v != null; })); });
 if (!all.length) { el.innerHTML = '<p class="muted">Data appears once it\'s available.</p>'; return; }
@@ -495,8 +511,9 @@ o.series.forEach(function (s, j) {
 var pts = s.values.map(function (v, i) { return v == null ? null : (P + step * i).toFixed(1) + ',' + y(v).toFixed(1); }).filter(Boolean);
 if (j === 0 && o.band) { var up = [], dn = []; o.band.high.forEach(function (v, i) { if (v != null && o.band.low[i] != null) { up.push((P + step * i).toFixed(1) + ',' + y(v).toFixed(1)); dn.unshift((P + step * i).toFixed(1) + ',' + y(o.band.low[i]).toFixed(1)); } }); if (up.length) svg += '<polygon points="' + up.concat(dn).join(' ') + '" fill="var(--c2)" opacity=".16"><title>' + h(o.band.name || 'Range') + '</title></polygon>'; }
 if (o.area && j === 0 && pts.length) svg += '<polygon points="' + (P).toFixed(1) + ',' + y(0).toFixed(1) + ' ' + pts.join(' ') + ' ' + (P + step * (n - 1)).toFixed(1) + ',' + y(0).toFixed(1) + '" fill="var(--c1)" opacity=".18"/>';
-svg += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="var(--c' + (j + 1) + ')" stroke-width="2.5"' + (j ? ' stroke-dasharray="5 4"' : '') + '/>';
-s.values.forEach(function (v, i) { if (v != null) svg += '<circle cx="' + (P + step * i).toFixed(1) + '" cy="' + y(v).toFixed(1) + '" r="3" fill="var(--c' + (j + 1) + ')"><title>' + h(s.name + ' · ' + o.labels[i] + ': ' + money(v, ctx.currency, ctx.display)) + '</title></circle>'; });
+var col = s.color || 'var(--c' + (j + 1) + ')';
+svg += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="2.5"' + (j && !o.solid ? ' stroke-dasharray="5 4"' : '') + '/>';
+s.values.forEach(function (v, i) { if (v != null) svg += '<circle cx="' + (P + step * i).toFixed(1) + '" cy="' + y(v).toFixed(1) + '" r="3" fill="' + col + '"><title>' + h(s.name + ' · ' + o.labels[i] + ': ' + money(v, ctx.currency, ctx.display)) + '</title></circle>'; });
 });
 o.labels.forEach(function (lb, i) { if (n <= 13 || i % Math.ceil(n / 12) === 0) svg += '<text x="' + (P + step * i).toFixed(1) + '" y="' + (H - 8) + '" class="tick" text-anchor="middle">' + h(lb) + '</text>'; });
 el.innerHTML = svg + '</svg>' + legend(o.series) + (o.band ? '<div class="mk-legend"><span><i style="background:var(--c2);opacity:.3"></i>' + h(o.band.name || 'Range') + '</span></div>' : '');
@@ -646,7 +663,7 @@ function ctx() {
 var d = disp(), c0 = co(), f = fy();
 return { data: S.data, errors: S.errors, err: err, inputs: S.inputs, I: I, display: d, view: d.v || (cfg.views ? cfg.views[0][0] : ''), compareMode: cfg.compare ? d.c : 'none',
 persona: I.persona ? S.inputs[I.persona] : 'Bookkeeper', company: c0.name, companyFile: c0, fy: f, currency: homeCurrency(c0.country), live: live,
-fetchedAt: S.fetchedAt, body: $('mk-body'), change: change, disp: disp, today: iso(today()) };
+fetchedAt: S.fetchedAt, body: $('mk-body'), change: change, disp: disp, today: iso(today()), rerun: function () { return requery(null); } };
 }
 var last = { checks: [], na: [], notes: [] };
 function render() {
@@ -662,7 +679,7 @@ last = { checks: out.checks || [], na: out.na || [], notes: out.notes || [] };
 var nc = Object.keys(S.errors).some(function (id) { return S.errors[id] && S.errors[id].code === 'needs_connection'; });
 if (nc && c.body && c.body.textContent.indexOf(FRIENDLY.needs_connection) < 0) { var dv = document.createElement('div'); dv.className = 'mk-banner fail'; dv.textContent = FRIENDLY.needs_connection; c.body.insertBefore(dv, c.body.firstChild); }
 Object.keys(S.errors).forEach(function (id) {
-if (id === cfg.files) return; // the company-file list is optional (newer MYOB keys return none)
+if (id === cfg.files || (cfg.optional || []).indexOf(id) >= 0) return; // the company-file list is optional (newer MYOB keys return none); so are a report's declared optional sources (it says what it fell back to)
 var msg = err(id);
 if (last.checks.some(function (k) { return k.pass === false && k.detail === msg; })) return;
 last.checks.unshift({ name: 'Data loaded: ' + ((cfg.tools || {})[id] || id), pass: false, detail: msg });
@@ -718,7 +735,7 @@ if (MH.onRefresh) MH.onRefresh(function () { status('Refreshing…'); });
 if (MH.onThemeChange) MH.onThemeChange(function () { render(); });
 return { state: S, change: change, render: render, exportXlsx: exportXlsx, ctx: ctx };
 }
-return { signNotes: signNotes, errorOf: errorOf, items: items, isoDate: isoDate, accounts: accounts, classOf: classOf, breakdown: breakdown, PL_LAYOUT: PL_LAYOUT, BS_LAYOUT: BS_LAYOUT, PL_CLASSES: PL_CLASSES, BS_CLASSES: BS_CLASSES,
+return { signNotes: signNotes, cashMoves: cashMoves, errorOf: errorOf, items: items, isoDate: isoDate, accounts: accounts, classOf: classOf, breakdown: breakdown, PL_LAYOUT: PL_LAYOUT, BS_LAYOUT: BS_LAYOUT, PL_CLASSES: PL_CLASSES, BS_CLASSES: BS_CLASSES,
 CYE_RE: CYE_RE, currentYearEarnings: currentYearEarnings, linesTies: linesTies, companyFiles: companyFiles, companyOf: companyOf, fiscalStart: fiscalStart, homeCurrency: homeCurrency,
 applyBrand: applyBrand, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app,
 MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays, num: num, find: find, val: val, totalFor: totalFor, near: near, sum: sum, symbol: symbol,
@@ -741,18 +758,11 @@ xlsx: xlsx, sheetFromLines: sheetFromLines, download: download, reportParams: re
     if (need.length) { body.innerHTML = '<p class="mk-err">' + MK.h(c.err(need[0])) + '</p>'; return { checks: [{ name: 'Profit and Loss and both Balance Sheets loaded', pass: false, detail: c.err(need[0]) }] }; }
     if (!c.data.pnl || !c.data.bs_open || !c.data.bs_close) return {};
     var idx = MK.accounts(c.data.accounts), pl = MK.breakdown([c.data.pnl], idx, MK.PL_LAYOUT), bs = MK.breakdown([c.data.bs_open, c.data.bs_close], idx, MK.BS_LAYOUT);
-    var np = pl.calc.NetProfit[0], isBank = function (r) { return r.type === 'Bank'; };
-    // MYOB's layout: the P&L for the period, then each balance-sheet account's movement as its effect on cash (an asset going up uses
-    // cash; a liability or equity going up provides it). Current Year Earnings is the P&L itself, so it is not counted again; Retained
-    // Earnings moving at a financial-year end is the same profit closing, also not cash.
-    var rows = bs.rows.filter(function (r) { return !r.header && /^(Asset|Liability|Equity)$/.test(r.cls); }), CYE = function (r) { return MK.CYE_RE.test(r.name); }, RE = function (r) { return /retained (earnings|profits)/i.test(r.name); };
-    var fyCross = MK.fyStartOf(to, (c.fy && c.fy.month) || 7) >= from; // the period spans a financial-year start: Retained Earnings moves by last year's profit
-    var lines = [], effect = function (r) { var d = r2((r.values[1] || 0) - (r.values[0] || 0)); return r.cls === 'Asset' ? -d : d; };
-    var nonCash = rows.filter(function (r) { return !isBank(r) && !CYE(r) && !(fyCross && RE(r)); }), bank = rows.filter(isBank);
-    var sec = function (cls, label) { var l = nonCash.filter(function (r) { return r.cls === cls; }).map(function (r) { return { label: (r.code ? r.code + ' ' : '') + r.name, value: effect(r) }; }).filter(function (x) { return Math.abs(x.value) >= 0.005 || c.display.zeros; }); return { label: label, rows: l, total: MK.sum(l.map(function (x) { return x.value; })) }; };
+    // MYOB's layout: the P&L for the period, then each balance-sheet account's movement as its effect on cash (MK.cashMoves).
+    var cf = MK.cashMoves(bs, pl, from, to, c.fy && c.fy.month), np = cf.np, fyCross = cf.fyCross, rollAdj = cf.rollAdj;
+    var sec = function (cls, label) { var l = cf.moves.filter(function (r) { return r.cls === cls; }).map(function (r) { return { label: (r.code ? r.code + ' ' : '') + r.name, value: r.effect }; }).filter(function (x) { return Math.abs(x.value) >= 0.005 || c.display.zeros; }); return { label: label, rows: l, total: MK.sum(l.map(function (x) { return x.value; })) }; };
     var A = sec('Asset', 'Assets (increase uses cash)'), L = sec('Liability', 'Liabilities (increase provides cash)'), E = sec('Equity', 'Equity (excluding this year\'s profit)');
-    var rolled = fyCross ? rows.filter(function (r) { return CYE(r) || RE(r); }) : [], rollAdj = fyCross ? r2(-(MK.sum(rolled.map(function (r) { return r.values[1] - r.values[0]; })) - np)) : 0; // a year-end close leaves equity unchanged in total
-    var net = r2(np + A.total + L.total + E.total), open = MK.sum(bank.map(function (r) { return r.values[0]; })), close = MK.sum(bank.map(function (r) { return r.values[1]; })), bankMove = r2(close - open);
+    var net = cf.net, bank = cf.bank, open = cf.open, close = cf.close, bankMove = r2(close - open);
     var tr = function (label, v, cls) { return '<tr class="' + (cls || '') + '"><td>' + MK.h(label) + '</td><td class="num">' + money(v) + '</td></tr>'; };
     var plRows = pl.lines.filter(function (l) { return l.kind !== 'header'; }).map(function (l) { return tr(l.kind === 'row' ? '  ' + (l.code ? l.code + ' ' : '') + l.label : l.label, l.values[0], l.kind === 'total' ? 'k-total' : ''); }).join('');
     var block = function (s) { return '<tr class="k-head"><td colspan="2"><strong>' + MK.h(s.label) + '</strong></td></tr>' + s.rows.map(function (x) { return tr('  ' + x.label, x.value); }).join('') + tr('Total ' + s.label.replace(/ \(.*\)$/, ''), s.total, 'k-total'); };
@@ -760,7 +770,7 @@ xlsx: xlsx, sheetFromLines: sheetFromLines, download: download, reportParams: re
     body.innerHTML = MK.kpis([{ label: 'Net profit', value: np }, { label: 'Net cash movement', value: net }, { label: 'Opening bank', value: open }, { label: 'Closing bank', value: close }], c) +
       '<div class="mk-card" style="margin-top:16px"><h3>' + (view === 'bank' ? 'Bank accounts' : 'Cash movement') + ' — ' + MK.h(MK.periodLine(from, to)) + '</h3>' + (view === 'bank' ? '<div id="cm-bank"></div>'
         : '<div class="mk-scroll"><table class="mk-grid"><tbody>' + plRows + block(A) + block(L) + block(E) + tr('Net Cash Movement in (Out)', net, 'k-total') + tr('Opening Balance (bank accounts)', open) + tr('Closing Balance (bank accounts)', close, 'k-total') + '</tbody></table></div>') + '</div>';
-    if (view === 'bank') MK.grid(document.getElementById('cm-bank'), { rows: bank.map(function (r) { return { code: r.code, name: r.name, open: r.values[0], move: r2(r.values[1] - r.values[0]), close: r.values[1] }; }), columns: [{ key: 'code', title: 'Code' }, { key: 'name', title: 'Bank account' }, { key: 'open', title: 'Opening balance', money: true }, { key: 'move', title: 'Movement', money: true }, { key: 'close', title: 'Closing balance', money: true }], total: { code: 'Total', open: open, move: bankMove, close: close } }, c);
+    if (view === 'bank') MK.grid(document.getElementById('cm-bank'), { rows: bank.map(function (r) { return { code: r.code, name: r.name, open: r.open, move: r2(r.close - r.open), close: r.close }; }), columns: [{ key: 'code', title: 'Code' }, { key: 'name', title: 'Bank account' }, { key: 'open', title: 'Opening balance', money: true }, { key: 'move', title: 'Movement', money: true }, { key: 'close', title: 'Closing balance', money: true }], total: { code: 'Total', open: open, move: bankMove, close: close } }, c);
     var checks = [
       { name: 'Closing balance = opening balance + net cash movement (bank accounts on two Balance Sheets vs the P&L and every other account\'s movement)', pass: MK.near(close, r2(open + net)), detail: money(open) + ' + ' + money(net) + ' = ' + money(r2(open + net)) + ' vs ' + money(close) + (MK.near(close, r2(open + net)) ? '' : ' — difference ' + money(r2(close - open - net))) },
       { name: 'Net cash movement = net profit + the change in every non-bank account (as laid out)', pass: MK.near(net, r2(np + A.total + L.total + E.total)), detail: money(np) + ' + ' + money(r2(A.total + L.total + E.total)) },

@@ -4,7 +4,7 @@ description: MYOB Sales Register (M38) as a live, validated report in MYOB styli
 ---
 # Sales Register (M38)
 
-Use when the user asks for a sales register, a list of sales invoices for a period, or invoices by status. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Sales Register**. Report title: **MYOB Sales Register**. Report title: **MYOB Sales Register**. Template: `myob-reporting-studio` / `sales-register` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_invoices`, `get_profit_and_loss_3m`, `get_balance_sheet`, `list_accounts`, `list_company_files`).
+Use when the user asks for a sales register, a list of sales invoices for a period, or invoices by status. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Sales Register**. Template: `myob-reporting-studio` / `sales-register` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_invoices`, `get_profit_and_loss_3m`, `get_balance_sheet`, `list_accounts`, `list_company_files`).
 
 MYOB location: Reporting → Reports → Sales → Sales register. Library: MYOB Reports Prompt Library v1.2 → Prompts → M38. Delivery: Wave 1 (P1, delivery order 10).
 

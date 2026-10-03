@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Receivables Reconciliation</title>
+<title>Statement of Cash Flows</title>
 <style>:root{--accent:#6F2CBA;--btn:#5A1F9E;--btn-ink:#FFFFFF;--ink:#393A3D;--muted:#6B6C72;--line:#E3E5E8;--canvas:#F4F5F8;--card:#FFFFFF;--th:#6B6C72;--zebra:transparent;--neg:#D52B1E;--pos:#1B7F4B;--pass-bg:#EAF6E8;--fail-bg:#FDECEA;--band:#FFFFFF;--band-ink:#393A3D;--cover:#1B2A4A;--cover-ink:#FFFFFF;--c1:#6F2CBA;--c2:#9E9E9E;--c3:#00B0A0;--c4:#007A6E;--c5:#E0457B;--c6:#0077C5;--d1:#6F2CBA;--d2:#00B0A0;--d3:#B28DE6;--d4:#E0457B;--d5:#0077C5;--d6:#9E9E9E}
 :root[data-myhub-theme='dark']{--accent:#A77BE8;--btn:#7A45C9;--btn-ink:#FFFFFF;--ink:#E6E8EB;--muted:#A3A7AE;--line:#33363C;--canvas:#16181B;--card:#1F2226;--th:#A3A7AE;--neg:#FF6B5E;--pos:#4CC38A;--pass-bg:#18301A;--fail-bg:#3A1B19;--band:#1F2226;--band-ink:#E6E8EB;--cover:#22324F;--cover-ink:#FFFFFF;--c1:#A77BE8;--c2:#80858D;--c3:#2BC4B3;--c4:#3CCFBF;--c5:#F06A96;--c6:#3FA2E8;--d1:#A77BE8;--d2:#2BC4B3;--d3:#CDB4F2;--d4:#F06A96;--d5:#3FA2E8;--d6:#80858D}
 :root.style-mysmb{--accent:#00B0A0;--btn:#007A6E;--zebra:#E6F7F5;--band:#007A6E;--band-ink:#FFFFFF;--cover:#007A6E;--th-bg:#007A6E;--th-ink:#FFFFFF;--c1:#007A6E;--c2:#00B0A0;--c3:#6F2CBA;--c4:#9E9E9E;--c5:#1B7F4B;--c6:#C8102E;--d1:#007A6E;--d2:#00B0A0;--d3:#6F2CBA;--d4:#9E9E9E;--d5:#1B7F4B;--d6:#C8102E;--pos:#1B7F4B;--neg:#C8102E}
@@ -744,52 +744,54 @@ PRESETS: PRESETS, preset: preset, ASAT: ASAT, asAt: asAt, compare: compare, peri
 xlsx: xlsx, sheetFromLines: sheetFromLines, download: download, reportParams: reportParams };
 })();</script>
 <script>MK.app({
-  title: 'Receivables Reconciliation', primary: 'bs', files: 'company_files',
-  // no as-at control: MYOB's API gives today's open balances, so the reconciliation is always as at today
-  inputs: { companyFile: 'company_file', persona: 'persona', display: 'display' },
-  defaults: { as_at: '2026-09-28', company_file: '', persona: 'Bookkeeper',
-    display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"custom","a":"today","c":"none","v":"recon"}' },
-  uses: { invoices: ['company_file'], bs: ['as_at', 'company_file'], accounts: ['company_file'], company_files: [] },
-  tools: { invoices: 'list_invoices (open sales invoices — every page)', bs: 'get_balance_sheet (the receivables account today)', accounts: 'list_accounts (which accounts are receivables)', company_files: 'list_company_files' },
-  roll: function () { return { as_at: MK.asAt('today') }; },
-  views: [['recon', 'Reconciliation with tax'], ['exceptions', 'Reconciliation exceptions']],
+  title: 'Statement of Cash Flows', primary: 'pnl', files: 'company_files',
+  inputs: { start: 'from_date', end: 'to_date', companyFile: 'company_file', persona: 'persona', display: 'display' },
+  defaults: { from_date: '2026-09-01', to_date: '2026-09-28', prev_day: '2026-08-31', company_file: '', persona: 'Bookkeeper',
+    display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":0,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"this_month_td","a":"custom","c":"none","v":"detail"}' },
+  uses: { pnl: ['from_date', 'to_date', 'company_file'], bs_open: ['prev_day', 'company_file'], bs_close: ['to_date', 'company_file'], accounts: ['company_file'], company_files: [] },
+  tools: { pnl: 'get_profit_and_loss_3m (the period)', bs_open: 'get_balance_sheet (the day before the period)', bs_close: 'get_balance_sheet (the period end)', accounts: 'list_accounts (account types: which accounts are cash and which activity each belongs to)', company_files: 'list_company_files' },
+  views: [['detail', 'Expanded (category lines)'], ['summary', 'Collapsed (activities)']],
+  derive: function (inp) { return { prev_day: MK.iso(MK.addDays(MK.parse(inp.from_date), -1)) }; },
   render: function (c) {
-    var body = c.body, money = function (v) { return MK.money(v, c.currency, c.display); }, r2 = function (v) { return Math.round(v * 100) / 100; }, asAt = c.inputs.as_at;
-    if (c.errors.invoices) { body.innerHTML = '<p class="mk-err">' + MK.h(c.err('invoices')) + '</p>'; return { checks: [{ name: 'Open invoices loaded', pass: false, detail: c.err('invoices') }] }; }
-    if (!c.data.invoices) return {};
-    var inv = MK.items(c.data.invoices).filter(function (i) { return i && (MK.num(i.BalanceDueAmount) || 0) !== 0; }).map(function (i) {
-      var cu = i.Customer || {}, bal = MK.num(i.BalanceDueAmount) || 0, tot = MK.num(i.TotalAmount) || 0, tax = MK.num(i.TotalTax) || 0;
-      return { number: i.Number || '', date: MK.isoDate(i.Date), customer: cu.Name || '(no customer)', cid: cu.UID || cu.Name || '', balance: r2(bal), tax: tot ? r2(bal * tax / tot) : 0, total: tot, taxFull: tax, sub: MK.num(i.Subtotal) }; });
-    var byC = {}; inv.forEach(function (x) { if (!byC[x.cid]) byC[x.cid] = { name: x.customer, amount: 0, tax: 0, docs: [] }; var y = byC[x.cid]; y.amount = r2(y.amount + x.balance); y.tax = r2(y.tax + x.tax); y.docs.push(x); });
-    var cust = Object.keys(byC).map(function (k) { return byC[k]; }).sort(function (a, b) { return a.name.localeCompare(b.name); });
-    var total = MK.sum(cust.map(function (x) { return x.amount; })), taxTot = MK.sum(cust.map(function (x) { return x.tax; }));
-    var idx = MK.accounts(c.data.accounts), bsB = c.data.bs ? MK.breakdown([c.data.bs], idx, MK.BS_LAYOUT) : null;
-    var arRows = bsB ? bsB.rows.filter(function (r) { return !r.header && (r.type === 'AccountReceivable' || (!idx.loaded && /receivable|debtors/i.test(r.name))); }) : [], control = arRows.length ? MK.sum(arRows.map(function (r) { return r.values[0]; })) : null;
-    var oob = control == null ? null : r2(total - control), ok = oob != null && MK.near(oob, 0);
-    var tie = '<table class="mk-grid" style="margin-top:12px"><tbody><tr class="k-total"><td>Total outstanding</td><td class="num">' + money(total) + '</td></tr><tr class="k-total"><td>Receivables account' + (arRows.length ? ' (' + MK.h(arRows.map(function (r) { return (r.code ? r.code + ' ' : '') + r.name; }).join(', ')) + ')' : '') + '</td><td class="num">' + (control == null ? 'N/A — not in source' : money(control)) + '</td></tr>' +
-      '<tr class="k-total"><td>Out of balance amount</td><td class="num' + (oob != null && !ok ? ' neg' : '') + '">' + (oob == null ? 'N/A' : money(oob)) + '</td></tr></tbody></table><p><span class="chip ' + (ok ? 'up' : 'down') + '">' + (oob == null ? 'Not checked' : ok ? 'In balance' : 'Out of balance') + '</span></p>';
-    var view = c.view || 'recon';
-    body.innerHTML = MK.kpis([{ label: 'Total outstanding', value: total }, { label: 'Tax outstanding', value: taxTot }, { label: 'Receivables account', value: control }, { label: 'Out of balance', value: oob }], c) +
-      '<div class="mk-card" style="margin-top:16px"><h3>' + (view === 'exceptions' ? 'Receivables reconciliation exceptions' : 'Receivables reconciliation with tax') + ' — ' + MK.asOfLine(asAt).replace(/^As at /, '') + '</h3>' + (view === 'exceptions' ? tie + (ok ? '<p class="muted">No exceptions: the customers\' outstanding invoices equal the receivables account.</p>' : oob == null ? '' : '<p class="muted">Possible causes (not checked): a general journal or bank transaction posted straight to the receivables account; a customer payment or credit not applied to an invoice; an invoice dated after today.</p>') : '<div id="rr-grid"></div>' + tie) + '</div>';
-    if (view !== 'exceptions') MK.grid(document.getElementById('rr-grid'), { rows: cust, filter: true, columns: [{ key: 'name', title: 'Name' }, { key: 'amount', title: 'Amount outstanding ($)', money: true }, { key: 'tax', title: 'Tax outstanding ($)', money: true }], total: { name: 'Total', amount: total, tax: taxTot }, empty: 'No outstanding invoices.' }, c);
-    var taxDocs = inv.filter(function (x) { return x.total && x.sub != null && !MK.near(r2(x.sub + x.taxFull), x.total); });
+    var body = c.body, money = function (v) { return MK.money(v, c.currency, c.display); }, r2 = function (v) { return Math.round(v * 100) / 100; }, from = c.inputs.from_date, to = c.inputs.to_date;
+    var need = ['pnl', 'bs_open', 'bs_close'].filter(function (id) { return c.errors[id]; });
+    if (need.length) { body.innerHTML = '<p class="mk-err">' + MK.h(c.err(need[0])) + '</p>'; return { checks: [{ name: 'Profit and Loss and both Balance Sheets loaded', pass: false, detail: c.err(need[0]) }] }; }
+    if (!c.data.pnl || !c.data.bs_open || !c.data.bs_close) return {};
+    var idx = MK.accounts(c.data.accounts), pl = MK.breakdown([c.data.pnl], idx, MK.PL_LAYOUT), bs = MK.breakdown([c.data.bs_open, c.data.bs_close], idx, MK.BS_LAYOUT);
+    var cf = MK.cashMoves(bs, pl, from, to, c.fy && c.fy.month);
+    // Activities by MYOB account type (the API does not expose each account's own cash-flow classification): cash = bank accounts;
+    // investing = fixed and other (non-current) assets; financing = long-term and other liabilities and equity; operating = the rest
+    // (receivables, payables, credit cards, GST and other current accounts), starting from the period's net profit.
+    var ACT = function (r) { return /^(FixedAsset|OtherAsset)$/.test(r.type) ? 'inv' : /^(LongTermLiability|OtherLiability)$/.test(r.type) || r.cls === 'Equity' ? 'fin' : 'op'; };
+    var line = function (r) { return { label: (r.code ? r.code + ' ' : '') + r.name, value: r.effect }; }, keep = function (x) { return Math.abs(x.value) >= 0.005 || c.display.zeros; };
+    var acts = [['op', 'Cash flow from operating activities'], ['inv', 'Cash flow from investing activities'], ['fin', 'Cash flow from financing activities']].map(function (a) {
+      var l = cf.moves.filter(function (r) { return ACT(r) === a[0]; }).map(line).filter(keep); if (a[0] === 'op') l.unshift({ label: 'Net profit', value: cf.np, np: true });
+      return { key: a[0], label: a[1], rows: l, total: MK.sum(l.map(function (x) { return x.value; })) }; });
+    var net = MK.sum(acts.map(function (a) { return a.total; })), untyped = cf.moves.filter(function (r) { return !r.type; });
+    var tr = function (label, v, cls, pad) { return '<tr class="' + (cls || '') + '"><td style="padding-left:' + (8 + (pad || 0) * 18) + 'px">' + MK.h(label) + '</td><td class="num">' + money(v) + '</td></tr>'; };
+    var detail = (c.view || 'detail') === 'detail';
+    body.innerHTML = MK.kpis([{ label: 'Operating', value: acts[0].total }, { label: 'Investing', value: acts[1].total }, { label: 'Financing', value: acts[2].total }, { label: 'Net increase/decrease', value: net }], c) +
+      '<div class="mk-scroll" style="margin-top:16px"><table class="mk-stmt"><thead><tr><th scope="col">Classification</th><th scope="col" class="num">Net cash flow ($)</th></tr></thead><tbody>' +
+      acts.map(function (a) { return (detail ? '<tr class="k-header"><td>' + MK.h(a.label) + '</td><td></td></tr>' + a.rows.map(function (x) { return tr(x.label, x.value, 'k-row detail-block', 1); }).join('') : '') + tr(detail ? 'Total ' + a.label.charAt(0).toLowerCase() + a.label.slice(1) : a.label, a.total, 'k-total'); }).join('') +
+      tr('Net increase/decrease for the period', net, 'k-total') + tr('Cash at the beginning of the period', cf.open, 'k-row') + tr('Cash at the end of the period', cf.close, 'k-total') + '</tbody></table></div>' +
+      '<div class="mk-card detail-block" style="margin-top:16px"><h3>Opening cash to closing cash</h3><div id="sc-chart"></div></div>';
+    MK.waterfall(document.getElementById('sc-chart'), { title: 'Opening cash, the three activities and closing cash', steps: [{ label: 'Opening cash', value: cf.open, total: true }, { label: 'Operating', value: acts[0].total }, { label: 'Investing', value: acts[1].total }, { label: 'Financing', value: acts[2].total }, { label: 'Closing cash', value: cf.close, total: true }] }, c);
+    var tie = r2(cf.open + net);
     var checks = [
-      control == null ? { name: 'Total outstanding − receivables account = out of balance (0.00 expected)', pass: null, detail: c.err('bs') || 'N/A — no receivables account found in the chart of accounts' }
-        : { name: 'Total outstanding − receivables account = out of balance (0.00 expected; the Balance Sheet is a separate MYOB report)', pass: ok, detail: money(total) + ' − ' + money(control) + ' = ' + money(oob) },
-      { name: 'Tax outstanding = Σ the invoices\' tax, pro rata to what is still owed', pass: MK.near(taxTot, MK.sum(inv.map(function (x) { return x.tax; }))), detail: money(taxTot) + ' on ' + inv.length + ' invoice(s)' },
-      { name: 'Each invoice: subtotal + tax = total', pass: taxDocs.length === 0, detail: taxDocs.length ? taxDocs.length + ' invoice(s) differ, e.g. ' + taxDocs[0].number : inv.length + ' invoice(s)' }
-    ];
-    this._x = { cust: cust, total: total, taxTot: taxTot, control: control, oob: oob };
-    return { checks: checks, notes: ['Open sales invoices with their balance due today, by customer; tax outstanding is each invoice\'s tax in proportion to what is still owed. The receivables account is every account of type Accounts Receivable on the Balance Sheet today.'],
-      na: ['A reconciliation as at an earlier date (MYOB\'s API gives today\'s open balances)'], period: MK.asOfLine(asAt) };
+      { name: 'Cash at the end = cash at the beginning + net increase/decrease (bank accounts on two Balance Sheets vs the P&L and every other account\'s change)', pass: MK.near(cf.close, tie), detail: money(cf.open) + ' + ' + money(net) + ' = ' + money(tie) + ' vs ' + money(cf.close) + (MK.near(cf.close, tie) ? '' : ' — difference ' + money(r2(cf.close - tie))) },
+      { name: 'Net increase/decrease = operating + investing + financing', pass: MK.near(net, cf.net), detail: acts.map(function (a) { return money(a.total); }).join(' + ') },
+      { name: 'Every account has a type in the chart of accounts, and there is at least one bank account', pass: c.errors.accounts ? null : untyped.length === 0 && cf.bank.length > 0, detail: c.errors.accounts ? c.err('accounts') + ' — activities need the account types' : cf.bank.length + ' bank account(s)' + (untyped.length ? '; no type: ' + untyped.map(function (r) { return r.code || r.name; }).join(', ') : '') },
+      cf.fyCross ? { name: 'The year-end close moved last year\'s profit into Retained Earnings without cash (information)', pass: null, info: true, detail: 'Retained Earnings and Current Year Earnings are left out; ' + (Math.abs(cf.rollAdj) < 0.01 ? 'they net to the profit' : 'check ' + money(cf.rollAdj)) } : null
+    ].filter(Boolean);
+    this._x = { acts: acts, net: net, open: cf.open, close: cf.close };
+    return { checks: checks, notes: ['Cash is the bank accounts (type Bank). MYOB\'s API does not expose each account\'s cash-flow classification, so activities follow the account type: investing = fixed and other non-current assets; financing = long-term and other liabilities and equity; operating = net profit plus every other account (receivables, payables, credit cards, GST and other current accounts).'], na: ['Comparison with another period'] };
   },
   excel: function (c) {
     var x = this._x; if (!x) return [];
-    var mv = function (v) { return v == null ? 'N/A' : { v: v, s: 'money' }; };
-    var rows = [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: 'Receivables reconciliation with tax', s: 'bold' }], [MK.asOfLine(c.inputs.as_at)], [], ['Name', 'Amount outstanding ($)', 'Tax outstanding ($)'].map(function (t) { return { v: t, s: 'bold' }; })]
-      .concat(x.cust.map(function (r) { return [r.name, mv(r.amount), mv(r.tax)]; }))
-      .concat([[{ v: 'Total', s: 'bold' }, { v: x.total, s: 'moneyBold' }, { v: x.taxTot, s: 'moneyBold' }], [{ v: 'Receivables account', s: 'bold' }, mv(x.control)], [{ v: 'Out of balance amount', s: 'bold' }, mv(x.oob)]]);
-    return [{ name: 'Receivables reconciliation', rows: rows, widths: [36, 22, 20] }];
+    var mv = function (v) { return { v: v, s: 'money' }; }, rows = [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: 'Statement of cash flow', s: 'bold' }], [MK.periodLine(c.inputs.from_date, c.inputs.to_date)], [], [{ v: 'Classification', s: 'bold' }, { v: 'Net cash flow ($)', s: 'bold' }]];
+    x.acts.forEach(function (a) { rows.push([{ v: a.label, s: 'bold' }]); a.rows.forEach(function (r) { rows.push([{ v: r.label, indent: 1 }, mv(r.value)]); }); rows.push([{ v: 'Total', s: 'bold' }, { v: a.total, s: 'moneyBold' }]); });
+    rows.push([{ v: 'Net increase/decrease for the period', s: 'bold' }, { v: x.net, s: 'moneyBold' }], ['Cash at the beginning of the period', mv(x.open)], [{ v: 'Cash at the end of the period', s: 'bold' }, { v: x.close, s: 'moneyBold' }]);
+    return [{ name: 'Statement of cash flow', rows: rows, widths: [52, 18] }];
   }
 });</script>
 </body>
