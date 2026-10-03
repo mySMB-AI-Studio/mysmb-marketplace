@@ -1,10 +1,10 @@
 ---
 name: MYOB Profit and Loss
-description: MYOB Profit and loss (M04) as a live, validated report in MYOB styling. Use when the user asks for a profit and loss, P&L, income statement, trading statement, net profit, income and expenses for a period, or a P&L comparison with last year.
+description: MYOB Profit and Loss (M04) as a live, validated report in MYOB styling. Use when the user asks for a profit and loss, P&L, income statement, trading statement, net profit, income and expenses for a period, or a P&L comparison with last year.
 ---
-# Profit and loss (M04)
+# Profit and Loss (M04)
 
-Use when the user asks for a profit and loss, P&L, income statement, trading statement, net profit, income and expenses for a period, or a P&L comparison with last year. Load `myob-report-foundation` first and follow its *Build a kit report* steps with the blocks below — copy them, do not rewrite them. This skill needs the `myob-accounting` connector (`get_profit_and_loss_3m`, `get_balance_sheet`, `list_accounts`, `list_company_files`).
+Use when the user asks for a profit and loss, P&L, income statement, trading statement, net profit, income and expenses for a period, or a P&L comparison with last year. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Profit and Loss**. Report title: **MYOB Profit and Loss**. Report title: **MYOB Profit and Loss**. Template: `myob-reporting-studio` / `profit-and-loss` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`get_profit_and_loss_3m`, `get_balance_sheet`, `list_accounts`, `list_company_files`).
 
 MYOB location: Reporting → Reports → Business → Profit and loss. Library: MYOB Reports Prompt Library v1.2 → Prompts → M04. Delivery: Wave 1 (P1, delivery order 1).
 

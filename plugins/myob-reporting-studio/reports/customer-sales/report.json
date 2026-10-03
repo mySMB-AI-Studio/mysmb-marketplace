@@ -1,0 +1,181 @@
+{
+  "title": "MYOB Customer Sales",
+  "description": "Live, validated MYOB Customer Sales (M35): Customer sales, Sales register.",
+  "tags": [
+    "myob",
+    "customer-sales",
+    "M35",
+    "sales"
+  ],
+  "fileName": "myob-customer-sales.html",
+  "dataBindings": {
+    "inputs": [
+      {
+        "name": "from_date",
+        "label": "From",
+        "type": "date",
+        "default": "2026-07-01"
+      },
+      {
+        "name": "to_date",
+        "label": "To",
+        "type": "date",
+        "default": "today"
+      },
+      {
+        "name": "as_at",
+        "label": "Balances as at",
+        "type": "date",
+        "default": "today"
+      },
+      {
+        "name": "status",
+        "label": "Sale status",
+        "type": "enum",
+        "options": [
+          "All",
+          "Open",
+          "Closed"
+        ],
+        "default": "All"
+      },
+      {
+        "name": "company_file",
+        "label": "Company file",
+        "type": "string",
+        "maxLength": 64,
+        "default": ""
+      },
+      {
+        "name": "persona",
+        "label": "View as",
+        "type": "enum",
+        "options": [
+          "Client",
+          "Bookkeeper",
+          "Practitioner",
+          "Executive"
+        ],
+        "default": "Bookkeeper"
+      },
+      {
+        "name": "display",
+        "label": "Display settings",
+        "type": "string",
+        "maxLength": 300,
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"customers\"}"
+      }
+    ],
+    "bindings": [
+      {
+        "id": "inv",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_invoices"
+        },
+        "params": {
+          "status": {
+            "kind": "static",
+            "value": "All"
+          },
+          "from_date": {
+            "kind": "input",
+            "input": "from_date"
+          },
+          "to_date": {
+            "kind": "input",
+            "input": "to_date"
+          },
+          "myob_company_file_id": {
+            "kind": "input",
+            "input": "company_file"
+          }
+        }
+      },
+      {
+        "id": "open",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_invoices"
+        },
+        "params": {
+          "status": {
+            "kind": "static",
+            "value": "Open"
+          },
+          "myob_company_file_id": {
+            "kind": "input",
+            "input": "company_file"
+          }
+        }
+      },
+      {
+        "id": "pnl",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_profit_and_loss_3m"
+        },
+        "params": {
+          "from_date": {
+            "kind": "input",
+            "input": "from_date"
+          },
+          "to_date": {
+            "kind": "input",
+            "input": "to_date"
+          },
+          "reporting_basis": {
+            "kind": "static",
+            "value": "Accrual"
+          },
+          "myob_company_file_id": {
+            "kind": "input",
+            "input": "company_file"
+          }
+        }
+      },
+      {
+        "id": "bs",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_balance_sheet"
+        },
+        "params": {
+          "date": {
+            "kind": "input",
+            "input": "as_at"
+          },
+          "reporting_basis": {
+            "kind": "static",
+            "value": "Accrual"
+          },
+          "myob_company_file_id": {
+            "kind": "input",
+            "input": "company_file"
+          }
+        }
+      },
+      {
+        "id": "accounts",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_accounts"
+        },
+        "params": {
+          "myob_company_file_id": {
+            "kind": "input",
+            "input": "company_file"
+          }
+        }
+      },
+      {
+        "id": "company_files",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_company_files"
+        },
+        "params": {}
+      }
+    ]
+  }
+}

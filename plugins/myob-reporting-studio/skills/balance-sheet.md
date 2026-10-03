@@ -1,10 +1,10 @@
 ---
 name: MYOB Balance Sheet
-description: MYOB Balance sheet (M02) as a live, validated report in MYOB styling. Use when the user asks for a balance sheet, statement of financial position, net assets, assets and liabilities as at a date, or a balance sheet comparison.
+description: MYOB Balance Sheet (M02) as a live, validated report in MYOB styling. Use when the user asks for a balance sheet, statement of financial position, net assets, assets and liabilities as at a date, or a balance sheet comparison.
 ---
-# Balance sheet (M02)
+# Balance Sheet (M02)
 
-Use when the user asks for a balance sheet, statement of financial position, net assets, assets and liabilities as at a date, or a balance sheet comparison. Load `myob-report-foundation` first and follow its *Build a kit report* steps with the blocks below — copy them, do not rewrite them. This skill needs the `myob-accounting` connector (`get_balance_sheet`, `get_profit_and_loss_3m`, `list_accounts`, `list_company_files`).
+Use when the user asks for a balance sheet, statement of financial position, net assets, assets and liabilities as at a date, or a balance sheet comparison. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Balance Sheet**. Report title: **MYOB Balance Sheet**. Report title: **MYOB Balance Sheet**. Template: `myob-reporting-studio` / `balance-sheet` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`get_balance_sheet`, `get_profit_and_loss_3m`, `list_accounts`, `list_company_files`).
 
 MYOB location: Reporting → Reports → Business → Balance sheet. Library: MYOB Reports Prompt Library v1.2 → Prompts → M02. Delivery: Wave 1 (P1, delivery order 2).
 
