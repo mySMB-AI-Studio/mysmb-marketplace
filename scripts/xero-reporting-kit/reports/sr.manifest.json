@@ -1,0 +1,167 @@
+{
+  "inputs": [
+    {
+      "name": "from_date",
+      "label": "From",
+      "type": "date",
+      "default": "2026-07-01"
+    },
+    {
+      "name": "to_date",
+      "label": "To",
+      "type": "date",
+      "default": "today"
+    },
+    {
+      "name": "inv_where",
+      "label": "Invoice period filter",
+      "type": "string",
+      "maxLength": 200,
+      "default": "Type==\"ACCREC\" AND Date>=DateTime(2026,07,01) AND Date<=DateTime(2026,09,25)"
+    },
+    {
+      "name": "cn_where",
+      "label": "Credit note period filter",
+      "type": "string",
+      "maxLength": 200,
+      "default": "Type==\"ACCRECCREDIT\" AND Date>=DateTime(2026,07,01) AND Date<=DateTime(2026,09,25)"
+    },
+    {
+      "name": "org",
+      "label": "Organisation",
+      "type": "string",
+      "maxLength": 64,
+      "default": ""
+    },
+    {
+      "name": "page",
+      "label": "Page",
+      "type": "number",
+      "min": 1,
+      "max": 20,
+      "default": 1
+    },
+    {
+      "name": "display",
+      "label": "Display settings",
+      "type": "string",
+      "maxLength": 300,
+      "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"register\"}"
+    }
+  ],
+  "bindings": [
+    {
+      "id": "invoices",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "list_invoices"
+      },
+      "params": {
+        "where": {
+          "kind": "input",
+          "input": "inv_where"
+        },
+        "statuses": {
+          "kind": "static",
+          "value": "AUTHORISED,PAID"
+        },
+        "order": {
+          "kind": "static",
+          "value": "Date DESC"
+        },
+        "page": {
+          "kind": "input",
+          "input": "page"
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "credit_notes",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "list_credit_notes"
+      },
+      "params": {
+        "where": {
+          "kind": "input",
+          "input": "cn_where"
+        },
+        "page": {
+          "kind": "input",
+          "input": "page"
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "pnl",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "get_profit_and_loss"
+      },
+      "params": {
+        "fromDate": {
+          "kind": "input",
+          "input": "from_date"
+        },
+        "toDate": {
+          "kind": "input",
+          "input": "to_date"
+        },
+        "standardLayout": {
+          "kind": "static",
+          "value": true
+        },
+        "paymentsOnly": {
+          "kind": "static",
+          "value": false
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "accounts",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "list_accounts"
+      },
+      "params": {
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "org",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "get_organisation"
+      },
+      "params": {
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "connections",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "list_connections"
+      },
+      "params": {}
+    }
+  ]
+}

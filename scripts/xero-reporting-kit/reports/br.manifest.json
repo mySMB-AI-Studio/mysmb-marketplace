@@ -1,0 +1,209 @@
+{
+  "inputs": [
+    {
+      "name": "from_date",
+      "label": "From",
+      "type": "date",
+      "default": "2026-07-01"
+    },
+    {
+      "name": "to_date",
+      "label": "To",
+      "type": "date",
+      "default": "today"
+    },
+    {
+      "name": "open_where",
+      "label": "Unreconciled filter",
+      "type": "string",
+      "maxLength": 200,
+      "default": "Status==\"AUTHORISED\" AND IsReconciled==false AND Date<=DateTime(2026,09,25)"
+    },
+    {
+      "name": "done_where",
+      "label": "Reconciled filter",
+      "type": "string",
+      "maxLength": 200,
+      "default": "Status==\"AUTHORISED\" AND IsReconciled==true AND Date>=DateTime(2026,07,01) AND Date<=DateTime(2026,09,25)"
+    },
+    {
+      "name": "org",
+      "label": "Organisation",
+      "type": "string",
+      "maxLength": 64,
+      "default": ""
+    },
+    {
+      "name": "page",
+      "label": "Page",
+      "type": "number",
+      "min": 1,
+      "max": 20,
+      "default": 1
+    },
+    {
+      "name": "display",
+      "label": "Display settings",
+      "type": "string",
+      "maxLength": 300,
+      "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"accounts\"}"
+    }
+  ],
+  "bindings": [
+    {
+      "id": "open_tx",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "list_bank_transactions"
+      },
+      "params": {
+        "where": {
+          "kind": "input",
+          "input": "open_where"
+        },
+        "order": {
+          "kind": "static",
+          "value": "Date ASC"
+        },
+        "page": {
+          "kind": "input",
+          "input": "page"
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "open_pay",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "list_payments"
+      },
+      "params": {
+        "where": {
+          "kind": "input",
+          "input": "open_where"
+        },
+        "order": {
+          "kind": "static",
+          "value": "Date ASC"
+        },
+        "page": {
+          "kind": "input",
+          "input": "page"
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "done_tx",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "list_bank_transactions"
+      },
+      "params": {
+        "where": {
+          "kind": "input",
+          "input": "done_where"
+        },
+        "order": {
+          "kind": "static",
+          "value": "Date ASC"
+        },
+        "page": {
+          "kind": "input",
+          "input": "page"
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "done_pay",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "list_payments"
+      },
+      "params": {
+        "where": {
+          "kind": "input",
+          "input": "done_where"
+        },
+        "order": {
+          "kind": "static",
+          "value": "Date ASC"
+        },
+        "page": {
+          "kind": "input",
+          "input": "page"
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "accounts",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "list_accounts"
+      },
+      "params": {
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "bank",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "get_bank_summary"
+      },
+      "params": {
+        "fromDate": {
+          "kind": "input",
+          "input": "from_date"
+        },
+        "toDate": {
+          "kind": "input",
+          "input": "to_date"
+        },
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "org",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "get_organisation"
+      },
+      "params": {
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "connections",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "list_connections"
+      },
+      "params": {}
+    }
+  ]
+}
