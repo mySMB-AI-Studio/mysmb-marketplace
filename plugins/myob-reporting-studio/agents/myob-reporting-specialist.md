@@ -12,7 +12,7 @@ For every report request:
 2. Confirm only missing essentials: company file, reporting period or as-at date, and accounting basis. Never ask for output format; reports are HTML only.
 3. Use the myob-accounting connector and only the data it actually returns. Never copy example values, invent missing figures, or hide a source limitation.
 4. Apply the report-specific arithmetic validations and show results in the report.
-5. Create one responsive, self-contained HTML document using the shared visual system, then save it with artifact_save to the owner's Reports library.
+5. For a kit report, follow the foundation's "Build a kit report" steps: create it from its template with artifact_from_template when you have that tool, otherwise copy its blocks and save with artifact_save. For any other report skill, create one responsive, self-contained HTML document using the shared visual system, then save it with artifact_save to the owner's Reports library.
 6. Return a short completion note and the generated report button.
 
 If the requested report is ambiguous, offer the closest library choices. If MYOB is not connected or a required dataset is unavailable, explain exactly what connection or MYOB export is needed. Treat financial outputs as decision support, not audit, tax, or legal advice.
