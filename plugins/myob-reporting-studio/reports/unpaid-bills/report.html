@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Trial Balance</title>
+<title>Unpaid Bills</title>
 <style>:root{--accent:#6F2CBA;--btn:#5A1F9E;--btn-ink:#FFFFFF;--ink:#393A3D;--muted:#6B6C72;--line:#E3E5E8;--canvas:#F4F5F8;--card:#FFFFFF;--th:#6B6C72;--zebra:transparent;--neg:#D52B1E;--pos:#1B7F4B;--pass-bg:#EAF6E8;--fail-bg:#FDECEA;--band:#FFFFFF;--band-ink:#393A3D;--cover:#1B2A4A;--cover-ink:#FFFFFF;--c1:#6F2CBA;--c2:#9E9E9E;--c3:#00B0A0;--c4:#007A6E;--c5:#E0457B;--c6:#0077C5;--d1:#6F2CBA;--d2:#00B0A0;--d3:#B28DE6;--d4:#E0457B;--d5:#0077C5;--d6:#9E9E9E}
 :root[data-myhub-theme='dark']{--accent:#A77BE8;--btn:#7A45C9;--btn-ink:#FFFFFF;--ink:#E6E8EB;--muted:#A3A7AE;--line:#33363C;--canvas:#16181B;--card:#1F2226;--th:#A3A7AE;--neg:#FF6B5E;--pos:#4CC38A;--pass-bg:#18301A;--fail-bg:#3A1B19;--band:#1F2226;--band-ink:#E6E8EB;--cover:#22324F;--cover-ink:#FFFFFF;--c1:#A77BE8;--c2:#80858D;--c3:#2BC4B3;--c4:#3CCFBF;--c5:#F06A96;--c6:#3FA2E8;--d1:#A77BE8;--d2:#2BC4B3;--d3:#CDB4F2;--d4:#F06A96;--d5:#3FA2E8;--d6:#80858D}
 :root.style-mysmb{--accent:#00B0A0;--btn:#007A6E;--zebra:#E6F7F5;--band:#007A6E;--band-ink:#FFFFFF;--cover:#007A6E;--th-bg:#007A6E;--th-ink:#FFFFFF;--c1:#007A6E;--c2:#00B0A0;--c3:#6F2CBA;--c4:#9E9E9E;--c5:#1B7F4B;--c6:#C8102E;--d1:#007A6E;--d2:#00B0A0;--d3:#6F2CBA;--d4:#9E9E9E;--d5:#1B7F4B;--d6:#C8102E;--pos:#1B7F4B;--neg:#C8102E}
@@ -745,56 +745,62 @@ PRESETS: PRESETS, preset: preset, ASAT: ASAT, asAt: asAt, compare: compare, peri
 xlsx: xlsx, sheetFromLines: sheetFromLines, download: download, reportParams: reportParams };
 })();</script>
 <script>MK.app({
-  title: 'Trial Balance', primary: 'bs', files: 'company_files',
-  inputs: { asAt: 'as_at', basis: 'basis', companyFile: 'company_file', persona: 'persona', display: 'display' },
-  defaults: { as_at: '2026-09-28', basis: 'Accrual', fy_start: '2026-07-01', prev_fy_start: '2025-07-01', company_file: '', persona: 'Bookkeeper',
-    display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":0,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"custom","a":"today","c":"none","v":"tb"}' },
-  uses: { bs: ['as_at', 'basis', 'company_file'], pnl_ytd: ['fy_start', 'as_at', 'basis', 'company_file'], pnl_since_prev: ['prev_fy_start', 'as_at', 'basis', 'company_file'], accounts: ['company_file'], company_files: [] },
-  tools: { bs: 'get_balance_sheet (asset, liability and equity balances at the date)', pnl_ytd: 'get_profit_and_loss_3m (income and expense accounts, financial year to the date)', pnl_since_prev: 'get_profit_and_loss_3m (from last financial year start — last year\'s profit, if not yet closed)', accounts: 'list_accounts (classification)', company_files: 'list_company_files' },
-  views: [['tb', 'Trial Balance'], ['class', 'By classification']],
-  derive: function (inp, fyMonth) { var f = MK.fyStartOf(inp.as_at, fyMonth); return { fy_start: f, prev_fy_start: (Number(f.slice(0, 4)) - 1) + f.slice(4) }; },
+  title: 'Unpaid Bills', primary: 'bs', files: 'company_files',
+  // no as-at control: MYOB's API gives today's open balances, so the report is always as at today (as_at feeds the Balance Sheet tie)
+  inputs: { companyFile: 'company_file', persona: 'persona', display: 'display' },
+  defaults: { as_at: '2026-09-28', method: 'Bill date', company_file: '', persona: 'Bookkeeper',
+    display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":0,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"custom","a":"today","c":"none","v":"suppliers"}' },
+  uses: { bills: ['company_file'], bs: ['as_at', 'company_file'], accounts: ['company_file'], company_files: [] },
+  tools: { bills: 'list_bills (open purchase bills — every page)', bs: 'get_balance_sheet (the payables account today, for the tie)', accounts: 'list_accounts (which accounts are payables)', company_files: 'list_company_files' },
+  enums: [{ input: 'method', label: 'Ageing method', options: [['Bill date', 'Days since bill date'], ['Due date', 'Days since due date']] }],
+  roll: function () { return { as_at: MK.asAt('today') }; }, // MYOB's API gives today's open balances, so the report is always as at today
+  views: [['suppliers', 'By supplier'], ['bills', 'Bills']],
   render: function (c) {
-    var body = c.body, money = function (v) { return MK.money(v, c.currency, c.display); }, r2 = function (v) { return Math.round(v * 100) / 100; };
-    var need = ['bs', 'pnl_ytd'].filter(function (id) { return c.errors[id]; });
-    if (need.length) { body.innerHTML = '<p class="mk-err">' + MK.h(c.err(need[0])) + '</p>'; return { checks: [{ name: 'Balance Sheet and Profit and Loss loaded', pass: false, detail: c.err(need[0]) }] }; }
-    if (!c.data.bs || !c.data.pnl_ytd) return {};
-    var idx = MK.accounts(c.data.accounts), bsB = MK.breakdown([c.data.bs], idx, MK.BS_LAYOUT), plB = MK.breakdown([c.data.pnl_ytd], idx, MK.PL_LAYOUT);
-    var DR = { Asset: 1, Expense: 1, CostOfSales: 1, OtherExpense: 1 }, ORDER = ['Asset', 'Liability', 'Equity', 'Income', 'CostOfSales', 'Expense', 'OtherIncome', 'OtherExpense'];
-    var LABEL = { Asset: 'Assets', Liability: 'Liabilities', Equity: 'Equity', Income: 'Income', CostOfSales: 'Cost of Sales', Expense: 'Expenses', OtherIncome: 'Other Income', OtherExpense: 'Other Expenses' };
-    // every account once: balance-sheet accounts at the date, income and expense accounts for the financial year to the date. Current
-    // Year Earnings is left out — the income and expense accounts are its detail (counting both would double the year's profit).
-    var cyeRow = bsB.rows.filter(function (r) { return !r.header && MK.CYE_RE.test(r.name); })[0], cye = cyeRow ? cyeRow.values[0] : null;
-    var rows = bsB.rows.filter(function (r) { return !r.header && r !== cyeRow && /^(Asset|Liability|Equity)$/.test(r.cls); }).concat(plB.rows.filter(function (r) { return !r.header && /^(Income|CostOfSales|Expense|OtherIncome|OtherExpense)$/.test(r.cls); }))
-      .map(function (r) { var v = r.values[0] || 0, debit = DR[r.cls] ? v >= 0 : v < 0; return { code: r.code, name: r.name, cls: r.cls, label: LABEL[r.cls] || r.cls, debit: debit && Math.abs(v) >= 0.005 ? r2(Math.abs(v)) : null, credit: !debit && Math.abs(v) >= 0.005 ? r2(Math.abs(v)) : null, value: v }; });
-    var unclassified = bsB.unclassified.concat(plB.unclassified);
-    // last financial year's profit not yet closed into Retained Earnings: MYOB's account summary leaves it out, so debits ≠ credits by it
-    var plTwo = c.data.pnl_since_prev ? MK.breakdown([c.data.pnl_since_prev], idx, MK.PL_LAYOUT) : null, prevNp = plTwo ? r2(plTwo.calc.NetProfit[0] - plB.calc.NetProfit[0]) : null;
-    var sum = function (k) { return MK.sum(rows.map(function (r) { return r[k]; })); }, Dr = sum('debit'), Cr = sum('credit'), gap = r2(Dr - Cr), unclosed = Math.abs(gap) >= 0.01 && prevNp != null && MK.near(gap, prevNp);
-    if (unclosed) { rows.push({ code: '', name: 'Prior year earnings not yet closed to Retained Earnings', cls: 'Equity', label: 'Equity', debit: gap < 0 ? -gap : null, credit: gap > 0 ? gap : null, value: gap, calc: true }); Dr = sum('debit'); Cr = sum('credit'); }
-    rows.sort(function (a, b) { return ORDER.indexOf(a.cls) - ORDER.indexOf(b.cls) || String(a.code).localeCompare(String(b.code), undefined, { numeric: true }); });
-    var shown = c.display.zeros ? rows : rows.filter(function (r) { return r.debit != null || r.credit != null; });
-    var byClass = ORDER.map(function (k) { var l = rows.filter(function (r) { return r.cls === k; }); return { label: LABEL[k], debit: MK.sum(l.map(function (r) { return r.debit; })), credit: MK.sum(l.map(function (r) { return r.credit; })), n: l.length }; }).filter(function (x) { return x.n; });
-    body.innerHTML = MK.kpis([{ label: 'Total debits', value: Dr }, { label: 'Total credits', value: Cr }, { label: 'Difference', value: r2(Dr - Cr) }, { label: 'Accounts', value: rows.length, money: false }], c) +
-      (unclosed ? '<p class="muted">Last financial year\'s profit (' + money(gap) + ') has not been closed into Retained Earnings in this file (the year was not rolled over); it is shown as its own line so the trial balance can be read.</p>' : '') +
-      '<div class="mk-card" style="margin-top:16px"><h3>' + (c.view === 'class' ? 'By classification' : 'Trial Balance — ' + MK.asOfLine(c.inputs.as_at).replace(/^As at /, '')) + '</h3><div id="tb-grid"></div></div>';
-    if (c.view === 'class') MK.grid(document.getElementById('tb-grid'), { rows: byClass, columns: [{ key: 'label', title: 'Classification' }, { key: 'debit', title: 'Debit', money: true }, { key: 'credit', title: 'Credit', money: true }], total: { label: 'Total', debit: Dr, credit: Cr } }, c);
-    else MK.grid(document.getElementById('tb-grid'), { rows: shown, filter: true, columns: [{ key: 'code', title: 'Account No.' }, { key: 'name', title: 'Account' }, { key: 'label', title: 'Classification' }, { key: 'debit', title: 'Debit', money: true }, { key: 'credit', title: 'Credit', money: true }], total: { code: 'Total', debit: Dr, credit: Cr }, empty: 'No account balances at this date.' }, c);
-    var np = plB.calc.NetProfit[0];
+    var body = c.body, money = function (v) { return MK.money(v, c.currency, c.display); }, r2 = function (v) { return Math.round(v * 100) / 100; }, asAt = c.inputs.as_at, byDue = c.inputs.method === 'Due date';
+    if (c.errors.bills) { body.innerHTML = '<p class="mk-err">' + MK.h(c.err('bills')) + '</p>'; return { checks: [{ name: 'Open bills loaded', pass: false, detail: c.err('bills') }] }; }
+    if (!c.data.bills) return {};
+    var days = function (a) { return Math.round((MK.parse(asAt) - MK.parse(a)) / 86400000); };
+    var COLS = byDue ? ['Not due', '1 - 30', '31 - 60', '61 - 90', '90+'] : ['0 - 30', '31 - 60', '61 - 90', '90+'];
+    var bucket = function (d) { return byDue ? (d <= 0 ? 0 : d <= 30 ? 1 : d <= 60 ? 2 : d <= 90 ? 3 : 4) : (d <= 30 ? 0 : d <= 60 ? 1 : d <= 90 ? 2 : 3); };
+    var inv = MK.items(c.data.bills).filter(function (i) { return i && (MK.num(i.BalanceDueAmount) || 0) !== 0; }).map(function (i) {
+      var date = MK.isoDate(i.Date), due = MK.isoDate((i.Terms || {}).DueDate) || date, cu = i.Supplier || {}, bal = MK.num(i.BalanceDueAmount) || 0, tot = MK.num(i.TotalAmount) || 0;
+      var age = days(byDue ? due : date); return { number: i.Number || '', date: date, due: due, supplier: cu.Name || '(no supplier)', cid: cu.UID || cu.Name || '', cno: MK.cardId(cu.DisplayID), balance: r2(bal), total: tot, tax: tot ? r2(bal * (MK.num(i.TotalTax) || 0) / tot) : 0, age: age, b: bucket(age), noDue: !(i.Terms || {}).DueDate }; });
+    var byC = {}; inv.forEach(function (x) { var k = x.cid; if (!byC[k]) byC[k] = { name: x.supplier, no: x.cno, b: COLS.map(function () { return 0; }), total: 0, n: 0 }; var y = byC[k]; y.b[x.b] = r2(y.b[x.b] + x.balance); y.total = r2(y.total + x.balance); y.n++; });
+    var cust = Object.keys(byC).map(function (k) { return byC[k]; }).sort(function (a, b) { return a.name.localeCompare(b.name); });
+    var tot = COLS.map(function (_, j) { return MK.sum(cust.map(function (x) { return x.b[j]; })); }), all = MK.sum(inv.map(function (x) { return x.balance; }));
+    // the payables account(s) on the Balance Sheet: Type AccountsPayable in the chart of accounts
+    var idx = MK.accounts(c.data.accounts), bsB = c.data.bs ? MK.breakdown([c.data.bs], idx, MK.BS_LAYOUT) : null;
+    var arRows = bsB ? bsB.rows.filter(function (r) { return !r.header && (r.type === 'AccountsPayable' || (!idx.loaded && /payable|creditors/i.test(r.name))); }) : [], control = arRows.length ? MK.sum(arRows.map(function (r) { return r.values[0]; })) : null;
+    var view = c.view || 'suppliers', colObjs = COLS.map(function (t, j) { return { key: 'b' + j, title: t, money: true }; });
+    body.innerHTML = MK.kpis([{ label: 'Total due', value: all }, { label: 'Suppliers', value: cust.length, money: false }, { label: 'Bills', value: inv.length, money: false }, { label: COLS[COLS.length - 1] + ' days', value: tot[COLS.length - 1] }], c) +
+      '<div class="mk-card" style="margin-top:16px"><h3>Unpaid bills — ' + MK.asOfLine(asAt).replace(/^As at /, '') + ' · ' + (byDue ? 'days since due date' : 'days since bill date') + '</h3><div id="ar-grid"></div></div>' +
+      '<div class="mk-card detail-block" style="margin-top:16px"><h3>Ageing</h3><div id="ar-chart"></div></div>';
+    if (view === 'bills') MK.grid(document.getElementById('ar-grid'), { rows: inv.map(function (x) { return Object.assign({}, x, { bucketT: COLS[x.b] }); }).sort(function (a, b) { return b.age - a.age; }), filter: true,
+      columns: [{ key: 'supplier', title: 'Supplier name' }, { key: 'number', title: 'Bill no.' }, { key: 'date', title: 'Date' }, { key: 'due', title: 'Due date' }, { key: 'age', title: 'Days', num: true }, { key: 'bucketT', title: 'Age' }, { key: 'balance', title: 'Total due ($)', money: true }],
+      total: { supplier: 'Total', balance: all }, empty: 'No unpaid bills.' }, c);
+    else MK.grid(document.getElementById('ar-grid'), { rows: cust.map(function (x) { var o = { name: x.name, no: x.no, total: x.total }; x.b.forEach(function (v, j) { o['b' + j] = v; }); return o; }), filter: true,
+      columns: [{ key: 'name', title: 'Supplier name' }, { key: 'no', title: 'Supplier number' }].concat(colObjs).concat([{ key: 'total', title: 'Total due ($)', money: true }]),
+      total: (function () { var o = { name: 'Total', total: all }; tot.forEach(function (v, j) { o['b' + j] = v; }); return o; })(), empty: 'No unpaid bills.' }, c);
+    MK.bars(document.getElementById('ar-chart'), { title: 'Total due by age', labels: COLS, series: [{ name: 'Total due', values: tot }] }, c);
+    var rowBad = cust.filter(function (x) { return !MK.near(MK.sum(x.b), x.total); });
     var checks = [
-      { name: 'Total debits = total credits (balance-sheet accounts at the date + income and expense accounts year to date — two MYOB reports)', pass: MK.near(Dr, Cr), detail: money(Dr) + ' vs ' + money(Cr) + (unclosed ? ' (with last year\'s unclosed profit ' + money(gap) + ')' : MK.near(Dr, Cr) ? '' : ' — difference ' + money(r2(Dr - Cr))) },
-      { name: 'Current Year Earnings on the Balance Sheet = net profit for the financial year to date (the P&L accounts above)', pass: cye == null ? null : MK.near(cye, np), detail: cye == null ? 'N/A — no Current Year Earnings account on the Balance Sheet' : money(cye) + ' vs ' + money(np) },
-      { name: 'Every account is classified (chart of accounts)', pass: unclassified.length === 0, detail: unclassified.length ? unclassified.length + ' account(s) unclassified, e.g. ' + unclassified[0].name : rows.length + ' accounts' }
+      { name: 'Each supplier\'s total due = Σ its age buckets, and the report total = Σ the bills', pass: rowBad.length === 0 && MK.near(MK.sum(tot), all), detail: rowBad.length ? rowBad.length + ' supplier(s) differ' : money(all) + ' over ' + inv.length + ' bill(s)' },
+      control == null ? { name: 'Total due = the payables account on the Balance Sheet', pass: null, detail: c.err('bs') || 'N/A — no payables account found in the chart of accounts' }
+        : { name: 'Total due = the payables account on the Balance Sheet (' + arRows.map(function (r) { return r.code || r.name; }).join(', ') + ')', pass: MK.near(all, control), detail: money(all) + ' vs ' + money(control) + (MK.near(all, control) ? '' : ' — out of balance ' + money(r2(all - control)) + ': see Payables reconciliation') },
+      { name: 'Every unpaid bill has a supplier' + (byDue ? ' and a due date' : ''), pass: inv.every(function (x) { return x.cid && (!byDue || !x.noDue); }), detail: inv.filter(function (x) { return !x.cid || (byDue && x.noDue); }).length + ' without' }
     ];
-    this._x = { rows: rows, Dr: Dr, Cr: Cr };
-    return { checks: checks, notes: ['MYOB\'s API has no trial balance report: balance-sheet accounts come from the Balance Sheet at the date, and income and expense accounts from the Profit and Loss for the financial year to that date (' + c.inputs.fy_start + ' to ' + c.inputs.as_at + '). Current Year Earnings is shown through the income and expense accounts.', 'Debit or credit follows each account\'s normal balance; a contra balance moves to the other column.'],
-      na: ['Year-end adjustments (the reports are run without them)', 'Opening-balance and journal columns (MYOB\'s trial balance detail is not in the API)'], period: MK.asOfLine(c.inputs.as_at) };
+    this._x = { cust: cust, inv: inv, COLS: COLS, tot: tot, all: all };
+    return { checks: checks, notes: ['Open purchase bills with their balance due today, aged by ' + (byDue ? 'days since the due date (not yet due in its own column)' : 'days since the bill date (MYOB\'s default)') + '. Tax outstanding on a part-paid bill is pro rata.'],
+      na: ['Unpaid bills as at an earlier date (MYOB\'s API gives today\'s open balances)'], period: MK.asOfLine(asAt) };
   },
   excel: function (c) {
     var x = this._x; if (!x) return [];
-    var rows = [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: 'Trial Balance', s: 'bold' }], [MK.asOfLine(c.inputs.as_at)], [], ['Account No.', 'Account', 'Classification', 'Debit', 'Credit'].map(function (t) { return { v: t, s: 'bold' }; })]
-      .concat(x.rows.map(function (r) { return [r.code, r.name, r.label, r.debit == null ? '' : { v: r.debit, s: 'money' }, r.credit == null ? '' : { v: r.credit, s: 'money' }]; }))
-      .concat([[{ v: 'Total', s: 'bold' }, '', '', { v: x.Dr, s: 'moneyBold' }, { v: x.Cr, s: 'moneyBold' }]]);
-    return [{ name: 'Trial Balance', rows: rows, widths: [12, 36, 16, 16, 16] }];
+    var rows = [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: 'Unpaid bills', s: 'bold' }], [MK.asOfLine(c.inputs.as_at) + ' · ' + (c.inputs.method === 'Due date' ? 'days since due date' : 'days since bill date')], [],
+      ['Supplier name', 'Supplier number'].concat(x.COLS).concat(['Total due ($)']).map(function (t) { return { v: t, s: 'bold' }; })]
+      .concat(x.cust.map(function (r) { return [r.name, r.no].concat(r.b.map(function (v) { return { v: v, s: 'money' }; })).concat([{ v: r.total, s: 'money' }]); }))
+      .concat([[{ v: 'Total', s: 'bold' }, ''].concat(x.tot.map(function (v) { return { v: v, s: 'moneyBold' }; })).concat([{ v: x.all, s: 'moneyBold' }])]);
+    var inv = [[{ v: 'Supplier name', s: 'bold' }, { v: 'Bill no.', s: 'bold' }, { v: 'Date', s: 'bold' }, { v: 'Due date', s: 'bold' }, { v: 'Days', s: 'bold' }, { v: 'Total due ($)', s: 'bold' }]].concat(x.inv.map(function (r) { return [r.supplier, r.number, r.date, r.due, r.age, { v: r.balance, s: 'money' }]; }));
+    return [{ name: 'Unpaid bills', rows: rows, widths: [32, 16, 14, 14, 14, 14, 14, 16] }, { name: 'Bills', rows: inv, widths: [32, 14, 12, 12, 8, 16] }];
   }
 });</script>
 </body>

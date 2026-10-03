@@ -1,13 +1,13 @@
 {
-  "title": "MYOB Customer Sales",
-  "description": "Live, validated MYOB Customer Sales (M35): Customer sales, Sales register.",
+  "title": "MYOB Purchase Register",
+  "description": "Live, validated MYOB Purchase Register (M46): Purchase register, Supplier purchases.",
   "tags": [
     "myob",
-    "customer-sales",
-    "M35",
-    "sales"
+    "purchase-register",
+    "M46",
+    "purchases"
   ],
-  "fileName": "myob-customer-sales.html",
+  "fileName": "myob-purchase-register.html",
   "dataBindings": {
     "inputs": [
       {
@@ -30,7 +30,7 @@
       },
       {
         "name": "status",
-        "label": "Sale status",
+        "label": "Bill status",
         "type": "enum",
         "options": [
           "All",
@@ -63,15 +63,15 @@
         "label": "Display settings",
         "type": "string",
         "maxLength": 300,
-        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"customers\"}"
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"register\"}"
       }
     ],
     "bindings": [
       {
-        "id": "inv",
+        "id": "bills",
         "tool": {
           "mcp": "myob-accounting",
-          "name": "list_invoices"
+          "name": "list_bills"
         },
         "params": {
           "status": {
@@ -96,7 +96,7 @@
         "id": "open",
         "tool": {
           "mcp": "myob-accounting",
-          "name": "list_invoices"
+          "name": "list_bills"
         },
         "params": {
           "status": {
@@ -123,31 +123,6 @@
           "to_date": {
             "kind": "input",
             "input": "to_date"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "pnl",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "get_profit_and_loss_3m"
-        },
-        "params": {
-          "from_date": {
-            "kind": "input",
-            "input": "from_date"
-          },
-          "to_date": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "reporting_basis": {
-            "kind": "static",
-            "value": "Accrual"
           },
           "myob_company_file_id": {
             "kind": "input",
