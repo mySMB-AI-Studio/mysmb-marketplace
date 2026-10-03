@@ -1,0 +1,202 @@
+{
+  "title": "Performance centre",
+  "description": "Live, validated QuickBooks Online Performance centre (Q06): Expenses / Revenue / Gross profit / Net profit over time, Cash flow, A/R and A/P by ageing periods, Current ratio / Quick ratio by time.",
+  "tags": [
+    "quickbooks",
+    "kpi",
+    "dashboard"
+  ],
+  "fileName": "quickbooks-performance-centre.html",
+  "dataBindings": {
+    "inputs": [
+      {
+        "name": "start_date",
+        "label": "From",
+        "type": "date",
+        "default": "2026-07-01"
+      },
+      {
+        "name": "end_date",
+        "label": "To",
+        "type": "date",
+        "default": "today"
+      },
+      {
+        "name": "basis",
+        "label": "Accounting method",
+        "type": "enum",
+        "options": [
+          "Accrual",
+          "Cash"
+        ],
+        "default": "Accrual"
+      },
+      {
+        "name": "compare_start",
+        "label": "Compare from",
+        "type": "date",
+        "default": "2025-07-01"
+      },
+      {
+        "name": "compare_end",
+        "label": "Compare to",
+        "type": "date",
+        "default": "2025-09-25"
+      },
+      {
+        "name": "persona",
+        "label": "View as",
+        "type": "enum",
+        "options": [
+          "Client",
+          "Bookkeeper",
+          "Practitioner",
+          "Executive"
+        ],
+        "default": "Executive"
+      },
+      {
+        "name": "display",
+        "label": "Display settings",
+        "type": "string",
+        "maxLength": 300,
+        "default": "{\"cents\":0,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\",\"x\":\"\"}"
+      }
+    ],
+    "bindings": [
+      {
+        "id": "pnl_monthly",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_profit_and_loss"
+        },
+        "params": {
+          "start_date": {
+            "kind": "input",
+            "input": "start_date"
+          },
+          "end_date": {
+            "kind": "input",
+            "input": "end_date"
+          },
+          "accounting_method": {
+            "kind": "input",
+            "input": "basis"
+          },
+          "summarize_column_by": {
+            "kind": "static",
+            "value": "Month"
+          }
+        }
+      },
+      {
+        "id": "pnl_compare",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_profit_and_loss"
+        },
+        "params": {
+          "start_date": {
+            "kind": "input",
+            "input": "compare_start"
+          },
+          "end_date": {
+            "kind": "input",
+            "input": "compare_end"
+          },
+          "accounting_method": {
+            "kind": "input",
+            "input": "basis"
+          },
+          "summarize_column_by": {
+            "kind": "static",
+            "value": "Month"
+          }
+        }
+      },
+      {
+        "id": "bs_monthly",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_balance_sheet"
+        },
+        "params": {
+          "start_date": {
+            "kind": "input",
+            "input": "start_date"
+          },
+          "end_date": {
+            "kind": "input",
+            "input": "end_date"
+          },
+          "accounting_method": {
+            "kind": "input",
+            "input": "basis"
+          },
+          "summarize_column_by": {
+            "kind": "static",
+            "value": "Month"
+          }
+        }
+      },
+      {
+        "id": "cash_flow_monthly",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_cash_flow"
+        },
+        "params": {
+          "start_date": {
+            "kind": "input",
+            "input": "start_date"
+          },
+          "end_date": {
+            "kind": "input",
+            "input": "end_date"
+          },
+          "summarize_column_by": {
+            "kind": "static",
+            "value": "Month"
+          }
+        }
+      },
+      {
+        "id": "aged_receivables",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_aged_receivables"
+        },
+        "params": {}
+      },
+      {
+        "id": "aged_payables",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_aged_payables"
+        },
+        "params": {}
+      },
+      {
+        "id": "company_info",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "qbo_query"
+        },
+        "params": {
+          "query": {
+            "kind": "static",
+            "value": "SELECT * FROM CompanyInfo"
+          }
+        }
+      },
+      {
+        "id": "prefs",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_preferences"
+        },
+        "params": {}
+      }
+    ]
+  }
+}

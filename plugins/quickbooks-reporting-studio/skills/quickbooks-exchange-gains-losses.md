@@ -5,7 +5,7 @@ description: QuickBooks Online Exchange gains and losses (multi-currency) (Q36) 
 
 # Exchange gains and losses (multi-currency) (Q36)
 
-Use when the user asks for exchange gains or losses, FX gains, realised or unrealised currency gains, or foreign-currency exposure on open bills and invoices. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `list_bill`, `list_invoice`, `list_exchange_rate`, `qbo_query`, `get_preferences`).
+Use when the user asks for exchange gains or losses, FX gains, realised or unrealised currency gains, or foreign-currency exposure on open bills and invoices. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Exchange gains and losses**. Template: `quickbooks-reporting-studio` / `quickbooks-exchange-gains-losses` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `list_bill`, `list_invoice`, `list_exchange_rate`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports › Business overview. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q36. Delivery: Wave 3 (Train 06).
 

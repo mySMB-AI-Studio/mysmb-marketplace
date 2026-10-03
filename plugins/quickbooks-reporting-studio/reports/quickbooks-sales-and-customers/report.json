@@ -1,0 +1,213 @@
+{
+  "title": "Sales and customers",
+  "description": "Live, validated QuickBooks Online Sales and customers (Q25): Sales by Customer Summary, Sales by Product/Service Summary, Income by Customer Summary, Customer Contact List, Product/Service List, Quotes by Customer, Detail variants, Deposit Detail, Quotes & Progress Invoicing, Sales by Customer Type, Payment Method List and more.",
+  "tags": [
+    "quickbooks",
+    "sales",
+    "customers"
+  ],
+  "fileName": "quickbooks-sales-and-customers.html",
+  "dataBindings": {
+    "inputs": [
+      {
+        "name": "start_date",
+        "label": "From",
+        "type": "date",
+        "default": "2026-07-01"
+      },
+      {
+        "name": "end_date",
+        "label": "To",
+        "type": "date",
+        "default": "today"
+      },
+      {
+        "name": "basis",
+        "label": "Accounting method",
+        "type": "enum",
+        "options": [
+          "Accrual",
+          "Cash"
+        ],
+        "default": "Accrual"
+      },
+      {
+        "name": "persona",
+        "label": "View as",
+        "type": "enum",
+        "options": [
+          "Client",
+          "Bookkeeper",
+          "Practitioner",
+          "Executive"
+        ],
+        "default": "Client"
+      },
+      {
+        "name": "display",
+        "label": "Display settings",
+        "type": "string",
+        "maxLength": 300,
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"customers\",\"x\":\"\"}"
+      }
+    ],
+    "bindings": [
+      {
+        "id": "customer_sales",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_customer_sales"
+        },
+        "params": {
+          "start_date": {
+            "kind": "input",
+            "input": "start_date"
+          },
+          "end_date": {
+            "kind": "input",
+            "input": "end_date"
+          },
+          "accounting_method": {
+            "kind": "input",
+            "input": "basis"
+          }
+        }
+      },
+      {
+        "id": "item_sales",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_item_sales"
+        },
+        "params": {
+          "start_date": {
+            "kind": "input",
+            "input": "start_date"
+          },
+          "end_date": {
+            "kind": "input",
+            "input": "end_date"
+          },
+          "accounting_method": {
+            "kind": "input",
+            "input": "basis"
+          }
+        }
+      },
+      {
+        "id": "customer_income",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_customer_income"
+        },
+        "params": {
+          "start_date": {
+            "kind": "input",
+            "input": "start_date"
+          },
+          "end_date": {
+            "kind": "input",
+            "input": "end_date"
+          },
+          "accounting_method": {
+            "kind": "input",
+            "input": "basis"
+          }
+        }
+      },
+      {
+        "id": "pnl",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_profit_and_loss"
+        },
+        "params": {
+          "start_date": {
+            "kind": "input",
+            "input": "start_date"
+          },
+          "end_date": {
+            "kind": "input",
+            "input": "end_date"
+          },
+          "accounting_method": {
+            "kind": "input",
+            "input": "basis"
+          }
+        }
+      },
+      {
+        "id": "customers",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "list_customer"
+        },
+        "params": {
+          "where": {
+            "kind": "static",
+            "value": "Active = true"
+          },
+          "maxResults": {
+            "kind": "static",
+            "value": 1000
+          }
+        }
+      },
+      {
+        "id": "products",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "list_item"
+        },
+        "params": {
+          "where": {
+            "kind": "static",
+            "value": "Active = true"
+          },
+          "maxResults": {
+            "kind": "static",
+            "value": 1000
+          }
+        }
+      },
+      {
+        "id": "quotes",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "list_estimate"
+        },
+        "params": {
+          "orderBy": {
+            "kind": "static",
+            "value": "TxnDate DESC"
+          },
+          "maxResults": {
+            "kind": "static",
+            "value": 500
+          }
+        }
+      },
+      {
+        "id": "company_info",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "qbo_query"
+        },
+        "params": {
+          "query": {
+            "kind": "static",
+            "value": "SELECT * FROM CompanyInfo"
+          }
+        }
+      },
+      {
+        "id": "prefs",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_preferences"
+        },
+        "params": {}
+      }
+    ]
+  }
+}

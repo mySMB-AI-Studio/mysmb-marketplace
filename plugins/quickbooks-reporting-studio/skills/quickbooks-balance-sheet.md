@@ -5,7 +5,7 @@ description: QuickBooks Online Balance Sheet family (Q18) as a live, validated r
 
 # Balance Sheet family (Q18)
 
-Use when the user asks for a balance sheet, statement of financial position, net assets, balance sheet comparison, balance sheet summary, working capital or current ratio at a date. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_balance_sheet`, `get_report_profit_and_loss`, `qbo_query`, `get_preferences`).
+Use when the user asks for a balance sheet, statement of financial position, net assets, balance sheet comparison, balance sheet summary, working capital or current ratio at a date. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Balance Sheet**. Template: `quickbooks-reporting-studio` / `quickbooks-balance-sheet` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_balance_sheet`, `get_report_profit_and_loss`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports › Business overview › Balance Sheet. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q18. Delivery: Wave 1.
 

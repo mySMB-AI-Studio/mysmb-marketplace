@@ -5,7 +5,7 @@ description: QuickBooks Online Inventory overview (Q14) as a live, validated rep
 
 # Inventory overview (Q14)
 
-Use when the user asks for the inventory overview, what is low on stock or out of stock, what to reorder, or stock levels against reorder points. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`list_item`, `get_report_inventory_valuation_summary`, `list_account`, `list_purchase_order`, `qbo_query`, `get_preferences`).
+Use when the user asks for the inventory overview, what is low on stock or out of stock, what to reorder, or stock levels against reorder points. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Inventory overview**. Template: `quickbooks-reporting-studio` / `quickbooks-inventory-overview` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`list_item`, `get_report_inventory_valuation_summary`, `list_account`, `list_purchase_order`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: All apps › Inventory › Overview. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q14. Delivery: Wave 3 (Train 05).
 

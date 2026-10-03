@@ -1,0 +1,177 @@
+{
+  "title": "Sales & Get Paid overview",
+  "description": "Live, validated QuickBooks Online Sales & Get Paid overview (Q11): Income over time, Invoices funnel, DSO tile.",
+  "tags": [
+    "quickbooks",
+    "sales",
+    "invoices",
+    "dashboard"
+  ],
+  "fileName": "quickbooks-sales-overview.html",
+  "dataBindings": {
+    "inputs": [
+      {
+        "name": "inc_start",
+        "label": "Income chart from",
+        "type": "date",
+        "default": "2025-10-01"
+      },
+      {
+        "name": "inc_end",
+        "label": "Income chart to",
+        "type": "date",
+        "default": "2026-09-30"
+      },
+      {
+        "name": "prev_start",
+        "label": "Previous year from",
+        "type": "date",
+        "default": "2024-10-01"
+      },
+      {
+        "name": "prev_end",
+        "label": "Previous year to",
+        "type": "date",
+        "default": "2025-09-30"
+      },
+      {
+        "name": "persona",
+        "label": "View as",
+        "type": "enum",
+        "options": [
+          "Client",
+          "Bookkeeper",
+          "Practitioner",
+          "Executive"
+        ],
+        "default": "Client"
+      },
+      {
+        "name": "display",
+        "label": "Display settings",
+        "type": "string",
+        "maxLength": 300,
+        "default": "{\"cents\":0,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"custom\",\"c\":\"prev_year\",\"v\":\"\",\"x\":\"365\"}"
+      }
+    ],
+    "bindings": [
+      {
+        "id": "income_monthly",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_profit_and_loss"
+        },
+        "params": {
+          "start_date": {
+            "kind": "input",
+            "input": "inc_start"
+          },
+          "end_date": {
+            "kind": "input",
+            "input": "inc_end"
+          },
+          "accounting_method": {
+            "kind": "static",
+            "value": "Accrual"
+          },
+          "summarize_column_by": {
+            "kind": "static",
+            "value": "Month"
+          }
+        }
+      },
+      {
+        "id": "income_prev_year",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_profit_and_loss"
+        },
+        "params": {
+          "start_date": {
+            "kind": "input",
+            "input": "prev_start"
+          },
+          "end_date": {
+            "kind": "input",
+            "input": "prev_end"
+          },
+          "accounting_method": {
+            "kind": "static",
+            "value": "Accrual"
+          },
+          "summarize_column_by": {
+            "kind": "static",
+            "value": "Month"
+          }
+        }
+      },
+      {
+        "id": "open_invoices",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "list_invoice"
+        },
+        "params": {
+          "where": {
+            "kind": "static",
+            "value": "Balance > '0'"
+          },
+          "orderBy": {
+            "kind": "static",
+            "value": "DueDate"
+          },
+          "maxResults": {
+            "kind": "static",
+            "value": 1000
+          }
+        }
+      },
+      {
+        "id": "payments_received",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "list_payment"
+        },
+        "params": {
+          "orderBy": {
+            "kind": "static",
+            "value": "TxnDate DESC"
+          },
+          "maxResults": {
+            "kind": "static",
+            "value": 1000
+          }
+        }
+      },
+      {
+        "id": "aged_receivables",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_aged_receivables"
+        },
+        "params": {}
+      },
+      {
+        "id": "company_info",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "qbo_query"
+        },
+        "params": {
+          "query": {
+            "kind": "static",
+            "value": "SELECT * FROM CompanyInfo"
+          }
+        }
+      },
+      {
+        "id": "prefs",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_preferences"
+        },
+        "params": {}
+      }
+    ]
+  }
+}

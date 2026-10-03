@@ -1,0 +1,20 @@
+{
+  "inputs": [
+    { "name": "start_date", "label": "From", "type": "date", "default": "2026-08-01" },
+    { "name": "end_date", "label": "To", "type": "date", "default": "2026-08-31" },
+    { "name": "basis", "label": "Accounting method", "type": "enum", "options": ["Accrual", "Cash"], "default": "Accrual" },
+    { "name": "persona", "label": "View as", "type": "enum", "options": ["Client", "Bookkeeper", "Practitioner", "Executive"], "default": "Bookkeeper" },
+    { "name": "display", "label": "Display settings", "type": "string", "maxLength": 300, "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"compact\",\"p\":\"last_month\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"gl\",\"x\":\"\"}" }
+  ],
+  "bindings": [
+    { "id": "general_ledger", "tool": { "mcp": "quickbooks-accounting", "name": "get_report_general_ledger" },
+      "params": { "start_date": { "kind": "input", "input": "start_date" }, "end_date": { "kind": "input", "input": "end_date" }, "accounting_method": { "kind": "input", "input": "basis" } } },
+    { "id": "journal", "tool": { "mcp": "quickbooks-accounting", "name": "get_report_journal_report" },
+      "params": { "start_date": { "kind": "input", "input": "start_date" }, "end_date": { "kind": "input", "input": "end_date" }, "accounting_method": { "kind": "input", "input": "basis" } } },
+    { "id": "transaction_list", "tool": { "mcp": "quickbooks-accounting", "name": "get_report_transaction_list" },
+      "params": { "start_date": { "kind": "input", "input": "start_date" }, "end_date": { "kind": "input", "input": "end_date" }, "accounting_method": { "kind": "input", "input": "basis" } } },
+    { "id": "account_list", "tool": { "mcp": "quickbooks-accounting", "name": "get_report_account_list" }, "params": {} },
+    { "id": "company_info", "tool": { "mcp": "quickbooks-accounting", "name": "qbo_query" }, "params": { "query": { "kind": "static", "value": "SELECT * FROM CompanyInfo" } } },
+    { "id": "prefs", "tool": { "mcp": "quickbooks-accounting", "name": "get_preferences" }, "params": {} }
+  ]
+}

@@ -1,0 +1,1 @@
+var FXMAP = { bs: function (F) { return F.bs; }, bs_compare: function (F) { return F.bs; }, pnl_ytd: function (F) { return F.pnl; }, company_info: function (F) { return function () { return F.companyInfo; }; }, prefs: function (F) { return function () { return F.prefs; }; } };

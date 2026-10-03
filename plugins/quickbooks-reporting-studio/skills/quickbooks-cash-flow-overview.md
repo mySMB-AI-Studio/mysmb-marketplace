@@ -5,7 +5,7 @@ description: QuickBooks Online Cash flow overview (Q07) as a live, validated rep
 
 # Cash flow overview (Q07)
 
-Use when the user asks for the cash flow overview, cash position today, money in and money out this month, overdue invoices and bills, or a cash projection. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`list_account`, `get_report_cash_flow`, `list_invoice`, `list_bill`, `list_payment`, `list_bill_payment`, `list_purchase`, `qbo_query`, `get_preferences`).
+Use when the user asks for the cash flow overview, cash position today, money in and money out this month, overdue invoices and bills, or a cash projection. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Cash flow overview**. Template: `quickbooks-reporting-studio` / `quickbooks-cash-flow-overview` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`list_account`, `get_report_cash_flow`, `list_invoice`, `list_bill`, `list_payment`, `list_bill_payment`, `list_purchase`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Financial planning › Cash flow overview. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q07. Delivery: Wave 1.
 

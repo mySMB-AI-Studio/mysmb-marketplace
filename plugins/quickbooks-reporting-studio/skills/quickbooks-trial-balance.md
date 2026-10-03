@@ -5,7 +5,7 @@ description: QuickBooks Online Trial Balance family (Q22) as a live, validated r
 
 # Trial Balance family (Q22)
 
-Use when the user asks for a trial balance, TB, debits and credits by account, or to check the books balance. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_trial_balance`, `qbo_query`, `get_preferences`).
+Use when the user asks for a trial balance, TB, debits and credits by account, or to check the books balance. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Trial Balance**. Template: `quickbooks-reporting-studio` / `quickbooks-trial-balance` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_trial_balance`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports › For my accountant › Trial Balance. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q22. Delivery: Wave 2 story (Train 02) — delivered early because it was already validated on 18 Sep.
 

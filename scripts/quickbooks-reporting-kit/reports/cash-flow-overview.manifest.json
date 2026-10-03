@@ -1,0 +1,19 @@
+{
+  "inputs": [
+    { "name": "cf_start", "label": "Chart from", "type": "date", "default": "2025-10-01" },
+    { "name": "persona", "label": "View as", "type": "enum", "options": ["Client", "Bookkeeper", "Practitioner", "Executive"], "default": "Client" },
+    { "name": "display", "label": "Display settings", "type": "string", "maxLength": 300, "default": "{\"cents\":0,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"balance\",\"x\":\"upcoming\"}" }
+  ],
+  "bindings": [
+    { "id": "cash_accounts", "tool": { "mcp": "quickbooks-accounting", "name": "list_account" }, "params": { "where": { "kind": "static", "value": "AccountType IN ('Bank', 'Credit Card') AND Active = true" }, "maxResults": { "kind": "static", "value": 200 } } },
+    { "id": "cash_flow_12m", "tool": { "mcp": "quickbooks-accounting", "name": "get_report_cash_flow" },
+      "params": { "start_date": { "kind": "input", "input": "cf_start" }, "end_date": { "kind": "context", "source": "now.date" }, "summarize_column_by": { "kind": "static", "value": "Month" } } },
+    { "id": "open_invoices", "tool": { "mcp": "quickbooks-accounting", "name": "list_invoice" }, "params": { "where": { "kind": "static", "value": "Balance > '0'" }, "orderBy": { "kind": "static", "value": "DueDate" }, "maxResults": { "kind": "static", "value": 1000 } } },
+    { "id": "open_bills", "tool": { "mcp": "quickbooks-accounting", "name": "list_bill" }, "params": { "where": { "kind": "static", "value": "Balance > '0'" }, "orderBy": { "kind": "static", "value": "DueDate" }, "maxResults": { "kind": "static", "value": 1000 } } },
+    { "id": "payments_received", "tool": { "mcp": "quickbooks-accounting", "name": "list_payment" }, "params": { "orderBy": { "kind": "static", "value": "TxnDate DESC" }, "maxResults": { "kind": "static", "value": 1000 } } },
+    { "id": "bill_payments", "tool": { "mcp": "quickbooks-accounting", "name": "list_bill_payment" }, "params": { "orderBy": { "kind": "static", "value": "TxnDate DESC" }, "maxResults": { "kind": "static", "value": 1000 } } },
+    { "id": "expenses_paid", "tool": { "mcp": "quickbooks-accounting", "name": "list_purchase" }, "params": { "orderBy": { "kind": "static", "value": "TxnDate DESC" }, "maxResults": { "kind": "static", "value": 1000 } } },
+    { "id": "company_info", "tool": { "mcp": "quickbooks-accounting", "name": "qbo_query" }, "params": { "query": { "kind": "static", "value": "SELECT * FROM CompanyInfo" } } },
+    { "id": "prefs", "tool": { "mcp": "quickbooks-accounting", "name": "get_preferences" }, "params": {} }
+  ]
+}

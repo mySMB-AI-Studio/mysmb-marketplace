@@ -5,7 +5,7 @@ description: QuickBooks Online Expenses and suppliers family (Q27) as a live, va
 
 # Expenses and suppliers family (Q27)
 
-Use when the user asks for expenses by supplier, top suppliers, supplier concentration, a purchase list, cheque detail or the supplier contact list. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_vendor_expenses`, `get_report_profit_and_loss`, `list_purchase`, `list_bill`, `list_vendor`, `qbo_query`, `get_preferences`).
+Use when the user asks for expenses by supplier, top suppliers, supplier concentration, a purchase list, cheque detail or the supplier contact list. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Expenses and suppliers**. Template: `quickbooks-reporting-studio` / `quickbooks-expenses-and-suppliers` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_vendor_expenses`, `get_report_profit_and_loss`, `list_purchase`, `list_bill`, `list_vendor`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports › Expenses and suppliers. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q27. Delivery: Wave 2 (Train 03).
 
