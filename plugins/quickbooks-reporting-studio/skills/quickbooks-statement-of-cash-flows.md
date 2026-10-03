@@ -5,7 +5,7 @@ description: QuickBooks Online Statement of Cash Flows (Q19) as a live, validate
 
 # Statement of Cash Flows (Q19)
 
-Use when the user asks for a statement of cash flows, cash flow statement, where the cash went, operating / investing / financing cash flow, or a cash waterfall. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Statement of Cash Flows**. Template: `quickbooks-reporting-studio` / `quickbooks-statement-of-cash-flows` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_cash_flow`, `get_report_balance_sheet`, `list_account`, `qbo_query`, `get_preferences`).
+Use when the user asks for a statement of cash flows, cash flow statement, where the cash went, operating / investing / financing cash flow, or a cash waterfall. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Statement of Cash Flows**. Template: `quickbooks-reporting-studio` / `quickbooks-statement-of-cash-flows` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_cash_flow`, `get_report_balance_sheet`, `list_account`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports › Business overview › Statement of Cash Flows. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q19. Delivery: Wave 1.
 

@@ -5,7 +5,7 @@ description: QuickBooks Online Custom report builder (Q35) as a live, validated 
 
 # Custom report builder (Q35)
 
-Use when the user asks for a QuickBooks report that no other skill covers, a custom report, or a specific QuickBooks standard report by name (for example Sales by Class, Sales by Location, Customer Balance Detail, Supplier Balance Detail, Transaction List, Profit and Loss Detail). Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Custom report**. No template: you choose the QuickBooks report tool, so always use the copy path with the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_class_sales`, `qbo_query`, `get_preferences`).
+Use when the user asks for a QuickBooks report that no other skill covers, a custom report, or a specific QuickBooks standard report by name (for example Sales by Class, Sales by Location, Customer Balance Detail, Supplier Balance Detail, Transaction List, Profit and Loss Detail). Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Custom Report**. No template: you choose the QuickBooks report tool, so always use the copy path with the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_class_sales`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports › Custom report builder. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q35. Delivery: Wave 3 (Train 06).
 

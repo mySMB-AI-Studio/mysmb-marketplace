@@ -5,7 +5,7 @@ description: QuickBooks Online Customer Hub overview (Q12) as a live, validated 
 
 # Customer Hub overview (Q12)
 
-Use when the user asks for the customer hub, open quotes, projects in progress, unpaid or overdue invoices by customer, or what needs attention with customers. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Customer Hub overview**. Template: `quickbooks-reporting-studio` / `quickbooks-customer-hub` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`list_customer`, `list_estimate`, `list_invoice`, `get_report_aged_receivables`, `qbo_query`, `get_preferences`).
+Use when the user asks for the customer hub, open quotes, projects in progress, unpaid or overdue invoices by customer, or what needs attention with customers. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Customer Hub**. Template: `quickbooks-reporting-studio` / `quickbooks-customer-hub` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`list_customer`, `list_estimate`, `list_invoice`, `get_report_aged_receivables`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: All apps › Customer Hub › Overview. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q12. Delivery: Wave 3 (Train 05).
 
@@ -165,7 +165,7 @@ No manual dates: quotes and invoices from the last 365 days, recomputed on every
 
 ```js
 QB.app({
-  title: 'Customer Hub overview', token: null, primary: 'aged_receivables', company: 'company_info', prefs: 'prefs',
+  title: 'Customer Hub', token: null, primary: 'aged_receivables', company: 'company_info', prefs: 'prefs',
   inputs: { persona: 'persona', display: 'display' },
   defaults: { persona: 'Client', display: '{"cents":0,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"custom","a":"custom","c":"none","v":"","x":""}' },
   uses: {},

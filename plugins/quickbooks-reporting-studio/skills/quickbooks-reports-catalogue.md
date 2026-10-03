@@ -5,7 +5,7 @@ description: QuickBooks Online Reports catalogue (Q02) as a live, validated repo
 
 # Reports catalogue (Q02)
 
-Use when the user asks what QuickBooks reports are available, for the reports list or catalogue, which reports the agent can build, or to search for a report by name. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Reports catalogue**. Template: `quickbooks-reporting-studio` / `quickbooks-reports-catalogue` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`qbo_query`, `get_preferences`).
+Use when the user asks what QuickBooks reports are available, for the reports list or catalogue, which reports the agent can build, or to search for a report by name. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Reports Catalogue**. Template: `quickbooks-reporting-studio` / `quickbooks-reports-catalogue` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q02. Delivery: Wave 2 (Train 04).
 

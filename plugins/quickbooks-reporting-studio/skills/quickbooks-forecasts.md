@@ -5,7 +5,7 @@ description: QuickBooks Online Forecasts (Q09) as a live, validated report in Qu
 
 # Forecasts (Q09)
 
-Use when the user asks for a forecast, a projection, a financial forecast, what next year might look like, forecast vs actual, or a what-if with income or expenses changed by a percentage. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Forecasts**. Template: `quickbooks-reporting-studio` / `quickbooks-forecasts` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `qbo_query`, `get_preferences`).
+Use when the user asks for a forecast, a projection, a financial forecast, what next year might look like, forecast vs actual, or a what-if with income or expenses changed by a percentage. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Forecasts**. Template: `quickbooks-reporting-studio` / `quickbooks-forecasts` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Financial planning › Forecasts. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q09. Delivery: Wave 4 (Feature F6).
 
