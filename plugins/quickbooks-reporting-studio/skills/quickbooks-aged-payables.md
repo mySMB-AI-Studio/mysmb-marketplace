@@ -5,7 +5,7 @@ description: QuickBooks Online Accounts payable family (Q26) as a live, validate
 
 # Accounts payable family (Q26)
 
-Use when the user asks for aged payables, A/P ageing (aging), who we owe, creditors, unpaid bills, bills due, a payment schedule or supplier balances. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Accounts payable**. Template: `quickbooks-reporting-studio` / `quickbooks-aged-payables` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_aged_payables`, `get_report_aged_payable_detail`, `list_bill`, `get_report_balance_sheet`, `qbo_query`, `get_preferences`).
+Use when the user asks for aged payables, A/P ageing (aging), who we owe, creditors, unpaid bills, bills due, a payment schedule or supplier balances. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Aged Payables**. Template: `quickbooks-reporting-studio` / `quickbooks-aged-payables` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_aged_payables`, `get_report_aged_payable_detail`, `list_bill`, `get_report_balance_sheet`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports › What you owe. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q26. Delivery: Wave 1.
 

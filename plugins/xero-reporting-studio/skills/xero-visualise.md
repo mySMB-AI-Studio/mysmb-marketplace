@@ -4,7 +4,7 @@ description: Build a live, validated Xero Visualise report (P15) on the tested r
 ---
 # Visualise (P15)
 
-Use when the user asks to visualise or chart income, expenses, cash, accounts, KPIs, external metrics or benchmarks over time. Load `xero-report-foundation` first and follow its *Build a kit report* steps. Template: `xero-reporting-studio` / `xero-visualise` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `xero-accounting` connector (`get_profit_and_loss`, `get_balance_sheet`, `get_bank_summary`, `list_bank_transfers`, `get_organisation`, `list_connections`).
+Use when the user asks to visualise or chart income, expenses, cash, accounts, KPIs, external metrics or benchmarks over time. Load `xero-report-foundation` first and follow its *Build a kit report* steps. Report title: **Xero Visualise**. Template: `xero-reporting-studio` / `xero-visualise` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `xero-accounting` connector (`get_profit_and_loss`, `get_balance_sheet`, `get_bank_summary`, `list_bank_transfers`, `get_organisation`, `list_connections`).
 
 Xero location: Reporting → Visualise. Library: Xero Reports Prompt Library v1.2 → Prompts → P15. Delivery: Wave 2 (delivery order 13).
 

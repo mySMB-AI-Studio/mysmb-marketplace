@@ -1,10 +1,10 @@
 ---
 name: MYOB Trial Balance
-description: MYOB Trial balance (M03) as a live, validated report in MYOB styling. Use when the user asks for a trial balance, TB, debits and credits by account, or every category's balance as at a date.
+description: MYOB Trial Balance (M03) as a live, validated report in MYOB styling. Use when the user asks for a trial balance, TB, debits and credits by account, or every category's balance as at a date.
 ---
-# Trial balance (M03)
+# Trial Balance (M03)
 
-Use when the user asks for a trial balance, TB, debits and credits by account, or every category's balance as at a date. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Template: `myob-reporting-studio` / `trial-balance` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`get_balance_sheet`, `get_profit_and_loss_3m`, `list_accounts`, `list_company_files`).
+Use when the user asks for a trial balance, TB, debits and credits by account, or every category's balance as at a date. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Trial Balance**. Report title: **MYOB Trial Balance**. Report title: **MYOB Trial Balance**. Template: `myob-reporting-studio` / `trial-balance` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`get_balance_sheet`, `get_profit_and_loss_3m`, `list_accounts`, `list_company_files`).
 
 MYOB location: Reporting → Reports → Business → Trial balance. Library: MYOB Reports Prompt Library v1.2 → Prompts → M03. Delivery: Wave 1 (P1, delivery order 12).
 

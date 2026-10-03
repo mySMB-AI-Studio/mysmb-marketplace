@@ -1,10 +1,10 @@
 ---
 name: MYOB Customer Sales
-description: MYOB Customer sales (M35) as a live, validated report in MYOB styling. Use when the user asks for customer sales, sales by customer, top customers, or how much each customer bought in a period.
+description: MYOB Customer Sales (M35) as a live, validated report in MYOB styling. Use when the user asks for customer sales, sales by customer, top customers, or how much each customer bought in a period.
 ---
-# Customer sales (M35)
+# Customer Sales (M35)
 
-Use when the user asks for customer sales, sales by customer, top customers, or how much each customer bought in a period. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Template: `myob-reporting-studio` / `customer-sales` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_invoices`, `get_profit_and_loss_3m`, `get_balance_sheet`, `list_accounts`, `list_company_files`).
+Use when the user asks for customer sales, sales by customer, top customers, or how much each customer bought in a period. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Customer Sales**. Report title: **MYOB Customer Sales**. Report title: **MYOB Customer Sales**. Template: `myob-reporting-studio` / `customer-sales` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_invoices`, `get_profit_and_loss_3m`, `get_balance_sheet`, `list_accounts`, `list_company_files`).
 
 MYOB location: Reporting → Reports → Sales → Customer sales. Library: MYOB Reports Prompt Library v1.2 → Prompts → M35. Delivery: Wave 1 (P1, delivery order 11).
 
@@ -223,7 +223,7 @@ Call `list_invoices` once with `status` = `All`, `from_date` / `to_date` = the p
 
 ```js
 MK.app({
-  title: 'Customer sales', primary: 'pnl', files: 'company_files',
+  title: 'Customer Sales', primary: 'pnl', files: 'company_files',
   inputs: { start: 'from_date', end: 'to_date', companyFile: 'company_file', persona: 'persona', display: 'display' },
   defaults: { from_date: '2026-07-01', to_date: '2026-09-28', as_at: '2026-09-28', status: 'All', company_file: '', persona: 'Bookkeeper',
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":0,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":"customers"}' },
@@ -267,7 +267,7 @@ MK.app({
       view === 'customers' && open ? { name: 'Every customer\'s current balance (open invoices, as on Unpaid invoices) adds up to the receivables account on the Balance Sheet', pass: control == null ? null : MK.near(MK.sum(Object.keys(bal).map(function (k) { return bal[k]; })), control), detail: money(MK.sum(Object.keys(bal).map(function (k) { return bal[k]; }))) + ' on ' + open.length + ' open invoice(s)' + (control == null ? '' : ' vs ' + money(control)) } : null
     ].filter(Boolean);
     this._x = { list: list, cust: cust, T: T, view: view };
-    return { checks: checks, title: view === 'customers' ? 'Customer sales' : 'Sales register', notes: ['Sales invoices dated in the period (MYOB\'s generic invoice list); sale amount = the subtotal before tax.' + (view === 'customers' ? ' Current balance is each customer\'s balance due on every open invoice today.' : '')],
+    return { checks: checks, title: view === 'customers' ? 'Customer Sales' : 'Sales Register', notes: ['Sales invoices dated in the period (MYOB\'s generic invoice list); sale amount = the subtotal before tax.' + (view === 'customers' ? ' Current balance is each customer\'s balance due on every open invoice today.' : '')],
       na: ['Quotes and orders (the connector reads invoices only)', 'Salesperson (employee) filter — not in the invoice list'] };
   },
   excel: function (c) {

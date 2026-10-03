@@ -1,5 +1,5 @@
 XK.app({
-  title: 'Business overview', basisLabel: 'Accrual', primary: 'pnl_ytd', org: 'org', conns: 'connections', noBasis: true,
+  title: 'Business Overview', basisLabel: 'Accrual', primary: 'pnl_ytd', org: 'org', conns: 'connections', noBasis: true,
   inputs: { org: 'org', display: 'display' },
   defaults: { as_at: '2026-09-25', fy_start: '2026-07-01', prior_from: '2025-07-01', prior_to: '2025-09-25', month_from: '2026-09-01', org: '', page: 1,
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"today","c":"none","v":"","o":"w="}' },

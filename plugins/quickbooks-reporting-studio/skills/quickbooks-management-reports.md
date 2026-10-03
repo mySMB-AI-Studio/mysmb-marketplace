@@ -5,7 +5,7 @@ description: QuickBooks Online Management reports (report packs) (Q04) as a live
 
 # Management reports (report packs) (Q04)
 
-Use when the user asks for a management report, board pack, report pack, company financials pack, month-end pack, BAS workpapers or a PDF pack of the statements. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Management reports**. Template: `quickbooks-reporting-studio` / `quickbooks-management-reports` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `get_report_balance_sheet`, `get_report_cash_flow`, `get_report_aged_receivables`, `get_report_aged_payables`, `get_report_tax_summary`, `list_tax_agency`, `qbo_query`, `get_preferences`).
+Use when the user asks for a management report, board pack, report pack, company financials pack, month-end pack, BAS workpapers or a PDF pack of the statements. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Report Pack**. Template: `quickbooks-reporting-studio` / `quickbooks-management-reports` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `get_report_balance_sheet`, `get_report_cash_flow`, `get_report_aged_receivables`, `get_report_aged_payables`, `get_report_tax_summary`, `list_tax_agency`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Management reports. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q04. Delivery: Wave 1.
 

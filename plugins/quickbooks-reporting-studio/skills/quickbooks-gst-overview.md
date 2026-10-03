@@ -5,7 +5,7 @@ description: QuickBooks Online GST overview (BAS centre) (Q15) as a live, valida
 
 # GST overview (BAS centre) (Q15)
 
-Use when the user asks for the GST overview, GST position, BAS centre, how much GST we owe or get back this quarter, or GST collected vs paid. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **GST overview**. Template: `quickbooks-reporting-studio` / `quickbooks-gst-overview` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_tax_summary`, `get_report_balance_sheet`, `list_tax_agency`, `qbo_query`, `get_preferences`).
+Use when the user asks for the GST overview, GST position, BAS centre, how much GST we owe or get back this quarter, or GST collected vs paid. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks GST Overview**. Template: `quickbooks-reporting-studio` / `quickbooks-gst-overview` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_tax_summary`, `get_report_balance_sheet`, `list_tax_agency`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: All apps › GST › Overview. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q15. Delivery: Wave 1.
 
@@ -248,7 +248,7 @@ Preset `this_quarter`; compare = previous quarter (`c` = `prev_period`).
 
 ```js
 QB.app({
-  title: 'GST overview', token: null, primary: 'gst_current', company: 'company_info', prefs: 'prefs',
+  title: 'GST Overview', token: null, primary: 'gst_current', company: 'company_info', prefs: 'prefs',
   inputs: { start: 'start_date', end: 'end_date', cmpStart: 'compare_start', cmpEnd: 'compare_end', basis: 'basis', persona: 'persona', display: 'display' },
   defaults: { start_date: '2026-07-01', end_date: '2026-09-30', compare_start: '2026-04-01', compare_end: '2026-06-30', basis: 'Accrual', agency_id: '', persona: 'Bookkeeper',
     display: '{"cents":0,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"this_quarter","a":"custom","c":"prev_period","v":"","x":""}' },

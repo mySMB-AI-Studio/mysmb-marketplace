@@ -5,7 +5,7 @@ description: QuickBooks Online Budgets (Budget vs Actuals) (Q08) as a live, vali
 
 # Budgets (Budget vs Actuals) (Q08)
 
-Use when the user asks for budget vs actuals, a budget report, the budget overview, profit and loss budget performance, or how the business is tracking against budget. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Budget vs Actuals**. Template: `quickbooks-reporting-studio` / `quickbooks-budgets` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`list_budget`, `get_report_profit_and_loss`, `qbo_query`, `get_preferences`).
+Use when the user asks for budget vs actuals, a budget report, the budget overview, profit and loss budget performance, or how the business is tracking against budget. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Budget vs Actual**. Template: `quickbooks-reporting-studio` / `quickbooks-budgets` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`list_budget`, `get_report_profit_and_loss`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Financial planning › Budgets. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q08. Delivery: Wave 2 (Train 04).
 

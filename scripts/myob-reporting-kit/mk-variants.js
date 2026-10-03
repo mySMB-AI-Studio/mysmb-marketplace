@@ -3,9 +3,9 @@
 const fs = require('fs'), path = require('path'), R = path.join(__dirname, 'reports');
 const VARIANTS = [
   // Aged receivables (no library prompt; the connector's own ageing) = Unpaid invoices aged by due date
-  { id: 'ag', base: 'ar', title: ['Unpaid invoices', 'Aged receivables'], inputs: { method: 'Due date' } },
+  { id: 'ag', base: 'ar', title: ['Unpaid Invoices', 'Aged Receivables'], inputs: { method: 'Due date' } },
   // Customer sales (M35) = the Sales register's customer view
-  { id: 'cs', base: 'sr', title: ['Sales register', 'Customer sales'], display: { v: 'customers' } },
+  { id: 'cs', base: 'sr', title: ['Sales Register', 'Customer Sales'], display: { v: 'customers' } },
 ];
 for (const v of VARIANTS) {
   let cfg = fs.readFileSync(path.join(R, v.base + '.cfg.js'), 'utf8').replace(/\r\n/g, '\n');

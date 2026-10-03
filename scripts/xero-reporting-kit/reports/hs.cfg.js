@@ -1,5 +1,5 @@
 XK.app({
-  title: 'Business health scorecard', primary: 'pnl', dated: ['bs'], org: 'org', conns: 'connections',
+  title: 'Business Health Scorecard', primary: 'pnl', dated: ['bs'], org: 'org', conns: 'connections',
   inputs: { asAt: 'end_date', basis: 'basis', org: 'org', display: 'display' },
   defaults: { end_date: '2026-08-31', m_start: '2026-08-01', prev_end: '2026-07-31', prev_start: '2026-07-01', targets: '{}', basis: 'Accrual', org: '',
     display: '{"cents":0,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"end_last_month","c":"none","v":"target"}' },

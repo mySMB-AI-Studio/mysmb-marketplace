@@ -4,7 +4,7 @@ description: Build a live, validated Xero Budget vs Actual on the tested report 
 ---
 # Budget vs Actual (BV)
 
-Use when the user asks for budget vs actual, a budget variance, how the business is tracking against budget, or a budget report. Load `xero-report-foundation` first and follow its *Build a kit report* steps. Template: `xero-reporting-studio` / `xero-budget-vs-actual` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `xero-accounting` connector (`get_budget_summary`, `get_profit_and_loss`, `list_budgets`, `get_organisation`, `list_connections`).
+Use when the user asks for budget vs actual, a budget variance, how the business is tracking against budget, or a budget report. Load `xero-report-foundation` first and follow its *Build a kit report* steps. Report title: **Xero Budget vs Actual**. Template: `xero-reporting-studio` / `xero-budget-vs-actual` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `xero-accounting` connector (`get_budget_summary`, `get_profit_and_loss`, `list_budgets`, `get_organisation`, `list_connections`).
 
 Xero location: Reporting → Budget Variance / Budget Summary. Library: Xero Reports Prompt Library v1.2 → Prompts → BV. Delivery: Added skill (not in the P01–P15 library).
 

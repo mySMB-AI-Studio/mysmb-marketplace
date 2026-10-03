@@ -5,7 +5,7 @@ description: QuickBooks Online Projects family (Q29) as a live, validated report
 
 # Projects family (Q29)
 
-Use when the user asks for project profitability, the project profitability summary, profit or margin by project, or estimates vs actuals by project. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Projects**. Template: `quickbooks-reporting-studio` / `quickbooks-projects` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `list_customer`, `list_estimate`, `qbo_query`, `get_preferences`).
+Use when the user asks for project profitability, the project profitability summary, profit or margin by project, or estimates vs actuals by project. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Project Profit and Loss**. Template: `quickbooks-reporting-studio` / `quickbooks-projects` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `list_customer`, `list_estimate`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports › Projects. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q29. Delivery: Wave 3 (Train 05).
 

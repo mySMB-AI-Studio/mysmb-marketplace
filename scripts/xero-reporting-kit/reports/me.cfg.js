@@ -1,5 +1,5 @@
 XK.app({
-  title: 'Month-end task list', primary: 'bs', dated: ['bs'], org: 'org', conns: 'connections', noBasis: true,
+  title: 'Month-End Task List', primary: 'bs', dated: ['bs'], org: 'org', conns: 'connections', noBasis: true,
   mechanism: 'xero-accounting, xero-payroll-au and xero-assets connectors — mySMB custom MCPs on the Xero Accounting, Payroll AU and Assets APIs (AGT-001)',
   inputs: { start: 'period_start', end: 'period_end', org: 'org', display: 'display' },
   defaults: { period_start: '2026-08-01', period_end: '2026-08-31', mj_where: 'Date>=DateTime(2026,08,01) AND Date<=DateTime(2026,08,31)', org: '', page: 1,

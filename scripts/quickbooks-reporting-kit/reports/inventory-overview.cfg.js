@@ -1,5 +1,5 @@
 QB.app({
-  title: 'Inventory overview', token: 'INVENTORY_VALUATION_SUMMARY', route: 'reportv2', primary: 'inventory_valuation', company: 'company_info', prefs: 'prefs',
+  title: 'Inventory Overview', token: 'INVENTORY_VALUATION_SUMMARY', route: 'reportv2', primary: 'inventory_valuation', company: 'company_info', prefs: 'prefs',
   inputs: { persona: 'persona', display: 'display' },
   defaults: { persona: 'Bookkeeper', display: '{"cents":1,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"custom","a":"custom","c":"none","v":"overview","x":""}' },
   uses: {},

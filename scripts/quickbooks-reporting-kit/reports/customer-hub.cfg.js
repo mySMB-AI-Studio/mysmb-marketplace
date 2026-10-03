@@ -1,5 +1,5 @@
 QB.app({
-  title: 'Customer Hub overview', token: null, primary: 'aged_receivables', company: 'company_info', prefs: 'prefs',
+  title: 'Customer Hub', token: null, primary: 'aged_receivables', company: 'company_info', prefs: 'prefs',
   inputs: { persona: 'persona', display: 'display' },
   defaults: { persona: 'Client', display: '{"cents":0,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"custom","a":"custom","c":"none","v":"","x":""}' },
   uses: {},

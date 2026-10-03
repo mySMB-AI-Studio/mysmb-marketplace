@@ -1,5 +1,5 @@
 XK.app({
-  title: 'All reports', primary: 'org', org: 'org', conns: 'connections', noBasis: true, noHead: false,
+  title: 'Reports Catalogue', primary: 'org', org: 'org', conns: 'connections', noBasis: true, noHead: false,
   inputs: { org: 'org', display: 'display' },
   defaults: { org: '', display: '{"cents":1,"k":0,"zeros":1,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"custom","c":"none","v":"","o":"q="}' },
   uses: { org: ['org'], connections: [] },

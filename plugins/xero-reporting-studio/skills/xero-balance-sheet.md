@@ -4,7 +4,7 @@ description: Build a live, validated Xero Balance Sheet (P07) on the tested repo
 ---
 # Balance Sheet (P07)
 
-Use when the user asks for a balance sheet, statement of financial position, net assets, assets and liabilities as at a date, or a balance sheet comparison. Load `xero-report-foundation` first and follow its *Build a kit report* steps. Template: `xero-reporting-studio` / `xero-balance-sheet` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `xero-accounting` connector (`get_balance_sheet`, `get_profit_and_loss`, `get_organisation`, `list_connections`).
+Use when the user asks for a balance sheet, statement of financial position, net assets, assets and liabilities as at a date, or a balance sheet comparison. Load `xero-report-foundation` first and follow its *Build a kit report* steps. Report title: **Xero Balance Sheet**. Template: `xero-reporting-studio` / `xero-balance-sheet` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `xero-accounting` connector (`get_balance_sheet`, `get_profit_and_loss`, `get_organisation`, `list_connections`).
 
 Xero location: Reporting → Balance Sheet. Library: Xero Reports Prompt Library v1.2 → Prompts → P07. Delivery: Wave 1 (delivery order 2).
 

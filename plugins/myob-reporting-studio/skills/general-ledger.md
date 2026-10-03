@@ -1,10 +1,10 @@
 ---
 name: MYOB General Ledger
-description: MYOB General ledger (M08) as a live, validated report in MYOB styling. Use when the user asks for a general ledger, GL, the transactions on a category or account, or every journal for a period.
+description: MYOB General Ledger (M08) as a live, validated report in MYOB styling. Use when the user asks for a general ledger, GL, the transactions on a category or account, or every journal for a period.
 ---
-# General ledger (M08)
+# General Ledger (M08)
 
-Use when the user asks for a general ledger, GL, the transactions on a category or account, or every journal for a period. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Template: `myob-reporting-studio` / `general-ledger` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_journal_transactions`, `get_balance_sheet`, `get_profit_and_loss_3m`, `list_accounts`, `list_company_files`).
+Use when the user asks for a general ledger, GL, the transactions on a category or account, or every journal for a period. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB General Ledger**. Report title: **MYOB General Ledger**. Report title: **MYOB General Ledger**. Template: `myob-reporting-studio` / `general-ledger` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_journal_transactions`, `get_balance_sheet`, `get_profit_and_loss_3m`, `list_accounts`, `list_company_files`).
 
 MYOB location: Reporting → Reports → Business → General ledger. Library: MYOB Reports Prompt Library v1.2 → Prompts → M08. Delivery: Wave 1 (P1, delivery order 13).
 
@@ -243,7 +243,7 @@ Call `list_journal_transactions` once with `from_date` / `to_date` = the period,
 
 ```js
 MK.app({
-  title: 'General ledger', primary: 'pnl_period', files: 'company_files',
+  title: 'General Ledger', primary: 'pnl_period', files: 'company_files',
   inputs: { start: 'from_date', end: 'to_date', companyFile: 'company_file', persona: 'persona', display: 'display' },
   defaults: { from_date: '2026-09-01', to_date: '2026-09-28', prev_day: '2026-08-31', fy_start: '2026-07-01', company_file: '', persona: 'Bookkeeper',
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":0,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"this_month","a":"custom","c":"none","v":"accounts"}' },

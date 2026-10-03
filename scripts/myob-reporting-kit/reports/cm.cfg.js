@@ -1,5 +1,5 @@
 MK.app({
-  title: 'Cash movement', primary: 'pnl', files: 'company_files',
+  title: 'Cash Movement', primary: 'pnl', files: 'company_files',
   inputs: { start: 'from_date', end: 'to_date', companyFile: 'company_file', persona: 'persona', display: 'display' },
   defaults: { from_date: '2026-07-01', to_date: '2026-09-28', prev_day: '2026-06-30', company_file: '', persona: 'Bookkeeper',
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":0,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":"cm"}' },

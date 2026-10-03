@@ -4,7 +4,7 @@ description: Build a live, validated Xero General Ledger on the tested report ki
 ---
 # General Ledger (GL)
 
-Use when the user asks for a general ledger, GL, journal listing, all journals, a transaction journal, or the movements on an account. Load `xero-report-foundation` first and follow its *Build a kit report* steps. Template: `xero-reporting-studio` / `xero-general-ledger` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `xero-accounting` connector (`list_journals`, `get_profit_and_loss`, `get_organisation`, `list_connections`).
+Use when the user asks for a general ledger, GL, journal listing, all journals, a transaction journal, or the movements on an account. Load `xero-report-foundation` first and follow its *Build a kit report* steps. Report title: **Xero General Ledger**. Template: `xero-reporting-studio` / `xero-general-ledger` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `xero-accounting` connector (`list_journals`, `get_profit_and_loss`, `get_organisation`, `list_connections`).
 
 Xero location: Reporting → General Ledger Detail / Journal Report. Library: Xero Reports Prompt Library v1.2 → Prompts → GL. Delivery: Added skill (not in the P01–P15 library).
 

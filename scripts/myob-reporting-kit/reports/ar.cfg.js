@@ -1,5 +1,5 @@
 MK.app({
-  title: 'Unpaid invoices', primary: 'bs', files: 'company_files',
+  title: 'Unpaid Invoices', primary: 'bs', files: 'company_files',
   // no as-at control: MYOB's API gives today's open balances, so the report is always as at today (as_at feeds the Balance Sheet tie)
   inputs: { companyFile: 'company_file', persona: 'persona', display: 'display' },
   defaults: { as_at: '2026-09-28', method: 'Invoice date', company_file: '', persona: 'Bookkeeper',

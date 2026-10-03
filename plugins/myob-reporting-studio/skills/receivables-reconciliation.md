@@ -1,10 +1,10 @@
 ---
 name: MYOB Receivables Reconciliation
-description: MYOB Receivables reconciliation with tax (M33, M34) as a live, validated report in MYOB styling. Use when the user asks for a receivables reconciliation, to reconcile debtors or accounts receivable, whether the customer balances match the receivables account, or receivables exceptions.
+description: MYOB Receivables Reconciliation (M33, M34) as a live, validated report in MYOB styling. Use when the user asks for a receivables reconciliation, to reconcile debtors or accounts receivable, whether the customer balances match the receivables account, or receivables exceptions.
 ---
-# Receivables reconciliation with tax (M33, M34)
+# Receivables Reconciliation (M33, M34)
 
-Use when the user asks for a receivables reconciliation, to reconcile debtors or accounts receivable, whether the customer balances match the receivables account, or receivables exceptions. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Template: `myob-reporting-studio` / `receivables-reconciliation` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_invoices`, `get_balance_sheet`, `list_accounts`, `list_company_files`).
+Use when the user asks for a receivables reconciliation, to reconcile debtors or accounts receivable, whether the customer balances match the receivables account, or receivables exceptions. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Receivables Reconciliation**. Report title: **MYOB Receivables Reconciliation**. Report title: **MYOB Receivables Reconciliation**. Template: `myob-reporting-studio` / `receivables-reconciliation` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_invoices`, `get_balance_sheet`, `list_accounts`, `list_company_files`).
 
 MYOB location: Reporting → Reports → Sales → Receivables reconciliation with tax / Receivables reconciliation exceptions. Library: MYOB Reports Prompt Library v1.2 → Prompts → M33, M34. Delivery: Wave 1 (P1, delivery order 5; M34 P2).
 
@@ -150,7 +150,7 @@ Always as at today (MYOB's API gives today's open balances; the kit sets `as_at`
 
 ```js
 MK.app({
-  title: 'Receivables reconciliation with tax', primary: 'bs', files: 'company_files',
+  title: 'Receivables Reconciliation', primary: 'bs', files: 'company_files',
   // no as-at control: MYOB's API gives today's open balances, so the reconciliation is always as at today
   inputs: { companyFile: 'company_file', persona: 'persona', display: 'display' },
   defaults: { as_at: '2026-09-28', company_file: '', persona: 'Bookkeeper',

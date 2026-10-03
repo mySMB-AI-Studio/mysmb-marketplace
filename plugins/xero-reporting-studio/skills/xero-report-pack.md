@@ -2,9 +2,9 @@
 name: xero-report-pack
 description: Build a live, validated Xero report pack on the tested report kit — a cover and contents, then the Profit and Loss for the period, the Balance Sheet at its end and the aged receivables and payables, each section with its own checks; sections can be switched off. Use for "report pack", "monthly pack", "board pack", "combine these reports", "full set of reports".
 ---
-# Report pack (RP)
+# Report Pack (RP)
 
-Use when the user asks for a report pack, monthly or board pack, a full set of reports, or to combine the Profit and Loss, Balance Sheet and ageing. Load `xero-report-foundation` first and follow its *Build a kit report* steps. Template: `xero-reporting-studio` / `xero-report-pack` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `xero-accounting` connector (`get_profit_and_loss`, `get_balance_sheet`, `list_invoices`, `list_credit_notes`, `list_overpayments`, `get_organisation`, `list_connections`).
+Use when the user asks for a report pack, monthly or board pack, a full set of reports, or to combine the Profit and Loss, Balance Sheet and ageing. Load `xero-report-foundation` first and follow its *Build a kit report* steps. Report title: **Xero Report Pack**. Template: `xero-reporting-studio` / `xero-report-pack` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `xero-accounting` connector (`get_profit_and_loss`, `get_balance_sheet`, `list_invoices`, `list_credit_notes`, `list_overpayments`, `get_organisation`, `list_connections`).
 
 Xero location: Reporting → Report packs (Profit and Loss, Balance Sheet, Aged Receivables, Aged Payables). Library: Xero Reports Prompt Library v1.2 → Prompts → RP. Delivery: Added skill (not in the P01–P15 library).
 
@@ -309,7 +309,7 @@ Call `get_organisation` and `list_connections` once, and `get_profit_and_loss` o
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Report pack</title>
+<title>Report Pack</title>
 <style>:root{--accent:#13B5EA;--btn:#0078C8;--btn-ink:#FFFFFF;--ink:#393A3D;--muted:#6B6C72;--line:#E3E5E8;--canvas:#F4F5F8;--card:#FFFFFF;--th:#6B6C72;--zebra:transparent;--neg:#D52B1E;--pos:#1B7F4B;--pass-bg:#EAF6E8;--fail-bg:#FDECEA;--band:#FFFFFF;--band-ink:#393A3D;--cover:#1B2A4A;--cover-ink:#FFFFFF;--c1:#13B5EA;--c2:#9E9E9E;--c3:#172B4D;--c4:#00B0A0;--c5:#E0457B;--c6:#6F2CBA;--d1:#13B5EA;--d2:#172B4D;--d3:#00B0A0;--d4:#E0457B;--d5:#6F2CBA;--d6:#9E9E9E}
 :root[data-myhub-theme='dark']{--accent:#3CC4F0;--btn:#1590D4;--btn-ink:#FFFFFF;--ink:#E6E8EB;--muted:#A3A7AE;--line:#33363C;--canvas:#16181B;--card:#1F2226;--th:#A3A7AE;--neg:#FF6B5E;--pos:#4CC38A;--pass-bg:#18301A;--fail-bg:#3A1B19;--band:#1F2226;--band-ink:#E6E8EB;--cover:#22324F;--cover-ink:#FFFFFF;--c1:#3CC4F0;--c2:#80858D;--c3:#9FB3D1;--c4:#2BC4B3;--c5:#F06A96;--c6:#A77BE8;--d1:#3CC4F0;--d2:#9FB3D1;--d3:#2BC4B3;--d4:#F06A96;--d5:#A77BE8;--d6:#80858D}
 :root.style-mysmb{--accent:#00B0A0;--btn:#007A6E;--zebra:#E6F7F5;--band:#007A6E;--band-ink:#FFFFFF;--cover:#007A6E;--th-bg:#007A6E;--th-ink:#FFFFFF;--c1:#007A6E;--c2:#00B0A0;--c3:#6F2CBA;--c4:#9E9E9E;--c5:#1B7F4B;--c6:#C8102E;--d1:#007A6E;--d2:#00B0A0;--d3:#6F2CBA;--d4:#9E9E9E;--d5:#1B7F4B;--d6:#C8102E;--pos:#1B7F4B;--neg:#C8102E}
@@ -582,7 +582,7 @@ adoptHeader(),status(""),S.first){S.first=!1;var roll=rollPresets();if(roll){cha
 status("Refreshing\u2026")}),MH.onThemeChange&&MH.onThemeChange(function(){render()}),{state:S,change,render,exportXlsx,ctx,retryLimited}):(status("Open this report in mySMB to load Xero data."),{state:S})}window.XK={ageingCols,app,asOfLine,bsParts,byContact,footerStamp,fyStartOf:function(isoDate2,m){
 return iso(fyStartOf(parse(isoDate2),m))},h,linesTies,money,near,openDocs,periodLine,plParts,rangeLabel,sheetFromLines,shortDate,statement,sum,walk};})();</script>
 <script>XK.app({
-  title: 'Report pack', basisLabel: 'Accrual', primary: 'pnl', dated: ['pnl'], org: 'org', conns: 'connections', noBasis: true,
+  title: 'Report Pack', basisLabel: 'Accrual', primary: 'pnl', dated: ['pnl'], org: 'org', conns: 'connections', noBasis: true,
   inputs: { start: 'from_date', end: 'to_date', org: 'org', display: 'display' },
   defaults: { from_date: '2026-08-01', to_date: '2026-08-31', fy_start: '2026-07-01', org: '', page: 1,
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"last_month","a":"custom","c":"none","v":"","o":"s=pl,bs,ar,ap"}' },

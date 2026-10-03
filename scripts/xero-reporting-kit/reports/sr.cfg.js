@@ -1,5 +1,5 @@
 XK.app({
-  title: 'Sales register', basisLabel: 'Accrual (invoice)', primary: 'pnl', org: 'org', conns: 'connections', noBasis: true,
+  title: 'Sales Register', basisLabel: 'Accrual (invoice)', primary: 'pnl', org: 'org', conns: 'connections', noBasis: true,
   inputs: { start: 'from_date', end: 'to_date', org: 'org', display: 'display' },
   defaults: { from_date: '2026-07-01', to_date: '2026-09-25', inv_where: 'Type=="ACCREC" AND Date>=DateTime(2026,07,01) AND Date<=DateTime(2026,09,25)', cn_where: 'Type=="ACCRECCREDIT" AND Date>=DateTime(2026,07,01) AND Date<=DateTime(2026,09,25)', org: '', page: 1,
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":"register"}' },

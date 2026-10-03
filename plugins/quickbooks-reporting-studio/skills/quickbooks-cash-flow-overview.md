@@ -5,7 +5,7 @@ description: QuickBooks Online Cash flow overview (Q07) as a live, validated rep
 
 # Cash flow overview (Q07)
 
-Use when the user asks for the cash flow overview, cash position today, money in and money out this month, overdue invoices and bills, or a cash projection. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Cash flow overview**. Template: `quickbooks-reporting-studio` / `quickbooks-cash-flow-overview` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`list_account`, `get_report_cash_flow`, `list_invoice`, `list_bill`, `list_payment`, `list_bill_payment`, `list_purchase`, `qbo_query`, `get_preferences`).
+Use when the user asks for the cash flow overview, cash position today, money in and money out this month, overdue invoices and bills, or a cash projection. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Cash Flow Overview**. Template: `quickbooks-reporting-studio` / `quickbooks-cash-flow-overview` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`list_account`, `get_report_cash_flow`, `list_invoice`, `list_bill`, `list_payment`, `list_bill_payment`, `list_purchase`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Financial planning › Cash flow overview. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q07. Delivery: Wave 1.
 
@@ -242,7 +242,7 @@ No manual dates: the chart window (12 months to today) is set on every open.
 
 ```js
 QB.app({
-  title: 'Cash flow overview', token: null, primary: 'cash_flow_12m', company: 'company_info', prefs: 'prefs',
+  title: 'Cash Flow Overview', token: null, primary: 'cash_flow_12m', company: 'company_info', prefs: 'prefs',
   inputs: { persona: 'persona', display: 'display' },
   defaults: { cf_start: '2025-10-01', persona: 'Client', display: '{"cents":0,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"custom","a":"custom","c":"none","v":"balance","x":"upcoming"}' },
   uses: { cash_flow_12m: ['cf_start'], cash_accounts: [], open_invoices: [], open_bills: [], payments_received: [], bill_payments: [], expenses_paid: [], company_info: [], prefs: [] },

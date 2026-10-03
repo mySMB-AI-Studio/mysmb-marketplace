@@ -27,7 +27,7 @@ module.exports = [
   },
   {
     p: 'P08', skill: 'xero-aged-receivables', report: 'ar', wave: 'Wave 1 (delivery order 3)',
-    title: 'Aged Receivables Summary', menu: 'Reporting → Aged Receivables Summary',
+    title: 'Aged Receivables', menu: 'Reporting → Aged Receivables Summary',
     description: 'Build a live, validated Xero Aged Receivables Summary (P08) on the tested report kit — every customer\'s open invoices, credit notes, overpayments and prepayments aged by due or invoice date, with a percentage row, drill-down and a tie to Accounts Receivable. Use for "aged receivables", "aged debtors", "who owes us", "overdue invoices", "debtors ageing".',
     trigger: 'the user asks for aged receivables, aged debtors, a debtors ageing, who owes the business money, or overdue sales invoices by customer',
     discovery: 'Call `get_organisation` and `list_connections` once, and `list_invoices` once with `where` = `Type=="ACCREC"`, `statuses` = `AUTHORISED`, `page` = 1. Expect `{Invoices:[{Type, Contact{Name}, DateString, DueDateString, AmountDue, CurrencyCode, CurrencyRate, …}]}` (100 per page — the kit loads the rest). Xero\'s own aged report needs a contact ID, so there is no all-customers ageing endpoint: the kit builds it from open documents, as Xero does. An error is a failed call: report its message',
@@ -39,7 +39,7 @@ module.exports = [
   },
   {
     p: 'P09', skill: 'xero-aged-payables', report: 'ap', wave: 'Wave 1 (delivery order 4)',
-    title: 'Aged Payables Summary', menu: 'Reporting → Aged Payables Summary',
+    title: 'Aged Payables', menu: 'Reporting → Aged Payables Summary',
     description: 'Build a live, validated Xero Aged Payables Summary (P09) on the tested report kit — every supplier\'s open bills, credit notes, overpayments and prepayments aged by due or invoice date, grouping by document type, drill-down and a tie to Accounts Payable. Use for "aged payables", "aged creditors", "who do we owe", "overdue bills", "creditors ageing".',
     trigger: 'the user asks for aged payables, aged creditors, a creditors ageing, what the business owes suppliers, or overdue bills by supplier',
     discovery: 'Call `get_organisation` and `list_connections` once, and `list_invoices` once with `where` = `Type=="ACCPAY"`, `statuses` = `AUTHORISED`, `page` = 1 (bills are invoices of type ACCPAY; there is no separate bills tool). An error is a failed call: report its message',
@@ -51,7 +51,7 @@ module.exports = [
   },
   {
     p: 'P01', skill: 'xero-business-overview', report: 'bo', wave: 'Wave 1 (delivery order 5)',
-    title: 'Business overview', menu: 'Home → Business overview',
+    title: 'Business Overview', menu: 'Home → Business overview',
     description: 'Build a live, validated Xero Business overview dashboard (P01) on the tested report kit — bank accounts, invoices owed and bills to pay with due-date charts, tasks, recent payments, 6 months of cash in and out, net profit year to date vs last year, and an account watchlist. Use for "business overview", "dashboard", "how is the business going", "snapshot of the business".',
     trigger: 'the user asks for a business overview, a dashboard, a snapshot of the business, or how the business is going',
     discovery: 'Call `get_organisation` and `list_connections` once, and `get_profit_and_loss` once for the financial year to date (`standardLayout` = `true`). An error is a failed call: report its message',
@@ -63,7 +63,7 @@ module.exports = [
   },
   {
     p: 'P02', skill: 'xero-sales-overview', report: 'so', wave: 'Wave 1 (delivery order 6)',
-    title: 'Sales overview', menu: 'Sales → Sales overview',
+    title: 'Sales Overview', menu: 'Sales → Sales overview',
     description: 'Build a live, validated Xero Sales overview dashboard (P02) on the tested report kit — Draft / Awaiting approval / Awaiting payment / Overdue strip, money coming in, customers owing the most, billable expenses and repeating invoices. Use for "sales overview", "invoices summary", "who owes us the most", "money coming in", "draft invoices".',
     trigger: 'the user asks for a sales overview, an invoices summary, money coming in, the customers who owe the most, draft invoices or billable expenses',
     discovery: 'Call `get_organisation` and `list_connections` once, and `list_invoices` once with `where` = `Type=="ACCREC"`, `statuses` = `DRAFT,SUBMITTED,AUTHORISED`, `page` = 1. An error is a failed call: report its message',
@@ -75,7 +75,7 @@ module.exports = [
   },
   {
     p: 'P03', skill: 'xero-purchases-overview', report: 'pu', wave: 'Wave 1 (delivery order 7)',
-    title: 'Purchases overview', menu: 'Purchases → Purchases overview',
+    title: 'Purchases Overview', menu: 'Purchases → Purchases overview',
     description: 'Build a live, validated Xero Purchases overview dashboard (P03) on the tested report kit — bills strip (Draft / Awaiting approval / Awaiting payment / Overdue), money going out by day, purchase orders and repeating bills. Use for "purchases overview", "bills summary", "money going out", "bills to pay", "purchase orders".',
     trigger: 'the user asks for a purchases overview, a bills summary, money going out, bills to pay or purchase orders',
     discovery: 'Call `get_organisation` and `list_connections` once, and `list_invoices` once with `where` = `Type=="ACCPAY"`, `statuses` = `DRAFT,SUBMITTED,AUTHORISED`, `page` = 1. An error is a failed call: report its message',
@@ -87,7 +87,7 @@ module.exports = [
   },
   {
     p: 'P11', skill: 'xero-performance-overview', report: 'pf', wave: 'Wave 1 (delivery order 8)',
-    title: 'Performance overview', menu: 'Reporting → Dashboards → Performance overview',
+    title: 'Performance Overview', menu: 'Reporting → Dashboards → Performance overview',
     description: 'Build a live, validated Xero Analytics Performance overview (P11) on the tested report kit — 12 months vs the prior 12: net profit, income, expenses, net and gross margins, operating expenses breakdown, bank balances, debtors and creditors days, each with a monthly chart and an insight line. Use for "performance overview", "how are we performing", "rolling 12 months", "margins", "debtor days".',
     trigger: 'the user asks for a performance overview, rolling 12-month performance, margins, debtor or creditor days, or how the business is performing',
     discovery: 'Call `get_organisation` and `list_connections` once, and `get_profit_and_loss` once with `fromDate` / `toDate` = last month and `periods` = 11, `timeframe` = `MONTH`, `standardLayout` = `true` — expect 12 monthly columns (newest first). An error is a failed call: report its message',
@@ -111,7 +111,7 @@ module.exports = [
   },
   {
     p: 'P12', skill: 'xero-cash-position', report: 'cp', wave: 'Wave 2 (delivery order 10)',
-    title: 'Cash position', menu: 'Reporting → Dashboards → Cash position',
+    title: 'Cash Position', menu: 'Reporting → Dashboards → Cash position',
     description: 'Build a live, validated Xero Analytics Cash position dashboard (P12) on the tested report kit — cash balance and 12-month trend, cash in vs cash out, net cash flow, and receivables and payables ageing doughnuts. Use for "cash position", "cash balance trend", "cash in and out by month", "net cash flow".',
     trigger: 'the user asks for a cash position, the cash balance trend, cash in and out by month, net cash flow, or receivables and payables ageing charts',
     discovery: 'Call `get_organisation` and `list_connections` once, and `get_balance_sheet` once with `date` = end of last month, `periods` = 11, `timeframe` = `MONTH` — expect 12 month-end columns. An error is a failed call: report its message',
@@ -123,7 +123,7 @@ module.exports = [
   },
   {
     p: 'P13', skill: 'xero-cash-flow-manager', report: 'cf', wave: 'Wave 2 (delivery order 11)',
-    title: 'Cash flow manager', menu: 'Reporting → Cash flow manager',
+    title: 'Cash Flow Manager', menu: 'Reporting → Cash flow manager',
     description: 'Build a live, validated Xero Cash flow manager (P13) on the tested report kit — today\'s bank balance, today\'s movement, the next 1–7 and 8–30 days, a daily chart of the last 30 days (actual) and the next 30 (projected from invoices and bills), projected balance and cash runway. Use for "cash flow forecast", "cash flow manager", "next 30 days cash", "cash runway", "projected balance".',
     trigger: 'the user asks for a cash flow forecast, the cash flow manager, cash for the next 30 days, a projected bank balance or cash runway',
     discovery: 'Call `get_organisation` and `list_connections` once, `get_bank_summary` once with `fromDate` = `toDate` = today, and `list_invoices` once with `where` = `Type=="ACCREC"`, `statuses` = `AUTHORISED`. An error is a failed call: report its message',
@@ -135,7 +135,7 @@ module.exports = [
   },
   {
     p: 'P14', skill: 'xero-business-health-scorecard', report: 'hs', wave: 'Wave 2 (delivery order 12)',
-    title: 'Business health scorecard', menu: 'Reporting → Business health scorecard',
+    title: 'Business Health Scorecard', menu: 'Reporting → Business health scorecard',
     description: 'Build a live, validated Xero Business health scorecard (P14) on the tested report kit — health score, pinned net profit and current ratio, insight chips, and a scorecard of 12 metrics (equation, this month vs last, target, status, importance). Use for "business health scorecard", "health score", "KPI scorecard", "targets", "current ratio".',
     trigger: 'the user asks for a business health scorecard, a health score, a KPI scorecard against targets, or how the business is tracking against its targets',
     discovery: 'Call `get_organisation` and `list_connections` once, and `get_profit_and_loss` once for last month. An error is a failed call: report its message',
@@ -171,7 +171,7 @@ module.exports = [
   },
   {
     p: 'ME', skill: 'xero-month-end-task-list', report: 'me', wave: 'Added skill (not in the P01–P15 library)',
-    title: 'Month-end task list', menu: 'Not a Xero report — a month-end review across bank, receivables, payables, payroll, journals, GST, balance sheet and fixed assets',
+    title: 'Month-End Task List', menu: 'Not a Xero report — a month-end review across bank, receivables, payables, payroll, journals, GST, balance sheet and fixed assets',
     description: 'Build a live month-end review task list on the tested report kit — bank and cash, receivables, payables, payroll, manual journals, GST, balance-sheet housekeeping and fixed assets, categorised Required / Review / Information-required / Optional. Use for "month-end", "month end checklist", "close the books", "what do I need to do before close".',
     trigger: 'the user asks for a month-end task list or checklist, to close the books, or what needs doing before close',
     discovery: 'Call `get_organisation` and `list_connections` once, and `get_bank_summary` once for the period — `xero-accounting` only. Do not call `xero-payroll-au` or `xero-assets` tools in the chat: the report loads them itself, and when either is unavailable for the organisation it shows payroll or fixed assets as Information-required (not a failure). The report reads three connectors: `xero-accounting`, `xero-payroll-au` and `xero-assets`, and sends the selected organisation (`xero_tenant_id`) to all three. It reviews only — it never posts, corrects or closes anything. An error is a failed call: report its message',
@@ -184,7 +184,7 @@ module.exports = [
   },
   {
     p: 'P05', skill: 'xero-activity-statement', report: 'gst', wave: 'Wave 3 (delivery order 14)',
-    title: 'GST summary (activity statement)', menu: 'Tax → Activity statements',
+    title: 'GST Summary (BAS)', menu: 'Tax → Activity statements',
     description: 'Build a live, validated Xero GST summary for a BAS period (P05) on the tested report kit — G1, G2, G3, G4, G10, G11, 1A and 1B from the tax on your invoices, bills, credit notes and spend/receive money, net GST and its due date, with a tie to the GST account. Clearly not the lodged BAS. Use for "activity statement", "BAS", "GST for the quarter", "GST payable", "G1".',
     trigger: 'the user asks for an activity statement, BAS, GST for a quarter or month, GST payable or refundable, or BAS labels such as G1 or 1A',
     discovery: 'Call `get_organisation` (SalesTaxBasis, SalesTaxPeriod) and `list_connections` once, `list_tax_rates` once, and `list_invoices` once with `where` = `Date>=DateTime(2026,04,01) AND Date<=DateTime(2026,06,30)` (the period), `statuses` = `AUTHORISED,PAID`. Xero has no activity-statement endpoint: never present this as the lodged BAS. An error is a failed call: report its message',
@@ -196,7 +196,7 @@ module.exports = [
   },
   {
     p: 'P04', skill: 'xero-reports-catalog', report: 'rc', wave: 'Wave 3 (delivery order 15)',
-    title: 'All reports (catalog)', menu: 'Reporting → All reports',
+    title: 'Reports Catalogue', menu: 'Reporting → All reports',
     description: 'Show the live Xero report catalogue (P04) on the tested report kit — every Xero report grouped as in Xero, with which of this agent\'s 26 skills covers it (Live / Built on request / Partly / No prompt yet) and what to ask. Use for "what reports can you do", "list reports", "report catalog", "all reports", or when the user asks for a report you are unsure this agent has.',
     trigger: 'the user asks what reports are available, for the report list or catalogue, or for a Xero report you are not sure this agent builds',
     discovery: 'Call `get_organisation` once (the organisation name for the header). No figures are read',
@@ -208,7 +208,7 @@ module.exports = [
   },
   {
     p: 'SR', skill: 'xero-sales-register', report: 'sr', wave: 'Added skill (not in the P01–P15 library)',
-    title: 'Sales register', menu: 'Sales → Invoices (all approved and paid), and Reporting → Customer Invoice Report',
+    title: 'Sales Register', menu: 'Sales → Invoices (all approved and paid), and Reporting → Customer Invoice Report',
     description: 'Build a live, validated Xero sales register on the tested report kit — every approved and paid sales invoice and credit note in a period, with a Register view and a By-customer view over the same rows. Use for "sales register", "customer sales report", "invoice listing", "sales by customer".',
     trigger: 'the user asks for a sales register, an invoice listing, a customer sales report, or sales by customer for a period',
     discovery: 'Call `get_organisation` and `list_connections` once, and `list_invoices` once with `where` = `Type=="ACCREC"`, `statuses` = `AUTHORISED,PAID` and `page` = 1. Expect `{Invoices:[{InvoiceNumber, Contact, DateString, DueDateString, Status, SubTotal, TotalTax, Total, AmountDue, LineItems}]}`. An error is a failed call: report its message',
@@ -220,7 +220,7 @@ module.exports = [
   },
   {
     p: 'EX', skill: 'xero-exceptions-dashboard', report: 'ex', wave: 'Added skill (not in the P01–P15 library)',
-    title: 'Exceptions dashboard', menu: 'Not a Xero report — the Draft, Awaiting approval and Overdue tabs of Sales → Invoices and Purchases → Bills, together',
+    title: 'Exceptions Dashboard', menu: 'Not a Xero report — the Draft, Awaiting approval and Overdue tabs of Sales → Invoices and Purchases → Bills, together',
     description: 'Build a live, validated Xero exceptions dashboard on the tested report kit — draft and unapproved invoices and bills, and overdue ones, with days overdue and age bands; the items needing action, not the full pipeline. Use for "exceptions", "what needs attention", "draft and overdue", "action items", "exception report".',
     trigger: 'the user asks for exceptions, what needs attention, draft and overdue invoices or bills, action items, or an exception report',
     discovery: 'Call `get_organisation` and `list_connections` once, and `list_invoices` once with `where` = `Type=="ACCREC"`, `statuses` = `DRAFT,SUBMITTED,AUTHORISED` and `page` = 1. An error is a failed call: report its message',
@@ -232,7 +232,7 @@ module.exports = [
   },
   {
     p: 'BR', skill: 'xero-bank-reconciliation-status', report: 'br', wave: 'Added skill (not in the P01–P15 library)',
-    title: 'Bank reconciliation status', menu: 'Accounting → Bank accounts (Reconcile), and Reporting → Bank Reconciliation',
+    title: 'Bank Reconciliation Status', menu: 'Accounting → Bank accounts (Reconcile), and Reporting → Bank Reconciliation',
     description: 'Build a live, validated Xero bank reconciliation status on the tested report kit — per bank account, the unreconciled bank transactions and payments (oldest first, with age) and what was reconciled in the period. Use for "bank reconciliation status", "unreconciled transactions", "reconciliation status", "what is not reconciled".',
     trigger: 'the user asks for bank reconciliation status, unreconciled transactions, what is not reconciled, or the oldest unreconciled items',
     discovery: 'Call `get_organisation` and `list_connections` once, and `list_bank_transactions` once with `where` = `Status=="AUTHORISED" AND IsReconciled==false` and `page` = 1. Expect `{BankTransactions:[{Type, Contact, DateString, Total, IsReconciled, BankAccount}]}`. An error is a failed call: report its message',
@@ -256,7 +256,7 @@ module.exports = [
   },
   {
     p: 'TC', skill: 'xero-tracking-category-pnl', report: 'tc', wave: 'Added skill (not in the P01–P15 library)',
-    title: 'Profit and Loss by tracking category', menu: 'Reporting → Profit and Loss → Columns by tracking category',
+    title: 'Profit and Loss by Tracking Category', menu: 'Reporting → Profit and Loss → Columns by tracking category',
     description: 'Build a live, validated Xero Profit and Loss by tracking category on the tested report kit — a column for every option (department, location …), Unassigned and the total, or one option beside the total, accrual or cash, tied to the P&L without tracking. Use for "P&L by department", "P&L by location", "tracking category report", "profit and loss by tracking option".',
     trigger: 'the user asks for a profit and loss by department, location, region or another tracking category, or for one tracking option',
     discovery: 'Call `get_organisation` and `list_connections` once, and `list_tracking_categories` once (`TrackingCategories[].TrackingCategoryID`, `.Name`, `.Options[].TrackingOptionID`, `.Name`). Resolve the category (and option) the user names to its IDs — never guess or type an ID. If there are none, say so: the report then shows that the organisation has no tracking categories. An error is a failed call: report its message',
@@ -280,7 +280,7 @@ module.exports = [
   },
   {
     p: 'GR', skill: 'xero-gst-reconciliation-detail', report: 'gr', wave: 'Added skill (not in the P01–P15 library)',
-    title: 'GST reconciliation', menu: 'Reporting → GST Reconciliation / Tax → Activity statements (not a lodgeable BAS)',
+    title: 'GST Reconciliation', menu: 'Reporting → GST Reconciliation / Tax → Activity statements (not a lodgeable BAS)',
     description: 'Build a live, validated Xero GST reconciliation on the tested report kit — GST collected and paid per tax rate from invoice, bill, credit-note and spend / receive money lines, reconciled to the GST account on the Balance Sheet. Not a lodgeable BAS. Use for "GST reconciliation", "GST detail", "reconcile GST account", "does the GST account balance match".',
     trigger: 'the user asks for a GST reconciliation or GST detail, to reconcile the GST account, or whether the GST account balance matches',
     discovery: 'Call `get_organisation` and `list_connections` once, and `list_tax_rates` once. The report says plainly that it is a GST reconciliation, not a lodgeable BAS (lodge from Xero → Tax → Activity statements) and not tax advice. An error is a failed call: report its message',
@@ -292,7 +292,7 @@ module.exports = [
   },
   {
     p: 'RP', skill: 'xero-report-pack', report: 'rp', wave: 'Added skill (not in the P01–P15 library)',
-    title: 'Report pack', menu: 'Reporting → Report packs (Profit and Loss, Balance Sheet, Aged Receivables, Aged Payables)',
+    title: 'Report Pack', menu: 'Reporting → Report packs (Profit and Loss, Balance Sheet, Aged Receivables, Aged Payables)',
     description: 'Build a live, validated Xero report pack on the tested report kit — a cover and contents, then the Profit and Loss for the period, the Balance Sheet at its end and the aged receivables and payables, each section with its own checks; sections can be switched off. Use for "report pack", "monthly pack", "board pack", "combine these reports", "full set of reports".',
     trigger: 'the user asks for a report pack, monthly or board pack, a full set of reports, or to combine the Profit and Loss, Balance Sheet and ageing',
     discovery: 'Call `get_organisation` and `list_connections` once, and `get_profit_and_loss` once for the period (`standardLayout` = `true`). An error is a failed call: report its message',

@@ -5,7 +5,7 @@ description: QuickBooks Online Sales & Get Paid overview (Q11) as a live, valida
 
 # Sales & Get Paid overview (Q11)
 
-Use when the user asks for the sales overview, income over time, unpaid or overdue invoices, payments received, not-deposited payments, or days sales outstanding (DSO). Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Sales & Get Paid overview**. Template: `quickbooks-reporting-studio` / `quickbooks-sales-overview` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `list_invoice`, `list_payment`, `get_report_aged_receivables`, `qbo_query`, `get_preferences`).
+Use when the user asks for the sales overview, income over time, unpaid or overdue invoices, payments received, not-deposited payments, or days sales outstanding (DSO). Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Sales Overview**. Template: `quickbooks-reporting-studio` / `quickbooks-sales-overview` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `list_invoice`, `list_payment`, `get_report_aged_receivables`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: All apps › Sales & Get Paid › Overview. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q11. Delivery: Wave 2 (Train 04).
 
@@ -223,7 +223,7 @@ No manual dates: the 12-month (or 30-day) window and the previous-year window ar
 
 ```js
 QB.app({
-  title: 'Sales & Get Paid overview', token: null, primary: 'income_monthly', company: 'company_info', prefs: 'prefs',
+  title: 'Sales Overview', token: null, primary: 'income_monthly', company: 'company_info', prefs: 'prefs',
   inputs: { persona: 'persona', display: 'display' },
   defaults: { inc_start: '2025-10-01', inc_end: '2026-09-30', prev_start: '2024-10-01', prev_end: '2025-09-30', persona: 'Client',
     display: '{"cents":0,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"custom","a":"custom","c":"prev_year","v":"","x":"365"}' },

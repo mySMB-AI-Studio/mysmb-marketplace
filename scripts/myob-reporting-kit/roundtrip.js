@@ -11,11 +11,11 @@ console.log('2. tests on the extracted copy'); for (const t of ['test-myob.js', 
 console.log('3. build every kit report'); for (const f of KIT) run('node', ['build.js', f.report], { KIT_DIR: OUT });
 console.log('4. platform validators'); run('npx', ['tsx', 'check-reports.mts', OUT]);
 console.log('5. templates = the skills: reports/<skill>/report.html is the document the copy path assembles, report.json the skill\'s dataBindings');
-process.env.KIT_DIR = OUT; const build = require('./build.js');
+process.env.KIT_DIR = OUT; const build = require('./build.js'); // a template's page title is the report name; its library title adds the platform
 const tpl = KIT;
 for (const f of tpl) {
   const T = path.join(PLUGIN, 'reports', f.skill), meta = fs.existsSync(T) ? JSON.parse(rdx(path.join(T, 'report.json'))) : null;
-  const same = meta && rdx(path.join(T, 'report.html')) === build(f.report, meta.title) &&
+  const same = meta && rdx(path.join(T, 'report.html')) === build(f.report, meta.title.replace(/^MYOB /, '')) &&
     JSON.stringify(meta.dataBindings) === JSON.stringify(JSON.parse(rdx(path.join(OUT, 'reports', f.report + '.manifest.json'))));
   if (!same) { console.log('  TEMPLATE DIFFERS FROM SKILL', f.skill, '(run npm run gen)'); process.exit(1); }
 }

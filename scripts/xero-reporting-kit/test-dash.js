@@ -80,11 +80,11 @@ const AGED = () => ({ paid_after: L.listInvoices, pays_after: L.listPayments, in
     const ar5 = await run('ar', man('ar'), Object.assign(AGED(), { invoices: () => { throw new Error('Xero API GET …/Invoices 401: Unauthorized'); } }));
     ok('ar: failed invoice list → error, red, never $0 with a tick', red(ar5) && /401/.test(body(ar5)) && !/✓ Total =/.test(banner(ar5)), banner(ar5).slice(0, 300));
     const axl = await run('ar', man('ar'), AGED()); axl.doc.getElementById('xk-xlsx').click(); await axl.settle();
-    ok('ar: Excel download named after the organisation', axl.downloads.some((d) => d.name && /^Northwind Trading Pty Ltd - Aged Receivables Summary - as at 2026-09-30\.xlsx$/.test(d.name)), axl.downloads);
+    ok('ar: Excel download named after the organisation', axl.downloads.some((d) => d.name && /^Northwind Trading Pty Ltd - Aged Receivables - as at 2026-09-30\.xlsx$/.test(d.name)), axl.downloads);
     // ---------------- P09 Aged Payables Summary ----------------
     const p = await run('ap', man('ap'), AGED());
     const ph = [...p.doc.querySelectorAll('#ag-all thead th')].map((x) => x.textContent.replace(/[▲▼]/g, '').trim());
-    ok('ap: suppliers as rows, same engine', ph[0] === 'Contact' && /Suppliers you owe/.test(body(p)) && /Aged Payables Summary/.test(text(p.doc, '#xk-head')), ph);
+    ok('ap: suppliers as rows, same engine', ph[0] === 'Contact' && /Suppliers you owe/.test(body(p)) && /Aged Payables/.test(text(p.doc, '#xk-head')), ph);
     ok('ap: total = Accounts Payable in the books, tie passes, green', re('Total payable', AP).test(body(p)) && new RegExp('✓ Total = Accounts Payable on the Balance Sheet at 2026-09-30 — ' + fmt(AP)).test(banner(p)) && green(p), [AP, banner(p).slice(0, 500)]);
     const apTot = [...p.doc.querySelectorAll('#ag-all tfoot tr')][0].textContent.replace(/\s+/g, ' '), notDue = L.listInvoices({ where: 'Type=="ACCPAY"', statuses: 'AUTHORISED' }).Invoices.filter((d) => d.DueDateString.slice(0, 10) >= '2026-09-30' && d.DateString.slice(0, 10) <= '2026-09-30').reduce((s, d) => s + d.AmountDue, 0);
     ok('ap: bills not yet due are kept in Current, not dropped (live finding #987: AP aged by due date must still equal Balance Sheet AP)', notDue > 0 && apTot.startsWith('Total' + '$' + L.r2(notDue).toLocaleString('en-AU', { minimumFractionDigits: 2 })), [L.r2(notDue), apTot]);
@@ -536,7 +536,7 @@ const AGED = () => ({ paid_after: L.listInvoices, pays_after: L.listPayments, in
     const m4 = await run('me', man('me'), ME(), { fail: { bank: { code: 'needs_connection', message: 'Connect xero-accounting to see this data' } } });
     ok('me: Xero accounting not connected → "Connect Xero" shown and the banner red', /Connect Xero \(Settings → Connections\)/.test(body(m4)) && red(m4) && /✗ Data loaded: get_bank_summary/.test(banner(m4)), body(m4).slice(0, 200));
     ok('me: a failed main Xero source stays red in Sources & limitations', !!m4.doc.querySelector('#xk-sources .xk-err'), m4.doc.querySelector('#xk-sources').innerHTML.slice(0, 400));
-    const m5 = await run('me', man('me'), ME({ pay_runs: busy(L.listPayRuns, 1), assets: busy(L.listAssets, 1) }), { htmlPatch: (h) => h.replace("XK.app({\n  title: 'Month-end task list',", "XK.app({\n  retryMs: 1, title: 'Month-end task list',") }); await wait(80);
+    const m5 = await run('me', man('me'), ME({ pay_runs: busy(L.listPayRuns, 1), assets: busy(L.listAssets, 1) }), { htmlPatch: (h) => h.replace("XK.app({\n  title: 'Month-End Task List',", "XK.app({\n  retryMs: 1, title: 'Month-end task list',") }); await wait(80);
     ok('me: HTTP 429 on payroll / assets → retried, tasks filled', m5.calls.some((x) => x.requery && x.id === 'pay_runs') && [...m5.doc.querySelectorAll('#xk-body .xk-kpi')].some((k) => /Pay run not posted/.test(k.textContent)) && green(m5), banner(m5).slice(0, 300));
     await set(m, 'xk-client', L.T2); await wait(30);
     ok('me: switching organisation refetches payroll and assets for it too (no mixing)', ['pay_runs', 'timesheets', 'assets', 'journals'].every((id) => m.calls.some((x) => x.requery && x.id === id && x.params.xero_tenant_id === L.T2)), m.calls.filter((x) => x.requery).map((x) => x.id + ':' + x.params.xero_tenant_id));

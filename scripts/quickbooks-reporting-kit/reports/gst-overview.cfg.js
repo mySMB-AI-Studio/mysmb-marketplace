@@ -1,5 +1,5 @@
 QB.app({
-  title: 'GST overview', token: null, primary: 'gst_current', company: 'company_info', prefs: 'prefs',
+  title: 'GST Overview', token: null, primary: 'gst_current', company: 'company_info', prefs: 'prefs',
   inputs: { start: 'start_date', end: 'end_date', cmpStart: 'compare_start', cmpEnd: 'compare_end', basis: 'basis', persona: 'persona', display: 'display' },
   defaults: { start_date: '2026-07-01', end_date: '2026-09-30', compare_start: '2026-04-01', compare_end: '2026-06-30', basis: 'Accrual', agency_id: '', persona: 'Bookkeeper',
     display: '{"cents":0,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"this_quarter","a":"custom","c":"prev_period","v":"","x":""}' },

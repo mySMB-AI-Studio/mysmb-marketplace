@@ -5,7 +5,7 @@ description: QuickBooks Online Homepage — Business at a glance (Q00) as a live
 
 # Homepage — Business at a glance (Q00)
 
-Use when the user asks for the QuickBooks homepage, business at a glance, a dashboard, how the business is going, net profit last month, spending last 30 days or bank balances. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Business at a glance**. Template: `quickbooks-reporting-studio` / `quickbooks-homepage` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `list_account`, `get_report_cash_flow`, `qbo_query`, `get_preferences`).
+Use when the user asks for the QuickBooks homepage, business at a glance, a dashboard, how the business is going, net profit last month, spending last 30 days or bank balances. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Business Overview**. Template: `quickbooks-reporting-studio` / `quickbooks-homepage` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `list_account`, `get_report_cash_flow`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Home › Business at a glance. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q00. Delivery: Wave 1.
 
@@ -215,7 +215,7 @@ No manual dates: the page sets each widget's window on every open (P&L: selected
 
 ```js
 QB.app({
-  title: 'Business at a glance', token: null, primary: 'pl_widget', company: 'company_info', prefs: 'prefs',
+  title: 'Business Overview', token: null, primary: 'pl_widget', company: 'company_info', prefs: 'prefs',
   inputs: { persona: 'persona', display: 'display' },
   defaults: { pl_start: '2026-07-01', pl_end: '2026-08-31', exp_start: '2026-08-27', cf_start: '2025-10-01', persona: 'Client',
     display: '{"cents":0,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"custom","a":"custom","c":"none","v":"","x":"last_month"}' },

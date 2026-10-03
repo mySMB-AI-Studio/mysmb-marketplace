@@ -1,5 +1,5 @@
 QB.app({
-  title: 'Projects overview', token: 'PROJECT_PROFITABILITY', route: 'reportv2', primary: 'pnl_by_customer', company: 'company_info', prefs: 'prefs',
+  title: 'Projects Overview', token: 'PROJECT_PROFITABILITY', route: 'reportv2', primary: 'pnl_by_customer', company: 'company_info', prefs: 'prefs',
   inputs: { start: 'start_date', end: 'end_date', basis: 'basis', persona: 'persona', display: 'display' },
   defaults: { start_date: '2026-07-01', end_date: '2026-09-25', basis: 'Accrual', persona: 'Executive',
     display: '{"cents":0,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":"overview","x":""}' },

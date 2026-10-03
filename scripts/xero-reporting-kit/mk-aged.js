@@ -3,8 +3,8 @@
 const fs = require('fs'), path = require('path'), R = path.join(__dirname, 'reports');
 const tpl = fs.readFileSync(path.join(R, 'aged.tpl.js'), 'utf8').replace(/\r\n/g, '\n');
 const KINDS = {
-  ar: { PAYTYPE: 'ACCRECPAYMENT', TITLE: 'Aged Receivables Summary', INV: 'ACCREC', CN: 'ACCRECCREDIT', OP: 'RECEIVE-OVERPAYMENT', PP: 'RECEIVE-PREPAYMENT', WHO: 'Customer', OWING: 'Customers owing', TOTAL: 'Total receivable', BSNAME: 'Accounts Receivable', DOCS: 'sales invoices' },
-  ap: { PAYTYPE: 'ACCPAYPAYMENT', TITLE: 'Aged Payables Summary', INV: 'ACCPAY', CN: 'ACCPAYCREDIT', OP: 'SPEND-OVERPAYMENT', PP: 'SPEND-PREPAYMENT', WHO: 'Supplier', OWING: 'Suppliers you owe', TOTAL: 'Total payable', BSNAME: 'Accounts Payable', DOCS: 'bills' },
+  ar: { PAYTYPE: 'ACCRECPAYMENT', TITLE: 'Aged Receivables', INV: 'ACCREC', CN: 'ACCRECCREDIT', OP: 'RECEIVE-OVERPAYMENT', PP: 'RECEIVE-PREPAYMENT', WHO: 'Customer', OWING: 'Customers owing', TOTAL: 'Total receivable', BSNAME: 'Accounts Receivable', DOCS: 'sales invoices' },
+  ap: { PAYTYPE: 'ACCPAYPAYMENT', TITLE: 'Aged Payables', INV: 'ACCPAY', CN: 'ACCPAYCREDIT', OP: 'SPEND-OVERPAYMENT', PP: 'SPEND-PREPAYMENT', WHO: 'Supplier', OWING: 'Suppliers you owe', TOTAL: 'Total payable', BSNAME: 'Accounts Payable', DOCS: 'bills' },
 };
 const fmt = (v) => Array.isArray(v) ? '[' + v.map(fmt).join(', ') + ']' : v && typeof v === 'object' ? '{ ' + Object.keys(v).map((k) => JSON.stringify(k) + ': ' + fmt(v[k])).join(', ') + ' }' : JSON.stringify(v);
 const inp = (name) => ({ kind: 'input', input: name }), st = (value) => ({ kind: 'static', value });

@@ -1,5 +1,5 @@
 QB.app({
-  title: 'Business at a glance', token: null, primary: 'pl_widget', company: 'company_info', prefs: 'prefs',
+  title: 'Business Overview', token: null, primary: 'pl_widget', company: 'company_info', prefs: 'prefs',
   inputs: { persona: 'persona', display: 'display' },
   defaults: { pl_start: '2026-07-01', pl_end: '2026-08-31', exp_start: '2026-08-27', cf_start: '2025-10-01', persona: 'Client',
     display: '{"cents":0,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"custom","a":"custom","c":"none","v":"","x":"last_month"}' },

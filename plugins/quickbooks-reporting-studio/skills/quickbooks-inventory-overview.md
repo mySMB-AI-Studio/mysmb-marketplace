@@ -5,7 +5,7 @@ description: QuickBooks Online Inventory overview (Q14) as a live, validated rep
 
 # Inventory overview (Q14)
 
-Use when the user asks for the inventory overview, what is low on stock or out of stock, what to reorder, or stock levels against reorder points. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Inventory overview**. Template: `quickbooks-reporting-studio` / `quickbooks-inventory-overview` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`list_item`, `get_report_inventory_valuation_summary`, `list_account`, `list_purchase_order`, `qbo_query`, `get_preferences`).
+Use when the user asks for the inventory overview, what is low on stock or out of stock, what to reorder, or stock levels against reorder points. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Inventory Overview**. Template: `quickbooks-reporting-studio` / `quickbooks-inventory-overview` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`list_item`, `get_report_inventory_valuation_summary`, `list_account`, `list_purchase_order`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: All apps › Inventory › Overview. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q14. Delivery: Wave 3 (Train 05).
 
@@ -163,7 +163,7 @@ No dates: QuickBooks values inventory as of today.
 
 ```js
 QB.app({
-  title: 'Inventory overview', token: 'INVENTORY_VALUATION_SUMMARY', route: 'reportv2', primary: 'inventory_valuation', company: 'company_info', prefs: 'prefs',
+  title: 'Inventory Overview', token: 'INVENTORY_VALUATION_SUMMARY', route: 'reportv2', primary: 'inventory_valuation', company: 'company_info', prefs: 'prefs',
   inputs: { persona: 'persona', display: 'display' },
   defaults: { persona: 'Bookkeeper', display: '{"cents":1,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"custom","a":"custom","c":"none","v":"overview","x":""}' },
   uses: {},
