@@ -5,7 +5,7 @@ description: QuickBooks Online Client overview (accountant-only) (Q16) as a live
 
 # Client overview (accountant-only) (Q16)
 
-Use when the user (an accountant or bookkeeper) asks for the client overview, a books health check, common issues, undeposited funds, uncategorised transactions, negative accounts, opening balance equity or transaction volume. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`list_account`, `get_report_aged_receivables`, `get_report_aged_payables`, `get_report_transaction_list`, `get_report_balance_sheet`, `qbo_query`, `get_preferences`).
+Use when the user (an accountant or bookkeeper) asks for the client overview, a books health check, common issues, undeposited funds, uncategorised transactions, negative accounts, opening balance equity or transaction volume. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Client overview**. Template: `quickbooks-reporting-studio` / `quickbooks-client-overview` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`list_account`, `get_report_aged_receivables`, `get_report_aged_payables`, `get_report_transaction_list`, `get_report_balance_sheet`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: All apps › Accounting › Client overview. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q16. Delivery: Wave 2 (Train 03).
 

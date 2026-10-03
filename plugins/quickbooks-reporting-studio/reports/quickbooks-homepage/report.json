@@ -1,0 +1,168 @@
+{
+  "title": "Business at a glance",
+  "description": "Live, validated QuickBooks Online Business at a glance (Q00): Profit & Loss widget, Expenses widget, Bank accounts widget, Cash flow widget.",
+  "tags": [
+    "quickbooks",
+    "dashboard",
+    "homepage"
+  ],
+  "fileName": "quickbooks-business-at-a-glance.html",
+  "dataBindings": {
+    "inputs": [
+      {
+        "name": "pl_start",
+        "label": "P&L widget from",
+        "type": "date",
+        "default": "2026-07-01"
+      },
+      {
+        "name": "pl_end",
+        "label": "P&L widget to",
+        "type": "date",
+        "default": "2026-08-31"
+      },
+      {
+        "name": "exp_start",
+        "label": "Expenses widget from",
+        "type": "date",
+        "default": "2026-08-27"
+      },
+      {
+        "name": "cf_start",
+        "label": "Cash flow chart from",
+        "type": "date",
+        "default": "2025-10-01"
+      },
+      {
+        "name": "persona",
+        "label": "View as",
+        "type": "enum",
+        "options": [
+          "Client",
+          "Bookkeeper",
+          "Practitioner",
+          "Executive"
+        ],
+        "default": "Client"
+      },
+      {
+        "name": "display",
+        "label": "Display settings",
+        "type": "string",
+        "maxLength": 300,
+        "default": "{\"cents\":0,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\",\"x\":\"last_month\"}"
+      }
+    ],
+    "bindings": [
+      {
+        "id": "pl_widget",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_profit_and_loss"
+        },
+        "params": {
+          "start_date": {
+            "kind": "input",
+            "input": "pl_start"
+          },
+          "end_date": {
+            "kind": "input",
+            "input": "pl_end"
+          },
+          "accounting_method": {
+            "kind": "static",
+            "value": "Accrual"
+          },
+          "summarize_column_by": {
+            "kind": "static",
+            "value": "Month"
+          }
+        }
+      },
+      {
+        "id": "expenses_widget",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_profit_and_loss"
+        },
+        "params": {
+          "start_date": {
+            "kind": "input",
+            "input": "exp_start"
+          },
+          "end_date": {
+            "kind": "context",
+            "source": "now.date"
+          },
+          "accounting_method": {
+            "kind": "static",
+            "value": "Accrual"
+          },
+          "summarize_column_by": {
+            "kind": "static",
+            "value": "Total"
+          }
+        }
+      },
+      {
+        "id": "bank_accounts",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "list_account"
+        },
+        "params": {
+          "where": {
+            "kind": "static",
+            "value": "AccountType IN ('Bank', 'Credit Card') AND Active = true"
+          },
+          "maxResults": {
+            "kind": "static",
+            "value": 200
+          }
+        }
+      },
+      {
+        "id": "cash_flow_12m",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_cash_flow"
+        },
+        "params": {
+          "start_date": {
+            "kind": "input",
+            "input": "cf_start"
+          },
+          "end_date": {
+            "kind": "context",
+            "source": "now.date"
+          },
+          "summarize_column_by": {
+            "kind": "static",
+            "value": "Month"
+          }
+        }
+      },
+      {
+        "id": "company_info",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "qbo_query"
+        },
+        "params": {
+          "query": {
+            "kind": "static",
+            "value": "SELECT * FROM CompanyInfo"
+          }
+        }
+      },
+      {
+        "id": "prefs",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_preferences"
+        },
+        "params": {}
+      }
+    ]
+  }
+}

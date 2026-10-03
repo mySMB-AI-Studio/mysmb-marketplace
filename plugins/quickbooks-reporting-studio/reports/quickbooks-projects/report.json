@@ -1,0 +1,136 @@
+{
+  "title": "Projects",
+  "description": "Live, validated QuickBooks Online Projects (Q29): Project Profitability Summary, Estimates vs. actuals by project.",
+  "tags": [
+    "quickbooks",
+    "projects"
+  ],
+  "fileName": "quickbooks-project-profitability.html",
+  "dataBindings": {
+    "inputs": [
+      {
+        "name": "start_date",
+        "label": "From",
+        "type": "date",
+        "default": "2026-07-01"
+      },
+      {
+        "name": "end_date",
+        "label": "To",
+        "type": "date",
+        "default": "today"
+      },
+      {
+        "name": "basis",
+        "label": "Accounting method",
+        "type": "enum",
+        "options": [
+          "Accrual",
+          "Cash"
+        ],
+        "default": "Accrual"
+      },
+      {
+        "name": "persona",
+        "label": "View as",
+        "type": "enum",
+        "options": [
+          "Client",
+          "Bookkeeper",
+          "Practitioner",
+          "Executive"
+        ],
+        "default": "Executive"
+      },
+      {
+        "name": "display",
+        "label": "Display settings",
+        "type": "string",
+        "maxLength": 300,
+        "default": "{\"cents\":0,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"profitability\",\"x\":\"\"}"
+      }
+    ],
+    "bindings": [
+      {
+        "id": "pnl_by_customer",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_profit_and_loss"
+        },
+        "params": {
+          "start_date": {
+            "kind": "input",
+            "input": "start_date"
+          },
+          "end_date": {
+            "kind": "input",
+            "input": "end_date"
+          },
+          "accounting_method": {
+            "kind": "input",
+            "input": "basis"
+          },
+          "summarize_column_by": {
+            "kind": "static",
+            "value": "Customers"
+          }
+        }
+      },
+      {
+        "id": "customers",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "list_customer"
+        },
+        "params": {
+          "where": {
+            "kind": "static",
+            "value": "Active = true"
+          },
+          "maxResults": {
+            "kind": "static",
+            "value": 1000
+          }
+        }
+      },
+      {
+        "id": "estimates",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "list_estimate"
+        },
+        "params": {
+          "orderBy": {
+            "kind": "static",
+            "value": "TxnDate DESC"
+          },
+          "maxResults": {
+            "kind": "static",
+            "value": 1000
+          }
+        }
+      },
+      {
+        "id": "company_info",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "qbo_query"
+        },
+        "params": {
+          "query": {
+            "kind": "static",
+            "value": "SELECT * FROM CompanyInfo"
+          }
+        }
+      },
+      {
+        "id": "prefs",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_preferences"
+        },
+        "params": {}
+      }
+    ]
+  }
+}

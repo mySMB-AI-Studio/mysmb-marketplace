@@ -1,0 +1,116 @@
+{
+  "title": "Budget vs Actuals",
+  "description": "Live, validated QuickBooks Online Budget vs Actuals (Q08): Budget vs Actuals, Budget Overview, Profit and Loss Budget Performance.",
+  "tags": [
+    "quickbooks",
+    "budget",
+    "planning"
+  ],
+  "fileName": "quickbooks-budget-vs-actuals.html",
+  "dataBindings": {
+    "inputs": [
+      {
+        "name": "start_date",
+        "label": "Budget from",
+        "type": "date",
+        "default": "2026-07-01"
+      },
+      {
+        "name": "end_date",
+        "label": "Budget to",
+        "type": "date",
+        "default": "2027-06-30"
+      },
+      {
+        "name": "basis",
+        "label": "Accounting method",
+        "type": "enum",
+        "options": [
+          "Accrual",
+          "Cash"
+        ],
+        "default": "Accrual"
+      },
+      {
+        "name": "persona",
+        "label": "View as",
+        "type": "enum",
+        "options": [
+          "Client",
+          "Bookkeeper",
+          "Practitioner",
+          "Executive"
+        ],
+        "default": "Executive"
+      },
+      {
+        "name": "display",
+        "label": "Display settings",
+        "type": "string",
+        "maxLength": 300,
+        "default": "{\"cents\":0,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"bva\",\"x\":\"\"}"
+      }
+    ],
+    "bindings": [
+      {
+        "id": "budgets",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "list_budget"
+        },
+        "params": {
+          "maxResults": {
+            "kind": "static",
+            "value": 100
+          }
+        }
+      },
+      {
+        "id": "pnl_monthly",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_profit_and_loss"
+        },
+        "params": {
+          "start_date": {
+            "kind": "input",
+            "input": "start_date"
+          },
+          "end_date": {
+            "kind": "input",
+            "input": "end_date"
+          },
+          "accounting_method": {
+            "kind": "input",
+            "input": "basis"
+          },
+          "summarize_column_by": {
+            "kind": "static",
+            "value": "Month"
+          }
+        }
+      },
+      {
+        "id": "company_info",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "qbo_query"
+        },
+        "params": {
+          "query": {
+            "kind": "static",
+            "value": "SELECT * FROM CompanyInfo"
+          }
+        }
+      },
+      {
+        "id": "prefs",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_preferences"
+        },
+        "params": {}
+      }
+    ]
+  }
+}

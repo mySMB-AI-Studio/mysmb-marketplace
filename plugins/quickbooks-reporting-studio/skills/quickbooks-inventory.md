@@ -5,7 +5,7 @@ description: QuickBooks Online Inventory family (Q30) as a live, validated repor
 
 # Inventory family (Q30)
 
-Use when the user asks for inventory valuation, stock on hand value, inventory status, open purchase orders or a stocktake worksheet. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`list_item`, `get_report_inventory_valuation_summary`, `list_account`, `list_purchase_order`, `qbo_query`, `get_preferences`).
+Use when the user asks for inventory valuation, stock on hand value, inventory status, open purchase orders or a stocktake worksheet. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Inventory**. Template: `quickbooks-reporting-studio` / `quickbooks-inventory` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`list_item`, `get_report_inventory_valuation_summary`, `list_account`, `list_purchase_order`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports › Inventory. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q30. Delivery: Wave 3 (Train 05).
 

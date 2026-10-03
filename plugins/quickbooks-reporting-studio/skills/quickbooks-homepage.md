@@ -5,7 +5,7 @@ description: QuickBooks Online Homepage — Business at a glance (Q00) as a live
 
 # Homepage — Business at a glance (Q00)
 
-Use when the user asks for the QuickBooks homepage, business at a glance, a dashboard, how the business is going, net profit last month, spending last 30 days or bank balances. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `list_account`, `get_report_cash_flow`, `qbo_query`, `get_preferences`).
+Use when the user asks for the QuickBooks homepage, business at a glance, a dashboard, how the business is going, net profit last month, spending last 30 days or bank balances. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Business at a glance**. Template: `quickbooks-reporting-studio` / `quickbooks-homepage` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `list_account`, `get_report_cash_flow`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Home › Business at a glance. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q00. Delivery: Wave 1.
 

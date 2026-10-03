@@ -5,7 +5,7 @@ description: QuickBooks Online Sales & Get Paid overview (Q11) as a live, valida
 
 # Sales & Get Paid overview (Q11)
 
-Use when the user asks for the sales overview, income over time, unpaid or overdue invoices, payments received, not-deposited payments, or days sales outstanding (DSO). Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `list_invoice`, `list_payment`, `get_report_aged_receivables`, `qbo_query`, `get_preferences`).
+Use when the user asks for the sales overview, income over time, unpaid or overdue invoices, payments received, not-deposited payments, or days sales outstanding (DSO). Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Sales & Get Paid overview**. Template: `quickbooks-reporting-studio` / `quickbooks-sales-overview` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `list_invoice`, `list_payment`, `get_report_aged_receivables`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: All apps › Sales & Get Paid › Overview. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q11. Delivery: Wave 2 (Train 04).
 

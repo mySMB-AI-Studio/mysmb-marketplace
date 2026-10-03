@@ -1,0 +1,56 @@
+{
+  "title": "Reports catalogue",
+  "description": "Live, validated QuickBooks Online Reports catalogue (Q02): Every QuickBooks report family (Q00–Q39) as a card, Search and category chips.",
+  "tags": [
+    "quickbooks",
+    "catalogue",
+    "library"
+  ],
+  "fileName": "quickbooks-reports-catalogue.html",
+  "dataBindings": {
+    "inputs": [
+      {
+        "name": "persona",
+        "label": "View as",
+        "type": "enum",
+        "options": [
+          "Client",
+          "Bookkeeper",
+          "Practitioner",
+          "Executive"
+        ],
+        "default": "Client"
+      },
+      {
+        "name": "display",
+        "label": "Display settings",
+        "type": "string",
+        "maxLength": 300,
+        "default": "{\"cents\":0,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":0,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\",\"x\":\"\"}"
+      }
+    ],
+    "bindings": [
+      {
+        "id": "company_info",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "qbo_query"
+        },
+        "params": {
+          "query": {
+            "kind": "static",
+            "value": "SELECT * FROM CompanyInfo"
+          }
+        }
+      },
+      {
+        "id": "prefs",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_preferences"
+        },
+        "params": {}
+      }
+    ]
+  }
+}
