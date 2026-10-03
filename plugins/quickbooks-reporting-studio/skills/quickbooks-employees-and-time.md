@@ -5,7 +5,7 @@ description: QuickBooks Online Employees and time family (Q31) as a live, valida
 
 # Employees and time family (Q31)
 
-Use when the user asks for time activities, timesheets, hours by employee, billable hours, recent or edited time entries, time by pay type, or the employee contact list. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`list_time_activity`, `list_employee`, `qbo_query`, `get_preferences`).
+Use when the user asks for time activities, timesheets, hours by employee, billable hours, recent or edited time entries, time by pay type, or the employee contact list. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Employees and time**. Template: `quickbooks-reporting-studio` / `quickbooks-employees-and-time` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`list_time_activity`, `list_employee`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports › Employees / Payroll · Time. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q31. Delivery: Wave 4 (Feature F6).
 

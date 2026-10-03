@@ -5,7 +5,7 @@ description: QuickBooks Online General Ledger and transaction-list family (Q23) 
 
 # General Ledger and transaction-list family (Q23)
 
-Use when the user asks for the general ledger, GL, ledger detail for an account, the journal report, a transaction list by date, the account list or the chart of accounts. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_general_ledger`, `get_report_journal_report`, `get_report_transaction_list`, `get_report_account_list`, `qbo_query`, `get_preferences`).
+Use when the user asks for the general ledger, GL, ledger detail for an account, the journal report, a transaction list by date, the account list or the chart of accounts. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **General Ledger**. Template: `quickbooks-reporting-studio` / `quickbooks-general-ledger` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_general_ledger`, `get_report_journal_report`, `get_report_transaction_list`, `get_report_account_list`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports › For my accountant. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q23. Delivery: Wave 2 (Train 03).
 

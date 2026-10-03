@@ -5,7 +5,7 @@ description: QuickBooks Online Business Snapshot (Q20) as a live, validated repo
 
 # Business Snapshot (Q20)
 
-Use when the user asks for the business snapshot, my income and my expenses, income and expense breakdown with last year, or who owes me and who I owe on one page. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `get_report_aged_receivables`, `get_report_aged_payables`, `qbo_query`, `get_preferences`).
+Use when the user asks for the business snapshot, my income and my expenses, income and expense breakdown with last year, or who owes me and who I owe on one page. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Business snapshot**. Template: `quickbooks-reporting-studio` / `quickbooks-business-snapshot` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `get_report_aged_receivables`, `get_report_aged_payables`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports › Business overview › Business Snapshot. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q20. Delivery: Wave 1.
 

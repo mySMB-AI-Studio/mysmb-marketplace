@@ -5,7 +5,7 @@ description: QuickBooks Online GST overview (BAS centre) (Q15) as a live, valida
 
 # GST overview (BAS centre) (Q15)
 
-Use when the user asks for the GST overview, GST position, BAS centre, how much GST we owe or get back this quarter, or GST collected vs paid. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_tax_summary`, `get_report_balance_sheet`, `list_tax_agency`, `qbo_query`, `get_preferences`).
+Use when the user asks for the GST overview, GST position, BAS centre, how much GST we owe or get back this quarter, or GST collected vs paid. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **GST overview**. Template: `quickbooks-reporting-studio` / `quickbooks-gst-overview` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_tax_summary`, `get_report_balance_sheet`, `list_tax_agency`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: All apps › GST › Overview. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q15. Delivery: Wave 1.
 

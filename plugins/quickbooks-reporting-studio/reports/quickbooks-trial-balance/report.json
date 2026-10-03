@@ -1,0 +1,99 @@
+{
+  "title": "Trial Balance",
+  "description": "Live, validated QuickBooks Online Trial Balance (Q22): Trial Balance.",
+  "tags": [
+    "quickbooks",
+    "trial-balance",
+    "finance"
+  ],
+  "fileName": "quickbooks-trial-balance.html",
+  "dataBindings": {
+    "inputs": [
+      {
+        "name": "as_at",
+        "label": "As of",
+        "type": "date",
+        "default": "today"
+      },
+      {
+        "name": "basis",
+        "label": "Accounting method",
+        "type": "enum",
+        "options": [
+          "Accrual",
+          "Cash"
+        ],
+        "default": "Accrual"
+      },
+      {
+        "name": "fy_start",
+        "label": "Financial year start",
+        "type": "date",
+        "default": "2026-07-01"
+      },
+      {
+        "name": "persona",
+        "label": "View as",
+        "type": "enum",
+        "options": [
+          "Client",
+          "Bookkeeper",
+          "Practitioner",
+          "Executive"
+        ],
+        "default": "Bookkeeper"
+      },
+      {
+        "name": "display",
+        "label": "Display settings",
+        "type": "string",
+        "maxLength": 300,
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"today\",\"c\":\"none\",\"v\":\"\"}"
+      }
+    ],
+    "bindings": [
+      {
+        "id": "trial_balance",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_trial_balance"
+        },
+        "params": {
+          "start_date": {
+            "kind": "input",
+            "input": "fy_start"
+          },
+          "end_date": {
+            "kind": "input",
+            "input": "as_at"
+          },
+          "accounting_method": {
+            "kind": "input",
+            "input": "basis"
+          }
+        }
+      },
+      {
+        "id": "company_info",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "qbo_query"
+        },
+        "params": {
+          "query": {
+            "kind": "static",
+            "value": "SELECT * FROM CompanyInfo"
+          }
+        }
+      },
+      {
+        "id": "prefs",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_preferences"
+        },
+        "params": {}
+      }
+    ]
+  }
+}

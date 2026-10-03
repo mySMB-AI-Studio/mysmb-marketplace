@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QuickBooks reports catalogue</title>
+<style>{{CSS}}
+.fam{border:1px solid var(--line);border-radius:8px;margin:0 0 10px;background:var(--card)}
+.fam>summary{cursor:pointer;padding:10px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.fam>div{padding:0 14px 12px}.qid{font-weight:700;color:var(--accent)}.members{columns:2;font-size:13px;margin:6px 0 8px;padding-left:18px}
+.st{font-size:11px;font-weight:700;border-radius:10px;padding:2px 8px}.st.built{background:var(--pass-bg);color:var(--pos)}.st.road{background:var(--line);color:var(--muted)}
+.ask{font-size:13px;background:var(--canvas);border:1px solid var(--line);border-radius:6px;padding:6px 10px}.star{background:none;border:0;cursor:pointer;font-size:16px;color:var(--muted)}.star.on{color:var(--accent)}
+@media (max-width:720px){.members{columns:1}}
+</style>
+</head>
+<body class="persona-detail">
+<div id="qb-controls" aria-label="Catalogue controls">
+<label class="ctl">Search<input type="search" id="q" class="qb-filter" placeholder="Type report name here" style="margin:0"></label>
+<label class="ctl">Status<select id="st"><option value="all">All</option><option value="built">Built — ask the agent</option><option value="road">On the roadmap</option><option value="fav">★ Favourites</option></select></label>
+<label class="ctl">For<select id="who"><option value="">All personas</option><option>Client</option><option>Bookkeeper</option><option>Practitioner</option><option>Executive</option></select></label>
+<label class="ctl">Style<select id="style"><option value="qbo">QuickBooks look</option><option value="mysmb">mySMB house style</option></select></label>
+</div>
+<div id="qb-banner" class="qb-banner pass" role="region" aria-label="Validation"></div>
+<main class="qb-card"><header id="qb-head"><div class="co">QuickBooks Online</div><div class="ti">Standard reports catalogue</div><div class="pe">Reporting Library — QuickBooks Reports Prompt Library v1.1</div></header><div id="qb-body"></div></main>
+<section id="qb-sources" class="qb-card"><h2>About this catalogue</h2><ul><li>Every QuickBooks surface and report family (Q00–Q39) with its member reports, grouped by QuickBooks menu path.</li><li>"Built" families are live reports: ask the QuickBooks Reporting Specialist using the suggested wording. Roadmap families are listed with their delivery wave.</li><li>Favourites last for this viewing only (reports cannot store settings in your browser).</li><li>This page holds no company data.</li></ul></section>
+<script>
+var DATA = {{DATA}};
+(function () {
+  function h(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  var fav = {}, $ = function (id) { return document.getElementById(id); };
+  function group(loc) { var p = loc.split(' › '); return p.length > 2 ? p.slice(0, 3).join(' › ') : loc; }
+  function ask(r) { var m = r.members[0] || r.family; return 'Ask: “' + (r.type === 'Dashboard' ? 'Show me the ' + r.family.split(' (')[0] : 'Run the ' + m + ' for last month') + '”'; }
+  function draw() {
+    var q = $('q').value.trim().toLowerCase(), st = $('st').value, who = $('who').value, groups = {}, order = [], shown = 0, reports = 0;
+    DATA.forEach(function (r) {
+      var hay = (r.q + ' ' + r.family + ' ' + r.location + ' ' + r.members.join(' ')).toLowerCase();
+      if (q && hay.indexOf(q) < 0) return;
+      if (st === 'built' && !r.skill) return; if (st === 'road' && r.skill) return; if (st === 'fav' && !fav[r.q]) return;
+      if (who && r.users.indexOf(who) < 0) return;
+      var g = group(r.location); if (!groups[g]) { groups[g] = []; order.push(g); } groups[g].push(r); shown++; reports += r.members.length;
+    });
+    $('qb-body').innerHTML = (shown ? '' : '<p class="muted">No reports match.</p>') + order.map(function (g) {
+      return '<h3 style="margin:16px 0 8px">' + h(g) + '</h3>' + groups[g].map(function (r) {
+        return '<details class="fam"' + (q ? ' open' : '') + '><summary><button class="star' + (fav[r.q] ? ' on' : '') + '" data-q="' + h(r.q) + '" aria-label="Favourite">' + (fav[r.q] ? '★' : '☆') + '</button><span class="qid">' + h(r.q) + '</span><strong>' + h(r.family) + '</strong><span class="st ' + (r.skill ? 'built">Built' : 'road">Wave ' + r.wave) + '</span><span class="muted" style="margin-left:auto">' + h(r.type) + ' · ' + h(r.priority) + '</span></summary><div>' +
+          '<ul class="members">' + r.members.map(function (m) { return '<li>' + h(m) + '</li>'; }).join('') + '</ul><div class="muted" style="font-size:12px">For: ' + h(r.users) + ' · ' + h(r.location) + '</div>' +
+          (r.skill ? '<div class="ask" style="margin-top:8px">' + h(ask(r)) + ' <span class="muted">(skill ' + h(r.skill) + ')</span></div>' : '<div class="muted" style="margin-top:8px">On the Reporting Library roadmap — delivery wave ' + h(r.wave) + '. Meanwhile ask for the closest built report, or attach the QuickBooks export.</div>') + '</div></details>';
+      }).join('');
+    }).join('');
+    document.querySelectorAll('.star').forEach(function (b) { b.addEventListener('click', function (e) { e.preventDefault(); var k = b.getAttribute('data-q'); fav[k] = !fav[k]; draw(); }); });
+    var mapped = DATA.filter(function (r) { return /^Q\d\d$/.test(r.q); }).length, builtN = DATA.filter(function (r) { return r.skill; }).length;
+    $('qb-banner').innerHTML = '<strong>✓ Validation: every report maps to a family prompt</strong> · ' + mapped + ' of ' + DATA.length + ' families (Q00–Q39) · ' + builtN + ' built · showing ' + shown + ' families and ' + reports + ' reports and surfaces';
+  }
+  ['q', 'st', 'who'].forEach(function (id) { $(id).addEventListener(id === 'q' ? 'input' : 'change', draw); });
+  $('style').addEventListener('change', function () { document.documentElement.classList.toggle('style-mysmb', this.value === 'mysmb'); });
+  draw();
+})();
+</script>
+</body>
+</html>

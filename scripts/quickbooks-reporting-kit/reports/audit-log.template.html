@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Audit Log</title>
+<style>{{CSS}}</style>
+</head>
+<body class="persona-detail">
+<div id="qb-controls" aria-label="Audit log filters">
+<label class="ctl">Search<input type="search" id="q" class="qb-filter" placeholder="Search events" style="margin:0"></label>
+<label class="ctl">User<select id="user"><option value="">All users</option></select></label>
+<label class="ctl">Events<select id="type"><option value="">All events</option></select></label>
+<label class="ctl">From<input type="date" id="from"></label>
+<label class="ctl">To<input type="date" id="to"></label>
+<label class="ctl">Style<select id="style"><option value="qbo">QuickBooks look</option><option value="mysmb">mySMB house style</option></select></label>
+<div class="ctl btns"><button type="button" id="pdf">Download PDF</button></div>
+</div>
+<div id="qb-banner" class="qb-banner pass" role="region" aria-label="Validation"></div>
+<main class="qb-card"><header id="qb-head"></header><div id="qb-body"></div><footer id="qb-foot"></footer></main>
+<section id="qb-sources" class="qb-card"><h2>Sources &amp; limitations</h2><ul id="src"></ul></section>
+<script>
+var AUDIT = {{DATA}};
+(function () {
+  function h(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  var $ = function (id) { return document.getElementById(id); }, rows = (AUDIT.rows || []).map(function (r) { var t = r.type || (String(r.event || '').match(/^(Added|Edited|Deleted|Voided|Signed in|Signed out|Sent|Printed|Reconciled|Manually updated|Applied|Unapplied|Matched|Categorised|Categorized)\b/i) || [])[1] || 'Other'; return Object.assign({}, r, { type: t.charAt(0).toUpperCase() + t.slice(1).toLowerCase() }); });
+  var uniq = function (k) { var o = {}; rows.forEach(function (r) { o[r[k] || '—'] = 1; }); return Object.keys(o).sort(); };
+  uniq('user').forEach(function (u) { $('user').insertAdjacentHTML('beforeend', '<option>' + h(u) + '</option>'); });
+  uniq('type').forEach(function (u) { $('type').insertAdjacentHTML('beforeend', '<option>' + h(u) + '</option>'); });
+  $('qb-head').innerHTML = '<div class="co">' + h(AUDIT.company || 'N/A — not in source') + '</div><div class="ti">Audit Log</div><div class="pe">' + h(AUDIT.period || '') + '</div>';
+  $('qb-foot').textContent = 'From the QuickBooks Audit Log export · ' + h(AUDIT.fileName || 'attached file') + ' · ' + rows.length + ' events';
+  $('src').innerHTML = '<li>Source: QuickBooks › Reports › Audit Log export attached by the user (' + h(AUDIT.fileName || 'file') + '). The Audit Log is not available through the QuickBooks Accounting API, so this report is a frozen copy of that export.</li><li>Company and period are read from the export header' + (AUDIT.company ? '' : ' — the company name was not in the export (N/A — not in source)') + '.</li><li>Intuit Intelligence audit log: N/A — not in the export.</li><li>Decision support only — not audit, tax or legal advice.</li>';
+  function draw() {
+    var q = $('q').value.trim().toLowerCase(), u = $('user').value, t = $('type').value, f = $('from').value, to = $('to').value;
+    var list = rows.filter(function (r) { var d = String(r.date || '').slice(0, 10); return (!u || (r.user || '—') === u) && (!t || r.type === t) && (!f || d >= f) && (!to || d <= to) && (!q || (r.event + ' ' + (r.name || '') + ' ' + (r.user || '')).toLowerCase().indexOf(q) >= 0); });
+    var byType = {}, byUser = {}; list.forEach(function (r) { byType[r.type] = (byType[r.type] || 0) + 1; byUser[r.user || '—'] = (byUser[r.user || '—'] || 0) + 1; });
+    var tile = function (o) { return Object.keys(o).sort(function (a, b) { return o[b] - o[a]; }).map(function (k) { return '<div class="qb-kpi"><div class="lbl">' + h(k) + '</div><div class="val">' + o[k] + '</div></div>'; }).join(''); };
+    $('qb-body').innerHTML = '<h3>Events by type</h3><div class="qb-kpis">' + tile(byType) + '</div><h3>Events by user</h3><div class="qb-kpis">' + tile(byUser) + '</div>' +
+      '<div class="qb-scroll"><table class="qb-grid"><thead><tr><th>Date changed</th><th>User</th><th>Event</th><th>Name</th><th class="num">Amount</th></tr></thead><tbody>' +
+      (list.length ? list.map(function (r) { return '<tr><td>' + h(r.date) + '</td><td>' + h(r.user) + '</td><td>' + h(r.event) + '</td><td>' + h(r.name || '') + '</td><td class="num">' + h(r.amount == null ? '' : r.amount) + '</td></tr>'; }).join('') : '<tr><td colspan="5" class="muted">No events match.</td></tr>') + '</tbody></table></div>';
+    var sum = Object.keys(byType).reduce(function (s, k) { return s + byType[k]; }, 0);
+    $('qb-banner').className = 'qb-banner ' + (sum === list.length ? 'pass' : 'fail');
+    $('qb-banner').innerHTML = '<strong>' + (sum === list.length ? '✓ Validation: counts by event type sum to the events shown' : '⚠ Validation: event counts do not add up') + '</strong> · ' + list.length + ' of ' + rows.length + ' events · Snapshot from an export — not live';
+  }
+  ['q'].forEach(function (id) { $(id).addEventListener('input', draw); });
+  ['user', 'type', 'from', 'to'].forEach(function (id) { $(id).addEventListener('change', draw); });
+  $('style').addEventListener('change', function () { document.documentElement.classList.toggle('style-mysmb', this.value === 'mysmb'); });
+  $('pdf').addEventListener('click', function () { window.print(); });
+  draw();
+})();
+</script>
+</body>
+</html>

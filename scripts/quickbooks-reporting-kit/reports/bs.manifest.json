@@ -1,0 +1,21 @@
+{
+  "inputs": [
+    { "name": "as_at", "label": "As of", "type": "date", "default": "today" },
+    { "name": "basis", "label": "Accounting method", "type": "enum", "options": ["Accrual", "Cash"], "default": "Accrual" },
+    { "name": "columns_by", "label": "Display columns by", "type": "enum", "options": ["Total", "Month", "Quarter", "Year", "Classes", "Departments"], "default": "Total" },
+    { "name": "compare_as_at", "label": "Compare as of", "type": "date", "default": "2025-09-25" },
+    { "name": "fy_start", "label": "Financial year start", "type": "date", "default": "2026-07-01" },
+    { "name": "persona", "label": "View as", "type": "enum", "options": ["Client", "Bookkeeper", "Practitioner", "Executive"], "default": "Bookkeeper" },
+    { "name": "display", "label": "Display settings", "type": "string", "maxLength": 300, "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"today\",\"c\":\"none\",\"v\":\"bs\"}" }
+  ],
+  "bindings": [
+    { "id": "bs", "tool": { "mcp": "quickbooks-accounting", "name": "get_report_balance_sheet" },
+      "params": { "start_date": { "kind": "input", "input": "fy_start" }, "end_date": { "kind": "input", "input": "as_at" }, "accounting_method": { "kind": "input", "input": "basis" }, "summarize_column_by": { "kind": "input", "input": "columns_by" } } },
+    { "id": "bs_compare", "tool": { "mcp": "quickbooks-accounting", "name": "get_report_balance_sheet" },
+      "params": { "end_date": { "kind": "input", "input": "compare_as_at" }, "accounting_method": { "kind": "input", "input": "basis" }, "summarize_column_by": { "kind": "static", "value": "Total" } } },
+    { "id": "pnl_ytd", "tool": { "mcp": "quickbooks-accounting", "name": "get_report_profit_and_loss" },
+      "params": { "start_date": { "kind": "input", "input": "fy_start" }, "end_date": { "kind": "input", "input": "as_at" }, "accounting_method": { "kind": "input", "input": "basis" }, "summarize_column_by": { "kind": "static", "value": "Total" } } },
+    { "id": "company_info", "tool": { "mcp": "quickbooks-accounting", "name": "qbo_query" }, "params": { "query": { "kind": "static", "value": "SELECT * FROM CompanyInfo" } } },
+    { "id": "prefs", "tool": { "mcp": "quickbooks-accounting", "name": "get_preferences" }, "params": {} }
+  ]
+}

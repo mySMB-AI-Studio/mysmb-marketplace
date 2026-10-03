@@ -1,0 +1,16 @@
+{
+  "inputs": [
+    { "name": "start_date", "label": "From", "type": "date", "default": "2026-07-01" },
+    { "name": "end_date", "label": "To", "type": "date", "default": "today" },
+    { "name": "basis", "label": "Accounting method", "type": "enum", "options": ["Accrual", "Cash"], "default": "Accrual" },
+    { "name": "columns_by", "label": "Display columns by", "type": "enum", "options": ["Total", "Month", "Quarter", "Year", "Customers", "Vendors", "Classes", "Departments", "ProductsAndServices"], "default": "Total" },
+    { "name": "persona", "label": "View as", "type": "enum", "options": ["Client", "Bookkeeper", "Practitioner", "Executive"], "default": "Bookkeeper" },
+    { "name": "display", "label": "Display settings", "type": "string", "maxLength": 300, "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\",\"x\":\"\"}" }
+  ],
+  "bindings": [
+    { "id": "custom_report", "tool": { "mcp": "quickbooks-accounting", "name": "get_report_class_sales" },
+      "params": { "start_date": { "kind": "input", "input": "start_date" }, "end_date": { "kind": "input", "input": "end_date" }, "accounting_method": { "kind": "input", "input": "basis" }, "summarize_column_by": { "kind": "input", "input": "columns_by" } } },
+    { "id": "company_info", "tool": { "mcp": "quickbooks-accounting", "name": "qbo_query" }, "params": { "query": { "kind": "static", "value": "SELECT * FROM CompanyInfo" } } },
+    { "id": "prefs", "tool": { "mcp": "quickbooks-accounting", "name": "get_preferences" }, "params": {} }
+  ]
+}

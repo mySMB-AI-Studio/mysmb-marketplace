@@ -5,7 +5,7 @@ description: QuickBooks Online GST and PAYG family (BAS) (Q28) as a live, valida
 
 # GST and PAYG family (BAS) (Q28)
 
-Use when the user asks for GST, a GST summary, BAS, BAS labels (G1, 1A, 1B, 9), GST payable or refund, the activity statement, or PAYG withholding. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_tax_summary`, `get_report_balance_sheet`, `list_tax_agency`, `qbo_query`, `get_preferences`).
+Use when the user asks for GST, a GST summary, BAS, BAS labels (G1, 1A, 1B, 9), GST payable or refund, the activity statement, or PAYG withholding. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **GST Summary (BAS)**. Template: `quickbooks-reporting-studio` / `quickbooks-gst-bas` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_tax_summary`, `get_report_balance_sheet`, `list_tax_agency`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports › Manage Taxes › GST Summary. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q28. Delivery: Wave 1.
 

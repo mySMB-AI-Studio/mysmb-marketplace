@@ -1,0 +1,18 @@
+{
+  "inputs": [
+    { "name": "start_date", "label": "From", "type": "date", "default": "2026-07-01" },
+    { "name": "end_date", "label": "To", "type": "date", "default": "2026-09-30" },
+    { "name": "basis", "label": "Accounting method", "type": "enum", "options": ["Accrual", "Cash"], "default": "Accrual" },
+    { "name": "agency_id", "label": "Tax agency", "type": "string", "maxLength": 20, "default": "" },
+    { "name": "persona", "label": "View as", "type": "enum", "options": ["Client", "Bookkeeper", "Practitioner", "Executive"], "default": "Bookkeeper" },
+    { "name": "display", "label": "Display settings", "type": "string", "maxLength": 300, "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"this_quarter\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"summary\",\"x\":\"\"}" }
+  ],
+  "bindings": [
+    { "id": "gst_summary", "tool": { "mcp": "quickbooks-accounting", "name": "get_report_tax_summary" }, "params": { "start_date": { "kind": "input", "input": "start_date" }, "end_date": { "kind": "input", "input": "end_date" }, "accounting_method": { "kind": "input", "input": "basis" }, "agency_id": { "kind": "input", "input": "agency_id" } } },
+    { "id": "bs_end", "tool": { "mcp": "quickbooks-accounting", "name": "get_report_balance_sheet" }, "params": { "end_date": { "kind": "input", "input": "end_date" }, "accounting_method": { "kind": "input", "input": "basis" } } },
+    { "id": "tax_agencies", "tool": { "mcp": "quickbooks-accounting", "name": "list_tax_agency" }, "params": { "maxResults": { "kind": "static", "value": 100 } } },
+    { "id": "gst_probe", "tool": { "mcp": "quickbooks-accounting", "name": "get_report_tax_summary" }, "params": { "start_date": { "kind": "static", "value": "2000-01-01" }, "end_date": { "kind": "context", "source": "now.date" }, "accounting_method": { "kind": "input", "input": "basis" }, "agency_id": { "kind": "input", "input": "agency_id" } } },
+    { "id": "company_info", "tool": { "mcp": "quickbooks-accounting", "name": "qbo_query" }, "params": { "query": { "kind": "static", "value": "SELECT * FROM CompanyInfo" } } },
+    { "id": "prefs", "tool": { "mcp": "quickbooks-accounting", "name": "get_preferences" }, "params": {  } }
+  ]
+}

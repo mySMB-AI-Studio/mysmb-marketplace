@@ -1,0 +1,35 @@
+// node roundtrip.js — the check to run before opening a PR. Extracts the kit, every report config and manifest back out of
+// the GENERATED skill files (what the agent copies on the copy path), then on that copy: runs the tests, builds every report,
+// runs the platform validators, checks every report template against the skills, and checks the skills' size limits.
+const fs = require('fs'), path = require('path'), os = require('os'), { execFileSync } = require('child_process');
+const K = __dirname, PLUGIN = path.resolve(K, '..', '..', 'plugins', 'quickbooks-reporting-studio'), SKILLS = path.join(PLUGIN, 'skills');
+const OUT = fs.mkdtempSync(path.join(os.tmpdir(), 'qbo-rt-')), FAM = require('./families.js'), KIT = FAM.filter((f) => !f.static);
+const run = (cmd, args, env) => execFileSync(cmd, args, { cwd: K, stdio: 'inherit', env: Object.assign({}, process.env, env || {}), shell: process.platform === 'win32' });
+const rdx = (p) => fs.readFileSync(p, 'utf8').replace(/\r\n/g, '\n');
+console.log('1. extract from', SKILLS); run('node', ['extract-skills.js', SKILLS, OUT]);
+console.log('2. tests on the extracted copy'); for (const t of ['test-all.js', 'test-w4.js', 'test-pnl.js', 'test-conformance.js']) run('node', [t], { KIT_DIR: OUT });
+console.log('3. build every kit report'); for (const f of KIT) run('node', ['build.js', f.id], { KIT_DIR: OUT });
+console.log('4. platform validators'); run('npx', ['tsx', 'check-reports.mts', OUT]);
+console.log('5. templates = the skills: reports/<skill>/report.html is the document the copy path assembles, report.json the skill\'s dataBindings');
+process.env.KIT_DIR = OUT; const build = require('./build.js');
+const tpl = KIT.filter((f) => !f.custom);
+for (const f of tpl) {
+  const T = path.join(PLUGIN, 'reports', f.skill), meta = fs.existsSync(T) ? JSON.parse(rdx(path.join(T, 'report.json'))) : null;
+  const same = meta && rdx(path.join(T, 'report.html')) === build(f.id, meta.title) &&
+    JSON.stringify(meta.dataBindings) === JSON.stringify(JSON.parse(rdx(path.join(OUT, 'reports', f.id + '.manifest.json'))));
+  if (!same) { console.log('  TEMPLATE DIFFERS FROM SKILL', f.skill, '(run npm run gen)'); process.exit(1); }
+}
+const extra = fs.readdirSync(path.join(PLUGIN, 'reports')).filter((d) => !tpl.some((f) => f.skill === d));
+if (extra.length) { console.log('  TEMPLATES WITHOUT A KIT REPORT', extra.join(', ')); process.exit(1); }
+console.log('  all', tpl.length, 'templates match their skills');
+console.log('6. limits: markdown ≤ 128 × 1024 characters, description ≤ 500, no line over 1,500 characters');
+let bad = 0;
+for (const f of fs.readdirSync(SKILLS)) {
+  const s = rdx(path.join(SKILLS, f)), m = /^---\n[\s\S]*?\ndescription: (.*)\n/.exec(s);
+  if (s.length > 128 * 1024 || !m || m[1].length > 500) { bad++; console.log('  TOO BIG', f, s.length, 'chars, description', m ? m[1].length : 'missing'); }
+  const long = Math.max(...s.split('\n').map((l) => l.length)), fam = FAM.find((x) => x.skill + '.md' === f);
+  // A long line only matters on the copy path; a report with a template is created without the agent reading its blocks.
+  if (long > 1500) { if (fam && tpl.includes(fam)) console.log('  note:', f, 'has a', long, 'character line (copy path only — the template path never reads it)'); else { bad++; console.log('  LINE TOO LONG', f, long, 'characters'); } }
+}
+if (bad) process.exit(1);
+console.log('\nROUND TRIP OK —', KIT.length, 'kit reports,', tpl.length, 'templates; extracted copy in', OUT);

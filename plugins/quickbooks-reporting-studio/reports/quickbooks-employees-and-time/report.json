@@ -1,0 +1,102 @@
+{
+  "title": "Employees and time",
+  "description": "Live, validated QuickBooks Online Employees and time (Q31): Time Activities by Employee Detail, Timesheet Detail, Recent/Edited Time Activities, Time Summary by Pay Type, Employee Contact List, Employee filter.",
+  "tags": [
+    "quickbooks",
+    "time",
+    "employees"
+  ],
+  "fileName": "quickbooks-time-activities.html",
+  "dataBindings": {
+    "inputs": [
+      {
+        "name": "start_date",
+        "label": "From",
+        "type": "date",
+        "default": "2026-09-01"
+      },
+      {
+        "name": "end_date",
+        "label": "To",
+        "type": "date",
+        "default": "2026-09-30"
+      },
+      {
+        "name": "persona",
+        "label": "View as",
+        "type": "enum",
+        "options": [
+          "Client",
+          "Bookkeeper",
+          "Practitioner",
+          "Executive"
+        ],
+        "default": "Bookkeeper"
+      },
+      {
+        "name": "display",
+        "label": "Display settings",
+        "type": "string",
+        "maxLength": 300,
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"this_month\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"by_employee\",\"x\":\"\"}"
+      }
+    ],
+    "bindings": [
+      {
+        "id": "time_activities",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "list_time_activity"
+        },
+        "params": {
+          "orderBy": {
+            "kind": "static",
+            "value": "TxnDate DESC"
+          },
+          "maxResults": {
+            "kind": "static",
+            "value": 1000
+          }
+        }
+      },
+      {
+        "id": "employees",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "list_employee"
+        },
+        "params": {
+          "where": {
+            "kind": "static",
+            "value": "Active = true"
+          },
+          "maxResults": {
+            "kind": "static",
+            "value": 1000
+          }
+        }
+      },
+      {
+        "id": "company_info",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "qbo_query"
+        },
+        "params": {
+          "query": {
+            "kind": "static",
+            "value": "SELECT * FROM CompanyInfo"
+          }
+        }
+      },
+      {
+        "id": "prefs",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_preferences"
+        },
+        "params": {}
+      }
+    ]
+  }
+}

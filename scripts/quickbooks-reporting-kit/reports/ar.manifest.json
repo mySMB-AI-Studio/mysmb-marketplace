@@ -1,0 +1,14 @@
+{
+  "inputs": [
+    { "name": "persona", "label": "View as", "type": "enum", "options": ["Client", "Bookkeeper", "Practitioner", "Executive"], "default": "Bookkeeper" },
+    { "name": "display", "label": "Display settings", "type": "string", "maxLength": 300, "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"summary\"}" }
+  ],
+  "bindings": [
+    { "id": "aged_receivables", "tool": { "mcp": "quickbooks-accounting", "name": "get_report_aged_receivables" }, "params": {} },
+    { "id": "aged_receivable_detail", "tool": { "mcp": "quickbooks-accounting", "name": "get_report_aged_receivable_detail" }, "params": {} },
+    { "id": "open_invoices", "tool": { "mcp": "quickbooks-accounting", "name": "list_invoice" }, "params": { "where": { "kind": "static", "value": "Balance > '0'" }, "orderBy": { "kind": "static", "value": "DueDate" }, "maxResults": { "kind": "static", "value": 1000 } } },
+    { "id": "bs_today", "tool": { "mcp": "quickbooks-accounting", "name": "get_report_balance_sheet" }, "params": { "end_date": { "kind": "context", "source": "now.date" }, "accounting_method": { "kind": "static", "value": "Accrual" } } },
+    { "id": "company_info", "tool": { "mcp": "quickbooks-accounting", "name": "qbo_query" }, "params": { "query": { "kind": "static", "value": "SELECT * FROM CompanyInfo" } } },
+    { "id": "prefs", "tool": { "mcp": "quickbooks-accounting", "name": "get_preferences" }, "params": {} }
+  ]
+}

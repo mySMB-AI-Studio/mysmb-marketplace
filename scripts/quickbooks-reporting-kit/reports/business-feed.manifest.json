@@ -1,0 +1,16 @@
+{
+  "inputs": [
+    { "name": "feed_start", "label": "Trend from", "type": "date", "default": "2026-03-01" },
+    { "name": "feed_end", "label": "Trend to", "type": "date", "default": "2026-08-31" },
+    { "name": "persona", "label": "View as", "type": "enum", "options": ["Client", "Bookkeeper", "Practitioner", "Executive"], "default": "Client" },
+    { "name": "display", "label": "Display settings", "type": "string", "maxLength": 300, "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\",\"x\":\"\"}" }
+  ],
+  "bindings": [
+    { "id": "pnl_monthly", "tool": { "mcp": "quickbooks-accounting", "name": "get_report_profit_and_loss" },
+      "params": { "start_date": { "kind": "input", "input": "feed_start" }, "end_date": { "kind": "input", "input": "feed_end" }, "accounting_method": { "kind": "static", "value": "Accrual" }, "summarize_column_by": { "kind": "static", "value": "Month" } } },
+    { "id": "aged_receivables", "tool": { "mcp": "quickbooks-accounting", "name": "get_report_aged_receivables" }, "params": {} },
+    { "id": "aged_payables", "tool": { "mcp": "quickbooks-accounting", "name": "get_report_aged_payables" }, "params": {} },
+    { "id": "company_info", "tool": { "mcp": "quickbooks-accounting", "name": "qbo_query" }, "params": { "query": { "kind": "static", "value": "SELECT * FROM CompanyInfo" } } },
+    { "id": "prefs", "tool": { "mcp": "quickbooks-accounting", "name": "get_preferences" }, "params": {} }
+  ]
+}

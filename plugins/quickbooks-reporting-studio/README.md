@@ -45,6 +45,8 @@ Reporting Library: QuickBooks Reports Prompt Library v1.1 (Q00–Q39). This vers
   - Q05 Spreadsheet Sync (Excel / Google Sheets) — `quickbooks-spreadsheet-sync`
 - **Every report:** live data, client selector (one company per connection), period presets that roll forward, Cash/Accrual, Display columns by, Compare to, Customise (cents, divide by 1000, zero rows, negatives, header/footer), persona modes, QuickBooks look with a mySMB house-style toggle, light and dark themes, a validation banner, Download PDF and Download Excel (.xlsx), and Open in QuickBooks where a deep link exists.
 
+- **Report templates:** every family except the custom report builder also ships as a report template (`reports/<skill>/`), listed in the workspace under Reports → From your plugins (**Use this report**). The agent creates reports from them with `artifact_from_template` when the platform has it, so it never retypes the report.
+
 Connect QuickBooks under Settings → Connections (OAuth) before asking for a report.
 
 ## Connector limits (stated in the reports)
@@ -57,7 +59,7 @@ Connect QuickBooks under Settings → Connections (OAuth) before asking for a re
 
 ## Maintenance
 
-The skills embed a report kit that is tested as one unit, with each family's `dataBindings` and config. Change a report by changing its skill here in code, not by hand-editing a copy in the Developer Instance.
+The skills and report templates are generated from `scripts/quickbooks-reporting-kit/` (`npm run gen`, then `npm test` and `npm run roundtrip`): a report kit that is tested as one unit, with each family's `dataBindings` and config. Change a report there, in code. **Never Pull this extension into the Developer Instance** and never hand-edit a copy there: publish it from dev.
 
 ## Configuration
 
