@@ -14,9 +14,14 @@ const { assemble } = require('./build.js');
 // this agent has no skill for. Written-spec skills = every skill file on the target that is not a kit family nor the foundation.
 const prose = rd('foundation-written-spec.md').trim(), noReport = rd('foundation-noreport.md').trim();
 const fence = (lang, s) => '```' + lang + '\n' + s.trim() + '\n```';
-const built = FAM.map((f) => '`' + SLUG + ':' + f.skill + '`' + (/^P\d\d$/.test(f.p) ? ' (' + f.p + ')' : '')).join(', ');
+// six skills per line, continuing the list item, so no line of the foundation passes the line limit
+const built = FAM.map((f) => '`' + SLUG + ':' + f.skill + '`' + (/^P\d\d$/.test(f.p) ? ' (' + f.p + ')' : '')).reduce((a, x, i) => { if (i % 6 === 0) a.push([]); a[a.length - 1].push(x); return a; }, []).map((g) => g.join(', ')).join(',\n  ');
 const specSkills = fs.readdirSync(path.join(P, 'skills')).map((f) => f.replace(/\.md$/, '')).filter((s) => s !== 'xero-report-foundation' && !FAM.some((f) => f.skill === s)).sort();
 const spec = specSkills.map((s) => '`' + SLUG + ':' + s + '`').join(', ');
+// With every report on the kit, the hand-building rules go; the connector facts and the scheduled-delivery rule stay.
+const proseSec = (title) => (prose.split(/\n(?=## )/).find((x) => x.startsWith('## ' + title)) || '').trim();
+const delivery = (prose.match(/\*\*If a user asks whether a report can be "automated"[^\n]*/) || [''])[0];
+if (!specSkills.length && (!proseSec('Connector facts') || !delivery)) throw new Error('foundation-written-spec.md: Connector facts or the scheduled-delivery paragraph not found');
 const LIMIT = 128 * 1024, DESC = 500; // myHubV2 developer skills: markdown ≤ 128 × 1024 characters, description ≤ 500
 // What the agent can handle (README "Platform facts"): no line over LINE characters, and a report document + its dataBindings of
 // at most DOC tokens — the agent writes both in one artifact_save call, inside a 10-minute turn. Tokens are counted with
@@ -29,18 +34,17 @@ const guard = (name, md, desc) => {
   if (long >= 0) throw new Error(name + ' line ' + (long + 1) + ' is ' + lines[long].length + ' characters (limit ' + LINE + ')');
 };
 
-const fdesc = 'Shared build recipe, controls contract, validation rules and Xero styling for every Xero kit report (AGT-001), the rules for report skills built from a written specification, and the connector facts. Load it with the report skill.';
+const fdesc = 'Shared build recipe, controls contract, validation rules and Xero styling for every Xero kit report (AGT-001)' + (specSkills.length ? ', the rules for report skills built from a written specification,' : '') + ' and the connector facts. Load it with the report skill.';
 const foundation = `---
 name: xero-report-foundation
 description: ${fdesc}
 ---
 # Xero report foundation
 
-Use when you build any Xero report, dashboard or report pack. Load this skill first, then the report skill. Two kinds of report skill exist:
+Use when you build any Xero report, dashboard or report pack. Load this skill first, then the report skill. ${specSkills.length ? 'Two kinds of report skill exist:' : 'Every report skill is a kit report:'}
 
 - **Kit reports** (${FAM.length}) — ${built}. The report skill carries a tested \`dataBindings\` manifest and the complete, tested report document, and the extension ships both as a report template. **You never write report code:** the platform copies the template, or you copy the blocks. Follow *Build a kit report* below.
-- **Built on request** (${specSkills.length}) — ${spec}. Each is a written specification: build the report yourself following *Rules for report skills without a kit config* at the end of this file.
-
+${specSkills.length ? '- **Built on request** (' + specSkills.length + ') — ' + spec + '. Each is a written specification: build the report yourself following *Rules for report skills without a kit config* at the end of this file.\n' : ''}
 For a report this agent has no skill for, see *When the user asks for something this agent has no report for*.
 
 Spec: Xero Reports Prompt Library v1.2 (P01–P15) with the v1.2 patch (one agent per platform; LIB-002 client selector; cross-client isolation). Connector: \`xero-accounting\` (the mySMB custom MCP on the Xero Accounting API). The library's Read Me names the claude.ai Xero connector's tools (get_financial_position, get_organisation_info and the like) — **those do not exist here**; use only the tools named in these skills.
@@ -84,12 +88,7 @@ The user never has to choose an output format: every report is HTML with Downloa
 
 ${noReport}
 
-## Rules for report skills without a kit config
-
-These rules apply to every report skill that is a written specification (${spec}). When you build one of those, write the report yourself following these rules.
-
-${prose}
-`;
+${specSkills.length ? '## Rules for report skills without a kit config\n\nThese rules apply to every report skill that is a written specification (' + spec + '). When you build one of those, write the report yourself following these rules.\n\n' + prose + '\n' : proseSec('Connector facts') + '\n\n## Scheduled delivery\n\n' + delivery + '\n'}`;
 guard('xero-report-foundation', foundation, fdesc);
 w('skills/xero-report-foundation.md', foundation);
 

@@ -376,7 +376,7 @@ var XK = (function () {
   var MS3 = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
   // Xero column header → 'YYYY-MM' ('30 Sep 2026', 'Sep 26', 'Sep 2026', 'September 2026'); null if not a month label.
   function monthKey(label) {
-    var m = /([A-Za-z]{3})[a-z]*\.?\s+(\d{2,4})\b/.exec(String(label || '')); if (!m) return null;
+    var m = /([A-Za-z]{3})[a-z]*\.?[\s-]+(\d{2,4})\b/.exec(String(label || '')); if (!m) return null; // 'Sep 2026', '30 Sep 26', 'Sep-26' (Budget Summary)
     var mi = MS3.indexOf(m[1].toLowerCase()); if (mi < 0) return null; var y = +m[2]; if (y < 100) y += 2000;
     return y + '-' + String(mi + 1).padStart(2, '0');
   }

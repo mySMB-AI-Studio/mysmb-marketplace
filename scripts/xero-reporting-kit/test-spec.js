@@ -1,5 +1,5 @@
 // Tests for the reports that were written specifications before they moved onto the kit (Sales register, Exceptions dashboard,
-// Bank reconciliation status, General Ledger …), against the ledger fixture (ledger.js): every figure comes from one set of
+// Bank reconciliation status, General Ledger, Tracking P&L, Budget vs Actual, GST reconciliation, Report pack), against the ledger fixture (ledger.js): every figure comes from one set of
 // books, so a report's ties must pass, and a tampered source must fail. node test-spec.js [report]
 const { run } = require('./harness.js'); const L = require('./ledger.js'); const fs = require('fs'), path = require('path');
 const DIR = process.env.KIT_DIR || __dirname;
@@ -102,6 +102,70 @@ const d10 = (v) => new Date(+/-?\d+/.exec(v)[0]).toISOString().slice(0, 10);
     // a short feed (cut at 20 pages) → the tie is N/A and completeness fails
     const cut = await run('gl', man('gl'), FX(), { htmlPatch: (h) => h.replace("key: 'Journals', max: 20,", "key: 'Journals', max: 1,") }); await wait(150);
     ok('gl: a feed cut short → completeness fails, the P&L tie is N/A (never a false pass)', /✗ All journals for the period loaded/.test(banner(cut)) && /– Income and expense movement = the Profit and Loss for the same dates — N\/A — the journal feed was cut short/.test(banner(cut)), banner(cut).slice(0, 500));
+  }
+  if (!only || only === 'tc') {
+    const FX = () => ({ by_cat: L.pnl, by_cat_cash: L.pnl, pnl: L.pnl, pnl_cash: L.pnl, cats: L.listTrackingCategories, org: L.organisation, connections: L.connections });
+    const t = await run('tc', man('tc'), FX()); await wait(150);
+    const np = E.netProfit(FY, TO, false), cat = L.TRACKING[0];
+    ok('tc: a copy without a category opens on the first one (Region) and refetches only the tracking calls', /Profit and Loss by Region/.test(text(t.doc, '#xk-head')) && t.calls.filter((c) => c.requery).every((c) => /^by_cat/.test(c.id)) && t.calls.some((c) => c.requery && c.params.trackingCategoryID === cat.TrackingCategoryID), t.calls.filter((c) => c.requery).map((c) => c.id));
+    ok('tc: columns North | South | Unassigned | Total', [...t.doc.querySelectorAll('.xk-stmt thead th')].map((x) => x.textContent).slice(1).join('|') === 'North|South|Unassigned|Total');
+    ok('tc: 4/4 checks pass; the Total column\'s net profit = the P&L without tracking', green(t) && /4\/4 checks passed/.test(banner(t)) && new RegExp('the Profit and Loss without tracking.*' + fmt(np) + ' vs ' + fmt(np)).test(banner(t)) && t.errs.length === 0, banner(t).slice(0, 500));
+    const os = t.doc.getElementById('tc-opt'); os.value = 'opt-north'; os.dispatchEvent(new t.w.Event('change')); await t.settle(); await wait(30);
+    ok('tc: one option → its column beside the total, no refetch, kept in the display input', [...t.doc.querySelectorAll('.xk-stmt thead th')].map((x) => x.textContent).slice(1).join('|') === 'North|Total' && /opt=opt-north/.test(JSON.parse(t.setInputsLog[t.setInputsLog.length - 1].display).o), [...t.doc.querySelectorAll('.xk-stmt thead th')].map((x) => x.textContent));
+    const tp = (q) => { const r = L.pnl(q); if (q.trackingCategoryID) { const s = r.Reports[0].Rows.find((x) => x.Title === 'Income'); s.Rows[0].Cells[1].Value = '1.00'; } return r; };
+    const tt = await run('tc', man('tc'), Object.assign(FX(), { by_cat: tp })); await wait(150);
+    ok('tc: an option column that does not add up to the total → that check fails, red', /✗ Options \+ Unassigned = the Total column/.test(banner(tt)) && red(tt), banner(tt).slice(0, 400));
+    const none = await run('tc', man('tc'), Object.assign(FX(), { cats: () => ({ TrackingCategories: [] }) })); await wait(80);
+    ok('tc: no tracking categories → says so, no error', /no active tracking categories/.test(body(none)) && none.errs.length === 0, body(none).slice(0, 200));
+  }
+  if (!only || only === 'bv') {
+    const FX = () => ({ budget_fwd: L.budgetSummary, budget_back: L.budgetSummary, actual: L.pnl, actual_m: L.pnl, budgets: L.listBudgets, org: L.organisation, connections: L.connections });
+    const t = await run('bv', man('bv'), FX()); await wait(150);
+    const months = ['2026-07', '2026-08'], np = E.netProfit('2026-07-01', '2026-08-31', false);
+    const budNp = (() => { let n = 0; months.forEach((ym) => { const b = L.budgetMonth(ym); Object.keys(b).forEach((k) => { n += (/REVENUE|OTHERINCOME/.test(L.ACC[k].Type) ? 1 : -1) * b[k]; }); }); return Math.round(n * 100) / 100; })();
+    const whole = (v) => (v < 0 ? '\\(\\$' : '\\$') + Math.round(Math.abs(v)).toLocaleString('en-AU');
+    ok('bv: financial year to the end of last month by default (1 Jul – 31 Aug)', /For the 2 months ended 31 August 2026/.test(text(t.doc, '#xk-head')), text(t.doc, '#xk-head'));
+    ok('bv: net profit budget = the overall budget for July–August; actual = the books', new RegExp('Net profit — budget\\s*' + whole(budNp)).test(body(t)) && new RegExp('Net profit — actual\\s*' + whole(np)).test(body(t)), [budNp, np, body(t).slice(0, 160)]);
+    ok('bv: 4/4 checks pass (monthly actuals tie), green; several budgets → says the overall one is shown', green(t) && /4\/4 checks passed/.test(banner(t)) && /✓ Monthly actuals/.test(banner(t)) && /The Budget Summary always returns the overall budget/.test(body(t)) && t.errs.length === 0, banner(t).slice(0, 500));
+    ok('bv: an expense over budget is red, income over budget green', !!t.doc.querySelector('#bv-main td.num.pos') && !!t.doc.querySelector('#bv-main td.num.neg'));
+    await view(t, 'months');
+    ok('bv: By month — one row per month, no refetch', [...t.doc.querySelectorAll('#bv-main tbody tr')].length === 2 && t.calls.filter((c) => c.requery).length === 0);
+    // the other reading of the Budget Summary date (12 months ending at the date) is picked up too
+    const back = (q) => L.budgetSummary(Object.assign({}, q, { date: L.shiftMonths(q.date, -11, false) }));
+    const tb = await run('bv', man('bv'), Object.assign(FX(), { budget_fwd: back, budget_back: back })); await wait(150);
+    ok('bv: if Xero reads the date as the last month, the other call covers the period (still green)', green(tb) && new RegExp('Net profit — budget\\s*' + whole(budNp)).test(body(tb)), banner(tb).slice(0, 400));
+    const empty = (q) => { const r = L.budgetSummary(q); r.Reports[0].Rows.forEach((x) => (x.Rows || []).forEach((y) => y.Cells.slice(1).forEach((cl) => { cl.Value = '0.00'; }))); return r; };
+    const te = await run('bv', man('bv'), Object.assign(FX(), { budget_fwd: empty, budget_back: empty })); await wait(150);
+    ok('bv: no budget in Xero → says so, budget N/A (never $0)', /There is no budget in Xero/.test(body(te)) && /N\/A — no budget/.test(body(te)) && !red(te), body(te).slice(0, 300));
+  }
+  if (!only || only === 'gr') {
+    const FX = () => ({ invoices: L.listInvoices, credit_notes: L.listCreditNotes, bank_tx: L.listBankTransactions, tax_rates: L.listTaxRates, accounts: L.listAccounts, bs_end: L.bs, bs_start: L.bs, org: L.organisation, connections: L.connections });
+    const t = await run('gr', man('gr'), FX()); await wait(120);
+    const net = E.gst('2026-04-01', '2026-06-30');
+    ok('gr: last quarter by default; says plainly it is not a lodgeable BAS', /For the 3 months ended 30 June 2026/.test(text(t.doc, '#xk-head')) && /not a lodgeable BAS/.test(body(t)), text(t.doc, '#xk-head'));
+    ok('gr: net GST = the books', new RegExp('Net GST payable\\s*' + fmt(net)).test(body(t)), [net, body(t).slice(0, 300)]);
+    ok('gr: 5/5 checks pass — the GST account reconciles over two Balance Sheets (difference $0.00)', green(t) && /5\/5 checks passed/.test(banner(t)) && /Difference\$0\.00/.test(body(t).replace(/\s/g, '')) && t.errs.length === 0, banner(t).slice(0, 500));
+    await view(t, 'lines');
+    ok('gr: Tax lines — every line, filterable, no refetch', t.doc.querySelectorAll('#gr-grid tbody tr').length > 20 && t.calls.filter((c) => c.requery).length === 0);
+    const off = (q) => { const r = L.bs(q); for (const s of r.Reports[0].Rows) for (const k of s.Rows || []) if (k.Cells && k.Cells[0].Value === 'GST' && q.date === '2026-06-30') k.Cells[1].Value = String(+k.Cells[1].Value + 100); return r; };
+    const to = await run('gr', man('gr'), Object.assign(FX(), { bs_end: off })); await wait(120);
+    ok('gr: a GST account $100 out → the tie fails and lists possible causes (not asserted)', /✗ GST account at the period end/.test(banner(to)) && /Possible causes \(not checked\)/.test(body(to)) && red(to), banner(to).slice(0, 400));
+  }
+  if (!only || only === 'rp') {
+    const FX = () => ({ pnl: L.pnl, pnl_ytd: L.pnl, bs: L.bs, invoices: L.listInvoices, bills: L.listInvoices, credit_notes: L.listCreditNotes, overpayments: L.listOverpayments, org: L.organisation, connections: L.connections });
+    const t = await run('rp', man('rp'), FX()); await wait(150);
+    ok('rp: last month by default, cover and contents with four sections', /For the month ended 31 August 2026/.test(text(t.doc, '#xk-head')) && t.doc.querySelectorAll('#xk-body ol li').length === 4, text(t.doc, '#xk-head'));
+    ok('rp: green; CYE = the P&L from the year start; ageing vs past Balance Sheet is information', green(t) && /✓ Current Year Earnings on the Balance Sheet = Net Profit/.test(banner(t)) && /ℹ Aged Receivables \(today\)/.test(banner(t)) && t.errs.length === 0, banner(t).slice(0, 500));
+    const AR = E.balances(TO)['610'];
+    const m2 = man('rp'); m2.inputs.find((i) => i.name === 'to_date').default = 'today'; m2.inputs.find((i) => i.name === 'from_date').default = FY; const dd = m2.inputs.find((i) => i.name === 'display'); dd.default = dd.default.replace('"p":"last_month"', '"p":"this_fy_td"');
+    const t2 = await run('rp', m2, FX(), { bundleInputs: true }); await wait(150);
+    ok('rp: ending today → the ageing ties to the Balance Sheet (6/6)', green(t2) && /6\/6 checks passed/.test(banner(t2)) && new RegExp('✓ Aged Receivables total = Accounts Receivable on the Balance Sheet — ' + fmt(AR) + ' vs ' + fmt(AR)).test(banner(t2)), banner(t2).slice(0, 600));
+    const cb = [...t.doc.querySelectorAll('.rp-sec')].find((x) => x.value === 'ap'); cb.checked = false; cb.dispatchEvent(new t.w.Event('change')); await t.settle(); await wait(30);
+    ok('rp: switching a section off removes it, no refetch, kept in the display input', t.doc.querySelectorAll('#xk-body ol li').length === 3 && !/Aged Payables/.test(text(t.doc, '#xk-body ol')) && /s=pl,bs,ar/.test(JSON.parse(t.setInputsLog[t.setInputsLog.length - 1].display).o) && t.calls.filter((c) => c.requery).length === 0);
+    const xs = await xlsx(t); ok('rp: Excel — one sheet per section shown', /Profit and Loss/.test(xs) && /Balance Sheet/.test(xs) && /Aged Receivables/.test(xs));
+    const tb = (q) => { const r = L.bs(q); for (const s of r.Reports[0].Rows) for (const k of s.Rows || []) if (k.Cells && k.Cells[0].Value === 'Current Year Earnings') k.Cells[1].Value = '1.00'; return r; };
+    const tt = await run('rp', man('rp'), Object.assign(FX(), { bs: tb })); await wait(150);
+    ok('rp: Current Year Earnings that differs from the P&L → that check fails, red', /✗ Current Year Earnings on the Balance Sheet/.test(banner(tt)) && red(tt), banner(tt).slice(0, 400));
   }
   console.log(fails ? `\n${fails}/${total} checks FAILED` : `\nALL ${total} checks passed`);
   process.exit(fails ? 1 : 0);
