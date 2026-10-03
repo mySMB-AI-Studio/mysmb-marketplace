@@ -1,5 +1,5 @@
 QB.app({
-  title: 'Cash flow overview', token: null, primary: 'cash_flow_12m', company: 'company_info', prefs: 'prefs',
+  title: 'Cash Flow Overview', token: null, primary: 'cash_flow_12m', company: 'company_info', prefs: 'prefs',
   inputs: { persona: 'persona', display: 'display' },
   defaults: { cf_start: '2025-10-01', persona: 'Client', display: '{"cents":0,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"custom","a":"custom","c":"none","v":"balance","x":"upcoming"}' },
   uses: { cash_flow_12m: ['cf_start'], cash_accounts: [], open_invoices: [], open_bills: [], payments_received: [], bill_payments: [], expenses_paid: [], company_info: [], prefs: [] },

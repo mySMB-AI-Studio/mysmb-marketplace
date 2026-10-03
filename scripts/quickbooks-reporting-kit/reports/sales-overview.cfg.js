@@ -1,5 +1,5 @@
 QB.app({
-  title: 'Sales & Get Paid overview', token: null, primary: 'income_monthly', company: 'company_info', prefs: 'prefs',
+  title: 'Sales Overview', token: null, primary: 'income_monthly', company: 'company_info', prefs: 'prefs',
   inputs: { persona: 'persona', display: 'display' },
   defaults: { inc_start: '2025-10-01', inc_end: '2026-09-30', prev_start: '2024-10-01', prev_end: '2025-09-30', persona: 'Client',
     display: '{"cents":0,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"custom","a":"custom","c":"prev_year","v":"","x":"365"}' },

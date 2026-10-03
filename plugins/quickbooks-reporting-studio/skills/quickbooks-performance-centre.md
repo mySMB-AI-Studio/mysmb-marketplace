@@ -5,7 +5,7 @@ description: QuickBooks Online Performance centre (KPI charts) (Q06) as a live, 
 
 # Performance centre (KPI charts) (Q06)
 
-Use when the user asks for the performance centre, KPI charts, revenue / expenses / gross profit / net profit over time, current ratio, quick ratio, or a KPI dashboard. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Performance centre**. Template: `quickbooks-reporting-studio` / `quickbooks-performance-centre` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `get_report_balance_sheet`, `get_report_cash_flow`, `get_report_aged_receivables`, `get_report_aged_payables`, `qbo_query`, `get_preferences`).
+Use when the user asks for the performance centre, KPI charts, revenue / expenses / gross profit / net profit over time, current ratio, quick ratio, or a KPI dashboard. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Performance Overview**. Template: `quickbooks-reporting-studio` / `quickbooks-performance-centre` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `get_report_balance_sheet`, `get_report_cash_flow`, `get_report_aged_receivables`, `get_report_aged_payables`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Performance centre. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q06. Delivery: Wave 1.
 
@@ -252,7 +252,7 @@ Preset `this_fy_td`; compare dates one year earlier.
 
 ```js
 QB.app({
-  title: 'Performance centre', token: null, primary: 'pnl_monthly', company: 'company_info', prefs: 'prefs',
+  title: 'Performance Overview', token: null, primary: 'pnl_monthly', company: 'company_info', prefs: 'prefs',
   inputs: { start: 'start_date', end: 'end_date', basis: 'basis', cmpStart: 'compare_start', cmpEnd: 'compare_end', persona: 'persona', display: 'display' },
   defaults: { start_date: '2026-07-01', end_date: '2026-09-25', basis: 'Accrual', compare_start: '2025-07-01', compare_end: '2025-09-25', persona: 'Executive',
     display: '{"cents":0,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":"","x":""}' },

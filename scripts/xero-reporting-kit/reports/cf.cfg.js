@@ -1,5 +1,5 @@
 XK.app({
-  title: 'Cash flow manager', primary: 'bank', org: 'org', conns: 'connections', noBasis: true,
+  title: 'Cash Flow Manager', primary: 'bank', org: 'org', conns: 'connections', noBasis: true,
   inputs: { org: 'org', display: 'display' },
   defaults: { planned: '[]', as_at: '2026-09-25', past_from: '2026-08-26', past_where: 'Date>=DateTime(2026,08,26) AND Date<=DateTime(2026,09,25)', org: '', page: 1,
     display: '{"cents":0,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"today","c":"none","v":"overview","o":"d=30;od=ex"}' },

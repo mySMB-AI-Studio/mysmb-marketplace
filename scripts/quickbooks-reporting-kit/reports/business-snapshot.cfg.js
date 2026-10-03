@@ -1,5 +1,5 @@
 QB.app({
-  title: 'Business snapshot', token: null, primary: 'pnl', company: 'company_info', prefs: 'prefs',
+  title: 'Business Snapshot', token: null, primary: 'pnl', company: 'company_info', prefs: 'prefs',
   inputs: { start: 'start_date', end: 'end_date', cmpStart: 'compare_start', cmpEnd: 'compare_end', basis: 'basis', persona: 'persona', display: 'display' },
   defaults: { start_date: '2026-08-01', end_date: '2026-08-31', compare_start: '2025-08-01', compare_end: '2025-08-31', basis: 'Accrual', persona: 'Client',
     display: '{"cents":0,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"last_month","a":"custom","c":"prev_year","v":"","x":""}' },

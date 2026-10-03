@@ -1,10 +1,10 @@
 ---
 name: MYOB Cash Movement
-description: MYOB Cash movement (M05) as a live, validated report in MYOB styling. Use when the user asks for cash movement, where the cash went, cash in and out, or how the bank balance changed over a period.
+description: MYOB Cash Movement (M05) as a live, validated report in MYOB styling. Use when the user asks for cash movement, where the cash went, cash in and out, or how the bank balance changed over a period.
 ---
-# Cash movement (M05)
+# Cash Movement (M05)
 
-Use when the user asks for cash movement, where the cash went, cash in and out, or how the bank balance changed over a period. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Template: `myob-reporting-studio` / `cash-movement` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`get_profit_and_loss_3m`, `get_balance_sheet`, `list_accounts`, `list_company_files`).
+Use when the user asks for cash movement, where the cash went, cash in and out, or how the bank balance changed over a period. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Cash Movement**. Report title: **MYOB Cash Movement**. Report title: **MYOB Cash Movement**. Template: `myob-reporting-studio` / `cash-movement` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`get_profit_and_loss_3m`, `get_balance_sheet`, `list_accounts`, `list_company_files`).
 
 MYOB location: Reporting → Reports → Business → Cash movement. Library: MYOB Reports Prompt Library v1.2 → Prompts → M05. Delivery: Wave 1 (P1, delivery order 3).
 
@@ -192,7 +192,7 @@ Call `get_profit_and_loss_3m` once for the period (`reporting_basis` = `Accrual`
 
 ```js
 MK.app({
-  title: 'Cash movement', primary: 'pnl', files: 'company_files',
+  title: 'Cash Movement', primary: 'pnl', files: 'company_files',
   inputs: { start: 'from_date', end: 'to_date', companyFile: 'company_file', persona: 'persona', display: 'display' },
   defaults: { from_date: '2026-07-01', to_date: '2026-09-28', prev_day: '2026-06-30', company_file: '', persona: 'Bookkeeper',
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":0,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":"cm"}' },

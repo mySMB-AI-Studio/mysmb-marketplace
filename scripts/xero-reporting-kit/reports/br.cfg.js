@@ -1,5 +1,5 @@
 XK.app({
-  title: 'Bank reconciliation status', primary: 'bank', dated: ['bank'], org: 'org', conns: 'connections', noBasis: true,
+  title: 'Bank Reconciliation Status', primary: 'bank', dated: ['bank'], org: 'org', conns: 'connections', noBasis: true,
   inputs: { start: 'from_date', end: 'to_date', org: 'org', display: 'display' },
   defaults: { from_date: '2026-07-01', to_date: '2026-09-25', open_where: 'Status=="AUTHORISED" AND IsReconciled==false AND Date<=DateTime(2026,09,25)', done_where: 'Status=="AUTHORISED" AND IsReconciled==true AND Date>=DateTime(2026,07,01) AND Date<=DateTime(2026,09,25)', org: '', page: 1,
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":"accounts"}' },

@@ -4,7 +4,7 @@ description: Build a live, validated Xero Cash Summary (P10) on the tested repor
 ---
 # Cash Summary (P10)
 
-Use when the user asks for a cash summary, cash received and spent, where the cash went, or a cash-basis summary for a period. Load `xero-report-foundation` first and follow its *Build a kit report* steps. Template: `xero-reporting-studio` / `xero-cash-summary` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `xero-accounting` connector (`get_profit_and_loss`, `get_bank_summary`, `get_balance_sheet`, `get_organisation`, `list_connections`).
+Use when the user asks for a cash summary, cash received and spent, where the cash went, or a cash-basis summary for a period. Load `xero-report-foundation` first and follow its *Build a kit report* steps. Report title: **Xero Cash Summary**. Template: `xero-reporting-studio` / `xero-cash-summary` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `xero-accounting` connector (`get_profit_and_loss`, `get_bank_summary`, `get_balance_sheet`, `get_organisation`, `list_connections`).
 
 Xero location: Reporting → Cash Summary. Library: Xero Reports Prompt Library v1.2 → Prompts → P10. Delivery: Wave 2 (delivery order 9).
 

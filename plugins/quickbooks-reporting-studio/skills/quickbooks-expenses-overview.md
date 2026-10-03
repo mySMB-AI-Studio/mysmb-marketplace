@@ -5,7 +5,7 @@ description: QuickBooks Online Expenses & Pay Bills overview (Q10) as a live, va
 
 # Expenses & Pay Bills overview (Q10)
 
-Use when the user asks for the expenses overview, bills to pay, unpaid or overdue bills, spend over time, spend by supplier this month, or days payable outstanding (DPO). Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Expenses & Pay Bills overview**. Template: `quickbooks-reporting-studio` / `quickbooks-expenses-overview` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`list_bill`, `list_bill_payment`, `get_report_aged_payables`, `get_report_profit_and_loss`, `get_report_vendor_expenses`, `qbo_query`, `get_preferences`).
+Use when the user asks for the expenses overview, bills to pay, unpaid or overdue bills, spend over time, spend by supplier this month, or days payable outstanding (DPO). Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Purchases Overview**. Template: `quickbooks-reporting-studio` / `quickbooks-expenses-overview` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`list_bill`, `list_bill_payment`, `get_report_aged_payables`, `get_report_profit_and_loss`, `get_report_vendor_expenses`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: All apps › Expenses & Pay Bills › Overview. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q10. Delivery: Wave 2 (Train 04).
 
@@ -220,7 +220,7 @@ No manual dates: last quarter + this quarter (spend chart) and this month (spend
 
 ```js
 QB.app({
-  title: 'Expenses & Pay Bills overview', token: null, primary: 'spend_monthly', company: 'company_info', prefs: 'prefs',
+  title: 'Purchases Overview', token: null, primary: 'spend_monthly', company: 'company_info', prefs: 'prefs',
   inputs: { persona: 'persona', display: 'display' },
   defaults: { q_start: '2026-04-01', q_end: '2026-09-30', m_start: '2026-09-01', m_end: '2026-09-30', persona: 'Bookkeeper',
     display: '{"cents":0,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"custom","a":"custom","c":"none","v":"","x":""}' },

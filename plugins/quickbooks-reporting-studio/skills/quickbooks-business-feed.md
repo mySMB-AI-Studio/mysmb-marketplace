@@ -5,7 +5,7 @@ description: QuickBooks Online Business feed (Q01) as a live, validated report i
 
 # Business feed (Q01)
 
-Use when the user asks for the business feed, what's new in the business, a 'report ready' summary of last month, or quick insights on profit, spending, money owed and bills. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Business feed**. Template: `quickbooks-reporting-studio` / `quickbooks-business-feed` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `get_report_aged_receivables`, `get_report_aged_payables`, `qbo_query`, `get_preferences`).
+Use when the user asks for the business feed, what's new in the business, a 'report ready' summary of last month, or quick insights on profit, spending, money owed and bills. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Business Feed**. Template: `quickbooks-reporting-studio` / `quickbooks-business-feed` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `get_report_aged_receivables`, `get_report_aged_payables`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Feed › Business feed. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q01. Delivery: Wave 2 (Train 04).
 
@@ -154,7 +154,7 @@ No manual dates: the six-month window is set on every open.
 
 ```js
 QB.app({
-  title: 'Business feed', token: null, primary: 'pnl_monthly', company: 'company_info', prefs: 'prefs',
+  title: 'Business Feed', token: null, primary: 'pnl_monthly', company: 'company_info', prefs: 'prefs',
   inputs: { persona: 'persona', display: 'display' },
   defaults: { feed_start: '2026-03-01', feed_end: '2026-08-31', persona: 'Client',
     display: '{"cents":1,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"custom","a":"custom","c":"none","v":"","x":""}' },

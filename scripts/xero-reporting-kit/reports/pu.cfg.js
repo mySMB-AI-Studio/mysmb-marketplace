@@ -1,5 +1,5 @@
 XK.app({
-  title: 'Purchases overview', primary: 'invoices', org: 'org', conns: 'connections', noBasis: true,
+  title: 'Purchases Overview', primary: 'invoices', org: 'org', conns: 'connections', noBasis: true,
   inputs: { org: 'org', persona: 'persona', display: 'display' },
   defaults: { as_at: '2026-09-25', org: '', page: 1, persona: 'Bookkeeper',
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"today","c":"none","v":"docs","o":"r=30"}' },
@@ -92,14 +92,14 @@ XK.app({
     body.innerHTML = '<div class="xk-tabs detail-block">' + extra.tabs + '</div>' + strip + extra.html;
     (extra.after || []).forEach(function (f) { f(); });
     this._x = { P: P, extra: extra };
-    return { checks: checks, notes: extra.notes || [], na: extra.na, period: XK.asOfLine(asAt), title: 'Purchases overview' + (extra.viewTitle ? ' — ' + extra.viewTitle : '') };
+    return { checks: checks, notes: extra.notes || [], na: extra.na, period: XK.asOfLine(asAt), title: 'Purchases Overview' + (extra.viewTitle ? ' — ' + extra.viewTitle : '') };
   },
   excel: function (c) {
     var x = this._x; if (!x) return [];
-    var head = [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: 'Purchases overview', s: 'bold' }], [XK.asOfLine(c.inputs.as_at)], []];
+    var head = [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: 'Purchases Overview', s: 'bold' }], [XK.asOfLine(c.inputs.as_at)], []];
     var strip = [[{ v: 'Status', s: 'bold' }, { v: 'Count', s: 'bold' }, { v: 'Amount', s: 'bold' }]].concat([['Draft', x.P.draft], ['Awaiting approval', x.P.approval], ['Awaiting payment', x.P.awaiting], ['Overdue', x.P.overdue]].map(function (k) { return [k[0], k[1].n, { v: k[1].v, s: 'money' }]; }));
     var docs = [[{ v: 'Status', s: 'bold' }, { v: 'Number', s: 'bold' }, { v: 'Supplier', s: 'bold' }, { v: 'Date', s: 'bold' }, { v: 'Due date', s: 'bold' }, { v: 'Amount', s: 'bold' }]]
       .concat([['Draft', x.P.draft], ['Awaiting approval', x.P.approval], ['Awaiting payment', x.P.awaiting]].reduce(function (a, k) { return a.concat(k[1].docs.map(function (d) { return [k[0], d.number, d.contact, d.date, d.due, { v: k[0] === 'Awaiting payment' ? d.amount : d.total, s: 'money' }]; })); }, []));
-    return [{ name: 'Purchases overview', rows: head.concat(strip).concat((x.extra.sheet || [])), widths: [34, 12, 16, 12, 12, 16] }, { name: 'Bills', rows: docs, widths: [18, 14, 32, 12, 12, 16] }];
+    return [{ name: 'Purchases Overview', rows: head.concat(strip).concat((x.extra.sheet || [])), widths: [34, 12, 16, 12, 12, 16] }, { name: 'Bills', rows: docs, widths: [18, 14, 32, 12, 12, 16] }];
   }
 });

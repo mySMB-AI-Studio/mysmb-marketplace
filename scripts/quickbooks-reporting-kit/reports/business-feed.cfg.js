@@ -1,5 +1,5 @@
 QB.app({
-  title: 'Business feed', token: null, primary: 'pnl_monthly', company: 'company_info', prefs: 'prefs',
+  title: 'Business Feed', token: null, primary: 'pnl_monthly', company: 'company_info', prefs: 'prefs',
   inputs: { persona: 'persona', display: 'display' },
   defaults: { feed_start: '2026-03-01', feed_end: '2026-08-31', persona: 'Client',
     display: '{"cents":1,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"custom","a":"custom","c":"none","v":"","x":""}' },

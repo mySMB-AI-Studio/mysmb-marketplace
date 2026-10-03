@@ -1,5 +1,5 @@
 XK.app({
-  title: 'Exceptions dashboard', primary: 'bs', org: 'org', conns: 'connections', noBasis: true,
+  title: 'Exceptions Dashboard', primary: 'bs', org: 'org', conns: 'connections', noBasis: true,
   inputs: { org: 'org', display: 'display' },
   defaults: { as_at: '2026-09-25', org: '', page: 1,
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"today","c":"none","v":"all"}' },

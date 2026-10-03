@@ -1,5 +1,5 @@
 QB.app({
-  title: 'Expenses & Pay Bills overview', token: null, primary: 'spend_monthly', company: 'company_info', prefs: 'prefs',
+  title: 'Purchases Overview', token: null, primary: 'spend_monthly', company: 'company_info', prefs: 'prefs',
   inputs: { persona: 'persona', display: 'display' },
   defaults: { q_start: '2026-04-01', q_end: '2026-09-30', m_start: '2026-09-01', m_end: '2026-09-30', persona: 'Bookkeeper',
     display: '{"cents":0,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"custom","a":"custom","c":"none","v":"","x":""}' },

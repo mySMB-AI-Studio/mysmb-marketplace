@@ -5,7 +5,7 @@ description: QuickBooks Online Profit and Loss family (Q17) as a live, validated
 
 # Profit and Loss family (Q17)
 
-Use when the user asks for a profit and loss, P&L, income statement, profit report, P&L by month / quarter / customer / class / location, P&L comparison, P&L as % of income or year-to-date comparison. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Profit and Loss**. Template: `quickbooks-reporting-studio` / `quickbooks-profit-and-loss` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `qbo_query`, `get_preferences`).
+Use when the user asks for a profit and loss, P&L, income statement, profit report, P&L by month / quarter / customer / class / location, P&L comparison, P&L as % of income or year-to-date comparison. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Profit and Loss**. Template: `quickbooks-reporting-studio` / `quickbooks-profit-and-loss` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports › Business overview › Profit and Loss. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q17. Delivery: Wave 1.
 

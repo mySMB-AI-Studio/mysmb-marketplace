@@ -5,7 +5,7 @@ description: QuickBooks Online Sales and customers family (Q25) as a live, valid
 
 # Sales and customers family (Q25)
 
-Use when the user asks for sales by customer, sales by product or service, income by customer, top customers, product mix, the customer contact list, the product/service list or quotes by customer. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Sales and customers**. Template: `quickbooks-reporting-studio` / `quickbooks-sales-and-customers` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_customer_sales`, `get_report_item_sales`, `get_report_customer_income`, `get_report_profit_and_loss`, `list_customer`, `list_item`, `list_estimate`, `qbo_query`, `get_preferences`).
+Use when the user asks for sales by customer, sales by product or service, income by customer, top customers, product mix, the customer contact list, the product/service list or quotes by customer. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Customer Sales**. Template: `quickbooks-reporting-studio` / `quickbooks-sales-and-customers` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_customer_sales`, `get_report_item_sales`, `get_report_customer_income`, `get_report_profit_and_loss`, `list_customer`, `list_item`, `list_estimate`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports › Sales and customers. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q25. Delivery: Wave 2 (Train 03).
 

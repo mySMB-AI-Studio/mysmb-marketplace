@@ -1,5 +1,5 @@
 XK.app({
-  title: 'Performance overview', primary: 'pnl_12', dated: ['bs'], org: 'org', conns: 'connections',
+  title: 'Performance Overview', primary: 'pnl_12', dated: ['bs'], org: 'org', conns: 'connections',
   inputs: { asAt: 'end_date', basis: 'basis', org: 'org', display: 'display' },
   defaults: { end_date: '2026-08-31', m_start: '2026-08-01', prior_end: '2025-08-31', prior_m_start: '2025-08-01', window_start: '2025-09-01', basis: 'Accrual', org: '',
     display: '{"cents":0,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"end_last_month","c":"none","v":""}' },

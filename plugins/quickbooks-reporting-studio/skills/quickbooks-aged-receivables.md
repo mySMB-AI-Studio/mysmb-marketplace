@@ -5,7 +5,7 @@ description: QuickBooks Online Accounts receivable family (Q24) as a live, valid
 
 # Accounts receivable family (Q24)
 
-Use when the user asks for aged receivables, A/R ageing (aging), who owes us, debtors, overdue invoices, collections report, open invoices or customer balances. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Accounts receivable**. Template: `quickbooks-reporting-studio` / `quickbooks-aged-receivables` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_aged_receivables`, `get_report_aged_receivable_detail`, `list_invoice`, `get_report_balance_sheet`, `qbo_query`, `get_preferences`).
+Use when the user asks for aged receivables, A/R ageing (aging), who owes us, debtors, overdue invoices, collections report, open invoices or customer balances. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Aged Receivables**. Template: `quickbooks-reporting-studio` / `quickbooks-aged-receivables` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_aged_receivables`, `get_report_aged_receivable_detail`, `list_invoice`, `get_report_balance_sheet`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports › Who owes you. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q24. Delivery: Wave 1.
 

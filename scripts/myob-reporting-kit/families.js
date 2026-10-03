@@ -3,7 +3,7 @@
 module.exports = [
   {
     m: 'M04', skill: 'profit-and-loss', name: 'MYOB Profit and Loss', report: 'pnl', wave: 'Wave 1 (P1, delivery order 1)',
-    title: 'Profit and loss', menu: 'Reporting → Reports → Business → Profit and loss',
+    title: 'Profit and Loss', menu: 'Reporting → Reports → Business → Profit and loss',
     trigger: 'the user asks for a profit and loss, P&L, income statement, trading statement, net profit, income and expenses for a period, or a P&L comparison with last year',
     discovery: 'Call `get_profit_and_loss_3m` once with `from_date` = the financial-year start, `to_date` = today and `reporting_basis` = `Accrual`, and call `list_company_files` once. Expect `{StartDate, EndDate, ReportingBasis, AccountsBreakdown:[{Account:{UID,Name,DisplayID}, AccountTotal}]}` — one total per account and **no section totals** (the kit classifies each account with `list_accounts` and adds them up). An empty `AccountsBreakdown` means no activity, not an error. `{"__error": …}` is a failed call',
     dates: '`from_date` = start of the period asked for (default: financial-year start, e.g. `2026-07-01`); `to_date` = end of the period (default `"today"`). Set the display preset `p` to match (`this_fy_td` by default; `this_month`, `last_month`, `this_quarter`, `last_quarter`, `last_fy` or `custom`). Comparison dates are set by the kit from the Compare to control; leave their defaults.',
@@ -14,7 +14,7 @@ module.exports = [
   },
   {
     m: 'M02', skill: 'balance-sheet', name: 'MYOB Balance Sheet', report: 'bs', wave: 'Wave 1 (P1, delivery order 2)',
-    title: 'Balance sheet', menu: 'Reporting → Reports → Business → Balance sheet',
+    title: 'Balance Sheet', menu: 'Reporting → Reports → Business → Balance sheet',
     trigger: 'the user asks for a balance sheet, statement of financial position, net assets, assets and liabilities as at a date, or a balance sheet comparison',
     discovery: 'Call `get_balance_sheet` once with `date` = today and `reporting_basis` = `Accrual`, and call `list_company_files` once. Expect `{AsOfDate, AccountsBreakdown:[{Account:{UID,Name,DisplayID}, AccountTotal}]}` — no totals; values are positive in each account\'s normal balance (an overdrawn bank is negative). The Equity section includes MYOB\'s Current Year Earnings account (this year\'s profit to date). `{"__error": …}` is a failed call',
     dates: '`as_at` = the balance date asked for (default `"today"`); set the display preset `a` to `today`, `end_last_month`, `end_last_quarter`, `end_last_fy` or `custom` to match. `fy_start` is derived by the kit from `as_at` — leave its default. `compare_as_at` is set by the Compare to control.',
@@ -25,7 +25,7 @@ module.exports = [
   },
   {
     m: 'M03', skill: 'trial-balance', name: 'MYOB Trial Balance', report: 'tb', wave: 'Wave 1 (P1, delivery order 12)',
-    title: 'Trial balance', menu: 'Reporting → Reports → Business → Trial balance',
+    title: 'Trial Balance', menu: 'Reporting → Reports → Business → Trial balance',
     trigger: 'the user asks for a trial balance, TB, debits and credits by account, or every category\'s balance as at a date',
     discovery: 'Call `get_balance_sheet` once with `date` = today and `reporting_basis` = `Accrual`, and `list_company_files` once. MYOB\'s API has no trial balance report: the report takes balance-sheet accounts from the Balance Sheet at the date and income and expense accounts from the Profit and Loss for the financial year to that date. A `{"__error": …}` result is a failed call: report its message',
     dates: '`as_at` = the balance date (default `"today"`; display preset `a` = `today`, `end_last_month`, `end_last_quarter`, `end_last_fy` or `custom`). `fy_start` and `prev_fy_start` are derived by the kit — leave them. For a cash-basis request set `basis` to `Cash`. The view is display `v` (`tb` | `class`).',
@@ -36,7 +36,7 @@ module.exports = [
   },
   {
     m: 'M32', skill: 'unpaid-invoices', name: 'MYOB Unpaid Invoices', report: 'ar', wave: 'Wave 1 (P1, delivery order 4)',
-    title: 'Unpaid invoices', menu: 'Reporting → Reports → Sales → Unpaid invoices',
+    title: 'Unpaid Invoices', menu: 'Reporting → Reports → Sales → Unpaid invoices',
     trigger: 'the user asks for unpaid invoices, who owes them money, outstanding sales invoices, a chase list, or receivables by customer with ageing',
     discovery: 'Call `list_invoices` once with `status` = `Open`, and `list_company_files` once. Expect `{Count, Items:[{Number, Date, Customer{Name, DisplayID, UID}, BalanceDueAmount, TotalAmount, TotalTax, Terms{DueDate}, Status}]}`. A `{"__error": …}` result is a failed call: report its message',
     dates: 'Always as at today — MYOB\'s API gives today\'s open balances (the kit sets `as_at`; leave it). The ageing method is `method` (`Invoice date` — MYOB\'s default — or `Due date`). The view is display `v` (`customers` | `invoices`).',
@@ -47,7 +47,7 @@ module.exports = [
   },
   {
     m: 'M32', skill: 'aged-receivables', name: 'MYOB Aged Receivables', report: 'ag', wave: 'Wave 1 (P1 — the unpaid invoices report aged by due date)',
-    title: 'Aged receivables', menu: 'Reporting → Reports → Sales → Unpaid invoices (ageing by due date)',
+    title: 'Aged Receivables', menu: 'Reporting → Reports → Sales → Unpaid invoices (ageing by due date)',
     trigger: 'the user asks for aged receivables, aged debtors, an ageing of what customers owe, or overdue invoices by age',
     discovery: 'Call `list_invoices` once with `status` = `Open`, and `list_company_files` once. A `{"__error": …}` result is a failed call: report its message',
     dates: 'Always as at today — MYOB\'s API gives today\'s open balances. Ageing is by due date (`method` = `Due date`; set `Invoice date` for MYOB\'s default). The view is display `v` (`customers` | `invoices`).',
@@ -58,7 +58,7 @@ module.exports = [
   },
   {
     m: 'M33, M34', skill: 'receivables-reconciliation', name: 'MYOB Receivables Reconciliation', report: 'rr', wave: 'Wave 1 (P1, delivery order 5; M34 P2)',
-    title: 'Receivables reconciliation with tax', menu: 'Reporting → Reports → Sales → Receivables reconciliation with tax / Receivables reconciliation exceptions',
+    title: 'Receivables Reconciliation', menu: 'Reporting → Reports → Sales → Receivables reconciliation with tax / Receivables reconciliation exceptions',
     trigger: 'the user asks for a receivables reconciliation, to reconcile debtors or accounts receivable, whether the customer balances match the receivables account, or receivables exceptions',
     discovery: 'Call `list_invoices` once with `status` = `Open`, and `get_balance_sheet` once with `date` = today, and `list_company_files` once. A `{"__error": …}` result is a failed call: report its message',
     dates: 'Always as at today (MYOB\'s API gives today\'s open balances; the kit sets `as_at`). Reconciliation with tax (M33) or exceptions (M34) is display `v` (`recon` | `exceptions`).',
@@ -69,7 +69,7 @@ module.exports = [
   },
   {
     m: 'M38', skill: 'sales-register', name: 'MYOB Sales Register', report: 'sr', wave: 'Wave 1 (P1, delivery order 10)',
-    title: 'Sales register', menu: 'Reporting → Reports → Sales → Sales register',
+    title: 'Sales Register', menu: 'Reporting → Reports → Sales → Sales register',
     trigger: 'the user asks for a sales register, a list of sales invoices for a period, or invoices by status',
     discovery: 'Call `list_invoices` once with `status` = `All`, `from_date` / `to_date` = the period, and `list_company_files` once. A `{"__error": …}` result is a failed call: report its message',
     dates: '`from_date` / `to_date` = the period (default: the financial year to date; display preset `p` = `this_fy_td`, `this_month`, `last_month`, `this_quarter`, `last_quarter`, `last_fy` or `custom`). `status` = `All`, `Open` or `Closed`. `as_at` is set by the kit. The view is display `v` (`register` | `customers`).',
@@ -80,7 +80,7 @@ module.exports = [
   },
   {
     m: 'M35', skill: 'customer-sales', name: 'MYOB Customer Sales', report: 'cs', wave: 'Wave 1 (P1, delivery order 11)',
-    title: 'Customer sales', menu: 'Reporting → Reports → Sales → Customer sales',
+    title: 'Customer Sales', menu: 'Reporting → Reports → Sales → Customer sales',
     trigger: 'the user asks for customer sales, sales by customer, top customers, or how much each customer bought in a period',
     discovery: 'Call `list_invoices` once with `status` = `All`, `from_date` / `to_date` = the period, and `list_company_files` once. A `{"__error": …}` result is a failed call: report its message',
     dates: '`from_date` / `to_date` = the period (default: the financial year to date; display preset `p` as for the Sales register). `status` = `All`, `Open` or `Closed`. The view is display `v` (`customers` | `register`).',
@@ -91,7 +91,7 @@ module.exports = [
   },
   {
     m: 'M05', skill: 'cash-movement', name: 'MYOB Cash Movement', report: 'cm', wave: 'Wave 1 (P1, delivery order 3)',
-    title: 'Cash movement', menu: 'Reporting → Reports → Business → Cash movement',
+    title: 'Cash Movement', menu: 'Reporting → Reports → Business → Cash movement',
     trigger: 'the user asks for cash movement, where the cash went, cash in and out, or how the bank balance changed over a period',
     discovery: 'Call `get_profit_and_loss_3m` once for the period (`reporting_basis` = `Accrual`), `get_balance_sheet` once at the period end, and `list_company_files` once. A `{"__error": …}` result is a failed call: report its message',
     dates: '`from_date` / `to_date` = the period (default: the financial year to date; display preset `p` as for the Profit and Loss). `prev_day` is derived by the kit — leave it. The view is display `v` (`cm` | `bank`).',
@@ -102,7 +102,7 @@ module.exports = [
   },
   {
     m: 'M08', skill: 'general-ledger', name: 'MYOB General Ledger', report: 'gl', wave: 'Wave 1 (P1, delivery order 13)',
-    title: 'General ledger', menu: 'Reporting → Reports → Business → General ledger',
+    title: 'General Ledger', menu: 'Reporting → Reports → Business → General ledger',
     trigger: 'the user asks for a general ledger, GL, the transactions on a category or account, or every journal for a period',
     discovery: 'Call `list_journal_transactions` once with `from_date` / `to_date` = the period, and `list_company_files` once. Expect `{Count, Items:[{DisplayID, JournalType, DateOccurred, Description, Lines:[{Account{UID, Name, DisplayID}, Amount, IsCredit}]}]}`. A `{"__error": …}` result is a failed call: report its message',
     dates: '`from_date` / `to_date` = the period (default: this month; display preset `p` = `this_month`, `last_month`, `this_quarter`, `this_fy_td` or `custom`). `prev_day` and `fy_start` are derived by the kit — leave them. The view is display `v` (`accounts` | `transactions`).',

@@ -1,5 +1,5 @@
 MK.app({
-  title: 'Sales register', primary: 'pnl', files: 'company_files',
+  title: 'Sales Register', primary: 'pnl', files: 'company_files',
   inputs: { start: 'from_date', end: 'to_date', companyFile: 'company_file', persona: 'persona', display: 'display' },
   defaults: { from_date: '2026-07-01', to_date: '2026-09-28', as_at: '2026-09-28', status: 'All', company_file: '', persona: 'Bookkeeper',
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":0,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":"register"}' },
@@ -43,7 +43,7 @@ MK.app({
       view === 'customers' && open ? { name: 'Every customer\'s current balance (open invoices, as on Unpaid invoices) adds up to the receivables account on the Balance Sheet', pass: control == null ? null : MK.near(MK.sum(Object.keys(bal).map(function (k) { return bal[k]; })), control), detail: money(MK.sum(Object.keys(bal).map(function (k) { return bal[k]; }))) + ' on ' + open.length + ' open invoice(s)' + (control == null ? '' : ' vs ' + money(control)) } : null
     ].filter(Boolean);
     this._x = { list: list, cust: cust, T: T, view: view };
-    return { checks: checks, title: view === 'customers' ? 'Customer sales' : 'Sales register', notes: ['Sales invoices dated in the period (MYOB\'s generic invoice list); sale amount = the subtotal before tax.' + (view === 'customers' ? ' Current balance is each customer\'s balance due on every open invoice today.' : '')],
+    return { checks: checks, title: view === 'customers' ? 'Customer Sales' : 'Sales Register', notes: ['Sales invoices dated in the period (MYOB\'s generic invoice list); sale amount = the subtotal before tax.' + (view === 'customers' ? ' Current balance is each customer\'s balance due on every open invoice today.' : '')],
       na: ['Quotes and orders (the connector reads invoices only)', 'Salesperson (employee) filter — not in the invoice list'] };
   },
   excel: function (c) {

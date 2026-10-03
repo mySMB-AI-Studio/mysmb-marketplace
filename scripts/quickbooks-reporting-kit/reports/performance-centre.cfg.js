@@ -1,5 +1,5 @@
 QB.app({
-  title: 'Performance centre', token: null, primary: 'pnl_monthly', company: 'company_info', prefs: 'prefs',
+  title: 'Performance Overview', token: null, primary: 'pnl_monthly', company: 'company_info', prefs: 'prefs',
   inputs: { start: 'start_date', end: 'end_date', basis: 'basis', cmpStart: 'compare_start', cmpEnd: 'compare_end', persona: 'persona', display: 'display' },
   defaults: { start_date: '2026-07-01', end_date: '2026-09-25', basis: 'Accrual', compare_start: '2025-07-01', compare_end: '2025-09-25', persona: 'Executive',
     display: '{"cents":0,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":"","x":""}' },

@@ -1,5 +1,5 @@
 XK.app({
-  title: 'Cash position', primary: 'bs_12', dated: ['bs_12'], org: 'org', conns: 'connections', noBasis: true,
+  title: 'Cash Position', primary: 'bs_12', dated: ['bs_12'], org: 'org', conns: 'connections', noBasis: true,
   inputs: { asAt: 'end_date', org: 'org', display: 'display' },
   defaults: { end_date: '2026-08-31', m_start: '2026-08-01', window_start: '2025-09-01', prior_start: '2024-09-01', prior_end: '2025-08-31', org: '', page: 1,
     display: '{"cents":0,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"end_last_month","c":"none","v":""}' },

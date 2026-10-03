@@ -1,5 +1,5 @@
 XK.app({
-  title: 'Report pack', basisLabel: 'Accrual', primary: 'pnl', dated: ['pnl'], org: 'org', conns: 'connections', noBasis: true,
+  title: 'Report Pack', basisLabel: 'Accrual', primary: 'pnl', dated: ['pnl'], org: 'org', conns: 'connections', noBasis: true,
   inputs: { start: 'from_date', end: 'to_date', org: 'org', display: 'display' },
   defaults: { from_date: '2026-08-01', to_date: '2026-08-31', fy_start: '2026-07-01', org: '', page: 1,
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"last_month","a":"custom","c":"none","v":"","o":"s=pl,bs,ar,ap"}' },

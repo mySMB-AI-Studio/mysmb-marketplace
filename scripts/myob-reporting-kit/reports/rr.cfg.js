@@ -1,5 +1,5 @@
 MK.app({
-  title: 'Receivables reconciliation with tax', primary: 'bs', files: 'company_files',
+  title: 'Receivables Reconciliation', primary: 'bs', files: 'company_files',
   // no as-at control: MYOB's API gives today's open balances, so the reconciliation is always as at today
   inputs: { companyFile: 'company_file', persona: 'persona', display: 'display' },
   defaults: { as_at: '2026-09-28', company_file: '', persona: 'Bookkeeper',

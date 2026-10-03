@@ -5,7 +5,7 @@ description: QuickBooks Online Projects overview (Q13) as a live, validated repo
 
 # Projects overview (Q13)
 
-Use when the user asks for the projects overview, how projects are going, project income and profit, or estimates vs actual income for projects. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report name: **Projects overview**. Template: `quickbooks-reporting-studio` / `quickbooks-projects-overview` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `list_customer`, `list_estimate`, `qbo_query`, `get_preferences`).
+Use when the user asks for the projects overview, how projects are going, project income and profit, or estimates vs actual income for projects. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Projects Overview**. Template: `quickbooks-reporting-studio` / `quickbooks-projects-overview` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `list_customer`, `list_estimate`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: All apps › Projects › Overview. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q13. Delivery: Wave 3 (Train 05).
 
@@ -182,7 +182,7 @@ Preset `this_fy_td`.
 
 ```js
 QB.app({
-  title: 'Projects overview', token: 'PROJECT_PROFITABILITY', route: 'reportv2', primary: 'pnl_by_customer', company: 'company_info', prefs: 'prefs',
+  title: 'Projects Overview', token: 'PROJECT_PROFITABILITY', route: 'reportv2', primary: 'pnl_by_customer', company: 'company_info', prefs: 'prefs',
   inputs: { start: 'start_date', end: 'end_date', basis: 'basis', persona: 'persona', display: 'display' },
   defaults: { start_date: '2026-07-01', end_date: '2026-09-25', basis: 'Accrual', persona: 'Executive',
     display: '{"cents":0,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":"overview","x":""}' },

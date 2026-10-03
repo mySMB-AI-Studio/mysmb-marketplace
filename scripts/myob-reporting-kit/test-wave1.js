@@ -41,7 +41,7 @@ const E = L.expect, T = L.TODAY, FY = '2026-07-01';
     const ta = await go('ar', { bs: tamperBs('1-1200', 50) });
     ok('ar: a receivables account $50 off → the tie fails with the out-of-balance amount', /✗ Total due = the receivables account/.test(banner(ta)) && /out of balance \(\$50\.00\)/.test(banner(ta)) && red(ta), banner(ta).slice(0, 400));
     const ag = await go('ag');
-    ok('ag (Aged receivables): opens aged by due date, same total', /Aged receivables/.test(text(ag.doc, 'header')) && /Not due/.test(body(ag)) && green(ag), text(ag.doc, 'header'));
+    ok('ag (Aged receivables): opens aged by due date, same total', /Aged Receivables/.test(text(ag.doc, 'header')) && /Not due/.test(body(ag)) && green(ag), text(ag.doc, 'header'));
   }
   if (!only || only === 'rr') {
     const t = await go('rr');
@@ -60,7 +60,7 @@ const E = L.expect, T = L.TODAY, FY = '2026-07-01';
     const ts = await run('sr', m, FX(m), { bundleInputs: true }); await wait(80);
     ok('sr: a period without every open invoice → the receivables line is information, not a failure', /ℹ Σ amount due vs the receivables account \(information/.test(banner(ts)) && !red(ts), banner(ts).slice(0, 500));
     const cs = await go('cs');
-    ok('cs (Customer sales): opens on the customer view, balances tie to the receivables account', /Customer sales/.test(text(cs.doc, 'header')) && /Customer nameCustomer numberSale amount/.test(body(cs)) && /✓ Every customer's current balance/.test(banner(cs)) && green(cs), banner(cs).slice(0, 500));
+    ok('cs (Customer sales): opens on the customer view, balances tie to the receivables account', /Customer Sales/.test(text(cs.doc, 'header')) && /Customer nameCustomer numberSale amount/.test(body(cs)) && /✓ Every customer's current balance/.test(banner(cs)) && green(cs), banner(cs).slice(0, 500));
   }
   if (!only || only === 'cm') {
     const t = await go('cm');

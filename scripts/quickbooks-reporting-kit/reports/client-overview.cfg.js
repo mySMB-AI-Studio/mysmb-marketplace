@@ -1,5 +1,5 @@
 QB.app({
-  title: 'Client overview', token: null, primary: 'aged_receivables', company: 'company_info', prefs: 'prefs',
+  title: 'Client Overview', token: null, primary: 'aged_receivables', company: 'company_info', prefs: 'prefs',
   inputs: { persona: 'persona', display: 'display' },
   defaults: { tx_start: '2026-08-27', persona: 'Practitioner',
     display: '{"cents":1,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"custom","a":"custom","c":"none","v":"","x":""}' },
