@@ -4,7 +4,7 @@ description: Build a live, validated Xero Profit and Loss (P06) on the tested re
 ---
 # Profit and Loss (P06)
 
-Use when the user asks for a profit and loss, P&L, income statement, trading statement, net profit, income and expenses for a period, or a P&L comparison with last year. Load `xero-report-foundation` first and follow its *Build a kit report* steps. Template: `xero-reporting-studio` / `xero-profit-and-loss` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `xero-accounting` connector (`get_profit_and_loss`, `get_balance_sheet`, `list_tracking_categories`, `get_organisation`, `list_connections`).
+Use when the user asks for a profit and loss, P&L, income statement, trading statement, net profit, income and expenses for a period, or a P&L comparison with last year. Load `xero-report-foundation` first and follow its *Build a kit report* steps. Report title: **Xero Profit and Loss**. Template: `xero-reporting-studio` / `xero-profit-and-loss` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `xero-accounting` connector (`get_profit_and_loss`, `get_balance_sheet`, `list_tracking_categories`, `get_organisation`, `list_connections`).
 
 Xero location: Reporting → Profit and Loss. Library: Xero Reports Prompt Library v1.2 → Prompts → P06. Delivery: Wave 1 (delivery order 1).
 

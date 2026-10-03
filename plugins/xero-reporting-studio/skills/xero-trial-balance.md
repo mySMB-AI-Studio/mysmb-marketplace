@@ -4,7 +4,7 @@ description: Build a live, validated Xero Trial Balance on the tested report kit
 ---
 # Trial Balance (TB)
 
-Use when the user asks for a trial balance, TB, debits and credits by account, or account balances as at a date. Load `xero-report-foundation` first and follow its *Build a kit report* steps. Template: `xero-reporting-studio` / `xero-trial-balance` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `xero-accounting` connector (`get_trial_balance`, `get_balance_sheet`, `get_organisation`, `list_connections`).
+Use when the user asks for a trial balance, TB, debits and credits by account, or account balances as at a date. Load `xero-report-foundation` first and follow its *Build a kit report* steps. Report title: **Xero Trial Balance**. Template: `xero-reporting-studio` / `xero-trial-balance` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `xero-accounting` connector (`get_trial_balance`, `get_balance_sheet`, `get_organisation`, `list_connections`).
 
 Xero location: Reporting → Trial Balance. Library: Xero Reports Prompt Library v1.2 → Prompts → TB. Delivery: Added skill (not in the P01–P15 library).
 

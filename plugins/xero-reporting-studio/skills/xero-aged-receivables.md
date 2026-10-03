@@ -2,9 +2,9 @@
 name: xero-aged-receivables
 description: Build a live, validated Xero Aged Receivables Summary (P08) on the tested report kit — every customer's open invoices, credit notes, overpayments and prepayments aged by due or invoice date, with a percentage row, drill-down and a tie to Accounts Receivable. Use for "aged receivables", "aged debtors", "who owes us", "overdue invoices", "debtors ageing".
 ---
-# Aged Receivables Summary (P08)
+# Aged Receivables (P08)
 
-Use when the user asks for aged receivables, aged debtors, a debtors ageing, who owes the business money, or overdue sales invoices by customer. Load `xero-report-foundation` first and follow its *Build a kit report* steps. Template: `xero-reporting-studio` / `xero-aged-receivables` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `xero-accounting` connector (`list_invoices`, `list_payments`, `list_credit_notes`, `list_overpayments`, `list_prepayments`, `get_balance_sheet`, `get_organisation`, `list_connections`).
+Use when the user asks for aged receivables, aged debtors, a debtors ageing, who owes the business money, or overdue sales invoices by customer. Load `xero-report-foundation` first and follow its *Build a kit report* steps. Report title: **Xero Aged Receivables**. Template: `xero-reporting-studio` / `xero-aged-receivables` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `xero-accounting` connector (`list_invoices`, `list_payments`, `list_credit_notes`, `list_overpayments`, `list_prepayments`, `get_balance_sheet`, `get_organisation`, `list_connections`).
 
 Xero location: Reporting → Aged Receivables Summary. Library: Xero Reports Prompt Library v1.2 → Prompts → P08. Delivery: Wave 1 (delivery order 3).
 
@@ -305,7 +305,7 @@ Call `get_organisation` and `list_connections` once, and `list_invoices` once wi
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Aged Receivables Summary</title>
+<title>Aged Receivables</title>
 <style>:root{--accent:#13B5EA;--btn:#0078C8;--btn-ink:#FFFFFF;--ink:#393A3D;--muted:#6B6C72;--line:#E3E5E8;--canvas:#F4F5F8;--card:#FFFFFF;--th:#6B6C72;--zebra:transparent;--neg:#D52B1E;--pos:#1B7F4B;--pass-bg:#EAF6E8;--fail-bg:#FDECEA;--band:#FFFFFF;--band-ink:#393A3D;--cover:#1B2A4A;--cover-ink:#FFFFFF;--c1:#13B5EA;--c2:#9E9E9E;--c3:#172B4D;--c4:#00B0A0;--c5:#E0457B;--c6:#6F2CBA;--d1:#13B5EA;--d2:#172B4D;--d3:#00B0A0;--d4:#E0457B;--d5:#6F2CBA;--d6:#9E9E9E}
 :root[data-myhub-theme='dark']{--accent:#3CC4F0;--btn:#1590D4;--btn-ink:#FFFFFF;--ink:#E6E8EB;--muted:#A3A7AE;--line:#33363C;--canvas:#16181B;--card:#1F2226;--th:#A3A7AE;--neg:#FF6B5E;--pos:#4CC38A;--pass-bg:#18301A;--fail-bg:#3A1B19;--band:#1F2226;--band-ink:#E6E8EB;--cover:#22324F;--cover-ink:#FFFFFF;--c1:#3CC4F0;--c2:#80858D;--c3:#9FB3D1;--c4:#2BC4B3;--c5:#F06A96;--c6:#A77BE8;--d1:#3CC4F0;--d2:#9FB3D1;--d3:#2BC4B3;--d4:#F06A96;--d5:#A77BE8;--d6:#80858D}
 :root.style-mysmb{--accent:#00B0A0;--btn:#007A6E;--zebra:#E6F7F5;--band:#007A6E;--band-ink:#FFFFFF;--cover:#007A6E;--th-bg:#007A6E;--th-ink:#FFFFFF;--c1:#007A6E;--c2:#00B0A0;--c3:#6F2CBA;--c4:#9E9E9E;--c5:#1B7F4B;--c6:#C8102E;--d1:#007A6E;--d2:#00B0A0;--d3:#6F2CBA;--d4:#9E9E9E;--d5:#1B7F4B;--d6:#C8102E;--pos:#1B7F4B;--neg:#C8102E}
@@ -576,7 +576,7 @@ adoptHeader(),status(""),S.first){S.first=!1;var roll=rollPresets();if(roll){cha
 status("Refreshing\u2026")}),MH.onThemeChange&&MH.onThemeChange(function(){render()}),{state:S,change,render,exportXlsx,ctx,retryLimited}):(status("Open this report in mySMB to load Xero data."),{state:S})}window.XK={ageingCols,app,asOfLine,bars,byContact,find,footerStamp,grid,h,isoDate,kpis,money,near,
 num,openDocs,parse,pct,sum,val,walk};})();</script>
 <script>XK.app({
-  title: 'Aged Receivables Summary', primary: 'invoices', dated: ['bs'], org: 'org', conns: 'connections', noBasis: true,
+  title: 'Aged Receivables', primary: 'invoices', dated: ['bs'], org: 'org', conns: 'connections', noBasis: true,
   inputs: { asAt: 'as_at', org: 'org', persona: 'persona', display: 'display' },
   defaults: { as_at: '2026-09-30', paid_where: 'Type=="ACCREC" AND FullyPaidOnDate>DateTime(2026,09,30)', pay_where: 'PaymentType=="ACCRECPAYMENT" AND Date>DateTime(2026,09,30)', org: '', page: 1, persona: 'Bookkeeper',
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"end_this_month","c":"none","v":"","o":"by=due;n=4;len=m;g=none"}' },
@@ -667,17 +667,17 @@ num,openDocs,parse,pct,sum,val,walk};})();</script>
   },
   excel: function (c) {
     var x = this._x; if (!x) return [];
-    var head = [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: 'Aged Receivables Summary', s: 'bold' }], [XK.asOfLine(c.inputs.as_at) + ' · Ageing by ' + (c.opt('by') === 'inv' ? 'invoice date' : 'due date')], [], [{ v: 'Contact', s: 'bold' }].concat(x.cols.map(function (col) { return { v: col.title, s: 'bold' }; })).concat([{ v: 'Total', s: 'bold' }])];
+    var head = [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: 'Aged Receivables', s: 'bold' }], [XK.asOfLine(c.inputs.as_at) + ' · Ageing by ' + (c.opt('by') === 'inv' ? 'invoice date' : 'due date')], [], [{ v: 'Contact', s: 'bold' }].concat(x.cols.map(function (col) { return { v: col.title, s: 'bold' }; })).concat([{ v: 'Total', s: 'bold' }])];
     var rows = head.concat(x.contacts.map(function (k) { return [k.name].concat(x.cols.map(function (col) { return { v: k.b[col.j], s: 'money' }; })).concat([{ v: k.total, s: 'money' }]); }));
     rows.push([{ v: 'Total', s: 'bold' }].concat(x.cols.map(function (col) { return { v: x.tot[col.j], s: 'moneyBold' }; })).concat([{ v: x.grand, s: 'moneyBold' }]));
     rows.push([{ v: 'Percentage of total', s: 'bold' }].concat(x.cols.map(function (col) { return x.grand ? { v: x.tot[col.j] / x.grand, s: 'pct' } : null; })).concat([x.grand ? { v: 1, s: 'pct' } : null]));
     rows.push([], [{ v: XK.footerStamp(null, c.fetchedAt, c.currency), s: 'muted' }]);
     var docs = [[{ v: 'Contact', s: 'bold' }, { v: 'Type', s: 'bold' }, { v: 'Number', s: 'bold' }, { v: 'Date', s: 'bold' }, { v: 'Due date', s: 'bold' }, { v: 'Ageing', s: 'bold' }, { v: 'Amount', s: 'bold' }, { v: 'Currency', s: 'bold' }]]
       .concat(x.docs.map(function (d) { return [d.contact, d.kind, d.number, d.date, d.due, d.bucket, { v: d.amount, s: 'money' }, d.cur]; }));
-    return [{ name: 'Aged Receivables Summary', rows: rows, widths: [36].concat(x.cols.map(function () { return 14; })).concat([16]) }, { name: 'Documents', rows: docs, widths: [32, 14, 14, 12, 12, 12, 16, 10] }];
+    return [{ name: 'Aged Receivables', rows: rows, widths: [36].concat(x.cols.map(function () { return 14; })).concat([16]) }, { name: 'Documents', rows: docs, widths: [32, 14, 14, 12, 12, 12, 16, 10] }];
   }
 });</script>
-<script data-xk-check>(function(){var s=document.scripts,k="",f="",i,t;for(i=0;i<s.length;i++){t=s[i].text;if(s[i].type||s[i].hasAttribute("data-xk-check"))continue;if(!k&&t.indexOf("window.XK")>=0)k=t;else if(t.indexOf("XK.app(")>=0)f=t}var r=f.indexOf("render: function"),x=(k+(r<0?f:f.slice(r))).replace(/\s+/g,""),h=2166136261;for(i=0;i<x.length;i++)h=Math.imul(h^x.charCodeAt(i),16777619)>>>0;window.__xkIntegrity={ok:h.toString(16)=="b26f2fcc"};if(!window.__xkIntegrity.ok){var d=document.createElement("div");d.className="xk-banner fail";d.setAttribute("role","alert");d.textContent="This copy of the report is damaged (its code differs from the tested version), so its figures can't be trusted. Ask the agent to create it again.";document.body.prepend(d)}})()</script>
+<script data-xk-check>(function(){var s=document.scripts,k="",f="",i,t;for(i=0;i<s.length;i++){t=s[i].text;if(s[i].type||s[i].hasAttribute("data-xk-check"))continue;if(!k&&t.indexOf("window.XK")>=0)k=t;else if(t.indexOf("XK.app(")>=0)f=t}var r=f.indexOf("render: function"),x=(k+(r<0?f:f.slice(r))).replace(/\s+/g,""),h=2166136261;for(i=0;i<x.length;i++)h=Math.imul(h^x.charCodeAt(i),16777619)>>>0;window.__xkIntegrity={ok:h.toString(16)=="f1a27b28"};if(!window.__xkIntegrity.ok){var d=document.createElement("div");d.className="xk-banner fail";d.setAttribute("role","alert");d.textContent="This copy of the report is damaged (its code differs from the tested version), so its figures can't be trusted. Ask the agent to create it again.";document.body.prepend(d)}})()</script>
 </body>
 </html>
 ```
