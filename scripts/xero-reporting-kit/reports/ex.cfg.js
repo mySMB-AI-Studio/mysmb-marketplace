@@ -3,9 +3,9 @@ XK.app({
   inputs: { org: 'org', display: 'display' },
   defaults: { as_at: '2026-09-25', org: '', page: 1,
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"xero","dens":"100","p":"custom","a":"today","c":"none","v":"all"}' },
-  uses: { invoices: ['org'], bills: ['org'], bs: ['as_at', 'org'], org: ['org'], connections: [] },
+  uses: { invoices: ['org'], bills: ['org'], tb: ['as_at', 'org'], org: ['org'], connections: [] },
   paged: { invoices: { input: 'page', key: 'Invoices' }, bills: { input: 'page', key: 'Invoices' } },
-  tools: { invoices: 'list_invoices (sales invoices: draft, awaiting approval, awaiting payment)', bills: 'list_invoices (bills: draft, awaiting approval, awaiting payment)', bs: 'get_balance_sheet (Accounts Receivable and Payable today, for information)', org: 'get_organisation', connections: 'list_connections' },
+  tools: { invoices: 'list_invoices (sales invoices: draft, awaiting approval, awaiting payment)', bills: 'list_invoices (bills: draft, awaiting approval, awaiting payment)', tb: 'get_trial_balance (Accounts Receivable and Payable today, for information — exact; Xero\'s Balance Sheet is only at month ends)', org: 'get_organisation', connections: 'list_connections' },
   roll: function () { return { as_at: XK.asAt('today') }; }, // exceptions are always as at today
   views: [['all', 'All exceptions'], ['overdue', 'Overdue only'], ['drafts', 'Drafts only']],
   render: function (c) {
@@ -39,13 +39,13 @@ XK.app({
     // checks
     var leak = ex.filter(function (x) { return !(x.status === 'DRAFT' || x.status === 'SUBMITTED' || (x.status === 'AUTHORISED' && x.due < asAt && x.amount)); });
     var sumCards = r2(C.ds.v + C.db.v + C.os.v + C.ob.v), sumRows = XK.sum(ex.map(function (x) { return x.amount; }));
-    var bs = c.data.bs ? XK.bsParts(XK.walk(c.data.bs)) : null;
+    var tbT = c.data.tb ? XK.tbYtd(c.data.tb) : null, arv = tbT ? tbT.named(/^accounts receivable$/i) : null, apv = tbT ? tbT.named(/^accounts payable$/i) : null, bs = tbT ? { ar: arv, ap: apv == null ? null : Math.round(-apv * 100) / 100 } : null;
     var awaitS = XK.pipeline(c.rows('invoices').filter(function (d) { return d && d.Type === 'ACCREC'; }), asAt, base).awaiting.v, awaitP = XK.pipeline(c.rows('bills').filter(function (d) { return d && d.Type === 'ACCPAY'; }), asAt, base).awaiting.v;
     var trunc = c.truncated('invoices') || c.truncated('bills');
     var checks = [
       { name: 'Card totals = the rows behind them', pass: XK.near(sumCards, sumRows), detail: money(sumCards) + ' vs ' + money(sumRows) + ' (' + ex.length + ' item(s))' },
       { name: 'Every listed item is a draft, awaiting approval, or overdue at ' + asAt, pass: leak.length === 0, detail: leak.length ? leak.length + ' item(s) should not be listed, e.g. ' + leak[0].number : 'Paid and not-yet-due items are left out' },
-      { name: 'Awaiting payment vs Accounts Receivable and Payable on the Balance Sheet (information)', pass: null, info: true, detail: bs && bs.ar != null && bs.ap != null ? 'Sales ' + money(awaitS) + ' vs ' + money(bs.ar) + ' · Bills ' + money(awaitP) + ' vs ' + money(bs.ap) + (XK.near(awaitS, bs.ar) && XK.near(awaitP, bs.ap) ? ' — they match' : ' — the Balance Sheet also nets unallocated credit notes, overpayments and prepayments, and leaves out future-dated documents') : (c.err('bs') || 'N/A') },
+      { name: 'Awaiting payment vs Accounts Receivable and Payable on the Trial Balance today (information)', pass: null, info: true, detail: bs && bs.ar != null && bs.ap != null ? 'Sales ' + money(awaitS) + ' vs ' + money(bs.ar) + ' · Bills ' + money(awaitP) + ' vs ' + money(bs.ap) + (XK.near(awaitS, bs.ar) && XK.near(awaitP, bs.ap) ? ' — they match' : ' — the accounts also net unallocated credit notes, overpayments and prepayments, and leave out future-dated documents') : (c.err('tb') || 'N/A') },
       { name: 'All draft, unapproved and unpaid invoices and bills loaded', pass: trunc ? false : true, detail: trunc ? 'May be truncated (over 20 pages)' : c.rows('invoices').length + ' invoice(s), ' + c.rows('bills').length + ' bill(s) checked' }
     ];
     this._x = { ex: ex, C: C };

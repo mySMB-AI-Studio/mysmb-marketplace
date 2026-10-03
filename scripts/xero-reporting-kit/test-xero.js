@@ -7,7 +7,8 @@ let total = 0, fails = 0;
 const ok = (name, cond, info) => { total++; if (cond) console.log('  ✓ ' + name); else { fails++; console.log('  FAIL ' + name + (info !== undefined ? ' ' + (typeof info === 'string' ? info : JSON.stringify(info)).slice(0, 700) : '')); } };
 const set = async (t, id, val) => { const el = t.doc.getElementById(id); el.value = val; el.dispatchEvent(new t.w.Event('change')); await t.settle(); await t.settle(); };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-const PL = () => ({ pnl: F.pnl, pnl_cash: F.pnl, pnl_compare: F.pnl, pnl_compare_cash: F.pnl, bs_end: F.bs, org: F.organisation, connections: F.connections });
+const PL = () => ({ pnl: F.pnl, pnl_cash: F.pnl, pnl_compare: F.pnl, pnl_compare_cash: F.pnl, tb_end: F.trialBalance, org: F.organisation, connections: F.connections });
+const tbMove = (delta) => (q) => { const r = F.trialBalance(q), c = r.Reports[0].Rows.find((x) => x.Title === 'Revenue').Rows[0].Cells; c[4].Value = (+c[4].Value + delta).toFixed(2); return r; };
 const BSX = () => ({ bs: F.bs, bs_cash: F.bs, bs_compare: F.bs, bs_compare_cash: F.bs, pnl_ytd: F.pnl, org: F.organisation, connections: F.connections });
 const banner = (t) => text(t.doc, '#xk-banner'), body = (t) => text(t.doc, '#xk-body');
 const green = (t) => t.doc.querySelector('#xk-banner').className.includes('pass'), red = (t) => t.doc.querySelector('#xk-banner').className.includes('fail');
@@ -28,7 +29,7 @@ const retryFast = (h) => h.replace("XK.app({\n  title:", "XK.app({\n  retryMs: 1
   ok('pnl: Xero order and wording ("Less" prefixes dropped, no "Total for")', order.every((s) => { const i = stmt.indexOf(s, at + 1); if (i < 0) return false; at = i; return true; }) && !/Less (Cost|Operating)/.test(stmt) && !stmt.includes('Total for'), stmt.slice(0, 500));
   ok('pnl: zero rows hidden by default (Office Expenses 0.00)', !stmt.includes('Office Expenses'), stmt.slice(0, 300));
   ok('pnl: 4/4 checks pass, banner green, no script errors', green(p) && /4\/4 checks passed/.test(pn) && p.errs.length === 0, pn.slice(0, 500));
-  ok('pnl: Net Profit = Current Year Earnings (independent tie) passes', /✓ Net Profit = Current Year Earnings on the Balance Sheet at 2026-09-25 — \$11,087\.50 vs \$11,087\.50/.test(pn), pn);
+  ok('pnl: Net Profit = income − expenses on the Trial Balance at the end date (independent tie, exact date) passes', /✓ Net Profit = income − expenses for the year on the Trial Balance at 2026-09-25 \(a separate Xero report\) — \$11,087\.50 vs \$11,087\.50/.test(pn), pn);
   ok('pnl: header = report name / organisation / Xero period wording / Xero badge (the library\'s order)', /^Profit and Loss\s*Northwind Trading Pty Ltd\s*For the period 1 July 2026 to 25 September 2026\s*Xero\s*Prepared from Xero$/.test(text(p.doc, '#xk-head')), text(p.doc, '#xk-head'));
   ok('pnl: financial year from the Xero organisation (not assumed)', /Financial year starts July \(Xero organisation settings — year ends 30 June\)/.test(pn) && !/assumed/.test(pn), pn.slice(0, 300));
   ok('pnl: footer = basis + currency footnote', /^Accrual basis · AUD \| /.test(text(p.doc, '#xk-foot')), text(p.doc, '#xk-foot'));
@@ -40,14 +41,14 @@ const retryFast = (h) => h.replace("XK.app({\n  title:", "XK.app({\n  retryMs: 1
   const pc0 = p.calls.length;
   p.doc.querySelector('input[name="xk-basis"][value="Cash"]').click(); p.doc.querySelector('input[name="xk-basis"][value="Cash"]').dispatchEvent(new p.w.Event('change')); await p.settle();
   ok('pnl: Cash basis shows the paymentsOnly figures without refetching', /Net Profit\s*\$8,237\.50/.test(body(p)) && /Sales\s*\$44,100\.00/.test(body(p)) && p.calls.length === pc0 && /^Cash basis · AUD/.test(text(p.doc, '#xk-foot')), body(p).slice(0, 300) + ' calls+' + (p.calls.length - pc0));
-  ok('pnl: Cash basis → Balance Sheet tie is information (checked on accrual)', /Net Profit vs Balance Sheet Current Year Earnings \(information\) — The tie is checked on the accrual basis/.test(banner(p)) && green(p), banner(p));
+  ok('pnl: Cash basis → the Trial Balance tie is information (checked on accrual)', /Net Profit vs the Trial Balance \(information\) — The tie is checked on the accrual basis/.test(banner(p)) && green(p), banner(p));
   // errors
   const pe = await run('pnl', man('pnl'), Object.assign(PL(), { pnl: F.fail('Xero API GET …/Reports/ProfitAndLoss 401: {"Title":"Unauthorized"}') }));
   ok('pnl: a failed P&L call is an error, never $0 with a tick', /401/.test(body(pe)) && red(pe) && !/Net Profit\s*\$0/.test(body(pe)), banner(pe).slice(0, 300));
-  const pbe = await run('pnl', man('pnl'), Object.assign(PL(), { bs_end: F.fail('boom') }));
-  ok('pnl: failed Balance Sheet → tie N/A and banner red (never Pass)', !/✓ Net Profit = Current Year Earnings/.test(banner(pbe)) && red(pbe) && /Data loaded: get_balance_sheet/.test(banner(pbe)), banner(pbe).slice(0, 500));
-  const pf = await run('pnl', man('pnl'), Object.assign(PL(), { bs_end: tamper(F.bs, (rows) => { cellOf(rows, 'Current Year Earnings')[1].Value = '9000.00'; }) }));
-  ok('pnl: Net Profit ≠ Current Year Earnings → Fail', /✗ Net Profit = Current Year Earnings .* \$11,087\.50 vs \$9,000\.00/.test(banner(pf)) && red(pf), banner(pf).slice(0, 500));
+  const pbe = await run('pnl', man('pnl'), Object.assign(PL(), { tb_end: F.fail('boom') }));
+  ok('pnl: failed Trial Balance → tie N/A and banner red (never Pass)', !/✓ Net Profit = income − expenses/.test(banner(pbe)) && red(pbe) && /Data loaded: get_trial_balance/.test(banner(pbe)), banner(pbe).slice(0, 500));
+  const pf = await run('pnl', man('pnl'), Object.assign(PL(), { tb_end: tbMove(-2087.50) }));
+  ok('pnl: Net Profit ≠ the Trial Balance\'s year → Fail', /✗ Net Profit = income − expenses .* \$11,087\.50 vs \$9,000\.00/.test(banner(pf)) && red(pf), banner(pf).slice(0, 500));
   const pt = await run('pnl', man('pnl'), Object.assign(PL(), { pnl: tamper(F.pnl, (rows) => { cellOf(rows, 'Total Operating Expenses')[1].Value = '30000.00'; }) }));
   ok('pnl: Xero section total ≠ Σ rows → section check fails', /✗ Every section total = Σ its account rows — Mismatch: Total Operating Expenses/.test(banner(pt)), banner(pt).slice(0, 500));
   const pnp = await run('pnl', man('pnl'), Object.assign(PL(), { pnl: tamper(F.pnl, (rows) => { cellOf(rows, 'Net Profit')[1].Value = '11000.00'; }) }));
@@ -55,7 +56,7 @@ const retryFast = (h) => h.replace("XK.app({\n  title:", "XK.app({\n  retryMs: 1
   // a period with no operating expenses: Xero leaves the section out → the KPI is $0.00 (none), not N/A, and every check passes
   const noOpex = (rows) => { const ox = +cellOf(rows, 'Total Operating Expenses')[1].Value, n = cellOf(rows, 'Net Profit'); n[1].Value = (+n[1].Value + ox).toFixed(2); rows.splice(rows.findIndex((r) => r.Title === 'Less Operating Expenses'), 1); };
   const npNo = (() => { const r = F.pnl(p.calls.find((x) => x.id === 'pnl').params); noOpex(r.Reports[0].Rows); return cellOf(r.Reports[0].Rows, 'Net Profit')[1].Value; })();
-  const pz = await run('pnl', man('pnl'), Object.assign(PL(), { pnl: tamper(F.pnl, noOpex), pnl_cash: tamper(F.pnl, noOpex), bs_end: tamper(F.bs, (rows) => { cellOf(rows, 'Current Year Earnings')[1].Value = npNo; }) }));
+  const pz = await run('pnl', man('pnl'), Object.assign(PL(), { pnl: tamper(F.pnl, noOpex), pnl_cash: tamper(F.pnl, noOpex), tb_end: tbMove(+npNo - 11087.50) }));
   const kpi = (t, label) => { const k = [...t.doc.querySelectorAll('.xk-kpi')].find((x) => x.querySelector('.lbl').textContent === label); return k ? k.textContent.replace(/\s+/g, ' ') : ''; };
   ok('pnl: no Operating Expenses section → KPI $0.00 "None in this period", not N/A; banner green', /\$0\.00/.test(kpi(pz, 'Total Operating Expenses')) && /None in this period/.test(kpi(pz, 'Total Operating Expenses')) && !/N\/A/.test(kpi(pz, 'Total Operating Expenses')) && green(pz), [kpi(pz, 'Total Operating Expenses'), banner(pz).slice(0, 400)]);
   ok('pnl: with operating expenses the KPI is Xero\'s total and has no "None" note', /Total Operating Expenses\s*\$[1-9]/.test(kpi(p, 'Total Operating Expenses')) && !/None in this period/.test(kpi(p, 'Total Operating Expenses')), kpi(p, 'Total Operating Expenses'));
@@ -79,21 +80,21 @@ const retryFast = (h) => h.replace("XK.app({\n  title:", "XK.app({\n  retryMs: 1
   const po = await run('pnl', man('pnl'), PL());
   await set(po, 'xk-client', F.T2); await wait(30);
   const rq = po.calls.filter((x) => x.requery);
-  ok('pnl: choosing an organisation refetches every org binding with its tenantId', ['pnl', 'pnl_cash', 'bs_end', 'org'].every((id) => rq.some((x) => x.id === id && x.params.xero_tenant_id === F.T2)) && !rq.some((x) => x.id === 'connections'), rq.map((x) => x.id + ':' + x.params.xero_tenant_id));
+  ok('pnl: choosing an organisation refetches every org binding with its tenantId', ['pnl', 'pnl_cash', 'tb_end', 'org'].every((id) => rq.some((x) => x.id === id && x.params.xero_tenant_id === F.T2)) && !rq.some((x) => x.id === 'connections'), rq.map((x) => x.id + ':' + x.params.xero_tenant_id));
   ok('pnl: new organisation → its name, NZD, and FY-to-date re-rolled to 1 April', /^Profit and Loss\s*Southgate Services Ltd/.test(text(po.doc, '#xk-head')) && /Accrual basis · NZD/.test(text(po.doc, '#xk-foot')) && po.doc.getElementById('xk-from').value === '2026-04-01' && rq.some((x) => x.id === 'pnl' && x.params.fromDate === '2026-04-01' && x.params.xero_tenant_id === F.T2), [text(po.doc, '#xk-head'), po.doc.getElementById('xk-from').value]);
-  ok('pnl: new organisation still validates (tie on its own FY)', green(po) && /✓ Net Profit = Current Year Earnings/.test(banner(po)) && /year ends 31 March/.test(banner(po)), banner(po).slice(0, 500));
+  ok('pnl: new organisation still validates (tie on its own FY)', green(po) && /✓ Net Profit = income − expenses/.test(banner(po)) && /year ends 31 March/.test(banner(po)), banner(po).slice(0, 500));
   ok('pnl: the saved inputs carry the organisation', po.setInputsLog.length && po.setInputsLog[po.setInputsLog.length - 1].org === F.T2);
   const p1 = await run('pnl', man('pnl'), Object.assign(PL(), { connections: F.connectionsOne }));
   ok('pnl: one organisation → its name shown, no picker choice', p1.doc.querySelectorAll('#xk-client option').length === 1 && text(p1.doc, '#xk-client') === 'Northwind Trading Pty Ltd');
   const pno = await run('pnl', man('pnl'), Object.assign(PL(), { org: F.fail('Xero API GET …/Organisation 500: oops') }));
   ok('pnl: get_organisation fails → name from list_connections, FY assumed and said so, banner red', /^Profit and Loss\s*Northwind Trading Pty Ltd/.test(text(pno.doc, '#xk-head')) && /Financial year starts July \(assumed — AU default/.test(banner(pno)) && red(pno) && /Data loaded: get_organisation/.test(banner(pno)), banner(pno).slice(0, 500));
   // Xero concurrency limit (5 calls in progress): 429s are retried one at a time
-  const pr = await run('pnl', man('pnl'), Object.assign(PL(), { pnl_compare: busy(F.pnl, 1), pnl_compare_cash: busy(F.pnl, 1), bs_end: busy(F.bs, 2) }), { htmlPatch: retryFast });
+  const pr = await run('pnl', man('pnl'), Object.assign(PL(), { pnl_compare: busy(F.pnl, 1), pnl_compare_cash: busy(F.pnl, 1), tb_end: busy(F.trialBalance, 2) }), { htmlPatch: retryFast });
   await wait(150);
-  ok('pnl: HTTP 429 on open → retried sequentially, report ends green', green(pr) && /4\/4 checks passed/.test(banner(pr)) && ['pnl_compare', 'pnl_compare_cash', 'bs_end'].every((id) => pr.calls.some((x) => x.requery && x.id === id)) && pr.calls.filter((x) => x.requery && x.id === 'bs_end').length === 2 && !pr.calls.some((x) => x.requery && x.id === 'pnl'), banner(pr).slice(0, 300) + ' | ' + pr.calls.filter((x) => x.requery).map((x) => x.id));
-  const pr2 = await run('pnl', man('pnl'), Object.assign(PL(), { bs_end: busy(F.bs, 99) }), { htmlPatch: retryFast });
+  ok('pnl: HTTP 429 on open → retried sequentially, report ends green', green(pr) && /4\/4 checks passed/.test(banner(pr)) && ['pnl_compare', 'pnl_compare_cash', 'tb_end'].every((id) => pr.calls.some((x) => x.requery && x.id === id)) && pr.calls.filter((x) => x.requery && x.id === 'tb_end').length === 2 && !pr.calls.some((x) => x.requery && x.id === 'pnl'), banner(pr).slice(0, 300) + ' | ' + pr.calls.filter((x) => x.requery).map((x) => x.id));
+  const pr2 = await run('pnl', man('pnl'), Object.assign(PL(), { tb_end: busy(F.trialBalance, 99) }), { htmlPatch: retryFast });
   await wait(150);
-  ok('pnl: persistent 429 → stops after 3 retries and shows the failure', pr2.calls.filter((x) => x.requery && x.id === 'bs_end').length === 3 && red(pr2) && /429/.test(banner(pr2)), pr2.calls.filter((x) => x.requery).map((x) => x.id));
+  ok('pnl: persistent 429 → stops after 3 retries and shows the failure', pr2.calls.filter((x) => x.requery && x.id === 'tb_end').length === 3 && red(pr2) && /429/.test(banner(pr2)), pr2.calls.filter((x) => x.requery).map((x) => x.id));
   // snapshot: period from Xero's report title, refetching controls disabled
   const snapIn = { from_date: '2026-08-01', to_date: '2026-08-31' };
   const ps = await run('pnl', man('pnl'), PL(), { mode: 'snapshot', bundle: hydrate(man('pnl'), PL(), snapIn, []) });
@@ -117,8 +118,10 @@ const retryFast = (h) => h.replace("XK.app({\n  title:", "XK.app({\n  retryMs: 1
   const bankRow = [...s.doc.querySelectorAll('.xk-stmt tr')].find((tr) => tr.textContent.startsWith('Bank'));
   ok('bs: sub-sections indented under their group', bankRow && /padding-left:26px/.test(bankRow.innerHTML), bankRow && bankRow.innerHTML.slice(0, 120));
   ok('bs: contra account shown negative in brackets and red', /Less Accumulated Depreciation on Office Equipment\s*\(\$1,680\.00\)/.test(sb) && !!s.doc.querySelector('.xk-stmt td.neg'), sb.slice(0, 600));
-  ok('bs: 6/6 checks pass (A = L + E stated explicitly, Total Bank, CYE tie)', green(s) && /6\/6 checks passed/.test(sn) && /✓ Total Assets = Total Liabilities \+ Total Equity — \$66,046\.00 = \$24,845\.50 \+ \$41,200\.50/.test(sn) && /✓ Total Bank = Σ bank account rows — \$39,380\.40 — 2 accounts/.test(sn) && /✓ Current Year Earnings = P&L Net Profit 2026-07-01 to 2026-09-25 — \$11,087\.50 vs \$11,087\.50/.test(sn) && s.errs.length === 0, sn);
-  ok('bs: header As at wording', /^Balance Sheet\s*Northwind Trading Pty Ltd\s*As at 25 September 2026/.test(text(s.doc, '#xk-head')), text(s.doc, '#xk-head'));
+  ok('bs: 6/6 checks pass (A = L + E stated explicitly, Total Bank, CYE tie)', green(s) && /6\/6 checks passed/.test(sn) && /✓ Total Assets = Total Liabilities \+ Total Equity — \$66,046\.00 = \$24,845\.50 \+ \$41,200\.50/.test(sn) && /✓ Total Bank = Σ bank account rows — \$39,380\.40 — 2 accounts/.test(sn) && /✓ Current Year Earnings = P&L Net Profit 2026-07-01 to 2026-09-30 — \$11,724\.71 vs \$11,724\.71/.test(sn) && s.errs.length === 0, sn);
+  ok('bs: opens at the end of this month (Xero gives month-end balance sheets) and says why', /^Balance Sheet\s*Northwind Trading Pty Ltd\s*As at 30 September 2026/.test(text(s.doc, '#xk-head')) && s.doc.getElementById('xk-asat-preset').value === 'end_this_month' && ![...s.doc.getElementById('xk-asat-preset').options].some((o) => o.value === 'today') && /only available at month ends/.test(text(s.doc, '#xk-sources')), text(s.doc, '#xk-head'));
+  const s25 = await run('bs', man('bs'), BSX()); await set(s25, 'xk-asat', '2026-09-25');
+  ok('bs: a custom mid-month date moves to its month end (the date box shows it), and the P&L tie follows', s25.doc.getElementById('xk-asat').value === '2026-09-30' && /As at 30 September 2026/.test(text(s25.doc, '#xk-head')) && green(s25) && !/Xero report dates/.test(banner(s25)), [s25.doc.getElementById('xk-asat').value, banner(s25).slice(0, 300)]);
   ok('bs: fy_start sent to the P&L from the organisation\'s year', s.calls.some((x) => x.id === 'pnl_ytd' && x.params.fromDate === '2026-07-01' && x.params.toDate === '2026-09-25'), s.calls.filter((x) => x.id === 'pnl_ytd').map((x) => x.params));
   const sf = await run('bs', man('bs'), Object.assign(BSX(), { pnl_ytd: tamper(F.pnl, (rows) => { cellOf(rows, 'Net Profit')[1].Value = '10000.00'; }) }));
   ok('bs: Current Year Earnings ≠ P&L → Fail', /✗ Current Year Earnings = P&L Net Profit/.test(banner(sf)) && red(sf), banner(sf).slice(0, 400));
@@ -134,7 +137,7 @@ const retryFast = (h) => h.replace("XK.app({\n  title:", "XK.app({\n  retryMs: 1
   ok('bs: summary view shows totals only', !body(s).includes('Business Cheque Account') && /Total Bank/.test(body(s)) && /Total Assets/.test(body(s)), body(s).slice(0, 300));
   const sc = await run('bs', man('bs'), BSX());
   await set(sc, 'xk-cmp', 'prev_year');
-  ok('bs: compare previous year uses 2025-09-25 and shows the column', sc.calls.some((x) => x.id === 'bs_compare' && x.params.date === '2025-09-25') && /Previous year/.test(body(sc)) && /Total Assets\s*\$66,046\.00\s*\$56,139\.10/.test(body(sc)), sc.calls.filter((x) => x.id === 'bs_compare').map((x) => x.params.date));
+  ok('bs: compare previous year uses 2025-09-30 (a month end) and shows the column', sc.calls.some((x) => x.id === 'bs_compare' && x.params.date === '2025-09-30') && /Previous year/.test(body(sc)) && /Total Assets\s*\$66,046\.00\s*\$56,139\.10/.test(body(sc)), sc.calls.filter((x) => x.id === 'bs_compare').map((x) => x.params.date));
   const sca = await run('bs', man('bs'), BSX());
   sca.doc.querySelector('input[name="xk-basis"][value="Cash"]').dispatchEvent(new sca.w.Event('change')); sca.doc.querySelector('input[name="xk-basis"][value="Cash"]').checked = true;
   const casIn = sca.doc.querySelector('input[name="xk-basis"][value="Cash"]'); casIn.checked = true; casIn.dispatchEvent(new sca.w.Event('change')); await sca.settle();
@@ -151,15 +154,15 @@ const retryFast = (h) => h.replace("XK.app({\n  title:", "XK.app({\n  retryMs: 1
   // ---------------- Host defaults ≠ config defaults (live finding, Irvine Jackson 29 Sep 2026) ----------------
   // The host hydrates on open with the MANIFEST defaults; the kit starts from cfg.defaults. Here the manifest says 30 Sep.
   const manAt = (n, patch) => { const m = man(n); m.inputs.forEach((i) => { if (patch[i.name]) i.default = patch[i.name]; }); return m; };
-  const hb = await run('bs', manAt('bs', { as_at: '2026-09-30' }), BSX());
+  const hb = await run('bs', manAt('bs', { as_at: '2026-08-31' }), BSX());
   const hbq = hb.calls.filter((x) => x.requery);
-  ok('dates: BS hydrated at the manifest date (30 Sep) is refetched at the shown date (25 Sep)', hb.calls.some((x) => !x.requery && x.id === 'bs' && x.params.date === '2026-09-30') && ['bs', 'bs_cash', 'pnl_ytd'].every((id) => hbq.some((x) => x.id === id && (x.params.date || x.params.toDate) === '2026-09-25')) && !hbq.some((x) => x.id === 'connections' || x.id === 'org'), hbq.map((x) => x.id + ':' + (x.params.date || x.params.toDate)));
-  ok('dates: after the refetch the figures, Xero title and controls agree (green)', green(hb) && /As at 25 September 2026/.test(text(hb.doc, '#xk-head')) && /<th class="num" scope="col">25 Sep 2026<\/th>/.test(hb.doc.querySelector('.xk-stmt').outerHTML) && !/Xero report dates/.test(banner(hb)), banner(hb).slice(0, 300));
+  ok('dates: BS hydrated at the manifest date (31 Aug) is refetched at the shown date (30 Sep)', hb.calls.some((x) => !x.requery && x.id === 'bs' && x.params.date === '2026-08-31') && ['bs', 'bs_cash', 'pnl_ytd'].every((id) => hbq.some((x) => x.id === id && (x.params.date || x.params.toDate) === '2026-09-30')) && !hbq.some((x) => x.id === 'connections' || x.id === 'org'), hbq.map((x) => x.id + ':' + (x.params.date || x.params.toDate)));
+  ok('dates: after the refetch the figures, Xero title and controls agree (green)', green(hb) && /As at 30 September 2026/.test(text(hb.doc, '#xk-head')) && /<th class="num" scope="col">30 Sep 2026<\/th>/.test(hb.doc.querySelector('.xk-stmt').outerHTML) && !/Xero report dates/.test(banner(hb)), banner(hb).slice(0, 300));
   const hp = await run('pnl', manAt('pnl', { to_date: '2026-09-30' }), PL());
-  ok('dates: P&L hydrated to 30 Sep is refetched to 25 Sep, Net Profit = CYE at 25 Sep', hp.calls.some((x) => x.requery && x.id === 'pnl' && x.params.toDate === '2026-09-25') && hp.calls.some((x) => x.requery && x.id === 'bs_end' && x.params.date === '2026-09-25') && /Net Profit\s*\$11,087\.50/.test(body(hp)) && green(hp), banner(hp).slice(0, 300));
-  const wrongTitle = (q) => { const r = F.bs(q); r.Reports[0].ReportTitles[2] = 'As at 30 September 2026'; return r; };
+  ok('dates: P&L hydrated to 30 Sep is refetched to 25 Sep, Net Profit = the Trial Balance at 25 Sep', hp.calls.some((x) => x.requery && x.id === 'pnl' && x.params.toDate === '2026-09-25') && hp.calls.some((x) => x.requery && x.id === 'tb_end' && x.params.date === '2026-09-25') && /Net Profit\s*\$11,087\.50/.test(body(hp)) && green(hp), banner(hp).slice(0, 300));
+  const wrongTitle = (q) => { const r = F.bs(q); r.Reports[0].ReportTitles[2] = 'As at 31 August 2026'; return r; };
   const hw = await run('bs', man('bs'), Object.assign(BSX(), { bs: wrongTitle }));
-  ok('dates: Xero still reports other dates → refetched once, then a failing check (never a silent mismatch)', hw.calls.filter((x) => x.requery && x.id === 'bs').length === 1 && red(hw) && /✗ Xero report dates = the selected dates — get_balance_sheet returned "As at 30 September 2026"/.test(banner(hw)), [hw.calls.filter((x) => x.requery).map((x) => x.id), banner(hw).slice(0, 300)]);
+  ok('dates: Xero still reports other dates → refetched once, then a failing check (never a silent mismatch)', hw.calls.filter((x) => x.requery && x.id === 'bs').length === 1 && red(hw) && /✗ Xero report dates = the selected dates — get_balance_sheet returned "As at 31 August 2026"/.test(banner(hw)), [hw.calls.filter((x) => x.requery).map((x) => x.id), banner(hw).slice(0, 300)]);
   const hn = await run('pnl', man('pnl'), PL());
   ok('dates: matching dates on open → no extra calls', !hn.calls.some((x) => x.requery), hn.calls.filter((x) => x.requery).map((x) => x.id));
 

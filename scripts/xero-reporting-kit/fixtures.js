@@ -88,7 +88,8 @@ function bsNumbers(p, date) {
   return { org, out };
 }
 function bs(p) {
-  const d0 = p.date, y = Number(d0.slice(0, 4)) - 1, d1 = y + d0.slice(4) === String(y) + '-02-29' ? y + '-02-28' : y + d0.slice(4);
+  // Xero answers any date with the END of that month (live QA, 4 Oct 2026)
+  const d0 = (([y, m]) => { const e = new Date(Date.UTC(+y, +m, 0)); return e.toISOString().slice(0, 10); })(p.date.split('-')), y = Number(d0.slice(0, 4)) - 1, d1 = y + d0.slice(4) === String(y) + '-02-29' ? y + '-02-28' : y + d0.slice(4);
   const a = bsNumbers(p, d0), b = bsNumbers(p, d1), two = (x, y2) => [x, y2];
   const cells = (label, v0, v1, attr) => [{ Value: label, Attributes: attr }, { Value: s2(v0), Attributes: attr }, { Value: s2(v1), Attributes: attr }];
   const Rows = [{ RowType: 'Header', Cells: [{ Value: '' }, { Value: short(d0) }, { Value: short(d1) }] }];
@@ -106,4 +107,15 @@ function connections() { return { activeTenantId: T1, tenants: [{ tenantId: T1, 
 function connectionsOne() { return { activeTenantId: T1, tenants: [{ tenantId: T1, tenantName: ORGS[T1].Name, tenantType: 'ORGANISATION' }] }; }
 // A Xero error reaches the report as a binding error: the connector throws, the host reports { code: 'tool_error', message }.
 const fail = (msg) => () => { throw new Error(msg); };
-module.exports = { T1, T2, ORGS, pnl, bs, organisation, connections, connectionsOne, fail, plNumbers, bsNumbers, fyStart };
+// Trial Balance at an exact date (Xero layout: Debit | Credit | YTD Debit | YTD Credit; Debit / Credit are the month's movement):
+// the income and expense accounts of the P&L for the financial year to that date, so revenue − expenses = that P&L's Net Profit.
+function trialBalance(p) {
+  const t = tenantOf(p), d = p.date, rep = pnl({ fromDate: fyStart(d, ORGS[t].FinancialYearEndMonth), toDate: d, xero_tenant_id: t }).Reports[0];
+  const row = (c, credit) => { const v = +c[1].Value, x = credit ? ['', '', '', s2(v)] : ['', '', s2(v), '']; return { RowType: 'Row', Cells: [{ Value: c[0].Value, Attributes: c[0].Attributes }].concat(x.map((Value) => ({ Value }))) }; };
+  const pick = (re, credit) => rep.Rows.filter((s) => s.RowType === 'Section' && re.test(s.Title || '')).reduce((a, s) => a.concat(s.Rows.filter((r) => r.RowType === 'Row').map((r) => row(r.Cells, credit))), []);
+  const rev = pick(/income/i, true), exp = pick(/cost of sales|expenses/i, false), sum = (rows, i) => s2(rows.reduce((t2, r) => t2 + (+r.Cells[i].Value || 0), 0));
+  return { Reports: [{ ReportID: 'TrialBalance', ReportName: 'Trial Balance', ReportType: 'TrialBalance', ReportTitles: ['Trial Balance', ORGS[t].Name, 'As at ' + long(d)], ReportDate: short(d),
+    Rows: [{ RowType: 'Header', Cells: ['Account', 'Debit', 'Credit', 'YTD Debit', 'YTD Credit'].map((Value) => ({ Value })) }, { RowType: 'Section', Title: 'Revenue', Rows: rev }, { RowType: 'Section', Title: 'Expenses', Rows: exp },
+      { RowType: 'Section', Title: '', Rows: [{ RowType: 'SummaryRow', Cells: [{ Value: 'Total' }, { Value: '0.00' }, { Value: '0.00' }, { Value: sum(rev.concat(exp), 3) }, { Value: sum(rev.concat(exp), 4) }] }] }] }] };
+}
+module.exports = { T1, T2, ORGS, pnl, bs, trialBalance, organisation, connections, connectionsOne, fail, plNumbers, bsNumbers, fyStart };

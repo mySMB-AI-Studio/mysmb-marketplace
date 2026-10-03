@@ -101,6 +101,20 @@ var XK = (function () {
   }
   // Current Year Earnings: Xero's Equity row for this financial year's profit to the balance date.
   var CYE_RE = /^current year('s)? earnings$|^current earnings$/i;
+  // The Trial Balance at an EXACT date — Xero's Balance Sheet API answers any date with that month's end, so a figure "today"
+  // is tied to the Trial Balance (or the P&L), never to the Balance Sheet. Its YTD Debit / YTD Credit columns hold each account's
+  // balance (balance-sheet accounts) or its financial year to date (income and expenses); Debit / Credit are only the month's
+  // movement. Returns { net: revenue − expenses for the year to date, bal(accountID): debit − credit, rows } or null.
+  function tbYtd(v) {
+    var w = walk(v), cols = w.columns, d = -1, cr = -1, y = function (re) { var i = -1; cols.forEach(function (x, k) { var s = String(x).toLowerCase(); if (i < 0 && re.test(s) && /ytd|year/.test(s)) i = k; }); if (i < 0) cols.forEach(function (x, k) { if (i < 0 && re.test(String(x).toLowerCase())) i = k; }); return i; };
+    d = y(/debit/); cr = y(/credit/); if (d < 0 || cr < 0) return null;
+    var dr = function (l) { return (l.values[d] || 0) - (l.values[cr] || 0); }, rows = w.lines.filter(function (l) { return l.kind === 'row'; }), by = {};
+    var inS = function (re) { return sum(w.sections.filter(function (s) { return re.test(s.title); }).reduce(function (a, s) { return a.concat(s.rows); }, []).map(dr)); };
+    rows.forEach(function (l) { if (l.id) by[l.id] = Math.round(((by[l.id] || 0) + dr(l)) * 100) / 100; });
+    // named(re): debit − credit of the first account whose name (Xero writes "Accounts Receivable (610)") matches re
+    var named = function (re) { var l = rows.filter(function (x) { return re.test(String(x.label).replace(/\s*\([^()]*\)\s*$/, '')); })[0]; return l ? Math.round(dr(l) * 100) / 100 : null; };
+    return { net: Math.round((-inS(/revenue|income/i) - inS(/expense|cost/i)) * 100) / 100, bal: function (id) { return by[id] == null ? null : by[id]; }, named: named, rows: rows };
+  }
   function currentYearEarnings(bsLines) { var r = bsLines.filter(function (l) { return l.kind === 'row' && /^equity$/i.test(l.group) && CYE_RE.test(l.label); })[0]; return r || null; }
   // Find a statement line by group (section title) first, else by label regex; kind 'total' | 'row' | 'header' (default: total, then row).
   function find(lines, group, labelRe, kind) {
@@ -931,7 +945,7 @@ var XK = (function () {
 
   return { doc: doc, openDocs: openDocs, ageingCols: ageingCols, byContact: byContact, pipeline: pipeline, plParts: plParts, bsParts: bsParts, monthKey: monthKey, monthLabel: monthLabel, shortDate: shortDate, monthsEnding: monthsEnding, monthCols: monthCols, dateWhere: dateWhere, addDaysIso: function (s, k) { return iso(addDays(parse(s), k)); },
     errorOf: errorOf, isoDate: isoDate, reportOf: reportOf, walk: walk, isDeduction: isDeduction, sectionTotal: sectionTotal, sectionBy: sectionBy, parentTies: parentTies, runningTies: runningTies,
-    CYE_RE: CYE_RE, currentYearEarnings: currentYearEarnings, linesTies: linesTies, orgOf: orgOf, connections: connections, companyOf: companyOf, fiscalStart: fiscalStart, homeCurrency: homeCurrency, titleDates: titleDates,
+    CYE_RE: CYE_RE, currentYearEarnings: currentYearEarnings, tbYtd: tbYtd, linesTies: linesTies, orgOf: orgOf, connections: connections, companyOf: companyOf, fiscalStart: fiscalStart, homeCurrency: homeCurrency, titleDates: titleDates,
     applyBrand: applyBrand, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, hbars: hbars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app,
     MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays, num: num, find: find, val: val, totalFor: totalFor, near: near, sum: sum, symbol: symbol,
     DISPLAY_DEFAULT: DISPLAY_DEFAULT, readDisplay: readDisplay, writeDisplay: writeDisplay, money: money, pct: pct, isNeg: isNeg,
