@@ -1,11 +1,11 @@
 {
   "inputs": [
-    { "name": "start_date", "label": "From", "type": "date", "default": "2026-07-01" },
-    { "name": "end_date", "label": "To", "type": "date", "default": "2026-08-31" },
+    { "name": "start_date", "label": "From", "type": "date", "default": "2026-09-01" },
+    { "name": "end_date", "label": "To", "type": "date", "default": "2026-09-30" },
     { "name": "basis", "label": "Accounting method", "type": "enum", "options": ["Accrual", "Cash"], "default": "Accrual" },
     { "name": "agency_id", "label": "Tax agency", "type": "string", "maxLength": 20, "default": "" },
     { "name": "persona", "label": "View as", "type": "enum", "options": ["Client", "Bookkeeper", "Practitioner", "Executive"], "default": "Executive" },
-    { "name": "display", "label": "Display settings", "type": "string", "maxLength": 300, "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"basic\",\"x\":\"\"}" }
+    { "name": "display", "label": "Display settings", "type": "string", "maxLength": 300, "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"last_month\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"basic\",\"x\":\"\"}" }
   ],
   "bindings": [
     { "id": "pnl", "tool": { "mcp": "quickbooks-accounting", "name": "get_report_profit_and_loss" }, "params": { "start_date": { "kind": "input", "input": "start_date" }, "end_date": { "kind": "input", "input": "end_date" }, "accounting_method": { "kind": "input", "input": "basis" }, "summarize_column_by": { "kind": "static", "value": "Total" } } },

@@ -32,7 +32,7 @@ Preset `this_fy_td`: `start_date` = FY start, `end_date` = `"today"`.
 ## Validation checks (STEP 4 — shown in the banner)
 
 - Σ customers = sales total
-- Σ customers = income for the period (P&L Total for Income; a difference means income not raised on a sales form)
+- Sales by customer vs P&L Total for Income (information: a difference means income not raised on a sales form)
 - Σ products/services = sales total
 
 ## Save as
@@ -298,7 +298,8 @@ QB.app({
     QB.donut(document.getElementById('ch2'), { title: 'Product mix', items: prod.map(function (x) { return { label: x.name, value: x.amount }; }) }, c);
     var checks = [
       { name: 'Σ customers = sales total', pass: csTot == null ? null : QB.near(csTot, QB.sum(cust.map(function (x) { return x.total; }))), detail: money(csTot) },
-      { name: 'Σ customers = income for the period (Profit and Loss Total for Income)', pass: csTot == null || inc == null ? null : QB.near(csTot, inc, 1), detail: 'Sales ' + money(csTot) + ' vs income ' + money(inc) + (csTot != null && inc != null && !QB.near(csTot, inc, 1) ? ' — the difference is income not raised on a sales form (e.g. journals)' : '') },
+      // information, not a tie: income posted without a sales form (journals, deposits) is on the P&L but not by customer — live QA, 4 Oct 2026
+      { name: 'Sales by customer vs Profit and Loss Total for Income (information)', pass: null, info: true, detail: csTot == null || inc == null ? 'N/A — not in source' : 'Sales ' + money(csTot) + ' vs income ' + money(inc) + (QB.near(csTot, inc, 1) ? ' — the same' : ' — the difference is income not raised on a sales form (e.g. journals, deposits)') },
       { name: 'Σ products/services = sales total', pass: isTot == null || csTot == null ? null : QB.near(isTot, csTot, 1), detail: money(isTot) }];
     this._x = { cust: cust, prod: prod, csTot: csTot, isTot: isTot };
     return { checks: checks, title: (this.views.filter(function (x) { return x[0] === v; })[0] || ['', ''])[1],
