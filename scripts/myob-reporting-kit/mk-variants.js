@@ -6,6 +6,9 @@ const VARIANTS = [
   { id: 'ag', base: 'ar', title: ['Unpaid Invoices', 'Aged Receivables'], inputs: { method: 'Due date' } },
   // Customer sales (M35) = the Sales register's customer view
   { id: 'cs', base: 'sr', title: ['Sales Register', 'Customer Sales'], display: { v: 'customers' } },
+  // Aged payables (M40 by due date) = Unpaid bills aged by due date; Supplier purchases (M43) = the Purchase register's supplier view
+  { id: 'ap', base: 'ub', title: ['Unpaid Bills', 'Aged Payables'], inputs: { method: 'Due date' } },
+  { id: 'sp', base: 'pg', title: ['Purchase Register', 'Supplier Purchases'], display: { v: 'suppliers' } },
 ];
 for (const v of VARIANTS) {
   let cfg = fs.readFileSync(path.join(R, v.base + '.cfg.js'), 'utf8').replace(/\r\n/g, '\n');
