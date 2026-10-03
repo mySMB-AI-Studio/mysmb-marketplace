@@ -1,0 +1,124 @@
+{
+  "id": "shopify-out-of-stock",
+  "title": "Out of Stock",
+  "description": "Products currently out of stock (0 inventory) in your Shopify store — restock before you miss a sale.",
+  "category": "ecommerce",
+  "tags": ["shopify", "inventory", "stock", "out-of-stock", "restock", "ecommerce"],
+  "keywords": ["out of stock", "sold out", "inventory", "restock", "shopify", "products"],
+  "connectorsUsed": ["shopify-ucp"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 5 },
+    "min": { "colSpan": 4, "rowSpan": 3 },
+    "max": { "colSpan": 12, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "shopify-ucp",
+    "tool": "search_catalog",
+    "params": {
+      "query": "status:active",
+      "pagination": { "limit": 50 },
+      "meta": {
+        "ucp-agent": {
+          "profile": "https://shopify.dev/ucp/agent-profiles/examples/2026-04-08/valid-with-capabilities.json"
+        }
+      }
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["header", "body"],
+        "watch": {
+          "/shopify-ucp/search_catalog/products": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/outOfStock",
+                "value": {
+                  "$computed": "shopify-storefront_sort_by_key",
+                  "args": {
+                    "value": {
+                      "$computed": "shopify-storefront_filter_below",
+                      "args": {
+                        "value": { "$state": "/shopify-ucp/search_catalog/products" },
+                        "field": "totalInventory",
+                        "below": 1
+                      }
+                    },
+                    "key": "title|asc"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "header": { "type": "Header", "children": ["titleRow"] },
+      "titleRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "PackageX", "tone": "destructive", "size": "sm" } },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "count"]
+      },
+      "title": { "type": "Heading", "props": { "text": "Out of Stock", "level": "h2" } },
+      "count": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} products out of stock",
+              "n": { "$computed": "count", "args": { "value": { "$state": "/ui/outOfStock" } } }
+            }
+          }
+        }
+      },
+      "body": { "type": "Body", "children": ["loading", "empty", "table"] },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$state": "/_loading/shopify-ucp.search_catalog" },
+        "children": ["sk1", "sk2", "sk3"]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "icon": "PackageCheck", "message": "Nothing is out of stock — every active product has inventory." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/shopify-ucp.search_catalog", "not": true },
+            { "$state": "/ui/outOfStock/0", "not": true }
+          ]
+        }
+      },
+      "table": {
+        "type": "Table",
+        "props": {
+          "rows": { "$state": "/ui/outOfStock" },
+          "columns": [
+            { "id": "name", "header": "Product", "field": "title", "priority": 1 },
+            { "id": "vendor", "header": "Vendor", "field": "vendor", "priority": 2 },
+            { "id": "price", "header": "Price", "field": "price", "width": 110, "priority": 2 }
+          ]
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/shopify-ucp.search_catalog", "not": true },
+            { "$state": "/ui/outOfStock/0" }
+          ]
+        }
+      }
+    }
+  },
+  "status": "published"
+}
