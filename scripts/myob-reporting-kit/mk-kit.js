@@ -433,7 +433,7 @@ var MK = (function () {
   }
   // ---------- SVG charts (no libraries; colours from CSS custom properties) ----------
   function scale(vals) { var mn = Math.min(0, Math.min.apply(null, vals)), mx = Math.max(0, Math.max.apply(null, vals)); if (mn === mx) mx = mn + 1; return { mn: mn, mx: mx }; }
-  function legend(series) { return '<div class="mk-legend">' + series.map(function (s, i) { return '<span><i style="background:var(--c' + (i + 1) + ')"></i>' + h(s.name) + '</span>'; }).join('') + '</div>'; }
+  function legend(series) { return '<div class="mk-legend">' + series.map(function (s, i) { return '<span><i style="background:' + (s.color || 'var(--c' + (i + 1) + ')') + '"></i>' + h(s.name) + '</span>'; }).join('') + '</div>'; }
   // bars(el, {labels:[], series:[{name, values:[]}], title}) — grouped bars, negatives below the zero line
   function bars(el, o, ctx) {
     var W = 640, H = 220, P = 28, all = []; o.series.forEach(function (s) { all = all.concat(s.values.filter(function (v) { return v != null; })); });
@@ -448,7 +448,7 @@ var MK = (function () {
     });
     el.innerHTML = svg + '</svg>' + legend(o.series);
   }
-  // line(el, {labels, series:[{name, values}], area:bool, band:{low:[], high:[], name}, title})
+  // line(el, {labels, series:[{name, values, color}], area:bool, solid:bool (no dashed comparison lines), band:{low:[], high:[], name}, title})
   function line(el, o, ctx) {
     var W = 640, H = 220, P = 28, all = []; o.series.forEach(function (s) { all = all.concat(s.values.filter(function (v) { return v != null; })); });
     if (o.band) all = all.concat(o.band.low.filter(function (v) { return v != null; }), o.band.high.filter(function (v) { return v != null; }));
@@ -460,8 +460,9 @@ var MK = (function () {
       var pts = s.values.map(function (v, i) { return v == null ? null : (P + step * i).toFixed(1) + ',' + y(v).toFixed(1); }).filter(Boolean);
       if (j === 0 && o.band) { var up = [], dn = []; o.band.high.forEach(function (v, i) { if (v != null && o.band.low[i] != null) { up.push((P + step * i).toFixed(1) + ',' + y(v).toFixed(1)); dn.unshift((P + step * i).toFixed(1) + ',' + y(o.band.low[i]).toFixed(1)); } }); if (up.length) svg += '<polygon points="' + up.concat(dn).join(' ') + '" fill="var(--c2)" opacity=".16"><title>' + h(o.band.name || 'Range') + '</title></polygon>'; }
       if (o.area && j === 0 && pts.length) svg += '<polygon points="' + (P).toFixed(1) + ',' + y(0).toFixed(1) + ' ' + pts.join(' ') + ' ' + (P + step * (n - 1)).toFixed(1) + ',' + y(0).toFixed(1) + '" fill="var(--c1)" opacity=".18"/>';
-      svg += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="var(--c' + (j + 1) + ')" stroke-width="2.5"' + (j ? ' stroke-dasharray="5 4"' : '') + '/>';
-      s.values.forEach(function (v, i) { if (v != null) svg += '<circle cx="' + (P + step * i).toFixed(1) + '" cy="' + y(v).toFixed(1) + '" r="3" fill="var(--c' + (j + 1) + ')"><title>' + h(s.name + ' · ' + o.labels[i] + ': ' + money(v, ctx.currency, ctx.display)) + '</title></circle>'; });
+      var col = s.color || 'var(--c' + (j + 1) + ')';
+      svg += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="2.5"' + (j && !o.solid ? ' stroke-dasharray="5 4"' : '') + '/>';
+      s.values.forEach(function (v, i) { if (v != null) svg += '<circle cx="' + (P + step * i).toFixed(1) + '" cy="' + y(v).toFixed(1) + '" r="3" fill="' + col + '"><title>' + h(s.name + ' · ' + o.labels[i] + ': ' + money(v, ctx.currency, ctx.display)) + '</title></circle>'; });
     });
     o.labels.forEach(function (lb, i) { if (n <= 13 || i % Math.ceil(n / 12) === 0) svg += '<text x="' + (P + step * i).toFixed(1) + '" y="' + (H - 8) + '" class="tick" text-anchor="middle">' + h(lb) + '</text>'; });
     el.innerHTML = svg + '</svg>' + legend(o.series) + (o.band ? '<div class="mk-legend"><span><i style="background:var(--c2);opacity:.3"></i>' + h(o.band.name || 'Range') + '</span></div>' : '');
@@ -512,7 +513,8 @@ var MK = (function () {
   // ---------- the report controller ----------
   // cfg: {title, token, route, kind:'period'|'asat', inputs:{start,end,asAt,basis,columnsBy,cmpStart,cmpEnd,cmpAsAt,persona,display}, defaults:{<declared>:value},
   //       uses:{bindingId:[declared input names]}, primary:'bindingId', files:'company_files' (list_company_files binding), fyMonth, tools:{bindingId:'tool name'},
-  //       columnsBy:[[value,label]], compare:true, enums:[{input,label,options:[[v,l]]}], views:[[key,label]], render(ctx)->{checks,na,notes,title,period}, excel(ctx)->[sheets]}
+  //       columnsBy:[[value,label]], compare:true, enums:[{input,label,options:[[v,l]]}], views:[[key,label]], optional:[bindingId] (a failed optional source is not a
+//       failed check: the report says what it used instead), render(ctx)->{checks,na,notes,title,period}, excel(ctx)->[sheets]}. ctx.rerun() refetches every source.
   var FRIENDLY = { needs_connection: 'Connect MYOB (Settings → Connections) to see this data.', connection_unavailable: 'MYOB is temporarily unavailable — press Refresh to try again.', tool_not_found: 'This MYOB report is not available on the connected connector.', tool_error: 'MYOB returned an error for this section.', invalid_inputs: 'One of the report controls has an invalid value.' };
   var MECHANISM = 'myob-accounting connector — mySMB custom MCP on the MYOB Business (AccountRight) API v2 (AGT-002)';
   function app(cfg) {
@@ -621,7 +623,7 @@ var MK = (function () {
       var d = disp(), c0 = co(), f = fy();
       return { data: S.data, errors: S.errors, err: err, inputs: S.inputs, I: I, display: d, view: d.v || (cfg.views ? cfg.views[0][0] : ''), compareMode: cfg.compare ? d.c : 'none',
         persona: I.persona ? S.inputs[I.persona] : 'Bookkeeper', company: c0.name, companyFile: c0, fy: f, currency: homeCurrency(c0.country), live: live,
-        fetchedAt: S.fetchedAt, body: $('mk-body'), change: change, disp: disp, today: iso(today()) };
+        fetchedAt: S.fetchedAt, body: $('mk-body'), change: change, disp: disp, today: iso(today()), rerun: function () { return requery(null); } };
     }
     var last = { checks: [], na: [], notes: [] };
     function render() {
@@ -639,7 +641,7 @@ var MK = (function () {
       if (nc && c.body && c.body.textContent.indexOf(FRIENDLY.needs_connection) < 0) { var dv = document.createElement('div'); dv.className = 'mk-banner fail'; dv.textContent = FRIENDLY.needs_connection; c.body.insertBefore(dv, c.body.firstChild); }
       // A failed data source is never silent: it turns the banner red even when the report's own checks still pass.
       Object.keys(S.errors).forEach(function (id) {
-        if (id === cfg.files) return; // the company-file list is optional (newer MYOB keys return none)
+        if (id === cfg.files || (cfg.optional || []).indexOf(id) >= 0) return; // the company-file list is optional (newer MYOB keys return none); so are a report's declared optional sources (it says what it fell back to)
         var msg = err(id);
         if (last.checks.some(function (k) { return k.pass === false && k.detail === msg; })) return;
         last.checks.unshift({ name: 'Data loaded: ' + ((cfg.tools || {})[id] || id), pass: false, detail: msg });

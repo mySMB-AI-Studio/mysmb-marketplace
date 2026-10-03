@@ -6,7 +6,7 @@ description: Shared build recipe, controls contract, validation rules, MYOB styl
 
 Use when you build any MYOB report, dashboard or report pack. Load this skill first, then the report skill. Two kinds of report skill exist:
 
-- **Kit reports** — `myob-reporting-studio:profit-and-loss` (M04), `myob-reporting-studio:balance-sheet` (M02), `myob-reporting-studio:trial-balance` (M03), `myob-reporting-studio:unpaid-invoices` (M32), `myob-reporting-studio:aged-receivables` (M32), `myob-reporting-studio:receivables-reconciliation` (M33, M34), `myob-reporting-studio:sales-register` (M38), `myob-reporting-studio:customer-sales` (M35), `myob-reporting-studio:cash-movement` (M05), `myob-reporting-studio:general-ledger` (M08). The report skill carries a tested `dataBindings` manifest and a report config; this file carries the tested kit and stylesheet. **You assemble them — you do not write report code.** Follow *Build a kit report* below.
+- **Kit reports** — `myob-reporting-studio:profit-and-loss` (M04), `myob-reporting-studio:balance-sheet` (M02), `myob-reporting-studio:trial-balance` (M03), `myob-reporting-studio:unpaid-invoices` (M32), `myob-reporting-studio:aged-receivables` (M32), `myob-reporting-studio:receivables-reconciliation` (M33, M34), `myob-reporting-studio:sales-register` (M38), `myob-reporting-studio:customer-sales` (M35), `myob-reporting-studio:cash-movement` (M05), `myob-reporting-studio:general-ledger` (M08), `myob-reporting-studio:dashboard` (M00), `myob-reporting-studio:exceptions-dashboard` (M59). The report skill carries a tested `dataBindings` manifest and a report config; this file carries the tested kit and stylesheet. **You assemble them — you do not write report code.** Follow *Build a kit report* below.
 - **Every other report skill** is still a written specification. Follow *Rules for report skills without a kit config* at the end of this file.
 
 Spec: MYOB Reports Prompt Library v1.2 (M00–M63) with the v1.2 patch (one agent per platform; LIB-002 client selector; cross-client isolation). Connector: `myob-accounting` (the mySMB custom MCP on the MYOB Business / AccountRight API v2).
@@ -156,6 +156,12 @@ main.mk-card{border-top:4px solid var(--accent)}
 .mk-badge{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.06em;border-radius:10px;padding:1px 8px;margin-right:6px;vertical-align:middle;background:var(--accent);color:#FFFFFF}.mk-src .mk-badge+*{vertical-align:middle}
 :root.style-mysmb .mk-stmt thead th,:root.style-mysmb .mk-grid thead th{background:var(--th-bg);color:var(--th-ink);border-bottom:0}
 :root.style-mysmb #mk-head .ti{font-size:18px;font-weight:700}:root.style-mysmb #mk-head .co{font-size:14px}:root.style-mysmb .mk-badge{background:var(--band-ink);color:var(--band)}:root.style-mysmb .mk-kpi{border-left-color:var(--band)}
+.mk-greet{font-size:20px;font-weight:600;margin:0 0 12px}
+.mk-dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}.mk-dash>.mk-card{margin:0;padding:16px 18px}.mk-dash>.wide{grid-column:1/-1}.mk-dash .wide svg{max-height:260px}.mk-next{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}.mk-next h3{margin:0 8px 0 0}
+.mk-big{font-size:26px;font-weight:700;margin:2px 0 6px;font-variant-numeric:tabular-nums}.mk-big sup{font-size:.55em;font-weight:600;vertical-align:.6em}.mk-big.neg{color:var(--neg)}
+.mk-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--line);margin:8px 0}.mk-bar i{display:block;height:100%}
+.mk-bul{list-style:none;padding:0;margin:8px 0 0}.mk-bul li{display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--line);font-size:13px}.mk-bul b{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.mk-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:8px}.mk-tiles .lbl{font-size:12px;color:var(--muted)}
 ```
 
 ## Report kit ({{KIT}}) — copy verbatim
@@ -540,7 +546,7 @@ var f = el.querySelector('.mk-filter'); if (f) f.addEventListener('input', funct
 draw();
 }
 function scale(vals) { var mn = Math.min(0, Math.min.apply(null, vals)), mx = Math.max(0, Math.max.apply(null, vals)); if (mn === mx) mx = mn + 1; return { mn: mn, mx: mx }; }
-function legend(series) { return '<div class="mk-legend">' + series.map(function (s, i) { return '<span><i style="background:var(--c' + (i + 1) + ')"></i>' + h(s.name) + '</span>'; }).join('') + '</div>'; }
+function legend(series) { return '<div class="mk-legend">' + series.map(function (s, i) { return '<span><i style="background:' + (s.color || 'var(--c' + (i + 1) + ')') + '"></i>' + h(s.name) + '</span>'; }).join('') + '</div>'; }
 function bars(el, o, ctx) {
 var W = 640, H = 220, P = 28, all = []; o.series.forEach(function (s) { all = all.concat(s.values.filter(function (v) { return v != null; })); });
 if (!all.length) { el.innerHTML = '<p class="muted">Data appears once it\'s available.</p>'; return; }
@@ -565,8 +571,9 @@ o.series.forEach(function (s, j) {
 var pts = s.values.map(function (v, i) { return v == null ? null : (P + step * i).toFixed(1) + ',' + y(v).toFixed(1); }).filter(Boolean);
 if (j === 0 && o.band) { var up = [], dn = []; o.band.high.forEach(function (v, i) { if (v != null && o.band.low[i] != null) { up.push((P + step * i).toFixed(1) + ',' + y(v).toFixed(1)); dn.unshift((P + step * i).toFixed(1) + ',' + y(o.band.low[i]).toFixed(1)); } }); if (up.length) svg += '<polygon points="' + up.concat(dn).join(' ') + '" fill="var(--c2)" opacity=".16"><title>' + h(o.band.name || 'Range') + '</title></polygon>'; }
 if (o.area && j === 0 && pts.length) svg += '<polygon points="' + (P).toFixed(1) + ',' + y(0).toFixed(1) + ' ' + pts.join(' ') + ' ' + (P + step * (n - 1)).toFixed(1) + ',' + y(0).toFixed(1) + '" fill="var(--c1)" opacity=".18"/>';
-svg += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="var(--c' + (j + 1) + ')" stroke-width="2.5"' + (j ? ' stroke-dasharray="5 4"' : '') + '/>';
-s.values.forEach(function (v, i) { if (v != null) svg += '<circle cx="' + (P + step * i).toFixed(1) + '" cy="' + y(v).toFixed(1) + '" r="3" fill="var(--c' + (j + 1) + ')"><title>' + h(s.name + ' · ' + o.labels[i] + ': ' + money(v, ctx.currency, ctx.display)) + '</title></circle>'; });
+var col = s.color || 'var(--c' + (j + 1) + ')';
+svg += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="2.5"' + (j && !o.solid ? ' stroke-dasharray="5 4"' : '') + '/>';
+s.values.forEach(function (v, i) { if (v != null) svg += '<circle cx="' + (P + step * i).toFixed(1) + '" cy="' + y(v).toFixed(1) + '" r="3" fill="' + col + '"><title>' + h(s.name + ' · ' + o.labels[i] + ': ' + money(v, ctx.currency, ctx.display)) + '</title></circle>'; });
 });
 o.labels.forEach(function (lb, i) { if (n <= 13 || i % Math.ceil(n / 12) === 0) svg += '<text x="' + (P + step * i).toFixed(1) + '" y="' + (H - 8) + '" class="tick" text-anchor="middle">' + h(lb) + '</text>'; });
 el.innerHTML = svg + '</svg>' + legend(o.series) + (o.band ? '<div class="mk-legend"><span><i style="background:var(--c2);opacity:.3"></i>' + h(o.band.name || 'Range') + '</span></div>' : '');
@@ -716,7 +723,7 @@ function ctx() {
 var d = disp(), c0 = co(), f = fy();
 return { data: S.data, errors: S.errors, err: err, inputs: S.inputs, I: I, display: d, view: d.v || (cfg.views ? cfg.views[0][0] : ''), compareMode: cfg.compare ? d.c : 'none',
 persona: I.persona ? S.inputs[I.persona] : 'Bookkeeper', company: c0.name, companyFile: c0, fy: f, currency: homeCurrency(c0.country), live: live,
-fetchedAt: S.fetchedAt, body: $('mk-body'), change: change, disp: disp, today: iso(today()) };
+fetchedAt: S.fetchedAt, body: $('mk-body'), change: change, disp: disp, today: iso(today()), rerun: function () { return requery(null); } };
 }
 var last = { checks: [], na: [], notes: [] };
 function render() {
@@ -732,7 +739,7 @@ last = { checks: out.checks || [], na: out.na || [], notes: out.notes || [] };
 var nc = Object.keys(S.errors).some(function (id) { return S.errors[id] && S.errors[id].code === 'needs_connection'; });
 if (nc && c.body && c.body.textContent.indexOf(FRIENDLY.needs_connection) < 0) { var dv = document.createElement('div'); dv.className = 'mk-banner fail'; dv.textContent = FRIENDLY.needs_connection; c.body.insertBefore(dv, c.body.firstChild); }
 Object.keys(S.errors).forEach(function (id) {
-if (id === cfg.files) return; // the company-file list is optional (newer MYOB keys return none)
+if (id === cfg.files || (cfg.optional || []).indexOf(id) >= 0) return; // the company-file list is optional (newer MYOB keys return none); so are a report's declared optional sources (it says what it fell back to)
 var msg = err(id);
 if (last.checks.some(function (k) { return k.pass === false && k.detail === msg; })) return;
 last.checks.unshift({ name: 'Data loaded: ' + ((cfg.tools || {})[id] || id), pass: false, detail: msg });
@@ -800,7 +807,7 @@ xlsx: xlsx, sheetFromLines: sheetFromLines, download: download, reportParams: re
 
 ## Rules for report skills without a kit config
 
-These rules apply to every report skill that is still a written specification (all except `myob-reporting-studio:profit-and-loss` (M04), `myob-reporting-studio:balance-sheet` (M02), `myob-reporting-studio:trial-balance` (M03), `myob-reporting-studio:unpaid-invoices` (M32), `myob-reporting-studio:aged-receivables` (M32), `myob-reporting-studio:receivables-reconciliation` (M33, M34), `myob-reporting-studio:sales-register` (M38), `myob-reporting-studio:customer-sales` (M35), `myob-reporting-studio:cash-movement` (M05), `myob-reporting-studio:general-ledger` (M08)). When you build one of those, write the report yourself following these rules.
+These rules apply to every report skill that is still a written specification (all except `myob-reporting-studio:profit-and-loss` (M04), `myob-reporting-studio:balance-sheet` (M02), `myob-reporting-studio:trial-balance` (M03), `myob-reporting-studio:unpaid-invoices` (M32), `myob-reporting-studio:aged-receivables` (M32), `myob-reporting-studio:receivables-reconciliation` (M33, M34), `myob-reporting-studio:sales-register` (M38), `myob-reporting-studio:customer-sales` (M35), `myob-reporting-studio:cash-movement` (M05), `myob-reporting-studio:general-ledger` (M08), `myob-reporting-studio:dashboard` (M00), `myob-reporting-studio:exceptions-dashboard` (M59)). When you build one of those, write the report yourself following these rules.
 
 Resolve the MYOB company file, period or as-at date, and accounting basis (`Accrual` or `Cash`, where the underlying tool takes `reporting_basis`) — but prefer declaring them as report inputs with sensible defaults over asking the user up front; ask only when a required choice genuinely cannot be defaulted. Do not ask for an output format: every report is a single self-contained HTML document saved through artifact_save with a .html filename.
 

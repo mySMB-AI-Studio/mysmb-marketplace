@@ -4,7 +4,7 @@ description: MYOB General Ledger (M08) as a live, validated report in MYOB styli
 ---
 # General Ledger (M08)
 
-Use when the user asks for a general ledger, GL, the transactions on a category or account, or every journal for a period. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB General Ledger**. Report title: **MYOB General Ledger**. Report title: **MYOB General Ledger**. Template: `myob-reporting-studio` / `general-ledger` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_journal_transactions`, `get_balance_sheet`, `get_profit_and_loss_3m`, `list_accounts`, `list_company_files`).
+Use when the user asks for a general ledger, GL, the transactions on a category or account, or every journal for a period. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB General Ledger**. Template: `myob-reporting-studio` / `general-ledger` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_journal_transactions`, `get_balance_sheet`, `get_profit_and_loss_3m`, `list_accounts`, `list_company_files`).
 
 MYOB location: Reporting → Reports → Business → General ledger. Library: MYOB Reports Prompt Library v1.2 → Prompts → M08. Delivery: Wave 1 (P1, delivery order 13).
 

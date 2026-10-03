@@ -4,7 +4,7 @@ description: MYOB Cash Movement (M05) as a live, validated report in MYOB stylin
 ---
 # Cash Movement (M05)
 
-Use when the user asks for cash movement, where the cash went, cash in and out, or how the bank balance changed over a period. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Cash Movement**. Report title: **MYOB Cash Movement**. Report title: **MYOB Cash Movement**. Template: `myob-reporting-studio` / `cash-movement` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`get_profit_and_loss_3m`, `get_balance_sheet`, `list_accounts`, `list_company_files`).
+Use when the user asks for cash movement, where the cash went, cash in and out, or how the bank balance changed over a period. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Cash Movement**. Template: `myob-reporting-studio` / `cash-movement` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`get_profit_and_loss_3m`, `get_balance_sheet`, `list_accounts`, `list_company_files`).
 
 MYOB location: Reporting → Reports → Business → Cash movement. Library: MYOB Reports Prompt Library v1.2 → Prompts → M05. Delivery: Wave 1 (P1, delivery order 3).
 
