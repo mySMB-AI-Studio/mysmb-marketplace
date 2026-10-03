@@ -181,6 +181,7 @@ function near(a, b, tol) { return a != null && b != null && Math.abs(a - b) <= (
 function sum(arr) { var s = 0; arr.forEach(function (v) { if (v != null) s += v; }); return Math.round(s * 100) / 100; }
 function errorOf(v) { return v && typeof v === 'object' && !Array.isArray(v) && v.__error != null ? String(v.__error) : null; }
 function items(v) { return !v || errorOf(v) ? [] : Array.isArray(v) ? v : Array.isArray(v.Items) ? v.Items : []; }
+function cardId(v) { return v && v !== '*None' ? String(v) : ''; }
 function isoDate(v) {
 if (v == null || v === '') return null;
 var m = /\/Date\((-?\d+)/.exec(String(v)); if (m) { var d = new Date(+m[1]); return iso(D(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate())); }
@@ -805,7 +806,7 @@ if (MH.onRefresh) MH.onRefresh(function () { status('Refreshing…'); });
 if (MH.onThemeChange) MH.onThemeChange(function () { render(); });
 return { state: S, change: change, render: render, exportXlsx: exportXlsx, ctx: ctx };
 }
-return { signNotes: signNotes, cashMoves: cashMoves, errorOf: errorOf, items: items, isoDate: isoDate, accounts: accounts, classOf: classOf, breakdown: breakdown, PL_LAYOUT: PL_LAYOUT, BS_LAYOUT: BS_LAYOUT, PL_CLASSES: PL_CLASSES, BS_CLASSES: BS_CLASSES,
+return { signNotes: signNotes, cashMoves: cashMoves, errorOf: errorOf, items: items, cardId: cardId, isoDate: isoDate, accounts: accounts, classOf: classOf, breakdown: breakdown, PL_LAYOUT: PL_LAYOUT, BS_LAYOUT: BS_LAYOUT, PL_CLASSES: PL_CLASSES, BS_CLASSES: BS_CLASSES,
 CYE_RE: CYE_RE, currentYearEarnings: currentYearEarnings, linesTies: linesTies, companyFiles: companyFiles, companyOf: companyOf, fiscalStart: fiscalStart, homeCurrency: homeCurrency,
 applyBrand: applyBrand, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app,
 MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays, num: num, find: find, val: val, totalFor: totalFor, near: near, sum: sum, symbol: symbol,

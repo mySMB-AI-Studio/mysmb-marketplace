@@ -4,7 +4,7 @@ description: MYOB Customer Sales (M35) as a live, validated report in MYOB styli
 ---
 # Customer Sales (M35)
 
-Use when the user asks for customer sales, sales by customer, top customers, or how much each customer bought in a period. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Customer Sales**. Template: `myob-reporting-studio` / `customer-sales` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_invoices`, `get_profit_and_loss_3m`, `get_balance_sheet`, `list_accounts`, `list_company_files`).
+Use when the user asks for customer sales, sales by customer, top customers, or how much each customer bought in a period. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Customer Sales**. Template: `myob-reporting-studio` / `customer-sales` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_invoices`, `list_journal_transactions`, `get_profit_and_loss_3m`, `get_balance_sheet`, `list_accounts`, `list_company_files`).
 
 MYOB location: Reporting → Reports → Sales → Customer sales. Library: MYOB Reports Prompt Library v1.2 → Prompts → M35. Delivery: Wave 1 (P1, delivery order 11).
 
@@ -149,6 +149,27 @@ Call `list_invoices` once with `status` = `All`, `from_date` / `to_date` = the p
       }
     },
     {
+      "id": "journals",
+      "tool": {
+        "mcp": "myob-accounting",
+        "name": "list_journal_transactions"
+      },
+      "params": {
+        "from_date": {
+          "kind": "input",
+          "input": "from_date"
+        },
+        "to_date": {
+          "kind": "input",
+          "input": "to_date"
+        },
+        "myob_company_file_id": {
+          "kind": "input",
+          "input": "company_file"
+        }
+      }
+    },
+    {
       "id": "pnl",
       "tool": {
         "mcp": "myob-accounting",
@@ -227,8 +248,8 @@ MK.app({
   inputs: { start: 'from_date', end: 'to_date', companyFile: 'company_file', persona: 'persona', display: 'display' },
   defaults: { from_date: '2026-07-01', to_date: '2026-09-28', as_at: '2026-09-28', status: 'All', company_file: '', persona: 'Bookkeeper',
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":0,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":"customers"}' },
-  uses: { inv: ['from_date', 'to_date', 'company_file'], open: ['company_file'], pnl: ['from_date', 'to_date', 'company_file'], bs: ['as_at', 'company_file'], accounts: ['company_file'], company_files: [] },
-  tools: { inv: 'list_invoices (sales invoices dated in the period — every status, every page)', open: 'list_invoices (every open invoice — current balances)', pnl: 'get_profit_and_loss_3m (income for the period, for the tie)', bs: 'get_balance_sheet (the receivables account today)', accounts: 'list_accounts (income and receivables accounts)', company_files: 'list_company_files' },
+  uses: { inv: ['from_date', 'to_date', 'company_file'], open: ['company_file'], journals: ['from_date', 'to_date', 'company_file'], pnl: ['from_date', 'to_date', 'company_file'], bs: ['as_at', 'company_file'], accounts: ['company_file'], company_files: [] },
+  tools: { inv: 'list_invoices (sales invoices dated in the period — every status, every page)', journals: 'list_journal_transactions (the receivables account\'s postings in the period, for the tie)',open: 'list_invoices (every open invoice — current balances)', pnl: 'get_profit_and_loss_3m (income for the period, for the tie)', bs: 'get_balance_sheet (the receivables account today)', accounts: 'list_accounts (income and receivables accounts)', company_files: 'list_company_files' },
   enums: [{ input: 'status', label: 'Sale status', options: [['All', 'All invoices'], ['Open', 'Open'], ['Closed', 'Closed']] }],
   roll: function () { return { as_at: MK.asAt('today') }; },
   views: [['register', 'Sales register'], ['customers', 'Customer sales']],
@@ -236,7 +257,7 @@ MK.app({
     var body = c.body, money = function (v) { return MK.money(v, c.currency, c.display); }, r2 = function (v) { return Math.round(v * 100) / 100; }, from = c.inputs.from_date, to = c.inputs.to_date, st = c.inputs.status || 'All';
     if (c.errors.inv) { body.innerHTML = '<p class="mk-err">' + MK.h(c.err('inv')) + '</p>'; return { checks: [{ name: 'Invoices loaded', pass: false, detail: c.err('inv') }] }; }
     if (!c.data.inv) return {};
-    var doc = function (i) { var cu = i.Customer || {}, tot = MK.num(i.TotalAmount) || 0, tax = MK.num(i.TotalTax) || 0, sub = MK.num(i.Subtotal), incl = !!i.IsTaxInclusive; return { date: MK.isoDate(i.Date), number: i.Number || '', po: i.CustomerPurchaseOrderNumber || '', customer: cu.Name || '(no customer)', cid: cu.UID || cu.Name || '', cno: cu.DisplayID || '', total: r2(tot), due: r2(MK.num(i.BalanceDueAmount) || 0), status: i.Status || '', tax: r2(tax), sale: r2(sub != null ? (incl ? sub - tax : sub) : tot - tax) }; };
+    var doc = function (i) { var cu = i.Customer || {}, tot = MK.num(i.TotalAmount) || 0, tax = MK.num(i.TotalTax) || 0, sub = MK.num(i.Subtotal), incl = !!i.IsTaxInclusive; return { date: MK.isoDate(i.Date), number: i.Number || '', po: i.CustomerPurchaseOrderNumber || '', customer: cu.Name || '(no customer)', cid: cu.UID || cu.Name || '', cno: MK.cardId(cu.DisplayID), total: r2(tot), due: r2(MK.num(i.BalanceDueAmount) || 0), status: i.Status || '', tax: r2(tax), sale: r2(sub != null ? (incl ? sub - tax : sub) : tot - tax) }; };
     var all = MK.items(c.data.inv).filter(Boolean).map(doc), inP = all.filter(function (d) { return d.date >= from && d.date <= to; }), list = inP.filter(function (d) { return st === 'All' || d.status === st; });
     list.sort(function (a, b) { return a.date.localeCompare(b.date) || String(a.number).localeCompare(String(b.number)); });
     var open = c.data.open ? MK.items(c.data.open).filter(Boolean).map(doc) : null, bal = {}; (open || []).forEach(function (d) { bal[d.cid] = r2((bal[d.cid] || 0) + d.due); });
@@ -255,12 +276,17 @@ MK.app({
       MK.bars(document.getElementById('sr-chart'), { title: 'Sales by customer', labels: cust.slice(0, 10).map(function (x) { return x.name; }), series: [{ name: 'Sale amount', values: cust.slice(0, 10).map(function (x) { return x.sale; }) }] }, c);
     } else MK.grid(document.getElementById('sr-grid'), { rows: list, filter: true, columns: [{ key: 'date', title: 'Date' }, { key: 'number', title: 'Invoice No.' }, { key: 'po', title: 'Customer PO No.' }, { key: 'customer', title: 'Customer name' }, { key: 'total', title: 'Total amount ($)', money: true }, { key: 'due', title: 'Amount due ($)', money: true }, { key: 'status', title: 'Status' }],
       total: { date: 'Total', total: T.total, due: T.due }, empty: 'No invoices in this period.' }, c);
-    // ties: sales to the P&L's income for the period; amount due to the receivables account (when the register holds every open invoice)
+    // ties: the invoices to the receivables account's movement in the period's journals, leaving out customer payments (cash journals) — a
+    // separate MYOB source; amount due to the receivables account (when the register holds every open invoice). The P&L's income is shown
+    // beside the sales for information: income also comes from receive money and journals, which are not invoices.
     var idx = MK.accounts(c.data.accounts), plB = c.data.pnl ? MK.breakdown([c.data.pnl], idx, MK.PL_LAYOUT) : null, income = plB ? plB.totals.Income[0] : null;
+    var isAR = function (a) { var x = (a.UID && idx.byUid[a.UID]) || (a.DisplayID && idx.byCode[a.DisplayID]); return x ? x.Type === 'AccountReceivable' : !idx.loaded && /receivable|debtors/i.test(a.Name || ''); };
+    var arMove = c.data.journals ? MK.sum([].concat.apply([], MK.items(c.data.journals).map(function (t) { var dt = MK.isoDate(t.DateOccurred); return dt >= from && dt <= to && !/^Cash/i.test(t.JournalType || '') ? (t.Lines || []).filter(function (l) { return isAR(l.Account || {}); }).map(function (l) { var a = Math.abs(MK.num(l.Amount) || 0); return l.IsCredit ? -a : a; }) : []; }))) : null, totAll = MK.sum(inP.map(function (d) { return d.total; }));
     var bsB = c.data.bs ? MK.breakdown([c.data.bs], idx, MK.BS_LAYOUT) : null, arRows = bsB ? bsB.rows.filter(function (r) { return !r.header && r.type === 'AccountReceivable'; }) : [], control = arRows.length ? MK.sum(arRows.map(function (r) { return r.values[0]; })) : null;
     var allOpenIn = open ? open.every(function (d) { return d.date >= from && d.date <= to; }) : false, saleAll = MK.sum(inP.map(function (d) { return d.sale; }));
     var checks = [
-      { name: 'Σ sale amount (ex tax) = Income on the Profit and Loss for the period (a separate MYOB report)', pass: income == null ? null : MK.near(saleAll, income), detail: income == null ? (c.err('pnl') || 'N/A') : money(saleAll) + ' vs ' + money(income) + (MK.near(saleAll, income) ? '' : ' — difference ' + money(r2(income - saleAll)) + ': income from receive money or journals, or invoice lines on other accounts') },
+      { name: 'Σ invoice amounts (with tax) = the receivables account\'s movement in the period\'s journals, leaving out customer payments (a separate MYOB source)', pass: arMove == null ? null : MK.near(totAll, arMove), detail: arMove == null ? (c.err('journals') || 'N/A') : money(totAll) + ' vs ' + money(arMove) + (MK.near(totAll, arMove) ? '' : ' — difference ' + money(r2(arMove - totAll)) + ': a general journal or other posting to the receivables account, or an invoice the list did not return') },
+      income == null ? null : { name: 'Income on the Profit and Loss vs the invoices\' sale amount (information)', pass: null, info: true, detail: MK.near(saleAll, income) ? money(saleAll) + ' — all of the period\'s income is invoiced' : money(saleAll) + ' invoiced vs ' + money(income) + ' income: ' + money(r2(income - saleAll)) + ' of income is not from invoices (receive money, journals, or invoice lines on non-income accounts)' },
       !allOpenIn || st === 'Closed' ? { name: 'Σ amount due vs the receivables account (information — the period does not hold every open invoice)', pass: null, info: true, detail: money(T.due) + ' due in the period' + (control != null ? '; receivables account ' + money(control) : '') }
         : { name: 'Σ amount due = the receivables account on the Balance Sheet (every open invoice is in the period)', pass: control == null ? null : MK.near(T.due, control), detail: control == null ? (c.err('bs') || 'N/A') : money(T.due) + ' vs ' + money(control) },
       { name: 'Counts by status add up to the invoices listed', pass: Object.keys(counts).reduce(function (s, k) { return s + counts[k]; }, 0) === list.length, detail: Object.keys(counts).map(function (k) { return k + ' ' + counts[k]; }).join(', ') || 'none' },

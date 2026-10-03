@@ -18,7 +18,7 @@ MK.app({
     var bucket = function (d) { return byDue ? (d <= 0 ? 0 : d <= 30 ? 1 : d <= 60 ? 2 : d <= 90 ? 3 : 4) : (d <= 30 ? 0 : d <= 60 ? 1 : d <= 90 ? 2 : 3); };
     var inv = MK.items(c.data.bills).filter(function (i) { return i && (MK.num(i.BalanceDueAmount) || 0) !== 0; }).map(function (i) {
       var date = MK.isoDate(i.Date), due = MK.isoDate((i.Terms || {}).DueDate) || date, cu = i.Supplier || {}, bal = MK.num(i.BalanceDueAmount) || 0, tot = MK.num(i.TotalAmount) || 0;
-      var age = days(byDue ? due : date); return { number: i.Number || '', date: date, due: due, supplier: cu.Name || '(no supplier)', cid: cu.UID || cu.Name || '', cno: cu.DisplayID || '', balance: r2(bal), total: tot, tax: tot ? r2(bal * (MK.num(i.TotalTax) || 0) / tot) : 0, age: age, b: bucket(age), noDue: !(i.Terms || {}).DueDate }; });
+      var age = days(byDue ? due : date); return { number: i.Number || '', date: date, due: due, supplier: cu.Name || '(no supplier)', cid: cu.UID || cu.Name || '', cno: MK.cardId(cu.DisplayID), balance: r2(bal), total: tot, tax: tot ? r2(bal * (MK.num(i.TotalTax) || 0) / tot) : 0, age: age, b: bucket(age), noDue: !(i.Terms || {}).DueDate }; });
     var byC = {}; inv.forEach(function (x) { var k = x.cid; if (!byC[k]) byC[k] = { name: x.supplier, no: x.cno, b: COLS.map(function () { return 0; }), total: 0, n: 0 }; var y = byC[k]; y.b[x.b] = r2(y.b[x.b] + x.balance); y.total = r2(y.total + x.balance); y.n++; });
     var cust = Object.keys(byC).map(function (k) { return byC[k]; }).sort(function (a, b) { return a.name.localeCompare(b.name); });
     var tot = COLS.map(function (_, j) { return MK.sum(cust.map(function (x) { return x.b[j]; })); }), all = MK.sum(inv.map(function (x) { return x.balance; }));

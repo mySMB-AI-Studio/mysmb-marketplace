@@ -111,6 +111,7 @@ function near(a, b, tol) { return a != null && b != null && Math.abs(a - b) <= (
 function sum(arr) { var s = 0; arr.forEach(function (v) { if (v != null) s += v; }); return Math.round(s * 100) / 100; }
 function errorOf(v) { return v && typeof v === 'object' && !Array.isArray(v) && v.__error != null ? String(v.__error) : null; }
 function items(v) { return !v || errorOf(v) ? [] : Array.isArray(v) ? v : Array.isArray(v.Items) ? v.Items : []; }
+function cardId(v) { return v && v !== '*None' ? String(v) : ''; }
 function isoDate(v) {
 if (v == null || v === '') return null;
 var m = /\/Date\((-?\d+)/.exec(String(v)); if (m) { var d = new Date(+m[1]); return iso(D(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate())); }
@@ -735,7 +736,7 @@ if (MH.onRefresh) MH.onRefresh(function () { status('Refreshing…'); });
 if (MH.onThemeChange) MH.onThemeChange(function () { render(); });
 return { state: S, change: change, render: render, exportXlsx: exportXlsx, ctx: ctx };
 }
-return { signNotes: signNotes, cashMoves: cashMoves, errorOf: errorOf, items: items, isoDate: isoDate, accounts: accounts, classOf: classOf, breakdown: breakdown, PL_LAYOUT: PL_LAYOUT, BS_LAYOUT: BS_LAYOUT, PL_CLASSES: PL_CLASSES, BS_CLASSES: BS_CLASSES,
+return { signNotes: signNotes, cashMoves: cashMoves, errorOf: errorOf, items: items, cardId: cardId, isoDate: isoDate, accounts: accounts, classOf: classOf, breakdown: breakdown, PL_LAYOUT: PL_LAYOUT, BS_LAYOUT: BS_LAYOUT, PL_CLASSES: PL_CLASSES, BS_CLASSES: BS_CLASSES,
 CYE_RE: CYE_RE, currentYearEarnings: currentYearEarnings, linesTies: linesTies, companyFiles: companyFiles, companyOf: companyOf, fiscalStart: fiscalStart, homeCurrency: homeCurrency,
 applyBrand: applyBrand, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app,
 MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays, num: num, find: find, val: val, totalFor: totalFor, near: near, sum: sum, symbol: symbol,
@@ -757,7 +758,7 @@ xlsx: xlsx, sheetFromLines: sheetFromLines, download: download, reportParams: re
     var body = c.body, money = function (v) { return MK.money(v, c.currency, c.display); }, r2 = function (v) { return Math.round(v * 100) / 100; }, from = c.inputs.from_date, to = c.inputs.to_date, st = c.inputs.status || 'All';
     if (c.errors.bills) { body.innerHTML = '<p class="mk-err">' + MK.h(c.err('bills')) + '</p>'; return { checks: [{ name: 'Bills loaded', pass: false, detail: c.err('bills') }] }; }
     if (!c.data.bills) return {};
-    var doc = function (b) { var su = b.Supplier || {}, tot = MK.num(b.TotalAmount) || 0, tax = MK.num(b.TotalTax) || 0, sub = MK.num(b.Subtotal), incl = !!b.IsTaxInclusive; return { date: MK.isoDate(b.Date), number: b.Number || '', sinv: b.SupplierInvoiceNumber || '', supplier: su.Name || '(no supplier)', sid: su.UID || su.Name || '', sno: su.DisplayID || '', total: r2(tot), due: r2(MK.num(b.BalanceDueAmount) || 0), status: b.Status || '', tax: r2(tax), buy: r2(sub != null ? (incl ? sub - tax : sub) : tot - tax) }; };
+    var doc = function (b) { var su = b.Supplier || {}, tot = MK.num(b.TotalAmount) || 0, tax = MK.num(b.TotalTax) || 0, sub = MK.num(b.Subtotal), incl = !!b.IsTaxInclusive; return { date: MK.isoDate(b.Date), number: b.Number || '', sinv: b.SupplierInvoiceNumber || '', supplier: su.Name || '(no supplier)', sid: su.UID || su.Name || '', sno: MK.cardId(su.DisplayID), total: r2(tot), due: r2(MK.num(b.BalanceDueAmount) || 0), status: b.Status || '', tax: r2(tax), buy: r2(sub != null ? (incl ? sub - tax : sub) : tot - tax) }; };
     var all = MK.items(c.data.bills).filter(Boolean).map(doc), inP = all.filter(function (d) { return d.date >= from && d.date <= to; }), list = inP.filter(function (d) { return st === 'All' || d.status === st; });
     list.sort(function (a, b) { return a.date.localeCompare(b.date) || String(a.number).localeCompare(String(b.number)); });
     var open = c.data.open ? MK.items(c.data.open).filter(Boolean).map(doc) : null, bal = {}; (open || []).forEach(function (d) { bal[d.sid] = r2((bal[d.sid] || 0) + d.due); });
@@ -776,14 +777,14 @@ xlsx: xlsx, sheetFromLines: sheetFromLines, download: download, reportParams: re
       MK.bars(document.getElementById('pg-chart'), { title: 'Purchases by supplier', labels: sup.slice(0, 10).map(function (x) { return x.name; }), series: [{ name: 'Purchase amount', values: sup.slice(0, 10).map(function (x) { return x.buy; }) }] }, c);
     } else MK.grid(document.getElementById('pg-grid'), { rows: list, filter: true, columns: [{ key: 'date', title: 'Date' }, { key: 'number', title: 'PO No.' }, { key: 'sinv', title: 'Supplier Inv No.' }, { key: 'supplier', title: 'Supplier name' }, { key: 'total', title: 'Amount ($)', money: true }, { key: 'due', title: 'Amount due ($)', money: true }, { key: 'status', title: 'Status' }],
       total: { date: 'Total', total: T.total, due: T.due }, empty: 'No bills in this period.' }, c);
-    // ties: the bills to the payables account's credits in the period's journals (two MYOB sources); amount due to the payables
+    // ties: the bills to the payables account's movement in the period's journals, leaving out supplier payments (two MYOB sources); amount due to the payables
     // account on the Balance Sheet (when the register holds every open bill)
     var idx = MK.accounts(c.data.accounts), isAP = function (a) { var x = (a.UID && idx.byUid[a.UID]) || (a.DisplayID && idx.byCode[a.DisplayID]); return x ? x.Type === 'AccountsPayable' : !idx.loaded && /payable|creditors/i.test(a.Name || ''); };
-    var cr = c.data.journals ? MK.sum([].concat.apply([], MK.items(c.data.journals).map(function (t) { var dt = MK.isoDate(t.DateOccurred); return dt >= from && dt <= to ? (t.Lines || []).filter(function (l) { return l.IsCredit && isAP(l.Account || {}); }).map(function (l) { return Math.abs(MK.num(l.Amount) || 0); }) : []; }))) : null;
+    var cr = c.data.journals ? MK.sum([].concat.apply([], MK.items(c.data.journals).map(function (t) { var dt = MK.isoDate(t.DateOccurred); return dt >= from && dt <= to && !/^Cash/i.test(t.JournalType || '') ? (t.Lines || []).filter(function (l) { return isAP(l.Account || {}); }).map(function (l) { var a = Math.abs(MK.num(l.Amount) || 0); return l.IsCredit ? a : -a; }) : []; }))) : null;
     var bsB = c.data.bs ? MK.breakdown([c.data.bs], idx, MK.BS_LAYOUT) : null, apRows = bsB ? bsB.rows.filter(function (r) { return !r.header && r.type === 'AccountsPayable'; }) : [], control = apRows.length ? MK.sum(apRows.map(function (r) { return r.values[0]; })) : null;
     var allOpenIn = open ? open.every(function (d) { return d.date >= from && d.date <= to; }) : false, totAll = MK.sum(inP.map(function (d) { return d.total; }));
     var checks = [
-      { name: 'Σ bill amounts (with tax) = the credits to the payables account in the period\'s journals (a separate MYOB source)', pass: cr == null ? null : MK.near(totAll, cr), detail: cr == null ? (c.err('journals') || 'N/A') : money(totAll) + ' vs ' + money(cr) + (MK.near(totAll, cr) ? '' : ' — difference ' + money(r2(cr - totAll)) + ': a general journal or other posting to the payables account') },
+      { name: 'Σ bill amounts (with tax) = the payables account\'s movement in the period\'s journals, leaving out supplier payments (a separate MYOB source)', pass: cr == null ? null : MK.near(totAll, cr), detail: cr == null ? (c.err('journals') || 'N/A') : money(totAll) + ' vs ' + money(cr) + (MK.near(totAll, cr) ? '' : ' — difference ' + money(r2(cr - totAll)) + ': a general journal or other posting to the payables account') },
       !allOpenIn || st === 'Closed' ? { name: 'Σ amount due vs the payables account (information — the period does not hold every open bill)', pass: null, info: true, detail: money(T.due) + ' due in the period' + (control != null ? '; payables account ' + money(control) : '') }
         : { name: 'Σ amount due = the payables account on the Balance Sheet (every open bill is in the period)', pass: control == null ? null : MK.near(T.due, control), detail: control == null ? (c.err('bs') || 'N/A') : money(T.due) + ' vs ' + money(control) },
       { name: 'Counts by status add up to the bills listed', pass: Object.keys(counts).reduce(function (s, k) { return s + counts[k]; }, 0) === list.length, detail: Object.keys(counts).map(function (k) { return k + ' ' + counts[k]; }).join(', ') || 'none' },
