@@ -97,7 +97,16 @@
             { "$state": "/m365-mail-read/list_ready_to_pay_notices/messages/0" }
           ]
         },
-        "children": ["tabsRow", "messageList", "footerRow"]
+        "children": [
+          "tabsRow",
+          "tabsDivider",
+          "listAll",
+          "listUnread",
+          "listAwaiting",
+          "emptyUnread",
+          "emptyAwaiting",
+          "footerRow"
+        ]
       },
 
       "tabsRow": {
@@ -106,41 +115,114 @@
         "children": ["tabAll", "tabUnread", "tabAwaiting"]
       },
       "tabAll": {
-        "type": "Badge",
+        "type": "Row",
         "props": {
-          "text": { "$state": "/m365-mail-read/list_ready_to_pay_notices/summary/allTabText" },
-          "tone":  "info",
-          "variant": "soft"
-        }
+          "gap": "xs", "align": "center", "hover": true, "clickable": true,
+          "selected": { "$cond": { "$state": "/ui/rtp/tab", "not": true }, "$then": true, "$else": false }
+        },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/rtp/tab", "value": "" } } },
+        "children": ["tabAllText"]
+      },
+      "tabAllText": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/m365-mail-read/list_ready_to_pay_notices/summary/allTabText" } }
       },
       "tabUnread": {
-        "type": "Badge",
+        "type": "Row",
         "props": {
-          "text": { "$state": "/m365-mail-read/list_ready_to_pay_notices/summary/unreadTabText" },
-          "tone":  "muted"
-        }
+          "gap": "xs", "align": "center", "hover": true, "clickable": true,
+          "selected": { "$cond": { "$state": "/ui/rtp/tab", "eq": "unread" }, "$then": true, "$else": false }
+        },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/rtp/tab", "value": "unread" } } },
+        "children": ["tabUnreadText"]
+      },
+      "tabUnreadText": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/m365-mail-read/list_ready_to_pay_notices/summary/unreadTabText" } }
       },
       "tabAwaiting": {
-        "type": "Badge",
+        "type": "Row",
         "props": {
-          "text": { "$state": "/m365-mail-read/list_ready_to_pay_notices/summary/awaitingTabText" },
-          "tone":  "muted"
+          "gap": "xs", "align": "center", "hover": true, "clickable": true,
+          "selected": { "$cond": { "$state": "/ui/rtp/tab", "eq": "awaiting" }, "$then": true, "$else": false }
+        },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/rtp/tab", "value": "awaiting" } } },
+        "children": ["tabAwaitingText"]
+      },
+      "tabAwaitingText": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/m365-mail-read/list_ready_to_pay_notices/summary/awaitingTabText" } }
+      },
+
+      "tabsDivider": { "type": "Divider", "props": {} },
+
+      "listAll": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "repeat": { "statePath": "/m365-mail-read/list_ready_to_pay_notices/messages", "key": "id" },
+        "visible": { "$state": "/ui/rtp/tab", "not": true },
+        "children": ["allItem"]
+      },
+      "allItem": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["messageRow", "rowDivider"]
+      },
+
+      "listUnread": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "repeat": { "statePath": "/m365-mail-read/list_ready_to_pay_notices/messages", "key": "id" },
+        "visible": { "$state": "/ui/rtp/tab", "eq": "unread" },
+        "children": ["unreadItem"]
+      },
+      "unreadItem": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$item": "isUnread" },
+        "children": ["messageRow", "rowDivider"]
+      },
+
+      "listAwaiting": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "repeat": { "statePath": "/m365-mail-read/list_ready_to_pay_notices/messages", "key": "id" },
+        "visible": { "$state": "/ui/rtp/tab", "eq": "awaiting" },
+        "children": ["awaitingItem"]
+      },
+      "awaitingItem": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$item": "isAwaitingReply" },
+        "children": ["messageRow", "rowDivider"]
+      },
+
+      "emptyUnread": {
+        "type": "Caption",
+        "props": { "text": "No unread notices.", "tone": "muted" },
+        "visible": {
+          "$and": [
+            { "$state": "/ui/rtp/tab", "eq": "unread" },
+            { "$state": "/m365-mail-read/list_ready_to_pay_notices/summary/unread", "not": true }
+          ]
+        }
+      },
+      "emptyAwaiting": {
+        "type": "Caption",
+        "props": { "text": "Nothing awaiting a reply.", "tone": "muted" },
+        "visible": {
+          "$and": [
+            { "$state": "/ui/rtp/tab", "eq": "awaiting" },
+            { "$state": "/m365-mail-read/list_ready_to_pay_notices/summary/awaitingReply", "not": true }
+          ]
         }
       },
 
-      "messageList": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "repeat": {
-          "statePath": "/m365-mail-read/list_ready_to_pay_notices/messages",
-          "key": "id"
-        },
-        "children": ["messageRow"]
-      },
+      "rowDivider": { "type": "Divider", "props": {} },
 
       "messageRow": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "start", "template": "auto minmax(0,1fr) auto" },
+        "props": { "gap": "sm", "align": "start", "template": "auto minmax(0,1fr) auto", "hover": true, "clickable": true },
         "on": {
           "click": {
             "action": "open_url",
@@ -251,11 +333,11 @@
       "footerRight": {
         "type": "Button",
         "props": {
-          "label":   "Open in Outlook",
-          "variant": "ghost",
-          "tone":    "info",
-          "size":    "sm",
-          "trailingIcon": "ArrowRight"
+          "label":       "Open in Outlook",
+          "variant":     "primary",
+          "tone":        "info",
+          "size":        "sm",
+          "leadingIcon": "ExternalLink"
         },
         "on": {
           "click": {
