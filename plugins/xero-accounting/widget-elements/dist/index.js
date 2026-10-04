@@ -1830,6 +1830,7 @@ const analyze_autopay_exclusions = (args) => {
         };
     })
         .sort((a, b) => (Number.isFinite(b.startMs) ? b.startMs : 0) - (Number.isFinite(a.startMs) ? a.startMs : 0));
+    const withIsLast = (arr) => arr.map((r, i) => ({ ...r, isLast: i === arr.length - 1 }));
     const vendorCount = rows.length;
     const excludedCount = rows.filter((r) => r.autopayEnabled).length;
     const needsReviewCount = rows.filter((r) => !r.autopayEnabled).length;
@@ -1857,7 +1858,7 @@ const analyze_autopay_exclusions = (args) => {
         filterIsExcluded: filter === 'excluded',
         filterIsNeedsReview: filter === 'needsReview',
         filterIsNew: filter === 'new',
-        rows: filteredRows.map(({ startMs, isNewExclusion, ...r }) => r),
+        rows: withIsLast(filteredRows.map(({ startMs, isNewExclusion, ...r }) => r)),
         scannedAt: new Date().toISOString(),
     };
 };
