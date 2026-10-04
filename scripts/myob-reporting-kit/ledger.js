@@ -127,7 +127,7 @@ function balanceSheet(p) { const B = books(p.myob_company_file_id), bal = balanc
   const hdr = (hid, cls) => row(B, hid, ids.filter((id) => B.acc[id].Classification === cls).reduce((s, id) => s + bal[id], 0));
   return { AsOfDate: ISO(p.date), YearEndAdjust: false, AccountsBreakdown: [hdr('1-0000', 'Asset'), hdr('2-0000', 'Liability'), hdr('3-0000', 'Equity')].concat(ids.map((id) => row(B, id, bal[id]))), URI: 'x' }; }
 function listAccounts(p) { const B = books(p && p.myob_company_file_id), bal = balances(B, TODAY), pl = plByAccount(B, fyStart(TODAY), TODAY, false);
-  const list = chart(B.cf).map((a) => Object.assign(a, { CurrentBalance: a.IsHeader ? 0 : r2(bal[a.DisplayID] != null ? bal[a.DisplayID] : pl[a.DisplayID] || 0) })).filter((a) => (!p || !p.classification || a.Classification === p.classification) && (!p || !p.type || a.Type === p.type));
+  const list = chart(B.cf).map((a) => Object.assign(a, { CurrentBalance: a.IsHeader ? 0 : r2(bal[a.DisplayID] != null ? bal[a.DisplayID] : pl[a.DisplayID] || 0), LastReconciledDate: LAST_RECONCILED[a.DisplayID] ? LAST_RECONCILED[a.DisplayID] + "T00:00:00" : null })).filter((a) => (!p || !p.classification || a.Classification === p.classification) && (!p || !p.type || a.Type === p.type));
   return { Items: list, NextPageLink: null, Count: list.length }; }
 const paidBy = (list, doc, date) => r2(list.filter((x) => (x.inv || x.bill) === doc && x.date <= date).reduce((a, x) => a + x.amount, 0));
 function invoiceOut(B, i) { const due = r2(i.TotalAmount - paidBy(B.pays, i, TODAY)), last = B.pays.filter((x) => x.inv === i).map((x) => x.date).sort().pop();
@@ -140,7 +140,18 @@ function listInvoices(p) { const B = books(p.myob_company_file_id); let l = B.in
 function listBills(p) { const B = books(p.myob_company_file_id); let l = B.bills.filter((b) => inRange(b.date, p.from_date, p.to_date) && (!p.supplier_uid || b.Supplier.UID === p.supplier_uid)).map((b) => billOut(B, b)).filter((o) => !p.status || p.status === 'All' || o.Status === p.status);
   l.sort((a, b) => b.Date.localeCompare(a.Date)); return { Count: l.length, Items: l }; }
 function listJournalTransactions(p) { const B = books(p.myob_company_file_id); const l = JSON.parse(JSON.stringify(B.tx.filter((t) => inRange(dateOf(t), p.from_date, p.to_date) && (!p.account_uid || t.Lines.some((x) => x.Account.UID === p.account_uid)))));
+  l.forEach((t) => t.Lines.forEach((x) => { x.ReconciledDate = reconciledOn(x.Account.DisplayID, dateOf(t), t.Description); }));
   return { Count: l.length, Items: l }; }
+// Bank reconciliation in the books: each bank account is reconciled at month end up to its last reconciled date; MYOB puts the
+// reconciliation date on each journal line (null = not reconciled). July 2026's bank fees are left uncleared on the cheque account
+// (an old unreconciled item); the credit card has never been reconciled.
+const LAST_RECONCILED = { '1-1110': '2026-08-31', '1-1120': '2026-06-30', '2-1110': null };
+function reconciledOn(id, date, desc) {
+  if (!(id in LAST_RECONCILED)) return null;
+  const last = LAST_RECONCILED[id]; if (!last || date > last) return null;
+  if (id === '1-1110' && desc === 'Bank fees' && date.slice(0, 7) === '2026-07') return null;
+  return eom(+date.slice(0, 4), +date.slice(5, 7)) + 'T00:00:00';
+}
 // The connector's own ageing (get_aged_receivables / get_aged_payables): today's open documents bucketed by days past due.
 function aged(B, docs, partyKey, asOf) { const parties = {}, bt = { current: 0, '1_30': 0, '31_60': 0, '61_90': 0, '90_plus': 0 };
   docs.forEach((o) => { const dd = o.Terms.DueDate.slice(0, 10), od = Math.round((parse(asOf) - parse(dd)) / 86400000), k = od <= 0 ? 'current' : od <= 30 ? '1_30' : od <= 60 ? '31_60' : od <= 90 ? '61_90' : '90_plus', who = o[partyKey];
