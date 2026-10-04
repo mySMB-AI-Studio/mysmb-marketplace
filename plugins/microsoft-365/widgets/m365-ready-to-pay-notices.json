@@ -1,0 +1,356 @@
+{
+  "id": "m365-ready-to-pay-notices",
+  "title": "Ready-to-Pay Notices",
+  "description": "Inbox feed of 'Ready to pay' emails from accounts/ops over the last 14 days — surfaces unread notices, awaiting-reply reminders, and parses bill counts/totals from the preview.",
+  "category": "productivity",
+  "tags": ["m365", "email", "inbox", "outlook", "accounts-payable", "payments"],
+  "keywords": ["ready to pay", "notices", "accounts", "bills", "outlook", "email"],
+  "connectorsUsed": ["m365-mail-read"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 9 },
+    "min":       { "colSpan": 4, "rowSpan": 6 },
+    "max":       { "colSpan": 10, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "mcp": "m365-mail-read",
+    "tool": "list_ready_to_pay_notices",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"]
+      },
+
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["titleLeft", "newBadge"]
+      },
+      "titleLeft": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "title"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Mail", "tone": "accent", "size": "sm" }
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Ready-to-Pay Notices", "level": "h2" }
+      },
+      "newBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$state": "/m365-mail-read/list_ready_to_pay_notices/summary/newBadgeText" },
+          "tone":  "info"
+        },
+        "visible": { "$state": "/m365-mail-read/list_ready_to_pay_notices/summary/newCount" }
+      },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "content"]
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4", "sk5"],
+        "visible": { "$state": "/_loading/m365-mail-read.list_ready_to_pay_notices" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "4rem",    "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "4rem",    "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "4rem",    "rounded": "md" } },
+      "sk5": { "type": "Skeleton", "props": { "height": "4rem",    "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No ready-to-pay emails in the last 14 days." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/m365-mail-read.list_ready_to_pay_notices", "not": true },
+            { "$state": "/m365-mail-read/list_ready_to_pay_notices/messages/0", "not": true }
+          ]
+        }
+      },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/m365-mail-read.list_ready_to_pay_notices", "not": true },
+            { "$state": "/m365-mail-read/list_ready_to_pay_notices/messages/0" }
+          ]
+        },
+        "children": [
+          "tabsRow",
+          "tabsDivider",
+          "listAll",
+          "listUnread",
+          "listAwaiting",
+          "emptyUnread",
+          "emptyAwaiting",
+          "footerRow"
+        ]
+      },
+
+      "tabsRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["tabAll", "tabUnread", "tabAwaiting"]
+      },
+      "tabAll": {
+        "type": "Row",
+        "props": {
+          "gap": "xs", "align": "center", "hover": true, "clickable": true,
+          "selected": { "$cond": { "$state": "/ui/rtp/tab", "not": true }, "$then": true, "$else": false }
+        },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/rtp/tab", "value": "" } } },
+        "children": ["tabAllText"]
+      },
+      "tabAllText": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/m365-mail-read/list_ready_to_pay_notices/summary/allTabText" } }
+      },
+      "tabUnread": {
+        "type": "Row",
+        "props": {
+          "gap": "xs", "align": "center", "hover": true, "clickable": true,
+          "selected": { "$cond": { "$state": "/ui/rtp/tab", "eq": "unread" }, "$then": true, "$else": false }
+        },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/rtp/tab", "value": "unread" } } },
+        "children": ["tabUnreadText"]
+      },
+      "tabUnreadText": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/m365-mail-read/list_ready_to_pay_notices/summary/unreadTabText" } }
+      },
+      "tabAwaiting": {
+        "type": "Row",
+        "props": {
+          "gap": "xs", "align": "center", "hover": true, "clickable": true,
+          "selected": { "$cond": { "$state": "/ui/rtp/tab", "eq": "awaiting" }, "$then": true, "$else": false }
+        },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/rtp/tab", "value": "awaiting" } } },
+        "children": ["tabAwaitingText"]
+      },
+      "tabAwaitingText": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/m365-mail-read/list_ready_to_pay_notices/summary/awaitingTabText" } }
+      },
+
+      "tabsDivider": { "type": "Divider", "props": {} },
+
+      "listAll": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "repeat": { "statePath": "/m365-mail-read/list_ready_to_pay_notices/messages", "key": "id" },
+        "visible": { "$state": "/ui/rtp/tab", "not": true },
+        "children": ["allItem"]
+      },
+      "allItem": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["messageRow", "rowDivider"]
+      },
+
+      "listUnread": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "repeat": { "statePath": "/m365-mail-read/list_ready_to_pay_notices/messages", "key": "id" },
+        "visible": { "$state": "/ui/rtp/tab", "eq": "unread" },
+        "children": ["unreadItem"]
+      },
+      "unreadItem": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$item": "isUnread" },
+        "children": ["messageRow", "rowDivider"]
+      },
+
+      "listAwaiting": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "repeat": { "statePath": "/m365-mail-read/list_ready_to_pay_notices/messages", "key": "id" },
+        "visible": { "$state": "/ui/rtp/tab", "eq": "awaiting" },
+        "children": ["awaitingItem"]
+      },
+      "awaitingItem": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$item": "isAwaitingReply" },
+        "children": ["messageRow", "rowDivider"]
+      },
+
+      "emptyUnread": {
+        "type": "Caption",
+        "props": { "text": "No unread notices.", "tone": "muted" },
+        "visible": {
+          "$and": [
+            { "$state": "/ui/rtp/tab", "eq": "unread" },
+            { "$state": "/m365-mail-read/list_ready_to_pay_notices/summary/unread", "not": true }
+          ]
+        }
+      },
+      "emptyAwaiting": {
+        "type": "Caption",
+        "props": { "text": "Nothing awaiting a reply.", "tone": "muted" },
+        "visible": {
+          "$and": [
+            { "$state": "/ui/rtp/tab", "eq": "awaiting" },
+            { "$state": "/m365-mail-read/list_ready_to_pay_notices/summary/awaitingReply", "not": true }
+          ]
+        }
+      },
+
+      "rowDivider": { "type": "Divider", "props": {} },
+
+      "messageRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "template": "auto minmax(0,1fr) auto", "hover": true, "clickable": true },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "identity",
+                "args": { "value": { "$item": "webLink" } }
+              },
+              "target": "_blank"
+            }
+          }
+        },
+        "children": ["messageAvatar", "messageBody", "messageTime"]
+      },
+
+      "messageAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": { "$item": "initials" },
+          "tone":     { "$item": "avatarTone" },
+          "size":     "md"
+        }
+      },
+
+      "messageBody": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["senderLine", "subjectLine", "previewLine", "badgeRow"]
+      },
+
+      "senderLine": {
+        "type": "Text",
+        "props": {
+          "text":     { "$item": "senderName" },
+          "size":     "sm",
+          "weight":   "semibold",
+          "truncate": true
+        }
+      },
+
+      "subjectLine": {
+        "type": "Text",
+        "props": {
+          "text":     { "$item": "subject" },
+          "size":     "sm",
+          "weight":   "semibold",
+          "truncate": true
+        }
+      },
+
+      "previewLine": {
+        "type": "Caption",
+        "props": {
+          "text":     { "$item": "preview" },
+          "tone":     "muted",
+          "truncate": true
+        }
+      },
+
+      "badgeRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["billBadge", "statusBadge"]
+      },
+
+      "billBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "billBadge" },
+          "tone": "success",
+          "variant": "soft"
+        },
+        "visible": { "$item": "billBadge" }
+      },
+
+      "statusBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "statusBadge" },
+          "tone": { "$item": "statusTone" },
+          "variant": "soft"
+        },
+        "visible": { "$item": "statusBadge" }
+      },
+
+      "messageTime": {
+        "type": "Caption",
+        "props": {
+          "text": { "$item": "timestamp" },
+          "tone": { "$item": "timestampTone" }
+        }
+      },
+
+      "footerRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "justify": "between", "align": "center" },
+        "children": ["footerLeft", "footerRight"]
+      },
+
+      "footerLeft": {
+        "type": "Caption",
+        "props": {
+          "text": { "$state": "/m365-mail-read/list_ready_to_pay_notices/subjectFilterText" },
+          "tone": "muted"
+        }
+      },
+
+      "footerRight": {
+        "type": "Button",
+        "props": {
+          "label":       "Open in Outlook",
+          "variant":     "primary",
+          "tone":        "info",
+          "size":        "sm",
+          "leadingIcon": "ExternalLink"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url":    { "$state": "/m365-mail-read/list_ready_to_pay_notices/inboxUrl" },
+              "target": "_blank"
+            }
+          }
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}
