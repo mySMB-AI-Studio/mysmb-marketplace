@@ -177,8 +177,11 @@ function customerSales(p) {
 function itemSales(p) {
   const it = [['SaaS Subscription', '11', 12, 57833.33], ['Consulting', '12', 40, 8500]];
   const tot = r2(it.reduce((s, x) => s + x[3], 0));
-  return { Header: header('ItemSales', p), Columns: COLS(['', 'Quantity', 'Amount', '% of Sales', 'Average Price'], ['Account', 'Money', 'Money', 'Money', 'Money']),
-    Rows: { Row: it.map(([n, id, q, a]) => ({ type: 'Data', ColData: [{ value: n, id }, cell(q), cell(a), cell(r2((a / tot) * 100)), cell(r2(a / q))] })).concat([{ type: 'Section', group: 'GrandTotal', Summary: { ColData: [cell('TOTAL'), cell(52), cell(tot), cell(100), cell('')] } }]) } };
+  // QuickBooks' real shape: the money columns are nested under "Total" (Intuit's ItemSales sample), each row's ColData is flat
+  const sub = ['Quantity', 'Amount', '% of Sales', 'Avg Price', 'COGS', 'Gross Margin', 'Gross Margin %'].map((t) => ({ ColType: 'Money', ColTitle: t }));
+  return { Header: header('ItemSales', p), Columns: { Column: [{ ColType: 'ProductsAndService', ColTitle: '' }, { ColType: 'Money', ColTitle: 'Total', Columns: { Column: sub } }] },
+    Rows: { Row: it.map(([n, id, q, a]) => ({ type: 'Data', ColData: [{ value: n, id }, cell(q), cell(a), { value: r2((a / tot) * 100).toFixed(2) + ' %' }, cell(r2(a / q)), cell(''), cell(''), cell('')] }))
+      .concat([{ type: 'Section', group: 'GrandTotal', Summary: { ColData: [cell('TOTAL'), cell(52), cell(tot), { value: '100.00 %' }, cell(''), cell(''), cell(''), cell('')] } }]) } };
 }
 function customerIncome(p) {
   const rows = CUST.map(([n, id, v]) => [n, id, v, r2(v * 0.2)]);
