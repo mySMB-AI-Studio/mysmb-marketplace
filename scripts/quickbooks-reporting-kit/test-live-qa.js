@@ -100,6 +100,34 @@ function usGl(p) {
   const li = t.setInputsLog[t.setInputsLog.length - 1] || {};
   ok('report pack: opens on last month', li.start_date === '2026-08-01' && li.end_date === '2026-08-31' && text(t.doc, '#qb-body').includes('For the period ended 31 August 2026'), li);
 
+  // ---------------- Round 2 (QA after #1055, 4 Oct 2026)
+  // 6. General Ledger 'Total for' failed with no detail. Rows QuickBooks groups in a section with no header count towards the account,
+  //    and a real mismatch names the account and both figures.
+  const glGrouped = (p) => { const r = usGl(p), auto = r.Rows.Row[1], ownRows = auto.Rows.Row.slice(0, 2);
+    auto.Rows.Row = [{ type: 'Section', Rows: { Row: ownRows }, Summary: { ColData: ['', '', '', '', '', '', 19.99, 19.99].map(cell) } }, auto.Rows.Row[2]]; return r; };
+  t = await run('gl', gm, Object.assign({}, gfx, { general_ledger: glGrouped }));
+  ok('gl: own rows grouped in a headerless section still tie', !red(t) && banner(t).includes("✓ 'Total for <account>' amount = Σ its transactions (and its sub-accounts') — 7 accounts and sub-accounts"), banner(t).slice(0, 500));
+  const glBadTot = (p) => { const r = usGl(p); r.Rows.Row[1].Summary.ColData[6] = cell(140); return r; };
+  t = await run('gl', gm, Object.assign({}, gfx, { general_ledger: glBadTot }));
+  ok('gl: a wrong Total for names the account and both figures', red(t) && banner(t).includes('Mismatch: Automobile (Total US$140.00 vs Σ US$135.70)'), banner(t).slice(0, 500));
+
+  // 7. Report Pack's P&L check was N/A for a month with no income (QuickBooks leaves out empty sections)
+  const pnlNoInc = (p) => { const r = usPnl(p); r.Rows.Row = r.Rows.Row.filter((s) => !/^(Income|COGS|GrossProfit)$/.test(s.group));
+    r.Rows.Row.filter((s) => /^(NetOperatingIncome|NetIncome)$/.test(s.group)).forEach((s) => { s.Summary.ColData[1] = cell(-1000); }); return r; };
+  t = await run('management-reports', man('management-reports'), Object.assign({}, mfx, { pnl: pnlNoInc }), { fail: deny(['gst_summary', 'gst_probe']) });
+  ok('report pack: a month with no income still checks the P&L', banner(t).includes('✓ P&L: Gross Profit = Income − Cost of Sales') && !red(t), banner(t).slice(0, 400));
+  t = await run('pnl', pm, Object.assign({}, pfx, { pnl: pnlNoInc }));
+  ok('pnl: a month with no income checks Gross Profit and Net Earnings', banner(t).includes('✓ Gross Profit = Income − Cost of Sales') && banner(t).includes('✓ Net Earnings') && !red(t), banner(t).slice(0, 400));
+
+  // 8. Customer Sales: 'Σ products/services = sales total' was N/A — with no TOTAL from QuickBooks, Σ the product rows
+  const isNoTot = (p) => { const r = F.itemSales(p); r.Rows.Row = r.Rows.Row.filter((x) => x.group !== 'GrandTotal'); return r; };
+  t = await run('sales', man('sales'), Object.assign({}, sfx, { item_sales: isNoTot }));
+  ok('sales: no TOTAL row → Σ product rows, said in the detail', banner(t).includes('✓ Σ products/services = sales total') && banner(t).includes('Σ product rows: QuickBooks returned no TOTAL'), banner(t).slice(0, 500));
+
+  // 9. GST for a US company: Sources & limitations says N/A instead of the raw red QuickBooks error
+  t = await run('gst-overview', man('gst-overview'), { tax_agencies: usAg, bs_end: F.bsAU, company_info: US_CI, prefs: US_PR }, { fail: deny(['gst_current', 'gst_previous', 'gst_probe']) });
+  ok('gst overview US: sources say N/A, no raw error', text(t.doc, '#qb-sources').includes('N/A (US company: sales tax, no GST)') && !text(t.doc, '#qb-sources').includes('Permission Denied'), text(t.doc, '#qb-sources').slice(0, 400));
+
   console.log(fails ? `\n${fails}/${total} checks FAILED` : `\nALL ${total} checks passed`);
   process.exit(fails ? 1 : 0);
 })();
