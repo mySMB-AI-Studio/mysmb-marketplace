@@ -12,12 +12,19 @@ var QB = (function () {
   function sum(arr) { var s = 0; arr.forEach(function (v) { if (v != null) s += v; }); return Math.round(s * 100) / 100; }
 
   // ---------- QBO report tree (Header / Columns / Rows) ----------
+  // A column can nest sub-columns (ItemSales: "Total" › Quantity, Amount, % of Sales, Avg Price, COGS, Gross Margin…) while
+  // each row's ColData is flat — one value per leaf. So the leaves are the columns; group = the parent's title (live QA, 4 Oct 2026).
   function cols(rep) {
-    return ((rep && rep.Columns && rep.Columns.Column) || []).map(function (c, i) {
-      var key = null, sd = null, ed = null;
-      (c.MetaData || []).forEach(function (m) { if (m.Name === 'ColKey') key = m.Value; if (m.Name === 'StartDate') sd = m.Value; if (m.Name === 'EndDate') ed = m.Value; });
-      return { i: i, title: c.ColTitle || '', type: c.ColType || '', key: key, start: sd, end: ed };
-    });
+    var out = [];
+    (function add(list, group) {
+      (list || []).forEach(function (c) {
+        var sub = c.Columns && c.Columns.Column; if (sub && sub.length) { add(sub, c.ColTitle || ''); return; }
+        var key = null, sd = null, ed = null;
+        (c.MetaData || []).forEach(function (m) { if (m.Name === 'ColKey') key = m.Value; if (m.Name === 'StartDate') sd = m.Value; if (m.Name === 'EndDate') ed = m.Value; });
+        out.push({ i: out.length, title: c.ColTitle || '', type: c.ColType || '', key: key, start: sd, end: ed, group: group });
+      });
+    })(rep && rep.Columns && rep.Columns.Column, null);
+    return out;
   }
   // Flattens the nested report. kind: 'header' | 'row' | 'total'. values = numeric columns 1..n (col 0 is the label).
   function walk(rep) {

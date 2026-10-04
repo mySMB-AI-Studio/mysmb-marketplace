@@ -39,7 +39,7 @@ QB.app({
       { name: 'Σ customers = sales total', pass: csTot == null ? null : QB.near(csTot, QB.sum(cust.map(function (x) { return x.total; }))), detail: money(csTot) },
       // information, not a tie: income posted without a sales form (journals, deposits) is on the P&L but not by customer — live QA, 4 Oct 2026
       { name: 'Sales by customer vs Profit and Loss Total for Income (information)', pass: null, info: true, detail: csTot == null || inc == null ? 'N/A — not in source' : 'Sales ' + money(csTot) + ' vs income ' + money(inc) + (QB.near(csTot, inc, 1) ? ' — the same' : ' — the difference is income not raised on a sales form (e.g. journals, deposits)') },
-      { name: 'Σ products/services = sales total', pass: isTot == null || csTot == null ? null : QB.near(isTot, csTot, 1), detail: money(isTot) + isNote }];
+      { name: 'Σ products/services = sales total', pass: isTot == null || csTot == null ? null : QB.near(isTot, csTot, 1), detail: money(isTot) + (isTot != null && csTot != null && !QB.near(isTot, csTot, 1) ? ' vs sales by customer ' + money(csTot) : '') + isNote }];
     this._x = { cust: cust, prod: prod, csTot: csTot, isTot: isTot };
     return { checks: checks, title: (this.views.filter(function (x) { return x[0] === v; })[0] || ['', ''])[1],
       na: ['Sales by Customer / Product Detail, Deposit Detail, Quotes & Progress Invoicing Summary, Sales by Customer Type Detail, Payment Method List, Time Activities by Customer, Transaction List by Customer / Tag Group, Cashflow Payment Transactions (later members; tag groups are not in the API)'] };

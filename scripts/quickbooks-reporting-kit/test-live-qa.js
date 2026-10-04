@@ -124,6 +124,14 @@ function usGl(p) {
   t = await run('sales', man('sales'), Object.assign({}, sfx, { item_sales: isNoTot }));
   ok('sales: no TOTAL row → Σ product rows, said in the detail', banner(t).includes('✓ Σ products/services = sales total') && banner(t).includes('Σ product rows: QuickBooks returned no TOTAL'), banner(t).slice(0, 500));
 
+  // 8b. Round 3 (4 Oct 2026, AU sandbox): "Σ products/services = sales total — A$0.00 — no Amount column (Total)". QuickBooks nests
+  //     ItemSales' Quantity / Amount / … under a "Total" column; the rows are flat. The leaves are the columns.
+  t = await run('sales', man('sales'), sfx);
+  ok('sales: ItemSales sub-columns under "Total" are read — products tie on the Amount column', banner(t).includes('✓ Σ products/services = sales total — A$66,333.33') && !banner(t).includes('no Amount column'), banner(t).slice(0, 500));
+  await set(t, 'qb-view', 'products');
+  { const tr = [...t.doc.querySelectorAll('#qb-body tr')].find((r) => (r.cells[0] || {}).textContent === 'SaaS Subscription'), cells = tr ? [...tr.cells].map((c) => c.textContent.trim()) : null;
+    ok('sales: Products view row shows the product\'s quantity and Amount (not the last sub-column)', !!cells && cells[1] === '12' && cells[cells.length - 1] === 'A$57,833.33', cells); }
+
   // 9. GST for a US company: Sources & limitations says N/A instead of the raw red QuickBooks error
   t = await run('gst-overview', man('gst-overview'), { tax_agencies: usAg, bs_end: F.bsAU, company_info: US_CI, prefs: US_PR }, { fail: deny(['gst_current', 'gst_previous', 'gst_probe']) });
   ok('gst overview US: sources say N/A, no raw error', text(t.doc, '#qb-sources').includes('N/A (US company: sales tax, no GST)') && !text(t.doc, '#qb-sources').includes('Permission Denied'), text(t.doc, '#qb-sources').slice(0, 400));
