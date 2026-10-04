@@ -9,7 +9,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const banner = (t) => text(t.doc, '#mk-banner'), body = (t) => text(t.doc, '#mk-body');
 const green = (t) => t.doc.querySelector('#mk-banner').className.includes('pass'), red = (t) => t.doc.querySelector('#mk-banner').className.includes('fail');
 const fmt = (v) => (v < 0 ? '\\(\\$' : '\\$') + Math.abs(v).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\./g, '\\.') + (v < 0 ? '\\)' : '');
-const TOOL = { get_gst_summary: L.taxCodeSummary, get_payroll_category_summary: L.payrollCategorySummary, list_tax_codes: L.listTaxCodes, list_journal_transactions: L.listJournalTransactions, list_accounts: L.listAccounts, list_company_files: L.companyFiles };
+const TOOL = { get_balance_sheet: L.balanceSheet, get_gst_summary: L.taxCodeSummary, get_payroll_category_summary: L.payrollCategorySummary, list_tax_codes: L.listTaxCodes, list_journal_transactions: L.listJournalTransactions, list_accounts: L.listAccounts, list_company_files: L.companyFiles };
 const FX = (m, over) => { const f = {}; m.bindings.forEach((b) => { f[b.id] = TOOL[b.tool.name]; }); return Object.assign(f, over || {}); };
 const onFile = (m, set) => { const c = JSON.parse(JSON.stringify(m)); c.inputs.find((i) => i.name === 'company_file').default = L.CF1; Object.keys(set || {}).forEach((k) => { c.inputs.find((i) => i.name === k).default = set[k]; }); return c; };
 const go = async (r, over, opts, set) => { const m = onFile(man(r), set); const t = await run(r, m, FX(m, over), Object.assign({ bundleInputs: true }, opts || {})); await wait(80); return t; };
@@ -80,6 +80,27 @@ const gstWith = (fn) => (p) => { const r = L.taxCodeSummary(p); fn(r.TaxCodeBrea
     // MYOB answered another period → fails
     const per = await go('gst', { gst: gstWith((rows, r) => { r.StartDate = '2026-01-01T00:00:00'; }) });
     ok('gst: MYOB returning another period fails the period check', red(per) && /✗ MYOB returned the requested period/.test(banner(per)), banner(per).slice(0, 300));
+  }
+  if (!only || only === 'br') {
+    // Bank Reconciliation Status (M17). The books reconcile 1-1110 to 31 Aug 2026 (July's bank fees left uncleared), 1-1120 to
+    // 30 Jun 2026, and never the credit card; the harness clock is 28 Sep 2026.
+    const T = L.TODAY, from = '2025-07-01', J = L.listJournalTransactions({ myob_company_file_id: L.CF1, from_date: from, to_date: T }).Items;
+    const un = (id) => { const ls = []; J.forEach((j) => j.Lines.forEach((l) => { if (l.Account.DisplayID === id && (!l.ReconciledDate || l.ReconciledDate.slice(0, 10) > T)) ls.push(l); })); return ls; };
+    const bal = L.expect.balances(T, L.CF1), u1 = un('1-1110'), dep1 = r2(u1.filter((l) => !l.IsCredit).reduce((s, l) => s + l.Amount, 0)), wd1 = r2(u1.filter((l) => l.IsCredit).reduce((s, l) => s + l.Amount, 0));
+    const t = await go('br'), bb = body(t), bn = banner(t);
+    ok('br: opens as at today, green — balances tie to the journals (two Balance Sheets)', green(t) && /✓ Each account: balance at the date = balance the day before the look-back \+ its journal movement.*3 account\(s\)/.test(bn), bn.slice(0, 500));
+    const rowOf = (code) => { const tr = [...t.doc.querySelectorAll('#br-grid tbody tr')].find((r) => (r.cells[0] || {}).textContent.startsWith(code)); return tr ? [...tr.cells].map((x) => x.textContent.trim()) : null; };
+    const r1 = rowOf('1-1110'), r2_ = rowOf('1-1120'), rc = rowOf('2-1110');
+    ok('br: cheque account — last reconciled 31 Aug, 28 days, up to date, unreconciled deposits / withdrawals from the journals', !!r1 && r1[1] === '2026-08-31' && r1[2] === '28' && r1[3] === 'Up to date' && r1[5] === fmt(dep1).replace(/\\/g, '') && r1[6] === fmt(wd1).replace(/\\/g, ''), [r1, dep1, wd1]);
+    ok('br: reconciled balance = balance in MYOB − unreconciled (deposits − withdrawals)', !!r1 && r1[7] === fmt(r2(bal['1-1110'] - dep1 + wd1)).replace(/\\/g, ''), [r1, bal['1-1110']]);
+    ok('br: savings overdue (last 30 Jun), credit card never reconciled', !!r2_ && r2_[3] === 'Overdue' && !!rc && rc[1] === 'Never' && rc[3] === 'Never reconciled', [r2_, rc]);
+    ok('br: information — accounts not reconciled in 31 days named; July\'s uncleared bank fees are older than 60 days', /Accounts not reconciled in the last 31 days \(information\) — Business Savings Account — last 2026-06-30, 90 days; Business Credit Card — never reconciled/.test(bn) && /Unreconciled transactions older than 60 days \(information\) — \d+ item\(s\)/.test(bn), bn.slice(-600));
+    await view(t, 'items');
+    ok('br: Unreconciled transactions view lists every unreconciled line', t.doc.querySelectorAll('#br-grid tbody tr').length === un('1-1110').length + un('1-1120').length + un('2-1110').length, t.doc.querySelectorAll('#br-grid tbody tr').length);
+    // a journal line missing from the list → the balance tie fails and names the account
+    const drop = (p) => { const r = L.listJournalTransactions(p); const j = r.Items.find((x) => x.Description === 'Bank fees' && x.DateOccurred.slice(0, 7) === '2026-09'); if (j) r.Items.splice(r.Items.indexOf(j), 1); return r; };
+    const bad = await go('br', { journals: drop });
+    ok('br: a journal the list did not return → the balance tie fails, naming the account', red(bad) && /✗ Each account: balance at the date.*Differs: Business Bank Account #1/.test(banner(bad)), banner(bad).slice(0, 400));
   }
   console.log(fails ? `\n${fails}/${total} checks FAILED` : `\nALL ${total} checks passed`);
   process.exit(fails ? 1 : 0);

@@ -167,6 +167,17 @@ module.exports = [
     fileName: 'myob-gst-summary-bas.html', tags: ['myob', 'gst', 'bas', 'M06', 'M07', 'M61', 'tax'],
   },
   {
+    m: 'M17', skill: 'myob-bank-reconciliation-status', name: 'MYOB Bank Reconciliation Status', report: 'br', wave: 'Wave 2 (P2)',
+    title: 'Bank Reconciliation Status', menu: 'Reporting → Reports → Banking → Banking reconciliation',
+    trigger: 'the user asks for a bank reconciliation, banking reconciliation report, reconciliation status, when the bank accounts were last reconciled, unreconciled or unpresented transactions, or the reconciled bank balance',
+    discovery: 'Call `list_accounts` once (bank and credit card accounts carry `LastReconciledDate`, null = never reconciled), `list_journal_transactions` once from the start of last financial year to the date (each line carries `ReconciledDate`, null = not reconciled) and `list_company_files` once. MYOB\'s API has no reconciliation report: the status comes from those two dates. A `{"__error": …}` result is a failed call: report its message',
+    dates: '`as_at` = the date (default `"today"`; display preset `a` = `today`, `end_last_month` or `custom`). `since_date` / `prev_day` are derived by the kit (the start of last financial year — how far back unreconciled transactions are looked for); leave them. The view is display `v`: `status` (default) or `items` (unreconciled transactions).',
+    members: [['Reconciliation status', 'Per bank and credit card account: last reconciled date, days since, status (up to date / overdue / never reconciled), balance in MYOB, unreconciled deposits and withdrawals, reconciled balance, oldest unreconciled item'], ['Unreconciled transactions', 'Report = Unreconciled transactions: every unreconciled journal line on a bank or card account with its age'], ['Bank statement comparison', 'N/A — the bank feed is not compared here (see Bank transactions)']],
+    checks: ['**Independent tie:** each account\'s balance at the date = its balance the day before the look-back + its journal movement (two Balance Sheets vs the journals)', 'There is at least one bank or credit card account', 'Reconciled balance = balance in MYOB − unreconciled transactions, per account', 'Accounts not reconciled in the last 31 days, and unreconciled items older than 60 days (information)'],
+    golden: 'MYOB Banking reconciliation report for the same account and date',
+    fileName: 'myob-bank-reconciliation-status.html', tags: ['myob', 'banking', 'reconciliation', 'M17'],
+  },
+  {
     m: 'M40', skill: 'unpaid-bills', name: 'MYOB Unpaid Bills', report: 'ub', wave: 'Wave 2 (P2)',
     title: 'Unpaid Bills', menu: 'Reporting → Reports → Purchases → Unpaid bills',
     trigger: 'the user asks for unpaid bills, what they owe suppliers, outstanding purchase bills, a payment run list, or payables by supplier with ageing',
