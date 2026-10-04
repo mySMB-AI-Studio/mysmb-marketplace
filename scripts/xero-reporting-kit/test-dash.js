@@ -174,6 +174,14 @@ const AGED = () => ({ paid_after: L.listInvoices, pays_after: L.listPayments, in
     ok('bo: cash in/out — 6 Bank Summary calls, one per month (Apr–Sep 2026)', bankCalls.join(' ') === '2026-04-01..2026-04-30 2026-05-01..2026-05-31 2026-06-01..2026-06-30 2026-07-01..2026-07-31 2026-08-01..2026-08-31 2026-09-01..2026-09-25', bankCalls);
     const cin = ['2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09'].reduce((a, m) => { const s0 = m + '-01', e0 = m === '2026-09' ? L.TODAY : L.eom(+m.slice(0, 4), +m.slice(5)); return a + E.flows('090', s0, e0).rin + E.flows('091', s0, e0).rin; }, 0);
     ok('bo: cash in over 6 months = the books; months chain (close = next open)', re('Cash in', L.r2(cin)).test(ob) && /✓ Cash difference = cash in − cash out; each month closes where the next opens/.test(on), [L.r2(cin), ob.slice(ob.indexOf('Cash in and out'), ob.indexOf('Cash in and out') + 200)]);
+    // live QA, 4 Oct 2026: the months chain failed with no month named. A month before any bank activity can come back with no Total
+    // row (nothing in or out, nothing to chain); a real break names the month and both balances.
+    { const emptyEarly = (q) => { const r = L.bankSummary(q); if (q.fromDate < '2026-06-01') r.Reports[0].Rows = r.Reports[0].Rows.slice(0, 1); return r; };
+      const o2 = await run('bo', man('bo'), BO({ bank: emptyEarly })); await wait(40);
+      ok('bo: months with no Total row (no bank activity yet) do not break the chain', /✓ Cash difference = cash in − cash out; each month closes where the next opens/.test(banner(o2)), banner(o2).slice(0, 600));
+      const broken = (q) => { const r = L.bankSummary(q); if (q.fromDate === '2026-08-01') { const rows = r.Reports[0].Rows[1].Rows, tot = rows[rows.length - 1]; tot.Cells[1].Value = (Number(tot.Cells[1].Value) + 10).toFixed(2); } return r; };
+      const o3 = await run('bo', man('bo'), BO({ bank: broken })); await wait(40);
+      ok('bo: a real break in the months chain names the month and both balances', /✗ Cash difference = cash in − cash out; each month closes where the next opens — Jul 2026 closes \(?\$[\d,.]+\)? but Aug 2026 opens \(?\$[\d,.]+\)?/.test(banner(o3)), banner(o3).slice(0, 700)); }
     const lastPay = L.listPayments({ where: 'PaymentType=="ACCRECPAYMENT"', order: 'Date DESC' }).Payments[0];
     ok('bo: recent invoice payments — newest first, up to 9', text(o.doc, '#bo-pay').includes(lastPay.Invoice.InvoiceNumber) && o.doc.querySelectorAll('#bo-pay tbody tr').length === 9, text(o.doc, '#bo-pay').slice(0, 200));
     ok('bo: tasks — chase overdue invoices / pay overdue bills', /Chase \d+ overdue invoices?/.test(ob) && /Pay \d+ overdue bills?/.test(ob));
