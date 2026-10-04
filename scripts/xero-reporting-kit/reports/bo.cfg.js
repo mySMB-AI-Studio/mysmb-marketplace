@@ -35,8 +35,12 @@ XK.app({
     // cash in and out — last 6 months (Bank Summary per month)
     var fan = c.fan('bank'), months = XK.monthsEnding(asAt, 6), cash = fan ? fan.map(function (it, i) {
       if (it.error || !it.value) return { key: months[i].key, error: it.error || 'no data' };
-      var t = XK.walk(it.value), tl = XK.find(t.lines, null, /^total$/i, 'total') || { values: [] }; return { key: months[i].key, rin: tl.values[1], rout: tl.values[2], open: tl.values[0], close: tl.values[3] };
+      var t = XK.walk(it.value), tl = XK.find(t.lines, null, /^total$/i, 'total');
+      // no Total row = no bank activity that month (e.g. before the first bank transaction): nothing in or out, nothing to chain
+      return tl ? { key: months[i].key, rin: tl.values[1], rout: tl.values[2], open: tl.values[0], close: tl.values[3] } : { key: months[i].key, rin: 0, rout: 0, open: null, close: null, empty: true };
     }) : null;
+    // each month opens where the previous one closed; the first break is named with both balances (live QA, 4 Oct 2026: failed unnamed)
+    var chainBreak = null; (cash || []).forEach(function (m, i) { var p = i && cash[i - 1]; if (!chainBreak && p && !p.error && !m.error && p.close != null && m.open != null && !XK.near(p.close, m.open)) chainBreak = XK.monthLabel(p.key) + ' closes ' + money(p.close) + ' but ' + XK.monthLabel(m.key) + ' opens ' + money(m.open); });
     var cashOk = cash && cash.every(function (m) { return !m.error; }), cin = cashOk ? XK.sum(cash.map(function (m) { return m.rin; })) : null, cout = cashOk ? XK.sum(cash.map(function (m) { return m.rout; })) : null;
     // watchlist: accounts from the P&L (codes from list_accounts); chosen accounts are kept in the display input (o: w=code,code)
     var plRows = w ? w.lines.filter(function (l) { return l.kind === 'row'; }) : [], rowByCode = {}, codeOf = function (l) { var a = byId[l.id]; return a ? a.Code : l.label; };
@@ -73,7 +77,7 @@ XK.app({
       { name: 'Invoices owed = Σ ageing buckets', pass: XK.near(sumB(agI), P.awaiting.v), detail: money(P.awaiting.v) },
       { name: 'Bills to pay = Σ ageing buckets', pass: XK.near(sumB(agB), Q.awaiting.v), detail: money(Q.awaiting.v) },
       { name: 'Each bank account: opening + cash in − cash out = balance', pass: banks.length ? banks.every(function (b) { return XK.near(b.open + b.rin - b.rout, b.close); }) : null, detail: banks.length + ' account(s)' },
-      cash == null ? { name: 'Cash difference = cash in − cash out (last 6 months)', pass: null, detail: c.live ? 'Loading' : 'N/A in a snapshot' } : { name: 'Cash difference = cash in − cash out; each month closes where the next opens', pass: cashOk ? cash.every(function (m, i) { return i === 0 || XK.near(cash[i - 1].close, m.open); }) : false, detail: cashOk ? money(r2(cin - cout)) + ' over 6 months' : 'Some months failed to load' },
+      cash == null ? { name: 'Cash difference = cash in − cash out (last 6 months)', pass: null, detail: c.live ? 'Loading' : 'N/A in a snapshot' } : { name: 'Cash difference = cash in − cash out; each month closes where the next opens', pass: cashOk ? !chainBreak : false, detail: cashOk ? (chainBreak || money(r2(cin - cout)) + ' over 6 months') : 'Some months failed to load' },
       { name: 'YTD net profit = income − expenses', pass: pl ? XK.near(pl.np, pl.income - pl.expenses) : null, detail: pl ? money(pl.np) + ' = ' + money(pl.income) + ' − ' + money(pl.expenses) : c.err('pnl_ytd') },
       { name: 'Bank accounts = the same accounts on the Trial Balance today (a separate Xero report)', pass: bs && bankTot != null && bs.bank != null ? XK.near(bankTot, bs.bank) : null, detail: bs && bankTot != null ? (bs.bank == null ? 'N/A — the bank accounts are not on the Trial Balance' : money(bankTot) + ' vs ' + money(bs.bank)) : c.err('tb') || c.err('bank') },
       { name: 'YTD net profit = income − expenses for the year on the Trial Balance today', pass: bs && pl && bs.cye != null ? XK.near(pl.np, bs.cye) : null, detail: bs && pl ? money(pl.np) + ' vs ' + money(bs.cye) : c.err('tb') || c.err('pnl_ytd') },
