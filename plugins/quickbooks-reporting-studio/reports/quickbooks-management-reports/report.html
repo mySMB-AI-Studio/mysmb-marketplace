@@ -733,7 +733,7 @@ none ? (real ? '– Validation: no check could run (' + nNA + ' N/A' + (nInfo ? 
 }
 function sources(c) {
 var el = $('qb-sources'); if (!el) return; var t = cfg.tools || {};
-var items = Object.keys(t).map(function (id) { return h(t[id]) + (S.errors[id] ? ' — <span class="qb-err">' + h(err(id)) + '</span>' : ''); });
+var items = Object.keys(t).map(function (id) { return h(t[id]) + (!S.errors[id] ? '' : /tax_summary/.test(t[id]) && gstUS(c, [id]) ? ' — N/A (US company: sales tax, no GST)' : ' — <span class="qb-err">' + h(err(id)) + '</span>'); });
 var na = last.na.slice(); if (!c.company) na.unshift('Company name (CompanyInfo returned no name)');
 el.innerHTML = '<h2>Sources &amp; limitations</h2><ul><li>Mechanism: ' + h(MECHANISM) + '</li><li>Tool calls: ' + items.join(' · ') + '</li>' +
 '<li>Basis: ' + h(I.basis ? S.inputs[I.basis] : 'n/a') + ' · Currency: ' + h(c.currency) + ' · Client: ' + h(c.company || 'N/A — not in source') + ' (one company per QuickBooks connection)</li>' +
@@ -801,6 +801,8 @@ xlsx: xlsx, sheetFromLines: sheetFromLines, download: download, reportv2Params: 
     var toc = '<section class="page qb-card"><h2>Table of contents</h2><ol>' + pages.map(function (p, i) { return '<li>' + QB.h(p[0]) + ' <span class="muted">— page ' + (i + 3) + '</span></li>'; }).join('') + '</ol></section>';
     body.innerHTML = cover + toc + pages.map(function (p, i) { return '<section class="page qb-card"><div id="qb-mr-' + i + '" style="text-align:center;margin-bottom:12px"><div style="font-weight:700">' + QB.h(c.company || 'N/A — not in source') + '</div><div>' + QB.h(p[0]) + '</div><div>' + QB.h(p[0] === 'Balance Sheet' ? QB.asOfLine(c.inputs.end_date) : QB.periodLine(c.inputs.start_date, c.inputs.end_date)) + '</div></div>' + p[1]() + '<div class="muted" style="text-align:right;font-size:12px">Page ' + (i + 3) + '</div></section>'; }).join('');
     var BP = QB.bsParts(bs), A = QB.val(BP.A), LE = QB.val(BP.LE), gp = T(pl, 'GrossProfit'), inc = T(pl, 'Income'), cogs = T(pl, 'COGS') || 0, ni = T(pl, 'NetIncome'), exp = T(pl, 'Expenses'), oi = T(pl, 'OtherIncome') || 0, oe = T(pl, 'OtherExpenses') || 0;
+    // QuickBooks leaves out empty sections: a period with no income has no Income line — 0, not N/A (live QA, 4 Oct 2026: September)
+    if (inc == null && ni != null) inc = 0; if (gp == null && ni != null && !inc && !cogs) gp = 0;
     var beg = QB.val(QB.find(cf, 'BeginningCash', QB.CF_BEG_RE)), cinc = QB.val(QB.find(cf, 'CashIncrease', QB.CF_INC_RE)), cend = QB.val(QB.find(cf, 'EndingCash', QB.CF_END_RE));
     var ageOk = function (id) { var ls = W(id), gt = QB.find(ls, 'GrandTotal'); return gt ? QB.near(QB.val(gt), QB.sum(ls.filter(function (l) { return l.kind === 'row'; }).map(function (l) { return QB.val(l); }))) : null; };
     var checks = [
