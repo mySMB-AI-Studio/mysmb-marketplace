@@ -1,0 +1,143 @@
+{
+  "title": "MYOB Item Sales",
+  "description": "Live, validated MYOB Item Sales (M39): Item sales, Item sales analysis, Customer sales (detail).",
+  "tags": [
+    "myob",
+    "item-sales",
+    "M39",
+    "sales"
+  ],
+  "fileName": "myob-item-sales.html",
+  "dataBindings": {
+    "inputs": [
+      {
+        "name": "from_date",
+        "label": "From",
+        "type": "date",
+        "default": "2026-07-01"
+      },
+      {
+        "name": "to_date",
+        "label": "To",
+        "type": "date",
+        "default": "today"
+      },
+      {
+        "name": "company_file",
+        "label": "Company file",
+        "type": "string",
+        "maxLength": 64,
+        "default": ""
+      },
+      {
+        "name": "persona",
+        "label": "View as",
+        "type": "enum",
+        "options": [
+          "Client",
+          "Bookkeeper",
+          "Practitioner",
+          "Executive"
+        ],
+        "default": "Bookkeeper"
+      },
+      {
+        "name": "display",
+        "label": "Display settings",
+        "type": "string",
+        "maxLength": 300,
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"item\"}"
+      }
+    ],
+    "bindings": [
+      {
+        "id": "lines",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_invoice_lines"
+        },
+        "params": {
+          "from_date": {
+            "kind": "input",
+            "input": "from_date"
+          },
+          "to_date": {
+            "kind": "input",
+            "input": "to_date"
+          },
+          "status": {
+            "kind": "static",
+            "value": "All"
+          },
+          "max_lines": {
+            "kind": "static",
+            "value": 5000
+          },
+          "myob_company_file_id": {
+            "kind": "input",
+            "input": "company_file"
+          }
+        }
+      },
+      {
+        "id": "inv",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_invoices"
+        },
+        "params": {
+          "from_date": {
+            "kind": "input",
+            "input": "from_date"
+          },
+          "to_date": {
+            "kind": "input",
+            "input": "to_date"
+          },
+          "status": {
+            "kind": "static",
+            "value": "All"
+          },
+          "myob_company_file_id": {
+            "kind": "input",
+            "input": "company_file"
+          }
+        }
+      },
+      {
+        "id": "tax_codes",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_tax_codes"
+        },
+        "params": {
+          "myob_company_file_id": {
+            "kind": "input",
+            "input": "company_file"
+          }
+        }
+      },
+      {
+        "id": "items",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_items"
+        },
+        "params": {
+          "myob_company_file_id": {
+            "kind": "input",
+            "input": "company_file"
+          }
+        }
+      },
+      {
+        "id": "company_files",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_company_files"
+        },
+        "params": {}
+      }
+    ]
+  }
+}

@@ -9,7 +9,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const banner = (t) => text(t.doc, '#mk-banner'), body = (t) => text(t.doc, '#mk-body');
 const green = (t) => t.doc.querySelector('#mk-banner').className.includes('pass'), red = (t) => t.doc.querySelector('#mk-banner').className.includes('fail');
 const fmt = (v) => (v < 0 ? '\\(\\$' : '\\$') + Math.abs(v).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\./g, '\\.') + (v < 0 ? '\\)' : '');
-const TOOL = { get_balance_sheet: L.balanceSheet, get_gst_summary: L.taxCodeSummary, get_payroll_category_summary: L.payrollCategorySummary, list_tax_codes: L.listTaxCodes, list_journal_transactions: L.listJournalTransactions, list_accounts: L.listAccounts, list_company_files: L.companyFiles };
+const TOOL = { list_items: L.listItems, list_invoice_lines: L.listInvoiceLines, list_bill_lines: L.listBillLines, list_invoices: L.listInvoices, list_bills: L.listBills, get_balance_sheet: L.balanceSheet, get_gst_summary: L.taxCodeSummary, get_payroll_category_summary: L.payrollCategorySummary, list_tax_codes: L.listTaxCodes, list_journal_transactions: L.listJournalTransactions, list_accounts: L.listAccounts, list_company_files: L.companyFiles };
 const FX = (m, over) => { const f = {}; m.bindings.forEach((b) => { f[b.id] = TOOL[b.tool.name]; }); return Object.assign(f, over || {}); };
 const onFile = (m, set) => { const c = JSON.parse(JSON.stringify(m)); c.inputs.find((i) => i.name === 'company_file').default = L.CF1; Object.keys(set || {}).forEach((k) => { c.inputs.find((i) => i.name === k).default = set[k]; }); return c; };
 const go = async (r, over, opts, set) => { const m = onFile(man(r), set); const t = await run(r, m, FX(m, over), Object.assign({ bundleInputs: true }, opts || {})); await wait(80); return t; };
@@ -101,6 +101,45 @@ const gstWith = (fn) => (p) => { const r = L.taxCodeSummary(p); fn(r.TaxCodeBrea
     const drop = (p) => { const r = L.listJournalTransactions(p); const j = r.Items.find((x) => x.Description === 'Bank fees' && x.DateOccurred.slice(0, 7) === '2026-09'); if (j) r.Items.splice(r.Items.indexOf(j), 1); return r; };
     const bad = await go('br', { journals: drop });
     ok('br: a journal the list did not return → the balance tie fails, naming the account', red(bad) && /✗ Each account: balance at the date.*Differs: Business Bank Account #1/.test(banner(bad)), banner(bad).slice(0, 400));
+  }
+  if (!only || only === 'lines') {
+    // Invoice / bill lines (list_invoice_lines / list_bill_lines, mcp-servers #636): Item Sales (M39), Item Sales Analysis (M49), Customer
+    // Sales (Detail) (M36), Supplier Purchases (Detail) (M44). Period: this financial year to date on the harness clock (28 Sep 2026).
+    const P3 = { myob_company_file_id: L.CF1, from_date: '2026-07-01', to_date: L.TODAY, status: 'All' };
+    const IL = L.listInvoiceLines(P3).Items, INV = L.listInvoices(P3).Items, sub = r2(INV.reduce((s, i) => s + i.Subtotal, 0));
+    const itemTot = (num) => r2(IL.filter((l) => l.Item && l.Item.Number === num).reduce((s, l) => s + l.Total, 0));
+    const t = await go('il'), bn = banner(t), bb = body(t);
+    ok('il: Item Sales opens green — every invoice\'s lines = its amount on the invoice list', green(t) && new RegExp('✓ Each invoice’s lines add up to its amount on MYOB’s invoice list.*' + INV.length + ' invoice\\(s\\)').test(bn), bn.slice(0, 500));
+    ok('il: sales (ex tax) = Σ the invoices\' subtotals; items WID-100 / WID-200 = their lines', new RegExp('Sales \\(ex tax\\)' + fmt(sub)).test(bb) && new RegExp('WID-100 Widget standard[\\d.]+' + fmt(itemTot('WID-100'))).test(bb) && new RegExp('WID-200 Widget deluxe[\\d.]+' + fmt(itemTot('WID-200'))).test(bb), [sub, itemTot('WID-100'), bb.slice(0, 600)]);
+    ok('il: lines with no item are grouped by account', /\(no item\) 4-1300/.test(bb), bb.slice(0, 600));
+    const a = await go('ia'), ab = body(a), jul = r2(IL.filter((l) => l.Item && l.Item.Number === 'WID-100' && l.Date.slice(0, 7) === '2026-07').reduce((s, l) => s + l.Total, 0));
+    ok('ia: Item Sales Analysis — a column per month, WID-100\'s July = its July lines', /Item Sales Analysis/.test(text(a.doc, 'header')) && /Jul 26Aug 26Sep 26/.test(ab) && new RegExp('WID-100 Widget standard' + fmt(jul)).test(ab) && green(a), [jul, ab.slice(0, 500)]);
+    { const q = IL.filter((l) => l.Item && l.Item.Number === 'WID-200').reduce((s, l) => s + l.Quantity, 0), cost = r2(q * r2(95 * 0.55)), gm = r2(itemTot('WID-200') - cost);
+      ok('ia: estimated cost = units × MYOB average cost; gross margin = sales − cost', new RegExp('WID-200 Widget deluxe.*' + fmt(itemTot('WID-200')) + fmt(cost) + fmt(gm)).test(ab), [cost, gm, ab.slice(0, 700)]); }
+    const d = await go('cd'), rows = d.doc.querySelectorAll('#il-grid tbody tr').length;
+    ok('cd: Customer Sales (Detail) — one row per invoice line, by customer', /Customer Sales \(Detail\)/.test(text(d.doc, 'header')) && rows === IL.length && green(d), [rows, IL.length]);
+    // a line $10 off its invoice → the tie fails and names the invoice
+    const off = await go('il', { lines: (p) => { const r = L.listInvoiceLines(p); r.Items[0].Total = r2(r.Items[0].Total + 10); return r; } });
+    ok('il: a line that does not add up to its invoice fails, naming the invoice', red(off) && new RegExp('✗ Each invoice’s lines add up.*Differs: ' + IL[0].Number).test(banner(off)), banner(off).slice(0, 400));
+    // an invoice whose lines did not come back → its own failure
+    const miss = await go('il', { lines: (p) => { const r = L.listInvoiceLines(p); const u = r.Items[0].DocumentUID; r.Items = r.Items.filter((l) => l.DocumentUID !== u); return r; } });
+    ok('il: an invoice without lines fails "every invoice has its lines"', red(miss) && /✗ Every invoice in the period has its lines — 1 without lines/.test(banner(miss)), banner(miss).slice(0, 500));
+    // more lines than the cap → says choose a shorter period
+    const tr = await go('il', { lines: (p) => Object.assign(L.listInvoiceLines(p), { Truncated: true }) });
+    ok('il: truncated lines fail and say to choose a shorter period', red(tr) && /✗ All the period’s lines were returned — More than \d+ lines — choose a shorter period/.test(banner(tr)), banner(tr).slice(0, 500));
+    // tax-inclusive documents: line totals include GST, the report takes it out (sales ex tax unchanged), the tie uses TotalAmount
+    const incl = await go('il', { lines: (p) => { const r = L.listInvoiceLines(p); r.Items.forEach((l) => { l.IsTaxInclusive = true; if (l.TaxCode.Code === 'GST') l.Total = r2(l.Total * 1.1); }); return r; },
+      inv: (p) => { const r = L.listInvoices(p); r.Items.forEach((i) => { i.IsTaxInclusive = true; }); return r; } });
+    const inclEx = r2(L.listInvoiceLines(P3).Items.reduce((s, l) => s + (l.TaxCode.Code === 'GST' ? r2(r2(l.Total * 1.1) * 100 / 110) : l.Total), 0));
+    ok('il: tax-inclusive lines have GST taken out; the tie uses the total', new RegExp('Sales \\(ex tax\\)' + fmt(inclEx)).test(body(incl)) && /✓ Each invoice’s lines add up/.test(banner(incl)), [inclEx, banner(incl).slice(0, 300)]);
+    // bills
+    const BL = L.listBillLines(P3).Items, BILLS = L.listBills(P3).Items, bsub = r2(BILLS.reduce((s, b) => s + b.Subtotal, 0));
+    const b = await go('bd'), bb2 = body(b);
+    ok('bd: Supplier Purchases (Detail) green — every bill\'s lines = its amount; purchases = Σ bill subtotals', green(b) && /✓ Each bill’s lines add up to its amount on MYOB’s bill list/.test(banner(b)) && new RegExp('Purchases \\(ex tax\\)' + fmt(bsub)).test(bb2) && b.doc.querySelectorAll('#bd-grid tbody tr').length === BL.length, [bsub, banner(b).slice(0, 300)]);
+    await view(b, 'item');
+    ok('bd: Purchases by item / account groups the lines by account', b.doc.querySelectorAll('#bd-grid tbody tr').length === new Set(BL.map((l) => l.Account.DisplayID)).size, b.doc.querySelectorAll('#bd-grid tbody tr').length);
+    const boff = await go('bd', { lines: (p) => { const r = L.listBillLines(p); r.Items[0].Total = r2(r.Items[0].Total - 5); return r; } });
+    ok('bd: a bill line $5 off fails, naming the bill', red(boff) && new RegExp('Differs: ' + BL[0].Number).test(banner(boff)), banner(boff).slice(0, 300));
   }
   console.log(fails ? `\n${fails}/${total} checks FAILED` : `\nALL ${total} checks passed`);
   process.exit(fails ? 1 : 0);

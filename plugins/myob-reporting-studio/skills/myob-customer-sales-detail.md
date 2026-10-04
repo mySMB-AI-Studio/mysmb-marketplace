@@ -1,43 +1,42 @@
 ---
-name: MYOB Item Sales
-description: MYOB Item Sales (M39) as a live, validated report in MYOB styling. Use when the user asks for item sales, sales by item or product, units sold, best-selling items, or revenue per inventory item for a period.
+name: MYOB Customer Sales (Detail)
+description: MYOB Customer Sales (Detail) (M36) as a live, validated report in MYOB styling. Use when the user asks for customer sales detail, what each customer bought, invoice lines by customer, or sales by customer and item for a period.
 ---
-# Item Sales (M39)
+# Customer Sales (Detail) (M36)
 
-Use when the user asks for item sales, sales by item or product, units sold, best-selling items, or revenue per inventory item for a period. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Item Sales**. Template: `myob-reporting-studio` / `item-sales` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_invoice_lines`, `list_invoices`, `list_tax_codes`, `list_items`, `list_company_files`).
+Use when the user asks for customer sales detail, what each customer bought, invoice lines by customer, or sales by customer and item for a period. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Customer Sales (Detail)**. Template: `myob-reporting-studio` / `myob-customer-sales-detail` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_invoice_lines`, `list_invoices`, `list_tax_codes`, `list_items`, `list_company_files`).
 
-MYOB location: Reporting → Reports → Sales → Item sales. Library: MYOB Reports Prompt Library v1.2 → Prompts → M39. Delivery: Wave 2 (P2).
+MYOB location: Reporting → Reports → Sales → Customer sales (detail). Library: MYOB Reports Prompt Library v1.2 → Prompts → M36. Delivery: Wave 2 (P2).
 
 ## Discovery call
 
-Call `list_invoice_lines` once for the period (`status` = `All`) — one row per invoice line across every layout, with `Item{Number,Name}`, `Account`, `Quantity`, `UnitPrice`, `Total`, `TaxCode` and the invoice's `Number`, `Date`, `Customer`, `IsTaxInclusive` — plus `list_invoices` once (the tie) and `list_company_files` once. A `{"__error": …}` result is a failed call: report its message.
+Call `list_invoice_lines` once for the period (`status` = `All`), `list_invoices` once and `list_company_files` once. A `{"__error": …}` result is a failed call: report its message.
 
 ## Date defaults
 
-`from_date` / `to_date` = the period (default: this financial year to date — display preset `p` = `this_fy_td`; `this_month`, `last_month`, `this_quarter`, `last_quarter`, `last_fy` or `custom`). The view is display `v`: `item` (default), `analysis` (by month, with estimated margin) or `customer` (customer sales detail).
+`from_date` / `to_date` = the period (default: this financial year to date; display preset `p` as for Item Sales). The view is display `v` (`customer` by default).
 
 ## Members
 
 | Member / view | How |
 |---|---|
-| Item sales | Per item: units sold, sales ex tax, % of sales, average price; lines with no item grouped by account |
-| Item sales analysis | See MYOB Item Sales Analysis |
-| Customer sales (detail) | See MYOB Customer Sales (Detail) |
+| Customer sales (detail) | Every invoice line by customer: date, invoice, item or account, description, quantity, unit price, amount ex tax, tax code |
+| Summary by customer | See MYOB Customer Sales |
 
 ## Validation checks (shown in the banner)
 
-- **Independent tie:** each invoice's lines add up to its amount on MYOB's invoice list (layout lines vs the invoice list — two MYOB sources)
+- **Independent tie:** each invoice's lines add up to its amount on MYOB's invoice list
 - Every invoice in the period has its lines
-- All the period's lines were returned (no truncation)
+- All the period's lines were returned
 
 ## Save as
 
-`fileName`: `myob-item-sales.html` · `tags`: ["myob","item-sales","M39","sales"]
+`fileName`: `myob-customer-sales-detail.html` · `tags`: ["myob","customer-sales","detail","M36","sales"]
 
 ## QA test script (golden set)
 
 1. On the golden-set file, ask for this report at the library's example period; confirm the discovery call succeeded and the report saved.
-2. Compare the headline figures: MYOB Item sales report for the same period.
+2. Compare the headline figures: MYOB Customer sales (detail) for the same period.
 3. Validation banner: every check passes (the independent tie included), or shows N/A with a stated reason.
 4. Change every control and confirm the report refetches and still validates; switch View as to Client, then Bookkeeper; toggle Style and the dark theme.
 5. Download PDF and Download Excel and confirm they match the screen (the Excel file has Validation and Parameters sheets).
@@ -85,7 +84,7 @@ Call `list_invoice_lines` once for the period (`status` = `All`) — one row per
       "label": "Display settings",
       "type": "string",
       "maxLength": 300,
-      "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"item\"}"
+      "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"customer\"}"
     }
   ],
   "bindings": [
@@ -187,10 +186,10 @@ Call `list_invoice_lines` once for the period (`status` = `All`) — one row per
 // Invoice lines — Item Sales (M39), Item Sales Analysis (M49, variant ia) and Customer Sales (Detail) (M36, variant cd), from MYOB's
 // invoice layout lines (list_invoice_lines). Tie: each invoice's lines add up to its amount on MYOB's invoice list (two MYOB sources).
 MK.app({
-  title: 'Item Sales', primary: 'lines', files: 'company_files', optional: ['tax_codes', 'items'],
+  title: 'Customer Sales (Detail)', primary: 'lines', files: 'company_files', optional: ['tax_codes', 'items'],
   inputs: { start: 'from_date', end: 'to_date', companyFile: 'company_file', persona: 'persona', display: 'display' },
   defaults: { from_date: '2026-07-01', to_date: '2026-09-28', company_file: '', persona: 'Bookkeeper',
-    display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":0,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":"item"}' },
+    display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":0,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":"customer"}' },
   uses: { lines: ['from_date', 'to_date', 'company_file'], inv: ['from_date', 'to_date', 'company_file'], tax_codes: ['company_file'], items: ['company_file'], company_files: [] },
   tools: { lines: 'list_invoice_lines (every invoice line in the period, all layouts)', inv: 'list_invoices (the invoices in the period, for the tie)', tax_codes: 'list_tax_codes (rates, to take tax out of tax-inclusive lines)', items: 'list_items (average cost, for the estimated margin)', company_files: 'list_company_files' },
   views: [['item', 'Item sales'], ['analysis', 'Item sales analysis (by month)'], ['customer', 'Customer sales (detail)']],

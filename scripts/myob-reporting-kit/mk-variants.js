@@ -9,6 +9,9 @@ const VARIANTS = [
   // Aged payables (M40 by due date) = Unpaid bills aged by due date; Supplier purchases (M43) = the Purchase register's supplier view
   { id: 'ap', base: 'ub', title: ['Unpaid Bills', 'Aged Payables'], inputs: { method: 'Due date' } },
   { id: 'sp', base: 'pg', title: ['Purchase Register', 'Supplier Purchases'], display: { v: 'suppliers' } },
+  // Item sales analysis (M49) and Customer sales (detail) (M36) = the invoice lines report (Item sales, M39) on its other views
+  { id: 'ia', base: 'il', title: ['Item Sales', 'Item Sales Analysis'], display: { v: 'analysis' } },
+  { id: 'cd', base: 'il', title: ['Item Sales', 'Customer Sales (Detail)'], display: { v: 'customer' } },
 ];
 for (const v of VARIANTS) {
   let cfg = fs.readFileSync(path.join(R, v.base + '.cfg.js'), 'utf8').replace(/\r\n/g, '\n');
