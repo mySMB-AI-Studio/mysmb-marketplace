@@ -16,7 +16,8 @@ new Function(kitCompact); // parses
 const css = rd('mk.css').trim(), skeleton = rd('skeleton.html').trim(), prose = rd('foundation-prose.md').trim();
 const fence = (lang, s) => '```' + lang + '\n' + s.trim() + '\n```';
 const docOf = (f) => (skeleton + '\n').replace('{{TITLE}}', f.title).replace('{{CSS}}', () => css).replace('{{KIT}}', () => kitCompact.trim()).replace('{{CFG}}', () => rd('reports/' + f.report + '.cfg.js').trim());
-const built = FAM.map((f) => '`' + SLUG + ':' + f.skill + '` (' + f.m + ')').join(', ');
+// short skill names (ids are `${SLUG}:<name>`) — with every kit report on one line, the full ids passed the 1,500-character line limit
+const built = FAM.map((f) => '`' + f.skill + '` (' + f.m + ')').join(', ');
 
 const foundation = `---
 name: myob-report-foundation
@@ -26,7 +27,7 @@ description: Shared build recipe, controls contract, validation rules, MYOB styl
 
 Use when you build any MYOB report, dashboard or report pack. Load this skill first, then the report skill. Two kinds of report skill exist:
 
-- **Kit reports** — ${built}. The report skill carries a tested \`dataBindings\` manifest and a report config; this file carries the tested kit and stylesheet. **You assemble them — you do not write report code.** Follow *Build a kit report* below.
+- **Kit reports** (skill ids \`${SLUG}:<name>\`) — ${built}. The report skill carries a tested \`dataBindings\` manifest and a report config; this file carries the tested kit and stylesheet. **You assemble them — you do not write report code.** Follow *Build a kit report* below.
 - **Every other report skill** is still a written specification. Follow *Rules for report skills without a kit config* at the end of this file.
 
 Spec: MYOB Reports Prompt Library v1.2 (M00–M63) with the v1.2 patch (one agent per platform; LIB-002 client selector; cross-client isolation). Connector: \`myob-accounting\` (the mySMB custom MCP on the MYOB Business / AccountRight API v2).

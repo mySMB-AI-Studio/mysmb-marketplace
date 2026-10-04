@@ -1,86 +1,10 @@
----
-name: myob-report-foundation
-description: Shared build recipe, controls contract, validation rules, MYOB styling and the tested report kit for every MYOB report (AGT-002), plus the rules for report skills not yet on the kit. Load it with the report skill.
----
-# MYOB report foundation
-
-Use when you build any MYOB report, dashboard or report pack. Load this skill first, then the report skill. Two kinds of report skill exist:
-
-- **Kit reports** (skill ids `myob-reporting-studio:<name>`) — `profit-and-loss` (M04), `balance-sheet` (M02), `trial-balance` (M03), `unpaid-invoices` (M32), `aged-receivables` (M32), `receivables-reconciliation` (M33, M34), `sales-register` (M38), `customer-sales` (M35), `cash-movement` (M05), `general-ledger` (M08), `dashboard` (M00), `exceptions-dashboard` (M59), `myob-statement-of-cash-flows` (M19), `myob-report-pack` (M60), `gst-summary` (M06), `myob-bank-reconciliation-status` (M17), `item-sales` (M39), `item-sales-analysis` (M49), `myob-customer-sales-detail` (M36), `myob-supplier-purchases-detail` (M44), `myob-pay-run-history` (M23), `payroll-register` (M21), `payroll-summary` (M20), `accrual-by-fund` (M25), `myob-superannuation-payments` (M27), `unpaid-bills` (M40), `aged-payables` (M40), `payables-reconciliation` (M41, M42), `purchase-register` (M46), `supplier-purchases` (M43). The report skill carries a tested `dataBindings` manifest and a report config; this file carries the tested kit and stylesheet. **You assemble them — you do not write report code.** Follow *Build a kit report* below.
-- **Every other report skill** is still a written specification. Follow *Rules for report skills without a kit config* at the end of this file.
-
-Spec: MYOB Reports Prompt Library v1.2 (M00–M63) with the v1.2 patch (one agent per platform; LIB-002 client selector; cross-client isolation). Connector: `myob-accounting` (the mySMB custom MCP on the MYOB Business / AccountRight API v2).
-
-## Build a kit report
-
-Every kit report skill names its **template**: the extension `myob-reporting-studio` and the report skill's own name as the slug (for example `profit-and-loss`). The template is the same tested document the copy path below assembles, with the skill's `dataBindings`.
-
-1. **Discovery call.** Call the report's primary tool once with its default inputs (the report skill says which), and `list_company_files` once. Confirm MYOB is connected (a connection error → tell the user to connect MYOB under Settings → Connections and stop). A result of `{"__error": "…"}` is a failed call, not data: report the message, and if it says the token is invalid for one tool while others work, say the tool failed — do not tell the user their session expired. Read the company file name from `list_company_files` (it can be empty for newer MYOB keys; the report then says so). Never copy a returned figure into the document.
-2. **Starting values.** Decide the inputs the report opens on, starting from the report skill's `dataBindings` defaults. Change only the `default` values of date inputs, as its *Date defaults* line says (`YYYY-MM-DD` or `"today"`), and the `display` JSON string's `p` (period preset), `a` (as-at preset), `c` (compare: `none` | `prev_period` | `prev_year` | `ytd`) and `v` (report view) to match the request. Leave `company_file` empty (the connection's file) unless the user names another file that `list_company_files` returned — then use its `Id`. **Branding:** leave `style` = `myob` (MYOB branding, the default). Set `style` = `mysmb` when the user asks for mySMB branding or the mySMB report template. Set `b` to `#rrggbb` only when the user asks for their own or their customer's colour. Keep every other key, input name, option, binding id, tool name and param.
-3. **Title and description.** `title` = the report skill's *Report title* exactly (for example "MYOB Profit and Loss"): the platform, then the report's agreed name in Title Case — no company file and no period, because the reader can switch both in the report. Put them in the one-line `description` ("Opens on <Company file> · <period>").
-4. **Create the report.**
-   - **If `artifact_from_template` is in your tools**, call it once: `plugin` = `myob-reporting-studio`, `slug` = the report skill's name, `inputs` = only the inputs you changed in step 2 as `{ "input name": value }` (`display` is the whole JSON string with your changes; dates are `YYYY-MM-DD` or `"today"`), and `title` and `description` from step 3. The platform saves an exact copy of the tested template — you write no HTML, and the report opens on your inputs. If the tool says it has no such template (the installed extension is older than this skill), use the copy path instead.
-   - **Otherwise (copy path):** (a) copy the report skill's `dataBindings` JSON exactly, with the step 2 defaults. (b) Copy the report config JS exactly and change only its `defaults` object so it equals the manifest defaults, with `"today"` written as today's date. (c) Assemble one HTML document from the skeleton below: replace `{{TITLE}}` with the report name, `{{CSS}}` with the stylesheet, `{{KIT}}` with the report kit and `{{CFG}}` with the report config, all verbatim. Never edit, shorten, reformat or "improve" the kit or the stylesheet — they are tested as one unit and the platform validates the document against the bindings. (d) Save with `artifact_save`: `title` and `description` from step 3, `fileName` and `tags` from the report skill, `content` = the document, `dataBindings` = the manifest. Do not pass `connectors` (a live report derives them). Never paste the HTML into chat.
-5. **Completion note** (3–6 lines): the report is live and refreshes on open; the controls the reader can change; the validation checks and whether they passed on the discovery data; any N/A items (the report skill lists them); Download PDF / Download Excel are in the report, and the report window's Download and Share save a frozen snapshot.
-
-The user never has to choose an output format: every report is HTML with Download PDF (print to PDF) and Download Excel (.xlsx). If they ask for Excel or PDF, build the report and point to those buttons.
-
-## Controls contract (kit reports)
-
-- **Client (LIB-002).** The company files this MYOB connection can access (`list_company_files`). With one file the box shows its name. With several it is a picker bound to `company_file`, which every binding sends as `myob_company_file_id` — switching refetches everything for that file only. Never type or guess a client name; when MYOB returns no file list the header says so.
-- **Period.** A preset (Today … Last financial year, Custom) next to editable From / To dates, or As at with presets. The **financial year is assumed to start 1 July** (NZ files: 1 April) because the MYOB API does not expose it; the banner says "assumed". **Relative presets roll forward**: a saved "This financial year to date" report is recomputed to today's window each time it opens.
-- **Branding** (under Customise; display only — never refetches): **MYOB** (default: purple accents and charts, MYOB badge, "Prepared from MYOB Business") or **mySMB** (the mySMB Reporting template: teal header band with a white title, white-on-teal table headers, light-teal alternating rows, teal / accent / purple / grey charts, mySMB badge, and the footer "Business | Report | Generated"). It is stored in the `display` input as `style`, so downloads and snapshots keep it.
-- Accounting method (Cash | Accrual) where MYOB offers it; Compare to (previous period / previous year / year to date, with $ and % change); Report (the members); View as (persona).
-- **Customise** (display only, never refetches): Show cents, Divide by 1000, Except zero amounts (on by default — zero rows and all-zero sections are hidden), negatives (-100 / **(100)** / 100-), Show in red, Header, Footer, Compact | 100%, and Brand colour for a client's own colour ("Use MYOB branding" resets it; not used under mySMB branding).
-- **Delivery.** Download PDF (print stylesheet), Download Excel (a real .xlsx: a sheet per table with a header block, number format, bold totals, a Validation sheet and a Parameters sheet). Host Download and Share produce a self-contained snapshot.
-- **Personas.** Client and Executive = summary mode (account lines hidden; totals, charts and validation kept). Bookkeeper and Practitioner = detail mode. A failed check is never hidden.
-- **Snapshots** freeze the data; the report reads its period and basis from the MYOB report itself and disables the controls that refetch.
-
-## Data and validation rules (kit reports)
-
-- Only `myob-accounting` tools. Never invent, estimate or reuse example figures. Anything missing is "N/A — not in source" and listed under Sources & limitations.
-- MYOB errors arrive **as data** (`{"__error": …}`); the kit turns them into failed sources: the section shows the message, the banner turns red, and no check computed from it passes.
-- MYOB report summaries (P&L, Balance Sheet) return one total per account and no section totals. The kit joins each account to its **Classification** from `list_accounts` (Asset, Liability, Equity, Income, CostOfSales, Expense, OtherIncome, OtherExpense), falling back to the account number's first digit, and skips header accounts so nothing is counted twice. Values are shown as MYOB returns them (positive in the account's normal balance; a contra account or overdrawn bank is negative) — never silently flipped.
-- Every report recomputes its checks on every load and change. Each report includes at least one **independent tie** — a figure matched against a different MYOB report (e.g. P&L Net Profit = Balance Sheet Current Year Earnings) — so a check never just re-adds the report's own numbers. Only real checks count in "x/y passed"; N/A and information lines are counted separately.
-- Financial output is decision support, not audit, tax or legal advice.
-
-## Kit reference (for adapting a config after discovery)
-
-`MK.app(cfg)` keys: `title`, `primary` (binding whose dates a snapshot reads), `files` (the `list_company_files` binding id), `fyMonth` (override the assumed financial-year start), `inputs` (role → declared input: start, end, asAt, basis, cmpStart, cmpEnd, cmpAsAt, companyFile, persona, display), `defaults`, `uses` (binding id → the declared inputs it consumes; drives refetching), `tools`, `compare`, `enums`, `views`, `derive(inputs, fyMonth)` (applied on open and on every change), `roll`, `render(ctx)` → `{checks:[{name, pass:true|false|null, info?, detail}], na, notes, title, period}`, `excel(ctx)`.
-
-Helpers: `MK.errorOf` / `items` / `isoDate`; `accounts(list)` / `classOf` / `breakdown(reports, accounts, MK.PL_LAYOUT | MK.BS_LAYOUT)` → `{lines, totals, calc, rows, unclassified, headersSkipped, byCode}`; `currentYearEarnings(lines)`; `linesTies`; `companyOf`; `find` / `val`; `money` / `pct` / `periodLine` / `asOfLine` ("As at 28 September 2026") / `footerStamp`; `statement` / `grid` / `kpis` / `bars` / `line` / `donut` / `waterfall`; `preset` / `asAt` / `compare` / `fyStartOf`; `xlsx` / `sheetFromLines`.
-
-## Skeleton
-
-```html
 <!doctype html>
 <html lang="en-AU">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{{TITLE}}</title>
-<style>{{CSS}}</style>
-</head>
-<body class="persona-detail">
-<div id="mk-controls" aria-label="Report controls"></div>
-<div id="mk-status" role="status" aria-live="polite">Loading MYOB data…</div>
-<div id="mk-banner" class="mk-banner" role="region" aria-label="Validation"></div>
-<main class="mk-card">
-<header id="mk-head"></header>
-<div id="mk-body"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
-<footer id="mk-foot"></footer>
-</main>
-<section id="mk-sources" class="mk-card" aria-label="Sources and limitations"></section>
-<script>{{KIT}}</script>
-<script>{{CFG}}</script>
-</body>
-</html>
-```
-
-## Stylesheet ({{CSS}})
-
-```css
-:root{--accent:#6F2CBA;--btn:#5A1F9E;--btn-ink:#FFFFFF;--ink:#393A3D;--muted:#6B6C72;--line:#E3E5E8;--canvas:#F4F5F8;--card:#FFFFFF;--th:#6B6C72;--zebra:transparent;--neg:#D52B1E;--pos:#1B7F4B;--pass-bg:#EAF6E8;--fail-bg:#FDECEA;--band:#FFFFFF;--band-ink:#393A3D;--cover:#1B2A4A;--cover-ink:#FFFFFF;--c1:#6F2CBA;--c2:#9E9E9E;--c3:#00B0A0;--c4:#007A6E;--c5:#E0457B;--c6:#0077C5;--d1:#6F2CBA;--d2:#00B0A0;--d3:#B28DE6;--d4:#E0457B;--d5:#0077C5;--d6:#9E9E9E}
+<title>Pay Run History</title>
+<style>:root{--accent:#6F2CBA;--btn:#5A1F9E;--btn-ink:#FFFFFF;--ink:#393A3D;--muted:#6B6C72;--line:#E3E5E8;--canvas:#F4F5F8;--card:#FFFFFF;--th:#6B6C72;--zebra:transparent;--neg:#D52B1E;--pos:#1B7F4B;--pass-bg:#EAF6E8;--fail-bg:#FDECEA;--band:#FFFFFF;--band-ink:#393A3D;--cover:#1B2A4A;--cover-ink:#FFFFFF;--c1:#6F2CBA;--c2:#9E9E9E;--c3:#00B0A0;--c4:#007A6E;--c5:#E0457B;--c6:#0077C5;--d1:#6F2CBA;--d2:#00B0A0;--d3:#B28DE6;--d4:#E0457B;--d5:#0077C5;--d6:#9E9E9E}
 :root[data-myhub-theme='dark']{--accent:#A77BE8;--btn:#7A45C9;--btn-ink:#FFFFFF;--ink:#E6E8EB;--muted:#A3A7AE;--line:#33363C;--canvas:#16181B;--card:#1F2226;--th:#A3A7AE;--neg:#FF6B5E;--pos:#4CC38A;--pass-bg:#18301A;--fail-bg:#3A1B19;--band:#1F2226;--band-ink:#E6E8EB;--cover:#22324F;--cover-ink:#FFFFFF;--c1:#A77BE8;--c2:#80858D;--c3:#2BC4B3;--c4:#3CCFBF;--c5:#F06A96;--c6:#3FA2E8;--d1:#A77BE8;--d2:#2BC4B3;--d3:#CDB4F2;--d4:#F06A96;--d5:#3FA2E8;--d6:#80858D}
 :root.style-mysmb{--accent:#00B0A0;--btn:#007A6E;--zebra:#E6F7F5;--band:#007A6E;--band-ink:#FFFFFF;--cover:#007A6E;--th-bg:#007A6E;--th-ink:#FFFFFF;--c1:#007A6E;--c2:#00B0A0;--c3:#6F2CBA;--c4:#9E9E9E;--c5:#1B7F4B;--c6:#C8102E;--d1:#007A6E;--d2:#00B0A0;--d3:#6F2CBA;--d4:#9E9E9E;--d5:#1B7F4B;--d6:#C8102E;--pos:#1B7F4B;--neg:#C8102E}
 :root[data-myhub-theme='dark'].style-mysmb{--accent:#2BC4B3;--btn:#138A7D;--zebra:#15302D;--band:#0E5A52;--band-ink:#FFFFFF;--cover:#0E5A52;--th-bg:#0E5A52;--th-ink:#FFFFFF;--c1:#2BB3A3;--c2:#3CCFBF;--c3:#A77BE8;--c4:#80858D;--c5:#4CC38A;--c6:#FF6B5E;--d1:#2BB3A3;--d2:#3CCFBF;--d3:#A77BE8;--d4:#80858D;--d5:#4CC38A;--d6:#FF6B5E;--pos:#4CC38A;--neg:#FF6B5E}
@@ -162,13 +86,19 @@ main.mk-card{border-top:4px solid var(--accent)}
 .mk-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--line);margin:8px 0}.mk-bar i{display:block;height:100%}
 .mk-bul{list-style:none;padding:0;margin:8px 0 0}.mk-bul li{display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--line);font-size:13px}.mk-bul b{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
 .mk-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:8px}.mk-tiles .lbl{font-size:12px;color:var(--muted)}
-@media print{.noprint{display:none}}
-```
-
-## Report kit ({{KIT}}) — copy verbatim
-
-```js
-var MK = (function () {
+@media print{.noprint{display:none}}</style>
+</head>
+<body class="persona-detail">
+<div id="mk-controls" aria-label="Report controls"></div>
+<div id="mk-status" role="status" aria-live="polite">Loading MYOB data…</div>
+<div id="mk-banner" class="mk-banner" role="region" aria-label="Validation"></div>
+<main class="mk-card">
+<header id="mk-head"></header>
+<div id="mk-body"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
+<footer id="mk-foot"></footer>
+</main>
+<section id="mk-sources" class="mk-card" aria-label="Sources and limitations"></section>
+<script>var MK = (function () {
 'use strict';
 function num(v) {
 if (v === null || v === undefined || v === '') return null;
@@ -813,82 +743,77 @@ MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays, num: num, fi
 DISPLAY_DEFAULT: DISPLAY_DEFAULT, readDisplay: readDisplay, writeDisplay: writeDisplay, money: money, pct: pct, isNeg: isNeg,
 PRESETS: PRESETS, preset: preset, ASAT: ASAT, asAt: asAt, compare: compare, periodLine: periodLine, asOfLine: asOfLine, footerStamp: footerStamp, freshest: freshest,
 xlsx: xlsx, sheetFromLines: sheetFromLines, download: download, reportParams: reportParams };
-})();
-```
-
-## Rules for report skills without a kit config
-
-These rules apply to every report skill that is still a written specification (all except `profit-and-loss` (M04), `balance-sheet` (M02), `trial-balance` (M03), `unpaid-invoices` (M32), `aged-receivables` (M32), `receivables-reconciliation` (M33, M34), `sales-register` (M38), `customer-sales` (M35), `cash-movement` (M05), `general-ledger` (M08), `dashboard` (M00), `exceptions-dashboard` (M59), `myob-statement-of-cash-flows` (M19), `myob-report-pack` (M60), `gst-summary` (M06), `myob-bank-reconciliation-status` (M17), `item-sales` (M39), `item-sales-analysis` (M49), `myob-customer-sales-detail` (M36), `myob-supplier-purchases-detail` (M44), `myob-pay-run-history` (M23), `payroll-register` (M21), `payroll-summary` (M20), `accrual-by-fund` (M25), `myob-superannuation-payments` (M27), `unpaid-bills` (M40), `aged-payables` (M40), `payables-reconciliation` (M41, M42), `purchase-register` (M46), `supplier-purchases` (M43)). When you build one of those, write the report yourself following these rules.
-
-Resolve the MYOB company file, period or as-at date, and accounting basis (`Accrual` or `Cash`, where the underlying tool takes `reporting_basis`) — but prefer declaring them as report inputs with sensible defaults over asking the user up front; ask only when a required choice genuinely cannot be defaulted. Do not ask for an output format: every report is a single self-contained HTML document saved through artifact_save with a .html filename.
-
-Before starting any report, confirm the tool it needs actually exists in the current myob-accounting connector (see "Connector facts" below). Payroll, inventory, jobs, timesheets, budgets and bank-feed reports all have real tools. What the connector does NOT have: a jobs list, a trial-balance report, a cash-flow report, an account register, or company preferences. If the data isn't exposed, say so plainly and suggest a MYOB export as a fallback — never approximate a report from adjacent data just because the real tool is missing.
-
-Use the connected MYOB tools for live data. Never invent, estimate, silently substitute, or reuse illustrative workbook values. Mark unavailable figures N/A — not in source — and include a Sources & limitations section naming tool calls, report dates, basis, and assumptions explicitly approved by the user.
-
-Perform every tie-out required by the report skill. Show a compact Validation section with each equation and Pass/Fail. If a material check fails, explain the discrepancy prominently. **A check is Pass only when every figure it uses was actually returned.** A check computed from missing, errored, truncated or empty data renders N/A (or Fail when the missing data is itself the problem) — never Pass. Compare money with a tolerance of 0.01 everywhere (`Math.abs(a - b) < 0.01`): the connector does not round intermediate totals.
-
-### Connector facts (myob-accounting)
-
-* **Company file:** every tool except `list_company_files` and `list_tax_codes` accepts an optional `myob_company_file_id` that targets that company file for the call. `list_company_files` lists the files.
-* **Errors arrive as data:** a failed tool call returns `{ "__error": "<message>" }` as the binding's normal data — not only as `bundle.errors[id]`. See the error contract below.
-* **UID params are validated as UUIDs.** An empty string `""` fails the call. To mean "all", omit the param.
-* **Profit and loss:** `get_profit_and_loss` and `get_profit_and_loss_3m` take `from_date` and `to_date` (both required) and `reporting_basis` (`Accrual` | `Cash`). They return `AccountsBreakdown[{ Account{UID, Name, DisplayID}, AccountTotal }]` with **no totals and no classification** — add a `list_accounts` binding, join on `Account.UID`, and sum per `Classification` yourself. The Australian financial year runs 1 July – 30 June. Any range that may cross 1 July (FY comparisons, rolling 12 months, any reader-editable range) must use `get_profit_and_loss_3m`, which splits at 1 July and merges.
-* **Balance sheet:** `get_balance_sheet` takes `date` (required — not `as_of_date`) and `reporting_basis`.
-* **Accounts:** `list_accounts` takes `type` (MYOB account Type: `Bank`, `AccountReceivable`, `OtherCurrentAsset`, `FixedAsset`, `OtherAsset`, `CreditCard`, `AccountsPayable`, `OtherCurrentLiability`, `LongTermLiability`, `OtherLiability`, `Equity`, `Income`, `CostOfSales`, `Expense`, `OtherIncome`, `OtherExpense`), `classification` (`Asset`, `Liability`, `Equity`, `Income`, `CostOfSales`, `Expense`, `OtherIncome`, `OtherExpense` — no spaces) and `is_active`. No paging and no date: `CurrentBalance` is today's balance only. Rows carry `UID`, `DisplayID`, `Name`, `Type`, `Classification`, `IsHeader`, `CurrentBalance`. Exclude `IsHeader: true` accounts from every sum.
-* **Invoices and bills:** `list_invoices` / `list_bills` take `status` (`Open` | `Closed` | `All`, default `Open`), `customer_uid` / `supplier_uid`, `from_date`, `to_date`, and page args; `page_index: 0` fetches every page. The outstanding amount is `BalanceDueAmount`; the document value is `TotalAmount`.
-* **Single-page lists:** `list_contacts`, `list_payments` and `list_supplier_payments` return ONE page only. Pass `page_size: 1000` (the maximum). If exactly 1000 rows come back, show a "may be truncated" warning and never mark a completeness check Pass. `list_payments` filters by `contact_uid` (not `customer_uid`).
-* **Ageing:** `get_aged_receivables` / `get_aged_payables` take `report_date` and `contact_uid`. Balances and open status are always as of TODAY; `report_date` only changes days-overdue bucketing. When `report_date` isn't today, say so in a visible banner.
-* **Journal:** `list_journal_transactions` takes `from_date`, `to_date`, `account_uid`, `job_uid`, `page_size` (≤5000) and fetches everything. The account/job filters keep a whole transaction when ANY line matches — filter `Lines[]` client-side to show only the matching lines. `Amount` is always positive; `IsCredit` gives the side.
-* **Payroll:** `get_employee_payroll_advice` REQUIRES `employee_uid`. MYOB ignores the dates, so the connector filters advices by pay-period overlap with `from_date`/`to_date` itself — one call returns every advice in range for that employee. Reports that cover many employees use a fan-out loop (below).
-* **Jobs:** `list_job_register` takes only `job_uid` and page args — no date, year or month params. Rows are `{ Job, Account, Year, Month, Activity, YearEndActivity }`; filter the period client-side. `Year` may be the financial year rather than the calendar year — verify on first run. There is no `list_jobs`: discover job UIDs from `list_job_register` rows or journal `Lines[].Job`.
-* **Budgets:** `get_budget` takes `financial_year` as an integer (2027 = FY2026-27), current or next FY only.
-
-### Error contract
-
-In `onData` and after every `getData` call, treat a source as FAILED when either `bundle.errors[id]` is set (codes `tool_error`, `invalid_inputs`, `tool_not_found`, `connection_unavailable`, `needs_connection`) or the returned data carries `__error` (`data[id].__error`). Write one helper and use it for every section. For a failed source:
-
-* Show the message in that section (for `needs_connection`, say this viewer has not connected MYOB — offer nothing else).
-* Never render $0, an empty table, or "no items" as if it were real data.
-* Mark every check that uses it N/A or Fail — never Pass.
-* Keep rendering every other section.
-
-### Live reports (the default)
-
-A report over connected MYOB data is LIVE: never bake retrieved rows or computed figures into the HTML. Pass dataBindings to artifact_save and write the document to render everything from hydrated data through the injected MyHubReport SDK. The platform injects the SDK at serve time — never include, stub, or fetch it yourself.
-
-* Declare one binding per MYOB dataset the report shows, targeting the myob-accounting MCP server's tools, e.g. `{ "id": "profit_and_loss", "tool": { "mcp": "myob-accounting", "name": "get_profit_and_loss_3m" }, "params": { "from_date": { "kind": "input", "input": "from_date" }, "to_date": { "kind": "input", "input": "to_date" }, "reporting_basis": { "kind": "input", "input": "basis" }, "myob_company_file_id": { "kind": "input", "input": "company_file" } } }`. Param kinds: `{"kind":"static","value":…}` for choices fixed at authoring, `{"kind":"context","source":"now.date"}` for today (the only context value), `{"kind":"input","input":"…"}` for anything a reader may change.
-* **Limits:** at most 8 declared inputs and 12 bindings. Input types are `string`, `date`, `enum`, `number`, `boolean`. Every binding id must be read somewhere in the HTML.
-* **Typed parameters (the connector validates types and rejects the whole call):** a boolean tool parameter (`is_active`, `order_desc`) is either a static JSON boolean (`{ "kind": "static", "value": true }`) or bound to a declared `boolean` input — never an `enum` or `string` input, which sends `"true"` and fails with "Expected boolean, received string". A number parameter (`page_size`, `page_index`, `financial_year`) is a static JSON number or a `number` input. An "active only / all" choice for the reader is a client-side filter over one binding that omits `is_active` — never a re-query that sends `is_active: false` (that returns only inactive records).
-* Declare inputs for the report's controls instead of interrogating the user:
-  * `company_file` — a `string` input holding the company file id, defaulting to the file in play. Bind it to `myob_company_file_id` on EVERY binding except `list_company_files` and `list_tax_codes`. When `list_company_files` shows more than one file, add a `company_files` binding to `list_company_files` and fill a header selector from it client-side. The header must show the name of the file actually queried (looked up from the current `company_file` value), never a hardcoded label.
-  * Date range / as-at — declare date inputs that map 1:1 onto the tool's REAL date parameters (`from_date`, `to_date`, `date`, `report_date`). Period presets (this month, last quarter, FY to date) are a CLIENT-SIDE picker that computes and sets the declared date inputs — never an input of their own.
-  * `basis` — only when the tool takes `reporting_basis`: an `enum` input with options exactly `Accrual` and `Cash` (default `Accrual`), mapped 1:1.
-  * The report skill names which of these (and any report-specific inputs) apply.
-* **Enum inputs** hold 1–12 options fixed at authoring; values outside them are rejected. Use enums only for genuinely fixed choices (basis, status, detail level, persona, Customer/Supplier/All). Never declare an enum "populated from" `list_accounts`, customers, suppliers, items, employees or jobs.
-* **Entity pickers** (account, customer, supplier, item, employee, job): declare a `string` input (maxLength 36) holding the UID, and fill its dropdown client-side from a list binding (`list_accounts`, `list_contacts`, `list_items`, `list_employees`, `list_job_register` rows, or rows the report already has). For "all", the call must OMIT the UID param — either filter client-side over an unfiltered binding, or declare a second, filtered binding that you only call with `getData` once a real UID is chosen. Never pass `""`. A required picker defaults to a real UID found during generation.
-* **Multi-select** doesn't exist as an input type. Use client-side selection over one unfiltered binding, or a `string` input of comma-separated UIDs parsed client-side.
-* **Relative dates:** a date input's default is either fixed or today. For month-to-date, FY-to-date or "last month", compute the dates client-side on load, then re-query with `MyHubReport.getData(id, inputs)` and call `MyHubReport.setInputs(...)` so the view and the share link agree. Skip the re-query in snapshot mode.
-* **Fan-out:** when a tool needs one call per entity (for example `get_employee_payroll_advice` per employee), declare ONE binding whose UID param maps a `string` input, and loop client-side with `await MyHubReport.getData(id, { ...inputs, employee: uid })` over the list binding's rows. Keep the loop bounded (state the cap, e.g. 50 entities, and say so in the report when it's hit), show progress, and disclose the loop in Sources & limitations. Snapshots keep only the bundle data, so results fetched by the loop aren't frozen — in snapshot mode say which sections need the live report.
-* **THE MAPPING LAW:** every declared input is EITHER a bound input — consumed by at least one binding param, each param mapping ONE declared input (or static/context value) onto ONE parameter the tool actually accepts — OR a presentation input. Presentation inputs (`persona`, `detail_level`, client-side filters such as a minimum days-overdue, a fund filter or a text filter) are allowed: declare them, but do not bind them to any param; they never trigger a re-query and still count toward the 8-input limit. Declare nothing that is neither. Discover the tool's real parameters during generation. The keys passed to `MyHubReport.getData(...)` and `MyHubReport.setInputs(...)` are the DECLARED INPUT NAMES exactly as written in inputs — never the tool's parameter names.
-* During the generation turn call each tool ONCE to learn its response shape, then write mapping and rendering JavaScript against that shape. Do not paste the discovered values into the document.
-* Render from `MyHubReport.onData(bundle => …)`: read `bundle.data[bindingId]` per section and apply the error contract above. Show a loading skeleton until the first bundle arrives; never a permanently empty section.
-* When a control changes, re-query just that data with `MyHubReport.getData(bindingId, { input: value })` and re-render the affected sections. Call `MyHubReport.setInputs({...})` on every control change so downloads and share links capture the reader's current view.
-* Interactivity that does NOT need new data is client-side JavaScript over already-hydrated data — column sorting, a text filter on any long table, tab/segment switches. Never add a binding for sorting, filtering, or aggregation of data you already have.
-* Recompute the Validation section's tie-outs in JavaScript on every hydration, against the numbers actually rendered.
-* **Snapshot mode:** when `MyHubReport.mode === 'snapshot'` (downloads and share links serve frozen data), disable or hide controls that would re-query, keep client-side sorting/filtering working against the embedded data, and state clearly that figures are frozen as of the captured time.
-* Data freshness in the header comes from `bundle.fetchedAt`, never the generation timestamp.
-
-Reserve a STATIC report (no dataBindings, data baked in) for the one case it is right: the user explicitly wants a frozen, point-in-time analysis. Then pass `connectors: ["myob-accounting"]` to `artifact_save` so the library still shows the data source.
-
-### Consistent visual system
-
-Build accessible semantic HTML with all CSS and optional lightweight JavaScript inline; do not fetch external libraries. Use MYOB's real brand palette (sourced from MYOB's official Logo Usage Guide, developer.myob.com — not an AI-generated guess): primary `--accent:#5c247b`; secondaries `--yellow:#eab80f`, `--orange:#ec6915`, `--green:#76ad1c`, `--teal:#009699`, `--blue:#2aabe1`; ink tints `--ink-80:#333333`, `--ink-50:#7f7f7f`, `--ink-30:#b3b3b3`, `--ink-10:#e6e6e6`. MYOB's guide defines no red/danger color — use `--neg:#ec6915` (the orange) as the negative/overdue/failing-check color, a project judgment call, not a verified MYOB brand color. Use a responsive 12-column card grid, 8px spacing rhythm, system sans-serif, strong hierarchy, tabular numerals, bracketed negatives, and clear print styles. Prefer SVG/CSS charts with legends and accessible labels; charts re-render from hydrated data like every other section. Tables need sticky headers when useful, right-aligned numbers, visible totals, sortable columns, and horizontal overflow on small screens. Render input controls (company file selector, period picker, basis toggle, persona) as a compact control row in the header area, styled with the same system.
-
-**Dark mode:** define every colour as a CSS custom property on `:root` and override them under `:root[data-myhub-theme='dark']` (background, surface, text, borders, muted text, chart colours). The host sets that attribute; never use `prefers-color-scheme`.
-
-The header must show report name, company file (the one actually queried), period, basis, and data freshness (from `bundle.fetchedAt`). Add an executive summary, then detail, validation, and sources. Save the final document with `artifact_save`; do not paste HTML into chat.
-
-### Persona modes
-
-Every report declares a `persona` presentation input (not consumed by any data binding — it only controls rendering) with options `Client`, `Bookkeeper`, `Practitioner`, `Executive`, defaulting to `Bookkeeper`. Render it as a `<select id="personaSel">` in the controls row. `Client` and `Executive` render in **summary mode**: hide elements classed `detail-block` (line-item tables, per-transaction breakdowns) and show only headline totals, the executive summary, and validation results. `Bookkeeper` and `Practitioner` render in **detail mode**: show everything, including `detail-block` elements. Toggle by setting `document.body.className` to `persona-summary` or `persona-detail` and scoping CSS on those classes (`.persona-summary .detail-block{display:none;} .persona-detail .detail-block{display:block;}`). A failing validation check is never hidden by persona — Pass/Fail always renders regardless of mode. On persona change, call `MyHubReport.setInputs({persona: value})` so downloads/share links capture the reader's chosen mode; this never triggers a re-query since no binding consumes it.
+})();</script>
+<script>// Payroll — Pay Run History (M23), Payroll Register (M21, variant), Payroll Summary (M20, variant), Accrual by Fund (M25/M26, variant)
+// and Superannuation Payments (M27, variant), from MYOB's pay advices (list_payroll_advices). MYOB's API has no pay-run list, so a pay
+// run is the paycheques sharing a payment date and pay period. Tie: wages and tax on the paycheques = MYOB's payroll category summary.
+MK.app({
+  title: 'Pay Run History', primary: 'adv', files: 'company_files', optional: ['cats', 'journals', 'accounts'],
+  inputs: { start: 'from_date', end: 'to_date', companyFile: 'company_file', persona: 'persona', display: 'display' },
+  defaults: { from_date: '2026-07-01', to_date: '2026-09-28', adv_from: '2026-05-17', adv_to: '2026-11-12', company_file: '', persona: 'Bookkeeper',
+    display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":0,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":"runs"}' },
+  uses: { adv: ['adv_from', 'adv_to', 'company_file'], cats: ['from_date', 'to_date', 'company_file'], journals: ['from_date', 'to_date', 'company_file'], accounts: ['company_file'], company_files: [] },
+  tools: { adv: 'list_payroll_advices (every paycheque in the period)', cats: 'get_payroll_category_summary (the tie)', journals: 'list_journal_transactions (super payments from the super payable account)', accounts: 'list_accounts (the super payable account)', company_files: 'list_company_files' },
+  // pay runs go by payment date (as MYOB's payroll reports and BAS W1 / W2 do); the advices tool filters by pay period, so it is asked for
+  // a window 45 days wider each side and the paycheques are kept by payment date
+  derive: function (inp) { var d = function (s, n) { return MK.iso(MK.addDays(MK.parse(s), n)); }; return { adv_from: d(inp.from_date, -45), adv_to: d(inp.to_date, 45) }; },
+  views: [['runs', 'Pay run history'], ['register', 'Payroll register'], ['summary', 'Payroll summary'], ['fund', 'Accrual by fund'], ['super', 'Superannuation payments']],
+  render: function (c) {
+    var body = c.body, money = function (v) { return MK.money(v, c.currency, c.display); }, r2 = function (v) { return Math.round(v * 100) / 100; }, from = c.inputs.from_date, to = c.inputs.to_date;
+    if (c.errors.adv) { body.innerHTML = '<p class="mk-err">' + MK.h(c.err('adv')) + '</p>'; return { checks: [{ name: 'Pay advices loaded', pass: false, detail: c.err('adv') }] }; }
+    if (!c.data.adv) return {};
+    var typ = function (a, t) { return MK.sum((a.Lines || []).filter(function (l) { return (l.PayrollCategory || {}).Type === t; }).map(function (l) { return MK.num(l.Amount) || 0; })); };
+    var pays = MK.items(c.data.adv).filter(Boolean).map(function (a) { var e = a.Employee || {}, f = a.SuperannuationFund || {};
+      return { emp: e.Name || '(no name)', eid: e.UID || e.Name, paid: MK.isoDate(a.PaymentDate), ps: MK.isoDate(a.PayPeriodStartDate), pe: MK.isoDate(a.PayPeriodEndDate), gross: MK.num(a.GrossPay) || 0, net: MK.num(a.NetPay) || 0, wage: typ(a, 'Wage'), tax: typ(a, 'Tax'), ded: typ(a, 'Deduction'), sup: typ(a, 'Superannuation'),
+        hours: MK.sum((a.Lines || []).filter(function (l) { return (l.PayrollCategory || {}).Type === 'Wage'; }).map(function (l) { return MK.num(l.Hours) || 0; })), fund: f.Name || '(no fund)', lines: a.Lines || [] }; }).filter(function (p) { return p.paid >= from && p.paid <= to; }).sort(function (x, y) { return x.paid.localeCompare(y.paid) || x.emp.localeCompare(y.emp); });
+    var runsBy = {}; pays.forEach(function (p) { var k = p.paid + '|' + p.ps + '|' + p.pe, r = runsBy[k] || (runsBy[k] = { paid: p.paid, period: MK.periodLine(p.ps, p.pe), n: 0, gross: 0, tax: 0, ded: 0, net: 0, sup: 0, hours: 0 }); r.n++; ['gross', 'tax', 'ded', 'net', 'sup', 'hours'].forEach(function (f) { r[f] = r2(r[f] + p[f]); }); });
+    var runs = Object.keys(runsBy).sort().map(function (k) { return runsBy[k]; }), T = {}; ['gross', 'tax', 'ded', 'net', 'sup', 'hours', 'wage'].forEach(function (f) { T[f] = MK.sum(pays.map(function (p) { return p[f]; })); });
+    var cats = {}; pays.forEach(function (p) { p.lines.forEach(function (l) { var pc = l.PayrollCategory || {}, k = (pc.Type || '?') + '|' + (pc.Name || '?'), y = cats[k] || (cats[k] = { type: pc.Type || '', name: pc.Name || '', amount: 0, hours: 0, emps: {} }); y.amount = r2(y.amount + (MK.num(l.Amount) || 0)); y.hours = r2(y.hours + (MK.num(l.Hours) || 0)); y.emps[p.eid] = 1; }); });
+    var catRows = Object.keys(cats).map(function (k) { var y = cats[k]; return { type: y.type, name: y.name, amount: y.amount, hours: y.hours || null, n: Object.keys(y.emps).length }; }).sort(function (a, b) { return a.type.localeCompare(b.type) || b.amount - a.amount; });
+    var funds = {}; pays.forEach(function (p) { if (!p.sup) return; var k = p.fund + '|' + p.eid, y = funds[k] || (funds[k] = { fund: p.fund, emp: p.emp, sup: 0, n: 0 }); y.sup = r2(y.sup + p.sup); y.n++; });
+    var fundRows = Object.keys(funds).map(function (k) { return funds[k]; }).sort(function (a, b) { return a.fund.localeCompare(b.fund) || a.emp.localeCompare(b.emp); });
+    // super paid: debits to the super payable account(s) in cash payment journals (MYOB's API has no super payment list)
+    var idx = MK.accounts(c.data.accounts), isSup = function (a) { var x = (a.UID && idx.byUid[a.UID]) || (a.DisplayID && idx.byCode[a.DisplayID]) || a; return /super/i.test(x.Name || '') && (x.Classification ? x.Classification === 'Liability' : /^2-/.test(a.DisplayID || '')); };
+    var supPaid = [], J = MK.items(c.data.journals); J.forEach(function (j) { if (!/^Cash/i.test(j.JournalType || '')) return; var d = MK.isoDate(j.DateOccurred); if (d < from || d > to) return; (j.Lines || []).forEach(function (l) { if (l.Account && !l.IsCredit && isSup(l.Account)) supPaid.push({ date: d, desc: j.Description || '', account: (l.Account.DisplayID ? l.Account.DisplayID + ' ' : '') + (l.Account.Name || ''), amount: MK.num(l.Amount) || 0 }); }); });
+    var paidT = MK.sum(supPaid.map(function (x) { return x.amount; })), view = c.view || 'runs', g = function (id) { return document.getElementById(id); };
+    var head = { runs: 'Pay run history', register: 'Payroll register', summary: 'Payroll summary', fund: 'Accrual by fund', super: 'Superannuation payments' }[view];
+    body.innerHTML = MK.kpis(view === 'super' ? [{ label: 'Super accrued', value: T.sup }, { label: 'Super paid', value: paidT }, { label: 'Accrued − paid', value: r2(T.sup - paidT) }, { label: 'Payments', value: supPaid.length, money: false }]
+      : [{ label: 'Gross pay', value: T.gross }, { label: 'PAYG withheld', value: T.tax }, { label: 'Net pay', value: T.net }, { label: 'Superannuation', value: T.sup }], c) +
+      '<div class="mk-card" style="margin-top:16px"><h3>' + head + ' — ' + MK.h(MK.periodLine(from, to)) + '</h3><div id="py-grid"></div>' + (view === 'fund' ? '<h3 style="margin-top:16px">By employee</h3><div id="py-grid2"></div>' : '') + '</div>';
+    if (!pays.length) g('py-grid').innerHTML = '<p class="muted">No pay runs in MYOB for this period.</p>';
+    else if (view === 'register') MK.grid(g('py-grid'), { rows: pays, filter: true, columns: [{ key: 'emp', title: 'Employee' }, { key: 'paid', title: 'Payment date' }, { key: 'pe', title: 'Period end' }, { key: 'gross', title: 'Gross pay', money: true }, { key: 'tax', title: 'PAYG withheld', money: true }, { key: 'ded', title: 'Deductions', money: true }, { key: 'net', title: 'Net pay', money: true }, { key: 'sup', title: 'Super', money: true }, { key: 'hours', title: 'Hours', num: true }],
+      total: { emp: 'Total', gross: T.gross, tax: T.tax, ded: T.ded, net: T.net, sup: T.sup, hours: T.hours } }, c);
+    else if (view === 'summary') MK.grid(g('py-grid'), { rows: catRows, columns: [{ key: 'type', title: 'Type' }, { key: 'name', title: 'Payroll category' }, { key: 'amount', title: 'Amount', money: true }, { key: 'hours', title: 'Hours', num: true }, { key: 'n', title: 'Employees', num: true }] }, c);
+    else if (view === 'fund') { var byF = {}; fundRows.forEach(function (y) { byF[y.fund] = r2((byF[y.fund] || 0) + y.sup); });
+      MK.grid(g('py-grid'), { rows: Object.keys(byF).map(function (k) { return { fund: k, sup: byF[k] }; }), columns: [{ key: 'fund', title: 'Super fund' }, { key: 'sup', title: 'Super accrued', money: true }], total: { fund: 'Total', sup: T.sup } }, c);
+      MK.grid(g('py-grid2'), { rows: fundRows, columns: [{ key: 'fund', title: 'Super fund' }, { key: 'emp', title: 'Employee' }, { key: 'n', title: 'Pays', num: true }, { key: 'sup', title: 'Super accrued', money: true }] }, c); }
+    else if (view === 'super') MK.grid(g('py-grid'), { rows: supPaid, empty: 'No payments from the super payable account in this period.', columns: [{ key: 'date', title: 'Date' }, { key: 'desc', title: 'Description' }, { key: 'account', title: 'Account' }, { key: 'amount', title: 'Paid', money: true }], total: { date: 'Total', amount: paidT } }, c);
+    else MK.grid(g('py-grid'), { rows: runs, columns: [{ key: 'paid', title: 'Payment date' }, { key: 'period', title: 'Pay period' }, { key: 'n', title: 'Employees', num: true }, { key: 'gross', title: 'Gross pay', money: true }, { key: 'tax', title: 'PAYG withheld', money: true }, { key: 'ded', title: 'Deductions', money: true }, { key: 'net', title: 'Net pay', money: true }, { key: 'sup', title: 'Super', money: true }, { key: 'hours', title: 'Hours', num: true }],
+      total: { paid: 'Total', n: pays.length, gross: T.gross, tax: T.tax, ded: T.ded, net: T.net, sup: T.sup, hours: T.hours } }, c);
+    // checks
+    var cs = c.data.cats, cb = cs && Array.isArray(cs.PayrollCategoryBreakdown) ? cs.PayrollCategoryBreakdown : null, csum = function (t) { return MK.sum((cb || []).filter(function (x) { return (x.PayrollCategory || {}).Type === t; }).map(function (x) { return MK.num(x.Amount) || 0; })); };
+    var netBad = pays.filter(function (p) { return !MK.near(p.net, r2(p.gross - p.tax - p.ded)); });
+    var checks = [
+      !cb ? { name: 'Wages and tax on the paycheques = MYOB’s payroll category summary (information)', pass: null, info: true, detail: c.errors.cats ? 'Category summary unavailable (' + c.err('cats') + ')' : 'N/A' }
+        : { name: 'Wages and PAYG on the paycheques = MYOB’s payroll category summary for the period (two MYOB reports)', pass: MK.near(T.wage, csum('Wage')) && MK.near(T.tax, csum('Tax')), detail: 'Wages ' + money(T.wage) + ' vs ' + money(csum('Wage')) + ' · PAYG ' + money(T.tax) + ' vs ' + money(csum('Tax')) },
+      { name: 'Pay runs add up to the paycheques', pass: pays.length ? MK.near(MK.sum(runs.map(function (r) { return r.gross; })), T.gross) : null, detail: runs.length + ' pay run(s), ' + pays.length + ' paycheque(s)' },
+      { name: 'Each paycheque: net pay = gross − PAYG − deductions (information)', pass: null, info: true, detail: !pays.length ? 'N/A — no pay runs' : netBad.length ? netBad.length + ' differ (e.g. ' + netBad[0].emp + ' ' + netBad[0].paid + ': ' + money(netBad[0].net) + ' vs ' + money(r2(netBad[0].gross - netBad[0].tax - netBad[0].ded)) + ') — salary sacrifice or other pay items' : 'all ' + pays.length }
+    ];
+    if (view === 'super') checks.push({ name: 'Super accrued (paycheques) vs paid from the super payable account (information — MYOB’s API has no super payment list)', pass: null, info: true, detail: money(T.sup) + ' accrued vs ' + money(paidT) + ' paid — a payment usually clears the previous quarter’s accrual' + (J.length ? '' : '; journals unavailable') });
+    this._x = { pays: pays, runs: runs, catRows: catRows, fundRows: fundRows, supPaid: supPaid, T: T, paidT: paidT };
+    return { checks: checks, title: { runs: 'Pay Run History', register: 'Payroll Register', summary: 'Payroll Summary', fund: 'Accrual by Fund', super: 'Superannuation Payments' }[view],
+      notes: ['From MYOB’s pay advices (one per paycheque). MYOB’s API has no pay-run list: a pay run is the paycheques sharing a payment date and pay period, listed by payment date. Dates of birth are not shown.', 'Superannuation payments are the cash payments from the super payable account (an approximation — MYOB’s API has no super payment list).'],
+      na: ['Leave balances and entitlement accruals (see Leave balance)', 'Pay slips and STP lodgement (MYOB’s app only)'] };
+  },
+  excel: function (c) {
+    var x = this._x; if (!x) return [];
+    var mv = function (v) { return v == null ? '' : { v: v, s: 'money' }; }, b = function (a) { return a.map(function (t) { return { v: t, s: 'bold' }; }); }, head = function (t) { return [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: t, s: 'bold' }], [MK.periodLine(c.inputs.from_date, c.inputs.to_date)], []]; };
+    return [{ name: 'Pay runs', rows: head('Pay run history').concat([b(['Payment date', 'Pay period', 'Employees', 'Gross pay', 'PAYG withheld', 'Deductions', 'Net pay', 'Super', 'Hours'])]).concat(x.runs.map(function (r) { return [r.paid, r.period, r.n, mv(r.gross), mv(r.tax), mv(r.ded), mv(r.net), mv(r.sup), r.hours]; })), widths: [14, 28, 10, 14, 14, 12, 14, 12, 8] },
+      { name: 'Register', rows: head('Payroll register').concat([b(['Employee', 'Payment date', 'Period end', 'Gross pay', 'PAYG withheld', 'Deductions', 'Net pay', 'Super', 'Hours'])]).concat(x.pays.map(function (p) { return [p.emp, p.paid, p.pe, mv(p.gross), mv(p.tax), mv(p.ded), mv(p.net), mv(p.sup), p.hours]; })), widths: [24, 14, 14, 14, 14, 12, 14, 12, 8] },
+      { name: 'Summary', rows: head('Payroll summary').concat([b(['Type', 'Payroll category', 'Amount', 'Hours', 'Employees'])]).concat(x.catRows.map(function (r) { return [r.type, r.name, mv(r.amount), r.hours || '', r.n]; })), widths: [16, 30, 14, 10, 10] },
+      { name: 'By fund', rows: head('Accrual by fund').concat([b(['Super fund', 'Employee', 'Pays', 'Super accrued'])]).concat(x.fundRows.map(function (r) { return [r.fund, r.emp, r.n, mv(r.sup)]; })), widths: [28, 24, 8, 14] },
+      { name: 'Super paid', rows: head('Superannuation payments').concat([b(['Date', 'Description', 'Account', 'Paid'])]).concat(x.supPaid.map(function (r) { return [r.date, r.desc, r.account, mv(r.amount)]; })), widths: [12, 40, 30, 14] }];
+  }
+});</script>
+</body>
+</html>

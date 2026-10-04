@@ -1,41 +1,41 @@
 ---
-name: MYOB Accrual by Fund
-description: MYOB Accrual by Fund (M25) as a live, validated report in MYOB styling. Use when the user asks for superannuation accrual by fund, super by fund, super accrued per employee, or the super guarantee owed to each fund.
+name: MYOB Superannuation Payments
+description: MYOB Superannuation Payments (M27) as a live, validated report in MYOB styling. Use when the user asks for superannuation payments, super paid, whether super has been paid, or super accrued versus paid for a quarter.
 ---
-# Accrual by Fund (M25)
+# Superannuation Payments (M27)
 
-Use when the user asks for superannuation accrual by fund, super by fund, super accrued per employee, or the super guarantee owed to each fund. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Accrual by Fund**. Template: `myob-reporting-studio` / `accrual-by-fund` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_payroll_advices`, `get_payroll_category_summary`, `list_journal_transactions`, `list_accounts`, `list_company_files`).
+Use when the user asks for superannuation payments, super paid, whether super has been paid, or super accrued versus paid for a quarter. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Superannuation Payments**. Template: `myob-reporting-studio` / `myob-superannuation-payments` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_payroll_advices`, `get_payroll_category_summary`, `list_journal_transactions`, `list_accounts`, `list_company_files`).
 
-MYOB location: Reporting → Reports → Payroll → Accrual by fund. Library: MYOB Reports Prompt Library v1.2 → Prompts → M25. Delivery: Wave 3 (P3) — M25 and the detail M26.
+MYOB location: Reporting → Reports → Payroll → Superannuation payments. Library: MYOB Reports Prompt Library v1.2 → Prompts → M27. Delivery: Wave 3 (P3).
 
 ## Discovery call
 
-As for MYOB Pay Run History: `list_payroll_advices` once (each paycheque's Superannuation lines and `SuperannuationFund`), `get_payroll_category_summary` once, `list_company_files` once..
+As for MYOB Pay Run History, plus `list_journal_transactions` for the period and `list_accounts` once: MYOB's API has no super payment list, so super paid = the cash payments debiting the super payable account. A `{"__error": …}` result is a failed call: report its message.
 
 ## Date defaults
 
-`from_date` / `to_date` = the period by payment date (default: this financial year to date; a super quarter is the usual choice). The view is display `v` (`fund` by default).
+`from_date` / `to_date` = the period (default: this financial year to date; a super quarter is the usual choice). The view is display `v` (`super` by default).
 
 ## Members
 
 | Member / view | How |
 |---|---|
-| Accrual by fund | Super accrued per fund |
-| Accrual by fund (detail) | Per fund and employee: pays and super accrued (M26) |
+| Superannuation payments | Payments from the super payable account (date, description, amount) and super accrued vs paid |
+| Payments by fund from MYOB's Pay Superannuation | N/A — not in MYOB's API (approximated from the journals) |
 
 ## Validation checks (shown in the banner)
 
 - **Independent tie:** wages and PAYG = MYOB's payroll category summary
-- Pay runs add up to the paycheques
+- Super accrued (paycheques) vs paid from the super payable account (information)
 
 ## Save as
 
-`fileName`: `myob-accrual-by-fund.html` · `tags`: ["myob","payroll","superannuation","M25","M26"]
+`fileName`: `myob-superannuation-payments.html` · `tags`: ["myob","payroll","superannuation","payments","M27"]
 
 ## QA test script (golden set)
 
 1. On the golden-set file, ask for this report at the library's example period; confirm the discovery call succeeded and the report saved.
-2. Compare the headline figures: MYOB Accrual by fund for the same period.
+2. Compare the headline figures: MYOB Superannuation payments for the same period (by fund there; total here).
 3. Validation banner: every check passes (the independent tie included), or shows N/A with a stated reason.
 4. Change every control and confirm the report refetches and still validates; switch View as to Client, then Bookkeeper; toggle Style and the dark theme.
 5. Download PDF and Download Excel and confirm they match the screen (the Excel file has Validation and Parameters sheets).
@@ -95,7 +95,7 @@ As for MYOB Pay Run History: `list_payroll_advices` once (each paycheque's Super
       "label": "Display settings",
       "type": "string",
       "maxLength": 300,
-      "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"fund\"}"
+      "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"super\"}"
     }
   ],
   "bindings": [
@@ -202,10 +202,10 @@ As for MYOB Pay Run History: `list_payroll_advices` once (each paycheque's Super
 // and Superannuation Payments (M27, variant), from MYOB's pay advices (list_payroll_advices). MYOB's API has no pay-run list, so a pay
 // run is the paycheques sharing a payment date and pay period. Tie: wages and tax on the paycheques = MYOB's payroll category summary.
 MK.app({
-  title: 'Accrual by Fund', primary: 'adv', files: 'company_files', optional: ['cats', 'journals', 'accounts'],
+  title: 'Superannuation Payments', primary: 'adv', files: 'company_files', optional: ['cats', 'journals', 'accounts'],
   inputs: { start: 'from_date', end: 'to_date', companyFile: 'company_file', persona: 'persona', display: 'display' },
   defaults: { from_date: '2026-07-01', to_date: '2026-09-28', adv_from: '2026-05-17', adv_to: '2026-11-12', company_file: '', persona: 'Bookkeeper',
-    display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":0,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":"fund"}' },
+    display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":0,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":"super"}' },
   uses: { adv: ['adv_from', 'adv_to', 'company_file'], cats: ['from_date', 'to_date', 'company_file'], journals: ['from_date', 'to_date', 'company_file'], accounts: ['company_file'], company_files: [] },
   tools: { adv: 'list_payroll_advices (every paycheque in the period)', cats: 'get_payroll_category_summary (the tie)', journals: 'list_journal_transactions (super payments from the super payable account)', accounts: 'list_accounts (the super payable account)', company_files: 'list_company_files' },
   // pay runs go by payment date (as MYOB's payroll reports and BAS W1 / W2 do); the advices tool filters by pay period, so it is asked for

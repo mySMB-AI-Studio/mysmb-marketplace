@@ -9,7 +9,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const banner = (t) => text(t.doc, '#mk-banner'), body = (t) => text(t.doc, '#mk-body');
 const green = (t) => t.doc.querySelector('#mk-banner').className.includes('pass'), red = (t) => t.doc.querySelector('#mk-banner').className.includes('fail');
 const fmt = (v) => (v < 0 ? '\\(\\$' : '\\$') + Math.abs(v).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\./g, '\\.') + (v < 0 ? '\\)' : '');
-const TOOL = { list_items: L.listItems, list_invoice_lines: L.listInvoiceLines, list_bill_lines: L.listBillLines, list_invoices: L.listInvoices, list_bills: L.listBills, get_balance_sheet: L.balanceSheet, get_gst_summary: L.taxCodeSummary, get_payroll_category_summary: L.payrollCategorySummary, list_tax_codes: L.listTaxCodes, list_journal_transactions: L.listJournalTransactions, list_accounts: L.listAccounts, list_company_files: L.companyFiles };
+const TOOL = { list_payroll_advices: L.listPayrollAdvices, list_items: L.listItems, list_invoice_lines: L.listInvoiceLines, list_bill_lines: L.listBillLines, list_invoices: L.listInvoices, list_bills: L.listBills, get_balance_sheet: L.balanceSheet, get_gst_summary: L.taxCodeSummary, get_payroll_category_summary: L.payrollCategorySummary, list_tax_codes: L.listTaxCodes, list_journal_transactions: L.listJournalTransactions, list_accounts: L.listAccounts, list_company_files: L.companyFiles };
 const FX = (m, over) => { const f = {}; m.bindings.forEach((b) => { f[b.id] = TOOL[b.tool.name]; }); return Object.assign(f, over || {}); };
 const onFile = (m, set) => { const c = JSON.parse(JSON.stringify(m)); c.inputs.find((i) => i.name === 'company_file').default = L.CF1; Object.keys(set || {}).forEach((k) => { c.inputs.find((i) => i.name === k).default = set[k]; }); return c; };
 const go = async (r, over, opts, set) => { const m = onFile(man(r), set); const t = await run(r, m, FX(m, over), Object.assign({ bundleInputs: true }, opts || {})); await wait(80); return t; };
@@ -140,6 +140,29 @@ const gstWith = (fn) => (p) => { const r = L.taxCodeSummary(p); fn(r.TaxCodeBrea
     ok('bd: Purchases by item / account groups the lines by account', b.doc.querySelectorAll('#bd-grid tbody tr').length === new Set(BL.map((l) => l.Account.DisplayID)).size, b.doc.querySelectorAll('#bd-grid tbody tr').length);
     const boff = await go('bd', { lines: (p) => { const r = L.listBillLines(p); r.Items[0].Total = r2(r.Items[0].Total - 5); return r; } });
     ok('bd: a bill line $5 off fails, naming the bill', red(boff) && new RegExp('Differs: ' + BL[0].Number).test(banner(boff)), banner(boff).slice(0, 300));
+  }
+  if (!only || only === 'payroll') {
+    // Payroll (list_payroll_advices, mcp-servers #636): each monthly pay run split into two employees' paycheques. Period: this
+    // financial year to date on the harness clock — Jul, Aug, Sep 2026 pay runs.
+    const PP = { myob_company_file_id: L.CF1, from_date: '2026-07-01', to_date: L.TODAY }, A = L.listPayrollAdvices({ myob_company_file_id: L.CF1, from_date: '2026-05-01', to_date: '2026-12-31' }).Items.filter((x) => x.PaymentDate.slice(0, 10) >= PP.from_date && x.PaymentDate.slice(0, 10) <= PP.to_date); // by payment date
+    const G = r2(A.reduce((s, a) => s + a.GrossPay, 0)), TX = r2(A.reduce((s, a) => s + a.Lines[1].Amount, 0)), SU = r2(A.reduce((s, a) => s + a.Lines[2].Amount, 0));
+    const t = await go('py'), bn = banner(t), bb = body(t);
+    ok('py: Pay Run History green — wages and PAYG = MYOB\'s payroll category summary', green(t) && new RegExp('✓ Wages and PAYG on the paycheques = MYOB’s payroll category summary.*Wages ' + fmt(G) + ' vs ' + fmt(G) + ' · PAYG ' + fmt(TX) + ' vs ' + fmt(TX)).test(bn), bn.slice(0, 500));
+    ok('py: one row per pay run (3) with 2 employees each; totals = the paycheques', t.doc.querySelectorAll('#py-grid tbody tr').length === 3 && new RegExp('Gross pay' + fmt(G)).test(bb) && new RegExp('Superannuation' + fmt(SU)).test(bb), bb.slice(0, 500));
+    const r = await go('pyr');
+    ok('pyr: Payroll Register — one row per paycheque (6)', /Payroll Register/.test(text(r.doc, 'header')) && r.doc.querySelectorAll('#py-grid tbody tr').length === A.length && green(r), r.doc.querySelectorAll('#py-grid tbody tr').length);
+    const s = await go('pys'), sb = body(s);
+    ok('pys: Payroll Summary — by payroll category (wages, tax, super)', /Payroll Summary/.test(text(s.doc, 'header')) && new RegExp('WageBase Salary' + fmt(G)).test(sb) && new RegExp('TaxPAYG Withholding' + fmt(TX)).test(sb), sb.slice(0, 600));
+    const f = await go('pyf'), fb = body(f), aus = r2(A.filter((a) => a.SuperannuationFund.Name === 'AustralianSuper').reduce((x, a) => x + a.Lines[2].Amount, 0));
+    ok('pyf: Accrual by Fund — super accrued per fund, by employee', /Accrual by Fund/.test(text(f.doc, 'header')) && new RegExp('AustralianSuper' + fmt(aus)).test(fb) && f.doc.querySelectorAll('#py-grid2 tbody tr').length === 2, [aus, fb.slice(0, 500)]);
+    const p = await go('pyp'), pb = body(p), J = L.listJournalTransactions(PP).Items, paid = r2(J.filter((j) => /^Cash/.test(j.JournalType)).reduce((x, j) => x + j.Lines.filter((l) => l.Account.DisplayID === '2-1420' && !l.IsCredit).reduce((y, l) => y + l.Amount, 0), 0));
+    ok('pyp: Superannuation Payments — the cash payments from Superannuation Payable; accrued vs paid for information', /Superannuation Payments/.test(text(p.doc, 'header')) && new RegExp('Super paid' + fmt(paid)).test(pb) && paid > 0 && /Super accrued \(paycheques\) vs paid/.test(banner(p)), [paid, pb.slice(0, 400)]);
+    // the category summary disagrees → the tie fails with both figures
+    const bad = await go('py', { cats: (q) => { const x = L.payrollCategorySummary(q); x.PayrollCategoryBreakdown[0].Amount = r2(x.PayrollCategoryBreakdown[0].Amount + 100); return x; } });
+    ok('py: wages that differ from the category summary fail, with both figures', red(bad) && /✗ Wages and PAYG on the paycheques/.test(banner(bad)), banner(bad).slice(0, 400));
+    // no payroll in the period → says so, nothing red
+    const none = await go('py', { adv: () => ({ Count: 0, PayRuns: [], Items: [] }), cats: () => ({ PayrollCategoryBreakdown: [] }) });
+    ok('py: a period with no pay runs says so', /No pay runs in MYOB for this period/.test(body(none)) && !red(none), banner(none).slice(0, 300));
   }
   console.log(fails ? `\n${fails}/${total} checks FAILED` : `\nALL ${total} checks passed`);
   process.exit(fails ? 1 : 0);

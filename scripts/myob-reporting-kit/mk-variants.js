@@ -12,6 +12,12 @@ const VARIANTS = [
   // Item sales analysis (M49) and Customer sales (detail) (M36) = the invoice lines report (Item sales, M39) on its other views
   { id: 'ia', base: 'il', title: ['Item Sales', 'Item Sales Analysis'], display: { v: 'analysis' } },
   { id: 'cd', base: 'il', title: ['Item Sales', 'Customer Sales (Detail)'], display: { v: 'customer' } },
+  // Payroll register (M21), payroll summary (M20), accrual by fund (M25/M26) and superannuation payments (M27) = the payroll report
+  // (Pay run history, M23) on its other views
+  { id: 'pyr', base: 'py', title: ['Pay Run History', 'Payroll Register'], display: { v: 'register' } },
+  { id: 'pys', base: 'py', title: ['Pay Run History', 'Payroll Summary'], display: { v: 'summary' } },
+  { id: 'pyf', base: 'py', title: ['Pay Run History', 'Accrual by Fund'], display: { v: 'fund' } },
+  { id: 'pyp', base: 'py', title: ['Pay Run History', 'Superannuation Payments'], display: { v: 'super' } },
 ];
 for (const v of VARIANTS) {
   let cfg = fs.readFileSync(path.join(R, v.base + '.cfg.js'), 'utf8').replace(/\r\n/g, '\n');

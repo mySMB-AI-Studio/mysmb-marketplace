@@ -207,6 +207,22 @@ function docLines(B, list, contactKey, p, itemise) {
 function listItems(p) { const B = books(p && p.myob_company_file_id), list = ITEMS.map(([num, name, , price], k) => ({ UID: U(B.cf, 700 + k), Number: num, Name: name, IsActive: true, IsSold: true, AverageCost: r2(price * 0.55), BaseSellingPrice: price, URI: 'x' })); return { Items: list, NextPageLink: null, Count: list.length }; }
 function listInvoiceLines(p) { const B = books(p.myob_company_file_id); return docLines(B, B.invoices, 'Customer', p, (d) => d.account === '4-1400'); }
 function listBillLines(p) { const B = books(p.myob_company_file_id); return docLines(B, B.bills, 'Supplier', p, () => false); }
+// list_payroll_advices (mcp-servers #636): each monthly pay run's journal split into two employees' paycheques (60 / 40), with the
+// connector's pay runs rebuilt from them. Wages, tax and super add up to the run's journal, so they tie to the category summary.
+const EMPLOYEES = [['Alex Morgan', 'EMP001', 0.6, 'AustralianSuper', 98], ['Sam Lee', 'EMP002', 0.4, 'Hostplus', 99]];
+function listPayrollAdvices(p) {
+  const B = books(p.myob_company_file_id), out = [];
+  B.tx.filter((t) => t.SourceTransaction.TransactionType === 'Paycheque').forEach((t) => {
+    const d = dateOf(t), ps = d.slice(0, 8) + '01', pe = eom(+d.slice(0, 4), +d.slice(5, 7)); if ((p.from_date && ps < p.from_date) || (p.to_date && pe > p.to_date)) return;
+    const amt = (id, credit) => t.Lines.filter((l) => l.Account.DisplayID === id && l.IsCredit === credit).reduce((s, l) => s + l.Amount, 0), gross = amt('6-5130', false), payg = amt('2-1410', true), sup = amt('6-5140', false);
+    let lg = gross, lt = payg, ls = sup;
+    EMPLOYEES.forEach(([name, id, share, fund, n], k) => { const last = k === EMPLOYEES.length - 1, g = last ? r2(lg) : r2(gross * share), tx = last ? r2(lt) : r2(payg * share), s = last ? r2(ls) : r2(sup * share); lg -= g; lt -= tx; ls -= s;
+      out.push({ Employer: { CompanyName: B.F.Name }, Employee: { UID: U(B.cf, 800 + k), Name: name, DisplayID: id }, PayPeriodStartDate: ps + 'T00:00:00', PayPeriodEndDate: pe + 'T00:00:00', PaymentDate: d + 'T00:00:00', PayFrequency: 'Monthly',
+        GrossPay: g, NetPay: r2(g - tx), SuperannuationFund: { UID: U(B.cf, 900 + n), Name: fund }, Lines: [{ PayrollCategory: { Name: 'Base Salary', Type: 'Wage' }, Hours: Math.round(152 * share), Amount: g }, { PayrollCategory: { Name: 'PAYG Withholding', Type: 'Tax' }, Hours: 0, Amount: tx }, { PayrollCategory: { Name: 'Superannuation Guarantee', Type: 'Superannuation' }, Hours: 0, Amount: s }] }); });
+  });
+  const runs = {}; out.forEach((a) => { const k = a.PaymentDate; const r = runs[k] || (runs[k] = { PaymentDate: a.PaymentDate, PayPeriodStartDate: a.PayPeriodStartDate, PayPeriodEndDate: a.PayPeriodEndDate, Employees: 0, GrossPay: 0, NetPay: 0, Tax: 0, Superannuation: 0, Deductions: 0, Hours: 0 }); r.Employees++; r.GrossPay = r2(r.GrossPay + a.GrossPay); r.NetPay = r2(r.NetPay + a.NetPay); r.Tax = r2(r.Tax + a.Lines[1].Amount); r.Superannuation = r2(r.Superannuation + a.Lines[2].Amount); r.Hours += a.Lines[0].Hours; });
+  return { Count: out.length, PayRuns: Object.values(runs), Items: out };
+}
 // Report/PayrollCategorySummary: the pay runs in the period (Wage = gross, Tax = PAYG withheld, Superannuation = super)
 function payrollCategorySummary(p) {
   const B = books(p.myob_company_file_id), runs = B.tx.filter((t) => t.SourceTransaction.TransactionType === 'Paycheque' && dateOf(t) >= p.from_date && dateOf(t) <= p.to_date);
@@ -218,4 +234,4 @@ function payrollCategorySummary(p) {
 function companyFiles() { return [CF1, CF2].map((id) => ({ Id: id, Name: FILES[id].Name, Country: FILES[id].Country, Uri: 'https://arl2.api.myob.com/accountright/' + id, ProductVersion: '2026.9' })); }
 // expected figures computed independently of the MYOB JSON (for assertions)
 const expect = { balances: (date, cf) => balances(books(cf), date), plByAccount: (a, b, cash, cf) => plByAccount(books(cf), a, b, cash), netProfit: (a, b, cash, cf) => netProfit(books(cf), a, b, cash), movement: (a, b, cf) => movement(books(cf), a, b), books, invoiceOut: (i, cf) => invoiceOut(books(cf), i), billOut: (b, cf) => billOut(books(cf), b) };
-module.exports = { TODAY, CF1, CF2, FILES, U, profitAndLoss, balanceSheet, listAccounts, listInvoices, listBills, listJournalTransactions, listTaxCodes, taxCodeSummary, payrollCategorySummary, listInvoiceLines, listBillLines, listItems, agedReceivables, agedPayables, companyFiles, expect, fyStart, addDays, eom, r2 };
+module.exports = { TODAY, CF1, CF2, FILES, U, profitAndLoss, balanceSheet, listAccounts, listInvoices, listBills, listJournalTransactions, listTaxCodes, taxCodeSummary, payrollCategorySummary, listInvoiceLines, listBillLines, listItems, listPayrollAdvices, agedReceivables, agedPayables, companyFiles, expect, fyStart, addDays, eom, r2 };
