@@ -188,6 +188,25 @@ function taxCodeSummary(p) {
   return { StartDate: ISO(a), EndDate: ISO(b, true), ReportingBasis: p.reporting_basis || 'Accrual', YearEndAdjust: false,
     TaxCodeBreakdown: Object.keys(by).sort().map((code) => { const r = by[code], tc = codes.find((c) => c.code === code) || {}; return { SalesTotal: r2(r.s), PurchasesTotal: r2(r.p), TaxCollected: r2(r.tc), TaxPaid: r2(r.tp), TaxRate: tc.rate || 0, TaxCode: { UID: tc.uid, Code: code, URI: 'x' } }; }), URI: 'x' };
 }
+// list_invoice_lines / list_bill_lines (the connector's flattened layout lines, mcp-servers #636): product sales (4-1400) are
+// Item invoices with two item lines; professional fees (4-1300) and bills are Service documents with one line. Line totals exclude
+// tax (every document is tax-exclusive), so they add up to the document's Subtotal.
+const ITEMS = [['WID-100', 'Widget standard', 0.6, 40], ['WID-200', 'Widget deluxe', 0.4, 95]];
+function docLines(B, list, contactKey, p, itemise) {
+  const rows = [], docs = {}, cr = (x) => (x ? { UID: x.UID, Name: x.Name, DisplayID: x.DisplayID } : null);
+  list.filter((d) => inRange(d.date, p.from_date, p.to_date) && (!p.status || p.status === 'All' || (contactKey === 'Customer' ? invoiceOut(B, d) : billOut(B, d)).Status === p.status)).forEach((d) => {
+    const layout = itemise(d) ? 'Item' : 'Service', st = (contactKey === 'Customer' ? invoiceOut(B, d) : billOut(B, d)).Status; docs[layout] = (docs[layout] || 0) + 1;
+    const head = { DocumentUID: d.UID, Number: d.Number, Date: d.Date, Layout: layout, Status: st, IsTaxInclusive: false, [contactKey]: cr(d[contactKey]) };
+    const acc = { UID: B.acc[d.account].UID, DisplayID: d.account, Name: B.acc[d.account].Name }, tc = codeRef(B.cf, d.TaxCode);
+    if (layout === 'Item') { let left = d.Subtotal; ITEMS.forEach(([num, name, share, price], k) => { const tot = k === ITEMS.length - 1 ? r2(left) : r2(d.Subtotal * share); left = r2(left - tot); const q = Math.max(1, Math.round(tot / price));
+      rows.push(Object.assign({}, head, { RowID: k + 1, Type: 'Transaction', Description: name, Total: tot, TaxCode: { UID: tc.UID, Code: tc.Code }, Account: acc, Job: null, Item: { UID: U(B.cf, 700 + k), Number: num, Name: name }, Quantity: q, UnitPrice: r2(tot / q), DiscountPercent: 0 })); }); }
+    else rows.push(Object.assign({}, head, { RowID: 1, Type: 'Transaction', Description: (contactKey === 'Customer' ? 'Services — ' : '') + acc.Name, Total: d.Subtotal, TaxCode: { UID: tc.UID, Code: tc.Code }, Account: acc, Job: null, Item: null, Quantity: null, UnitPrice: null, DiscountPercent: 0 }));
+  });
+  return { Count: rows.length, Items: rows, Truncated: false, Documents: docs };
+}
+function listItems(p) { const B = books(p && p.myob_company_file_id), list = ITEMS.map(([num, name, , price], k) => ({ UID: U(B.cf, 700 + k), Number: num, Name: name, IsActive: true, IsSold: true, AverageCost: r2(price * 0.55), BaseSellingPrice: price, URI: 'x' })); return { Items: list, NextPageLink: null, Count: list.length }; }
+function listInvoiceLines(p) { const B = books(p.myob_company_file_id); return docLines(B, B.invoices, 'Customer', p, (d) => d.account === '4-1400'); }
+function listBillLines(p) { const B = books(p.myob_company_file_id); return docLines(B, B.bills, 'Supplier', p, () => false); }
 // Report/PayrollCategorySummary: the pay runs in the period (Wage = gross, Tax = PAYG withheld, Superannuation = super)
 function payrollCategorySummary(p) {
   const B = books(p.myob_company_file_id), runs = B.tx.filter((t) => t.SourceTransaction.TransactionType === 'Paycheque' && dateOf(t) >= p.from_date && dateOf(t) <= p.to_date);
@@ -199,4 +218,4 @@ function payrollCategorySummary(p) {
 function companyFiles() { return [CF1, CF2].map((id) => ({ Id: id, Name: FILES[id].Name, Country: FILES[id].Country, Uri: 'https://arl2.api.myob.com/accountright/' + id, ProductVersion: '2026.9' })); }
 // expected figures computed independently of the MYOB JSON (for assertions)
 const expect = { balances: (date, cf) => balances(books(cf), date), plByAccount: (a, b, cash, cf) => plByAccount(books(cf), a, b, cash), netProfit: (a, b, cash, cf) => netProfit(books(cf), a, b, cash), movement: (a, b, cf) => movement(books(cf), a, b), books, invoiceOut: (i, cf) => invoiceOut(books(cf), i), billOut: (b, cf) => billOut(books(cf), b) };
-module.exports = { TODAY, CF1, CF2, FILES, U, profitAndLoss, balanceSheet, listAccounts, listInvoices, listBills, listJournalTransactions, listTaxCodes, taxCodeSummary, payrollCategorySummary, agedReceivables, agedPayables, companyFiles, expect, fyStart, addDays, eom, r2 };
+module.exports = { TODAY, CF1, CF2, FILES, U, profitAndLoss, balanceSheet, listAccounts, listInvoices, listBills, listJournalTransactions, listTaxCodes, taxCodeSummary, payrollCategorySummary, listInvoiceLines, listBillLines, listItems, agedReceivables, agedPayables, companyFiles, expect, fyStart, addDays, eom, r2 };
