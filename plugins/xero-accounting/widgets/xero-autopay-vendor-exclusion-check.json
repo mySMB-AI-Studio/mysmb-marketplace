@@ -7,6 +7,7 @@
   "keywords": ["autopay", "vendor", "exclusion", "repeating invoice", "needs review", "excluded", "xero"],
   "connectorsUsed": ["xero-accounting"],
   "popularity": 0,
+  "brandColor": "#2F6FED",
   "sizing": {
     "preferred": { "colSpan": 9, "rowSpan": 7 },
     "min":       { "colSpan": 7, "rowSpan": 6 },
@@ -99,7 +100,7 @@
       "content": {
         "type": "Stack",
         "props": { "gap": "md" },
-        "children": ["statGrid", "div1", "sectionHeadingRow", "tableHeaderRow", "rowList", "div2", "footerRow"],
+        "children": ["statGrid", "div1", "sectionHeadingRow", "tableBox", "div2", "footerRow"],
         "visible": {
           "$and": [
             { "$state": "/_loading/xero-accounting.list_repeating_invoices", "not": true },
@@ -257,9 +258,11 @@
         }
       },
 
+      "tableBox": { "type": "Section", "props": { "variant": "bordered" }, "children": ["tableHeaderSection", "rowList"] },
+      "tableHeaderSection": { "type": "Section", "props": { "variant": "muted" }, "children": ["tableHeaderRow"] },
       "tableHeaderRow": {
         "type": "Row",
-        "props": { "gap": "sm", "template": "2fr 1.3fr 1.6fr 1fr 1fr" },
+        "props": { "gap": "sm", "template": "2fr 1.3fr 1.6fr 1fr 1fr", "padded": true },
         "children": ["colVendor", "colAutopay", "colReason", "colAdded", "colStatus"]
       },
       "colVendor": { "type": "Caption", "props": { "text": "VENDOR", "tone": "muted" } },
@@ -270,15 +273,17 @@
 
       "rowList": {
         "type": "Stack",
-        "props": { "gap": "sm" },
+        "props": { "gap": "none" },
         "children": ["rowItem"],
         "repeat": { "statePath": "/ui/autopay/rows", "key": "contactId" }
       },
-      "rowItem": {
+      "rowItem": { "type": "Stack", "props": { "gap": "none" }, "children": ["rowItemRow", "rowDivider"] },
+      "rowItemRow": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center", "template": "2fr 1.3fr 1.6fr 1fr 1fr" },
+        "props": { "gap": "sm", "align": "center", "template": "2fr 1.3fr 1.6fr 1fr 1fr", "padded": true },
         "children": ["cellVendor", "cellAutopay", "cellReason", "cellAdded", "cellStatus"]
       },
+      "rowDivider": { "type": "Divider", "props": {}, "visible": { "$item": "isLast", "not": true } },
       "cellVendor": { "type": "Text", "props": { "text": { "$item": "vendor" }, "size": "sm", "weight": "medium" } },
       "cellAutopay": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["cellAutopayDot", "cellAutopayText"] },
       "cellAutopayDot": { "type": "Dot", "props": { "tone": { "$item": "autopayStatusTone" }, "size": "xs" } },
@@ -293,12 +298,12 @@
       "footerButtons": { "type": "Row", "props": { "gap": "sm" }, "children": ["reviewBtn", "rescanBtn"] },
       "reviewBtn": {
         "type": "Button",
-        "props": { "label": "Review Exclusions", "variant": "primary", "size": "sm", "leadingIcon": "Eye" },
+        "props": { "label": "Review Exclusions", "variant": "primary", "tone": "brand", "size": "sm", "leadingIcon": "Eye" },
         "on": { "click": { "action": "open_url", "params": { "url": { "$state": "/ui/autopay/reviewUrl" }, "target": "_blank" } } }
       },
       "rescanBtn": {
         "type": "Button",
-        "props": { "label": "Rescan Data", "variant": "secondary", "size": "sm", "leadingIcon": "RotateCw" },
+        "props": { "label": "Rescan Data", "variant": "primary", "tone": "success", "size": "sm", "leadingIcon": "RotateCw" },
         "on": { "click": { "action": "xero-accounting.list_repeating_invoices", "params": { "xero_tenant_id": "fb48e700-fb7b-4bec-b82c-4a84d3daf864" } } }
       },
 
