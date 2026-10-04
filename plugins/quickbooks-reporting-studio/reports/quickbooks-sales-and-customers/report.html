@@ -100,11 +100,16 @@ function totalFor(label) { return /^Total\s+(?!for\s)/i.test(label) ? label.repl
 function near(a, b, tol) { return a != null && b != null && Math.abs(a - b) <= (tol == null ? 0.01 : tol); }
 function sum(arr) { var s = 0; arr.forEach(function (v) { if (v != null) s += v; }); return Math.round(s * 100) / 100; }
 function cols(rep) {
-return ((rep && rep.Columns && rep.Columns.Column) || []).map(function (c, i) {
+var out = [];
+(function add(list, group) {
+(list || []).forEach(function (c) {
+var sub = c.Columns && c.Columns.Column; if (sub && sub.length) { add(sub, c.ColTitle || ''); return; }
 var key = null, sd = null, ed = null;
 (c.MetaData || []).forEach(function (m) { if (m.Name === 'ColKey') key = m.Value; if (m.Name === 'StartDate') sd = m.Value; if (m.Name === 'EndDate') ed = m.Value; });
-return { i: i, title: c.ColTitle || '', type: c.ColType || '', key: key, start: sd, end: ed };
+out.push({ i: out.length, title: c.ColTitle || '', type: c.ColType || '', key: key, start: sd, end: ed, group: group });
 });
+})(rep && rep.Columns && rep.Columns.Column, null);
+return out;
 }
 function walk(rep) {
 var out = [];
@@ -811,7 +816,7 @@ xlsx: xlsx, sheetFromLines: sheetFromLines, download: download, reportv2Params: 
       { name: 'Σ customers = sales total', pass: csTot == null ? null : QB.near(csTot, QB.sum(cust.map(function (x) { return x.total; }))), detail: money(csTot) },
       // information, not a tie: income posted without a sales form (journals, deposits) is on the P&L but not by customer — live QA, 4 Oct 2026
       { name: 'Sales by customer vs Profit and Loss Total for Income (information)', pass: null, info: true, detail: csTot == null || inc == null ? 'N/A — not in source' : 'Sales ' + money(csTot) + ' vs income ' + money(inc) + (QB.near(csTot, inc, 1) ? ' — the same' : ' — the difference is income not raised on a sales form (e.g. journals, deposits)') },
-      { name: 'Σ products/services = sales total', pass: isTot == null || csTot == null ? null : QB.near(isTot, csTot, 1), detail: money(isTot) + isNote }];
+      { name: 'Σ products/services = sales total', pass: isTot == null || csTot == null ? null : QB.near(isTot, csTot, 1), detail: money(isTot) + (isTot != null && csTot != null && !QB.near(isTot, csTot, 1) ? ' vs sales by customer ' + money(csTot) : '') + isNote }];
     this._x = { cust: cust, prod: prod, csTot: csTot, isTot: isTot };
     return { checks: checks, title: (this.views.filter(function (x) { return x[0] === v; })[0] || ['', ''])[1],
       na: ['Sales by Customer / Product Detail, Deposit Detail, Quotes & Progress Invoicing Summary, Sales by Customer Type Detail, Payment Method List, Time Activities by Customer, Transaction List by Customer / Tag Group, Cashflow Payment Transactions (later members; tag groups are not in the API)'] };

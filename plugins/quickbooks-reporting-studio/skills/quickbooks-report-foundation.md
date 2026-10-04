@@ -199,11 +199,16 @@ function totalFor(label) { return /^Total\s+(?!for\s)/i.test(label) ? label.repl
 function near(a, b, tol) { return a != null && b != null && Math.abs(a - b) <= (tol == null ? 0.01 : tol); }
 function sum(arr) { var s = 0; arr.forEach(function (v) { if (v != null) s += v; }); return Math.round(s * 100) / 100; }
 function cols(rep) {
-return ((rep && rep.Columns && rep.Columns.Column) || []).map(function (c, i) {
+var out = [];
+(function add(list, group) {
+(list || []).forEach(function (c) {
+var sub = c.Columns && c.Columns.Column; if (sub && sub.length) { add(sub, c.ColTitle || ''); return; }
 var key = null, sd = null, ed = null;
 (c.MetaData || []).forEach(function (m) { if (m.Name === 'ColKey') key = m.Value; if (m.Name === 'StartDate') sd = m.Value; if (m.Name === 'EndDate') ed = m.Value; });
-return { i: i, title: c.ColTitle || '', type: c.ColType || '', key: key, start: sd, end: ed };
+out.push({ i: out.length, title: c.ColTitle || '', type: c.ColType || '', key: key, start: sd, end: ed, group: group });
 });
+})(rep && rep.Columns && rep.Columns.Column, null);
+return out;
 }
 function walk(rep) {
 var out = [];
