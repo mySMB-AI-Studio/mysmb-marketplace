@@ -1621,6 +1621,232 @@ const classify_bill_queue: ComputedFunction = (args) => {
   };
 };
 
+// ── Bill Entry (record + validate a draft bill) ──────────────────────
+// Helpers for the MYOB "Bill Entry" tile — mirrors xero-accounting's own
+// Bill Entry tile in shape, but every field name and the balance model
+// differ for real reasons confirmed against live data (not guessed):
+//   - create_bill's schema uses `units`/`unit_price` (not `quantity`/
+//     `unitAmount`), has NO due_date field at all, and `tax_code_uid` is
+//     genuinely OPTIONAL per line (Xero's TaxType is mandatory) — so
+//     validation here does NOT require a tax code to be selected.
+//   - list_contacts/list_accounts responses wrap results in `{ Items:
+//     [...] }`; list_tax_codes returns a bare array — inconsistent across
+//     MYOB's own endpoints, confirmed live, not a guess.
+//   - A Contact carries ONE `CurrentBalance` field, not Xero's separate
+//     AccountsPayable/AccountsReceivable split (MYOB models a company
+//     that's both a customer and a supplier as two separate Contact
+//     records, Type="Customer" vs Type="Supplier") — so the balance
+//     section here is a single "Current balance" readout, not a two-
+//     sided "we owe / they owe" split. Sign convention (positive vs
+//     negative = owing) was NOT independently confirmed, so the raw
+//     value is shown as-is rather than asserting a direction.
+//   - list_accounts includes non-postable header/group accounts
+//     (`IsHeader: true`, e.g. "Bank Accounts") that must be filtered out
+//     of the picker — confirmed live, not every account in the chart is
+//     a valid line-item target.
+function bill_entry_fmt(value: number): string {
+  return format_currency({ value }) as string;
+}
+
+/** Appends one blank editable row. `id` is a client-only row key (never sent to MYOB). */
+const bill_entry_add_line: ComputedFunction = (args) => {
+  const lines = Array.isArray(args.lines) ? (args.lines as Record<string, unknown>[]) : [];
+  const id = `line-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  return [...lines, { id, description: '', units: 1, unitPrice: 0, accountUid: '', taxCodeUid: '' }];
+};
+
+/** units * unitPrice for one row, formatted. Args: { units, unitPrice } */
+const bill_entry_line_total: ComputedFunction = (args) => {
+  const units = Number(args.units) || 0;
+  const unitPrice = Number(args.unitPrice) || 0;
+  return bill_entry_fmt(units * unitPrice);
+};
+
+/** Sum of units * unitPrice across all rows, formatted. Args: { lines } */
+const bill_entry_grand_total: ComputedFunction = (args) => {
+  const lines = Array.isArray(args.lines) ? (args.lines as Record<string, unknown>[]) : [];
+  const total = lines.reduce((sum, l) => sum + (Number(l.units) || 0) * (Number(l.unitPrice) || 0), 0);
+  return bill_entry_fmt(total);
+};
+
+/**
+ * Filters list_accounts' raw Items to real postable accounts (excludes
+ * IsHeader groupings and inactive accounts) and maps to Select options,
+ * labeled "{DisplayID} · {Name}" (e.g. "6-2100 · Office Supplies") since
+ * the bare account code alone isn't identifiable. Args: { accounts }
+ */
+const bill_entry_account_options: ComputedFunction = (args) => {
+  const accounts = Array.isArray(args.accounts) ? (args.accounts as Record<string, unknown>[]) : [];
+  return accounts
+    .filter((a) => a.IsHeader !== true && a.IsActive !== false)
+    .map((a) => ({
+      value: String(a.UID ?? ''),
+      label: `${String(a.DisplayID ?? '')} · ${String(a.Name ?? '')}`.replace(/^ · /, ''),
+    }))
+    .filter((o) => o.value);
+};
+
+/**
+ * Maps each tax code UID to its Rate (a plain percentage number, same
+ * scale as Xero's EffectiveRate — confirmed live). Args: { taxCodes }
+ */
+const bill_entry_tax_rate_lookup: ComputedFunction = (args) => {
+  const codes = Array.isArray(args.taxCodes) ? (args.taxCodes as Record<string, unknown>[]) : [];
+  const map: Record<string, number> = {};
+  for (const c of codes) {
+    const uid = String(c.UID ?? '');
+    if (!uid) continue;
+    map[uid] = Number(c.Rate) || 0;
+  }
+  return map;
+};
+
+/**
+ * Tax amount for one row — units * unitPrice * (rate / 100) — using the
+ * row's own selected taxCodeUid. Blank until a tax code is actually
+ * selected (tax_code_uid is optional on this tile, unlike Xero's).
+ * Args: { units, unitPrice, taxCodeUid, taxRateMap }
+ */
+const bill_entry_line_tax: ComputedFunction = (args) => {
+  const taxCodeUid = String(args.taxCodeUid ?? '').trim();
+  if (!taxCodeUid) return '';
+  const units = Number(args.units) || 0;
+  const unitPrice = Number(args.unitPrice) || 0;
+  const map = (args.taxRateMap ?? {}) as Record<string, number>;
+  const rate = Number(map[taxCodeUid]) || 0;
+  return bill_entry_fmt(units * unitPrice * (rate / 100));
+};
+
+/**
+ * Current balance for the selected supplier, read straight off
+ * list_contacts' own response (MYOB already returns `CurrentBalance` per
+ * contact — no extra API call needed). Args: { contacts, supplierUid }
+ */
+const bill_entry_supplier_balance: ComputedFunction = (args) => {
+  const contacts = Array.isArray(args.contacts) ? (args.contacts as Record<string, unknown>[]) : [];
+  const supplierUid = String(args.supplierUid ?? '').trim();
+  if (!supplierUid) return { hasSelection: false, balance: '' };
+  const contact = contacts.find((c) => String(c.UID ?? '') === supplierUid);
+  if (!contact) return { hasSelection: false, balance: '' };
+  return {
+    hasSelection: true,
+    balance: bill_entry_fmt(Number(contact.CurrentBalance) || 0),
+  };
+};
+
+/**
+ * True when the form is NOT ready to submit — supplier, date, and every
+ * line item's description/units(>0)/unitPrice(>=0)/account/tax code must be
+ * filled. Tax code is required here even though it reads as optional in
+ * MYOB's list/display responses — MYOB's Purchase/Bill/Item endpoint 400s
+ * with "TaxCode is required" on every line (confirmed live 2026-10-02).
+ * Args: { supplierUid, date, lines }
+ */
+const bill_entry_is_invalid: ComputedFunction = (args) => {
+  const supplierUid = String(args.supplierUid ?? '').trim();
+  const date = String(args.date ?? '').trim();
+  const lines = Array.isArray(args.lines) ? (args.lines as Record<string, unknown>[]) : [];
+  if (!supplierUid || !date || lines.length === 0) return true;
+  for (const l of lines) {
+    const desc = String(l.description ?? '').trim();
+    const units = Number(l.units);
+    const unitPrice = Number(l.unitPrice);
+    const accountUid = String(l.accountUid ?? '').trim();
+    const taxCodeUid = String(l.taxCodeUid ?? '').trim();
+    if (!desc || !accountUid || !taxCodeUid) return true;
+    if (!Number.isFinite(units) || units <= 0) return true;
+    if (!Number.isFinite(unitPrice) || unitPrice < 0) return true;
+  }
+  return false;
+};
+
+/** Human-readable reason the form can't submit yet, mirroring bill_entry_is_invalid's checks in order. */
+const bill_entry_validation_message: ComputedFunction = (args) => {
+  const supplierUid = String(args.supplierUid ?? '').trim();
+  const date = String(args.date ?? '').trim();
+  const lines = Array.isArray(args.lines) ? (args.lines as Record<string, unknown>[]) : [];
+  if (!supplierUid) return 'Select a supplier';
+  if (!date) return 'Set the bill date';
+  if (lines.length === 0) return 'Add at least one line item';
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    const n = i + 1;
+    const desc = String(l.description ?? '').trim();
+    const units = Number(l.units);
+    const unitPrice = Number(l.unitPrice);
+    const accountUid = String(l.accountUid ?? '').trim();
+    const taxCodeUid = String(l.taxCodeUid ?? '').trim();
+    if (!desc) return `Line ${n}: enter a description`;
+    if (!Number.isFinite(units) || units <= 0) return `Line ${n}: units must be greater than 0`;
+    if (!Number.isFinite(unitPrice) || unitPrice < 0) return `Line ${n}: unit price can't be negative`;
+    if (!accountUid) return `Line ${n}: choose an account`;
+    if (!taxCodeUid) return `Line ${n}: choose a tax code`;
+  }
+  return '';
+};
+
+/**
+ * create_bill takes flat top-level args (supplier_uid, date, lines, ...) —
+ * unlike Xero's create_invoice, there's no single wrapping object key to bind
+ * one $computed onto, so each field is bound separately in the widget and
+ * this only builds the `lines` array shape create_bill actually expects.
+ */
+const bill_entry_payload_lines: ComputedFunction = (args) => {
+  const lines = Array.isArray(args.lines) ? (args.lines as Record<string, unknown>[]) : [];
+  return lines.map((l) => ({
+    account_uid: String(l.accountUid ?? ''),
+    description: String(l.description ?? ''),
+    units: Number(l.units) || 0,
+    unit_price: Number(l.unitPrice) || 0,
+    tax_code_uid: String(l.taxCodeUid ?? ''),
+  }));
+};
+
+/**
+ * Every myob-accounting tool catches its own errors and returns a normal
+ * (non-isError) result shaped `{ __error: string }` (see myob-accounting.ts'
+ * shared tool wrapper) — so a failed create_bill looks identical to a
+ * success as far as the harness/production `/_errors` plumbing is concerned.
+ * This tile is the plugin's first write action, so it's the first time that
+ * needs handling client-side instead of relying on `/_errors/<mcp>.<tool>`.
+ */
+const bill_entry_create_bill_error: ComputedFunction = (args) => {
+  const result = args.result as Record<string, unknown> | undefined;
+  if (result && typeof result === 'object' && typeof result.__error === 'string') {
+    return result.__error;
+  }
+  if (typeof result === 'string') return result;
+  return '';
+};
+
+const bill_entry_create_bill_id: ComputedFunction = (args) => {
+  const result = args.result as Record<string, unknown> | undefined;
+  if (result && typeof result === 'object' && !result.__error && typeof result.UID === 'string') {
+    return result.UID;
+  }
+  return '';
+};
+
+/** Clears the line-item list only on an actual successful create — a failed
+ * attempt must leave the user's in-progress lines intact to re-submit. */
+const bill_entry_clear_lines_on_success: ComputedFunction = (args) => {
+  const id = String(args.id ?? '').trim();
+  const lines = Array.isArray(args.lines) ? args.lines : [];
+  return id ? [] : lines;
+};
+
+/**
+ * Deep link to MYOB's actual Bills list — same `app.myob.com/#/au/{id}/bills`
+ * shape already used by the batch-payments and bill-validation tiles' own
+ * billsUrl. Falls back to the generic login page before list_company_files
+ * resolves, or if it ever comes back empty.
+ */
+const bill_entry_bills_url: ComputedFunction = (args) => {
+  const files = Array.isArray(args.companyFiles) ? (args.companyFiles as Record<string, unknown>[]) : [];
+  const id = files[0]?.Id;
+  return id ? `https://app.myob.com/#/au/${id}/bills` : 'https://www.myob.com/au/login';
+};
+
 const elements: PluginElementsModule = {
   slug: 'myob-accounting',
   functions: {
@@ -1657,6 +1883,20 @@ const elements: PluginElementsModule = {
     duplicate_check_status_tone,
     paginate,
     classify_bill_queue,
+    bill_entry_add_line,
+    bill_entry_line_total,
+    bill_entry_grand_total,
+    bill_entry_account_options,
+    bill_entry_tax_rate_lookup,
+    bill_entry_line_tax,
+    bill_entry_supplier_balance,
+    bill_entry_is_invalid,
+    bill_entry_validation_message,
+    bill_entry_payload_lines,
+    bill_entry_create_bill_error,
+    bill_entry_create_bill_id,
+    bill_entry_clear_lines_on_success,
+    bill_entry_bills_url,
   },
 };
 
