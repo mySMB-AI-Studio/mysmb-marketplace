@@ -232,6 +232,7 @@ QB.app({
     var T = function (g, re) { return QB.val(QB.find(lines, g, re)); };
     var inc = T('Income', /^total (for )?income$/i), cogs = T('COGS', /^total (for )?cost of (sales|goods sold)$/i) || 0, gp = T('GrossProfit', /^gross profit$/i),
       exp = T('Expenses', /^total (for )?expenses$/i), oi = T('OtherIncome', /^total (for )?other income$/i) || 0, oe = T('OtherExpenses', /^total (for )?other expenses$/i) || 0, ni = T('NetIncome', QB.NI_RE);
+    if (inc == null && ni != null) inc = 0; if (gp == null && ni != null && !inc && !cogs) gp = 0; // QuickBooks leaves out empty sections: no income = 0
     // a parent account's own amount is on its section header (its sub-accounts are the rows below) — live QA, 4 Oct 2026:
     // Landscaping Services on the US sandbox
     var incHdr = QB.find(lines, 'Income', null, 'header'), incRows = lines.filter(function (l) { return incHdr && l.path[0] === incHdr.label && (l.kind === 'row' || (l.kind === 'header' && l !== incHdr)); }), incSum = QB.sum(incRows.map(function (l) { return QB.val(l); }));

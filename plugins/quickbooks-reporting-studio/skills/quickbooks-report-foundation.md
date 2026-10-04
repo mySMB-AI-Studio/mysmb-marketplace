@@ -832,7 +832,7 @@ none ? (real ? '– Validation: no check could run (' + nNA + ' N/A' + (nInfo ? 
 }
 function sources(c) {
 var el = $('qb-sources'); if (!el) return; var t = cfg.tools || {};
-var items = Object.keys(t).map(function (id) { return h(t[id]) + (S.errors[id] ? ' — <span class="qb-err">' + h(err(id)) + '</span>' : ''); });
+var items = Object.keys(t).map(function (id) { return h(t[id]) + (!S.errors[id] ? '' : /tax_summary/.test(t[id]) && gstUS(c, [id]) ? ' — N/A (US company: sales tax, no GST)' : ' — <span class="qb-err">' + h(err(id)) + '</span>'); });
 var na = last.na.slice(); if (!c.company) na.unshift('Company name (CompanyInfo returned no name)');
 el.innerHTML = '<h2>Sources &amp; limitations</h2><ul><li>Mechanism: ' + h(MECHANISM) + '</li><li>Tool calls: ' + items.join(' · ') + '</li>' +
 '<li>Basis: ' + h(I.basis ? S.inputs[I.basis] : 'n/a') + ' · Currency: ' + h(c.currency) + ' · Client: ' + h(c.company || 'N/A — not in source') + ' (one company per QuickBooks connection)</li>' +

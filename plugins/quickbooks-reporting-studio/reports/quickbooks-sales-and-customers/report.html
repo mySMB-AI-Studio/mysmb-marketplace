@@ -733,7 +733,7 @@ none ? (real ? '– Validation: no check could run (' + nNA + ' N/A' + (nInfo ? 
 }
 function sources(c) {
 var el = $('qb-sources'); if (!el) return; var t = cfg.tools || {};
-var items = Object.keys(t).map(function (id) { return h(t[id]) + (S.errors[id] ? ' — <span class="qb-err">' + h(err(id)) + '</span>' : ''); });
+var items = Object.keys(t).map(function (id) { return h(t[id]) + (!S.errors[id] ? '' : /tax_summary/.test(t[id]) && gstUS(c, [id]) ? ' — N/A (US company: sales tax, no GST)' : ' — <span class="qb-err">' + h(err(id)) + '</span>'); });
 var na = last.na.slice(); if (!c.company) na.unshift('Company name (CompanyInfo returned no name)');
 el.innerHTML = '<h2>Sources &amp; limitations</h2><ul><li>Mechanism: ' + h(MECHANISM) + '</li><li>Tool calls: ' + items.join(' · ') + '</li>' +
 '<li>Basis: ' + h(I.basis ? S.inputs[I.basis] : 'n/a') + ' · Currency: ' + h(c.currency) + ' · Client: ' + h(c.company || 'N/A — not in source') + ' (one company per QuickBooks connection)</li>' +
@@ -787,7 +787,10 @@ xlsx: xlsx, sheetFromLines: sheetFromLines, download: download, reportv2Params: 
     var col = function (rep, re) { var t = QB.cols(rep).map(function (x) { return x.title; }); for (var i = 1; i < t.length; i++) if (re.test(t[i])) return i - 1; return -1; };
     var cs = c.data.customer_sales, cust = rowsOf(cs).map(function (l) { return { name: l.label, total: QB.val(l) }; }), csTot = QB.val(gtOf(cs));
     var is = c.data.item_sales, ai = is ? col(is, /^amount$/i) : -1, qi = is ? col(is, /^(quantity|qty)$/i) : -1;
-    var prod = rowsOf(is).map(function (l) { return { name: l.label, qty: qi >= 0 ? l.values[qi] : null, amount: ai >= 0 ? l.values[ai] : QB.val(l) }; }), isTot = is && gtOf(is) ? (ai >= 0 ? gtOf(is).values[ai] : QB.val(gtOf(is))) : null;
+    var prod = rowsOf(is).map(function (l) { return { name: l.label, qty: qi >= 0 ? l.values[qi] : null, amount: ai >= 0 ? l.values[ai] : QB.val(l) }; }), isGt = is ? gtOf(is) : null, isTot = isGt ? (ai >= 0 ? isGt.values[ai] : QB.val(isGt)) : null;
+    // no TOTAL amount from QuickBooks: Σ the product rows; no Amount column: N/A, naming the columns (live QA, 4 Oct 2026: N/A, unexplained)
+    var isNote = is && ai < 0 ? ' — no Amount column (' + QB.cols(is).map(function (x) { return x.title; }).filter(Boolean).join(', ') + ')' : '';
+    if (isTot == null && ai >= 0 && prod.length) { isTot = QB.sum(prod.map(function (x) { return x.amount; })); isNote = ' (Σ product rows: QuickBooks returned no TOTAL)'; }
     var pl = c.data.pnl ? QB.walk(c.data.pnl) : [], inc = QB.val(QB.find(pl, 'Income', /^total (for )?income$/i));
     var q = function (id, e) { return (c.data[id] && c.data[id].QueryResponse && c.data[id].QueryResponse[e]) || []; };
     var kp = QB.kpis([{ label: 'Total sales', value: csTot }, { label: 'Customers with sales', money: false, value: cust.length }, { label: 'Top customer share', text: csTot && cust.length ? QB.pct(Math.max.apply(null, cust.map(function (x) { return x.total || 0; })) / csTot) : 'N/A — not in source' }, { label: 'Products / services sold', money: false, value: prod.length }], c);
@@ -808,7 +811,7 @@ xlsx: xlsx, sheetFromLines: sheetFromLines, download: download, reportv2Params: 
       { name: 'Σ customers = sales total', pass: csTot == null ? null : QB.near(csTot, QB.sum(cust.map(function (x) { return x.total; }))), detail: money(csTot) },
       // information, not a tie: income posted without a sales form (journals, deposits) is on the P&L but not by customer — live QA, 4 Oct 2026
       { name: 'Sales by customer vs Profit and Loss Total for Income (information)', pass: null, info: true, detail: csTot == null || inc == null ? 'N/A — not in source' : 'Sales ' + money(csTot) + ' vs income ' + money(inc) + (QB.near(csTot, inc, 1) ? ' — the same' : ' — the difference is income not raised on a sales form (e.g. journals, deposits)') },
-      { name: 'Σ products/services = sales total', pass: isTot == null || csTot == null ? null : QB.near(isTot, csTot, 1), detail: money(isTot) }];
+      { name: 'Σ products/services = sales total', pass: isTot == null || csTot == null ? null : QB.near(isTot, csTot, 1), detail: money(isTot) + isNote }];
     this._x = { cust: cust, prod: prod, csTot: csTot, isTot: isTot };
     return { checks: checks, title: (this.views.filter(function (x) { return x[0] === v; })[0] || ['', ''])[1],
       na: ['Sales by Customer / Product Detail, Deposit Detail, Quotes & Progress Invoicing Summary, Sales by Customer Type Detail, Payment Method List, Time Activities by Customer, Transaction List by Customer / Tag Group, Cashflow Payment Transactions (later members; tag groups are not in the API)'] };
