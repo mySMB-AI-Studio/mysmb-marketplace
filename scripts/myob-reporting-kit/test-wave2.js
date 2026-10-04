@@ -39,6 +39,16 @@ const E = L.expect, T = L.TODAY, FY = '2026-07-01';
     ok('pr: payables account $75 short → out of balance $75.00, red, possible causes listed', /Out of balance amount\$75\.00/.test(body(tr)) && red(tr), body(tr).slice(0, 300));
     await view(tr, 'exceptions');
     ok('pr: exceptions view names the possible causes', /supplier payment or debit not applied to a bill/.test(body(tr)), body(tr).slice(0, 500));
+    // live QA, 4 Oct 2026: tax-inclusive bills (MYOB's Subtotal already includes the tax) failed "subtotal + tax = total" — 9 of 10
+    const incl = (p) => { const r = L.listBills(p); r.Items.forEach((b) => { b.IsTaxInclusive = true; b.Subtotal = b.TotalAmount; }); return r; };
+    const ti = await go('pr', { bills: incl });
+    ok('pr: tax-inclusive bills (subtotal includes the tax) pass the per-bill check, green', green(ti) && /✓ Each bill: subtotal \+ freight \+ tax = total/.test(banner(ti)), banner(ti).slice(0, 500));
+    const freight = (p) => { const r = L.listBills(p); r.Items.forEach((b, i) => { if (i === 0) { b.Freight = 50; b.TotalAmount = Math.round((b.TotalAmount + 50) * 100) / 100; } }); return r; };
+    const tf = await go('pr', { bills: freight });
+    ok('pr: freight counts towards the total', /✓ Each bill: subtotal \+ freight \+ tax = total/.test(banner(tf)), banner(tf).slice(0, 500));
+    const off = (p) => { const r = L.listBills(p); const b = r.Items.find((x) => x.TotalTax); b.Subtotal = Math.round((b.Subtotal + 10) * 100) / 100; return r; };
+    const to = await go('pr', { bills: off });
+    ok('pr: a bill that does not add up is named with its figures', red(to) && /✗ Each bill: subtotal \+ freight \+ tax = total.*1 bill\(s\) differ, e\.g\. \d+ \(\$[\d,.]+ \+ tax \$[\d,.]+ = \$[\d,.]+ vs total \$[\d,.]+\)/.test(banner(to)), banner(to).slice(0, 600));
   }
   if (!only || only === 'pg') {
     const t = await go('pg'), bills = L.listBills({ myob_company_file_id: L.CF1, status: 'All', from_date: FY, to_date: T }).Items, tot = Math.round(bills.reduce((s, b) => s + b.TotalAmount, 0) * 100) / 100;
