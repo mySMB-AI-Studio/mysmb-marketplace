@@ -156,6 +156,17 @@ module.exports = [
     fileName: 'myob-report-pack.html', tags: ['myob', 'report-pack', 'M60', 'management-report'],
   },
   {
+    m: 'M06', skill: 'gst-summary', name: 'MYOB GST Summary (BAS)', report: 'gst', wave: 'Wave 1 (P1) — M06, with M07 GST return and M61 BAS',
+    title: 'GST Summary (BAS)', menu: 'Reporting → Reports → Business → GST report / GST return; Reporting → BAS',
+    trigger: 'the user asks for a GST report, GST summary, GST return, BAS, activity statement, GST payable or refund, GST by tax code, or BAS labels (G1, 1A, 1B, W1, W2) for a period',
+    discovery: 'Call `get_gst_summary` once for the period (`reporting_basis` = `Accrual` unless asked for cash), `list_tax_codes` once and `list_company_files` once. Expect `{StartDate, EndDate, ReportingBasis, TaxCodeBreakdown:[{SalesTotal, PurchasesTotal, TaxCollected, TaxPaid, TaxRate, TaxCode{UID,Code}}]}` — GST-inclusive totals per tax code and **no BAS labels** (MYOB\'s API has no link from codes to labels). `get_payroll_category_summary` gives W1 / W2 (it may be missing on older connectors — then W1 / W2 are N/A). A `{"__error": …}` result is a failed call: report its message',
+    dates: '`from_date` / `to_date` = the BAS period (default: last quarter — display preset `p` = `last_quarter`; `this_quarter`, `last_month`, `this_month` or `custom`). `basis` = `Accrual` or `Cash` (the client\'s GST accounting basis). The view is display `v`: `bas` (activity statement, default), `return` (GST return labels and the mapping) or `codes` (GST report by tax code). `bas_map` holds the client\'s tax code → BAS label mapping (default `G2=EXP;G3=FRE;G4=ITS;G10=CAP;X=N-T`) — change it only when the user gives their mapping.',
+    members: [['BAS (activity statement)', 'G1, G2, G3, G10, G11, 1A, 1B; PAYG W1 / W2; summary 8A, 8B and 9 (payable or refund) — marked Draft, check before lodging'], ['GST return (BAS labels)', 'Report = GST return: G1–G12 worksheet with the codes behind each label, and the editable mapping for this client'], ['GST report by tax code', 'Report = GST report by tax code: GST-inclusive sales and purchases, GST collected and paid, net, per code'], ['Simpler BAS', 'G1, 1A and 1B on the BAS view'], ['G7 / G18 adjustments, G13–G15, fuel tax credits, PAYG instalments (T7), lodging', 'N/A — not in MYOB\'s API (MYOB\'s AI BAS and lodgement are in its app only)']],
+    checks: ['MYOB returned the requested period (the tax code summary echoes the dates)', 'Each tax code\'s GST = its rate on its GST-inclusive amounts (a file whose totals exclude GST is detected and grossed up)', 'G1 covers G2 + G3 + G4 (G6 not negative)', '**Independent (information):** 1A − 1B = the GST accounts\' movement in the period\'s journals, BAS payments (journals with only GST and bank lines) left out — accrual basis', 'Codes left out of the BAS (N-T, non-GST taxes) listed with their amounts'],
+    golden: 'mySMB.com: the Dashboard\'s GST line (2-1212 GST Balance) for the same period; MYOB GST return for the quarter',
+    fileName: 'myob-gst-summary-bas.html', tags: ['myob', 'gst', 'bas', 'M06', 'M07', 'M61', 'tax'],
+  },
+  {
     m: 'M40', skill: 'unpaid-bills', name: 'MYOB Unpaid Bills', report: 'ub', wave: 'Wave 2 (P2)',
     title: 'Unpaid Bills', menu: 'Reporting → Reports → Purchases → Unpaid bills',
     trigger: 'the user asks for unpaid bills, what they owe suppliers, outstanding purchase bills, a payment run list, or payables by supplier with ageing',

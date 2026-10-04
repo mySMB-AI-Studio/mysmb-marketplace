@@ -153,7 +153,39 @@ function agedPayables(p) { const B = books(p.myob_company_file_id); return aged(
 function listTaxCodes(p) { const B = books(p && p.myob_company_file_id), A = (id) => ({ UID: B.acc[id].UID, Name: B.acc[id].Name, DisplayID: id, URI: 'x' });
   const list = CODES.map(([n, code, desc, type, rate]) => ({ UID: U(B.cf, n), Code: code, Description: desc, Type: type, Rate: rate, IsRateNegative: false, TaxCollectedAccount: type === 'GST_VAT' && code !== 'N-T' ? A('2-1310') : null, TaxPaidAccount: type === 'GST_VAT' && code !== 'N-T' ? A('2-1330') : null, URI: 'x' }));
   return { Items: list, NextPageLink: null, Count: list.length }; }
+// Report/TaxCodeSummary (MYOB's shape): per tax code, GST-inclusive sales and purchases totals and the tax on them. Accrual:
+// invoices and bills dated in the period; cash: their amounts pro rata to payments in the period. Spend / receive money without a
+// source document is coded by its account's default tax code (bank fees and interest input-taxed, wages N-T); a GST paid line makes
+// it a GST purchase (the office supplies on the credit card).
+function taxCodeSummary(p) {
+  const B = books(p.myob_company_file_id), a = p.from_date, b = p.to_date, cash = p.reporting_basis === 'Cash', by = {};
+  const add = (code, sale, amt, tax) => { const r = by[code] || (by[code] = { s: 0, p: 0, tc: 0, tp: 0 }); if (sale) { r.s += amt; r.tc += tax; } else { r.p += amt; r.tp += tax; } };
+  if (!cash) {
+    B.invoices.filter((i) => i.date >= a && i.date <= b).forEach((i) => add(i.TaxCode, true, i.TotalAmount, i.TotalTax));
+    B.bills.filter((x) => x.date >= a && x.date <= b).forEach((x) => add(x.TaxCode, false, x.TotalAmount, x.TotalTax));
+  } else {
+    B.pays.filter((q) => q.date >= a && q.date <= b).forEach((q) => add(q.inv.TaxCode, true, q.amount, q.inv.TotalTax * q.amount / q.inv.TotalAmount));
+    B.spays.filter((q) => q.date >= a && q.date <= b).forEach((q) => add(q.bill.TaxCode, false, q.amount, q.bill.TotalTax * q.amount / q.bill.TotalAmount));
+  }
+  B.tx.filter((t) => (t.JournalType === 'CashPayment' || t.JournalType === 'CashReceipt') && !t.SourceTransaction.UID && dateOf(t) >= a && dateOf(t) <= b).forEach((t) => {
+    const g = t.Lines.find((l) => l.Account.DisplayID === '2-1330' && !l.IsCredit);
+    t.Lines.forEach((l) => { const id = l.Account.DisplayID, cls = B.acc[id].Classification; if (!PL(cls)) return;
+      const sale = /Income/.test(cls), code = g && !sale ? 'GST' : DEFAULT_CODE[id] || 'GST';
+      add(code, sale, l.Amount + (g && !sale ? g.Amount : 0), g && !sale ? g.Amount : 0); });
+  });
+  const codes = CODES.map(([n, code, , , rate]) => ({ code, uid: U(B.cf, n), rate }));
+  return { StartDate: ISO(a), EndDate: ISO(b, true), ReportingBasis: p.reporting_basis || 'Accrual', YearEndAdjust: false,
+    TaxCodeBreakdown: Object.keys(by).sort().map((code) => { const r = by[code], tc = codes.find((c) => c.code === code) || {}; return { SalesTotal: r2(r.s), PurchasesTotal: r2(r.p), TaxCollected: r2(r.tc), TaxPaid: r2(r.tp), TaxRate: tc.rate || 0, TaxCode: { UID: tc.uid, Code: code, URI: 'x' } }; }), URI: 'x' };
+}
+// Report/PayrollCategorySummary: the pay runs in the period (Wage = gross, Tax = PAYG withheld, Superannuation = super)
+function payrollCategorySummary(p) {
+  const B = books(p.myob_company_file_id), runs = B.tx.filter((t) => t.SourceTransaction.TransactionType === 'Paycheque' && dateOf(t) >= p.from_date && dateOf(t) <= p.to_date);
+  const tot = (id, credit) => r2(runs.reduce((s, t) => s + t.Lines.filter((l) => l.Account.DisplayID === id && l.IsCredit === credit).reduce((w, l) => w + l.Amount, 0), 0));
+  const cat = (n, name, type, amount) => ({ Amount: amount, Hours: 0, PayrollCategory: { UID: U(B.cf, n), Name: name, Type: type, URI: 'x' } });
+  return { StartDate: ISO(p.from_date), EndDate: ISO(p.to_date, true), ReportingBasis: p.reporting_basis || 'Accrual', YearEndAdjust: false,
+    PayrollCategoryBreakdown: runs.length ? [cat(951, 'Base Salary', 'Wage', tot('6-5130', false)), cat(952, 'PAYG Withholding', 'Tax', tot('2-1410', true)), cat(953, 'Superannuation Guarantee', 'Superannuation', tot('6-5140', false))] : [], URI: 'x' };
+}
 function companyFiles() { return [CF1, CF2].map((id) => ({ Id: id, Name: FILES[id].Name, Country: FILES[id].Country, Uri: 'https://arl2.api.myob.com/accountright/' + id, ProductVersion: '2026.9' })); }
 // expected figures computed independently of the MYOB JSON (for assertions)
 const expect = { balances: (date, cf) => balances(books(cf), date), plByAccount: (a, b, cash, cf) => plByAccount(books(cf), a, b, cash), netProfit: (a, b, cash, cf) => netProfit(books(cf), a, b, cash), movement: (a, b, cf) => movement(books(cf), a, b), books, invoiceOut: (i, cf) => invoiceOut(books(cf), i), billOut: (b, cf) => billOut(books(cf), b) };
-module.exports = { TODAY, CF1, CF2, FILES, U, profitAndLoss, balanceSheet, listAccounts, listInvoices, listBills, listJournalTransactions, listTaxCodes, agedReceivables, agedPayables, companyFiles, expect, fyStart, addDays, eom, r2 };
+module.exports = { TODAY, CF1, CF2, FILES, U, profitAndLoss, balanceSheet, listAccounts, listInvoices, listBills, listJournalTransactions, listTaxCodes, taxCodeSummary, payrollCategorySummary, agedReceivables, agedPayables, companyFiles, expect, fyStart, addDays, eom, r2 };
