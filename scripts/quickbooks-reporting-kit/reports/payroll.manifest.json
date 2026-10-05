@@ -1,0 +1,18 @@
+{
+  "inputs": [
+    { "name": "start_date", "label": "From", "type": "date", "default": "2026-08-01" },
+    { "name": "end_date", "label": "To", "type": "date", "default": "2026-08-31" },
+    { "name": "business_id", "label": "Payroll business ID (blank = the first)", "type": "string", "maxLength": 12, "default": "" },
+    { "name": "persona", "label": "View as", "type": "enum", "options": ["Client", "Bookkeeper", "Practitioner", "Executive"], "default": "Bookkeeper" },
+    { "name": "display", "label": "Display settings", "type": "string", "maxLength": 300, "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"last_month\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"gross_to_net\",\"x\":\"\"}" }
+  ],
+  "bindings": [
+    { "id": "businesses", "tool": { "mcp": "employment-hero-payroll", "name": "list_businesses" }, "params": {  } },
+    { "id": "pay_runs", "tool": { "mcp": "employment-hero-payroll", "name": "list_pay_runs" }, "params": { "business_id": { "kind": "input", "input": "business_id" }, "from_date": { "kind": "input", "input": "start_date" }, "to_date": { "kind": "input", "input": "end_date" }, "finalised_only": { "kind": "static", "value": true } } },
+    { "id": "gross_to_net", "tool": { "mcp": "employment-hero-payroll", "name": "get_report_gross_to_net" }, "params": { "business_id": { "kind": "input", "input": "business_id" }, "from_date": { "kind": "input", "input": "start_date" }, "to_date": { "kind": "input", "input": "end_date" } } },
+    { "id": "payg", "tool": { "mcp": "employment-hero-payroll", "name": "get_report_payg" }, "params": { "business_id": { "kind": "input", "input": "business_id" }, "from_date": { "kind": "input", "input": "start_date" }, "to_date": { "kind": "input", "input": "end_date" } } },
+    { "id": "pay_categories", "tool": { "mcp": "employment-hero-payroll", "name": "get_report_pay_categories" }, "params": { "business_id": { "kind": "input", "input": "business_id" }, "from_date": { "kind": "input", "input": "start_date" }, "to_date": { "kind": "input", "input": "end_date" } } },
+    { "id": "super_employee", "tool": { "mcp": "employment-hero-payroll", "name": "get_report_super_contributions" }, "params": { "business_id": { "kind": "input", "input": "business_id" }, "from_date": { "kind": "input", "input": "start_date" }, "to_date": { "kind": "input", "input": "end_date" }, "group_by": { "kind": "static", "value": "employee" } } },
+    { "id": "super_fund", "tool": { "mcp": "employment-hero-payroll", "name": "get_report_super_contributions" }, "params": { "business_id": { "kind": "input", "input": "business_id" }, "from_date": { "kind": "input", "input": "start_date" }, "to_date": { "kind": "input", "input": "end_date" }, "group_by": { "kind": "static", "value": "fund" } } }
+  ]
+}

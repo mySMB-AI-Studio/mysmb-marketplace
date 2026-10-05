@@ -1,0 +1,139 @@
+{
+  "title": "QuickBooks Employee Reports",
+  "description": "Live, validated QuickBooks Online Employee Reports (Q33): Employee Details, Leave Balances, Leave Liability, Employee Payment History, Unpaid Employees.",
+  "tags": [
+    "quickbooks",
+    "payroll",
+    "employees",
+    "leave"
+  ],
+  "fileName": "quickbooks-employee-reports.html",
+  "dataBindings": {
+    "inputs": [
+      {
+        "name": "start_date",
+        "label": "From",
+        "type": "date",
+        "default": "2026-08-01"
+      },
+      {
+        "name": "end_date",
+        "label": "To",
+        "type": "date",
+        "default": "2026-08-31"
+      },
+      {
+        "name": "business_id",
+        "label": "Payroll business ID (blank = the first)",
+        "type": "string",
+        "maxLength": 12,
+        "default": ""
+      },
+      {
+        "name": "persona",
+        "label": "View as",
+        "type": "enum",
+        "options": [
+          "Client",
+          "Bookkeeper",
+          "Practitioner",
+          "Executive"
+        ],
+        "default": "Bookkeeper"
+      },
+      {
+        "name": "display",
+        "label": "Display settings",
+        "type": "string",
+        "maxLength": 300,
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"last_month\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"details\",\"x\":\"\"}"
+      }
+    ],
+    "bindings": [
+      {
+        "id": "businesses",
+        "tool": {
+          "mcp": "employment-hero-payroll",
+          "name": "list_businesses"
+        },
+        "params": {}
+      },
+      {
+        "id": "employees",
+        "tool": {
+          "mcp": "employment-hero-payroll",
+          "name": "get_report_employee_details"
+        },
+        "params": {
+          "business_id": {
+            "kind": "input",
+            "input": "business_id"
+          },
+          "include_inactive": {
+            "kind": "static",
+            "value": false
+          }
+        }
+      },
+      {
+        "id": "leave",
+        "tool": {
+          "mcp": "employment-hero-payroll",
+          "name": "get_report_leave_balances"
+        },
+        "params": {
+          "business_id": {
+            "kind": "input",
+            "input": "business_id"
+          },
+          "as_at": {
+            "kind": "input",
+            "input": "end_date"
+          }
+        }
+      },
+      {
+        "id": "gross_to_net",
+        "tool": {
+          "mcp": "employment-hero-payroll",
+          "name": "get_report_gross_to_net"
+        },
+        "params": {
+          "business_id": {
+            "kind": "input",
+            "input": "business_id"
+          },
+          "from_date": {
+            "kind": "input",
+            "input": "start_date"
+          },
+          "to_date": {
+            "kind": "input",
+            "input": "end_date"
+          }
+        }
+      },
+      {
+        "id": "pay_categories",
+        "tool": {
+          "mcp": "employment-hero-payroll",
+          "name": "get_report_pay_categories"
+        },
+        "params": {
+          "business_id": {
+            "kind": "input",
+            "input": "business_id"
+          },
+          "from_date": {
+            "kind": "input",
+            "input": "start_date"
+          },
+          "to_date": {
+            "kind": "input",
+            "input": "end_date"
+          }
+        }
+      }
+    ]
+  }
+}

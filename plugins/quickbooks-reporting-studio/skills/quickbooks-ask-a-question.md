@@ -25,6 +25,7 @@ Use when the user asks a plain-English question about their QuickBooks figures, 
 | Assets, liabilities, equity at a date | `get_report_balance_sheet` (end_date) | Groups TotalAssets, Liabilities, Equity |
 | GST for a quarter | `list_tax_agency`, then `get_report_tax_summary` with `agency_id` = the Australian Tax Office's Id | BAS labels 1A, 1B, 9 (no rows = no GST transactions for that agency in the period — a nil period, every label A$0 — but only if the agency has GST rows over a longer history; if it never does, or no tax agency is set up, say GST is unavailable, not zero) |
 | A specific invoice or bill | `list_invoice` / `list_bill` (where "DocNumber = '…'") | Balance, DueDate |
+| Payroll for a period: wages, PAYG, super (AU) | `get_report_gross_to_net` on `employment-hero-payroll` (from_date, to_date) | `totals` (grossEarnings, payg, help, netEarnings, sgc); BAS W1 / W2 from `get_report_payg`. Not connected → the user connects the Employment Hero Payroll extension |
 
 4. **Answer** in one to three sentences: the figure (QuickBooks format, e.g. -A$175,286.75), the period, the basis, and the source — "from the QuickBooks Profit and Loss, 1 August 2026 to 31 August 2026, accrual basis, line Net Income". If you added lines together, list them.
 5. **Offer the full report** ("Want the live Profit and Loss for August?") and build it with the family skill if the user says yes.
@@ -33,7 +34,7 @@ Use when the user asks a plain-English question about their QuickBooks figures, 
 
 - Only figures a tool returned. Never estimate, forecast or advise. Missing data is "N/A — not in source".
 - If QuickBooks is not connected, say so and point to Settings → Connections.
-- Questions the Accounting API cannot answer (audit log, payroll, bank-feed status): say so and offer the QuickBooks export route.
+- Questions neither connector can answer (audit log, bank-feed status, STP lodgement history): say so and offer the QuickBooks export route.
 
 ## Validation
 
@@ -74,6 +75,9 @@ Use when the user asks a plain-English question about their QuickBooks figures, 
 | Q35 Custom report builder | `quickbooks-reporting-studio:quickbooks-custom-report-builder` |
 | Q09 Forecasts | `quickbooks-reporting-studio:quickbooks-forecasts` |
 | Q31 Employees and time family | `quickbooks-reporting-studio:quickbooks-employees-and-time` |
+| Q32 Payroll reports family | `quickbooks-reporting-studio:quickbooks-payroll-reports` |
+| Q33 Employee reports family | `quickbooks-reporting-studio:quickbooks-employee-reports` |
+| Q34 ATO reports family | `quickbooks-reporting-studio:quickbooks-ato-reports` |
 
 ## QA test script
 
