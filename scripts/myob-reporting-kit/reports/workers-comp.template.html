@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Workers Compensation</title>
+<style>{{CSS}}</style>
+</head>
+<body class="persona-detail">
+<div id="mk-controls" aria-label="Report controls">
+<label class="ctl">Estimation<select id="est"></select></label>
+<label class="ctl">State<select id="state"><option value="">All states</option></select></label>
+<label class="ctl">Branding<select id="style"><option value="myob">MYOB</option><option value="mysmb">mySMB</option></select></label>
+<div class="ctl btns"><button type="button" id="pdf">Download PDF</button></div>
+</div>
+<div id="mk-banner" class="mk-banner pass" role="region" aria-label="Validation"></div>
+<main class="mk-card"><header id="mk-head"></header><div id="mk-body"></div><footer id="mk-foot"></footer></main>
+<section id="mk-sources" class="mk-card" aria-label="Sources and limitations"><h2>Sources &amp; limitations</h2><ul id="src"></ul></section>
+<script>
+var WC = {{DATA}};
+(function () {
+  function h(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function num(v) { if (v == null || v === '') return null; var n = Number(String(v).replace(/[$,\s]/g, '').replace(/^\((.*)\)$/, '-$1')); return isFinite(n) ? n : null; }
+  function money(v) { return v == null ? 'N/A' : (v < 0 ? '(' : '') + '$' + Math.abs(v).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + (v < 0 ? ')' : ''); }
+  var r2 = function (n) { return Math.round(n * 100) / 100; }, $ = function (id) { return document.getElementById(id); };
+  var E = (WC.estimations || []).map(function (e) {
+    var st = (e.states || []).map(function (s) { return { state: String(s.state || '—'), rem: num(s.remuneration), emps: s.employees == null ? null : Number(s.employees) }; });
+    return { period: e.period || '', created: String(e.created || '').slice(0, 10), total: num(e.total), states: st, employees: (e.employees || []).map(function (p) { return { name: p.name || '', state: String(p.state || '—'), rem: num(p.remuneration) }; }) };
+  });
+  E.forEach(function (e, i) { $('est').insertAdjacentHTML('beforeend', '<option value="' + i + '">' + h(e.period || 'Estimation ' + (i + 1)) + (e.created ? ' (created ' + h(e.created) + ')' : '') + '</option>'); });
+  $('est').disabled = E.length < 2;
+  $('mk-foot').textContent = 'From the MYOB Workers compensation export · ' + (WC.fileName || 'attached file') + ' · ' + E.length + ' estimation' + (E.length === 1 ? '' : 's');
+  $('src').innerHTML = '<li>Source: MYOB › Reporting › Reports › Payroll › Workers compensation › Estimation of wages, exported or printed and attached by the user (' + h(WC.fileName || 'file') + '). MYOB\'s API does not expose workers compensation estimations, so this report is a frozen copy — not live.</li>' +
+    '<li>Estimated remuneration is MYOB\'s forecast for the policy period, not wages paid. Check the state definitions of remuneration with each state\'s insurer before you declare.</li>' +
+    '<li>Pay figures are shown; tax file numbers, bank details, dates of birth, addresses and contact details are never included.</li><li>New estimation: N/A — an action in MYOB, not a report.</li><li>Decision support only — not audit, tax or legal advice.</li>';
+  function bars(list) {
+    var mx = Math.max.apply(null, list.map(function (s) { return s.rem || 0; }).concat([1])), W = 640, rowH = 28;
+    return '<svg viewBox="0 0 ' + W + ' ' + (list.length * rowH + 8) + '" role="img" aria-label="Estimated remuneration by state">' + list.map(function (s, i) { var w = Math.max(2, (W - 260) * (s.rem || 0) / mx); return '<text x="0" y="' + (i * rowH + 18) + '" class="tick">' + h(s.state) + '</text><rect x="80" y="' + (i * rowH + 5) + '" width="' + w.toFixed(1) + '" height="18" fill="var(--c1)"><title>' + h(s.state + ': ' + money(s.rem)) + '</title></rect><text x="' + (86 + w).toFixed(1) + '" y="' + (i * rowH + 18) + '" class="tick">' + h(money(s.rem)) + '</text>'; }).join('') + '</svg>';
+  }
+  function draw() {
+    var e = E[Number($('est').value || 0)], sf = $('state').value;
+    $('mk-head').innerHTML = '<div class="co">' + h(WC.company || 'N/A — not in source') + '</div><div class="ti">Workers Compensation — Estimation of Wages</div><div class="pe">' + h(e ? e.period : '') + '</div><div class="mk-src"><span class="mk-badge">MYOB</span>From the MYOB export</div>';
+    var checks = [];
+    if (!e) {
+      $('mk-body').innerHTML = '<p class="muted">No estimation reports created yet.</p>';
+      checks.push([null, 'Σ states = total estimated remuneration (every estimation)', 'No estimations in the export']);
+    } else {
+      var opts = '<option value="">All states</option>' + e.states.map(function (s) { return '<option' + (s.state === sf ? ' selected' : '') + '>' + h(s.state) + '</option>'; }).join('');
+      $('state').innerHTML = opts; $('state').disabled = !e.states.length;
+      var st = e.states.filter(function (s) { return !sf || s.state === sf; }), sum = r2(e.states.reduce(function (s, x) { return s + (x.rem || 0); }, 0));
+      var emps = e.employees.filter(function (p) { return !sf || p.state === sf; }), n = e.states.reduce(function (s, x) { return s + (x.emps || 0); }, 0);
+      var kpi = function (l, v) { return '<div class="mk-kpi"><div class="lbl">' + h(l) + '</div><div class="val">' + h(v) + '</div></div>'; };
+      $('mk-body').innerHTML = '<div class="mk-kpis">' + kpi('Total estimated remuneration', money(e.total)) + kpi('States', e.states.length) + kpi('Employees', n || e.employees.length || 'N/A') + kpi('Date created', e.created || 'N/A') + '</div>' +
+        '<h3>Estimated remuneration by state</h3><div class="mk-scroll"><table class="mk-grid"><thead><tr><th>State</th><th class="num">Employees</th><th class="num">Estimated remuneration ($)</th><th class="num">Share</th></tr></thead><tbody>' +
+        (st.length ? st.map(function (s) { return '<tr><td>' + h(s.state) + '</td><td class="num">' + (s.emps == null ? '' : s.emps) + '</td><td class="num">' + money(s.rem) + '</td><td class="num">' + (sum ? ((s.rem || 0) / sum * 100).toFixed(1) + '%' : '') + '</td></tr>'; }).join('') : '<tr><td colspan="4" class="muted">No states in this estimation.</td></tr>') +
+        '</tbody><tfoot><tr class="k-total"><td>Total</td><td class="num">' + (st.reduce(function (s, x) { return s + (x.emps || 0); }, 0) || '') + '</td><td class="num">' + money(sf ? r2(st.reduce(function (s, x) { return s + (x.rem || 0); }, 0)) : e.total) + '</td><td></td></tr></tfoot></table></div>' +
+        (st.length ? '<div class="mk-card" style="margin:12px 0"><h3>Estimated remuneration by state</h3>' + bars(st) + '</div>' : '') +
+        (emps.length ? '<h3>Employees</h3><div class="mk-scroll"><table class="mk-grid"><thead><tr><th>Employee</th><th>State</th><th class="num">Estimated remuneration ($)</th></tr></thead><tbody>' + emps.map(function (p) { return '<tr><td>' + h(p.name) + '</td><td>' + h(p.state) + '</td><td class="num">' + money(p.rem) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '') +
+        '<h3>Estimation reports</h3><div class="mk-scroll"><table class="mk-grid"><thead><tr><th>Estimation period</th><th>Date created</th><th>Estimated states</th><th class="num">Total estimated remuneration ($)</th></tr></thead><tbody>' +
+        E.map(function (x) { return '<tr><td>' + h(x.period) + '</td><td>' + h(x.created) + '</td><td>' + h(x.states.map(function (s) { return s.state; }).join(', ')) + '</td><td class="num">' + money(x.total) + '</td></tr>'; }).join('') + '</tbody></table></div>';
+      var bad = E.filter(function (x) { return x.total == null || Math.abs(r2(x.states.reduce(function (s, y) { return s + (y.rem || 0); }, 0)) - x.total) >= 0.005; });
+      checks.push([bad.length ? false : true, 'Σ states = total estimated remuneration (every estimation)', bad.length ? bad.map(function (x) { return (x.period || 'an estimation') + ': states ' + money(r2(x.states.reduce(function (s, y) { return s + (y.rem || 0); }, 0))) + ' vs total ' + money(x.total); }).join('; ') : E.length + ' estimation' + (E.length === 1 ? '' : 's')]);
+      var listed = E.filter(function (x) { return x.employees.length; }), off = [];
+      listed.forEach(function (x) { x.states.forEach(function (s) { var t = r2(x.employees.filter(function (p) { return p.state === s.state; }).reduce(function (a, p) { return a + (p.rem || 0); }, 0)); if (Math.abs(t - (s.rem || 0)) >= 0.005) off.push((x.period || '') + ' ' + s.state); }); });
+      checks.push([listed.length ? !off.length : null, 'Σ employees = their state\'s remuneration (when employees are listed)', listed.length ? (off.length ? 'Does not add up: ' + off.join(', ') : 'Every state adds up') : 'The export lists no employees']);
+    }
+    var fails = checks.filter(function (c) { return c[0] === false; }).length, done = checks.filter(function (c) { return c[0] === true; }).length;
+    $('mk-banner').className = 'mk-banner ' + (fails ? 'fail' : done ? 'pass' : 'na');
+    $('mk-banner').innerHTML = '<strong>' + (fails ? '⚠ Validation: ' + fails + ' check' + (fails > 1 ? 's' : '') + ' failed' : done ? '✓ Validation: ' + done + '/' + done + ' check' + (done > 1 ? 's' : '') + ' passed' : '– Validation: no check could run') + '</strong> · Snapshot from a MYOB export — not live<ul>' +
+      checks.map(function (c) { return '<li class="' + (c[0] === false ? 'bad' : c[0] === true ? 'ok' : 'na') + '">' + (c[0] === false ? '✗ ' : c[0] === true ? '✓ ' : '– ') + h(c[1]) + ' — ' + h(c[2]) + '</li>'; }).join('') + '</ul>';
+  }
+  $('est').addEventListener('change', function () { $('state').value = ''; draw(); });
+  $('state').addEventListener('change', draw);
+  $('style').addEventListener('change', function () { document.documentElement.classList.toggle('style-mysmb', this.value === 'mysmb'); });
+  $('pdf').addEventListener('click', function () { window.print(); });
+  draw();
+})();
+</script>
+</body>
+</html>

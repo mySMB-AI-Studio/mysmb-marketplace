@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Journal Security Audit</title>
+<style>{{CSS}}</style>
+</head>
+<body class="persona-detail">
+<div id="mk-controls" aria-label="Report filters">
+<label class="ctl">Search<input type="search" id="q" class="mk-filter" placeholder="Search memo, type, reference" style="margin:0"></label>
+<label class="ctl">User<select id="user"><option value="">All users</option></select></label>
+<label class="ctl">Action<select id="action"><option value="">All actions</option></select></label>
+<label class="ctl">Type<select id="type"><option value="">All types</option></select></label>
+<label class="ctl">Action date from<input type="date" id="from"></label>
+<label class="ctl">To<input type="date" id="to"></label>
+<label class="ctl"><span><input type="checkbox" id="prior"> Prior-period changes only</span></label>
+<label class="ctl">Branding<select id="style"><option value="myob">MYOB</option><option value="mysmb">mySMB</option></select></label>
+<div class="ctl btns"><button type="button" id="pdf">Download PDF</button></div>
+</div>
+<div id="mk-banner" class="mk-banner pass" role="region" aria-label="Validation"></div>
+<main class="mk-card"><header id="mk-head"></header><div id="mk-body"></div><footer id="mk-foot"></footer></main>
+<section id="mk-sources" class="mk-card" aria-label="Sources and limitations"><h2>Sources &amp; limitations</h2><ul id="src"></ul></section>
+<script>
+var AUDIT = {{DATA}};
+(function () {
+  function h(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function num(v) { if (v == null || v === '') return null; var n = Number(String(v).replace(/[$,\s]/g, '').replace(/^\((.*)\)$/, '-$1')); return isFinite(n) ? n : null; }
+  function money(v) { return v == null ? '' : (v < 0 ? '(' : '') + '$' + Math.abs(v).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + (v < 0 ? ')' : ''); }
+  var $ = function (id) { return document.getElementById(id); }, LOCK = AUDIT.lockDate || null;
+  var rows = (AUDIT.rows || []).map(function (r) {
+    var a = String(r.action == null ? '' : r.action).trim(), ad = String(r.actionDate == null ? '' : r.actionDate).trim(), td = String(r.txnDate == null ? '' : r.txnDate).slice(0, 10);
+    var x = { actionDate: ad, user: String(r.user == null ? '' : r.user).trim(), action: a ? a.charAt(0).toUpperCase() + a.slice(1) : '', type: r.type || '', txnDate: td, memo: r.memo || '', ref: r.ref || '', debit: num(r.debit), credit: num(r.credit) };
+    // a change or deletion of a transaction dated before the month it was changed in (or on or before the lock date, when given)
+    x.prior = /^(chang|edit|delet|revers|void|remov)/i.test(x.action) && !!td && (LOCK ? td <= LOCK : !!ad && td < ad.slice(0, 7) + '-01');
+    return x;
+  });
+  var uniq = function (k) { var o = {}; rows.forEach(function (r) { o[r[k] || '—'] = 1; }); return Object.keys(o).sort(); };
+  uniq('user').forEach(function (u) { $('user').insertAdjacentHTML('beforeend', '<option>' + h(u) + '</option>'); });
+  uniq('action').forEach(function (u) { $('action').insertAdjacentHTML('beforeend', '<option>' + h(u) + '</option>'); });
+  uniq('type').forEach(function (u) { $('type').insertAdjacentHTML('beforeend', '<option>' + h(u) + '</option>'); });
+  $('mk-head').innerHTML = '<div class="co">' + h(AUDIT.company || 'N/A — not in source') + '</div><div class="ti">Journal Security Audit</div><div class="pe">' + h(AUDIT.period || '') + '</div><div class="mk-src"><span class="mk-badge">MYOB</span>From the MYOB export</div>';
+  $('mk-foot').textContent = 'From the MYOB Journal security audit export · ' + (AUDIT.fileName || 'attached file') + ' · ' + rows.length + ' rows';
+  $('src').innerHTML = '<li>Source: MYOB › Reporting › Reports › Business › Journal security audit, exported and attached by the user (' + h(AUDIT.fileName || 'file') + '). MYOB\'s API does not expose the journal security audit, so this report is a frozen copy of that export — not live.</li>' +
+    '<li>Business and session dates are read from the export header' + (AUDIT.company ? '' : ' — the business name was not in the export (N/A — not in source)') + '.</li>' +
+    '<li>Prior-period changes: a change or deletion of a transaction dated ' + (LOCK ? 'on or before the lock date ' + h(LOCK) : 'before the month it was changed in (no lock date given)') + '.</li><li>Decision support only — not audit, tax or legal advice.</li>';
+  function bars(o) {
+    var keys = Object.keys(o).sort(function (a, b) { return o[b] - o[a]; }).slice(0, 12), mx = Math.max.apply(null, keys.map(function (k) { return o[k]; }).concat([1])), W = 640, rowH = 26;
+    return '<svg viewBox="0 0 ' + W + ' ' + (keys.length * rowH + 8) + '" role="img" aria-label="Changes by user">' + keys.map(function (k, i) { var w = Math.max(2, (W - 220) * o[k] / mx); return '<text x="0" y="' + (i * rowH + 17) + '" class="tick">' + h(k.slice(0, 26)) + '</text><rect x="190" y="' + (i * rowH + 4) + '" width="' + w.toFixed(1) + '" height="16" fill="var(--c1)"><title>' + h(k + ': ' + o[k]) + '</title></rect><text x="' + (196 + w).toFixed(1) + '" y="' + (i * rowH + 17) + '" class="tick">' + o[k] + '</text>'; }).join('') + '</svg>';
+  }
+  function draw() {
+    var q = $('q').value.trim().toLowerCase(), u = $('user').value, a = $('action').value, t = $('type').value, f = $('from').value, to = $('to').value, pr = $('prior').checked;
+    var list = rows.filter(function (r) { var d = r.actionDate.slice(0, 10); return (!u || (r.user || '—') === u) && (!a || (r.action || '—') === a) && (!t || (r.type || '—') === t) && (!f || d >= f) && (!to || d <= to) && (!pr || r.prior) && (!q || (r.memo + ' ' + r.type + ' ' + r.ref + ' ' + r.user).toLowerCase().indexOf(q) >= 0); });
+    var byAction = {}, byUser = {}, changes = {}; list.forEach(function (r) { byAction[r.action || '—'] = (byAction[r.action || '—'] || 0) + 1; byUser[r.user || '—'] = (byUser[r.user || '—'] || 0) + 1; if (!/^add/i.test(r.action)) changes[r.user || '—'] = (changes[r.user || '—'] || 0) + 1; });
+    var kpi = function (l, v) { return '<div class="mk-kpi"><div class="lbl">' + h(l) + '</div><div class="val">' + h(v) + '</div></div>'; };
+    var dr = list.reduce(function (s, r) { return s + (r.debit || 0); }, 0), cr = list.reduce(function (s, r) { return s + (r.credit || 0); }, 0);
+    $('mk-body').innerHTML = '<div class="mk-kpis">' + kpi('Rows', list.length) + kpi('Users', Object.keys(byUser).length) + kpi('Prior-period changes', list.filter(function (r) { return r.prior; }).length) + kpi('Deletions', list.filter(function (r) { return /^delet/i.test(r.action); }).length) + '</div>' +
+      '<h3>By action</h3><div class="mk-kpis">' + Object.keys(byAction).sort(function (x, y) { return byAction[y] - byAction[x]; }).map(function (k) { return kpi(k, byAction[k]); }).join('') + '</div>' +
+      (Object.keys(changes).length ? '<div class="mk-card" style="margin:12px 0"><h3>Changes and deletions by user</h3>' + bars(changes) + '</div>' : '') +
+      '<div class="mk-scroll"><table class="mk-grid"><thead><tr><th>Action date</th><th>User</th><th>Action</th><th>Type</th><th>Transaction date</th><th>Memo</th><th class="num">Debit ($)</th><th class="num">Credit ($)</th><th>Flag</th></tr></thead><tbody>' +
+      (list.length ? list.map(function (r) { return '<tr' + (r.prior ? ' class="neg"' : '') + '><td>' + h(r.actionDate) + '</td><td>' + h(r.user) + '</td><td>' + h(r.action) + '</td><td>' + h(r.type) + (r.ref ? ' ' + h(r.ref) : '') + '</td><td>' + h(r.txnDate) + '</td><td>' + h(r.memo) + '</td><td class="num">' + money(r.debit) + '</td><td class="num">' + money(r.credit) + '</td><td>' + (r.prior ? 'Prior period' : '') + '</td></tr>'; }).join('') +
+        '</tbody><tfoot><tr class="k-total"><td colspan="6">Total</td><td class="num">' + money(Math.round(dr * 100) / 100) + '</td><td class="num">' + money(Math.round(cr * 100) / 100) + '</td><td></td></tr></tfoot>' : '<tr><td colspan="9" class="muted">' + (rows.length ? 'No rows match.' : 'The export has no rows for this period.') + '</td></tr></tbody>') + '</table></div>';
+    var sum = Object.keys(byAction).reduce(function (s, k) { return s + byAction[k]; }, 0), missing = rows.filter(function (r) { return !r.actionDate || !r.user || !r.action; }).length;
+    var checks = [[sum === list.length, 'Counts by action sum to the rows shown', list.length + ' of ' + rows.length + ' rows'], [rows.length ? missing === 0 : null, 'Every row has an action date, a user and an action', missing ? missing + ' rows without one' : rows.length + ' rows']];
+    var fails = checks.filter(function (c) { return c[0] === false; }).length, done = checks.filter(function (c) { return c[0] === true; }).length;
+    $('mk-banner').className = 'mk-banner ' + (fails ? 'fail' : done ? 'pass' : 'na');
+    $('mk-banner').innerHTML = '<strong>' + (fails ? '⚠ Validation: ' + fails + ' check' + (fails > 1 ? 's' : '') + ' failed' : '✓ Validation: ' + done + '/' + done + ' checks passed') + '</strong> · Snapshot from a MYOB export — not live<ul>' +
+      checks.map(function (c) { return '<li class="' + (c[0] === false ? 'bad' : c[0] === true ? 'ok' : 'na') + '">' + (c[0] === false ? '✗ ' : c[0] === true ? '✓ ' : '– ') + h(c[1]) + ' — ' + h(c[2]) + '</li>'; }).join('') + '</ul>';
+  }
+  $('q').addEventListener('input', draw);
+  ['user', 'action', 'type', 'from', 'to', 'prior'].forEach(function (id) { $(id).addEventListener('change', draw); });
+  $('style').addEventListener('change', function () { document.documentElement.classList.toggle('style-mysmb', this.value === 'mysmb'); });
+  $('pdf').addEventListener('click', function () { window.print(); });
+  draw();
+})();
+</script>
+</body>
+</html>

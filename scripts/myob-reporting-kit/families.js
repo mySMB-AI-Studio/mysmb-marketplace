@@ -156,7 +156,7 @@ module.exports = [
     fileName: 'myob-report-pack.html', tags: ['myob', 'report-pack', 'M60', 'management-report'],
   },
   {
-    m: 'M06', skill: 'gst-summary', name: 'MYOB GST Summary (BAS)', report: 'gst', wave: 'Wave 1 (P1) — M06, with M07 GST return and M61 BAS',
+    m: 'M06', also: ['M07', 'M61'], skill: 'gst-summary', name: 'MYOB GST Summary (BAS)', report: 'gst', wave: 'Wave 1 (P1) — M06, with M07 GST return and M61 BAS',
     title: 'GST Summary (BAS)', menu: 'Reporting → Reports → Business → GST report / GST return; Reporting → BAS',
     trigger: 'the user asks for a GST report, GST summary, GST return, BAS, activity statement, GST payable or refund, GST by tax code, or BAS labels (G1, 1A, 1B, W1, W2) for a period',
     discovery: 'Call `get_gst_summary` once for the period (`reporting_basis` = `Accrual` unless asked for cash), `list_tax_codes` once and `list_company_files` once. Expect `{StartDate, EndDate, ReportingBasis, TaxCodeBreakdown:[{SalesTotal, PurchasesTotal, TaxCollected, TaxPaid, TaxRate, TaxCode{UID,Code}}]}` — GST-inclusive totals per tax code and **no BAS labels** (MYOB\'s API has no link from codes to labels). `get_payroll_category_summary` gives W1 / W2 (it may be missing on older connectors — then W1 / W2 are N/A). A `{"__error": …}` result is a failed call: report its message',
@@ -233,7 +233,7 @@ module.exports = [
     fileName: 'myob-pay-run-history.html', tags: ['myob', 'payroll', 'pay-runs', 'M23'],
   },
   {
-    m: 'M21', skill: 'payroll-register', name: 'MYOB Payroll Register', report: 'pyr', wave: 'Wave 3 (P3)',
+    m: 'M21', also: ['M22'], skill: 'payroll-register', name: 'MYOB Payroll Register', report: 'pyr', wave: 'Wave 3 (P3)',
     title: 'Payroll Register', menu: 'Reporting → Reports → Payroll → Payroll register',
     trigger: 'the user asks for a payroll register, per-employee payroll, each employee\'s pays for a period, or gross, tax, net and super by employee',
     discovery: 'As for MYOB Pay Run History: `list_payroll_advices` once, `get_payroll_category_summary` once, `list_company_files` once.',
@@ -255,7 +255,7 @@ module.exports = [
     fileName: 'myob-payroll-summary.html', tags: ['myob', 'payroll', 'summary', 'M20'],
   },
   {
-    m: 'M25', skill: 'accrual-by-fund', name: 'MYOB Accrual by Fund', report: 'pyf', wave: 'Wave 3 (P3) — M25 and the detail M26',
+    m: 'M25', also: ['M26'], skill: 'accrual-by-fund', name: 'MYOB Accrual by Fund', report: 'pyf', wave: 'Wave 3 (P3) — M25 and the detail M26',
     title: 'Accrual by Fund', menu: 'Reporting → Reports → Payroll → Accrual by fund',
     trigger: 'the user asks for superannuation accrual by fund, super by fund, super accrued per employee, or the super guarantee owed to each fund',
     discovery: 'As for MYOB Pay Run History: `list_payroll_advices` once (each paycheque\'s Superannuation lines and `SuperannuationFund`), `get_payroll_category_summary` once, `list_company_files` once.',
@@ -330,5 +330,16 @@ module.exports = [
     checks: ['**Independent tie:** Σ bill amounts = the credits to the payables account in the period\'s journals', 'Every supplier\'s current balance adds up to the payables account on the Balance Sheet', 'Counts by status add up to the bills listed'],
     golden: 'mySMB.com: no bills on the sample file; on a file with bills, every supplier\'s current balance adds up to the payables account',
     fileName: 'myob-supplier-purchases.html', tags: ['myob', 'supplier-purchases', 'M43', 'purchases'],
+  },
+  {
+    m: 'M63', skill: 'myob-reports-catalogue', name: 'MYOB Reports Catalogue', report: 'ct', wave: 'Wave 2 (P2, delivery order 39)',
+    title: 'Reports Catalogue', menu: 'Reporting → Reports → All',
+    trigger: 'the user asks for the reports catalogue, the list of MYOB reports, which reports are available, what the agent can build, or wants to browse, search or favourite reports',
+    discovery: 'Call `list_company_files` once (the header and the client selector). The catalogue holds no company figures: its rows are the MYOB Reports Prompt Library (M00–M63) with what this agent offers for each, built into the report',
+    dates: 'No dates. `display.v` opens on a tab (`all`, `Business`, `Banking`, `Payroll`, `Sales`, `Purchases`, `Inventory`, `Jobs`, `More` or `fav`); `display.x` holds favourites as prompt IDs separated by commas (for example `M04,M32`) — set it when the user asks to keep favourites.',
+    members: [['All tab and group blocks', 'Business, Banking, Payroll, Sales, Purchases, Inventory and Jobs reports, and More (dashboard, exceptions, report packs, BAS, custom reports, this catalogue)'], ['Search reports', 'Search box above the tabs'], ['Favourites', 'Star a report; the ★ Favourites tab lists them'], ['Status per report', 'Live template · On request · From your MYOB export · Guide, with the name to ask for'], ['Run a report', 'Ask the agent for it by the name shown (a catalogue cannot start a chat)']],
+    checks: ['Every report maps to a prompt ID in this library (M00–M63)', 'Reports per MYOB tab match MYOB (Business 14 · Banking 5 · Payroll 12 · Sales 8 · Purchases 7 · Inventory 6 · Jobs 6)'],
+    golden: '58 reports: Business 14 · Banking 5 · Payroll 12 · Sales 8 · Purchases 7 · Inventory 6 · Jobs 6, plus 6 more Reporting pages (64 prompt IDs)',
+    fileName: 'myob-reports-catalogue.html', tags: ['myob', 'catalogue', 'M63'],
   },
 ];

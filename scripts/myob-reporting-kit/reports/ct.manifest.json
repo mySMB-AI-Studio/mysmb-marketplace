@@ -1,0 +1,40 @@
+{
+  "inputs": [
+    {
+      "name": "company_file",
+      "label": "Company file",
+      "type": "string",
+      "maxLength": 64,
+      "default": ""
+    },
+    {
+      "name": "persona",
+      "label": "View as",
+      "type": "enum",
+      "options": [
+        "Client",
+        "Bookkeeper",
+        "Practitioner",
+        "Executive"
+      ],
+      "default": "Client"
+    },
+    {
+      "name": "display",
+      "label": "Display settings",
+      "type": "string",
+      "maxLength": 300,
+      "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"all\",\"x\":\"\"}"
+    }
+  ],
+  "bindings": [
+    {
+      "id": "company_files",
+      "tool": {
+        "mcp": "myob-accounting",
+        "name": "list_company_files"
+      },
+      "params": {}
+    }
+  ]
+}
