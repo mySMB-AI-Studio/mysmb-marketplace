@@ -1,0 +1,119 @@
+{
+  "id": "zoom-upcoming-meetings",
+  "title": "Zoom — Upcoming Meetings",
+  "description": "Everything on the connected Zoom user's calendar — topic, time, duration, and a one-click Join link. Color-coded by how soon each one starts: today's meetings stand out, this week fades to a softer tone, further-out meetings are muted.",
+  "category": "communications",
+  "tags": ["zoom", "meetings", "calendar", "schedule", "video-conferencing"],
+  "keywords": ["upcoming meetings", "zoom calendar", "join meeting", "scheduled meetings"],
+  "connectorsUsed": ["zoom"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 9 },
+    "min": { "colSpan": 4, "rowSpan": 7 },
+    "max": { "colSpan": 8, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "mcp": "zoom",
+    "tool": "list_meetings",
+    "params": { "type": "upcoming_meetings", "page_size": 30 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["header", "divider1", "body", "divider2", "footer"] },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "CalendarDays", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Upcoming Meetings", "level": "h2" } },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Zoom · {n} scheduled", "n": { "$computed": "count", "args": { "value": { "$state": "/zoom/list_meetings/meetings" } } } }
+          }
+        }
+      },
+
+      "divider1": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["errorBanner", "emptyState", "meetingList"] },
+
+      "errorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load meetings: ${/_errors/zoom.list_meetings}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/zoom.list_meetings" }
+      },
+
+      "emptyState": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["emptyIcon", "emptyText"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/zoom.list_meetings", "not": true },
+            { "$state": "/zoom/list_meetings/meetings/0", "not": true }
+          ]
+        }
+      },
+      "emptyIcon": { "type": "Icon", "props": { "name": "CalendarOff", "tone": "muted", "size": "md" } },
+      "emptyText": { "type": "Caption", "props": { "text": "Nothing on the calendar.", "tone": "muted" } },
+
+      "meetingList": {
+        "type": "Stack",
+        "props": { "gap": "sm", "maxHeight": 480 },
+        "children": ["meetingRow"],
+        "repeat": { "statePath": "/zoom/list_meetings/meetings", "key": "id" }
+      },
+      "meetingRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "template": "0.25rem minmax(0, 1fr) auto" },
+        "children": ["urgencyBar", "meetingInfo", "joinBtn"]
+      },
+      "urgencyBar": {
+        "type": "Dot",
+        "props": {
+          "size": "md",
+          "tone": { "$computed": "zoom_meeting_urgency_tone", "args": { "startTime": { "$item": "start_time" } } }
+        }
+      },
+      "meetingInfo": { "type": "Stack", "props": { "gap": "xs" }, "children": ["meetingTopic", "meetingMetaRow"] },
+      "meetingTopic": { "type": "Text", "props": { "text": { "$item": "topic" }, "weight": "semibold", "size": "sm" } },
+      "meetingMetaRow": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["dateBadge", "durationCaption"] },
+      "dateBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "zoom_format_datetime", "args": { "value": { "$item": "start_time" } } },
+          "tone": { "$computed": "zoom_meeting_urgency_tone", "args": { "startTime": { "$item": "start_time" } } }
+        }
+      },
+      "durationCaption": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "zoom_format_duration", "args": { "minutes": { "$item": "duration" } } },
+          "tone": "muted"
+        }
+      },
+      "joinBtn": {
+        "type": "Button",
+        "props": { "label": "Join", "size": "sm", "variant": "primary", "tone": "brand", "leadingIcon": "Video" },
+        "on": {
+          "click": { "action": "open_url", "params": { "url": { "$bindItem": "join_url" }, "target": "_blank" } }
+        }
+      },
+
+      "divider2": { "type": "Divider", "props": {} },
+      "footer": { "type": "Row", "props": { "justify": "end" }, "children": ["openZoomBtn"] },
+      "openZoomBtn": {
+        "type": "Button",
+        "props": { "label": "Open Zoom", "tone": "brand", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": { "action": "open_url", "params": { "url": "https://zoom.us/", "target": "_blank" } }
+        }
+      }
+    }
+  },
+  "status": "published"
+}
