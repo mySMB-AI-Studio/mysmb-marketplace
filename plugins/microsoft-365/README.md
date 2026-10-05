@@ -1,6 +1,6 @@
 # Microsoft 365
 
-Access Microsoft 365 emails, calendar, files, Teams, and people through Microsoft Graph.
+Access Microsoft 365 emails, calendar, files, Teams (chat, channels, meeting transcripts), and people through Microsoft Graph.
 
 ## Servers
 
@@ -11,6 +11,7 @@ Access Microsoft 365 emails, calendar, files, Teams, and people through Microsof
 | m365-calendar | View, create, and manage calendar events | `Calendars.ReadWrite` | User consent (may require admin) |
 | m365-files | Browse, search, upload, and share OneDrive files | `Files.ReadWrite` | User consent (may require admin) |
 | m365-teams | Read and send Teams channel and chat messages | `Team.ReadBasic.All`, `ChannelMessage.Read.All`, `Chat.ReadWrite` | Admin consent required |
+| m365-teams-transcripts | Read Teams meeting transcripts | `OnlineMeetingTranscript.Read.All` | **Admin consent required** |
 | m365-people | Search people, view profiles and org chart | `People.Read`, `User.Read` | User self-consent OK |
 
 Mail is split into two servers on purpose: `Mail.Send` and `Mail.ReadWrite` are
@@ -22,6 +23,13 @@ works without waiting on an admin.
 See the **[Admin consent](#admin-consent-for-high-risk-scopes)** section below
 for how to unblock `m365-mail-send` org-wide.
 
+`m365-teams-transcripts` is likewise a separate server from `m365-teams` on
+purpose, not an extra tool bolted onto it: `OnlineMeetingTranscript.Read.All`
+requires tenant admin consent, while every `m365-teams` scope is
+user-self-consentable. Bundling them into one authorization request would
+force every existing `m365-teams` connection through admin approval just to
+keep working.
+
 ## Configuration
 
 No environment variables required. Each server uses OAuth — click Connect in
@@ -30,7 +38,7 @@ own scopes.
 
 ## Admin consent for high-risk scopes
 
-`m365-mail-send` (and some optional scopes on calendar, files, teams) require
+`m365-mail-send` and `m365-teams-transcripts` (and some optional scopes on calendar, files, teams) require
 **tenant admin consent** before any user can connect. Do this once:
 
 1. Sign in to https://entra.microsoft.com as a Global Admin.
@@ -108,6 +116,15 @@ without another prompt.
   `reactionType` exactly as it appears on the message (a legacy `like` renders
   as 👍 but must be removed as `like`).
 
+### Teams Transcripts (3 tools, `m365-teams-transcripts`)
+- `list_transcripts` — List every transcript recorded for a meeting (a
+  recurring series has one per transcribed occurrence)
+- `get_transcript` — Get metadata for a single transcript (created/ended
+  time, organizer) — not its text
+- `get_transcript_content` — Get the actual transcript text, as WebVTT
+  (timestamped, speaker-tagged cues). Requires a meeting the organizer
+  turned on live transcription for, and the meeting must not have expired.
+
 ### People (4 tools)
 - `search_people` — Search by name or email
 - `get_profile` — Get user profile
@@ -159,12 +176,13 @@ So each server needs **both** rows below registered against the Entra app regist
 | `m365-calendar` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/m365-calendar/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/m365-calendar/callback` |
 | `m365-files` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/m365-files/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/m365-files/callback` |
 | `m365-teams` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/m365-teams/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/m365-teams/callback` |
+| `m365-teams-transcripts` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/m365-teams-transcripts/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/m365-teams-transcripts/callback` |
 | `m365-people` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/m365-people/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/m365-people/callback` |
 
 > Register these under the Entra app registration whose id is `ENTRA_CLIENT_ID`
 > on the gateway (Azure Portal → App registrations → Authentication → Web →
-> Redirect URIs). All six servers share one app registration, differing only by
-> requested scopes.
+> Redirect URIs). All seven servers share one app registration, differing only
+> by requested scopes.
 >
 > `m365-mail-send` is only reached when a user creates a draft, so an unregistered
 > URI there stays invisible until someone clicks "Open draft".
