@@ -1,0 +1,414 @@
+{
+  "id": "google-workspace-gmail-bill-extraction",
+  "title": "Bills from Gmail",
+  "description": "Reads the latest email in your Bills label and extracts ABN, invoice number, dates, subtotal, GST and total — plus a list of the other matched bill emails in the same label.",
+  "category": "productivity",
+  "tags": [
+    "google",
+    "gmail",
+    "bills",
+    "invoices",
+    "accounts-payable",
+    "extraction"
+  ],
+  "keywords": [
+    "bills from gmail",
+    "invoice extraction",
+    "bill label",
+    "accounts payable",
+    "gmail bills",
+    "pdf invoice",
+    "extracted total",
+    "abn",
+    "gst"
+  ],
+  "connectorsUsed": [
+    "google-workspace-gmail"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 9 },
+    "min": { "colSpan": 4, "rowSpan": 6 },
+    "max": { "colSpan": 10, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "mcp": "google-workspace-gmail",
+    "tool": "list_bill_label_emails",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "children": ["header", "body"] },
+
+      "header": { "type": "Header", "children": ["headerRow"] },
+      "headerRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "justify": "between" },
+        "children": ["headerLeft", "headerIcon"]
+      },
+      "headerLeft": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["eyebrow", "title", "labelPillRow"]
+      },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Latest extraction", "tone": "destructive" } },
+      "title": { "type": "Heading", "props": { "text": "Bills from Gmail", "level": "h2" } },
+      "labelPillRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["labelBadge"]
+      },
+      "labelBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Label: {name} · {n} new",
+              "name": { "$state": "/google-workspace-gmail/list_bill_label_emails/label/name" },
+              "n": { "$state": "/google-workspace-gmail/list_bill_label_emails/label/newCount" }
+            }
+          },
+          "tone": "muted",
+          "variant": "soft"
+        }
+      },
+      "headerIcon": { "type": "Icon", "props": { "name": "Mail", "tone": "accent", "size": "sm" } },
+
+      "body": { "type": "Body", "children": ["loading", "empty", "content"] },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$state": "/_loading/google-workspace-gmail.list_bill_label_emails" },
+        "children": ["sk1", "sk2", "sk3", "sk4"]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "6rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No bill emails found in this label yet." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/google-workspace-gmail.list_bill_label_emails", "not": true },
+            { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/id", "not": true }
+          ]
+        }
+      },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/google-workspace-gmail.list_bill_label_emails", "not": true },
+            { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/id" }
+          ]
+        },
+        "children": ["featuredCard", "othersSection", "footerDivider", "footerRow"]
+      },
+
+      "featuredCard": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["featuredHeaderRow", "featuredDivider", "fieldsGrid", "totalRow"]
+      },
+      "featuredHeaderRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "justify": "between" },
+        "children": ["featuredInfo", "featuredStatus"]
+      },
+      "featuredInfo": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["featuredSender", "featuredSubtitleRow"]
+      },
+      "featuredSender": {
+        "type": "Text",
+        "props": {
+          "text": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/senderName" },
+          "size": "md",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "featuredSubtitleRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["featSubAddr", "featSubSep1", "featSubTime", "featSubSep2", "featSubFile"]
+      },
+      "featSubAddr": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/senderAddress" }, "tone": "muted", "truncate": true }
+      },
+      "featSubSep1": { "type": "Caption", "props": { "text": "·", "tone": "muted" } },
+      "featSubTime": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/receivedLabel" }, "tone": "muted" }
+      },
+      "featSubSep2": {
+        "type": "Caption",
+        "props": { "text": "·", "tone": "muted" },
+        "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/attachmentName" }
+      },
+      "featSubFile": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/attachmentName" }, "tone": "muted", "truncate": true },
+        "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/attachmentName" }
+      },
+      "featuredStatus": {
+        "type": "Badge",
+        "props": {
+          "text": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/statusLabel" },
+          "tone": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/statusTone" },
+          "variant": "soft"
+        }
+      },
+      "featuredDivider": { "type": "Divider", "props": {} },
+
+      "fieldsGrid": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["fieldAbn", "fieldInvoiceNumber", "fieldIssuedDate", "fieldDueDate", "fieldSubtotal", "fieldGst"]
+      },
+
+      "fieldAbn": { "type": "Stack", "props": { "gap": "xs" }, "children": ["fieldAbnHeader", "fieldAbnValueWrap"] },
+      "fieldAbnHeader": {
+        "type": "Row", "props": { "gap": "xs", "align": "center" },
+        "children": ["fieldAbnLabel", "fieldAbnDotHigh", "fieldAbnDotCheck"]
+      },
+      "fieldAbnLabel": { "type": "Caption", "props": { "text": "ABN", "tone": "muted" } },
+      "fieldAbnDotHigh": { "type": "Dot", "props": { "size": "sm", "tone": "success" }, "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/abn/confidence", "eq": "high" } },
+      "fieldAbnDotCheck": { "type": "Dot", "props": { "size": "sm", "tone": "warning" }, "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/abn/confidence", "eq": "check" } },
+      "fieldAbnValueWrap": { "type": "Stack", "props": { "gap": "none", "align": "end" }, "children": ["fieldAbnValue", "fieldAbnNoValue"] },
+      "fieldAbnValue": {
+        "type": "Text",
+        "props": { "text": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/abn/value" }, "size": "sm", "weight": "medium" },
+        "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/abn/value" }
+      },
+      "fieldAbnNoValue": {
+        "type": "Text",
+        "props": { "text": "—", "size": "sm", "tone": "muted" },
+        "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/abn/value", "not": true }
+      },
+
+      "fieldInvoiceNumber": { "type": "Stack", "props": { "gap": "xs" }, "children": ["fieldInvoiceNumberHeader", "fieldInvoiceNumberValueWrap"] },
+      "fieldInvoiceNumberHeader": {
+        "type": "Row", "props": { "gap": "xs", "align": "center" },
+        "children": ["fieldInvoiceNumberLabel", "fieldInvoiceNumberDotHigh", "fieldInvoiceNumberDotCheck"]
+      },
+      "fieldInvoiceNumberLabel": { "type": "Caption", "props": { "text": "Invoice #", "tone": "muted" } },
+      "fieldInvoiceNumberDotHigh": { "type": "Dot", "props": { "size": "sm", "tone": "success" }, "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/invoiceNumber/confidence", "eq": "high" } },
+      "fieldInvoiceNumberDotCheck": { "type": "Dot", "props": { "size": "sm", "tone": "warning" }, "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/invoiceNumber/confidence", "eq": "check" } },
+      "fieldInvoiceNumberValueWrap": { "type": "Stack", "props": { "gap": "none", "align": "end" }, "children": ["fieldInvoiceNumberValue", "fieldInvoiceNumberNoValue"] },
+      "fieldInvoiceNumberValue": {
+        "type": "Text",
+        "props": { "text": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/invoiceNumber/value" }, "size": "sm", "weight": "medium" },
+        "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/invoiceNumber/value" }
+      },
+      "fieldInvoiceNumberNoValue": {
+        "type": "Text",
+        "props": { "text": "—", "size": "sm", "tone": "muted" },
+        "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/invoiceNumber/value", "not": true }
+      },
+
+      "fieldIssuedDate": { "type": "Stack", "props": { "gap": "xs" }, "children": ["fieldIssuedDateHeader", "fieldIssuedDateValueWrap"] },
+      "fieldIssuedDateHeader": {
+        "type": "Row", "props": { "gap": "xs", "align": "center" },
+        "children": ["fieldIssuedDateLabel", "fieldIssuedDateDotHigh", "fieldIssuedDateDotCheck"]
+      },
+      "fieldIssuedDateLabel": { "type": "Caption", "props": { "text": "Issued", "tone": "muted" } },
+      "fieldIssuedDateDotHigh": { "type": "Dot", "props": { "size": "sm", "tone": "success" }, "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/issuedDate/confidence", "eq": "high" } },
+      "fieldIssuedDateDotCheck": { "type": "Dot", "props": { "size": "sm", "tone": "warning" }, "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/issuedDate/confidence", "eq": "check" } },
+      "fieldIssuedDateValueWrap": { "type": "Stack", "props": { "gap": "none", "align": "end" }, "children": ["fieldIssuedDateValue", "fieldIssuedDateNoValue"] },
+      "fieldIssuedDateValue": {
+        "type": "Text",
+        "props": { "text": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/issuedDate/value" }, "size": "sm", "weight": "medium" },
+        "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/issuedDate/value" }
+      },
+      "fieldIssuedDateNoValue": {
+        "type": "Text",
+        "props": { "text": "—", "size": "sm", "tone": "muted" },
+        "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/issuedDate/value", "not": true }
+      },
+
+      "fieldDueDate": { "type": "Stack", "props": { "gap": "xs" }, "children": ["fieldDueDateHeader", "fieldDueDateValueWrap"] },
+      "fieldDueDateHeader": {
+        "type": "Row", "props": { "gap": "xs", "align": "center" },
+        "children": ["fieldDueDateLabel", "fieldDueDateDotHigh", "fieldDueDateDotCheck"]
+      },
+      "fieldDueDateLabel": { "type": "Caption", "props": { "text": "Due", "tone": "muted" } },
+      "fieldDueDateDotHigh": { "type": "Dot", "props": { "size": "sm", "tone": "success" }, "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/dueDate/confidence", "eq": "high" } },
+      "fieldDueDateDotCheck": { "type": "Dot", "props": { "size": "sm", "tone": "warning" }, "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/dueDate/confidence", "eq": "check" } },
+      "fieldDueDateValueWrap": { "type": "Stack", "props": { "gap": "none", "align": "end" }, "children": ["fieldDueDateValue", "fieldDueDateNoValue"] },
+      "fieldDueDateValue": {
+        "type": "Text",
+        "props": { "text": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/dueDate/value" }, "size": "sm", "weight": "medium" },
+        "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/dueDate/value" }
+      },
+      "fieldDueDateNoValue": {
+        "type": "Text",
+        "props": { "text": "—", "size": "sm", "tone": "muted" },
+        "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/dueDate/value", "not": true }
+      },
+
+      "fieldSubtotal": { "type": "Stack", "props": { "gap": "xs" }, "children": ["fieldSubtotalHeader", "fieldSubtotalValueWrap"] },
+      "fieldSubtotalHeader": {
+        "type": "Row", "props": { "gap": "xs", "align": "center" },
+        "children": ["fieldSubtotalLabel", "fieldSubtotalDotHigh", "fieldSubtotalDotCheck"]
+      },
+      "fieldSubtotalLabel": { "type": "Caption", "props": { "text": "Subtotal", "tone": "muted" } },
+      "fieldSubtotalDotHigh": { "type": "Dot", "props": { "size": "sm", "tone": "success" }, "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/subtotal/confidence", "eq": "high" } },
+      "fieldSubtotalDotCheck": { "type": "Dot", "props": { "size": "sm", "tone": "warning" }, "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/subtotal/confidence", "eq": "check" } },
+      "fieldSubtotalValueWrap": { "type": "Stack", "props": { "gap": "none", "align": "end" }, "children": ["fieldSubtotalValue", "fieldSubtotalNoValue"] },
+      "fieldSubtotalValue": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "format_currency", "args": { "value": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/subtotal/value" } } },
+          "size": "sm",
+          "weight": "medium"
+        },
+        "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/subtotal/value" }
+      },
+      "fieldSubtotalNoValue": {
+        "type": "Text",
+        "props": { "text": "—", "size": "sm", "tone": "muted" },
+        "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/subtotal/value", "not": true }
+      },
+
+      "fieldGst": { "type": "Stack", "props": { "gap": "xs" }, "children": ["fieldGstHeader", "fieldGstValueWrap"] },
+      "fieldGstHeader": {
+        "type": "Row", "props": { "gap": "xs", "align": "center" },
+        "children": ["fieldGstLabel", "fieldGstDotHigh", "fieldGstDotCheck"]
+      },
+      "fieldGstLabel": { "type": "Caption", "props": { "text": "GST", "tone": "muted" } },
+      "fieldGstDotHigh": { "type": "Dot", "props": { "size": "sm", "tone": "success" }, "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/gst/confidence", "eq": "high" } },
+      "fieldGstDotCheck": { "type": "Dot", "props": { "size": "sm", "tone": "warning" }, "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/gst/confidence", "eq": "check" } },
+      "fieldGstValueWrap": { "type": "Stack", "props": { "gap": "none", "align": "end" }, "children": ["fieldGstValue", "fieldGstNoValue"] },
+      "fieldGstValue": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "format_currency", "args": { "value": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/gst/value" } } },
+          "size": "sm",
+          "weight": "medium"
+        },
+        "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/gst/value" }
+      },
+      "fieldGstNoValue": {
+        "type": "Text",
+        "props": { "text": "—", "size": "sm", "tone": "muted" },
+        "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/gst/value", "not": true }
+      },
+
+      "totalRow": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["totalRowContent"]
+      },
+      "totalRowContent": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["totalLabel", "totalValueWrap"]
+      },
+      "totalLabel": { "type": "Text", "props": { "text": "Total", "size": "sm", "weight": "medium", "tone": "muted" } },
+      "totalValueWrap": { "type": "Stack", "props": { "gap": "none", "align": "end" }, "children": ["totalValue", "totalNoValue"] },
+      "totalValue": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "format_currency", "args": { "value": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/total/value" } } },
+          "size": "lg",
+          "weight": "medium",
+          "tone": "destructive"
+        },
+        "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/total/value" }
+      },
+      "totalNoValue": {
+        "type": "Text",
+        "props": { "text": "—", "size": "lg", "tone": "muted" },
+        "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/total/value", "not": true }
+      },
+
+      "othersSection": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$state": "/google-workspace-gmail/list_bill_label_emails/others/0" },
+        "children": ["othersHeading", "othersList"]
+      },
+      "othersHeading": { "type": "Caption", "props": { "text": "Also in bills label", "tone": "muted" } },
+      "othersList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "repeat": { "statePath": "/google-workspace-gmail/list_bill_label_emails/others", "key": "id" },
+        "children": ["otherRow"]
+      },
+      "otherRow": { "type": "Stack", "props": { "gap": "xs" }, "children": ["otherRowContent", "otherDivider"] },
+      "otherRowContent": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["otherInfo", "otherStatus"]
+      },
+      "otherInfo": { "type": "Stack", "props": { "gap": "xs" }, "children": ["otherCompany", "otherMetaRow"] },
+      "otherCompany": {
+        "type": "Text",
+        "props": { "text": { "$item": "companyName" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "otherMetaRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["otherReceived", "otherMetaSep", "otherAmountPresent", "otherAmountAbsent"]
+      },
+      "otherReceived": { "type": "Caption", "props": { "text": { "$item": "receivedLabel" }, "tone": "muted" } },
+      "otherMetaSep": { "type": "Caption", "props": { "text": "·", "tone": "muted" } },
+      "otherAmountPresent": {
+        "type": "Caption",
+        "props": { "text": { "$item": "amountText" }, "tone": "muted" },
+        "visible": { "$item": "amountText" }
+      },
+      "otherAmountAbsent": {
+        "type": "Caption",
+        "props": { "text": "—", "tone": "muted" },
+        "visible": { "$item": "amountText", "not": true }
+      },
+      "otherStatus": {
+        "type": "Badge",
+        "props": { "text": { "$item": "statusLabel" }, "tone": { "$item": "statusTone" }, "variant": "soft" }
+      },
+      "otherDivider": { "type": "Divider", "props": {} },
+
+      "footerDivider": { "type": "Divider", "props": {} },
+      "footerRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["footerLegend", "footerOpen"]
+      },
+      "footerLegend": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["legendDotHigh", "legendTextHigh", "legendSep", "legendDotCheck", "legendTextCheck", "legendTail"]
+      },
+      "legendDotHigh": { "type": "Dot", "props": { "size": "sm", "tone": "success" } },
+      "legendTextHigh": { "type": "Caption", "props": { "text": "high", "tone": "muted" } },
+      "legendSep": { "type": "Caption", "props": { "text": "·", "tone": "muted" } },
+      "legendDotCheck": { "type": "Dot", "props": { "size": "sm", "tone": "warning" } },
+      "legendTextCheck": { "type": "Caption", "props": { "text": "check", "tone": "muted" } },
+      "legendTail": { "type": "Caption", "props": { "text": "— field confidence", "tone": "muted" } },
+      "footerOpen": {
+        "type": "Button",
+        "props": { "label": "Open in Gmail", "variant": "primary", "tone": "info", "size": "sm" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": { "$state": "/google-workspace-gmail/list_bill_label_emails/latest/webLink" },
+              "target": "_blank"
+            }
+          }
+        }
+      }
+    }
+  }
+}
