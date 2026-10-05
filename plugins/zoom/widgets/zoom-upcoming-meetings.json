@@ -1,0 +1,347 @@
+{
+  "category": "communications",
+  "connectorsUsed": [
+    "zoom"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "zoom",
+    "params": {
+      "page_size": 30,
+      "type": "upcoming_meetings"
+    },
+    "tool": "list_meetings"
+  },
+  "description": "Everything on the connected Zoom user's calendar — topic, time, duration, and a one-click Join link. Color-coded by how soon each one starts: today's meetings stand out, this week fades to a softer tone, further-out meetings are muted.",
+  "id": "zoom-upcoming-meetings",
+  "keywords": [
+    "upcoming meetings",
+    "zoom calendar",
+    "join meeting",
+    "scheduled meetings"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 14
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 7
+    },
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 9
+    }
+  },
+  "spec": {
+    "elements": {
+      "body": {
+        "children": [
+          "errorBanner",
+          "emptyState",
+          "meetingList"
+        ],
+        "props": {},
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "header",
+          "divider1",
+          "body",
+          "divider2",
+          "footer"
+        ],
+        "props": {},
+        "type": "Card"
+      },
+      "dateBadge": {
+        "props": {
+          "text": {
+            "$computed": "zoom_format_datetime",
+            "args": {
+              "value": {
+                "$item": "start_time"
+              }
+            }
+          },
+          "tone": {
+            "$computed": "zoom_meeting_urgency_tone",
+            "args": {
+              "startTime": {
+                "$item": "start_time"
+              }
+            }
+          }
+        },
+        "type": "Badge"
+      },
+      "divider1": {
+        "props": {},
+        "type": "Divider"
+      },
+      "divider2": {
+        "props": {},
+        "type": "Divider"
+      },
+      "durationCaption": {
+        "props": {
+          "text": {
+            "$computed": "zoom_format_duration",
+            "args": {
+              "minutes": {
+                "$item": "duration"
+              }
+            }
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "emptyIcon": {
+        "props": {
+          "name": "CalendarOff",
+          "size": "md",
+          "tone": "muted"
+        },
+        "type": "Icon"
+      },
+      "emptyState": {
+        "children": [
+          "emptyIcon",
+          "emptyText"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/zoom.list_meetings",
+              "not": true
+            },
+            {
+              "$state": "/zoom/list_meetings/meetings/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "emptyText": {
+        "props": {
+          "text": "Nothing on the calendar.",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "errorBanner": {
+        "props": {
+          "text": {
+            "$template": "Couldn't load meetings: ${/_errors/zoom.list_meetings}"
+          },
+          "tone": "destructive"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/_errors/zoom.list_meetings"
+        }
+      },
+      "eyebrow": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/zoom/list_meetings/meetings"
+                  }
+                }
+              },
+              "pattern": "Zoom · {n} scheduled"
+            }
+          }
+        },
+        "type": "Eyebrow"
+      },
+      "footer": {
+        "children": [
+          "openZoomBtn"
+        ],
+        "props": {
+          "justify": "end"
+        },
+        "type": "Row"
+      },
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {},
+        "type": "Header"
+      },
+      "joinBtn": {
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$bindItem": "join_url"
+              }
+            }
+          }
+        },
+        "props": {
+          "label": "Join",
+          "leadingIcon": "Video",
+          "size": "sm",
+          "tone": "brand",
+          "variant": "primary"
+        },
+        "type": "Button"
+      },
+      "meetingInfo": {
+        "children": [
+          "meetingTopic",
+          "meetingMetaRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "meetingList": {
+        "children": [
+          "meetingRow"
+        ],
+        "props": {
+          "gap": "sm",
+          "maxHeight": 480
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/zoom/list_meetings/meetings"
+        },
+        "type": "Stack"
+      },
+      "meetingMetaRow": {
+        "children": [
+          "dateBadge",
+          "durationCaption"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "meetingRow": {
+        "children": [
+          "urgencyBar",
+          "meetingInfo",
+          "joinBtn"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "template": "0.25rem minmax(0, 1fr) auto"
+        },
+        "type": "Row"
+      },
+      "meetingTopic": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "topic"
+          },
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "openZoomBtn": {
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": "https://zoom.us/"
+            }
+          }
+        },
+        "props": {
+          "label": "Open Zoom",
+          "leadingIcon": "ExternalLink",
+          "size": "sm",
+          "tone": "brand",
+          "variant": "ghost"
+        },
+        "type": "Button"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Upcoming Meetings"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "CalendarDays",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "urgencyBar": {
+        "props": {
+          "size": "md",
+          "tone": {
+            "$computed": "zoom_meeting_urgency_tone",
+            "args": {
+              "startTime": {
+                "$item": "start_time"
+              }
+            }
+          }
+        },
+        "type": "Dot"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "zoom",
+    "meetings",
+    "calendar",
+    "schedule",
+    "video-conferencing"
+  ],
+  "title": "Zoom — Upcoming Meetings"
+}

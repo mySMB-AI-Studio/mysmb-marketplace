@@ -6,25 +6,7 @@ Browser OAuth through myHub — no API keys, no env vars. Click Connect, sign in
 
 ## Configuration
 
-No environment variables are required on the client side — this plugin's `.mcp.json` points at myHub's own hosted MCP gateway, and myHub injects the OAuth bearer token automatically once you connect.
-
-On first use, Connect redirects to Zoom's OAuth 2.0 authorization page (`https://zoom.us/oauth/authorize`). Zoom's authorize endpoint does not take a `scope` request parameter — the scopes actually granted come from this app's own Marketplace registration, which is configured to request:
-
-- `user:read:user`
-- `meeting:read:list_meetings`
-- `meeting:read:meeting`
-- `meeting:write:meeting`
-- `meeting:update:meeting`
-- `meeting:delete:meeting`
-- `webinar:read:list_webinars`
-- `webinar:read:webinar`
-
-Token behavior: Zoom access tokens expire after 3600 seconds; myHub proactively refreshes them. Unusual but worth noting — Zoom **rotates** the refresh token on every single use (a new one is issued and the old one is invalidated each time), and myHub always persists the fresh one so refreshes keep working. If the connection ever stops working, click Connect again to re-authorize.
-
-### Prerequisites
-
-- A Zoom account that can sign in through Zoom's OAuth consent screen.
-- Webinar tools (`list_webinars`, `get_webinar`) require the connected Zoom account to have Zoom's **Webinar add-on license**. Without it, those calls return a clear "not available on this plan" error rather than failing or crashing.
+No configuration variables are required.
 
 ## Tools & resources
 
