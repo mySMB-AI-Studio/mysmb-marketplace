@@ -1,0 +1,245 @@
+{
+  "category": "hris",
+  "connectorsUsed": [],
+  "dataProvider": {
+    "kind": "portal-snapshot",
+    "recipe": {
+      "entityType": "attendance",
+      "writeTo": "/portal/attendance"
+    }
+  },
+  "description": "Observed staff attendance, reviewed employment facts and verified MTD attendance. Performance feedback is collected through the generated monthly WorkQ review requests.",
+  "id": "hammerjack-attendance-today",
+  "sizing": {
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 3
+    },
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 3
+    }
+  },
+  "spec": {
+    "elements": {
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "table"
+        ],
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "header",
+          "body"
+        ],
+        "type": "Card"
+      },
+      "empty": {
+        "props": {
+          "message": "No attendance data synced yet."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/portal/snapshot/attendance",
+              "not": true
+            },
+            {
+              "$state": "/portal/attendance/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "type": "Header"
+      },
+      "loading": {
+        "props": {
+          "height": "8rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton",
+        "visible": {
+          "$state": "/_loading/portal/snapshot/attendance"
+        }
+      },
+      "subtitle": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "date": {
+                "$computed": "format_date",
+                "args": {
+                  "format": "long",
+                  "value": {
+                    "$state": "/portal/attendance/0/observedAt"
+                  }
+                }
+              },
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/portal/attendance"
+                  }
+                }
+              },
+              "pattern": "{date} · {n} employees"
+            }
+          }
+        },
+        "type": "Eyebrow"
+      },
+      "table": {
+        "props": {
+          "columns": [
+            {
+              "field": "employee_name",
+              "header": "Employee",
+              "id": "name",
+              "priority": 1,
+              "width": 180
+            },
+            {
+              "field": "clock_in_time",
+              "format": "time_12h",
+              "header": "Clock-in",
+              "id": "clockIn",
+              "priority": 1,
+              "width": 110
+            },
+            {
+              "field": "work_location",
+              "format": "dash_if_empty",
+              "header": "Location",
+              "id": "location",
+              "priority": 1,
+              "toneFormat": "work_location",
+              "variant": "badge",
+              "width": 110
+            },
+            {
+              "align": "right",
+              "field": "attendance_rate_mtd",
+              "format": "percent_dash",
+              "header": "Attendance (MTD)",
+              "id": "rateMtd",
+              "priority": 1,
+              "width": 130
+            },
+            {
+              "field": "employment_status",
+              "format": "dash_if_empty",
+              "header": "Status",
+              "id": "empStatus",
+              "priority": 1,
+              "toneFormat": "employment_status",
+              "variant": "badge",
+              "width": 120
+            },
+            {
+              "field": "start_date",
+              "format": "dash_if_empty",
+              "header": "Start date",
+              "id": "startDate",
+              "priority": 2,
+              "width": 110
+            }
+          ],
+          "rows": {
+            "$computed": "sort_by_priority",
+            "args": {
+              "by": [
+                {
+                  "field": "status",
+                  "order": [
+                    "present",
+                    "late",
+                    "absent"
+                  ]
+                },
+                {
+                  "direction": "asc",
+                  "field": "clock_in_time"
+                }
+              ],
+              "value": {
+                "$state": "/portal/attendance"
+              }
+            }
+          }
+        },
+        "type": "Table",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/portal/snapshot/attendance",
+              "not": true
+            },
+            {
+              "$state": "/portal/attendance/0"
+            }
+          ]
+        }
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Today's Attendance"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "start",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Users",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "subtitle"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      }
+    },
+    "root": "card"
+  },
+  "status": "published",
+  "tags": [
+    "portal",
+    "attendance",
+    "hris",
+    "sprout"
+  ],
+  "title": "Hammerjack Today's Attendance"
+}
