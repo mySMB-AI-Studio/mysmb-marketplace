@@ -1,0 +1,80 @@
+{
+  "id": "restoke-venues",
+  "title": "Restoke — Venues",
+  "description": "Live list of venue IDs and names visible to this Restoke HQ key. Use a venue's ID to scope get_report calls via restaurantIds. Returns 403 (shown as an error state) if the key isn't HQ-scoped.",
+  "category": "operations",
+  "tags": ["restoke", "venues", "hospitality", "restaurant", "operations"],
+  "keywords": ["venues", "restaurants", "locations", "hq", "restoke"],
+  "connectorsUsed": ["restoke"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 6 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
+    "max": { "colSpan": 10, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "restoke",
+    "tool": "list_venues",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["headerRow", "div0", "body"] },
+
+      "headerRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["titleGroup", "refreshBtn"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "Store", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "subtitle"] },
+      "title": { "type": "Heading", "props": { "text": "Venues", "level": "h2" } },
+      "subtitle": { "type": "Eyebrow", "props": { "text": "Restoke" } },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": { "icon": "RefreshCw", "size": "sm", "ariaLabel": "Refresh" },
+        "on": { "click": { "action": "restoke.list_venues", "params": {} } }
+      },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": { "padding": "md" }, "children": ["loading", "empty", "list"] },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["lk1", "lk2", "lk3"],
+        "visible": { "$state": "/_loading/restoke.list_venues" }
+      },
+      "lk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "lk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "lk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No venues found — this key may not be HQ-scoped." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/restoke.list_venues", "not": true },
+            { "$state": "/restoke/list_venues/0", "not": true }
+          ]
+        }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": { "statePath": "/restoke/list_venues", "key": "id" },
+        "visible": { "$state": "/_loading/restoke.list_venues", "not": true }
+      },
+      "row": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "template": "auto minmax(0, 1fr) auto" },
+        "children": ["rowIcon", "rowStack", "rowIdBadge"]
+      },
+      "rowIcon": { "type": "Icon", "props": { "name": "Store", "tone": "muted", "size": "sm" } },
+      "rowStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["rowName"] },
+      "rowName": { "type": "Text", "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "truncate": true } },
+      "rowIdBadge": { "type": "Caption", "props": { "text": { "$item": "id" }, "tone": "muted" } }
+    }
+  }
+}
