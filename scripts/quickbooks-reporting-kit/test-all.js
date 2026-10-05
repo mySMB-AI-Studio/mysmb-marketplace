@@ -65,7 +65,7 @@ function ok(r, n, c, info) { total++; if (!c) { fails++; console.log('  FAIL', r
     ok(name, 'snapshot says frozen', text(snap.doc, '#qb-banner').includes('Snapshot'));
     // 5. needs_connection on the primary binding
     const e = await run(report, manifest, fx, { fail: { [spec.primary]: { code: 'needs_connection', message: 'not connected' } } });
-    ok(name, 'needs_connection message', text(e.doc, 'main').includes('Connect QuickBooks'), text(e.doc, 'main').slice(0, 300));
+    ok(name, 'needs_connection message', text(e.doc, 'main').includes(spec.connect || 'Connect QuickBooks'), text(e.doc, 'main').slice(0, 300));
     ok(name, 'needs_connection no script errors', e.errs.length === 0, e.errs);
     // 6. every data binding failure must be visible (red banner or an error in the page) — never a silent zero
     for (const bd of manifest.bindings) {

@@ -575,17 +575,28 @@ var QB = (function () {
   // ---------- the report controller ----------
   // cfg: {title, token, route, kind:'period'|'asat', inputs:{start,end,asAt,basis,columnsBy,cmpStart,cmpEnd,cmpAsAt,persona,display}, defaults:{<declared>:value},
   //       uses:{bindingId:[declared input names]}, primary:'bindingId', company:'company_info', prefs:'prefs', tools:{bindingId:'tool name'},
-  //       columnsBy:[[value,label]], compare:true, enums:[{input,label,options:[[v,l]]}], views:[[key,label]], render(ctx)->{checks,na,notes,title,period}, excel(ctx)->[sheets]}
+  //       columnsBy:[[value,label]], compare:true, enums:[{input,label,options:[[v,l]] or function(inputs),num,disp}], views:[[key,label]], render(ctx)->{checks,na,notes,title,period}, excel(ctx)->[sheets]}
+  // A report on another connector (Employment Hero Payroll) also sets: friendly:{code:message}, mechanism, prepared, footer, fy:{month,source},
+  //       clients(data)->[[id,name]] with inputs.client (the client selector lists them and refetches), clientTitle, clientNote, noCompany, country,
+  //       period(data)->{start,end} (a snapshot's period, read from the data).
   var FRIENDLY = { needs_connection: 'Connect QuickBooks (Settings → Connections) to see this data.', connection_unavailable: 'QuickBooks is temporarily unavailable — press Refresh to try again.', tool_not_found: 'This QuickBooks report is not available on the connected connector.', tool_error: 'QuickBooks returned an error for this section.', invalid_inputs: 'One of the report controls has an invalid value.' };
   var MECHANISM = 'quickbooks-accounting connector — mySMB custom MCP on the QuickBooks Online Accounting API v3 (AGT-003)';
   function app(cfg) {
     var MH = window.MyHubReport, live = !!(MH && MH.mode !== 'snapshot');
     var I = cfg.inputs || {}, S = { inputs: Object.assign({}, cfg.defaults), data: {}, errors: {}, fetchedAt: null, first: true, busy: 0 };
+    var FR = Object.assign({}, FRIENDLY, cfg.friendly || {}), MECH = cfg.mechanism || MECHANISM;
     var $ = function (id) { return document.getElementById(id); };
     function disp() { return readDisplay(I.display ? S.inputs[I.display] : ''); }
     function setDisp(patch) { if (!I.display) return; var d = disp(), k; for (k in patch) d[k] = patch[k]; S.inputs[I.display] = writeDisplay(d); }
-    function fy() { return fiscalStart(S.data[cfg.company], S.data[cfg.prefs]); }
-    function err(id) { var e = S.errors[id]; return e ? (FRIENDLY[e.code] || e.message || 'Unavailable') + (e.code === 'tool_error' && e.message ? ' (' + e.message + ')' : '') : null; }
+    function fy() { return cfg.fy || fiscalStart(S.data[cfg.company], S.data[cfg.prefs]); }
+    // Client selector: QuickBooks gives one company (CompanyInfo); cfg.clients lists several (payroll businesses), chosen by inputs.client ('' = the first).
+    function clients() { return cfg.clients ? cfg.clients(S.data) || [] : null; }
+    function client() {
+      var cl = clients(); if (!cl) return companyInfo(S.data[cfg.company]);
+      var cur = I.client ? S.inputs[I.client] : '', m = cl.filter(function (x) { return String(x[0]) === String(cur); })[0] || (!cur && cl[0]);
+      return m ? { name: m[1], country: cfg.country || null } : null;
+    }
+    function err(id) { var e = S.errors[id]; return e ? (FR[e.code] || e.message || 'Unavailable') + (e.code === 'tool_error' && e.message ? ' (' + e.message + ')' : '') : null; }
     function announce() { if (MH && live) MH.setInputs(Object.assign({}, S.inputs)); }
     function status(t) { var el = $('qb-status'); if (el) el.textContent = t || ''; }
     function requery(changed) {
@@ -623,6 +634,7 @@ var QB = (function () {
     }
     // In snapshot mode the embedded data carries its own period: read it from the primary report Header.
     function adoptHeader() {
+      if (!live && cfg.period) { var pr = cfg.period(S.data) || {}; if (I.start && pr.start) S.inputs[I.start] = pr.start; if (I.end && pr.end) S.inputs[I.end] = pr.end; } // non-QuickBooks data: cfg.period reads it
       var hd = header(S.data[cfg.primary]); if (!hd || !hd.ReportName) return;
       if (!live) {
         if (I.start && hd.StartPeriod) S.inputs[I.start] = hd.StartPeriod;
@@ -633,14 +645,15 @@ var QB = (function () {
     }
     function opt(list, cur) { return list.map(function (o) { return '<option value="' + h(o[0]) + '"' + (String(o[0]) === String(cur) ? ' selected' : '') + '>' + h(o[1]) + '</option>'; }).join(''); }
     function controls() {
-      var el = $('qb-controls'); if (!el) return; var d = disp(), ci = companyInfo(S.data[cfg.company]), dis = live ? '' : ' disabled', x = '';
-      x += '<label class="ctl">Client<select id="qb-client" title="One QuickBooks company per connection — connect another company under Settings → Connections to switch."><option>' + h((ci && ci.name) || 'Connected QuickBooks company') + '</option></select></label>';
+      var el = $('qb-controls'); if (!el) return; var d = disp(), ci = client(), cl = clients(), dis = live ? '' : ' disabled', x = '';
+      if (cl && cl.length) x += '<label class="ctl">Client<select id="qb-client" title="' + h(cfg.clientTitle || '') + '"' + (live && I.client && cl.length > 1 ? '' : ' disabled') + '>' + opt(cl, (I.client && S.inputs[I.client]) || cl[0][0]) + '</select></label>';
+      else x += '<label class="ctl">Client<select id="qb-client" title="One QuickBooks company per connection — connect another company under Settings → Connections to switch."><option>' + h((ci && ci.name) || 'Connected QuickBooks company') + '</option></select></label>';
       if (I.start) x += '<label class="ctl">Report period<select id="qb-preset"' + dis + '>' + opt(cfg.presets || PRESETS, d.p) + '</select></label><label class="ctl">From<input type="date" id="qb-from" value="' + h(S.inputs[I.start]) + '"' + dis + '></label><label class="ctl">To<input type="date" id="qb-to" value="' + h(S.inputs[I.end]) + '"' + dis + '></label>';
       if (I.asAt) x += '<label class="ctl">As of<select id="qb-asat-preset"' + dis + '>' + opt(ASAT, d.a) + '</select></label><label class="ctl">Date<input type="date" id="qb-asat" value="' + h(S.inputs[I.asAt]) + '"' + dis + '></label>';
       if (I.basis) x += '<fieldset class="ctl seg"' + dis + '><legend>Accounting method</legend>' + ['Cash', 'Accrual'].map(function (b) { return '<label><input type="radio" name="qb-basis" value="' + b + '"' + (S.inputs[I.basis] === b ? ' checked' : '') + dis + '>' + b + '</label>'; }).join('') + '</fieldset>';
       if (I.columnsBy && cfg.columnsBy) x += '<label class="ctl">Display columns by<select id="qb-cols"' + dis + '>' + opt(cfg.columnsBy, S.inputs[I.columnsBy]) + '</select></label>';
       if (cfg.compare) x += '<label class="ctl">Compare to<select id="qb-cmp"' + dis + '>' + opt(I.asAt ? [['none', 'None'], ['prev_period', 'Previous month end'], ['prev_year', 'Previous year']] : [['none', 'None'], ['prev_period', 'Previous period'], ['prev_year', 'Previous year'], ['ytd', 'Year-to-date']], d.c) + '</select></label>';
-      (cfg.enums || []).forEach(function (e, i) { var rq = Object.keys(cfg.uses || {}).some(function (id) { return (cfg.uses[id] || []).indexOf(e.input) >= 0; }); x += '<label class="ctl">' + h(e.label) + '<select id="qb-enum-' + i + '"' + (rq ? dis : '') + '>' + opt(e.options, S.inputs[e.input]) + '</select></label>'; });
+      (cfg.enums || []).forEach(function (e, i) { var rq = Object.keys(cfg.uses || {}).some(function (id) { return (cfg.uses[id] || []).indexOf(e.input) >= 0; }); x += '<label class="ctl">' + h(e.label) + '<select id="qb-enum-' + i + '"' + (rq ? dis : '') + '>' + opt(typeof e.options === 'function' ? e.options(S.inputs) : e.options, S.inputs[e.input]) + '</select></label>'; });
       if (cfg.views) x += '<label class="ctl">Report<select id="qb-view">' + opt(cfg.views, d.v || cfg.views[0][0]) + '</select></label>';
       if (I.persona) x += '<label class="ctl">View as<select id="qb-persona">' + opt([['Client', 'Client'], ['Bookkeeper', 'Bookkeeper'], ['Practitioner', 'Practitioner'], ['Executive', 'Executive']], S.inputs[I.persona]) + '</select></label>';
       x += '<details class="ctl customise"><summary>Customise</summary><div class="cz">' +
@@ -662,7 +675,8 @@ var QB = (function () {
       document.querySelectorAll('input[name="qb-basis"]').forEach(function (r) { r.addEventListener('change', function () { var p = {}; p[I.basis] = this.value; change(p); }); });
       on('qb-cols', 'change', function () { var p = {}; p[I.columnsBy] = this.value; change(p); });
       on('qb-cmp', 'change', function () { change({}, { c: this.value }); });
-      (cfg.enums || []).forEach(function (e, i) { on('qb-enum-' + i, 'change', function () { var p = {}; p[e.input] = this.value; change(p); }); });
+      on('qb-client', 'change', function () { if (!I.client) return; var p = {}; p[I.client] = this.value; change(p, { x: '' }); }); // another client: its own employees
+      (cfg.enums || []).forEach(function (e, i) { on('qb-enum-' + i, 'change', function () { var p = {}; p[e.input] = e.num ? Number(this.value) : this.value; change(p, e.disp); }); });
       on('qb-view', 'change', function () { change({}, { v: this.value }); });
       on('qb-persona', 'change', function () { var p = {}; p[I.persona] = this.value; change(p); });
       [['qb-cents', 'cents'], ['qb-k', 'k'], ['qb-red', 'red'], ['qb-hdr', 'hdr'], ['qb-ftr', 'ftr']].forEach(function (c) { on(c[0], 'change', function () { var p = {}; p[c[1]] = this.checked ? 1 : 0; change({}, p); }); });
@@ -676,7 +690,7 @@ var QB = (function () {
       on('qb-xlsx', 'click', function () { exportXlsx(); });
     }
     function ctx() {
-      var d = disp(), ci = companyInfo(S.data[cfg.company]), f = fy();
+      var d = disp(), ci = client(), f = fy();
       return { data: S.data, errors: S.errors, err: err, inputs: S.inputs, I: I, display: d, view: d.v || (cfg.views ? cfg.views[0][0] : ''), compareMode: cfg.compare ? d.c : 'none',
         persona: I.persona ? S.inputs[I.persona] : 'Bookkeeper', company: ci && ci.name, country: ci && ci.country, fy: f, currency: homeCurrency(S.data[cfg.prefs], S.data[cfg.primary]), live: live,
         fetchedAt: S.fetchedAt, lines: function (id) { return walk(S.data[id]); }, body: $('qb-body'), change: change, disp: disp, today: iso(today()) };
@@ -694,7 +708,7 @@ var QB = (function () {
       last = { checks: out.checks || [], na: out.na || [], notes: out.notes || [] };
       // Not connected: always say so at the top of the report, whichever view is showing.
       var nc = Object.keys(S.errors).some(function (id) { return S.errors[id] && S.errors[id].code === 'needs_connection'; });
-      if (nc && c.body && c.body.textContent.indexOf(FRIENDLY.needs_connection) < 0) { var dv = document.createElement('div'); dv.className = 'qb-banner fail'; dv.textContent = FRIENDLY.needs_connection; c.body.insertBefore(dv, c.body.firstChild); }
+      if (nc && c.body && c.body.textContent.indexOf(FR.needs_connection) < 0) { var dv = document.createElement('div'); dv.className = 'qb-banner fail'; dv.textContent = FR.needs_connection; c.body.insertBefore(dv, c.body.firstChild); }
       // A failed data source is never silent: it turns the banner red even when the report's own checks still pass.
       Object.keys(S.errors).forEach(function (id) {
         if (id === cfg.company || id === cfg.prefs) return;
@@ -704,8 +718,9 @@ var QB = (function () {
         last.checks.unshift({ name: 'Data loaded: ' + ((cfg.tools || {})[id] || id), pass: false, detail: msg });
       });
       var hd = $('qb-head');
-      if (hd) { hd.hidden = !d.hdr || !!cfg.noHead; var per = out.period || (I.start ? periodLine(S.inputs[I.start], S.inputs[I.end]) : I.asAt ? asOfLine(S.inputs[I.asAt]) : ''); hd.innerHTML = '<div class="co">' + h(c.company || 'N/A — not in source') + '</div><div class="ti">' + h(out.title || cfg.title) + '</div><div class="pe">' + h(per) + '</div><div class="qb-src"><i aria-hidden="true"></i>Prepared from QuickBooks Online</div>'; }
-      var ft = $('qb-foot'); if (ft) { ft.hidden = !d.ftr; ft.textContent = footerStamp(I.basis ? S.inputs[I.basis] : (header(S.data[cfg.primary]).ReportBasis || 'Accrual'), S.fetchedAt); }
+      if (hd) { hd.hidden = !d.hdr || !!cfg.noHead; var per = out.period || (I.start ? periodLine(S.inputs[I.start], S.inputs[I.end]) : I.asAt ? asOfLine(S.inputs[I.asAt]) : ''); hd.innerHTML = '<div class="co">' + h(c.company || 'N/A — not in source') + '</div><div class="ti">' + h(out.title || cfg.title) + '</div><div class="pe">' + h(per) + '</div><div class="qb-src"><i aria-hidden="true"></i>' + h(cfg.prepared || 'Prepared from QuickBooks Online') + '</div>'; }
+      var ft = $('qb-foot'), fs = footerStamp(I.basis ? S.inputs[I.basis] : (header(S.data[cfg.primary]).ReportBasis || 'Accrual'), S.fetchedAt);
+      if (ft) { ft.hidden = !d.ftr; ft.textContent = cfg.footer ? cfg.footer + fs.slice(fs.indexOf(' | ')) : fs; }
       banner(c); sources(c);
     }
     function banner(c) {
@@ -725,9 +740,9 @@ var QB = (function () {
     function sources(c) {
       var el = $('qb-sources'); if (!el) return; var t = cfg.tools || {};
       var items = Object.keys(t).map(function (id) { return h(t[id]) + (!S.errors[id] ? '' : /tax_summary/.test(t[id]) && gstUS(c, [id]) ? ' — N/A (US company: sales tax, no GST)' : ' — <span class="qb-err">' + h(err(id)) + '</span>'); });
-      var na = last.na.slice(); if (!c.company) na.unshift('Company name (CompanyInfo returned no name)');
-      el.innerHTML = '<h2>Sources &amp; limitations</h2><ul><li>Mechanism: ' + h(MECHANISM) + '</li><li>Tool calls: ' + items.join(' · ') + '</li>' +
-        '<li>Basis: ' + h(I.basis ? S.inputs[I.basis] : 'n/a') + ' · Currency: ' + h(c.currency) + ' · Client: ' + h(c.company || 'N/A — not in source') + ' (one company per QuickBooks connection)</li>' +
+      var na = last.na.slice(); if (!c.company) na.unshift(cfg.noCompany || 'Company name (CompanyInfo returned no name)');
+      el.innerHTML = '<h2>Sources &amp; limitations</h2><ul><li>Mechanism: ' + h(MECH) + '</li><li>Tool calls: ' + items.join(' · ') + '</li>' +
+        '<li>Basis: ' + h(I.basis ? S.inputs[I.basis] : 'n/a') + ' · Currency: ' + h(c.currency) + ' · Client: ' + h(c.company || 'N/A — not in source') + ' ' + h(cfg.clientNote || '(one company per QuickBooks connection)') + '</li>' +
         (c.fy.source.indexOf('Fallback') === 0 ? '<li class="qb-err">Financial-year start could not be read from QuickBooks; assumed 1 July (Australia). Adjust the dates if this is wrong.</li>' : '') +
         last.notes.map(function (n) { return '<li>' + h(n) + '</li>'; }).join('') +
         (na.length ? '<li>N/A — not in source: ' + na.map(h).join('; ') + '</li>' : '') + '<li>Decision support only — not audit, tax or legal advice.</li></ul>';
@@ -737,7 +752,7 @@ var QB = (function () {
       try { sheets = (cfg.excel && cfg.excel(c)) || []; } catch (e) { sheets = [{ name: 'Error', rows: [['Excel export failed: ' + e.message]] }]; }
       sheets.push({ name: 'Validation', rows: [[{ v: 'Check', s: 'bold' }, { v: 'Result', s: 'bold' }, { v: 'Detail', s: 'bold' }]].concat(last.checks.map(function (k) { return [k.name, k.pass === true ? 'Pass' : k.pass === false ? 'FAIL' : 'N/A', k.detail || '']; })), widths: [60, 10, 60] });
       var pr = reportv2Params({ token: cfg.token, start: I.start && S.inputs[I.start], end: I.end && S.inputs[I.end], asAt: I.asAt && S.inputs[I.asAt], basis: I.basis && S.inputs[I.basis], display: c.display });
-      sheets.push({ name: 'Parameters', rows: [[{ v: 'Parameter', s: 'bold' }, { v: 'Value', s: 'bold' }]].concat(Object.keys(pr).map(function (k) { return [k, String(pr[k])]; })).concat([[], ['Data as of', S.fetchedAt || ''], ['Source', MECHANISM]]), widths: [28, 60] });
+      sheets.push({ name: 'Parameters', rows: [[{ v: 'Parameter', s: 'bold' }, { v: 'Value', s: 'bold' }]].concat(Object.keys(pr).map(function (k) { return [k, String(pr[k])]; })).concat([[], ['Data as of', S.fetchedAt || ''], ['Source', MECH]]), widths: [28, 60] });
       var name = [(c.company || 'QuickBooks'), cfg.title, (I.start ? S.inputs[I.start] + ' to ' + S.inputs[I.end] : I.asAt ? 'as of ' + S.inputs[I.asAt] : '')].join(' - ').replace(/[\\\/:*?"<>|]+/g, ' ');
       download(xlsx(sheets, c.currency), name + '.xlsx');
     }

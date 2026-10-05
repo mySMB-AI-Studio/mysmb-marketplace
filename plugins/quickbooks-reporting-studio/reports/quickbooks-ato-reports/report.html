@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Projects Overview</title>
+<title>ATO Reports</title>
 <style>:root{--accent:#2CA01C;--btn:#236B32;--btn-ink:#FFFFFF;--ink:#393A3D;--muted:#6B6C72;--line:#E3E5E8;--canvas:#F4F5F8;--card:#FFFFFF;--th:#6B6C72;--zebra:transparent;--neg:#D52B1E;--pos:#2CA01C;--pass-bg:#EAF6E8;--fail-bg:#FDECEA;--band:#FFFFFF;--band-ink:#393A3D;--cover:#1B2A4A;--cover-ink:#FFFFFF;--c1:#2CA01C;--c2:#8D9096;--c3:#0077C5;--c4:#00A6A4;--c5:#7B61FF;--c6:#E0457B;--d1:#2CA01C;--d2:#00A6A4;--d3:#7B61FF;--d4:#E0457B;--d5:#0077C5;--d6:#8D9096}
 :root[data-myhub-theme='dark']{--accent:#53C43F;--btn:#2E8B41;--btn-ink:#FFFFFF;--ink:#E6E8EB;--muted:#A3A7AE;--line:#33363C;--canvas:#16181B;--card:#1F2226;--th:#A3A7AE;--neg:#FF6B5E;--pos:#53C43F;--pass-bg:#18301A;--fail-bg:#3A1B19;--band:#1F2226;--band-ink:#E6E8EB;--cover:#22324F;--cover-ink:#FFFFFF;--c1:#53C43F;--c2:#80858D;--c3:#3FA2E8;--c4:#2CC7C4;--c5:#9A86FF;--c6:#F06A96;--d1:#53C43F;--d2:#2CC7C4;--d3:#9A86FF;--d4:#F06A96;--d5:#3FA2E8;--d6:#80858D}
 :root.style-mysmb{--accent:#007A6E;--btn:#007A6E;--zebra:#E6F7F5;--band:#007A6E;--band-ink:#FFFFFF;--cover:#007A6E;--c1:#007A6E;--c3:#00B0A0;--d1:#007A6E;--d2:#00B0A0;--pos:#007A6E}
@@ -787,56 +787,88 @@ PRESETS: PRESETS, preset: preset, ASAT: ASAT, asAt: asAt, compare: compare, peri
 xlsx: xlsx, sheetFromLines: sheetFromLines, download: download, reportv2Params: reportv2Params, deepLink: deepLink, MACRO: MACRO };
 })();</script>
 <script>QB.app({
-  title: 'Projects Overview', token: 'PROJECT_PROFITABILITY', route: 'reportv2', primary: 'pnl_by_customer', company: 'company_info', prefs: 'prefs',
-  inputs: { start: 'start_date', end: 'end_date', basis: 'basis', persona: 'persona', display: 'display' },
-  defaults: { start_date: '2026-07-01', end_date: '2026-09-25', basis: 'Accrual', persona: 'Executive',
-    display: '{"cents":0,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":"overview","x":""}' },
-  uses: { pnl_by_customer: ['start_date', 'end_date', 'basis'], customers: [], estimates: [], company_info: [], prefs: [] },
-  tools: { pnl_by_customer: 'get_report_profit_and_loss (Display columns by Customers)', customers: 'list_customer (projects flagged IsProject)', estimates: 'list_estimate (latest 1,000)', company_info: 'qbo_query (CompanyInfo)', prefs: 'get_preferences' },
-  views: [['overview', 'Projects overview'], ['profitability', 'Project Profitability Summary'], ['estimates', 'Estimates vs actuals by project']],
+  title: 'ATO Reports', primary: 'payment_summaries', prepared: 'Prepared from Employment Hero Payroll', footer: 'Employment Hero Payroll · financial year',
+  mechanism: 'employment-hero-payroll connector — mySMB custom MCP on the Employment Hero Payroll (KeyPay) AU API. QuickBooks Online AU payroll runs in Employment Hero, outside the QuickBooks Accounting API',
+  friendly: { needs_connection: 'Connect Employment Hero Payroll (Settings → Connections) to see this data.', connection_unavailable: 'Employment Hero Payroll is temporarily unavailable — press Refresh to try again.', tool_not_found: 'This payroll report is not available on the connected Employment Hero Payroll connector.', tool_error: 'Employment Hero Payroll returned an error for this section.' },
+  fy: { month: 7, source: 'Australian payroll year' }, country: 'AU',
+  clients: function (d) { return (Array.isArray(d.businesses) ? d.businesses : []).map(function (b) { return [String(b.id), b.name || b.legalName || 'Business ' + b.id]; }); },
+  clientTitle: 'The payroll businesses this Employment Hero Payroll API key can see', clientNote: '(one payroll business per report — choose it in Client)', noCompany: 'Business name (Employment Hero returned no business for this API key)',
+  inputs: { client: 'business_id', persona: 'persona', display: 'display' },
+  defaults: { fy_end: 2026, start_date: '2025-07-01', end_date: '2026-06-30', business_id: '', persona: 'Bookkeeper',
+    display: '{"cents":1,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"last_fy","a":"custom","c":"none","v":"summaries","x":""}' },
+  // Financial year ending (Australian payroll year, 1 July – 30 June). p = last_fy / this_fy rolls forward on open; picking a year makes it custom.
+  enums: [{ input: 'fy_end', label: 'Financial year', num: true, disp: { p: 'custom' }, options: function (inp) {
+    var t = new Date(), y = t.getFullYear() + (t.getMonth() >= 6 ? 1 : 0), o = [], cur = Number(inp.fy_end);
+    for (var i = y; i >= y - 6; i--) o.push([i, 'FY' + i + ' (1 Jul ' + (i - 1) + ' – 30 Jun ' + i + ')']);
+    if (cur && !o.some(function (x) { return x[0] === cur; })) o.push([cur, 'FY' + cur]);
+    return o; } }],
+  roll: function (inp, m, d) { var t = new Date(), y = t.getFullYear() + (t.getMonth() >= 6 ? 1 : 0), want = d.p === 'this_fy' ? y : d.p === 'last_fy' ? y - 1 : null; return want && want !== Number(inp.fy_end) ? { fy_end: want } : {}; },
+  derive: function (inp) { var fy = Number(inp.fy_end); return fy ? { start_date: (fy - 1) + '-07-01', end_date: fy + '-06-30' } : {}; },
+  uses: { businesses: [], payment_summaries: ['fy_end', 'business_id'], stp: ['business_id'], gross_to_net: ['start_date', 'end_date', 'business_id'], payg: ['start_date', 'end_date', 'business_id'] },
+  tools: { businesses: 'list_businesses (employment-hero-payroll)', payment_summaries: 'list_payment_summaries', stp: 'get_stp_registration', gross_to_net: 'get_report_gross_to_net (the financial year)', payg: 'get_report_payg (the financial year)' },
+  views: [['summaries', 'Payment Summaries'], ['year', 'PAYG for the Financial Year'], ['stp', 'STP Registration']],
   render: function (c) {
-    var body = c.body, money = function (v) { return QB.money(v, c.currency, c.display); }, v = c.view || 'profitability';
-    if (c.errors.pnl_by_customer) { body.innerHTML = '<p class="qb-err">' + QB.h(c.err('pnl_by_customer')) + '</p>'; return { checks: [{ name: 'Profit and Loss by customer loaded', pass: false, detail: c.err('pnl_by_customer') }] }; }
-    if (!c.data.pnl_by_customer) return {};
-    var q = function (id, e) { return (c.data[id] && c.data[id].QueryResponse && c.data[id].QueryResponse[e]) || []; };
-    var custs = q('customers', 'Customer'), flagged = custs.some(function (x) { return x.IsProject !== undefined; });
-    var projects = custs.filter(function (x) { return flagged ? x.IsProject === true : x.Job === true; });
-    var rep = c.data.pnl_by_customer, cols = QB.cols(rep), ls = QB.walk(rep), tcol = cols.filter(function (x) { return /^total$/i.test(x.title); })[0];
-    var at = function (g, i) { var l = QB.find(ls, g); return l ? l.values[i] || 0 : 0; };
-    var colFor = function (p) { return cols.filter(function (x) { return x.i > 0 && (x.key === p.Id || x.title === p.FullyQualifiedName || x.title === p.DisplayName); })[0]; };
-    var ests = q('estimates', 'Estimate');
-    var rows = projects.map(function (p) {
-      var col = colFor(p), i = col ? col.i - 1 : null;
-      var inc = i == null ? 0 : Math.round((at('Income', i) + at('OtherIncome', i)) * 100) / 100, cost = i == null ? 0 : Math.round((at('COGS', i) + at('Expenses', i) + at('OtherExpenses', i)) * 100) / 100, prof = i == null ? 0 : at('NetIncome', i);
-      var est = QB.sum(ests.filter(function (e) { return (e.CustomerRef || {}).value === p.Id; }).map(function (e) { return e.TotalAmt; }));
-      return { name: (p.FullyQualifiedName || p.DisplayName || '').split(':').pop(), parent: (p.FullyQualifiedName || '').split(':').slice(0, -1).join(':'), inc: inc, cost: cost, prof: prof, margin: inc ? prof / inc : null, est: est, vsEst: est ? inc - est : null, hasCol: !!col };
-    });
-    var totInc = QB.sum(rows.map(function (r) { return r.inc; })), totProf = QB.sum(rows.map(function (r) { return r.prof; }));
-    if (!projects.length) { body.innerHTML = '<p class="muted">Data appears once it\'s available. (No projects — turn on Projects in QuickBooks › Settings › Advanced, or this company has none yet.)</p>'; return { checks: [{ name: 'Projects exist', pass: null, detail: 'None' }], na: ['Project figures (no projects in this company)'] }; }
-    body.innerHTML = QB.kpis([{ label: 'Total income (projects)', value: totInc }, { label: 'Total profit (projects)', value: totProf }, { label: 'Margin', text: totInc ? QB.pct(totProf / totInc) : 'N/A — not in source' }, { label: 'Projects', money: false, value: projects.length }], c) + '<div id="g1"></div><div class="qb-grid2 detail-block" style="margin-top:16px"><div class="qb-card"><h3 id="t1"></h3><div id="ch1"></div></div><div class="qb-card"><h3>Margin per project</h3><div id="ch2"></div></div></div>';
-    var g = document.getElementById('g1');
-    if (v === 'estimates') QB.grid(g, { filter: true, columns: [{ key: 'name', title: 'Project' }, { key: 'est', title: 'Estimates', money: true }, { key: 'inc', title: 'Actual income', money: true }, { key: 'vsEst', title: 'Actual − estimate', money: true }], rows: rows, total: { name: 'TOTAL', est: QB.sum(rows.map(function (r) { return r.est; })), inc: totInc } }, c);
-    else if (v === 'overview') QB.grid(g, { filter: true, columns: [{ key: 'name', title: 'Project' }, { key: 'parent', title: 'Customer' }, { key: 'inc', title: 'Income', money: true }, { key: 'prof', title: 'Profit', money: true }], rows: rows }, c);
-    else QB.grid(g, { filter: true, columns: [{ key: 'name', title: 'Project' }, { key: 'inc', title: 'Income', money: true }, { key: 'cost', title: 'Costs', money: true }, { key: 'prof', title: 'Profit', money: true }, { key: 'margin', title: 'Margin %', fmt: function (x) { return QB.pct(x); } }], rows: rows, total: { name: 'TOTAL', inc: totInc, cost: QB.sum(rows.map(function (r) { return r.cost; })), prof: totProf, margin: totInc ? totProf / totInc : null } }, c);
-    document.getElementById('t1').textContent = v === 'profitability' ? 'Income vs costs per project' : 'Estimates vs actual income';
-    QB.bars(document.getElementById('ch1'), { title: 'Projects', labels: rows.map(function (r) { return r.name.slice(0, 16); }), series: v === 'profitability' ? [{ name: 'Income', values: rows.map(function (r) { return r.inc; }) }, { name: 'Costs', values: rows.map(function (r) { return r.cost; }) }] : [{ name: 'Actual income', values: rows.map(function (r) { return r.inc; }) }, { name: 'Estimates', values: rows.map(function (r) { return r.est; }) }] }, c);
-    QB.bars(document.getElementById('ch2'), { title: 'Margin per project', labels: rows.map(function (r) { return r.name.slice(0, 16); }), series: [{ name: 'Margin %', values: rows.map(function (r) { return r.margin == null ? null : Math.round(r.margin * 1000) / 10; }) }] }, { currency: '', display: Object.assign({}, c.display, { cents: 0 }) });
-    var profOk = rows.every(function (r) { return QB.near(r.prof, r.inc - r.cost, 0.05); });
-    var split = tcol ? ['Income', 'NetIncome'].every(function (gname) { var l = QB.find(ls, gname); if (!l) return true; return QB.near(l.values[tcol.i - 1], QB.sum(cols.filter(function (x) { return x.i > 0 && x !== tcol; }).map(function (x) { return l.values[x.i - 1]; })), 0.05); }) : null;
-    var missing = rows.filter(function (r) { return !r.hasCol; }).map(function (r) { return r.name; });
-    var checks = [
-      { name: 'Profit = income − costs (each project)', pass: rows.length ? profOk : null, detail: rows.length + ' projects' },
-      { name: 'Σ customer and project columns = P&L total (projects + other customers + not specified)', pass: split, detail: money(tcol ? at('Income', tcol.i - 1) : null) + ' total income' }];
-    this._x = { rows: rows, totInc: totInc, totProf: totProf };
-    return { checks: checks, title: (this.views.filter(function (x) { return x[0] === v; })[0] || ['', ''])[1],
-      notes: [flagged ? 'Projects are the customers QuickBooks flags as projects.' : 'This connection does not return the project flag; sub-customers (jobs) are treated as projects — verify on first run.'].concat(missing.length ? [missing.length + ' project(s) had no activity in the period: ' + missing.join(', ')] : []),
-      na: ['Project time and payroll costs broken out separately ("See info based on" in QuickBooks) — they are included in costs where QuickBooks posts them to the project'] };
+    var body = c.body, h = QB.h, D = c.data, v = c.view || 'summaries', money = function (x) { return QB.money(x, c.currency, c.display); };
+    var need = { summaries: 'payment_summaries', year: 'payg', stp: 'stp' }[v], NAMES = { payment_summaries: 'Payment summaries', payg: 'PAYG withholding', stp: 'STP registration' };
+    if (c.errors[need]) { body.innerHTML = '<p class="qb-err">' + NAMES[need] + ' are unavailable: ' + h(c.err(need)) + '</p>'; return { checks: [{ name: NAMES[need] + ' loaded', pass: false, detail: c.err(need) }] }; }
+    if (!D[need]) return {};
+    var rowsOf = function (id) { return D[id] && Array.isArray(D[id].rows) ? D[id].rows : []; }, sumK = function (a, f) { return QB.sum(a.map(f)); }, dt = function (s) { return s ? String(s).slice(0, 10) : ''; };
+    var lab = function (s) { return String(s == null ? '' : s).replace(/([a-z])([A-Z])/g, '$1 $2'); }, dict = function (o) { var s = 0, k; if (o && typeof o === 'object') for (k in o) if (typeof o[k] === 'number') s += o[k]; return s; };
+    var fy = Number((!c.live && D.payment_summaries && D.payment_summaries.financialYearEnding) || c.inputs.fy_end), period = 'FY' + fy + ': 1 July ' + (fy - 1) + ' - 30 June ' + fy;
+    var nm = function (r) { return ((r.firstName || '') + ' ' + (r.surname || '')).trim() || r.payeeName || 'Employee ' + r.employeeId; };
+    var people = {}; rowsOf('payment_summaries').concat(rowsOf('gross_to_net')).forEach(function (r) { if (r.employeeId != null && !people[r.employeeId]) people[r.employeeId] = nm(r); });
+    if (c.display.x && !people[c.display.x]) people[c.display.x] = 'Employee ' + c.display.x;
+    var sel = c.display.x ? String(c.display.x) : '', mine = function (a) { return sel ? a.filter(function (r) { return String(r.employeeId) === sel; }) : a; };
+    var keys = Object.keys(people).sort(function (a, b) { return people[a].localeCompare(people[b]); });
+    var html = v === 'stp' ? '' : '<label class="ctl" style="display:inline-flex;margin-bottom:12px">Employee<select id="w-emp"><option value="">All employees</option>' + keys.map(function (k) { return '<option value="' + h(k) + '"' + (k === sel ? ' selected' : '') + '>' + h(people[k]) + '</option>'; }).join('') + '</select></label>';
+    var col = function (k, t, m) { return { key: k, title: t, money: m !== false && m !== 'n', num: m === 'n' }; };
+    var checks = [], x = { view: v, title: (this.views.filter(function (w) { return w[0] === v; })[0] || ['', ''])[1], period: period }, chart = null;
+    var G = c.errors.gross_to_net || !D.gross_to_net ? null : mine(rowsOf('gross_to_net')), gsum = function (k, flat) { return G ? sumK(G, function (r) { return typeof r[k] === 'number' ? r[k] : flat && typeof r[flat] === 'number' ? r[flat] : 0; }) : null; };
+    var gGross = gsum('totalGrossEarnings', 'grossEarnings'), gTax = G ? QB.sum([gsum('payg'), gsum('help'), gsum('sfss')]) : null, stp = D.stp || null;
+    if (v === 'summaries') {
+      var PS = mine(rowsOf('payment_summaries')).map(function (r) { return { id: r.employeeId, name: r.payeeName || 'Employee ' + r.employeeId, type: lab(r.paymentSummaryType), status: lab(r.status) + (r.isAmended ? ' (amended)' : ''), period: dt(r.paymentPeriodStart) + ' to ' + dt(r.paymentPeriodEnd),
+        gross: r.grossPayments, tax: r.totalTaxWithheld, allow: r.totalAllowances, resc: r.employerSuperContributions, lump: ['lumpSumA', 'lumpSumB', 'lumpSumD', 'lumpSumE'].reduce(function (s, k) { return s + (Number(r[k]) || 0); }, 0), rfb: r.fringeBenefits, union: dict(r.unionFeeDeductions) }; });
+      var tg = sumK(PS, function (r) { return r.gross; }), tt = sumK(PS, function (r) { return r.tax; }), ta = sumK(PS, function (r) { return r.allow; }), tr = sumK(PS, function (r) { return r.resc; });
+      if (!PS.length) html += '<div class="qb-banner na" style="margin-bottom:12px"><strong>No payment summaries for FY' + fy + '.</strong> ' + h(D.payment_summaries.note || '') + (stp && stp.singleTouchPayrollEnabled ? ' This business reports through Single Touch Payroll — see PAYG for the Financial Year for the year\'s totals.' : '') + '</div>';
+      html += QB.kpis([{ label: 'Payment summaries', money: false, value: PS.length }, { label: 'Gross payments', value: tg }, { label: 'Total tax withheld', value: tt }, { label: 'Reportable employer super', value: tr }], c);
+      x.cols = [col('name', 'Employee', false), col('type', 'Type', false), col('status', 'Status', false), col('period', 'Payment period', false), col('gross', 'Gross payments'), col('tax', 'Tax withheld'), col('allow', 'Allowances'), col('resc', 'Reportable employer super'), col('lump', 'Lump sums'), col('rfb', 'Reportable fringe benefits'), col('union', 'Union fees')];
+      x.rows = PS; x.total = { name: 'TOTAL', gross: tg, tax: tt, allow: ta, resc: tr, lump: sumK(PS, function (r) { return r.lump; }), rfb: sumK(PS, function (r) { return r.rfb; }), union: sumK(PS, function (r) { return r.union; }) }; x.empty = 'No payment summaries for this financial year.';
+      checks.push({ name: 'Tax withheld = PAYG + HELP + SFSS on Gross to Net for the year', pass: !PS.length || gTax == null ? null : Math.abs(tt - gTax) <= PS.length, detail: !PS.length ? 'No payment summaries' : gTax == null ? 'Gross to Net unavailable' : money(tt) + ' vs ' + money(gTax) + ' (whole dollars on payment summaries)' });
+      checks.push({ name: 'Gross payments + allowances + reportable employer super vs gross earnings on Gross to Net', pass: null, info: true, detail: !PS.length || gGross == null ? 'N/A' : money(QB.sum([tg, ta, tr])) + ' vs ' + money(gGross) + ' (lump sums, exempt and foreign income are reported separately)' });
+    } else if (v === 'year') {
+      var P = rowsOf('payg'), W1 = sumK(P, function (r) { return r.grossEarnings; }), W2 = sumK(P, function (r) { return r.payg; });
+      html += QB.kpis([{ label: 'Gross earnings (W1)', value: W1 }, { label: 'Amounts withheld (W2)', value: W2 }, { label: 'Net pay', value: gsum('netEarnings') }, { label: 'Super (SGC)', value: gsum('sgc') }], c);
+      x.cols = [col('month', 'Month', false), col('location', 'Location', false), col('grossEarnings', 'Gross earnings (W1)'), col('preTaxDeductions', 'Pre-tax deductions'), col('taxableEarnings', 'Taxable earnings'), col('payg', 'Amounts withheld (W2)')];
+      x.rows = P; x.total = { month: 'TOTAL', grossEarnings: W1, preTaxDeductions: sumK(P, function (r) { return r.preTaxDeductions; }), taxableEarnings: sumK(P, function (r) { return r.taxableEarnings; }), payg: W2 }; x.empty = 'No PAYG withholding in this financial year.';
+      chart = { title: 'W1 and W2 by month', labels: P.map(function (r) { return String(r.month || '').slice(0, 3); }), series: [{ name: 'W1 gross', values: P.map(function (r) { return r.grossEarnings; }) }, { name: 'W2 withheld', values: P.map(function (r) { return r.payg; }) }] };
+      checks.push({ name: 'W2 for the year = tax withheld on Gross to Net', pass: gTax == null || sel ? null : Math.abs(W2 - gTax) < 0.005 || Math.abs(W2 - gsum('payg')) < 0.005, detail: gTax == null ? 'Gross to Net unavailable' : money(W2) + ' vs PAYG + HELP + SFSS ' + money(gTax) });
+      checks.push({ name: 'W1 for the year = gross earnings on Gross to Net', pass: gGross == null || sel ? null : Math.abs(W1 - gGross) < 0.005, detail: gGross == null ? 'Gross to Net unavailable' : money(W1) + ' vs ' + money(gGross) });
+      if (sel) html = '<div class="qb-banner na" style="margin-bottom:12px">PAYG withholding has no employee breakdown — this table is the whole business.</div>' + html;
+    } else {
+      var F = [['Business name', stp.name], ['ABN', stp.abn], ['Branch', stp.branch], ['State', stp.state], ['Single Touch Payroll enabled', stp.singleTouchPayrollEnabled == null ? '' : stp.singleTouchPayrollEnabled ? 'Yes' : 'No'], ['SBR enabled', stp.sbrEnabled == null ? '' : stp.sbrEnabled ? 'Yes' : 'No'],
+        ['Lodgement role', lab(stp.lodgementRole)], ['ATO integration', lab(stp.atoIntegrationOption)], ['Software provider', stp.sbrSoftwareProvider], ['Software ID', stp.sbrSoftwareId], ['Signatory', stp.signatoryName], ['Tax agent number', stp.taxAgentNumber], ['Intermediary ABN', stp.intermediaryAbn]];
+      x.cols = [col('f', 'Field', false), col('v', 'Value', false)]; x.rows = F.filter(function (r) { return r[1] != null && r[1] !== ''; }).map(function (r) { return { f: r[0], v: r[1] }; }); x.empty = 'Employment Hero returned no STP registration.';
+      var pays = G ? G.length > 0 : null;
+      checks.push({ name: 'Single Touch Payroll enabled for a business that pays employees', pass: stp.singleTouchPayrollEnabled ? true : pays ? false : null, detail: stp.singleTouchPayrollEnabled ? 'Enabled' : pays ? 'Not enabled, but employees were paid in FY' + fy : 'Not enabled; no pay in FY' + fy });
+    }
+    html += '<div id="g1"></div>' + (chart ? '<div class="qb-card" style="margin-top:16px"><h3>' + h(chart.title) + '</h3><div id="ch1"></div></div>' : '');
+    body.innerHTML = html;
+    var g1 = document.getElementById('g1');
+    QB.grid(g1, { filter: true, columns: x.cols, rows: x.rows || [], total: x.rows && x.rows.length ? x.total : null, empty: x.empty }, c);
+    if (chart) QB.bars(document.getElementById('ch1'), chart, c);
+    var es = document.getElementById('w-emp'); if (es) es.addEventListener('change', function () { c.change({}, { x: es.value }); });
+    this._x = x;
+    return { checks: checks, title: x.title + (sel ? ' — ' + people[sel] : ''), period: period,
+      notes: ['From Employment Hero Payroll. Australian QuickBooks Online payroll runs there, not in the QuickBooks Accounting API.', 'Payment summaries are in whole dollars, as the ATO requires. Employers on Single Touch Payroll get ATO income statements instead of payment summaries.', 'Pay figures are shown; tax file numbers, bank details, dates of birth, addresses and personal contact details are removed by the connector. A downloaded or shared copy carries these pay figures — share it only with people who may see payroll.'],
+      na: ['Tax File Declaration Reporting (tax file numbers are removed for privacy)', 'JobKeeper Employee Nominations and JobKeeper Eligibility Report (JobKeeper ended on 28 March 2021)', 'STP lodgement history and ATO income statements (not in Employment Hero\'s API)'] };
   },
   excel: function (c) {
-    var x = this._x; if (!x) return [];
-    var n = x.rows.length;
-    return [{ name: 'Project Profitability', widths: [34, 16, 16, 16, 12, 16], rows: [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: 'Project Profitability Summary', s: 'bold' }], [QB.periodLine(c.inputs.start_date, c.inputs.end_date)], [], [{ v: 'Project', s: 'bold' }, { v: 'Income', s: 'bold' }, { v: 'Costs', s: 'bold' }, { v: 'Profit', s: 'bold' }, { v: 'Margin %', s: 'bold' }, { v: 'Estimates', s: 'bold' }]]
-      .concat(x.rows.map(function (r, i) { var R = 6 + i; return [r.name, { v: r.inc, s: 'money' }, { v: r.cost, s: 'money' }, { f: 'B' + R + '-C' + R, v: r.prof, s: 'money' }, r.margin == null ? null : { v: r.margin, s: 'pct' }, { v: r.est, s: 'money' }]; }), [[{ v: 'TOTAL', s: 'bold' }, { f: 'SUM(B6:B' + (5 + n) + ')', v: x.totInc, s: 'moneyBold' }, { f: 'SUM(C6:C' + (5 + n) + ')', s: 'moneyBold' }, { f: 'SUM(D6:D' + (5 + n) + ')', v: x.totProf, s: 'moneyBold' }]]) }];
+    var x = this._x; if (!x || !x.cols) return [];
+    var L = function (i) { return String.fromCharCode(65 + i); }, rows = [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: x.title, s: 'bold' }], [x.period], [], x.cols.map(function (k) { return { v: k.title, s: 'bold' }; })], first = rows.length + 1;
+    (x.rows || []).forEach(function (r) { rows.push(x.cols.map(function (k) { var val = r[k.key]; return k.money ? (val == null ? null : { v: val, s: 'money' }) : (val == null ? '' : val); })); });
+    var lastR = rows.length;
+    if ((x.rows || []).length && x.total) rows.push(x.cols.map(function (k, i) { return i === 0 ? { v: 'TOTAL', s: 'bold' } : k.money ? { f: 'SUM(' + L(i) + first + ':' + L(i) + lastR + ')', s: 'moneyBold' } : null; }));
+    return [{ name: x.title.slice(0, 31), widths: x.cols.map(function (k) { return k.money ? 16 : 24; }), rows: rows }];
   }
 });</script>
 </body>

@@ -7,7 +7,7 @@ const OUT = fs.mkdtempSync(path.join(os.tmpdir(), 'qbo-rt-')), FAM = require('./
 const run = (cmd, args, env) => execFileSync(cmd, args, { cwd: K, stdio: 'inherit', env: Object.assign({}, process.env, env || {}), shell: process.platform === 'win32' });
 const rdx = (p) => fs.readFileSync(p, 'utf8').replace(/\r\n/g, '\n');
 console.log('1. extract from', SKILLS); run('node', ['extract-skills.js', SKILLS, OUT]);
-console.log('2. tests on the extracted copy'); for (const t of ['test-all.js', 'test-w4.js', 'test-pnl.js', 'test-conformance.js']) run('node', [t], { KIT_DIR: OUT });
+console.log('2. tests on the extracted copy'); for (const t of ['test-all.js', 'test-w4.js', 'test-payroll.js', 'test-pnl.js', 'test-conformance.js']) run('node', [t], { KIT_DIR: OUT });
 console.log('3. build every kit report'); for (const f of KIT) run('node', ['build.js', f.id], { KIT_DIR: OUT });
 console.log('4. platform validators'); run('npx', ['tsx', 'check-reports.mts', OUT]);
 console.log('5. templates = the skills: reports/<skill>/report.html is the document the copy path assembles, report.json the skill\'s dataBindings');

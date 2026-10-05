@@ -1,4 +1,8 @@
 const CI = (F) => () => F.companyInfo, PR = (F) => () => F.prefs;
+const EH = require('./fixtures-payroll.js');
+const EMPS = () => ({ businesses: EH.listBusinesses, employees: EH.employeeDetails, leave: EH.leaveBalances, gross_to_net: EH.grossToNet, pay_categories: EH.payCategories });
+const ATO = () => ({ businesses: EH.listBusinesses, payment_summaries: EH.paymentSummaries, stp: EH.stpRegistration, gross_to_net: EH.grossToNet, payg: EH.payg });
+const PAY = () => ({ businesses: EH.listBusinesses, pay_runs: EH.listPayRuns, gross_to_net: EH.grossToNet, payg: EH.payg, pay_categories: EH.payCategories, super_employee: EH.superContributions, super_fund: EH.superContributions });
 module.exports = {
   pnl: { primary: 'pnl', fx: (F) => ({ pnl: F.pnl, pnl_compare: F.pnl, company_info: CI(F), prefs: PR(F) }), contains: ['Total for Income', 'Gross Profit', 'Net Earnings'],
     checks: ['Gross Profit = Income − Cost of Sales'], snapshotInputs: { start_date: '2026-08-01', end_date: '2026-08-31' }, snapshotPeriod: 'August 2026' },
@@ -67,12 +71,23 @@ module.exports = {
   custom: { primary: 'custom_report', fx: (F) => ({ custom_report: F.customerSales, company_info: CI(F), prefs: PR(F) }), contains: ['Civica Pty Ltd', 'TOTAL', 'Top lines'], checks: ['TOTAL row = Σ rows'],
     snapshotInputs: { start_date: '2026-08-01', end_date: '2026-08-31' }, snapshotPeriod: 'August 2026' },
   custom_sectioned: { report: 'custom', primary: 'custom_report', fx: (F) => ({ custom_report: F.pnl, company_info: CI(F), prefs: PR(F) }), contains: ['Total for Income', 'Top lines'], checks: ["Each 'Total for' = Σ its rows"] },
-  catalogue: { primary: 'company_info', fx: (F) => ({ company_info: CI(F), prefs: PR(F) }), contains: ['Reports catalogue', 'Financial statements', 'Profit and Loss', 'Live', 'Not yet implemented · Wave 4', 'reports live'], checks: ['Every report maps to a family prompt'] },
+  catalogue: { primary: 'company_info', fx: (F) => ({ company_info: CI(F), prefs: PR(F) }), contains: ['Reports catalogue', 'Financial statements', 'Profit and Loss', 'Live', 'Payroll reports', 'reports live'], checks: ['Every report maps to a family prompt'] },
   forecast: { primary: 'pnl_monthly', fx: (F) => ({ pnl_monthly: F.pnl, company_info: CI(F), prefs: PR(F) }), contains: ['Growth assumptions', 'Total for Income', 'Gross Profit', 'Net Profit', 'Net profit — actual to forecast', '80% range (estimate)'],
     checks: ['Base period equals actuals', 'Monthly columns = QuickBooks total (every account)', 'Forecast net profit = income', 'Base period has enough history for the method'], snapshotInputs: { start_date: '2025-09-01' } },
   'employees-time': { primary: 'time_activities', fx: (F) => ({ time_activities: F.timeActivities, employees: F.employees, company_info: CI(F), prefs: PR(F) }),
     contains: ['Melanie Burrows', 'Total for Melanie Burrows', 'Gareth Owen Chainey (supplier)', 'Hours by employee', 'TOTAL'], checks: ['Σ hours per employee = total hours', 'Billable + non-billable hours = total hours', 'Every time activity names an employee or supplier', 'All time activities in the period were loaded'],
     bodyControls: [{ id: 'w-emp', requery: false }] },
+  // Q32–Q34 payroll: Employment Hero Payroll (fixtures-payroll.js), not QuickBooks
+  payroll: { primary: 'gross_to_net', connect: 'Connect Employment Hero Payroll', fx: () => PAY(), contains: ['Gross to Net Report', 'Melanie Burrows', 'Daniel Kim', 'Net earnings', 'TOTAL'],
+    checks: ['Net = gross − pre-tax deductions − PAYG − HELP − SFSS − post-tax deductions (every employee)', 'Pay category breakdown = gross earnings (every employee)', 'Σ employees = Employment Hero totals (gross, net)'],
+    snapshotInputs: { start_date: '2026-09-01', end_date: '2026-09-30' }, snapshotPeriod: 'September 2026' }, // employee picker: test-payroll.js
+  employees: { primary: 'employees', connect: 'Connect Employment Hero Payroll', fx: () => EMPS(), contains: ['Employee Details', 'Melanie Burrows', 'Priya Shah', 'Active employees', 'Employment Type'],
+    checks: ['Employee list loaded', 'Employees matched by employee ID'], snapshotInputs: { start_date: '2026-09-01', end_date: '2026-09-30' }, snapshotPeriod: 'Active employees' },
+  employees_labels: { report: 'employees', primary: 'employees', connect: 'Connect Employment Hero Payroll', fx: () => Object.assign(EMPS(), { employees: EH.employeeDetailsLabels }), contains: ['Melanie Burrows', 'Employee Id'], checks: ['Employees matched by employee ID'] },
+  ato: { primary: 'payment_summaries', connect: 'Connect Employment Hero Payroll', fx: () => ATO(), contains: ['Payment Summaries', 'Melanie Burrows', 'Tom Reyes', 'Reportable employer super', 'TOTAL'],
+    checks: ['Tax withheld = PAYG + HELP + SFSS on Gross to Net for the year'] },
+  ato_stp: { report: 'ato', primary: 'payment_summaries', connect: 'Connect Employment Hero Payroll', fx: () => Object.assign(ATO(), { payment_summaries: EH.paymentSummariesStp }), bannerNA: true,
+    contains: ['No payment summaries for FY2026.', 'Single Touch Payroll', 'PAYG for the Financial Year'] },
   bs_au: { report: 'bs', primary: 'bs', fx: (F) => ({ bs: F.bsAU, bs_compare: F.bsAU, pnl_ytd: F.pnl, company_info: CI(F), prefs: PR(F) }), contains: ["Total for shareholders' equity", 'Profit for the year', 'Total for liabilities and equity'],
     checks: ['Total for Assets = Total for Liabilities + Equity', 'Net Earnings = P&L financial year to date'] },
   'management-reports_au': { report: 'management-reports', primary: 'pnl', fx: (F) => ({ pnl: F.pnl, balance_sheet: F.bsAU, cash_flow: F.cashflow, aged_receivables: F.ar, aged_payables: F.ap, gst_summary: F.taxSummaryByAgency, tax_agencies: F.taxAgencies, gst_probe: F.taxSummaryByAgency, company_info: CI(F), prefs: PR(F) }), checks: ['Balance Sheet: Total for Assets = Total for Liabilities + Equity'] },
