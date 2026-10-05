@@ -148,8 +148,117 @@ const filter_transcribable: ComputedFunction = (args) => {
 /** Button variant for a tab strip — filled when active, ghost otherwise. */
 const tab_variant: ComputedFunction = (args) => (String(args.active ?? '') === String(args.match ?? '') ? 'primary' : 'ghost');
 
-/** Whether a tab strip's content panel should be visible. */
-const is_active_tab: ComputedFunction = (args) => String(args.active ?? '') === String(args.match ?? '');
+/** Tone for a tab strip button — blue ("info", a reliably distinct color here) when active, muted otherwise. Deliberately not "brand"/"accent" — both collapse to a near-neutral color in this design system. */
+const tab_tone: ComputedFunction = (args) => (String(args.active ?? '') === String(args.match ?? '') ? 'info' : 'muted');
+
+/**
+ * Seeds a tab's default value WITHOUT clobbering a manual selection — the
+ * list data this is watched off of can refresh in the background (e.g. a
+ * dashboard auto-poll), which would otherwise silently snap the user back
+ * to the default tab every time it refires, fighting their own click.
+ */
+const seed_default_tab: ComputedFunction = (args) => {
+  const current = String(args.current ?? '').trim();
+  return current || String(args.fallback ?? '');
+};
+
+/** 30-minute time-of-day options, e.g. `{ value: "14:30", label: "2:30 PM" }` — no dedicated time-picker component exists, so this feeds a Select. */
+const time_options: ComputedFunction = () => {
+  const out: { value: string; label: string }[] = [];
+  for (let h = 0; h < 24; h++) {
+    for (const m of [0, 30]) {
+      const value = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      const period = h < 12 ? 'AM' : 'PM';
+      const hour12 = h % 12 === 0 ? 12 : h % 12;
+      out.push({ value, label: `${hour12}:${String(m).padStart(2, '0')} ${period}` });
+    }
+  }
+  return out;
+};
+
+/** Combines a date ("2026-10-10") and a time-of-day ("14:30") into an ISO 8601 UTC string, interpreting them as local time. */
+const combine_datetime: ComputedFunction = (args) => {
+  const date = String(args.date ?? '').trim();
+  const time = String(args.time ?? '').trim();
+  if (!date || !time) return '';
+  const d = new Date(`${date}T${time}:00`);
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString();
+};
+
+/** The browser's IANA timezone — Zoom uses this to display the meeting time correctly in its own UI. */
+const local_timezone: ComputedFunction = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+/** Falls back to Zoom's own default label rather than creating a meeting literally titled "". */
+const schedule_topic: ComputedFunction = (args) => {
+  const topic = String(args.topic ?? '').trim();
+  return topic || 'Zoom Meeting';
+};
+
+/** Falls back to 30 minutes if left blank or invalid. */
+const schedule_duration: ComputedFunction = (args) => {
+  const minutes = Number(args.duration);
+  return Number.isFinite(minutes) && minutes > 0 ? minutes : 30;
+};
+
+/**
+ * `meeting_invitees` confirmed against the live OpenAPI spec as a real field
+ * on create_meeting's `settings` object: `[{ email, internal_user? }]`. Parses
+ * a comma-separated string into that shape, trimming and dropping anything
+ * that doesn't look like an email rather than sending Zoom garbage.
+ */
+const parse_invitees: ComputedFunction = (args) => {
+  const raw = String(args.invitees ?? '');
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => emailRe.test(s))
+    .map((email) => ({ email }));
+};
+
+const schedule_settings: ComputedFunction = (args) => {
+  const invitees = parse_invitees({ invitees: args.invitees }) as { email: string }[];
+  return {
+    waiting_room: Boolean(args.waitingRoom),
+    join_before_host: Boolean(args.joinBeforeHost),
+    ...(invitees.length ? { meeting_invitees: invitees } : {}),
+  };
+};
+
+/** A scheduled meeting needs at least a date and a time — everything else has a sensible default. */
+const schedule_is_invalid: ComputedFunction = (args) => !String(args.date ?? '').trim() || !String(args.time ?? '').trim();
+
+const schedule_validation_message: ComputedFunction = (args) => {
+  const missingDate = !String(args.date ?? '').trim();
+  const missingTime = !String(args.time ?? '').trim();
+  if (missingDate && missingTime) return 'Please pick a date and time before scheduling.';
+  if (missingDate) return 'Please pick a date before scheduling.';
+  if (missingTime) return 'Please pick a time before scheduling.';
+  return '';
+};
+
+/** Default (empty) schedule-form state — also used to reset the form after a successful create. */
+const default_schedule_form: ComputedFunction = () => ({
+  topic: '',
+  date: '',
+  time: '',
+  duration: 30,
+  password: '',
+  invitees: '',
+  waitingRoom: true,
+  joinBeforeHost: false,
+});
+
+/** Prepends a freshly created meeting into the Upcoming Meetings list without re-fetching — create_meeting's response carries the same fields (id, topic, start_time, duration, join_url) a list item does. */
+const prepend_meeting: ComputedFunction = (args) => {
+  const meetings = Array.isArray(args.meetings) ? (args.meetings as Record<string, unknown>[]) : [];
+  const newMeeting = args.newMeeting as Record<string, unknown> | undefined;
+  if (!newMeeting || !newMeeting.id) return meetings;
+  const deduped = meetings.filter((m) => String(m.id ?? '') !== String(newMeeting.id));
+  return [newMeeting, ...deduped];
+};
+
+const bool_not: ComputedFunction = (args) => !args.value;
 
 const elements: PluginElementsModule = {
   slug: 'zoom',
@@ -166,7 +275,20 @@ const elements: PluginElementsModule = {
     filter_my_notes,
     filter_transcribable,
     tab_variant,
-    is_active_tab,
+    tab_tone,
+    seed_default_tab,
+    time_options,
+    combine_datetime,
+    local_timezone,
+    schedule_topic,
+    schedule_duration,
+    schedule_settings,
+    parse_invitees,
+    schedule_is_invalid,
+    schedule_validation_message,
+    default_schedule_form,
+    prepend_meeting,
+    bool_not,
   },
 };
 

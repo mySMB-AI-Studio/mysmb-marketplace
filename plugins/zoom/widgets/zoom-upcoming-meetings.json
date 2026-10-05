@@ -12,19 +12,21 @@
     },
     "tool": "list_meetings"
   },
-  "description": "Everything on the connected Zoom user's calendar — topic, time, duration, and a one-click Join link. Color-coded by how soon each one starts: today's meetings stand out, this week fades to a softer tone, further-out meetings are muted.",
+  "description": "Everything on the connected Zoom user's calendar — topic, time, duration, and a one-click Join link. Color-coded by how soon each one starts: today's meetings stand out, further-out meetings are muted. A '+ Schedule' button expands a bordered form (date, time, duration, passcode, waiting room, join-before-host) to create a new meeting — on success it's prepended straight into the list without re-fetching.",
   "id": "zoom-upcoming-meetings",
   "keywords": [
     "upcoming meetings",
     "zoom calendar",
     "join meeting",
-    "scheduled meetings"
+    "scheduled meetings",
+    "schedule meeting",
+    "create meeting"
   ],
   "popularity": 0,
   "sizing": {
     "max": {
       "colSpan": 8,
-      "rowSpan": 14
+      "rowSpan": 18
     },
     "min": {
       "colSpan": 4,
@@ -39,12 +41,250 @@
     "elements": {
       "body": {
         "children": [
-          "errorBanner",
-          "emptyState",
-          "meetingList"
+          "tabBar",
+          "schedulePanel",
+          "upcomingPanel"
         ],
         "props": {},
         "type": "Body"
+      },
+      "tabBar": { "children": ["scheduleTabBtn", "upcomingTabBtn"], "props": { "gap": "xs" }, "type": "Row" },
+      "scheduleTabBtn": {
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "schedule" } } },
+        "props": {
+          "label": "Schedule",
+          "leadingIcon": "CalendarPlus",
+          "size": "sm",
+          "tone": { "$computed": "zoom_tab_tone", "args": { "active": { "$state": "/ui/activeTab" }, "match": "schedule" } },
+          "variant": { "$computed": "zoom_tab_variant", "args": { "active": { "$state": "/ui/activeTab" }, "match": "schedule" } }
+        },
+        "type": "Button"
+      },
+      "upcomingTabBtn": {
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "upcoming" } } },
+        "props": {
+          "label": "Upcoming",
+          "leadingIcon": "CalendarDays",
+          "size": "sm",
+          "tone": { "$computed": "zoom_tab_tone", "args": { "active": { "$state": "/ui/activeTab" }, "match": "upcoming" } },
+          "variant": { "$computed": "zoom_tab_variant", "args": { "active": { "$state": "/ui/activeTab" }, "match": "upcoming" } }
+        },
+        "type": "Button"
+      },
+      "schedulePanel": {
+        "children": [
+          "scheduleErrorBanner",
+          "scheduleTopicRow",
+          "scheduleDateTimeRow",
+          "scheduleDurationPasswordRow",
+          "scheduleOptionsRow",
+          "scheduleInviteesRow",
+          "scheduleValidationMessage",
+          "scheduleSubmitRow"
+        ],
+        "props": { "gap": "sm" },
+        "type": "Stack",
+        "visible": { "$state": "/ui/activeTab", "eq": "schedule" }
+      },
+      "upcomingPanel": {
+        "children": ["errorBanner", "emptyState", "meetingList"],
+        "props": { "gap": "sm" },
+        "type": "Stack",
+        "visible": { "$state": "/ui/activeTab", "eq": "upcoming" }
+      },
+      "scheduleErrorBanner": {
+        "props": {
+          "text": { "$template": "Couldn't schedule the meeting: ${/_errors/zoom.create_meeting}" },
+          "tone": "destructive"
+        },
+        "type": "Caption",
+        "visible": { "$state": "/_errors/zoom.create_meeting" }
+      },
+      "scheduleTopicRow": {
+        "children": ["scheduleTopicInput"],
+        "props": { "label": "Topic", "hint": "Optional" },
+        "type": "FormRow"
+      },
+      "scheduleTopicInput": {
+        "props": { "placeholder": "Zoom Meeting", "size": "sm", "value": { "$bindState": "/ui/form/topic" } },
+        "type": "TextInput"
+      },
+      "scheduleDateTimeRow": {
+        "children": ["scheduleDateField", "scheduleTimeField"],
+        "props": { "align": "end", "gap": "sm", "template": "1fr 1fr" },
+        "type": "Row"
+      },
+      "scheduleDateField": { "children": ["scheduleDateLabel", "scheduleDateInput"], "props": { "gap": "xs" }, "type": "Stack" },
+      "scheduleDateLabel": {
+        "children": ["scheduleDateIcon", "scheduleDateLabelText"],
+        "props": { "align": "center", "gap": "xs" },
+        "type": "Row"
+      },
+      "scheduleDateIcon": { "props": { "name": "Calendar", "size": "xs", "tone": "accent" }, "type": "Icon" },
+      "scheduleDateLabelText": { "props": { "text": "Date", "tone": "muted" }, "type": "Caption" },
+      "scheduleDateInput": {
+        "props": { "size": "sm", "value": { "$bindState": "/ui/form/date" } },
+        "type": "DateInput"
+      },
+      "scheduleTimeField": { "children": ["scheduleTimeLabel", "scheduleTimeSelect"], "props": { "gap": "xs" }, "type": "Stack" },
+      "scheduleTimeLabel": {
+        "children": ["scheduleTimeIcon", "scheduleTimeLabelText"],
+        "props": { "align": "center", "gap": "xs" },
+        "type": "Row"
+      },
+      "scheduleTimeIcon": { "props": { "name": "Clock", "size": "xs", "tone": "accent" }, "type": "Icon" },
+      "scheduleTimeLabelText": { "props": { "text": "Time", "tone": "muted" }, "type": "Caption" },
+      "scheduleTimeSelect": {
+        "props": {
+          "options": { "$computed": "zoom_time_options" },
+          "placeholder": "Time…",
+          "size": "sm",
+          "value": { "$bindState": "/ui/form/time" }
+        },
+        "type": "Select"
+      },
+      "scheduleDurationPasswordRow": {
+        "children": ["scheduleDurationRow", "schedulePasswordRow"],
+        "props": { "gap": "sm", "template": "1fr 1fr" },
+        "type": "Row"
+      },
+      "scheduleDurationRow": {
+        "children": ["scheduleDurationInput"],
+        "props": { "label": "Duration (min)" },
+        "type": "FormRow"
+      },
+      "scheduleDurationInput": {
+        "props": { "min": 1, "max": 1440, "size": "sm", "value": { "$bindState": "/ui/form/duration" } },
+        "type": "NumberInput"
+      },
+      "schedulePasswordRow": {
+        "children": ["schedulePasswordInput"],
+        "props": { "label": "Passcode", "hint": "Optional" },
+        "type": "FormRow"
+      },
+      "schedulePasswordInput": {
+        "props": { "maxLength": 10, "size": "sm", "value": { "$bindState": "/ui/form/password" } },
+        "type": "TextInput"
+      },
+      "scheduleOptionsRow": {
+        "children": ["waitingRoomOption", "joinBeforeHostOption"],
+        "props": { "gap": "md" },
+        "type": "Row"
+      },
+      "scheduleInviteesRow": {
+        "children": ["scheduleInviteesInput"],
+        "props": { "label": "Invite by email", "hint": "Optional, comma-separated" },
+        "type": "FormRow"
+      },
+      "scheduleInviteesInput": {
+        "props": {
+          "placeholder": "jane@company.com, sam@company.com",
+          "size": "sm",
+          "value": { "$bindState": "/ui/form/invitees" }
+        },
+        "type": "TextInput"
+      },
+      "waitingRoomOption": {
+        "children": ["waitingRoomCheckbox", "waitingRoomIcon", "waitingRoomLabel"],
+        "props": { "align": "center", "gap": "xs" },
+        "type": "Row"
+      },
+      "waitingRoomCheckbox": {
+        "on": {
+          "toggle": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/form/waitingRoom",
+              "value": { "$computed": "zoom_bool_not", "args": { "value": { "$state": "/ui/form/waitingRoom" } } }
+            }
+          }
+        },
+        "props": { "checked": { "$state": "/ui/form/waitingRoom" }, "tone": "success" },
+        "type": "Checkbox"
+      },
+      "waitingRoomIcon": { "props": { "name": "ShieldCheck", "size": "xs", "tone": "success" }, "type": "Icon" },
+      "waitingRoomLabel": { "props": { "text": "Waiting room", "tone": "muted" }, "type": "Caption" },
+      "joinBeforeHostOption": {
+        "children": ["joinBeforeHostCheckbox", "joinBeforeHostIcon", "joinBeforeHostLabel"],
+        "props": { "align": "center", "gap": "xs" },
+        "type": "Row"
+      },
+      "joinBeforeHostCheckbox": {
+        "on": {
+          "toggle": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/form/joinBeforeHost",
+              "value": { "$computed": "zoom_bool_not", "args": { "value": { "$state": "/ui/form/joinBeforeHost" } } }
+            }
+          }
+        },
+        "props": { "checked": { "$state": "/ui/form/joinBeforeHost" }, "tone": "warning" },
+        "type": "Checkbox"
+      },
+      "joinBeforeHostIcon": { "props": { "name": "DoorOpen", "size": "xs", "tone": "warning" }, "type": "Icon" },
+      "joinBeforeHostLabel": { "props": { "text": "Join before host", "tone": "muted" }, "type": "Caption" },
+      "scheduleValidationMessage": {
+        "children": ["scheduleValidationIcon", "scheduleValidationText"],
+        "props": { "align": "center", "gap": "xs" },
+        "type": "Row",
+        "visible": {
+          "$or": [
+            { "$state": "/ui/form/date", "not": true },
+            { "$state": "/ui/form/time", "not": true }
+          ]
+        }
+      },
+      "scheduleValidationIcon": { "props": { "name": "AlertTriangle", "size": "sm", "tone": "warning" }, "type": "Icon" },
+      "scheduleValidationText": {
+        "props": {
+          "text": {
+            "$computed": "zoom_schedule_validation_message",
+            "args": { "date": { "$state": "/ui/form/date" }, "time": { "$state": "/ui/form/time" } }
+          },
+          "tone": "warning",
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "scheduleSubmitRow": { "children": ["scheduleSubmitBtn"], "props": { "justify": "end" }, "type": "Row" },
+      "scheduleSubmitBtn": {
+        "on": {
+          "click": {
+            "action": "zoom.create_meeting",
+            "params": {
+              "topic": { "$computed": "zoom_schedule_topic", "args": { "topic": { "$state": "/ui/form/topic" } } },
+              "type": 2,
+              "start_time": {
+                "$computed": "zoom_combine_datetime",
+                "args": { "date": { "$state": "/ui/form/date" }, "time": { "$state": "/ui/form/time" } }
+              },
+              "duration": { "$computed": "zoom_schedule_duration", "args": { "duration": { "$state": "/ui/form/duration" } } },
+              "timezone": { "$computed": "zoom_local_timezone" },
+              "password": { "$state": "/ui/form/password" },
+              "settings": {
+                "$computed": "zoom_schedule_settings",
+                "args": {
+                  "waitingRoom": { "$state": "/ui/form/waitingRoom" },
+                  "joinBeforeHost": { "$state": "/ui/form/joinBeforeHost" },
+                  "invitees": { "$state": "/ui/form/invitees" }
+                }
+              }
+            }
+          }
+        },
+        "props": {
+          "disabled": {
+            "$computed": "zoom_schedule_is_invalid",
+            "args": { "date": { "$state": "/ui/form/date" }, "time": { "$state": "/ui/form/time" } }
+          },
+          "label": "Click to Schedule a Meeting",
+          "leadingIcon": "CalendarCheck",
+          "size": "sm",
+          "tone": "info",
+          "variant": "primary"
+        },
+        "type": "Button"
       },
       "card": {
         "children": [
@@ -55,7 +295,51 @@
           "footer"
         ],
         "props": {},
-        "type": "Card"
+        "type": "Card",
+        "watch": {
+          "/zoom/list_meetings": [
+            {
+              "action": "setState",
+              "params": { "statePath": "/ui/form", "value": { "$computed": "zoom_default_schedule_form" } }
+            }
+          ],
+          "/zoom/list_meetings/meetings": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/activeTab",
+                "value": {
+                  "$computed": "zoom_seed_default_tab",
+                  "args": { "current": { "$state": "/ui/activeTab" }, "fallback": "schedule" }
+                }
+              }
+            }
+          ],
+          "/zoom/create_meeting": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/zoom/list_meetings/meetings",
+                "value": {
+                  "$computed": "zoom_prepend_meeting",
+                  "args": {
+                    "newMeeting": { "$state": "/zoom/create_meeting" },
+                    "meetings": { "$state": "/zoom/list_meetings/meetings" }
+                  }
+                }
+              }
+            }
+          ],
+          "/zoom/create_meeting/id": [
+            { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "upcoming" } }
+          ],
+          "/zoom/create_meeting/join_url": [
+            {
+              "action": "setState",
+              "params": { "statePath": "/ui/form", "value": { "$computed": "zoom_default_schedule_form" } }
+            }
+          ]
+        }
       },
       "dateBadge": {
         "props": {
@@ -286,7 +570,7 @@
       "title": {
         "props": {
           "level": "h2",
-          "text": "Upcoming Meetings"
+          "text": "Zoom Meetings"
         },
         "type": "Heading"
       },
@@ -343,5 +627,5 @@
     "schedule",
     "video-conferencing"
   ],
-  "title": "Zoom — Upcoming Meetings"
+  "title": "Zoom Meetings"
 }
