@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>General Ledger</title>
+<title>Contacts</title>
 <style>:root{--accent:#6F2CBA;--btn:#5A1F9E;--btn-ink:#FFFFFF;--ink:#393A3D;--muted:#6B6C72;--line:#E3E5E8;--canvas:#F4F5F8;--card:#FFFFFF;--th:#6B6C72;--zebra:transparent;--neg:#D52B1E;--pos:#1B7F4B;--pass-bg:#EAF6E8;--fail-bg:#FDECEA;--band:#FFFFFF;--band-ink:#393A3D;--cover:#1B2A4A;--cover-ink:#FFFFFF;--c1:#6F2CBA;--c2:#9E9E9E;--c3:#00B0A0;--c4:#007A6E;--c5:#E0457B;--c6:#0077C5;--d1:#6F2CBA;--d2:#00B0A0;--d3:#B28DE6;--d4:#E0457B;--d5:#0077C5;--d6:#9E9E9E}
 :root[data-myhub-theme='dark']{--accent:#A77BE8;--btn:#7A45C9;--btn-ink:#FFFFFF;--ink:#E6E8EB;--muted:#A3A7AE;--line:#33363C;--canvas:#16181B;--card:#1F2226;--th:#A3A7AE;--neg:#FF6B5E;--pos:#4CC38A;--pass-bg:#18301A;--fail-bg:#3A1B19;--band:#1F2226;--band-ink:#E6E8EB;--cover:#22324F;--cover-ink:#FFFFFF;--c1:#A77BE8;--c2:#80858D;--c3:#2BC4B3;--c4:#3CCFBF;--c5:#F06A96;--c6:#3FA2E8;--d1:#A77BE8;--d2:#2BC4B3;--d3:#CDB4F2;--d4:#F06A96;--d5:#3FA2E8;--d6:#80858D}
 :root.style-mysmb{--accent:#00B0A0;--btn:#007A6E;--zebra:#E6F7F5;--band:#007A6E;--band-ink:#FFFFFF;--cover:#007A6E;--th-bg:#007A6E;--th-ink:#FFFFFF;--c1:#007A6E;--c2:#00B0A0;--c3:#6F2CBA;--c4:#9E9E9E;--c5:#1B7F4B;--c6:#C8102E;--d1:#007A6E;--d2:#00B0A0;--d3:#6F2CBA;--d4:#9E9E9E;--d5:#1B7F4B;--d6:#C8102E;--pos:#1B7F4B;--neg:#C8102E}
@@ -744,95 +744,67 @@ DISPLAY_DEFAULT: DISPLAY_DEFAULT, readDisplay: readDisplay, writeDisplay: writeD
 PRESETS: PRESETS, preset: preset, ASAT: ASAT, asAt: asAt, compare: compare, periodLine: periodLine, asOfLine: asOfLine, footerStamp: footerStamp, freshest: freshest,
 xlsx: xlsx, sheetFromLines: sheetFromLines, download: download, reportParams: reportParams };
 })();</script>
-<script>MK.app({
-  title: 'General Ledger', primary: 'pnl_period', files: 'company_files',
-  inputs: { start: 'from_date', end: 'to_date', companyFile: 'company_file', persona: 'persona', display: 'display' },
-  defaults: { from_date: '2026-09-01', to_date: '2026-09-28', prev_day: '2026-08-31', fy_start: '2026-07-01', company_file: '', persona: 'Bookkeeper',
-    display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":0,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"this_month","a":"custom","c":"none","v":"accounts"}' },
-  uses: { journals: ['from_date', 'to_date', 'company_file'], bs_open: ['prev_day', 'company_file'], bs_close: ['to_date', 'company_file'], pnl_period: ['from_date', 'to_date', 'company_file'], pnl_ytd: ['fy_start', 'to_date', 'company_file'], accounts: ['company_file'], company_files: [] },
-  tools: { journals: 'list_journal_transactions (every journal in the period — every page)', bs_open: 'get_balance_sheet (opening balances: the day before the period)', bs_close: 'get_balance_sheet (closing balances: the period end)', pnl_period: 'get_profit_and_loss_3m (income and expense activity in the period, for the tie)', pnl_ytd: 'get_profit_and_loss_3m (income and expense balances, financial year to the period end)', accounts: 'list_accounts (codes and classification)', company_files: 'list_company_files' },
-  views: [['accounts', 'By category'], ['transactions', 'Transactions'], ['journal', 'Journal entries'], ['category', 'Category transactions']],
-  derive: function (inp, fyMonth) { return { prev_day: MK.iso(MK.addDays(MK.parse(inp.from_date), -1)), fy_start: MK.fyStartOf(inp.to_date, fyMonth) }; },
+<script>// Contacts (M12): MYOB's contact list (list_contacts — one page of up to 1,000) grouped by type, with each customer's and supplier's
+// balance tied to MYOB's open invoices and bills (separate lists). Email and phone show for customers and suppliers only, when MYOB
+// returns them (its contact list usually has no addresses); an employee's or personal contact's details never show.
+MK.app({
+  title: 'Contacts', primary: 'contacts', files: 'company_files',
+  inputs: { companyFile: 'company_file', persona: 'persona', display: 'display' },
+  defaults: { type: 'All', company_file: '', persona: 'Bookkeeper',
+    display: '{"cents":1,"k":0,"zeros":1,"neg":"paren","red":0,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"custom","a":"custom","c":"none","v":"directory","x":""}' },
+  enums: [{ input: 'type', label: 'Contact type', options: [['All', 'All'], ['Customer', 'Customers'], ['Supplier', 'Suppliers']] }],
+  uses: { contacts: ['type', 'company_file'], invoices: ['company_file'], bills: ['company_file'], company_files: [] },
+  tools: { contacts: 'list_contacts (one page of up to 1,000)', invoices: 'list_invoices (open — customer balances)', bills: 'list_bills (open — supplier balances)', company_files: 'list_company_files' },
+  views: [['directory', 'Contacts'], ['balances', 'Balances']],
   render: function (c) {
-    var body = c.body, money = function (v) { return MK.money(v, c.currency, c.display); }, r2 = function (v) { return Math.round(v * 100) / 100; }, from = c.inputs.from_date, to = c.inputs.to_date;
-    if (c.errors.journals) { body.innerHTML = '<p class="mk-err">' + MK.h(c.err('journals')) + '</p>'; return { checks: [{ name: 'Journal transactions loaded', pass: false, detail: c.err('journals') }] }; }
-    if (!c.data.journals) return {};
-    var idx = MK.accounts(c.data.accounts), DRN = { Asset: 1, Expense: 1, CostOfSales: 1, OtherExpense: 1 }, PLC = /^(Income|CostOfSales|Expense|OtherIncome|OtherExpense)$/;
-    var tx = MK.items(c.data.journals).filter(function (t) { return t && t.Lines; }), lines = [], acc = {};
-    tx.forEach(function (t) { var d = MK.isoDate(t.DateOccurred || t.DatePosted); (t.Lines || []).forEach(function (l) {
-      var a = l.Account || {}, k = a.UID || a.DisplayID || a.Name, amt = Math.abs(MK.num(l.Amount) || 0), cr = !!l.IsCredit, ci = MK.classOf(a, idx);
-      if (!acc[k]) acc[k] = { code: a.DisplayID || '', name: a.Name || '', cls: ci.cls, uid: a.UID, dr: 0, cr: 0 };
-      if (cr) acc[k].cr = r2(acc[k].cr + amt); else acc[k].dr = r2(acc[k].dr + amt);
-      lines.push({ date: d, id: t.DisplayID || '', type: t.JournalType || ((t.SourceTransaction || {}).TransactionType) || '', memo: t.Description || l.LineDescription || '', key: k, code: a.DisplayID || '', account: a.Name || '', debit: cr ? null : r2(amt), credit: cr ? r2(amt) : null }); }); });
-    // opening and closing balances from MYOB's own reports: balance-sheet accounts from the Balance Sheet the day before and at the end;
-    // income and expense accounts from the P&L — year to date at the end, less this period (MYOB's ledger opens them at the year's start).
-    var bsO = c.data.bs_open ? MK.breakdown([c.data.bs_open], idx, MK.BS_LAYOUT) : null, bsC = c.data.bs_close ? MK.breakdown([c.data.bs_close], idx, MK.BS_LAYOUT) : null;
-    var plP = c.data.pnl_period ? MK.breakdown([c.data.pnl_period], idx, MK.PL_LAYOUT) : null, plY = c.data.pnl_ytd ? MK.breakdown([c.data.pnl_ytd], idx, MK.PL_LAYOUT) : null;
-    var val = function (b, r) { if (!b) return null; var x = b.rows.filter(function (y) { return (r.uid && y.uid === r.uid) || (r.code && y.code === r.code); })[0]; return x ? x.values[0] : 0; };
-    var fyStart = c.inputs.fy_start, crossFy = fyStart > from; // income and expense accounts reopen at zero on the financial year's start
-    var cye = function (r) { return MK.CYE_RE.test(r.name); }, re = function (r) { return /retained (earnings|profits)/i.test(r.name); };
-    var rows = Object.keys(acc).map(function (k) { var r = acc[k], net = DRN[r.cls] ? r2(r.dr - r.cr) : r2(r.cr - r.dr), pl = PLC.test(r.cls || '');
-      var open = pl ? (crossFy ? null : (plY && plP ? r2(val(plY, r) - val(plP, r)) : null)) : val(bsO, r), close = pl ? val(plY, r) : val(bsC, r);
-      return { code: r.code, name: r.name, cls: r.cls, pl: pl, open: open, dr: r.dr, cr: r.cr, net: net, bal: open == null ? null : r2(open + net), close: close, key: k }; })
-      .sort(function (a, b) { return String(a.code).localeCompare(String(b.code), undefined, { numeric: true }); });
-    var DR = MK.sum(rows.map(function (r) { return r.dr; })), CR = MK.sum(rows.map(function (r) { return r.cr; }));
-    var unbal = tx.filter(function (t) { return !MK.near(MK.sum((t.Lines || []).map(function (l) { return (l.IsCredit ? -1 : 1) * Math.abs(MK.num(l.Amount) || 0); })), 0); });
-    var view = c.view || 'accounts', h = MK.h, self = this, TITLES = { accounts: 'General Ledger', transactions: 'General Ledger', journal: 'Journal Entries', category: 'Categories Transactions' };
-    body.innerHTML = MK.kpis([{ label: 'Journal transactions', value: tx.length, money: false }, { label: 'Categories with activity', value: rows.length, money: false }, { label: 'Total debits', value: DR }, { label: 'Total credits', value: CR }], c) +
-      '<div class="mk-card" style="margin-top:16px"><h3>' + h(view === 'journal' ? 'Journal entries' : view === 'category' ? 'Category transactions' : 'General ledger') + ' — ' + h(MK.periodLine(from, to)) + '</h3><div id="gl-grid"></div></div>';
-    var cell = function (v) { return '<td class="num">' + (v == null ? '' : money(v)) + '</td>'; }, g = document.getElementById('gl-grid');
-    // Journal entries (M09): every transaction as one block — all its lines in entry order, its total, and a flag when it does not balance
-    var J = tx.map(function (t) { var ls = (t.Lines || []).map(function (l) { var a = l.Account || {}, amt = r2(Math.abs(MK.num(l.Amount) || 0)); return { code: a.DisplayID || '', account: a.Name || '', memo: l.LineDescription || '', debit: l.IsCredit ? null : amt, credit: l.IsCredit ? amt : null }; });
-      var d = MK.sum(ls.map(function (l) { return l.debit; })), k = MK.sum(ls.map(function (l) { return l.credit; }));
-      return { date: MK.isoDate(t.DateOccurred || t.DatePosted), id: t.DisplayID || '', type: t.JournalType || ((t.SourceTransaction || {}).TransactionType) || '', desc: t.Description || '', lines: ls, dr: d, cr: k, ok: MK.near(d, k) }; })
-      .sort(function (a, b) { return a.date.localeCompare(b.date) || String(a.id).localeCompare(String(b.id), undefined, { numeric: true }); });
-    var search = function (id) { var q = document.getElementById(id); q.addEventListener('input', function () { self._q = q.value; var s = q.value.trim().toLowerCase(); g.querySelectorAll('tbody[data-text]').forEach(function (b) { b.hidden = !!s && b.getAttribute('data-text').indexOf(s) < 0; }); }); if (self._q) q.dispatchEvent(new Event('input')); };
-    if (view === 'journal') {
-      var cap = J.slice(0, 1500);
-      g.innerHTML = '<input id="gl-q" type="search" class="mk-filter" placeholder="Search description, ID or category" aria-label="Search journal entries" value="' + h(self._q || '') + '">' + (J.length > cap.length ? '<p class="muted">Showing the first ' + cap.length + ' of ' + J.length + ' transactions — narrow the period to see the rest (Download Excel has them all).</p>' : '') +
-        '<div class="mk-scroll"><table class="mk-stmt"><thead><tr><th>Date</th><th>ID No.</th><th>Source</th><th>Category</th><th>Memo</th><th class="num">Debit ($)</th><th class="num">Credit ($)</th></tr></thead>' +
-        (cap.length ? cap.map(function (t) { return '<tbody data-text="' + h((t.id + ' ' + t.type + ' ' + t.desc + ' ' + t.lines.map(function (l) { return l.code + ' ' + l.account + ' ' + l.memo; }).join(' ')).toLowerCase()) + '"><tr class="k-header"><td>' + h(t.date) + '</td><td>' + h(t.id) + '</td><td>' + h(t.type) + '</td><td colspan="4">' + h(t.desc) + '</td></tr>' +
-          t.lines.map(function (l) { return '<tr class="k-row detail-block"><td></td><td></td><td></td><td>' + h(l.code + ' ' + l.account) + '</td><td>' + h(l.memo) + '</td>' + cell(l.debit) + cell(l.credit) + '</tr>'; }).join('') +
-          '<tr class="k-total"><td colspan="5">Total for ' + h(t.id) + (t.ok ? '' : ' <span class="mk-err">— out of balance</span>') + '</td>' + cell(t.dr) + cell(t.cr) + '</tr></tbody>'; }).join('') : '<tbody><tr><td colspan="7" class="muted">No transactions in this period.</td></tr></tbody>') +
-        '<tfoot><tr class="k-total"><td colspan="5">Total</td>' + cell(DR) + cell(CR) + '</tr></tfoot></table></div>';
-      search('gl-q');
-    } else if (view === 'category') {
-      // Category transactions (M11): only the lines on the chosen category (display.x = its UID; empty = every category), with MYOB's opening and closing balances
-      var sel = c.display.x && rows.some(function (r) { return r.key === c.display.x; }) ? c.display.x : '', show = rows.filter(function (r) { return !sel || r.key === sel; });
-      g.innerHTML = '<label class="ctl" style="display:inline-flex;margin-bottom:10px">Category<select id="gl-cat"><option value="">All categories with activity</option>' + rows.map(function (r) { return '<option value="' + h(r.key) + '"' + (r.key === sel ? ' selected' : '') + '>' + h(r.code + ' ' + r.name) + '</option>'; }).join('') + '</select></label>' +
-        '<div class="mk-scroll"><table class="mk-stmt"><thead><tr><th>Date</th><th>ID No.</th><th>Source</th><th>Memo</th><th class="num">Debit ($)</th><th class="num">Credit ($)</th></tr></thead>' +
-        (show.length ? show.map(function (r) { var ls = lines.filter(function (l) { return l.key === r.key; }).sort(function (a, b) { return a.date.localeCompare(b.date); });
-          return '<tbody><tr class="k-header"><td colspan="4">' + h(r.code + ' ' + r.name) + '</td><td colspan="2" class="num">Opening ' + (r.open == null ? 'N/A' : money(r.open)) + '</td></tr>' + ls.map(function (l) { return '<tr class="k-row detail-block"><td>' + h(l.date) + '</td><td>' + h(l.id) + '</td><td>' + h(l.type) + '</td><td>' + h(l.memo) + '</td>' + cell(l.debit) + cell(l.credit) + '</tr>'; }).join('') +
-            '<tr class="k-total"><td colspan="4">Total for ' + h(r.name) + ' · net activity ' + money(r.net) + ' · closing ' + (r.bal == null ? 'N/A' : money(r.bal)) + (r.close != null && r.bal != null && !MK.near(r.bal, r.close) ? ' <span class="mk-err">(MYOB ' + money(r.close) + ')</span>' : '') + '</td>' + cell(r.dr) + cell(r.cr) + '</tr></tbody>'; }).join('') : '<tbody><tr><td colspan="6" class="muted">No transactions in this period.</td></tr></tbody>') + '</table></div>';
-      document.getElementById('gl-cat').addEventListener('change', function () { c.change({}, { x: this.value }); });
-    } else if (view === 'transactions') MK.grid(document.getElementById('gl-grid'), { rows: lines.slice().sort(function (a, b) { return String(a.code).localeCompare(String(b.code), undefined, { numeric: true }) || a.date.localeCompare(b.date); }).slice(0, 3000), filter: true,
-      columns: [{ key: 'code', title: 'Code' }, { key: 'account', title: 'Category name' }, { key: 'date', title: 'Date' }, { key: 'id', title: 'ID No.' }, { key: 'type', title: 'Source' }, { key: 'memo', title: 'Memo' }, { key: 'debit', title: 'Debit ($)', money: true }, { key: 'credit', title: 'Credit ($)', money: true }],
-      total: { code: 'Total', debit: DR, credit: CR }, empty: 'No transactions in this period.' }, c);
-    else MK.grid(document.getElementById('gl-grid'), { rows: rows, filter: true, columns: [{ key: 'code', title: 'Code' }, { key: 'name', title: 'Category name' }, { key: 'open', title: 'Open ($)', money: true }, { key: 'dr', title: 'Debit ($)', money: true }, { key: 'cr', title: 'Credit ($)', money: true }, { key: 'net', title: 'Net activity ($)', money: true }, { key: 'bal', title: 'Balance ($)', money: true }],
-      total: { code: 'Total', dr: DR, cr: CR }, empty: 'No transactions in this period.' }, c);
-    // ties: balance-sheet accounts — open + activity = the Balance Sheet at the end (Current Year Earnings is the P&L, and Retained
-    // Earnings moves at a year-end close without a journal); income and expense accounts — activity = the P&L for the period
-    var bsT = rows.filter(function (r) { return !r.pl && !cye(r) && !(crossFy && re(r)) && r.bal != null && r.close != null; }), bsBad = bsT.filter(function (r) { return !MK.near(r.bal, r.close); });
-    var plT = rows.filter(function (r) { return r.pl; }), plBad = plP ? plT.filter(function (r) { return !MK.near(r.net, val(plP, r)); }) : null;
-    var plMissing = plP ? plP.rows.filter(function (x) { return !x.header && Math.abs(x.values[0]) >= 0.005 && !rows.some(function (r) { return (x.uid && r.key === x.uid) || r.code === x.code; }); }) : [];
-    var checks = [
-      { name: 'Σ debits = Σ credits, and every journal transaction balances', pass: MK.near(DR, CR) && unbal.length === 0, detail: money(DR) + ' vs ' + money(CR) + (unbal.length ? '; ' + unbal.length + ' transaction(s) out of balance' : '') },
-      { name: 'Balance-sheet categories: open + net activity = the closing balance on the Balance Sheet (two MYOB reports)', pass: c.data.bs_open && c.data.bs_close ? bsBad.length === 0 : null, detail: c.data.bs_open && c.data.bs_close ? (bsBad.length ? bsBad.length + ' differ, e.g. ' + bsBad[0].code + ' ' + money(bsBad[0].bal) + ' vs ' + money(bsBad[0].close) : bsT.length + ' categories') : (c.err('bs_open') || c.err('bs_close') || 'N/A') },
-      { name: 'Income and expense categories: net activity = the Profit and Loss for the period (a separate MYOB report)', pass: plBad == null ? null : plBad.length === 0 && plMissing.length === 0, detail: plBad == null ? (c.err('pnl_period') || 'N/A') : plBad.length || plMissing.length ? (plBad.length + plMissing.length) + ' differ, e.g. ' + ((plBad[0] || plMissing[0]).code) : plT.length + ' categories' }
-    ];
-    this._x = { rows: rows, lines: lines, J: J, DR: DR, CR: CR };
-    return { checks: checks, title: TITLES[view], notes: ['Journal transactions dated in the period (MYOB\'s general ledger), grouped by category. Open and closing balances come from MYOB\'s Balance Sheet (balance-sheet categories) and Profit and Loss (income and expense categories, from the start of the financial year).' + (crossFy ? ' The period spans a financial-year start, so income and expense categories show no opening balance.' : '')],
-      na: ['Tax amount per line (not in the journal list)', 'Cash-basis ledger (journals are accrual)'] };
+    var body = c.body, h = MK.h, self = this, money = function (v) { return MK.money(v, c.currency, c.display); }, r2 = function (v) { return Math.round(v * 100) / 100; };
+    if (c.errors.contacts) { body.innerHTML = '<p class="mk-err">' + h(c.err('contacts')) + '</p>'; return { checks: [{ name: 'Contacts loaded', pass: false, detail: c.err('contacts') }] }; }
+    if (!c.data.contacts) return {};
+    var raw = MK.items(c.data.contacts), cut = raw.length >= 1000, type = c.inputs.type || 'All', TRADE = { Customer: 1, Supplier: 1 };
+    var C = raw.map(function (x) {
+      var ad = (x.Addresses || []).filter(function (a) { return a && (a.Email || a.Phone1); })[0] || {}, trade = !!TRADE[x.Type];
+      return { name: x.CompanyName || [x.FirstName, x.LastName].filter(Boolean).join(' ') || x.DisplayID || 'N/A', id: x.DisplayID || '', type: x.Type || 'Other', active: x.IsActive !== false,
+        email: trade ? ad.Email || '' : '', phone: trade ? ad.Phone1 || '' : '', bal: x.CurrentBalance == null ? null : r2(MK.num(x.CurrentBalance) || 0) };
+    }).sort(function (a, b) { return a.name.localeCompare(b.name); });
+    var hide = c.display.x === 'active', shown = hide ? C.filter(function (r) { return r.active; }) : C;
+    var TYPES = ['Customer', 'Supplier', 'Employee', 'Personal'], types = TYPES.concat(Object.keys(C.reduce(function (o, r) { if (TYPES.indexOf(r.type) < 0) o[r.type] = 1; return o; }, {})));
+    var PL = { Customer: 'Customers', Supplier: 'Suppliers', Employee: 'Employees', Personal: 'Personal contacts' }, n = function (t) { return C.filter(function (r) { return r.type === t; }).length; };
+    var sumT = function (t) { return MK.sum(C.filter(function (r) { return r.type === t; }).map(function (r) { return r.bal; })); }, view = c.view || 'directory';
+    var html = MK.kpis([{ label: 'Contacts', money: false, value: C.length }, { label: 'Customers', money: false, value: n('Customer') }, { label: 'Suppliers', money: false, value: n('Supplier') }, { label: 'Inactive', money: false, value: C.filter(function (r) { return !r.active; }).length },
+      { label: 'Customers owe you', value: type !== 'Supplier' ? sumT('Customer') : null }, { label: 'You owe suppliers', value: type !== 'Customer' ? sumT('Supplier') : null }], c) +
+      (cut ? '<div class="mk-banner fail" style="margin-top:12px">MYOB returned 1,000 contacts — one page — so the list may be cut off. Narrow it with Contact type.</div>' : '') +
+      '<div style="display:flex;gap:16px;align-items:center;margin:14px 0 6px"><input id="co-q" type="search" class="mk-filter" style="flex:1;margin:0" placeholder="Search name, ID or email" aria-label="Search contacts" value="' + h(self._q || '') + '">' +
+      '<label><input type="checkbox" id="co-active"' + (hide ? ' checked' : '') + '> Hide inactive</label></div>';
+    var table = function (rows, withBal) { var em = rows.some(function (r) { return r.email || r.phone; });
+      return '<div class="mk-scroll"><table class="mk-grid"><thead><tr><th>Name</th><th>ID</th><th>Status</th>' + (em ? '<th>Email</th><th>Phone</th>' : '') + (withBal ? '<th class="num">Balance ($)</th>' : '') + '</tr></thead><tbody>' +
+        rows.map(function (r) { return '<tr data-text="' + h((r.name + ' ' + r.id + ' ' + r.email).toLowerCase()) + '"><td>' + h(r.name) + '</td><td>' + h(r.id) + '</td><td>' + (r.active ? 'Active' : '<span class="muted">Inactive</span>') + '</td>' + (em ? '<td>' + h(r.email) + '</td><td>' + h(r.phone) + '</td>' : '') + (withBal ? '<td class="num">' + (r.bal == null ? '' : money(r.bal)) + '</td>' : '') + '</tr>'; }).join('') +
+        '</tbody>' + (withBal ? '<tfoot><tr class="k-total"><td colspan="' + (em ? 5 : 3) + '">Total</td><td class="num">' + money(MK.sum(rows.map(function (r) { return r.bal; }))) + '</td></tr></tfoot>' : '') + '</table></div>'; };
+    if (view === 'balances') {
+      ['Customer', 'Supplier'].forEach(function (t) { var rows = shown.filter(function (r) { return r.type === t && Math.abs(r.bal || 0) >= 0.005; }).sort(function (a, b) { return (b.bal || 0) - (a.bal || 0); });
+        html += '<h3>' + (t === 'Customer' ? 'Customers who owe you' : 'Suppliers you owe') + ' (' + rows.length + ')</h3>' + (rows.length ? table(rows, true) : '<p class="muted">No balances.</p>'); });
+    } else types.forEach(function (t) { var rows = shown.filter(function (r) { return r.type === t; }); if (!rows.length) return; html += '<h3>' + h(PL[t] || t) + ' (' + rows.length + ')</h3>' + table(rows, TRADE[t]); });
+    body.innerHTML = html + (shown.length ? '' : '<p class="muted">No contacts.</p>');
+    var q = document.getElementById('co-q'), filter = function () { var s = (self._q || '').trim().toLowerCase(); body.querySelectorAll('tbody tr[data-text]').forEach(function (tr) { tr.hidden = !!s && tr.getAttribute('data-text').indexOf(s) < 0; }); };
+    q.addEventListener('input', function () { self._q = q.value; filter(); }); filter();
+    document.getElementById('co-active').addEventListener('change', function () { c.change({}, { x: this.checked ? 'active' : '' }); });
+    // ties: the contact list's balances against MYOB's open invoices and bills — separate endpoints
+    var tie = function (t, id, field) { if (type !== 'All' && type !== t) return { pass: null, detail: 'N/A — Contact type is ' + type }; if (c.errors[id] || !c.data[id]) return { pass: null, detail: c.err(id) || 'N/A' };
+      if (!C.some(function (r) { return r.type === t && r.bal != null; })) return { pass: null, detail: 'N/A — MYOB returned no contact balances' };
+      var open = MK.sum(MK.items(c.data[id]).map(function (d) { return MK.num(d[field]); })), bal = sumT(t); return { pass: MK.near(open, bal), detail: money(bal) + ' vs ' + money(open) + (MK.near(open, bal) ? '' : ' — unapplied payments or credits can explain a difference') }; };
+    var ti = tie('Customer', 'invoices', 'BalanceDueAmount'), tb = tie('Supplier', 'bills', 'BalanceDueAmount');
+    this._x = { C: C };
+    return { checks: [
+      { name: 'Contacts shown = the contacts MYOB returned', pass: cut ? null : C.length === raw.length, detail: cut ? 'N/A — MYOB returned 1,000 (one page); the list may be cut off' : C.length + ' contacts' },
+      { name: 'Customer balances = open invoices (a separate MYOB list)', pass: ti.pass, detail: ti.detail },
+      { name: 'Supplier balances = open bills (a separate MYOB list)', pass: tb.pass, detail: tb.detail }],
+      title: view === 'balances' ? 'Contact Balances' : 'Contacts', period: 'Contacts' + (type === 'All' ? '' : ' — ' + PL[type]) + ' · today',
+      notes: ['MYOB\'s contact list, one page of up to 1,000 contacts. Balances are MYOB\'s current balance for each contact today.', 'Email and phone show for customers and suppliers only, when MYOB returns them; employee and personal contacts never show contact details.'],
+      na: ['Addresses (not shown)', 'Contact balances at a past date (MYOB gives today\'s)'] };
   },
   excel: function (c) {
     var x = this._x; if (!x) return [];
-    var head = function (n) { return [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: n, s: 'bold' }], [MK.periodLine(c.inputs.from_date, c.inputs.to_date)], []]; }, mv = function (v) { return v == null ? '' : { v: v, s: 'money' }; };
-    var a = head('General ledger').concat([['Code', 'Category name', 'Open ($)', 'Debit ($)', 'Credit ($)', 'Net activity ($)', 'Balance ($)'].map(function (t) { return { v: t, s: 'bold' }; })]).concat(x.rows.map(function (r) { return [r.code, r.name, mv(r.open), mv(r.dr), mv(r.cr), mv(r.net), mv(r.bal)]; }))
-      .concat([[{ v: 'Total', s: 'bold' }, '', '', { v: x.DR, s: 'moneyBold' }, { v: x.CR, s: 'moneyBold' }]]);
-    var t = head('Transactions').concat([['Code', 'Category name', 'Date', 'ID No.', 'Source', 'Memo', 'Debit ($)', 'Credit ($)'].map(function (h) { return { v: h, s: 'bold' }; })]).concat(x.lines.map(function (l) { return [l.code, l.account, l.date, l.id, l.type, l.memo, mv(l.debit), mv(l.credit)]; }));
-    var j = head('Journal entries').concat([['Date', 'ID No.', 'Source', 'Description', 'Code', 'Category', 'Memo', 'Debit ($)', 'Credit ($)'].map(function (h) { return { v: h, s: 'bold' }; })]);
-    x.J.forEach(function (tr) { tr.lines.forEach(function (l) { j.push([tr.date, tr.id, tr.type, tr.desc, l.code, l.account, l.memo, mv(l.debit), mv(l.credit)]); }); });
-    return [{ name: 'General ledger', rows: a, widths: [10, 34, 16, 16, 16, 16, 16] }, { name: 'Transactions', rows: t, widths: [10, 30, 12, 12, 14, 30, 14, 14] }, { name: 'Journal entries', rows: j, widths: [12, 12, 14, 30, 10, 28, 28, 14, 14] }];
+    return [{ name: 'Contacts', widths: [34, 14, 12, 10, 32, 18, 16], rows: [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: 'Contacts', s: 'bold' }], [], ['Name', 'ID', 'Type', 'Status', 'Email', 'Phone', 'Balance ($)'].map(function (t) { return { v: t, s: 'bold' }; })]
+      .concat(x.C.map(function (r) { return [r.name, r.id, r.type, r.active ? 'Active' : 'Inactive', r.email, r.phone, r.bal == null ? '' : { v: r.bal, s: 'money' }]; })) }];
   }
 });</script>
 </body>

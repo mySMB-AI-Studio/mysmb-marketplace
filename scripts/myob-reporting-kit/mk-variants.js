@@ -18,6 +18,11 @@ const VARIANTS = [
   { id: 'pys', base: 'py', title: ['Pay Run History', 'Payroll Summary'], display: { v: 'summary' } },
   { id: 'pyf', base: 'py', title: ['Pay Run History', 'Accrual by Fund'], display: { v: 'fund' } },
   { id: 'pyp', base: 'py', title: ['Pay Run History', 'Superannuation Payments'], display: { v: 'super' } },
+  // Journal entries (M09) and Categories transactions (M11) = the General ledger's journal and category views; Categories list (M10) =
+  // the Trial balance's chart-of-accounts view (every account, balances at the date — the API's own account list has today's only)
+  { id: 'je', base: 'gl', title: ['General Ledger', 'Journal Entries'], display: { v: 'journal' } },
+  { id: 'cx', base: 'gl', title: ['General Ledger', 'Categories Transactions'], display: { v: 'category' } },
+  { id: 'cl', base: 'tb', title: ['Trial Balance', 'Categories List'], display: { v: 'list', zeros: 1 } },
 ];
 for (const v of VARIANTS) {
   let cfg = fs.readFileSync(path.join(R, v.base + '.cfg.js'), 'utf8').replace(/\r\n/g, '\n');

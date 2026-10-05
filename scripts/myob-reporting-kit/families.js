@@ -28,11 +28,51 @@ module.exports = [
     title: 'Trial Balance', menu: 'Reporting → Reports → Business → Trial balance',
     trigger: 'the user asks for a trial balance, TB, debits and credits by account, or every category\'s balance as at a date',
     discovery: 'Call `get_balance_sheet` once with `date` = today and `reporting_basis` = `Accrual`, and `list_company_files` once. MYOB\'s API has no trial balance report: the report takes balance-sheet accounts from the Balance Sheet at the date and income and expense accounts from the Profit and Loss for the financial year to that date. A `{"__error": …}` result is a failed call: report its message',
-    dates: '`as_at` = the balance date (default `"today"`; display preset `a` = `today`, `end_last_month`, `end_last_quarter`, `end_last_fy` or `custom`). `fy_start` and `prev_fy_start` are derived by the kit — leave them. For a cash-basis request set `basis` to `Cash`. The view is display `v` (`tb` | `class`).',
-    members: [['Trial balance', 'Every category with its debit or credit balance as at the date (balance-sheet categories at the date, income and expense year to date)'], ['By classification', 'Report = By classification (debit and credit totals per classification)'], ['Activity columns for a date range', 'See the General ledger (MYOB\'s trial balance activity detail is not in the API)']],
+    dates: '`as_at` = the balance date (default `"today"`; display preset `a` = `today`, `end_last_month`, `end_last_quarter`, `end_last_fy` or `custom`). `fy_start` and `prev_fy_start` are derived by the kit — leave them. For a cash-basis request set `basis` to `Cash`. The view is display `v` (`tb` | `class` | `list`).',
+    members: [['Trial balance', 'Every category with its debit or credit balance as at the date (balance-sheet categories at the date, income and expense year to date)'], ['By classification', 'Report = By classification (debit and credit totals per classification)'], ['Categories list', 'Report = Categories list (the whole chart of accounts — also its own template, MYOB Categories List)'], ['Activity columns for a date range', 'See the General ledger (MYOB\'s trial balance activity detail is not in the API)']],
     checks: ['Total debits = total credits (balance-sheet accounts at the date + income and expense accounts year to date — two MYOB reports); last financial year\'s profit not yet closed is shown as its own line when it is exactly the difference', '**Independent tie:** Current Year Earnings on the Balance Sheet = net profit for the financial year to date', 'Every account is classified (chart of accounts)'],
     golden: 'mySMB.com, September 2026: 1-1110 Business Bank Account #1 credit 555.45 · 1-1200 Accounts Receivable debit 2,326.96 · GST credit 161.03 · 4-1400 Sales credit 2,115.43 · 6-1430 Electricity & Gas 290.91; debits = credits',
     fileName: 'myob-trial-balance.html', tags: ['myob', 'trial-balance', 'M03', 'financial-statement'],
+  },
+  {
+    "m": "M10",
+    "skill": "categories-list",
+    "name": "MYOB Categories List",
+    "report": "cl",
+    "wave": "Wave 2 (P2)",
+    "title": "Categories List",
+    "menu": "Reporting → Reports → Business → Categories list",
+    "trigger": "the user asks for the categories list, chart of accounts, list of accounts or categories with their balances, or account types",
+    "discovery": "Call `list_accounts` once and `get_balance_sheet` once with `date` = today, and `list_company_files` once. `list_accounts` gives the chart (DisplayID, Name, Classification, Type, IsHeader, IsActive, Level) and each account's current balance today; balances at another date come from the Balance Sheet (balance-sheet categories) and the Profit and Loss for the financial year to the date (income and expense categories), as the Trial Balance does",
+    "dates": "`as_at` = the balance date (default `\"today\"`; display preset `a`). `fy_start` and `prev_fy_start` are derived by the kit — leave them. The view is display `v` (`list` by default; the Trial Balance views are there too); `zeros` = 1 shows zero-balance categories (default on).",
+    "members": [
+      [
+        "Categories list",
+        "Every category in MYOB's order by classification: header categories as labels, account no., name, type, inactive marked, balance at the date, current balance today, a total per classification"
+      ],
+      [
+        "Balances at a date",
+        "As at control (balance-sheet categories from the Balance Sheet, income and expense year to date from the P&L)"
+      ],
+      [
+        "Show zero balances",
+        "Customise → Except zero amounts"
+      ]
+    ],
+    "checks": [
+      "Total debits = total credits (as the Trial Balance)",
+      "**Independent tie:** Current Year Earnings on the Balance Sheet = net profit for the financial year to date",
+      "**Independent tie (today):** balance-sheet categories' current balance (list_accounts) = the Balance Sheet today",
+      "Every account is classified (chart of accounts)"
+    ],
+    "golden": "mySMB.com as at 28 Sep 2026: every category in the chart; 1-1110 Business Bank Account #1 and 1-1200 Accounts Receivable equal the Balance Sheet",
+    "fileName": "myob-categories-list.html",
+    "tags": [
+      "myob",
+      "categories-list",
+      "M10",
+      "chart-of-accounts"
+    ]
   },
   {
     m: 'M32', skill: 'unpaid-invoices', name: 'MYOB Unpaid Invoices', report: 'ar', wave: 'Wave 1 (P1, delivery order 4)',
@@ -105,11 +145,140 @@ module.exports = [
     title: 'General Ledger', menu: 'Reporting → Reports → Business → General ledger',
     trigger: 'the user asks for a general ledger, GL, the transactions on a category or account, or every journal for a period',
     discovery: 'Call `list_journal_transactions` once with `from_date` / `to_date` = the period, and `list_company_files` once. Expect `{Count, Items:[{DisplayID, JournalType, DateOccurred, Description, Lines:[{Account{UID, Name, DisplayID}, Amount, IsCredit}]}]}`. A `{"__error": …}` result is a failed call: report its message',
-    dates: '`from_date` / `to_date` = the period (default: this month; display preset `p` = `this_month`, `last_month`, `this_quarter`, `this_fy_td` or `custom`). `prev_day` and `fy_start` are derived by the kit — leave them. The view is display `v` (`accounts` | `transactions`).',
-    members: [['General ledger', 'Code | Category name | Open | Debit | Credit | Net activity | Balance, one row per category with activity'], ['Transactions', 'Report = Transactions (every journal line)'], ['Tax amount per line', 'N/A — not in the journal list']],
+    dates: '`from_date` / `to_date` = the period (default: this month; display preset `p` = `this_month`, `last_month`, `this_quarter`, `this_fy_td` or `custom`). `prev_day` and `fy_start` are derived by the kit — leave them. The view is display `v` (`accounts` | `transactions` | `journal` | `category`).',
+    members: [['General ledger', 'Code | Category name | Open | Debit | Credit | Net activity | Balance, one row per category with activity'], ['Transactions', 'Report = Transactions (every journal line)'], ['Journal entries', 'Report = Journal entries (also its own template, MYOB Journal Entries)'], ['Category transactions', 'Report = Category transactions (also its own template, MYOB Categories Transactions)'], ['Tax amount per line', 'N/A — not in the journal list']],
     checks: ['Σ debits = Σ credits, and every journal transaction balances', '**Independent tie:** balance-sheet categories — open (Balance Sheet the day before) + net activity = the closing Balance Sheet', '**Independent tie:** income and expense categories — net activity = the Profit and Loss for the period'],
     golden: 'mySMB.com September 2026: 1-1110 Business Bank Account #1 open (555.45) → balance (555.45); 1-1200 Accounts Receivable 2,326.96 → 2,326.96 (no September activity)',
     fileName: 'myob-general-ledger.html', tags: ['myob', 'general-ledger', 'M08', 'journals'],
+  },
+  {
+    "m": "M09",
+    "skill": "journal-entries",
+    "name": "MYOB Journal Entries",
+    "report": "je",
+    "wave": "Wave 2 (P2)",
+    "title": "Journal Entries",
+    "menu": "Reporting → Reports → Business → Journal entries",
+    "trigger": "the user asks for journal entries, every transaction in a period as journals, debits and credits per transaction, or a journal listing",
+    "discovery": "Call `list_journal_transactions` once with `from_date` / `to_date` = the period, and `list_company_files` once. Expect `{Count, Items:[{DisplayID, JournalType, DateOccurred, Description, Lines:[{Account{UID, Name, DisplayID}, Amount, IsCredit, LineDescription}]}]}` — debit or credit comes from `IsCredit`. A `{\"__error\": …}` result is a failed call: report its message",
+    "dates": "`from_date` / `to_date` = the period (default: this month; display preset `p` = `this_month`, `last_month`, `this_quarter`, `this_fy_td` or `custom`). `prev_day` and `fy_start` are derived by the kit — leave them. The view is display `v` (`journal` by default; the General ledger views are there too).",
+    "members": [
+      [
+        "Journal entries",
+        "One block per transaction: date, ID No., source and description, then every line (category, memo, debit, credit) in entry order, and its total — a transaction that does not balance is flagged"
+      ],
+      [
+        "Search",
+        "Search box over description, ID No. and categories"
+      ],
+      [
+        "Transaction type or source module",
+        "Source column (MYOB journal type)"
+      ],
+      [
+        "Tax amount per line",
+        "N/A — not in the journal list"
+      ]
+    ],
+    "checks": [
+      "Σ debits = Σ credits, and every journal transaction balances (each one is flagged in the report)",
+      "**Independent tie:** balance-sheet categories — open (Balance Sheet the day before) + net activity = the closing Balance Sheet",
+      "**Independent tie:** income and expense categories — net activity = the Profit and Loss for the period"
+    ],
+    "golden": "mySMB.com September 2026: every journal balances; the sale journals post Sales, GST and Accounts Receivable; totals equal the General Ledger for the same month",
+    "fileName": "myob-journal-entries.html",
+    "tags": [
+      "myob",
+      "journal-entries",
+      "M09",
+      "journals"
+    ]
+  },
+  {
+    "m": "M11",
+    "skill": "categories-transactions",
+    "name": "MYOB Categories Transactions",
+    "report": "cx",
+    "wave": "Wave 2 (P2)",
+    "title": "Categories Transactions",
+    "menu": "Reporting → Reports → Business → Categories transactions",
+    "trigger": "the user asks for the transactions on a category or account, category transactions, the activity on one account for a period, or the debit or credit side of a category",
+    "discovery": "Call `list_journal_transactions` once with `from_date` / `to_date` = the period, and `list_accounts` and `list_company_files` once. When the user names a category, find its `UID` in `list_accounts` and set `display.x` to it; otherwise leave `x` empty (every category with activity). Only the lines on the category show, never a transaction's other lines",
+    "dates": "`from_date` / `to_date` = the period (default: this month; display preset `p`). `prev_day` and `fy_start` are derived by the kit — leave them. The view is display `v` (`category` by default).",
+    "members": [
+      [
+        "Categories transactions",
+        "Per category: opening balance, its own lines (date, ID No., source, memo, debit, credit), totals, net activity and closing balance"
+      ],
+      [
+        "Category picker",
+        "Category select above the report (all categories with activity by default)"
+      ],
+      [
+        "Running balance per line",
+        "N/A — the opening and closing balances come from MYOB's reports; per-line balances are not shown"
+      ]
+    ],
+    "checks": [
+      "Σ debits = Σ credits, and every journal transaction balances",
+      "**Independent tie:** balance-sheet categories — opening + net activity = the closing Balance Sheet (the closing balance is shown under each category, with MYOB's own figure when they differ)",
+      "**Independent tie:** income and expense categories — net activity = the Profit and Loss for the period"
+    ],
+    "golden": "mySMB.com September 2026: 6-1430 Electricity & Gas — one line 290.91 debit, closing = the P&L year to date",
+    "fileName": "myob-categories-transactions.html",
+    "tags": [
+      "myob",
+      "categories-transactions",
+      "M11",
+      "journals"
+    ]
+  },
+  {
+    "m": "M12",
+    "skill": "contacts",
+    "name": "MYOB Contacts",
+    "report": "co",
+    "wave": "Wave 2 (P2)",
+    "title": "Contacts",
+    "menu": "Reporting → Reports → Business → Contacts",
+    "trigger": "the user asks for contacts, the contact list, customers or suppliers list, a customer or supplier directory, or contact balances",
+    "discovery": "Call `list_contacts` once with `type` = `All` and `page_size` = 1000, and `list_company_files` once. Expect `Items:[{UID, CompanyName, FirstName, LastName, IsIndividual, DisplayID, IsActive, Type, CurrentBalance}]` — MYOB's contact list usually has no addresses; the report shows email and phone only when MYOB returns them, and only for customers and suppliers. One page holds up to 1,000 contacts: at exactly 1,000 the report says the list may be cut off",
+    "dates": "No dates — the list and balances are today's. Set `type` (`All`, `Customer`, `Supplier`) from the request. The view is display `v` (`directory` | `balances`); `x` = `active` hides inactive contacts.",
+    "members": [
+      [
+        "Contacts",
+        "Grouped by type (customers, suppliers, employees, personal) with a count per group: name, ID, status, email and phone (customers and suppliers, when MYOB returns them), balance"
+      ],
+      [
+        "Balances",
+        "Report = Balances (customers who owe you, suppliers you owe)"
+      ],
+      [
+        "Contact type",
+        "Contact type select (refetches)"
+      ],
+      [
+        "Search, hide inactive",
+        "Above the report"
+      ],
+      [
+        "Addresses",
+        "N/A — not shown; employee and personal contacts never show contact details"
+      ]
+    ],
+    "checks": [
+      "Contacts shown = the contacts MYOB returned (N/A with a warning at 1,000 — one page)",
+      "**Independent tie:** customer balances = open invoices (a separate MYOB list)",
+      "**Independent tie:** supplier balances = open bills (a separate MYOB list)"
+    ],
+    "golden": "mySMB.com: customers and suppliers with their balances; customer balances total = Unpaid Invoices total",
+    "fileName": "myob-contacts.html",
+    "tags": [
+      "myob",
+      "contacts",
+      "M12",
+      "directory"
+    ]
   },
   {
     m: 'M00', skill: 'dashboard', name: 'MYOB Dashboard', report: 'db', wave: 'Wave 1 (P1, delivery order 6)',
