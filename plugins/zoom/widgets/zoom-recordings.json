@@ -129,9 +129,10 @@
         "type": "Button",
         "props": {
           "label": "Cloud Recordings",
+          "leadingIcon": "CloudCog",
           "size": "sm",
           "variant": { "$computed": "zoom_tab_variant", "args": { "active": { "$state": "/ui/activeTab" }, "match": "cloud" } },
-          "tone": "brand"
+          "tone": { "$computed": "zoom_tab_tone", "args": { "active": { "$state": "/ui/activeTab" }, "match": "cloud" } }
         },
         "on": { "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "cloud" } } }
       },
@@ -139,9 +140,10 @@
         "type": "Button",
         "props": {
           "label": "Transcripts",
+          "leadingIcon": "Captions",
           "size": "sm",
           "variant": { "$computed": "zoom_tab_variant", "args": { "active": { "$state": "/ui/activeTab" }, "match": "transcripts" } },
-          "tone": "brand"
+          "tone": { "$computed": "zoom_tab_tone", "args": { "active": { "$state": "/ui/activeTab" }, "match": "transcripts" } }
         },
         "on": { "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "transcripts" } } }
       },
@@ -149,9 +151,10 @@
         "type": "Button",
         "props": {
           "label": "My Notes",
+          "leadingIcon": "NotebookPen",
           "size": "sm",
           "variant": { "$computed": "zoom_tab_variant", "args": { "active": { "$state": "/ui/activeTab" }, "match": "notes" } },
-          "tone": "brand"
+          "tone": { "$computed": "zoom_tab_tone", "args": { "active": { "$state": "/ui/activeTab" }, "match": "notes" } }
         },
         "on": { "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "notes" } } }
       },
@@ -168,7 +171,7 @@
         "type": "Stack",
         "props": { "gap": "sm" },
         "children": ["cloudEmpty", "cloudList"],
-        "visible": { "$computed": "zoom_is_active_tab", "args": { "active": { "$state": "/ui/activeTab" }, "match": "cloud" } }
+        "visible": { "$state": "/ui/activeTab", "eq": "cloud" }
       },
       "cloudEmpty": {
         "type": "Caption",
@@ -186,7 +189,7 @@
         "type": "Stack",
         "props": { "gap": "sm" },
         "children": ["notesEmpty", "notesList"],
-        "visible": { "$computed": "zoom_is_active_tab", "args": { "active": { "$state": "/ui/activeTab" }, "match": "notes" } }
+        "visible": { "$state": "/ui/activeTab", "eq": "notes" }
       },
       "notesEmpty": {
         "type": "Caption",
@@ -221,7 +224,7 @@
         "type": "Stack",
         "props": { "gap": "sm" },
         "children": ["transcriptsEmpty", "transcriptsContent"],
-        "visible": { "$computed": "zoom_is_active_tab", "args": { "active": { "$state": "/ui/activeTab" }, "match": "transcripts" } }
+        "visible": { "$state": "/ui/activeTab", "eq": "transcripts" }
       },
       "transcriptsEmpty": {
         "type": "Caption",
