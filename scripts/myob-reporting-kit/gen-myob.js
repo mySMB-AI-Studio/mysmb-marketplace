@@ -8,8 +8,8 @@
 const fs = require('fs'), path = require('path'), crypto = require('crypto');
 const ROOT = process.argv[2] || path.resolve(__dirname, '..', '..');
 const SLUG = 'myob-reporting-studio', P = path.join(ROOT, 'plugins', SLUG), K = __dirname;
-const FAM = require('./families.js');
-const rd = (f) => fs.readFileSync(path.join(K, f), 'utf8').replace(/\r\n/g, '\n');
+const FAM = require('./families.js'), STATIC = require('./families-static.js');
+const rd =(f) => fs.readFileSync(path.join(K, f), 'utf8').replace(/\r\n/g, '\n');
 const w = (rel, s) => { const f = path.join(P, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, s.replace(/\r\n/g, '\n')); };
 const kitCompact = rd('mk-kit.js').replace(/\nif \(typeof module[^\n]*\n?$/, '\n').split('\n').map((l) => l.replace(/^\s+/, '')).filter((l) => l && !/^\/\//.test(l)).join('\n');
 new Function(kitCompact); // parses
@@ -28,6 +28,7 @@ description: Shared build recipe, controls contract, validation rules, MYOB styl
 Use when you build any MYOB report, dashboard or report pack. Load this skill first, then the report skill. Two kinds of report skill exist:
 
 - **Kit reports** (skill ids \`${SLUG}:<name>\`) — ${built}. The report skill carries a tested \`dataBindings\` manifest and a report config; this file carries the tested kit and stylesheet. **You assemble them — you do not write report code.** Follow *Build a kit report* below.
+- **A guide and two export pages** — ${STATIC.map((f) => '`' + f.skill + '` (' + f.m + ')').join(', ')}. Follow the skill itself: the guide works through the kit reports, and an export page is filled from the MYOB export the user attaches (MYOB's API does not expose those reports).
 - **Every other report skill** is still a written specification. Follow *Rules for report skills without a kit config* at the end of this file.
 
 Spec: MYOB Reports Prompt Library v1.2 (M00–M63) with the v1.2 patch (one agent per platform; LIB-002 client selector; cross-client isolation). Connector: \`myob-accounting\` (the mySMB custom MCP on the MYOB Business / AccountRight API v2).
@@ -85,7 +86,7 @@ ${fence('js', kitCompact)}
 
 ## Rules for report skills without a kit config
 
-These rules apply to every report skill that is still a written specification (all except ${built}). When you build one of those, write the report yourself following these rules.
+These rules apply to every report skill that is still a written specification (all except ${built}, and the guide and export skills above). When you build one of those, write the report yourself following these rules.
 
 ${prose}
 `;
@@ -147,6 +148,78 @@ ${fence('js', cfg)}
 `;
   w('skills/' + f.skill + '.md', md);
 });
+// ---- the guide (M62) and the pages built from the user's MYOB export (M13, M31): skills only, no template
+STATIC.filter((f) => f.type === 'guide').forEach((f) => {
+  w('skills/' + f.skill + '.md', `---
+name: ${f.name}
+description: ${f.description}. Use when ${f.trigger}.
+---
+# ${f.title} (${f.m})
+
+Use when ${f.trigger}. This is a **guide**: it has no page or data of its own and works through the kit reports. Load \`myob-report-foundation\` first.
+
+MYOB location: ${f.menu}. Library: MYOB Reports Prompt Library v1.2 → Prompts → ${f.m}. Delivery: ${f.wave}.
+
+${f.body}
+
+## Members
+
+| Member / view | How |
+|---|---|
+${f.members.map((m) => '| ' + m[0] + ' | ' + m[1] + ' |').join('\n')}
+
+## Validation
+
+${f.checks.map((c) => '- ' + c).join('\n')}
+
+## QA test script
+
+1. Ask for the request this guide covers (see *Use when*). Confirm the agent saves the right kit report with the settings and says what is N/A.
+2. Reopen the saved report: it opens on the saved settings, refetches and validates; its Download Excel file has the Validation and Parameters sheets.
+3. ${f.golden}
+`);
+});
+STATIC.filter((f) => f.type === 'export').forEach((f) => {
+  const page = rd('reports/' + f.page + '.template.html').replace('{{CSS}}', () => css);
+  w('skills/' + f.skill + '.md', `---
+name: ${f.name}
+description: ${f.description}. Use when ${f.trigger}.
+---
+# ${f.title} (${f.m})
+
+Use when ${f.trigger}. MYOB's API does **not** expose this report, so it is built from the MYOB export the user attaches and saved as a **static** (frozen) page. Do not call MYOB tools for it.
+
+MYOB location: ${f.menu}. Library: MYOB Reports Prompt Library v1.2 → Prompts → ${f.m}. Delivery: ${f.wave}.
+
+## Build
+
+1. If no export is attached, ask for it: *${f.exportPath}, and attach the file here.*
+2. Read the export. Take the business name and dates from its header; if the business is not in the file use \`null\` (the page shows "N/A — not in source"). ${f.rows}. Do not invent, merge or drop rows.
+3. Build the JSON: \`${f.dataShape}\`. **Escape every \`<\` as \`\\u003c\`** so text from the export can never close the script tag.
+4. Replace \`{{DATA}}\` in the page below with that JSON — nothing else. Save with \`artifact_save\`: \`title\` = "MYOB ${f.title}", \`description\` = "<Business> · <period> · from the MYOB export", \`fileName\` = \`${f.skill}.html\`, \`tags\` = ${JSON.stringify(['myob', f.m, 'export'])}. Do not pass \`dataBindings\` or \`connectors\`.
+5. Completion note: the number of rows, the period, that the page is a frozen copy of the export (attach a new export to update it), and the validation result.
+
+## Members
+
+| Member / view | How |
+|---|---|
+${f.members.map((m) => '| ' + m[0] + ' | ' + m[1] + ' |').join('\n')}
+
+## Validation (shown in the banner)
+
+${f.checks.map((c) => '- ' + c).join('\n')}
+
+## QA test script
+
+1. Attach an export from the golden-set file. Confirm every row appears once and the validation passes. ${f.golden}
+2. Use every filter, switch Branding to mySMB and back, and switch the workspace to the dark theme.
+3. Include text with \`<\` or \`</script>\` in a row and confirm the page still renders.
+
+## Page
+
+${fence('html', page)}
+`);
+});
 // ---- report templates: reports/<skill>/report.json + report.html. report.json holds only the keys myHubV2 reads (report-templates.ts,
 // a strict schema); the description is the reader's, shown in Reports → From your plugins.
 FAM.forEach((f) => {
@@ -169,7 +242,7 @@ const STEP5 = '5. For a kit report, follow the foundation\'s "Build a kit report
 const amd = path.join(P, 'agents', 'myob-reporting-specialist.md'), bpDir = path.join(P, 'content', 'agents'), bpFile = path.join(bpDir, fs.readdirSync(bpDir).find((x) => x.endsWith('.json')));
 const md0 = fs.readFileSync(amd, 'utf8').replace(/\r\n/g, '\n'), bp = JSON.parse(fs.readFileSync(bpFile, 'utf8'));
 // a kit report with a new skill file joins the agent: its blueprint skills (the foundation first, then by name) and the agent file's skills line
-const missing = FAM.map((f) => SLUG + ':' + f.skill).filter((s, i, a) => a.indexOf(s) === i && !bp.skills.includes(s));
+const missing = FAM.concat(STATIC).map((f) => SLUG + ':' + f.skill).filter((s, i, a) => a.indexOf(s) === i && !bp.skills.includes(s));
 if (missing.length) bp.skills = [bp.skills[0]].concat(bp.skills.slice(1).concat(missing).sort());
 let md1 = md0.replace(STEP5_OLD, STEP5).replace(/^skills: .*$/m, 'skills: ' + bp.skills.join(', '));
 if (md1 !== md0) fs.writeFileSync(amd, md1);
@@ -180,4 +253,4 @@ if (bp.rolePrompt.includes(STEP5_OLD) || missing.length || !bp.contentHash) {
   bp.contentHash = crypto.createHash('sha256').update(JSON.stringify(sortDeep(payload))).digest('hex');
   fs.writeFileSync(bpFile, JSON.stringify(sortDeep(bp), null, 2) + '\n');
 }
-console.log('generated', SLUG, '| foundation', Buffer.byteLength(foundation), 'bytes | kit reports + templates:', FAM.map((f) => f.skill).join(', '));
+console.log('generated', SLUG, '| foundation', Buffer.byteLength(foundation), 'bytes | kit reports + templates:', FAM.map((f) => f.skill).join(', '), '| guide and export skills:', STATIC.map((f) => f.skill).join(', '));

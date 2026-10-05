@@ -23,7 +23,8 @@ const done = new Set();
 (async () => {
   for (const f of FAM) {
     if ((only && only !== f.report) || done.has(f.report)) continue; done.add(f.report);
-    const m = man(f.report), cfIn = (m.bindings.map((b) => (b.params || {}).myob_company_file_id).filter((p) => p && p.kind === 'input')[0] || {}).input;
+    // a report with no company figures (the catalogue: only list_company_files) still takes the client from its company_file input
+    const m = man(f.report), cfIn = (m.bindings.map((b) => (b.params || {}).myob_company_file_id).filter((p) => p && p.kind === 'input')[0] || {}).input || (m.inputs.find((i) => i.name === 'company_file') || {}).name;
     ok(f.report + ': every MYOB binding is scoped to the chosen company file', !!cfIn && m.bindings.every((b) => b.tool.name === 'list_company_files' || ((b.params || {}).myob_company_file_id || {}).input === cfIn), m.bindings.filter((b) => b.tool.name !== 'list_company_files' && !((b.params || {}).myob_company_file_id)).map((b) => b.id));
     // ---- LIB-002: open on file 1, switch to file 2
     const m1 = withDefaults(m, { [cfIn]: L.CF1 }), t = await run(f.report, m1, fixtures(m1), { bundleInputs: true }); await wait(80);
