@@ -9,7 +9,7 @@ let n = 0;
 for (const r of REPORTS) {
   if (only && r.slug !== only) continue;
   const src = path.join(__dirname, r.ref);
-  if (!fs.existsSync(src + (r.platform ? '.cfg.js' : '.html'))) { console.log('skip (not written yet)', r.slug); continue; }
+  if (!fs.existsSync(src + (r.platform ? '.cfg.js' : '.js'))) { console.log('skip (not written yet)', r.slug); continue; }
   const html = build(r.ref, r.title);
   const meta = { title: r.title, description: r.description, tags: r.tags, fileName: r.fileName };
   if (fs.existsSync(src + '.manifest.json')) meta.dataBindings = JSON.parse(fs.readFileSync(src + '.manifest.json', 'utf8'));

@@ -1,13 +1,13 @@
 // node build.js <platform>/<id>  -> out/<platform>-<id>.html
 // A report = <platform>/<id>.cfg.js + <platform>/<id>.manifest.json, assembled with that platform's kit (engines.js).
-// The catalogue (catalogue/<id>.html) is a plain document with its own small script, not a kit report.
+// The catalogue is a plain document with its own small script, not a kit report: catalogue/<id>.js exports () => html.
 const fs = require('fs'), path = require('path');
 const { ENGINES, rd } = require('./engines.js');
 const OUT = path.join(__dirname, 'out');
 function build(ref, title) {
   const [platform, id] = ref.split('/');
   let html;
-  if (platform === 'catalogue') html = rd(path.join(__dirname, 'catalogue', id + '.html'));
+  if (platform === 'catalogue') { const p = path.join(__dirname, 'catalogue', id + '.js'); delete require.cache[require.resolve(p)]; html = require(p)(); }
   else {
     const eng = ENGINES[platform]; if (!eng) throw new Error('unknown platform ' + platform);
     const cfg = rd(path.join(__dirname, platform, id + '.cfg.js')).trim();
