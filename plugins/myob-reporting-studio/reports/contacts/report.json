@@ -1,0 +1,117 @@
+{
+  "title": "MYOB Contacts",
+  "description": "Live, validated MYOB Contacts (M12): Contacts, Balances, Contact type, Search, hide inactive.",
+  "tags": [
+    "myob",
+    "contacts",
+    "M12",
+    "directory"
+  ],
+  "fileName": "myob-contacts.html",
+  "dataBindings": {
+    "inputs": [
+      {
+        "name": "type",
+        "label": "Contact type",
+        "type": "enum",
+        "options": [
+          "All",
+          "Customer",
+          "Supplier"
+        ],
+        "default": "All"
+      },
+      {
+        "name": "company_file",
+        "label": "Company file",
+        "type": "string",
+        "maxLength": 64,
+        "default": ""
+      },
+      {
+        "name": "persona",
+        "label": "View as",
+        "type": "enum",
+        "options": [
+          "Client",
+          "Bookkeeper",
+          "Practitioner",
+          "Executive"
+        ],
+        "default": "Bookkeeper"
+      },
+      {
+        "name": "display",
+        "label": "Display settings",
+        "type": "string",
+        "maxLength": 300,
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"directory\",\"x\":\"\"}"
+      }
+    ],
+    "bindings": [
+      {
+        "id": "contacts",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_contacts"
+        },
+        "params": {
+          "type": {
+            "kind": "input",
+            "input": "type"
+          },
+          "page_size": {
+            "kind": "static",
+            "value": 1000
+          },
+          "myob_company_file_id": {
+            "kind": "input",
+            "input": "company_file"
+          }
+        }
+      },
+      {
+        "id": "invoices",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_invoices"
+        },
+        "params": {
+          "status": {
+            "kind": "static",
+            "value": "Open"
+          },
+          "myob_company_file_id": {
+            "kind": "input",
+            "input": "company_file"
+          }
+        }
+      },
+      {
+        "id": "bills",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_bills"
+        },
+        "params": {
+          "status": {
+            "kind": "static",
+            "value": "Open"
+          },
+          "myob_company_file_id": {
+            "kind": "input",
+            "input": "company_file"
+          }
+        }
+      },
+      {
+        "id": "company_files",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_company_files"
+        },
+        "params": {}
+      }
+    ]
+  }
+}

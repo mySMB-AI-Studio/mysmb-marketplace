@@ -1,25 +1,226 @@
 ---
 name: MYOB Contacts
-description: Generate a MYOB Contacts report — customer and supplier directory with type, status, and contact details.
+description: MYOB Contacts (M12) as a live, validated report in MYOB styling. Use when the user asks for contacts, the contact list, customers or suppliers list, a customer or supplier directory, or contact balances.
 ---
+# Contacts (M12)
 
-# Contacts (Prompt ID M12 — Reporting › Reports › Business › Contacts)
+Use when the user asks for contacts, the contact list, customers or suppliers list, a customer or supplier directory, or contact balances. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Contacts**. Template: `myob-reporting-studio` / `contacts` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_contacts`, `list_invoices`, `list_bills`, `list_company_files`).
 
-Use `list_contacts` (`type: "All"` unless the reader narrows it, `page_size: 1000`) for the directory. `list_contacts` returns a single page only: if exactly 1000 contacts come back, show a visible "directory may be truncated at 1000" warning. Per the foundation skill's discovery rule, inspect the rows returned by the generation-turn `list_contacts` call (or call `get_contact` once on a real contact UID) to confirm exactly where email/phone live before writing render code — do not assume an `Addresses: [{Email, Phone1}]` shape. Render defensively (`contact?.Addresses?.[0]?.Email ?? "N/A"` style) so a shape mismatch degrades to "N/A" rather than a broken page.
+MYOB location: Reporting → Reports → Business → Contacts. Library: MYOB Reports Prompt Library v1.2 → Prompts → M12. Delivery: Wave 2 (P2).
 
-Show one row per contact: `CompanyName` (or the individual's first/last name when there is no company name), `Type` (Customer/Supplier), `IsActive`, plus whatever email/phone fields the live check confirms. Group by `Type` with a count per group.
+## Discovery call
 
-**Optional open-balance column:** if useful, cross-reference each contact's open balance via `list_invoices` (`status: "Open"`) for customers and `list_bills` (`status: "Open"`) for suppliers, summing `BalanceDueAmount` client-side by `Customer.UID`/`Supplier.UID` — this is two calls total (one per contact type), not one per contact, so it stays cheap regardless of directory size. Disclose this in Sources & limitations if included.
+Call `list_contacts` once with `type` = `All` and `page_size` = 1000, and `list_company_files` once. Expect `Items:[{UID, CompanyName, FirstName, LastName, IsIndividual, DisplayID, IsActive, Type, CurrentBalance}]` — MYOB's contact list usually has no addresses; the report shows email and phone only when MYOB returns them, and only for customers and suppliers. One page holds up to 1,000 contacts: at exactly 1,000 the report says the list may be cut off.
 
-No numeric tie-out is meaningful for a directory listing — skip the Validation section's equations, but still confirm the displayed contact count matches `list_contacts`' returned row count. That check compares against what was returned, so it must not Fail just because of paging: when exactly 1000 rows came back, show it as "N/A — may be truncated" with the warning above, not Fail.
+## Date defaults
 
-## Interactivity
+No dates — the list and balances are today's. Set `type` (`All`, `Customer`, `Supplier`) from the request. The view is display `v` (`directory` | `balances`); `x` = `active` hides inactive contacts.
 
-* Declare `persona` and `company_file` per the foundation skill.
-* Declare a `type` enum input (Customer/Supplier/All) mapped 1:1 to `list_contacts`' `type` param.
-* Name search: filter client-side over the fetched rows by default (this also matches individuals). `list_contacts`' own `name` param is a "company name starts with" search (`startswith(CompanyName, …)`), so individuals without a company name never match it — use it only for directories over 1000, as a second binding called with `getData` once the reader types a name, and say so beside the search box.
-* Client-side sort by name within each type group.
+## Members
 
-## Sources & limitations
+| Member / view | How |
+|---|---|
+| Contacts | Grouped by type (customers, suppliers, employees, personal) with a count per group: name, ID, status, email and phone (customers and suppliers, when MYOB returns them), balance |
+| Balances | Report = Balances (customers who owe you, suppliers you owe) |
+| Contact type | Contact type select (refetches) |
+| Search, hide inactive | Above the report |
+| Addresses | N/A — not shown; employee and personal contacts never show contact details |
 
-Tools used: `list_contacts` (`/Contact`, one page of up to 1000); optionally `list_invoices`/`list_bills` for open balances. No new connector work needed. Email/phone field paths confirmed live at generation time (see discovery note above) rather than assumed.
+## Validation checks (shown in the banner)
+
+- Contacts shown = the contacts MYOB returned (N/A with a warning at 1,000 — one page)
+- **Independent tie:** customer balances = open invoices (a separate MYOB list)
+- **Independent tie:** supplier balances = open bills (a separate MYOB list)
+
+## Save as
+
+`fileName`: `myob-contacts.html` · `tags`: ["myob","contacts","M12","directory"]
+
+## QA test script (golden set)
+
+1. On the golden-set file, ask for this report at the library's example period; confirm the discovery call succeeded and the report saved.
+2. Compare the headline figures: mySMB.com: customers and suppliers with their balances; customer balances total = Unpaid Invoices total.
+3. Validation banner: every check passes (the independent tie included), or shows N/A with a stated reason.
+4. Change every control and confirm the report refetches and still validates; switch View as to Client, then Bookkeeper; toggle Style and the dark theme.
+5. Download PDF and Download Excel and confirm they match the screen (the Excel file has Validation and Parameters sheets).
+6. Download or Share from the report window: the snapshot keeps the period and figures and disables the refetching controls.
+7. Cross-client isolation (LIB-002): the saved report and every export carry only this company file's figures and name.
+
+## dataBindings
+
+```json
+{
+  "inputs": [
+    {
+      "name": "type",
+      "label": "Contact type",
+      "type": "enum",
+      "options": [
+        "All",
+        "Customer",
+        "Supplier"
+      ],
+      "default": "All"
+    },
+    {
+      "name": "company_file",
+      "label": "Company file",
+      "type": "string",
+      "maxLength": 64,
+      "default": ""
+    },
+    {
+      "name": "persona",
+      "label": "View as",
+      "type": "enum",
+      "options": [
+        "Client",
+        "Bookkeeper",
+        "Practitioner",
+        "Executive"
+      ],
+      "default": "Bookkeeper"
+    },
+    {
+      "name": "display",
+      "label": "Display settings",
+      "type": "string",
+      "maxLength": 300,
+      "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"directory\",\"x\":\"\"}"
+    }
+  ],
+  "bindings": [
+    {
+      "id": "contacts",
+      "tool": {
+        "mcp": "myob-accounting",
+        "name": "list_contacts"
+      },
+      "params": {
+        "type": {
+          "kind": "input",
+          "input": "type"
+        },
+        "page_size": {
+          "kind": "static",
+          "value": 1000
+        },
+        "myob_company_file_id": {
+          "kind": "input",
+          "input": "company_file"
+        }
+      }
+    },
+    {
+      "id": "invoices",
+      "tool": {
+        "mcp": "myob-accounting",
+        "name": "list_invoices"
+      },
+      "params": {
+        "status": {
+          "kind": "static",
+          "value": "Open"
+        },
+        "myob_company_file_id": {
+          "kind": "input",
+          "input": "company_file"
+        }
+      }
+    },
+    {
+      "id": "bills",
+      "tool": {
+        "mcp": "myob-accounting",
+        "name": "list_bills"
+      },
+      "params": {
+        "status": {
+          "kind": "static",
+          "value": "Open"
+        },
+        "myob_company_file_id": {
+          "kind": "input",
+          "input": "company_file"
+        }
+      }
+    },
+    {
+      "id": "company_files",
+      "tool": {
+        "mcp": "myob-accounting",
+        "name": "list_company_files"
+      },
+      "params": {}
+    }
+  ]
+}
+```
+
+## Report config ({{CFG}})
+
+```js
+// Contacts (M12): MYOB's contact list (list_contacts — one page of up to 1,000) grouped by type, with each customer's and supplier's
+// balance tied to MYOB's open invoices and bills (separate lists). Email and phone show for customers and suppliers only, when MYOB
+// returns them (its contact list usually has no addresses); an employee's or personal contact's details never show.
+MK.app({
+  title: 'Contacts', primary: 'contacts', files: 'company_files',
+  inputs: { companyFile: 'company_file', persona: 'persona', display: 'display' },
+  defaults: { type: 'All', company_file: '', persona: 'Bookkeeper',
+    display: '{"cents":1,"k":0,"zeros":1,"neg":"paren","red":0,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"custom","a":"custom","c":"none","v":"directory","x":""}' },
+  enums: [{ input: 'type', label: 'Contact type', options: [['All', 'All'], ['Customer', 'Customers'], ['Supplier', 'Suppliers']] }],
+  uses: { contacts: ['type', 'company_file'], invoices: ['company_file'], bills: ['company_file'], company_files: [] },
+  tools: { contacts: 'list_contacts (one page of up to 1,000)', invoices: 'list_invoices (open — customer balances)', bills: 'list_bills (open — supplier balances)', company_files: 'list_company_files' },
+  views: [['directory', 'Contacts'], ['balances', 'Balances']],
+  render: function (c) {
+    var body = c.body, h = MK.h, self = this, money = function (v) { return MK.money(v, c.currency, c.display); }, r2 = function (v) { return Math.round(v * 100) / 100; };
+    if (c.errors.contacts) { body.innerHTML = '<p class="mk-err">' + h(c.err('contacts')) + '</p>'; return { checks: [{ name: 'Contacts loaded', pass: false, detail: c.err('contacts') }] }; }
+    if (!c.data.contacts) return {};
+    var raw = MK.items(c.data.contacts), cut = raw.length >= 1000, type = c.inputs.type || 'All', TRADE = { Customer: 1, Supplier: 1 };
+    var C = raw.map(function (x) {
+      var ad = (x.Addresses || []).filter(function (a) { return a && (a.Email || a.Phone1); })[0] || {}, trade = !!TRADE[x.Type];
+      return { name: x.CompanyName || [x.FirstName, x.LastName].filter(Boolean).join(' ') || x.DisplayID || 'N/A', id: x.DisplayID || '', type: x.Type || 'Other', active: x.IsActive !== false,
+        email: trade ? ad.Email || '' : '', phone: trade ? ad.Phone1 || '' : '', bal: x.CurrentBalance == null ? null : r2(MK.num(x.CurrentBalance) || 0) };
+    }).sort(function (a, b) { return a.name.localeCompare(b.name); });
+    var hide = c.display.x === 'active', shown = hide ? C.filter(function (r) { return r.active; }) : C;
+    var TYPES = ['Customer', 'Supplier', 'Employee', 'Personal'], types = TYPES.concat(Object.keys(C.reduce(function (o, r) { if (TYPES.indexOf(r.type) < 0) o[r.type] = 1; return o; }, {})));
+    var PL = { Customer: 'Customers', Supplier: 'Suppliers', Employee: 'Employees', Personal: 'Personal contacts' }, n = function (t) { return C.filter(function (r) { return r.type === t; }).length; };
+    var sumT = function (t) { return MK.sum(C.filter(function (r) { return r.type === t; }).map(function (r) { return r.bal; })); }, view = c.view || 'directory';
+    var html = MK.kpis([{ label: 'Contacts', money: false, value: C.length }, { label: 'Customers', money: false, value: n('Customer') }, { label: 'Suppliers', money: false, value: n('Supplier') }, { label: 'Inactive', money: false, value: C.filter(function (r) { return !r.active; }).length },
+      { label: 'Customers owe you', value: type !== 'Supplier' ? sumT('Customer') : null }, { label: 'You owe suppliers', value: type !== 'Customer' ? sumT('Supplier') : null }], c) +
+      (cut ? '<div class="mk-banner fail" style="margin-top:12px">MYOB returned 1,000 contacts — one page — so the list may be cut off. Narrow it with Contact type.</div>' : '') +
+      '<div style="display:flex;gap:16px;align-items:center;margin:14px 0 6px"><input id="co-q" type="search" class="mk-filter" style="flex:1;margin:0" placeholder="Search name, ID or email" aria-label="Search contacts" value="' + h(self._q || '') + '">' +
+      '<label><input type="checkbox" id="co-active"' + (hide ? ' checked' : '') + '> Hide inactive</label></div>';
+    var table = function (rows, withBal) { var em = rows.some(function (r) { return r.email || r.phone; });
+      return '<div class="mk-scroll"><table class="mk-grid"><thead><tr><th>Name</th><th>ID</th><th>Status</th>' + (em ? '<th>Email</th><th>Phone</th>' : '') + (withBal ? '<th class="num">Balance ($)</th>' : '') + '</tr></thead><tbody>' +
+        rows.map(function (r) { return '<tr data-text="' + h((r.name + ' ' + r.id + ' ' + r.email).toLowerCase()) + '"><td>' + h(r.name) + '</td><td>' + h(r.id) + '</td><td>' + (r.active ? 'Active' : '<span class="muted">Inactive</span>') + '</td>' + (em ? '<td>' + h(r.email) + '</td><td>' + h(r.phone) + '</td>' : '') + (withBal ? '<td class="num">' + (r.bal == null ? '' : money(r.bal)) + '</td>' : '') + '</tr>'; }).join('') +
+        '</tbody>' + (withBal ? '<tfoot><tr class="k-total"><td colspan="' + (em ? 5 : 3) + '">Total</td><td class="num">' + money(MK.sum(rows.map(function (r) { return r.bal; }))) + '</td></tr></tfoot>' : '') + '</table></div>'; };
+    if (view === 'balances') {
+      ['Customer', 'Supplier'].forEach(function (t) { var rows = shown.filter(function (r) { return r.type === t && Math.abs(r.bal || 0) >= 0.005; }).sort(function (a, b) { return (b.bal || 0) - (a.bal || 0); });
+        html += '<h3>' + (t === 'Customer' ? 'Customers who owe you' : 'Suppliers you owe') + ' (' + rows.length + ')</h3>' + (rows.length ? table(rows, true) : '<p class="muted">No balances.</p>'); });
+    } else types.forEach(function (t) { var rows = shown.filter(function (r) { return r.type === t; }); if (!rows.length) return; html += '<h3>' + h(PL[t] || t) + ' (' + rows.length + ')</h3>' + table(rows, TRADE[t]); });
+    body.innerHTML = html + (shown.length ? '' : '<p class="muted">No contacts.</p>');
+    var q = document.getElementById('co-q'), filter = function () { var s = (self._q || '').trim().toLowerCase(); body.querySelectorAll('tbody tr[data-text]').forEach(function (tr) { tr.hidden = !!s && tr.getAttribute('data-text').indexOf(s) < 0; }); };
+    q.addEventListener('input', function () { self._q = q.value; filter(); }); filter();
+    document.getElementById('co-active').addEventListener('change', function () { c.change({}, { x: this.checked ? 'active' : '' }); });
+    // ties: the contact list's balances against MYOB's open invoices and bills — separate endpoints
+    var tie = function (t, id, field) { if (type !== 'All' && type !== t) return { pass: null, detail: 'N/A — Contact type is ' + type }; if (c.errors[id] || !c.data[id]) return { pass: null, detail: c.err(id) || 'N/A' };
+      if (!C.some(function (r) { return r.type === t && r.bal != null; })) return { pass: null, detail: 'N/A — MYOB returned no contact balances' };
+      var open = MK.sum(MK.items(c.data[id]).map(function (d) { return MK.num(d[field]); })), bal = sumT(t); return { pass: MK.near(open, bal), detail: money(bal) + ' vs ' + money(open) + (MK.near(open, bal) ? '' : ' — unapplied payments or credits can explain a difference') }; };
+    var ti = tie('Customer', 'invoices', 'BalanceDueAmount'), tb = tie('Supplier', 'bills', 'BalanceDueAmount');
+    this._x = { C: C };
+    return { checks: [
+      { name: 'Contacts shown = the contacts MYOB returned', pass: cut ? null : C.length === raw.length, detail: cut ? 'N/A — MYOB returned 1,000 (one page); the list may be cut off' : C.length + ' contacts' },
+      { name: 'Customer balances = open invoices (a separate MYOB list)', pass: ti.pass, detail: ti.detail },
+      { name: 'Supplier balances = open bills (a separate MYOB list)', pass: tb.pass, detail: tb.detail }],
+      title: view === 'balances' ? 'Contact Balances' : 'Contacts', period: 'Contacts' + (type === 'All' ? '' : ' — ' + PL[type]) + ' · today',
+      notes: ['MYOB\'s contact list, one page of up to 1,000 contacts. Balances are MYOB\'s current balance for each contact today.', 'Email and phone show for customers and suppliers only, when MYOB returns them; employee and personal contacts never show contact details.'],
+      na: ['Addresses (not shown)', 'Contact balances at a past date (MYOB gives today\'s)'] };
+  },
+  excel: function (c) {
+    var x = this._x; if (!x) return [];
+    return [{ name: 'Contacts', widths: [34, 14, 12, 10, 32, 18, 16], rows: [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: 'Contacts', s: 'bold' }], [], ['Name', 'ID', 'Type', 'Status', 'Email', 'Phone', 'Balance ($)'].map(function (t) { return { v: t, s: 'bold' }; })]
+      .concat(x.C.map(function (r) { return [r.name, r.id, r.type, r.active ? 'Active' : 'Inactive', r.email, r.phone, r.bal == null ? '' : { v: r.bal, s: 'money' }]; })) }];
+  }
+});
+```
