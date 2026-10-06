@@ -321,8 +321,19 @@ function listJobRegister(p) {
     .filter((r) => !p || !p.job_uid || r.Job.UID === p.job_uid);
   return { Count: l.length, Items: JSON.parse(JSON.stringify(l)) };
 }
+// Budgets (GeneralLedger/AccountBudget/{FY}): MYOB exposes the current and the next financial year only (2027 = Jul 2026 – Jun 2027;
+// 2028 has no budget set up yet). Income, cost of sales and the regular expenses per month in each account's normal balance, rising
+// 1% a month, plus one balance-sheet account (the bank), as MYOB allows; MonthlyBudgets carry the calendar Year and Month
+const BUDGET = [['4-1300', 1600], ['4-1400', 5200], ['5-1000', 950], ['6-1100', 250], ['6-1430', 300], ['6-4100', 2200], ['6-4460', 160], ['6-5130', 2400], ['6-5140', 276], ['8-1000', 25], ['1-1110', 1500]];
+function getBudget(p) {
+  const B = books(p && p.myob_company_file_id), fy = p && p.financial_year != null ? +p.financial_year : 2027;
+  if (fy !== 2027 && fy !== 2028) return { __error: 'MYOB: budgets are available for the current or the next financial year only' };
+  const months = []; for (let k = 0; k < 12; k++) { const m = (6 + k) % 12 + 1; months.push([m >= 7 ? fy - 1 : fy, m]); }
+  const list = fy === 2028 ? [] : BUDGET.map(([id, amt]) => ({ Account: { UID: B.acc[id].UID, Name: B.acc[id].Name, DisplayID: id, URI: 'x' }, MonthlyBudgets: months.map(([y, m], k) => ({ Year: y, Month: m, Amount: r2(amt * B.F.scale * (1 + 0.01 * k)) })) }));
+  return { FinancialYear: fy, LastMonthInFinancialYear: 6, Budgets: list, URI: 'x' };
+}
 // Inventory adjustments: none (this ledger is a services business; the inventory reports are tested on fixtures-inventory.js)
 function listInventoryAdjustments() { return { Count: 0, Items: [] }; }
 // expected figures computed independently of the MYOB JSON (for assertions)
 const expect = { balances: (date, cf) => balances(books(cf), date), plByAccount: (a, b, cash, cf) => plByAccount(books(cf), a, b, cash), netProfit: (a, b, cash, cf) => netProfit(books(cf), a, b, cash), movement: (a, b, cf) => movement(books(cf), a, b), books, invoiceOut: (i, cf) => invoiceOut(books(cf), i), billOut: (b, cf) => billOut(books(cf), b) };
-module.exports = { TODAY, CF1, CF2, FILES, U, profitAndLoss, balanceSheet, listAccounts, listInvoices, listBills, listContacts, listPayments, listSupplierPayments, listBankStatementLines, listTimesheets, listEmployeeLeaveBalances, listInventoryAdjustments, listJobRegister, JOBS, listJournalTransactions, listTaxCodes, taxCodeSummary, payrollCategorySummary, listInvoiceLines, listBillLines, listItems, listPayrollAdvices, agedReceivables, agedPayables, companyFiles, expect, fyStart, addDays, eom, r2 };
+module.exports = { TODAY, CF1, CF2, FILES, U, profitAndLoss, balanceSheet, listAccounts, listInvoices, listBills, listContacts, listPayments, listSupplierPayments, listBankStatementLines, listTimesheets, listEmployeeLeaveBalances, listInventoryAdjustments, listJobRegister, JOBS, getBudget, listJournalTransactions, listTaxCodes, taxCodeSummary, payrollCategorySummary, listInvoiceLines, listBillLines, listItems, listPayrollAdvices, agedReceivables, agedPayables, companyFiles, expect, fyStart, addDays, eom, r2 };
