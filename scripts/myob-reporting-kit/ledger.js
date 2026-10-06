@@ -139,7 +139,7 @@ const paidBy = (list, doc, date) => r2(list.filter((x) => (x.inv || x.bill) === 
 function invoiceOut(B, i) { const due = r2(i.TotalAmount - paidBy(B.pays, i, TODAY)), last = B.pays.filter((x) => x.inv === i).map((x) => x.date).sort().pop();
   return { UID: i.UID, Number: i.Number, Date: i.Date, CustomerPurchaseOrderNumber: '', Customer: Object.assign({ URI: 'x' }, i.Customer), InvoiceType: i.InvoiceType, Status: due <= 0.004 ? 'Closed' : 'Open', Subtotal: i.Subtotal, TotalTax: i.TotalTax, TotalAmount: i.TotalAmount, BalanceDueAmount: Math.max(0, due), IsTaxInclusive: false, Terms: { PaymentIsDue: 'InAGivenNumberOfDays', DueDate: ISO(i.due), BalanceDueDate: 30 }, LastPaymentDate: last ? ISO(last) : null, URI: 'x' }; }
 function billOut(B, b) { const due = r2(b.TotalAmount - paidBy(B.spays, b, TODAY)), last = B.spays.filter((x) => x.bill === b).map((x) => x.date).sort().pop();
-  return { UID: b.UID, Number: b.Number, Date: b.Date, SupplierInvoiceNumber: b.SupplierInvoiceNumber, Supplier: Object.assign({ URI: 'x' }, b.Supplier), BillType: b.BillType, Status: due <= 0.004 ? 'Closed' : 'Open', Subtotal: b.Subtotal, TotalTax: b.TotalTax, TotalAmount: b.TotalAmount, BalanceDueAmount: Math.max(0, due), IsTaxInclusive: false, Terms: { PaymentIsDue: 'InAGivenNumberOfDays', DueDate: ISO(b.due), BalanceDueDate: 14 }, LastPaymentDate: last ? ISO(last) : null, URI: 'x' }; }
+  return { UID: b.UID, Number: b.Number, Date: b.Date, SupplierInvoiceNumber: b.SupplierInvoiceNumber, Supplier: Object.assign({ URI: 'x' }, b.Supplier), BillType: b.BillType, IsReportable: false, Status: due <= 0.004 ? 'Closed' : 'Open', Subtotal: b.Subtotal, TotalTax: b.TotalTax, TotalAmount: b.TotalAmount, BalanceDueAmount: Math.max(0, due), IsTaxInclusive: false, Terms: { PaymentIsDue: 'InAGivenNumberOfDays', DueDate: ISO(b.due), BalanceDueDate: 14 }, LastPaymentDate: last ? ISO(last) : null, URI: 'x' }; }
 const inRange = (d, a, b) => (!a || d >= a) && (!b || d <= b);
 function listInvoices(p) { const B = books(p.myob_company_file_id); let l = B.invoices.filter((i) => inRange(i.date, p.from_date, p.to_date) && (!p.customer_uid || i.Customer.UID === p.customer_uid)).map((i) => invoiceOut(B, i)).filter((o) => !p.status || p.status === 'All' || o.Status === p.status);
   l.sort((a, b) => (p.order_desc === false ? 1 : -1) * a.Date.localeCompare(b.Date)); return { Count: l.length, Items: l }; }
@@ -332,8 +332,27 @@ function getBudget(p) {
   const list = fy === 2028 ? [] : BUDGET.map(([id, amt]) => ({ Account: { UID: B.acc[id].UID, Name: B.acc[id].Name, DisplayID: id, URI: 'x' }, MonthlyBudgets: months.map(([y, m], k) => ({ Year: y, Month: m, Amount: r2(amt * B.F.scale * (1 + 0.01 * k)) })) }));
   return { FinancialYear: fy, LastMonthInFinancialYear: 6, Budgets: list, URI: 'x' };
 }
+// Spend money (Banking/SpendMoneyTxn, as list_spend_money returns it) from the spend money journals: paid from the credited account,
+// the GST from the GST Paid line, the office supplies paid to Office Hub Supplies; supplier cards (Contact/Supplier, as list_suppliers
+// returns them) with valid ABNs, none set up for taxable payments (TPAR is tested on fixtures-tpar.js)
+function listSpendMoney(p) {
+  const B = books(p && p.myob_company_file_id), ref = (id) => ({ UID: B.acc[id].UID, Name: B.acc[id].Name, DisplayID: id });
+  const l = B.tx.filter((t) => t.SourceTransaction.TransactionType === 'SpendMoney' && inRange(dateOf(t), p.from_date, p.to_date)).map((t) => {
+    const cr = t.Lines.filter((x) => x.IsCredit), dr = t.Lines.filter((x) => !x.IsCredit), sup = /Office supplies/.test(t.Description) ? 5 : -1;
+    return { UID: U(B.cf, 60000 + parseInt(t.DisplayID.slice(2), 10)), PaymentNumber: 'CS' + t.DisplayID.slice(2), Date: t.DateOccurred, PayFrom: 'Account', Account: ref(cr[0].Account.DisplayID),
+      Contact: sup < 0 ? null : { UID: U(B.cf, 2000 + sup), Name: SUPPLIERS[sup], DisplayID: 'SUP' + String(sup + 1).padStart(6, '0'), Type: 'Supplier' }, AmountPaid: r2(cr.reduce((a, x) => a + x.Amount, 0)), IsTaxInclusive: false,
+      TotalTax: r2(dr.filter((x) => x.Account.DisplayID === '2-1330').reduce((a, x) => a + x.Amount, 0)), Memo: t.Description, IsReportable: null,
+      Lines: dr.filter((x) => x.Account.DisplayID !== '2-1330').map((x, i) => ({ RowID: i + 1, Account: ref(x.Account.DisplayID), Job: x.Job, TaxCode: null, Amount: x.Amount, Memo: t.Description })) }; });
+  return { Count: l.length, Items: l };
+}
+const abn = (i) => { for (let n = 53000000000 + i * 1000003; ; n++) { const d = String(n).split('').map(Number); d[0] -= 1; if (d.reduce((a, x, k) => a + x * [10, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19][k], 0) % 89 === 0) return String(n).replace(/(\d\d)(\d{3})(\d{3})(\d{3})/, '$1 $2 $3 $4'); } };
+function listSuppliers(p) {
+  const B = books(p && p.myob_company_file_id), l = SUPPLIERS.map((name, i) => ({ UID: U(B.cf, 2000 + i), DisplayID: 'SUP' + String(i + 1).padStart(6, '0'), Name: name, CompanyName: name, FirstName: null, LastName: null, IsIndividual: false, IsActive: true,
+    ABN: abn(i), ABNBranch: null, IsReportable: false, ExpenseAccount: null, TaxCode: { UID: U(B.cf, 901), Code: 'GST' } })).filter((x) => !(p && p.reportable_only) || x.IsReportable);
+  return { Count: l.length, Items: l };
+}
 // Inventory adjustments: none (this ledger is a services business; the inventory reports are tested on fixtures-inventory.js)
 function listInventoryAdjustments() { return { Count: 0, Items: [] }; }
 // expected figures computed independently of the MYOB JSON (for assertions)
 const expect = { balances: (date, cf) => balances(books(cf), date), plByAccount: (a, b, cash, cf) => plByAccount(books(cf), a, b, cash), netProfit: (a, b, cash, cf) => netProfit(books(cf), a, b, cash), movement: (a, b, cf) => movement(books(cf), a, b), books, invoiceOut: (i, cf) => invoiceOut(books(cf), i), billOut: (b, cf) => billOut(books(cf), b) };
-module.exports = { TODAY, CF1, CF2, FILES, U, profitAndLoss, balanceSheet, listAccounts, listInvoices, listBills, listContacts, listPayments, listSupplierPayments, listBankStatementLines, listTimesheets, listEmployeeLeaveBalances, listInventoryAdjustments, listJobRegister, JOBS, getBudget, listJournalTransactions, listTaxCodes, taxCodeSummary, payrollCategorySummary, listInvoiceLines, listBillLines, listItems, listPayrollAdvices, agedReceivables, agedPayables, companyFiles, expect, fyStart, addDays, eom, r2 };
+module.exports = { TODAY, CF1, CF2, FILES, U, profitAndLoss, balanceSheet, listAccounts, listInvoices, listBills, listContacts, listPayments, listSupplierPayments, listBankStatementLines, listTimesheets, listEmployeeLeaveBalances, listInventoryAdjustments, listJobRegister, JOBS, getBudget, listSpendMoney, listSuppliers, listJournalTransactions, listTaxCodes, taxCodeSummary, payrollCategorySummary, listInvoiceLines, listBillLines, listItems, listPayrollAdvices, agedReceivables, agedPayables, companyFiles, expect, fyStart, addDays, eom, r2 };
