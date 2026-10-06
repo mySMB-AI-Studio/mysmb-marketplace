@@ -26,15 +26,38 @@ Use when the user asks for the BAS Related Transactions and GST (CRA-07) of one 
 
 ### Xero BAS Related Transactions and GST (`client-xero-bas-transactions`)
 
-_Not built yet._
+| Input | Label | Type | Default |
+|---|---|---|---|
+| `from_date` | From | date | `2026-04-01` |
+| `to_date` | To | date | `2026-06-30` |
+| `prev_end` | Day before the period | date | `2026-03-31` |
+| `date_where` | Period filter | string | `Date>=DateTime(2026,04,01) AND Date<=DateTime(2026,06,30)` |
+| `inv_ids` | Paid invoice ids | string | `` |
+| `org` | Organisation | string | `` |
+| `page` | Page | number | `1` |
+| `display` | Display settings | string | `{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,…` |
 
 ### MYOB BAS Related Transactions and GST (`client-myob-bas-transactions`)
 
-_Not built yet._
+| Input | Label | Type | Default |
+|---|---|---|---|
+| `from_date` | From | date | `2026-04-01` |
+| `to_date` | To | date | `2026-06-30` |
+| `company_file` | Client (MYOB company file) | string | `` |
+| `persona` | View as | enum (Client / Bookkeeper / Practitioner / Executive) | `Bookkeeper` |
+| `display` | Display settings | string | `{"cents":1,"k":0,"zeros":0,"neg":"paren","red":0,"hdr":1,…` |
 
 ### QuickBooks BAS Related Transactions and GST (`client-quickbooks-bas-transactions`)
 
-_Not built yet._
+| Input | Label | Type | Default |
+|---|---|---|---|
+| `start_date` | From | date | `2026-04-01` |
+| `end_date` | To | date | `2026-06-30` |
+| `txn_where` | Transaction date filter | string | `TxnDate >= '2026-04-01' AND TxnDate <= '2026-06-30'` |
+| `basis` | Accounting method | enum (Accrual / Cash) | `Accrual` |
+| `agency_id` | Tax agency | string | `` |
+| `persona` | View as | enum (Client / Bookkeeper / Practitioner / Executive) | `Bookkeeper` |
+| `display` | Display settings | string | `{"cents":1,"k":0,"zeros":1,"neg":"paren","red":0,"hdr":1,…` |
 
 ## Steps
 

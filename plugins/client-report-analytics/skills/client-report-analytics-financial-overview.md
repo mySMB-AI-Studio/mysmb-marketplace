@@ -26,15 +26,42 @@ Use when the user asks for the Financial Overview (CRA-01) of one client: revenu
 
 ### Xero Financial Overview (`client-xero-financial-overview`)
 
-_Not built yet._
+| Input | Label | Type | Default |
+|---|---|---|---|
+| `from_date` | From | date | `2026-07-01` |
+| `to_date` | To | date | `today` |
+| `prior_from` | Last year from | date | `2025-07-01` |
+| `prior_to` | Last year to | date | `2025-09-25` |
+| `basis` | Accounting method | enum (Accrual / Cash) | `Accrual` |
+| `org` | Organisation | string | `` |
+| `page` | Page | number | `1` |
+| `display` | Display settings | string | `{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,…` |
 
 ### MYOB Financial Overview (`client-myob-financial-overview`)
 
-_Not built yet._
+| Input | Label | Type | Default |
+|---|---|---|---|
+| `from_date` | From | date | `2026-07-01` |
+| `to_date` | To | date | `2026-09-30` |
+| `basis` | Accounting method | enum (Accrual / Cash) | `Accrual` |
+| `company_file` | Client (MYOB company file) | string | `` |
+| `persona` | View as | enum (Client / Bookkeeper / Practitioner / Executive) | `Bookkeeper` |
+| `display` | Display settings | string | `{"cents":1,"k":0,"zeros":0,"neg":"paren","red":0,"hdr":1,…` |
+| `ly_from` | Last year from | date | `2025-07-01` |
+| `ly_to` | Last year to | date | `2025-09-30` |
 
 ### QuickBooks Financial Overview (`client-quickbooks-financial-overview`)
 
-_Not built yet._
+| Input | Label | Type | Default |
+|---|---|---|---|
+| `start_date` | From | date | `2026-08-01` |
+| `end_date` | To | date | `2026-08-31` |
+| `compare_start` | Same period last year from | date | `2025-08-01` |
+| `compare_end` | Same period last year to | date | `2025-08-31` |
+| `trend_start` | Trend from | date | `2025-09-01` |
+| `basis` | Accounting method | enum (Accrual / Cash) | `Accrual` |
+| `persona` | View as | enum (Client / Bookkeeper / Practitioner / Executive) | `Practitioner` |
+| `display` | Display settings | string | `{"cents":0,"k":0,"zeros":1,"neg":"paren","red":0,"hdr":1,…` |
 
 ## Steps
 
