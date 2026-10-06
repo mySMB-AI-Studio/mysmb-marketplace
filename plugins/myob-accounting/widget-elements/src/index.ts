@@ -1847,6 +1847,54 @@ const bill_entry_bills_url: ComputedFunction = (args) => {
   return id ? `https://app.myob.com/#/au/${id}/bills` : 'https://www.myob.com/au/login';
 };
 
+// ── flatten_supplier_payments ────────────────────────────────────────
+// Flattens MYOB Purchase/SupplierPayment items (remittance records) into
+// display-ready flat rows for Table, sorted most-recent-first. Each
+// payment's Lines[].Purchase.Number (the bill(s) it was applied against)
+// is condensed into a single "Bill <n>" / "<n> bills" reference string —
+// a remittance can cover more than one bill in the one payment.
+// Args: { value: SupplierPayment[] }
+const flatten_supplier_payments: ComputedFunction = (args) => {
+  const items = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  const parseDate = (raw: string): number => {
+    if (!raw) return NaN;
+    const m = raw.match(/\/Date\((-?\d+)(?:[+-]\d{4})?\)\//);
+    return m ? Number(m[1]) : new Date(raw).getTime();
+  };
+  const fmtDate = (raw: string) => {
+    const t = parseDate(raw);
+    const d = new Date(t);
+    return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
+  };
+  const fmtAmt = (n: unknown) => {
+    const v = Number(n);
+    if (!Number.isFinite(v)) return '';
+    return 'A$' + new Intl.NumberFormat('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+  };
+  return items
+    .map((item) => {
+      const supplier = item.Supplier as Record<string, unknown> | undefined;
+      const lines = Array.isArray(item.Lines) ? (item.Lines as Record<string, unknown>[]) : [];
+      const billNumbers = lines
+        .map((l) => (l.Purchase as Record<string, unknown> | undefined)?.Number)
+        .filter((n): n is string => typeof n === 'string' && n.length > 0);
+      const billRef = billNumbers.length === 0 ? '—'
+        : billNumbers.length === 1 ? `Bill ${billNumbers[0]}`
+        : `${billNumbers.length} bills`;
+      const rawDate = String(item.Date ?? '');
+      return {
+        id: String(item.UID ?? ''),
+        supplierName: String(supplier?.Name ?? 'Unknown'),
+        paymentNumber: String(item.PaymentNumber ?? ''),
+        date: fmtDate(rawDate),
+        rawDate,
+        billRef,
+        amount: fmtAmt(item.AmountPaid),
+      };
+    })
+    .sort((a, b) => (parseDate(b.rawDate) || 0) - (parseDate(a.rawDate) || 0));
+};
+
 const elements: PluginElementsModule = {
   slug: 'myob-accounting',
   functions: {
@@ -1897,6 +1945,7 @@ const elements: PluginElementsModule = {
     bill_entry_create_bill_id,
     bill_entry_clear_lines_on_success,
     bill_entry_bills_url,
+    flatten_supplier_payments,
   },
 };
 

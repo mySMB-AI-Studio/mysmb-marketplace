@@ -1,0 +1,199 @@
+{
+  "id": "myob-remittance-advice",
+  "title": "MYOB — Remittance Advice",
+  "description": "Recent payments made to suppliers (remittance advice) from MYOB AccountRight — supplier, payment date, bill(s) applied, and amount paid.",
+  "category": "finance",
+  "tags": ["myob", "remittance", "payments", "suppliers", "finance", "accounting", "ap"],
+  "keywords": ["remittance advice", "supplier payments", "payment confirmation", "accounts payable", "myob", "bills paid"],
+  "connectorsUsed": ["myob-accounting"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
+    "max": { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "myob-accounting",
+    "tool": "list_supplier_payments",
+    "params": { "page_size": 100 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "statGrid", "divider", "tableBody", "footerDivider", "footerRow"],
+        "watch": {
+          "/myob-accounting/list_supplier_payments": [
+            { "action": "myob-accounting.list_company_files", "params": {} }
+          ],
+          "/myob-accounting/list_supplier_payments/Items": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/tableRows",
+                "value": {
+                  "$computed": "myob-accounting_flatten_supplier_payments",
+                  "args": {
+                    "value": { "$state": "/myob-accounting/list_supplier_payments/Items" }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "FileCheck", "tone": "success", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Remittance Advice", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "MYOB Accounting" }
+      },
+
+      "statGrid": {
+        "type": "Grid",
+        "props": { "cols": 2 },
+        "children": ["tileCount", "tileTotal"]
+      },
+      "tileCount": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["stackCount"]
+      },
+      "stackCount": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["iconCount", "valCount", "lblCount"]
+      },
+      "iconCount": {
+        "type": "Icon",
+        "props": { "name": "Receipt", "size": "sm", "tone": "success" }
+      },
+      "valCount": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "count",
+            "args": { "value": { "$state": "/myob-accounting/list_supplier_payments/Items" } }
+          },
+          "tone": "success"
+        }
+      },
+      "lblCount": {
+        "type": "Caption",
+        "props": { "text": "Remittances" }
+      },
+      "tileTotal": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["stackTotal"]
+      },
+      "stackTotal": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["iconTotal", "valTotal", "lblTotal"]
+      },
+      "iconTotal": {
+        "type": "Icon",
+        "props": { "name": "DollarSign", "size": "sm", "tone": "success" }
+      },
+      "valTotal": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "myob-accounting_format_currency",
+            "args": {
+              "value": {
+                "$computed": "sum",
+                "args": {
+                  "value": { "$state": "/myob-accounting/list_supplier_payments/Items" },
+                  "field": "AmountPaid"
+                }
+              }
+            }
+          },
+          "tone": "success"
+        }
+      },
+      "lblTotal": {
+        "type": "Caption",
+        "props": { "text": "Total Remitted" }
+      },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "tableBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["table"]
+      },
+      "table": {
+        "type": "Table",
+        "props": {
+          "loading": { "$state": "/_loading/myob-accounting.list_supplier_payments" },
+          "skeletonRows": 4,
+          "rows": { "$state": "/ui/tableRows" },
+          "columns": [
+            { "id": "supplier", "header": "Supplier",    "field": "supplierName",  "priority": 1 },
+            { "id": "date",     "header": "Date",        "field": "date",          "width": 130, "priority": 1 },
+            { "id": "bills",    "header": "Bills Paid",  "field": "billRef",       "width": 110, "priority": 2 },
+            { "id": "amount",   "header": "Amount",      "field": "amount",        "width": 120, "priority": 1 }
+          ]
+        }
+      },
+
+      "footerDivider": { "type": "Divider", "props": {} },
+      "footerRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "justify": "end", "hover": true, "clickable": true },
+        "children": ["footerOpenText", "footerOpenIcon"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "myob-accounting_bill_entry_bills_url",
+                "args": { "companyFiles": { "$state": "/myob-accounting/list_company_files" } }
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "footerOpenText": {
+        "type": "Text",
+        "props": { "text": "Open in MYOB", "size": "sm", "weight": "medium", "tone": "info" }
+      },
+      "footerOpenIcon": {
+        "type": "Icon",
+        "props": { "name": "ArrowRight", "size": "xs", "tone": "info" }
+      }
+
+    }
+  },
+  "status": "published"
+}
