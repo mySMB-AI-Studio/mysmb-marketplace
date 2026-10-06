@@ -10,14 +10,14 @@ const SWAP = [
   ['c.data.invoices', 'c.data.bills'], ['c.errors.invoices', 'c.errors.bills'], ["c.err('invoices')", "c.err('bills')"], ['uses: { invoices:', 'uses: { bills:'], ['tools: { invoices:', 'tools: { bills:'],
   ['Customer', 'Supplier'], ['customers', 'suppliers'], ['customer', 'supplier'], ['Invoices', 'Bills'], ['invoices', 'bills'], ['Invoice', 'Bill'], ['invoice', 'bill'], ['an bill', 'a bill'], ['credit not applied to a bill', 'debit not applied to a bill'],
 ];
-function derive(from, to, title) {
+function derive(from, to, title, extra) {
   let s = fs.readFileSync(R + from + '.cfg.js', 'utf8').replace(/\r\n/g, '\n');
-  SWAP.forEach(([a, b]) => { s = s.split(a).join(b); });
+  (extra || []).concat(SWAP).forEach(([a, b]) => { s = s.split(a).join(b); });
   if (/[Cc]ustomer|[Ii]nvoice|[Rr]eceivab|debtors/.test(s)) throw new Error(to + ' left: ' + (s.match(/.{30}(?:[Cc]ustomer|[Ii]nvoice|[Rr]eceivab|debtors).{30}/g) || []).slice(0, 4).join(' || '));
   if (!s.includes("title: '" + title + "'")) throw new Error(to + ': title');
   fs.writeFileSync(R + to + '.cfg.js', s);
   const m = JSON.parse(fs.readFileSync(R + from + '.manifest.json', 'utf8'));
-  m.bindings.forEach((b) => { if (b.tool.name === 'list_invoices') { b.tool.name = 'list_bills'; if (b.id === 'invoices') b.id = 'bills'; } });
+  m.bindings.forEach((b) => { if (b.tool.name === 'list_invoices') { b.tool.name = 'list_bills'; if (b.id === 'invoices') b.id = 'bills'; } if (b.tool.name === 'list_payments') b.tool.name = 'list_supplier_payments'; });
   m.inputs.forEach((i) => { if (i.type === 'enum') { i.options = i.options.map((o) => o.replace('Invoice', 'Bill')); if (typeof i.default === 'string') i.default = i.default.replace('Invoice', 'Bill'); } if (i.name === 'display') i.default = i.default.replace('"v":"customers"', '"v":"suppliers"'); });
   const txt = JSON.stringify(m, null, 2) + '\n'; if (/[Cc]ustomer|[Ii]nvoice/.test(txt)) throw new Error(to + ' manifest left');
   fs.writeFileSync(R + to + '.manifest.json', txt);
@@ -25,3 +25,5 @@ function derive(from, to, title) {
 }
 derive('ar', 'ub', 'Unpaid Bills');
 derive('rr', 'pr', 'Payables Reconciliation');
+// Supplier Transactions (M45) from Customer Transactions (M37): supplier payments in place of customer payments
+derive('tr', 'ts', 'Supplier Transactions', [['list_payments', 'list_supplier_payments'], ['AmountReceived', 'AmountPaid']]);

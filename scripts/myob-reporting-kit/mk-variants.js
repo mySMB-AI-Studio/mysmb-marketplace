@@ -23,6 +23,8 @@ const VARIANTS = [
   { id: 'je', base: 'gl', title: ['General Ledger', 'Journal Entries'], display: { v: 'journal' } },
   { id: 'cx', base: 'gl', title: ['General Ledger', 'Categories Transactions'], display: { v: 'category' } },
   { id: 'cl', base: 'tb', title: ['Trial Balance', 'Categories List'], display: { v: 'list', zeros: 1 } },
+  // Coding (M18) = Bank transactions (M16) grouped by coding status
+  { id: 'bc', base: 'bt', title: ['Bank Transactions', 'Coding'], display: { v: 'coding' } },
 ];
 for (const v of VARIANTS) {
   let cfg = fs.readFileSync(path.join(R, v.base + '.cfg.js'), 'utf8').replace(/\r\n/g, '\n');
