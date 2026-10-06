@@ -31,7 +31,7 @@ const open = async (html) => { const dom = new JSDOM(html, { runScripts: 'danger
   ok('catalogue: Profit and loss is a live template, asked for by its title', st('Profit and loss') === 'Live template | Ask for “MYOB Profit and Loss”', st('Profit and loss'));
   ok('catalogue: GST return is part of MYOB GST Summary (BAS)', st('GST return') === 'Live template | Part of “MYOB GST Summary (BAS)”', st('GST return'));
   ok('catalogue: Unpaid invoices names both templates', st('Unpaid invoices') === 'Live template | Ask for “MYOB Unpaid Invoices” or “MYOB Aged Receivables”', st('Unpaid invoices'));
-  ok('catalogue: Budget management is a live template; the Taxable payments annual report is on request (its written specification)', st('Budget management') === 'Live template | Ask for “MYOB Budget Management”' && st('Taxable payments annual report') === 'On request | Ask for “MYOB Taxable Payments Annual Report”', [st('Budget management'), st('Taxable payments annual report')]);
+  ok('catalogue: Budget management and the Taxable payments annual report are live templates; Workers compensation comes from the export', st('Budget management') === 'Live template | Ask for “MYOB Budget Management”' && st('Taxable payments annual report') === 'Live template | Ask for “MYOB Taxable Payments Annual Report”' && /^From your MYOB export/.test(st('Workers compensation — Estimation of wages')), [st('Budget management'), st('Taxable payments annual report'), st('Workers compensation — Estimation of wages')]);
   ok('catalogue: Journal entries is a live template now', st('Journal entries') === 'Live template | Ask for “MYOB Journal Entries”', st('Journal entries'));
   ok('catalogue: Journal security audit comes from the MYOB export', st('Journal security audit') === 'From your MYOB export | Attach the MYOB export, then ask for “MYOB Journal Security Audit”', st('Journal security audit'));
   ok('catalogue: Custom report is the guide', /^Guide \| Ask to save any report with your settings/.test(st('Custom report (user-defined columns and filters)')), st('Custom report (user-defined columns and filters)'));
@@ -54,7 +54,7 @@ const open = async (html) => { const dom = new JSDOM(html, { runScripts: 'danger
   ok('catalogue: un-starring removes it', cards(t.doc).length === 1 && JSON.parse(t.setInputsLog[t.setInputsLog.length - 1].display).x === 'M04');
   t.doc.getElementById('mk-xlsx').click(); await t.settle();
   const xb = t.downloads.filter((d) => d.blob).pop(), xs = xb ? Buffer.from(await xb.blob.arrayBuffer()).toString('utf8') : '';
-  ok('catalogue: Excel lists every report with its status and favourite', /Journal entries/.test(xs) && /On request/.test(xs) && /★/.test(xs) && /Validation/.test(xs), xs.length);
+  ok('catalogue: Excel lists every report with its status and favourite', /Journal entries/.test(xs) && /Live template/.test(xs) && /★/.test(xs) && /Validation/.test(xs), xs.length);
   ok('catalogue: notes say what each status means and how favourites are kept', /On request = the agent writes the report from its specification/.test(text(t.doc, '#mk-sources')) && /To keep favourites, ask the agent to save the catalogue with them/.test(text(t.doc, '#mk-sources')));
   // a saved copy with favourites opens on them
   const disp = JSON.parse(cm.inputs.find((i) => i.name === 'display').default); disp.v = 'fav'; disp.x = 'M32,M40';

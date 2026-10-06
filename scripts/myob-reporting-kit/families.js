@@ -977,6 +977,47 @@ module.exports = [
     ]
   },
   {
+    "m": "M14",
+    "skill": "taxable-payments-annual-report",
+    "name": "MYOB Taxable Payments Annual Report",
+    "report": "tp",
+    "wave": "Wave 2 (P2)",
+    "title": "Taxable Payments Annual Report",
+    "menu": "Reporting → Reports → Business → Taxable payments annual report",
+    "trigger": "the user asks for the taxable payments annual report, TPAR, contractor payments for the ATO, payments to contractors or subcontractors, or reportable payments",
+    "discovery": "Call `list_supplier_payments` once for the financial year (`page_size` 1000), `list_bills` once (`status` All) from a year before the start to the end, `list_spend_money` once for the year, `list_suppliers` once (`include_inactive` true), `list_journal_transactions` once for the year (the tie) and `list_company_files` once. TPAR is on payments made in the year, not bill dates: a bill payment is reportable when the bill's `IsReportable` is true; spend money when it is paid to a supplier card whose `IsReportable` is true",
+    "dates": "`from_date` / `to_date` = the financial year (default: last financial year — TPAR is lodged by 28 August; display preset `p`); `bills_from` = a year before `from_date`, worked out. The view is display `v` (`summary` | `detail`).",
+    "members": [
+      [
+        "By payee",
+        "Payee, ABN (check digits verified), bill payments, spend money, gross paid (incl. GST) and GST, with the total"
+      ],
+      [
+        "Payments",
+        "Report = Payments: each reportable payment — date, payee, paid by, reference, gross, GST"
+      ],
+      [
+        "Payee addresses, amounts withheld",
+        "N/A — addresses are left out (MYOB adds them when it lodges); withholding is not in the connector"
+      ]
+    ],
+    "checks": [
+      "**Independent tie:** the supplier payments and spend money read = MYOB's journals for them, count and total (nothing missing; 1,000 supplier payments or more fails)",
+      "Every bill payment is matched to its bill (reportable + not reportable = every bill payment)",
+      "Every reportable payee has an ABN with valid check digits",
+      "Every reportable payee has a supplier card",
+      "For information: payments to TPAR suppliers on bills not marked reportable; spend money not reported"
+    ],
+    "golden": "Test file FY2026: Jo Smith $1,320.00 (GST $120.00), Quick Couriers $440.00 (GST $40.00), Sparky Electrical Pty Ltd $3,300.00 (GST $300.00) — $5,060.00 in total; confirm against MYOB's own TPAR before lodging",
+    "fileName": "myob-taxable-payments-annual-report.html",
+    "tags": [
+      "myob",
+      "tpar",
+      "M14",
+      "ato"
+    ]
+  },
+  {
     m: 'M23', skill: 'myob-pay-run-history', name: 'MYOB Pay Run History', report: 'py', wave: 'Wave 3 (P3)',
     title: 'Pay Run History', menu: 'Reporting → Reports → Payroll → Pay run history',
     trigger: 'the user asks for pay run history, pay runs, what was paid in each pay run, payroll totals by pay date, or wages, PAYG and super per pay run',
