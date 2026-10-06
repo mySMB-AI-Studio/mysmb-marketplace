@@ -249,6 +249,32 @@ function listContacts(p) {
   list = list.slice(0, (p && p.page_size) || 100);
   return { Items: list, NextPageLink: null, Count: list.length };
 }
+// Customer payments (Sale/CustomerPayment) and supplier payments (Purchase/SupplierPayment), from the books' receipts and payments.
+const accRef = (B, id) => ({ UID: B.acc[id].UID, Name: B.acc[id].Name, DisplayID: id });
+function listPayments(p) { const B = books(p && p.myob_company_file_id);
+  let l = B.pays.filter((x) => inRange(x.date, p.from_date, p.to_date) && (!p.contact_uid || x.inv.Customer.UID === p.contact_uid)).map((x, i) => ({ UID: x.UID, ReceiptNumber: 'CR' + String(B.pays.indexOf(x) + 1).padStart(6, '0'), Date: ISO(x.date), Customer: Object.assign({ URI: 'x' }, x.inv.Customer), Account: accRef(B, x.acct), AmountReceived: x.amount, Memo: 'Payment; ' + x.inv.Customer.Name, Invoices: [{ UID: x.inv.UID, Number: x.inv.Number, AmountApplied: x.amount, Type: 'Invoice' }] }));
+  l = l.slice(0, (p && p.page_size) || 100); return { Items: l, NextPageLink: null, Count: l.length }; }
+function listSupplierPayments(p) { const B = books(p && p.myob_company_file_id);
+  let l = B.spays.filter((x) => inRange(x.date, p.from_date, p.to_date) && (!p.supplier_uid || x.bill.Supplier.UID === p.supplier_uid)).map((x) => ({ UID: x.UID, PaymentNumber: 'CP' + String(B.spays.indexOf(x) + 1).padStart(6, '0'), Date: ISO(x.date), Supplier: Object.assign({ URI: 'x' }, x.bill.Supplier), Account: accRef(B, x.acct), AmountPaid: x.amount, Memo: 'Payment; ' + x.bill.Supplier.Name, Lines: [{ Type: 'Bill', Purchase: { UID: x.bill.UID, Number: x.bill.Number }, AmountApplied: x.amount }] }));
+  l = l.slice(0, (p && p.page_size) || 100); return { Items: l, NextPageLink: null, Count: l.length }; }
+// Bank-feed statement lines (Banking/Statement) for the bank and credit-card accounts: every journal line on them is a Coded line
+// (IsCredit = money in = a debit in the ledger); the last days' feed also has Uncoded lines that are not in the ledger yet, and one
+// Hidden duplicate.
+const FEED = ['1-1110', '1-1120', '2-1110'];
+function statementLines(B) {
+  if (B.feed) return B.feed;
+  const out = [];
+  B.tx.forEach((t) => t.Lines.forEach((l, i) => { if (FEED.includes(l.Account.DisplayID)) out.push({ UID: t.UID.slice(0, -4) + 'f' + String(i).padStart(3, '0'), Date: t.DateOccurred, Description: t.Description, Account: accRef(B, l.Account.DisplayID), Amount: l.Amount, IsCredit: !l.IsCredit, Status: 'Coded', Reference: t.DisplayID }); }));
+  const S = B.F.scale, u = (n) => U(B.cf, 90000 + n);
+  out.push({ UID: u(1), Date: ISO('2026-09-24'), Description: 'EFTPOS SQUARE *HARBOUR CAFE', Account: accRef(B, '1-1110'), Amount: r2(47.5 * S), IsCredit: false, Status: 'Uncoded', Reference: '' });
+  out.push({ UID: u(2), Date: ISO('2026-09-25'), Description: 'TRANSFER FROM BLUEGUM ARCHITECTS', Account: accRef(B, '1-1110'), Amount: r2(1250 * S), IsCredit: true, Status: 'Uncoded', Reference: '' });
+  out.push({ UID: u(3), Date: ISO('2026-09-26'), Description: 'ADOBE CREATIVE CLOUD', Account: accRef(B, '2-1110'), Amount: r2(32.99 * S), IsCredit: false, Status: 'Uncoded', Reference: '' });
+  out.push({ UID: u(4), Date: ISO('2026-09-12'), Description: 'DUPLICATE FEED LINE', Account: accRef(B, '1-1110'), Amount: r2(19.9 * S), IsCredit: false, Status: 'Hidden', Reference: '' });
+  out.sort((a, b) => a.Date.localeCompare(b.Date)); B.feed = out; return out;
+}
+function listBankStatementLines(p) { const B = books(p && p.myob_company_file_id);
+  const l = statementLines(B).filter((x) => inRange(x.Date.slice(0, 10), p.from_date, p.to_date) && (!p.account_uid || x.Account.UID === p.account_uid) && (!p.status || p.status === 'All' || x.Status === p.status));
+  return { Items: l.map((x) => Object.assign({}, x)), NextPageLink: null, Count: l.length }; }
 // expected figures computed independently of the MYOB JSON (for assertions)
 const expect = { balances: (date, cf) => balances(books(cf), date), plByAccount: (a, b, cash, cf) => plByAccount(books(cf), a, b, cash), netProfit: (a, b, cash, cf) => netProfit(books(cf), a, b, cash), movement: (a, b, cf) => movement(books(cf), a, b), books, invoiceOut: (i, cf) => invoiceOut(books(cf), i), billOut: (b, cf) => billOut(books(cf), b) };
-module.exports = { TODAY, CF1, CF2, FILES, U, profitAndLoss, balanceSheet, listAccounts, listInvoices, listBills, listContacts, listJournalTransactions, listTaxCodes, taxCodeSummary, payrollCategorySummary, listInvoiceLines, listBillLines, listItems, listPayrollAdvices, agedReceivables, agedPayables, companyFiles, expect, fyStart, addDays, eom, r2 };
+module.exports = { TODAY, CF1, CF2, FILES, U, profitAndLoss, balanceSheet, listAccounts, listInvoices, listBills, listContacts, listPayments, listSupplierPayments, listBankStatementLines, listJournalTransactions, listTaxCodes, taxCodeSummary, payrollCategorySummary, listInvoiceLines, listBillLines, listItems, listPayrollAdvices, agedReceivables, agedPayables, companyFiles, expect, fyStart, addDays, eom, r2 };

@@ -119,6 +119,49 @@ module.exports = [
     fileName: 'myob-sales-register.html', tags: ['myob', 'sales-register', 'M38', 'sales'],
   },
   {
+    "m": "M37",
+    "skill": "customer-transactions",
+    "name": "MYOB Customer Transactions",
+    "report": "tr",
+    "wave": "Wave 2 (P2)",
+    "title": "Customer Transactions",
+    "menu": "Reporting → Reports → Sales → Customer transactions",
+    "trigger": "the user asks for customer transactions, a customer history or activity, invoices and payments for a customer, or all sales transactions in a period",
+    "discovery": "Call `list_invoices` once with `status` = `All` and `from_date` / `to_date` = the period, `list_payments` once for the same dates (`page_size` 1000), and `list_company_files` once. Credit notes come back as negative invoices. A `{\"__error\": …}` result is a failed call: report its message",
+    "dates": "`from_date` / `to_date` = the period (default: this month; display preset `p`). `prev_day` is derived by the kit — leave it. The view is display `v` (`customers` | `list`); `x` = a customer UID to open on one customer.",
+    "members": [
+      [
+        "Customer transactions",
+        "Per customer: every invoice, credit note and payment in date order, with charges, payments and a running net change, and a total per customer"
+      ],
+      [
+        "All transactions",
+        "Report = All transactions (one list in date order)"
+      ],
+      [
+        "Customer picker",
+        "Customer select above the report"
+      ],
+      [
+        "Credit applications, refunds, adjustments",
+        "N/A — not in the connector"
+      ]
+    ],
+    "checks": [
+      "**Independent tie:** invoices − payments = the movement of Accounts Receivable on the Balance Sheet (the day before the period and its end)",
+      "Every transaction names a customer",
+      "All payments in the period were loaded (one page of 1,000; a warning when it is full)"
+    ],
+    "golden": "mySMB.com September 2026: invoices − payments = the change in Accounts Receivable between 31 August and 28 September",
+    "fileName": "myob-customer-transactions.html",
+    "tags": [
+      "myob",
+      "customer-transactions",
+      "M37",
+      "sales"
+    ]
+  },
+  {
     m: 'M35', skill: 'customer-sales', name: 'MYOB Customer Sales', report: 'cs', wave: 'Wave 1 (P1, delivery order 11)',
     title: 'Customer Sales', menu: 'Reporting → Reports → Sales → Customer sales',
     trigger: 'the user asks for customer sales, sales by customer, top customers, or how much each customer bought in a period',
@@ -347,6 +390,126 @@ module.exports = [
     fileName: 'myob-bank-reconciliation-status.html', tags: ['myob', 'banking', 'reconciliation', 'M17'],
   },
   {
+    "m": "M15",
+    "skill": "bank-activity",
+    "name": "MYOB Bank Activity",
+    "report": "ba",
+    "wave": "Wave 2 (P2)",
+    "title": "Bank Activity",
+    "menu": "Reporting → Reports → Banking → Bank activity",
+    "trigger": "the user asks for bank activity, the transactions on a bank or credit-card account with a running balance, money in and out of the bank, or spend and receive money for a period",
+    "discovery": "Call `list_journal_transactions` once with `from_date` / `to_date` = the period, `list_accounts` once (bank and credit-card accounts) and `list_company_files` once. When the user names an account, set `display.x` to its `UID`; otherwise leave `x` empty (every bank and credit-card account)",
+    "dates": "`from_date` / `to_date` = the period (default: this month; display preset `p`). `prev_day` is derived by the kit — leave it. The view is display `v` (`activity` | `summary`).",
+    "members": [
+      [
+        "Bank activity",
+        "Per bank and credit-card account: opening balance, each journal line (date, ID No., type — spend, receive, transfer, payment —, description, money in, money out, running balance) and the closing balance"
+      ],
+      [
+        "Summary by account",
+        "Report = Summary by account (opening, in, out, closing, Balance Sheet)"
+      ],
+      [
+        "Account picker",
+        "Account select above the report"
+      ]
+    ],
+    "checks": [
+      "**Independent tie:** every bank and credit-card account — opening (Balance Sheet the day before) + money in − money out = the closing Balance Sheet",
+      "There is at least one bank or credit-card account"
+    ],
+    "golden": "mySMB.com September 2026: 1-1110 Business Bank Account #1 opening + September activity = the 28 September balance",
+    "fileName": "myob-bank-activity.html",
+    "tags": [
+      "myob",
+      "bank-activity",
+      "M15",
+      "banking"
+    ]
+  },
+  {
+    "m": "M16",
+    "skill": "bank-transactions",
+    "name": "MYOB Bank Transactions",
+    "report": "bt",
+    "wave": "Wave 2 (P2)",
+    "title": "Bank Transactions",
+    "menu": "Reporting → Reports → Banking → Bank transactions",
+    "trigger": "the user asks for bank transactions, bank feed lines, the bank statement lines, or transactions from the bank feed for a period",
+    "discovery": "Call `list_bank_statement_lines` once with `status` = `All` and `from_date` / `to_date` = the period, and `list_company_files` once. Expect `{Date, Description, Account, Amount, IsCredit, Status (Uncoded / Coded / Hidden), Reference}` per line — `IsCredit` = money in. An empty list can mean bank feeds are not set up: say so",
+    "dates": "`from_date` / `to_date` = the period (default: this month; display preset `p`). `prev_day` is derived by the kit — leave it. The view is display `v` (`transactions` | `coding`); `x` = an account UID.",
+    "members": [
+      [
+        "Bank transactions",
+        "Per account in date order: date, description, reference, status, money in, money out, a running total from the start of the range"
+      ],
+      [
+        "Coding",
+        "Report = Coding (also its own template, MYOB Coding)"
+      ],
+      [
+        "Account picker",
+        "Account select above the report"
+      ],
+      [
+        "Statement opening and closing balance",
+        "N/A — not in the feed lines"
+      ]
+    ],
+    "checks": [
+      "Lines by status add up to every line (count and amount)",
+      "Every line has a coding status",
+      "For information: coded feed lines vs the ledger's movement on each account (they differ when entries have no feed line)"
+    ],
+    "golden": "mySMB.com September 2026: coded lines equal the ledger movement on each feed account; recent lines uncoded",
+    "fileName": "myob-bank-transactions.html",
+    "tags": [
+      "myob",
+      "bank-transactions",
+      "M16",
+      "banking"
+    ]
+  },
+  {
+    "m": "M18",
+    "skill": "coding",
+    "name": "MYOB Coding",
+    "report": "bc",
+    "wave": "Wave 2 (P2)",
+    "title": "Coding",
+    "menu": "Reporting → Reports → Banking → Coding",
+    "trigger": "the user asks for the coding report, uncoded bank transactions, the bank-feed coding backlog, or how many feed lines still need coding",
+    "discovery": "Call `list_bank_statement_lines` once with `status` = `All` and `from_date` / `to_date` = the period, and `list_company_files` once — as Bank Transactions. The uncoded lines are the backlog: put them first",
+    "dates": "`from_date` / `to_date` = the period (default: this month; display preset `p`). The view is display `v` (`coding` by default).",
+    "members": [
+      [
+        "Coding",
+        "Count and amount per status (Uncoded first, then Coded, Hidden) and a table per status"
+      ],
+      [
+        "Bank transactions",
+        "Report = Bank transactions (per account in date order)"
+      ],
+      [
+        "Account picker",
+        "Account select above the report"
+      ]
+    ],
+    "checks": [
+      "Lines by status add up to every line (count and amount)",
+      "Every line has a coding status",
+      "For information: coded feed lines vs the ledger's movement on each account"
+    ],
+    "golden": "mySMB.com September 2026: the last days' feed lines are uncoded; everything earlier is coded",
+    "fileName": "myob-coding.html",
+    "tags": [
+      "myob",
+      "coding",
+      "M18",
+      "banking"
+    ]
+  },
+  {
     m: 'M39', skill: 'item-sales', name: 'MYOB Item Sales', report: 'il', wave: 'Wave 2 (P2)',
     title: 'Item Sales', menu: 'Reporting → Reports → Sales → Item sales',
     trigger: 'the user asks for item sales, sales by item or product, units sold, best-selling items, or revenue per inventory item for a period',
@@ -488,6 +651,49 @@ module.exports = [
     checks: ['**Independent tie:** Σ bill amounts (with tax) = the credits to the payables account in the period\'s journals', 'Σ amount due = the payables account on the Balance Sheet (when every open bill is in the period; information otherwise)', 'Counts by status add up to the bills listed'],
     golden: 'mySMB.com 1 Jul – 9 Sep 2026: no bills on the sample file; on a file with bills, Σ bills = the payables account\'s credits in the period',
     fileName: 'myob-purchase-register.html', tags: ['myob', 'purchase-register', 'M46', 'purchases'],
+  },
+  {
+    "m": "M45",
+    "skill": "supplier-transactions",
+    "name": "MYOB Supplier Transactions",
+    "report": "ts",
+    "wave": "Wave 2 (P2)",
+    "title": "Supplier Transactions",
+    "menu": "Reporting → Reports → Purchases → Supplier transactions",
+    "trigger": "the user asks for supplier transactions, a supplier history or activity, bills and payments for a supplier, or all purchase transactions in a period",
+    "discovery": "Call `list_bills` once with `status` = `All` and `from_date` / `to_date` = the period, `list_supplier_payments` once for the same dates (`page_size` 1000), and `list_company_files` once. Supplier credits come back as negative bills. A `{\"__error\": …}` result is a failed call: report its message",
+    "dates": "`from_date` / `to_date` = the period (default: this month; display preset `p`). `prev_day` is derived by the kit — leave it. The view is display `v` (`suppliers` | `list`); `x` = a supplier UID to open on one supplier.",
+    "members": [
+      [
+        "Supplier transactions",
+        "Per supplier: every bill, credit and payment in date order, with charges, payments and a running net change, and a total per supplier"
+      ],
+      [
+        "All transactions",
+        "Report = All transactions (one list in date order)"
+      ],
+      [
+        "Supplier picker",
+        "Supplier select above the report"
+      ],
+      [
+        "Supplier debit notes, refunds, adjustments",
+        "N/A — not in the connector"
+      ]
+    ],
+    "checks": [
+      "**Independent tie:** bills − payments = the movement of Accounts Payable on the Balance Sheet (the day before the period and its end)",
+      "Every transaction names a supplier",
+      "All payments in the period were loaded (one page of 1,000; a warning when it is full)"
+    ],
+    "golden": "mySMB.com September 2026: bills − payments = the change in Accounts Payable between 31 August and 28 September",
+    "fileName": "myob-supplier-transactions.html",
+    "tags": [
+      "myob",
+      "supplier-transactions",
+      "M45",
+      "purchases"
+    ]
   },
   {
     m: 'M43', skill: 'supplier-purchases', name: 'MYOB Supplier Purchases', report: 'sp', wave: 'Wave 2 (P2)',
