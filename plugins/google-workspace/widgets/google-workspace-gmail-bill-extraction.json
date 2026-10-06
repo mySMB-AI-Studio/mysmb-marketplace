@@ -228,6 +228,7 @@
           "gap": "xs"
         },
         "children": [
+          "featuredSupplier",
           "featuredSender",
           "featuredSubtitleWithFile",
           "featuredSubtitleNoFile"
@@ -242,6 +243,10 @@
           "size": "md",
           "weight": "medium",
           "truncate": true
+        },
+        "visible": {
+          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/supplierName",
+          "not": true
         }
       },
       "featuredStatus": {
@@ -491,13 +496,13 @@
         "type": "Text",
         "props": {
           "text": {
-            "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/issuedDate/value"
+            "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/issuedDate/display"
           },
           "size": "sm",
           "weight": "medium"
         },
         "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/issuedDate/value"
+          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/issuedDate/display"
         }
       },
       "fieldIssuedDateNoValue": {
@@ -508,7 +513,7 @@
           "tone": "muted"
         },
         "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/issuedDate/value",
+          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/issuedDate/display",
           "not": true
         }
       },
@@ -570,13 +575,13 @@
         "type": "Text",
         "props": {
           "text": {
-            "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/dueDate/value"
+            "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/dueDate/display"
           },
           "size": "sm",
           "weight": "medium"
         },
         "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/dueDate/value"
+          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/dueDate/display"
         }
       },
       "fieldDueDateNoValue": {
@@ -587,7 +592,7 @@
           "tone": "muted"
         },
         "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/dueDate/value",
+          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/dueDate/display",
           "not": true
         }
       },
@@ -924,7 +929,12 @@
         "type": "Caption",
         "props": {
           "text": {
-            "$item": "receivedLabel"
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "receivedAt"
+              }
+            }
           },
           "tone": "muted"
         }
@@ -1079,7 +1089,12 @@
                 "$state": "/google-workspace-gmail/list_bill_label_emails/latest/senderAddress"
               },
               "time": {
-                "$state": "/google-workspace-gmail/list_bill_label_emails/latest/receivedLabel"
+                "$computed": "relative_time",
+                "args": {
+                  "value": {
+                    "$state": "/google-workspace-gmail/list_bill_label_emails/latest/receivedAt"
+                  }
+                }
               },
               "file": {
                 "$state": "/google-workspace-gmail/list_bill_label_emails/latest/attachmentName"
@@ -1104,7 +1119,12 @@
                 "$state": "/google-workspace-gmail/list_bill_label_emails/latest/senderAddress"
               },
               "time": {
-                "$state": "/google-workspace-gmail/list_bill_label_emails/latest/receivedLabel"
+                "$computed": "relative_time",
+                "args": {
+                  "value": {
+                    "$state": "/google-workspace-gmail/list_bill_label_emails/latest/receivedAt"
+                  }
+                }
               }
             }
           },
@@ -1136,6 +1156,20 @@
           "headerIcon",
           "headerStack"
         ]
+      },
+      "featuredSupplier": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/google-workspace-gmail/list_bill_label_emails/latest/supplierName"
+          },
+          "size": "md",
+          "weight": "medium",
+          "truncate": true
+        },
+        "visible": {
+          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/supplierName"
+        }
       }
     }
   }
