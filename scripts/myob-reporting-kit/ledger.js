@@ -40,6 +40,10 @@ const chart = (cf) => CHART_DEF.map(([n, id, name, cls, type, hd]) => ({ UID: U(
 const TAX = { GST: 0.1, FRE: 0, 'N-T': 0, CAP: 0.1 };
 const CUSTOMERS = ['Harbour Cafe Group', 'Bluegum Architects', 'Coastal Freight Co', 'Redwood Dental', 'Summit Legal', 'Parkside Physio', 'Eastside Motors', 'Lakeview Hotel'];
 const SUPPLIERS = ['Metro Wholesale', 'SocialAds Pty Ltd', 'City Property Group', 'PowerDirect', 'TelcoOne', 'Office Hub Supplies'];
+// Jobs (GeneralLedger/Job): sales to Bluegum, Harbour Cafe and Coastal Freight, most Purchases bills and every other month's office
+// supplies carry a job on their income or expense line (the journal line and the invoice / bill line); everything else has none
+const JOBS = [[970, 'J100', 'Bluegum fit-out'], [971, 'J200', 'Harbour Cafe refit'], [972, 'J300', 'Coastal Freight depot']], CUSTOMER_JOB = { 1: 0, 0: 1, 2: 2 };
+const jobRef = (cf, k) => (k == null ? null : { UID: U(cf, JOBS[k][0]), Number: JOBS[k][1], Name: JOBS[k][2] });
 
 const BOOKS = {};
 function books(cfIn) {
@@ -47,7 +51,7 @@ function books(cfIn) {
   const F = FILES[cf], rnd = prng(F.seed), S = F.scale, acc = {}; chart(cf).forEach((a) => { acc[a.DisplayID] = a; });
   const tx = [], invoices = [], bills = [], pays = [], spays = [];
   const contact = (name, kind, i) => ({ UID: U(cf, (kind === 'c' ? 1000 : 2000) + i), Name: name, DisplayID: (kind === 'c' ? 'CUS' : 'SUP') + String(i + 1).padStart(6, '0') });
-  const line = (id, amount, isCredit, desc) => ({ Account: { UID: acc[id].UID, Name: acc[id].Name, DisplayID: id }, Amount: r2(amount), IsCredit: !!isCredit, Job: null, LineDescription: desc || '' });
+  const line = (id, amount, isCredit, desc, job) => ({ Account: { UID: acc[id].UID, Name: acc[id].Name, DisplayID: id }, Amount: r2(amount), IsCredit: !!isCredit, Job: job || null, LineDescription: desc || '' });
   let jn = 0, invNo = 1000, billNo = 500, accPayg = 0, accSup = 0, card = 0;
   const post = (date, type, src, desc, lines) => tx.push({ UID: U(cf, 50000 + (++jn)), DisplayID: (type === 'General' ? 'GJ' : type.slice(0, 2).toUpperCase()) + String(jn).padStart(6, '0'), JournalType: type, SourceTransaction: src, DateOccurred: ISO(date), DatePosted: ISO(date), Description: desc, Lines: lines.filter((l) => Math.abs(l.Amount) >= 0.005) });
   // opening position on 30 Jun 2025: cash from the owner and a loan
@@ -63,14 +67,14 @@ function books(cfIn) {
     for (let j = 0; j < 4; j++) { // sales invoices
       const ci = (k * 3 + j) % CUSTOMERS.length, date = day(1, 24), terms = j % 2 ? 14 : 30, prof = j === 1, code = j === 3 && k % 4 === 0 ? 'FRE' : 'GST';
       const sub = r2((900 + rnd() * 1500) * g * S), tax = r2(sub * TAX[code]), inv = { UID: U(cf, 10000 + (++invNo)), Number: String(invNo).padStart(8, '0'), Date: ISO(date), date, due: addDays(date, terms), Customer: contact(CUSTOMERS[ci], 'c', ci), Subtotal: sub, TotalTax: tax, TotalAmount: r2(sub + tax), account: prof ? '4-1300' : '4-1400', TaxCode: code, InvoiceType: 'Service', IsTaxInclusive: false };
-      invoices.push(inv);
-      post(date, 'Sale', { UID: inv.UID, TransactionType: 'SaleInvoice' }, 'Sale; ' + inv.Customer.Name, [line('1-1200', inv.TotalAmount, false), line(inv.account, sub, true), line('2-1310', tax, true)]);
+      inv.job = jobRef(cf, CUSTOMER_JOB[ci]); invoices.push(inv);
+      post(date, 'Sale', { UID: inv.UID, TransactionType: 'SaleInvoice' }, 'Sale; ' + inv.Customer.Name, [line('1-1200', inv.TotalAmount, false), line(inv.account, sub, true, '', inv.job), line('2-1310', tax, true)]);
       const late = Math.floor(rnd() * 25) - 5, pd = addDays(inv.due, late), open = (k === 12 && j === 2) || (k === 13 && j === 0) || (k >= 14 && j < 3);
       if (!open && pd <= TODAY) { const amt = (k === 13 && j === 3) ? r2(inv.TotalAmount / 2) : inv.TotalAmount; pays.push({ UID: U(cf, 20000 + pays.length), inv, date: pd, amount: amt, acct: '1-1110' }); }
     }
-    const billOf = (si, id, net, code, dd, terms) => { const sub = r2(net * S), tax = r2(sub * TAX[code]), date = day(dd, dd + 3), b = { UID: U(cf, 30000 + (++billNo)), Number: String(billNo).padStart(8, '0'), Date: ISO(date), date, due: addDays(date, terms), Supplier: contact(SUPPLIERS[si], 's', si), Subtotal: sub, TotalTax: tax, TotalAmount: r2(sub + tax), account: id, TaxCode: code, BillType: 'Service', SupplierInvoiceNumber: 'S' + billNo };
-      bills.push(b); post(date, 'Purchase', { UID: b.UID, TransactionType: 'Bill' }, 'Purchase; ' + b.Supplier.Name, [line(id, sub, false), line('2-1330', tax, false), line('2-1200', b.TotalAmount, true)]); return b; };
-    const bl = [billOf(0, '5-1000', (700 + rnd() * 400) * g, 'GST', 3, 30), billOf(1, '6-1100', 180 + rnd() * 120, 'GST', 9, 14), billOf(2, '6-4100', 2200, 'GST', 1, 7), billOf(3, '6-1430', 260 + rnd() * 90, 'GST', 12, 14), billOf(4, '6-4460', 140 + rnd() * 40, 'GST', 15, 14)];
+    const billOf = (si, id, net, code, dd, terms, jk) => { const sub = r2(net * S), tax = r2(sub * TAX[code]), date = day(dd, dd + 3), b = { UID: U(cf, 30000 + (++billNo)), Number: String(billNo).padStart(8, '0'), Date: ISO(date), date, due: addDays(date, terms), Supplier: contact(SUPPLIERS[si], 's', si), Subtotal: sub, TotalTax: tax, TotalAmount: r2(sub + tax), account: id, TaxCode: code, BillType: 'Service', SupplierInvoiceNumber: 'S' + billNo };
+      b.job = jobRef(cf, jk); bills.push(b); post(date, 'Purchase', { UID: b.UID, TransactionType: 'Bill' }, 'Purchase; ' + b.Supplier.Name, [line(id, sub, false, '', b.job), line('2-1330', tax, false), line('2-1200', b.TotalAmount, true)]); return b; };
+    const bl = [billOf(0, '5-1000', (700 + rnd() * 400) * g, 'GST', 3, 30, k % 4 === 3 ? null : k % 3), billOf(1, '6-1100', 180 + rnd() * 120, 'GST', 9, 14), billOf(2, '6-4100', 2200, 'GST', 1, 7), billOf(3, '6-1430', 260 + rnd() * 90, 'GST', 12, 14), billOf(4, '6-4460', 140 + rnd() * 40, 'GST', 15, 14)];
     if (k === 6) bl.push(billOf(5, '1-2110', 2400, 'CAP', 18, 30));
     bl.forEach((b, j) => { const pd = addDays(b.due, Math.floor(rnd() * 6) - 2), open = (k >= 14 && j < 2) || (k === 12 && j === 0); if (!open && pd <= TODAY) spays.push({ UID: U(cf, 40000 + spays.length), bill: b, date: pd, amount: b.TotalAmount, acct: '1-1110' }); });
     // spend / receive money: wages (no GST), bank fees, interest
@@ -78,7 +82,7 @@ function books(cfIn) {
     const gross = r2(2300 * g * S), payg = r2(gross * 0.15), sup = r2(gross * 0.115); accPayg = r2(accPayg + payg); accSup = r2(accSup + sup);
     post(day(27, 27), 'CashPayment', { TransactionType: 'Paycheque' }, 'Pay run', [line('6-5130', gross, false), line('6-5140', sup, false), line('1-1110', r2(gross - payg), true), line('2-1410', payg, true), line('2-1420', sup, true)]);
     if (card) { post(day(5, 5), 'CashPayment', { TransactionType: 'SpendMoney' }, 'Credit card payment', [line('2-1110', card, false), line('1-1110', card, true)]); card = 0; }
-    const cs = r2((80 + rnd() * 40) * S), ct = r2(cs * 0.1); card = r2(cs + ct); post(day(10, 10), 'CashPayment', { TransactionType: 'SpendMoney' }, 'Office supplies on the credit card', [line('6-3020', cs, false), line('2-1330', ct, false), line('2-1110', card, true)]);
+    const cs = r2((80 + rnd() * 40) * S), ct = r2(cs * 0.1); card = r2(cs + ct); post(day(10, 10), 'CashPayment', { TransactionType: 'SpendMoney' }, 'Office supplies on the credit card', [line('6-3020', cs, false, '', k % 2 ? jobRef(cf, 0) : null), line('2-1330', ct, false), line('2-1110', card, true)]);
     const fee = r2((18 + rnd() * 10) * S); post(day(28, 28), 'CashPayment', { TransactionType: 'SpendMoney' }, 'Bank fees', [line('6-2500', fee, false), line('1-1110', fee, true)]);
     const int = r2((20 + rnd() * 12) * S); post(day(28, 28), 'CashReceipt', { TransactionType: 'ReceiveMoney' }, 'Interest', [line('1-1120', int, false), line('8-1000', int, true)]);
     const ie = r2(60 * S); post(day(26, 26), 'CashPayment', { TransactionType: 'SpendMoney' }, 'Loan interest', [line('9-1000', ie, false), line('1-1110', ie, true)]);
@@ -88,6 +92,8 @@ function books(cfIn) {
   spays.forEach((p) => post(p.date, 'CashPayment', { UID: p.UID, TransactionType: 'SupplierPayment' }, 'Payment; ' + p.bill.Supplier.Name, [line('2-1200', p.amount, false), line(p.acct, p.amount, true)]));
   // a general journal: prepaid insurance from the savings account
   post('2026-08-20', 'General', { TransactionType: 'GeneralJournal' }, 'Insurance prepaid', [line('1-1400', 1200 * S, false), line('1-1120', 1200 * S, true)]);
+  // a general journal moving materials onto a job (the job line and an unassigned line on the same category)
+  post('2026-09-15', 'General', { TransactionType: 'GeneralJournal' }, 'Reallocate materials to J200', [line('5-1000', 300 * S, false, 'Materials used on J200', jobRef(cf, 1)), line('5-1000', 300 * S, true, 'Materials used on J200')]);
   tx.sort((a, b) => a.DateOccurred.localeCompare(b.DateOccurred));
   const B = { cf, F, acc, tx, invoices, bills, pays, spays };
   BOOKS[cf] = B; return B;
@@ -139,7 +145,7 @@ function listInvoices(p) { const B = books(p.myob_company_file_id); let l = B.in
   l.sort((a, b) => (p.order_desc === false ? 1 : -1) * a.Date.localeCompare(b.Date)); return { Count: l.length, Items: l }; }
 function listBills(p) { const B = books(p.myob_company_file_id); let l = B.bills.filter((b) => inRange(b.date, p.from_date, p.to_date) && (!p.supplier_uid || b.Supplier.UID === p.supplier_uid)).map((b) => billOut(B, b)).filter((o) => !p.status || p.status === 'All' || o.Status === p.status);
   l.sort((a, b) => b.Date.localeCompare(a.Date)); return { Count: l.length, Items: l }; }
-function listJournalTransactions(p) { const B = books(p.myob_company_file_id); const l = JSON.parse(JSON.stringify(B.tx.filter((t) => inRange(dateOf(t), p.from_date, p.to_date) && (!p.account_uid || t.Lines.some((x) => x.Account.UID === p.account_uid)))));
+function listJournalTransactions(p) { const B = books(p.myob_company_file_id); const l = JSON.parse(JSON.stringify(B.tx.filter((t) => inRange(dateOf(t), p.from_date, p.to_date) && (!p.account_uid || t.Lines.some((x) => x.Account.UID === p.account_uid)) && (!p.job_uid || t.Lines.some((x) => x.Job && x.Job.UID === p.job_uid)))));
   l.forEach((t) => t.Lines.forEach((x) => { x.ReconciledDate = reconciledOn(x.Account.DisplayID, dateOf(t), t.Description); }));
   return { Count: l.length, Items: l }; }
 // Bank reconciliation in the books: each bank account is reconciled at month end up to its last reconciled date; MYOB puts the
@@ -199,8 +205,8 @@ function docLines(B, list, contactKey, p, itemise) {
     const head = { DocumentUID: d.UID, Number: d.Number, Date: d.Date, Layout: layout, Status: st, IsTaxInclusive: false, [contactKey]: cr(d[contactKey]) };
     const acc = { UID: B.acc[d.account].UID, DisplayID: d.account, Name: B.acc[d.account].Name }, tc = codeRef(B.cf, d.TaxCode);
     if (layout === 'Item') { let left = d.Subtotal; ITEMS.forEach(([num, name, share, price], k) => { const tot = k === ITEMS.length - 1 ? r2(left) : r2(d.Subtotal * share); left = r2(left - tot); const q = Math.max(1, Math.round(tot / price));
-      rows.push(Object.assign({}, head, { RowID: k + 1, Type: 'Transaction', Description: name, Total: tot, TaxCode: { UID: tc.UID, Code: tc.Code }, Account: acc, Job: null, Item: { UID: U(B.cf, 700 + k), Number: num, Name: name }, Quantity: q, UnitPrice: r2(tot / q), DiscountPercent: 0 })); }); }
-    else rows.push(Object.assign({}, head, { RowID: 1, Type: 'Transaction', Description: (contactKey === 'Customer' ? 'Services — ' : '') + acc.Name, Total: d.Subtotal, TaxCode: { UID: tc.UID, Code: tc.Code }, Account: acc, Job: null, Item: null, Quantity: null, UnitPrice: null, DiscountPercent: 0 }));
+      rows.push(Object.assign({}, head, { RowID: k + 1, Type: 'Transaction', Description: name, Total: tot, TaxCode: { UID: tc.UID, Code: tc.Code }, Account: acc, Job: d.job || null, Item: { UID: U(B.cf, 700 + k), Number: num, Name: name }, Quantity: q, UnitPrice: r2(tot / q), DiscountPercent: 0 })); }); }
+    else rows.push(Object.assign({}, head, { RowID: 1, Type: 'Transaction', Description: (contactKey === 'Customer' ? 'Services — ' : '') + acc.Name, Total: d.Subtotal, TaxCode: { UID: tc.UID, Code: tc.Code }, Account: acc, Job: d.job || null, Item: null, Quantity: null, UnitPrice: null, DiscountPercent: 0 }));
   });
   return { Count: rows.length, Items: rows, Truncated: false, Documents: docs };
 }
@@ -304,8 +310,19 @@ function listEmployeeLeaveBalances(p) {
   const l = all.filter((x) => (!p.employee_uid || x.Employee.UID === p.employee_uid) && (p.include_terminated || !x.TerminationDate));
   return { Count: l.length, Items: JSON.parse(JSON.stringify(l)) };
 }
+// Job register (GeneralLedger/JobRegister): per job, account and month, the net activity in the account's normal balance (MYOB's
+// own example: GST Paid, −900); Year is the financial year (July start), Month the calendar month
+function listJobRegister(p) {
+  const B = books(p && p.myob_company_file_id), m = {};
+  B.tx.forEach((t) => t.Lines.forEach((l) => { if (!l.Job) return; const d = dateOf(t), y = +d.slice(0, 4), mo = +d.slice(5, 7), k = l.Job.UID + '|' + l.Account.DisplayID + '|' + d.slice(0, 7);
+    if (!m[k]) m[k] = { Job: l.Job, Account: l.Account, Year: mo >= 7 ? y + 1 : y, Month: mo, dc: 0 };
+    m[k].dc = r2(m[k].dc + (l.IsCredit ? -l.Amount : l.Amount)); }));
+  const l = Object.keys(m).map((k, i) => { const r = m[k]; return { UID: U(B.cf, 90000 + i), Job: Object.assign({ URI: 'x' }, r.Job), Account: Object.assign({ URI: 'x' }, r.Account), Year: r.Year, Month: r.Month, Activity: natural(B, r.Account.DisplayID, r.dc), YearEndActivity: 0, URI: 'x' }; })
+    .filter((r) => !p || !p.job_uid || r.Job.UID === p.job_uid);
+  return { Count: l.length, Items: JSON.parse(JSON.stringify(l)) };
+}
 // Inventory adjustments: none (this ledger is a services business; the inventory reports are tested on fixtures-inventory.js)
 function listInventoryAdjustments() { return { Count: 0, Items: [] }; }
 // expected figures computed independently of the MYOB JSON (for assertions)
 const expect = { balances: (date, cf) => balances(books(cf), date), plByAccount: (a, b, cash, cf) => plByAccount(books(cf), a, b, cash), netProfit: (a, b, cash, cf) => netProfit(books(cf), a, b, cash), movement: (a, b, cf) => movement(books(cf), a, b), books, invoiceOut: (i, cf) => invoiceOut(books(cf), i), billOut: (b, cf) => billOut(books(cf), b) };
-module.exports = { TODAY, CF1, CF2, FILES, U, profitAndLoss, balanceSheet, listAccounts, listInvoices, listBills, listContacts, listPayments, listSupplierPayments, listBankStatementLines, listTimesheets, listEmployeeLeaveBalances, listInventoryAdjustments, listJournalTransactions, listTaxCodes, taxCodeSummary, payrollCategorySummary, listInvoiceLines, listBillLines, listItems, listPayrollAdvices, agedReceivables, agedPayables, companyFiles, expect, fyStart, addDays, eom, r2 };
+module.exports = { TODAY, CF1, CF2, FILES, U, profitAndLoss, balanceSheet, listAccounts, listInvoices, listBills, listContacts, listPayments, listSupplierPayments, listBankStatementLines, listTimesheets, listEmployeeLeaveBalances, listInventoryAdjustments, listJobRegister, JOBS, listJournalTransactions, listTaxCodes, taxCodeSummary, payrollCategorySummary, listInvoiceLines, listBillLines, listItems, listPayrollAdvices, agedReceivables, agedPayables, companyFiles, expect, fyStart, addDays, eom, r2 };
