@@ -16,8 +16,8 @@ new Function(kitCompact); // parses
 const css = rd('mk.css').trim(), skeleton = rd('skeleton.html').trim(), prose = rd('foundation-prose.md').trim();
 const fence = (lang, s) => '```' + lang + '\n' + s.trim() + '\n```';
 const docOf = (f) => (skeleton + '\n').replace('{{TITLE}}', f.title).replace('{{CSS}}', () => css).replace('{{KIT}}', () => kitCompact.trim()).replace('{{CFG}}', () => rd('reports/' + f.report + '.cfg.js').trim());
-// short skill names (ids are `${SLUG}:<name>`) — with every kit report on one line, the full ids passed the 1,500-character line limit
-const built = FAM.map((f) => '`' + f.skill + '` (' + f.m + ')').join(', ');
+// short skill names (ids are `${SLUG}:<name>`), wrapped over several lines — one line of every kit report passed the 1,500-character line limit
+const built = FAM.map((f) => '`' + f.skill + '` (' + f.m + ')').reduce((a, s) => { const l = a[a.length - 1]; if (l && l.length + s.length < 600) a[a.length - 1] = l + ', ' + s; else a.push(s); return a; }, []).join(',\n  ');
 
 const foundation = `---
 name: myob-report-foundation
@@ -27,7 +27,9 @@ description: Shared build recipe, controls contract, validation rules, MYOB styl
 
 Use when you build any MYOB report, dashboard or report pack. Load this skill first, then the report skill. Two kinds of report skill exist:
 
-- **Kit reports** (skill ids \`${SLUG}:<name>\`) — ${built}. The report skill carries a tested \`dataBindings\` manifest and a report config; this file carries the tested kit and stylesheet. **You assemble them — you do not write report code.** Follow *Build a kit report* below.
+- **Kit reports** (skill ids \`${SLUG}:<name>\`):
+  ${built}.
+  The report skill carries a tested \`dataBindings\` manifest and a report config; this file carries the tested kit and stylesheet. **You assemble them — you do not write report code.** Follow *Build a kit report* below.
 - **A guide and two export pages** — ${STATIC.map((f) => '`' + f.skill + '` (' + f.m + ')').join(', ')}. Follow the skill itself: the guide works through the kit reports, and an export page is filled from the MYOB export the user attaches (MYOB's API does not expose those reports).
 - **Every other report skill** is still a written specification. Follow *Rules for report skills without a kit config* at the end of this file.
 
@@ -86,7 +88,7 @@ ${fence('js', kitCompact)}
 
 ## Rules for report skills without a kit config
 
-These rules apply to every report skill that is still a written specification (all except ${built}, and the guide and export skills above). When you build one of those, write the report yourself following these rules.
+These rules apply to every report skill that is still a written specification (every skill not listed above as a kit report, a guide or an export page). When you build one of those, write the report yourself following these rules.
 
 ${prose}
 `;
