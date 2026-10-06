@@ -1835,6 +1835,16 @@ const bill_entry_bills_url = (args) => {
 // payment's Lines[].Purchase.Number (the bill(s) it was applied against)
 // is condensed into a single "Bill <n>" / "<n> bills" reference string —
 // a remittance can cover more than one bill in the one payment.
+//
+// Consumed by myob-remittance-advice.json's watch on
+// "/myob-accounting/list_supplier_payments/Items". That key MUST come
+// BEFORE the sibling "/myob-accounting/list_supplier_payments" watch (the
+// one driving the footer's list_company_files call) in the widget's watch
+// object — @json-render/react's watch dispatcher iterates all of one
+// element's watched paths in a single sequential async loop (object key
+// order), and a slow/failing earlier action can starve a later one from
+// ever running. Confirmed live: with list_company_files listed first,
+// this function was never invoked at all despite the data loading fine.
 // Args: { value: SupplierPayment[] }
 const flatten_supplier_payments = (args) => {
     const items = Array.isArray(args.value) ? args.value : [];
