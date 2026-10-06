@@ -1,0 +1,317 @@
+{
+  "id": "xero-contra-offsets",
+  "title": "Xero — Contra Offsets",
+  "description": "Finds contacts that are both a customer and a supplier, with an open sales invoice AND an open bill — candidates to net off against each other. Xero has no native offset feature; this uses the standard clearing-account workaround (two equal-and-opposite payments against a non-bank Clearing Account), which requires an account in Xero with 'Enable payments to this account' switched on. Suggests the largest open invoice against the largest open bill per contact — a contact with several open documents on each side is a multi-pair case outside this tile's scope. Currency mismatches are listed but blocked, not silently dropped.",
+  "category": "finance",
+  "tags": ["xero", "contra", "offset", "clearing account", "accounts receivable", "accounts payable", "finance"],
+  "keywords": ["contra", "offset", "net off", "clearing account", "customer and supplier", "accounts receivable", "accounts payable"],
+  "connectorsUsed": ["xero-accounting"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 7, "rowSpan": 9 },
+    "min": { "colSpan": 5, "rowSpan": 6 },
+    "max": { "colSpan": 10, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-accounting",
+    "tool": "list_contacts",
+    "params": { "where": "IsCustomer==true&&IsSupplier==true" }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "divider1", "summaryRow", "clearingBanner", "divider2", "body", "divider3", "footer"],
+        "watch": {
+          "/xero-accounting/list_contacts": [
+            {
+              "action": "xero-accounting.list_invoices",
+              "params": { "where": "Status==\"AUTHORISED\"&&AmountDue>0", "order": "Date DESC", "page": 1 }
+            }
+          ]
+        }
+      },
+
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["titleGroup"],
+        "watch": {
+          "/xero-accounting/list_contacts": [
+            { "action": "xero-accounting.list_accounts", "params": { "where": "EnablePaymentsToAccount==true" } }
+          ]
+        }
+      },
+      "titleGroup": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "ArrowLeftRight", "size": "sm", "tone": "info" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Contra Offsets", "level": "h2" } },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Xero · {n} customer+supplier contacts",
+              "n": { "$computed": "count", "args": { "value": { "$state": "/xero-accounting/list_contacts/Contacts" } } }
+            }
+          }
+        }
+      },
+
+      "divider1": {
+        "type": "Divider",
+        "props": {},
+        "watch": {
+          "/xero-accounting/list_invoices/Invoices": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/contra",
+                "value": {
+                  "$computed": "xero-accounting_contra_opportunities",
+                  "args": {
+                    "contacts": { "$state": "/xero-accounting/list_contacts/Contacts" },
+                    "invoices": { "$state": "/xero-accounting/list_invoices/Invoices" }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "summaryRow": {
+        "type": "Row",
+        "props": { "gap": "md" },
+        "children": ["statOpportunities", "statOffsettable"],
+        "watch": {
+          "/xero-accounting/list_accounts/Accounts": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/clearing",
+                "value": {
+                  "$computed": "xero-accounting_find_clearing_account",
+                  "args": { "accounts": { "$state": "/xero-accounting/list_accounts/Accounts" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "statOpportunities": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["statOpportunitiesValue", "statOpportunitiesLabel"]
+      },
+      "statOpportunitiesValue": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/ui/contra/count" }, "tone": "info" }
+      },
+      "statOpportunitiesLabel": { "type": "Caption", "props": { "text": "Contra Opportunities", "tone": "muted" } },
+      "statOffsettable": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["statOffsettableValue", "statOffsettableLabel"]
+      },
+      "statOffsettableValue": {
+        "type": "Stat",
+        "props": {
+          "value": { "$computed": "format_currency", "args": { "value": { "$state": "/ui/contra/totalOffsettable" } } },
+          "tone": "success"
+        }
+      },
+      "statOffsettableLabel": { "type": "Caption", "props": { "text": "Offsettable Now", "tone": "muted" } },
+
+      "clearingBanner": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["clearingFoundCaption", "clearingMissingCaption", "clearingMissingSteps"]
+      },
+      "clearingFoundCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$template": "Using clearing account: ${/ui/clearing/code} · ${/ui/clearing/name}"
+          },
+          "tone": "success"
+        },
+        "visible": { "$state": "/ui/clearing/found" }
+      },
+      "clearingMissingCaption": {
+        "type": "Caption",
+        "props": { "text": "No clearing account found — contra creation is disabled until one exists.", "tone": "warning", "weight": "semibold" },
+        "visible": { "$state": "/ui/clearing/found", "not": true }
+      },
+      "clearingMissingSteps": {
+        "type": "Caption",
+        "props": {
+          "text": "In Xero: Chart of Accounts → Add Account → Current Asset → tick \"Enable payments to this account\" (a Code/Name containing \"Clearing\" or \"Offset\" is recommended) → Save, then refresh this tile.",
+          "tone": "muted"
+        },
+        "visible": { "$state": "/ui/clearing/found", "not": true }
+      },
+
+      "divider2": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["errorBannerContacts", "errorBannerInvoices", "emptyState", "oppList"] },
+
+      "errorBannerContacts": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load contacts: ${/_errors/xero-accounting.list_contacts}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/xero-accounting.list_contacts" }
+      },
+      "errorBannerInvoices": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load invoices/bills: ${/_errors/xero-accounting.list_invoices}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/xero-accounting.list_invoices" }
+      },
+
+      "emptyState": {
+        "type": "Stack",
+        "props": { "align": "center", "gap": "xs" },
+        "children": ["emptyIcon", "emptyText"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/xero-accounting.list_contacts", "not": true },
+            { "$state": "/_loading/xero-accounting.list_invoices", "not": true },
+            { "$state": "/ui/contra/rows/0", "not": true }
+          ]
+        }
+      },
+      "emptyIcon": { "type": "Icon", "props": { "name": "CheckCircle2", "size": "md", "tone": "muted" } },
+      "emptyText": { "type": "Caption", "props": { "text": "No contra opportunities right now — no contact has both an open invoice and an open bill.", "tone": "muted" } },
+
+      "oppList": {
+        "type": "Stack",
+        "props": { "gap": "sm", "maxHeight": 420 },
+        "children": ["oppRow"],
+        "repeat": { "statePath": "/ui/contra/rows", "key": "contactId" }
+      },
+      "oppRow": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["oppRowMain", "oppBlockedReason", "oppRowDivider"]
+      },
+      "oppRowMain": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "sm", "template": "minmax(0,1fr) auto auto auto auto" },
+        "children": ["oppContact", "oppInvoice", "oppBill", "oppOffset", "oppAction"]
+      },
+      "oppContact": {
+        "type": "Text",
+        "props": { "text": { "$item": "contactName" }, "size": "sm", "weight": "semibold", "truncate": true }
+      },
+      "oppInvoice": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["oppInvoiceLabel", "oppInvoiceAmount"]
+      },
+      "oppInvoiceLabel": {
+        "type": "Caption",
+        "props": { "text": { "$computed": "fmt", "args": { "pattern": "Inv {n}", "n": { "$item": "invoiceNumber" } } }, "tone": "muted" }
+      },
+      "oppInvoiceAmount": {
+        "type": "Text",
+        "props": { "text": { "$computed": "format_currency", "args": { "value": { "$item": "invoiceAmountDue" } } }, "size": "sm" }
+      },
+      "oppBill": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["oppBillLabel", "oppBillAmount"]
+      },
+      "oppBillLabel": {
+        "type": "Caption",
+        "props": { "text": { "$computed": "fmt", "args": { "pattern": "Bill {n}", "n": { "$item": "billNumber" } } }, "tone": "muted" }
+      },
+      "oppBillAmount": {
+        "type": "Text",
+        "props": { "text": { "$computed": "format_currency", "args": { "value": { "$item": "billAmountDue" } } }, "size": "sm" }
+      },
+      "oppOffset": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "format_currency", "args": { "value": { "$item": "offsetAmount" } } },
+          "size": "sm",
+          "weight": "semibold",
+          "tone": "success"
+        }
+      },
+      "oppAction": {
+        "type": "Button",
+        "props": {
+          "label": "Create Contra",
+          "size": "sm",
+          "tone": "info",
+          "variant": "primary",
+          "disabled": {
+            "$computed": "xero-accounting_contra_create_disabled",
+            "args": {
+              "blocked": { "$item": "blocked" },
+              "clearingFound": { "$state": "/ui/clearing/found" }
+            }
+          }
+        },
+        "on": {
+          "click": [
+            {
+              "action": "xero-accounting.create_payment",
+              "params": {
+                "payment": {
+                  "Invoice": { "InvoiceID": { "$computed": "identity", "args": { "value": { "$item": "invoiceId" } } } },
+                  "Account": { "AccountID": { "$state": "/ui/clearing/accountId" } },
+                  "Amount": { "$computed": "identity", "args": { "value": { "$item": "offsetAmount" } } },
+                  "Date": { "$computed": "xero-accounting_today_iso" },
+                  "Reference": { "$computed": "identity", "args": { "value": { "$item": "reference" } } }
+                }
+              }
+            },
+            {
+              "action": "xero-accounting.create_payment",
+              "params": {
+                "payment": {
+                  "Invoice": { "InvoiceID": { "$computed": "identity", "args": { "value": { "$item": "billId" } } } },
+                  "Account": { "AccountID": { "$state": "/ui/clearing/accountId" } },
+                  "Amount": { "$computed": "identity", "args": { "value": { "$item": "offsetAmount" } } },
+                  "Date": { "$computed": "xero-accounting_today_iso" },
+                  "Reference": { "$computed": "identity", "args": { "value": { "$item": "reference" } } }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "oppBlockedReason": {
+        "type": "Caption",
+        "props": { "text": { "$item": "blockedReason" }, "tone": "destructive" },
+        "visible": { "$item": "blocked" }
+      },
+      "oppRowDivider": { "type": "Divider", "props": {} },
+
+      "divider3": { "type": "Divider", "props": {} },
+      "footer": { "type": "Row", "props": { "gap": "sm", "justify": "end" }, "children": ["refreshBtn", "openXeroBtn"] },
+      "refreshBtn": {
+        "type": "Button",
+        "props": { "label": "Refresh", "leadingIcon": "RefreshCw", "size": "sm", "tone": "info", "variant": "ghost" },
+        "on": {
+          "click": {
+            "action": "xero-accounting.list_contacts",
+            "params": { "where": "IsCustomer==true&&IsSupplier==true" }
+          }
+        }
+      },
+      "openXeroBtn": {
+        "type": "Button",
+        "props": { "label": "Open Xero", "leadingIcon": "ExternalLink", "size": "sm", "tone": "brand", "variant": "ghost" },
+        "on": { "click": { "action": "open_url", "params": { "url": "https://go.xero.com/AccountsPayable/", "target": "_blank" } } }
+      }
+
+    }
+  },
+  "status": "published"
+}

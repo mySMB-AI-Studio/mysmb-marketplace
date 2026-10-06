@@ -1900,6 +1900,130 @@ const analyze_autopay_exclusions: ComputedFunction = (args) => {
   };
 };
 
+// ── contra_opportunities ────────────────────────────────────────────
+// Finds contacts that have BOTH an open sales invoice (ACCREC) and an
+// open bill (ACCPAY) — candidates for a contra/offset, since Xero has
+// no native offset feature. For each such contact, pairs the LARGEST
+// open invoice against the LARGEST open bill (by AmountDue) — a
+// contact with several open documents on either side is a multi-pair
+// scenario out of scope for this first pass; the suggested pair covers
+// the common single-pair case.
+//
+// Blocks (but still lists, so the mismatch is visible rather than
+// silently dropped) a pair whose invoice/bill currencies differ —
+// netting across currencies isn't a straight min() of two amounts.
+// A contact whose InvoiceNumber is blank (seen in real data) falls
+// back to a short ID-based reference so the contra Reference is never
+// empty.
+//
+// offsetAmount = min(invoice.AmountDue, bill.AmountDue), rounded to 2dp.
+// Returns { rows, count, totalOffsettable } — rows sorted offsettable-
+// first (largest offset first), blocked pairs last.
+// Args: { contacts: Contact[], invoices: Invoice[] }
+const contra_opportunities: ComputedFunction = (args) => {
+  const contacts = Array.isArray(args.contacts) ? (args.contacts as Record<string, unknown>[]) : [];
+  const invoices = Array.isArray(args.invoices) ? (args.invoices as Record<string, unknown>[]) : [];
+
+  const byContact = new Map<string, { ar: Record<string, unknown>[]; ap: Record<string, unknown>[] }>();
+  for (const inv of invoices) {
+    const contact = inv.Contact as Record<string, unknown> | undefined;
+    const contactId = String(contact?.ContactID ?? '');
+    if (!contactId) continue;
+    const bucket = byContact.get(contactId) ?? { ar: [], ap: [] };
+    if (inv.Type === 'ACCREC') bucket.ar.push(inv);
+    else if (inv.Type === 'ACCPAY') bucket.ap.push(inv);
+    byContact.set(contactId, bucket);
+  }
+
+  const largestBy = (docs: Record<string, unknown>[]) =>
+    docs.reduce((max, d) => (Number(d.AmountDue) > Number(max?.AmountDue ?? -1) ? d : max), docs[0]);
+
+  const shortRef = (doc: Record<string, unknown>) => {
+    const num = String(doc.InvoiceNumber ?? '').trim();
+    if (num) return num;
+    return `#${String(doc.InvoiceID ?? '').slice(0, 8)}`;
+  };
+
+  const rows: Record<string, unknown>[] = [];
+  for (const contact of contacts) {
+    const contactId = String(contact.ContactID ?? '');
+    const bucket = byContact.get(contactId);
+    if (!bucket || bucket.ar.length === 0 || bucket.ap.length === 0) continue;
+
+    const invoice = largestBy(bucket.ar);
+    const bill = largestBy(bucket.ap);
+    const invoiceCurrency = String(invoice.CurrencyCode ?? '');
+    const billCurrency = String(bill.CurrencyCode ?? '');
+    const blocked = invoiceCurrency !== billCurrency;
+    const offsetAmount = Math.round(Math.min(Number(invoice.AmountDue), Number(bill.AmountDue)) * 100) / 100;
+
+    rows.push({
+      contactId,
+      contactName: String(contact.Name ?? 'Unknown'),
+      invoiceId: String(invoice.InvoiceID ?? ''),
+      invoiceNumber: shortRef(invoice),
+      invoiceAmountDue: Number(invoice.AmountDue),
+      billId: String(bill.InvoiceID ?? ''),
+      billNumber: shortRef(bill),
+      billAmountDue: Number(bill.AmountDue),
+      offsetAmount,
+      currency: invoiceCurrency,
+      blocked,
+      blockedReason: blocked ? `Currency mismatch (${invoiceCurrency} vs ${billCurrency})` : '',
+      reference: `OFFSET-${shortRef(invoice)}-${shortRef(bill)}`,
+    });
+  }
+
+  rows.sort((a, b) => {
+    if (!!a.blocked !== !!b.blocked) return a.blocked ? 1 : -1;
+    return (b.offsetAmount as number) - (a.offsetAmount as number);
+  });
+
+  const totalOffsettable = rows
+    .filter((r) => !r.blocked)
+    .reduce((sum, r) => sum + (r.offsetAmount as number), 0);
+
+  return { rows, count: rows.length, totalOffsettable };
+};
+
+// ── find_clearing_account ────────────────────────────────────────────
+// Picks the clearing/offset account from a list already filtered to
+// EnablePaymentsToAccount==true (the dataProvider's own `where`) — a
+// generic payable-enabled account (e.g. an Owner Drawings account) is
+// NOT a clearing account and must not be silently offered as one, so
+// this only matches on Code/Name actually hinting "clearing"/"offset"/
+// "contra"/"suspense" rather than taking the first eligible account.
+// Returns { found: false } when nothing matches, so the tile can show
+// the manual Xero-UI setup instructions instead of guessing.
+// Args: { accounts: Account[] }
+const find_clearing_account: ComputedFunction = (args) => {
+  const accounts = Array.isArray(args.accounts) ? (args.accounts as Record<string, unknown>[]) : [];
+  const match = accounts.find((a) =>
+    /clearing|offset|contra|suspense/i.test(`${a.Code ?? ''} ${a.Name ?? ''}`),
+  );
+  if (!match) return { found: false };
+  return {
+    found: true,
+    accountId: String(match.AccountID ?? ''),
+    code: String(match.Code ?? ''),
+    name: String(match.Name ?? ''),
+  };
+};
+
+// ── today_iso ─────────────────────────────────────────────────────────
+// Today's date as YYYY-MM-DD, for Payment.Date on a same-day contra.
+const today_iso: ComputedFunction = () => new Date().toISOString().slice(0, 10);
+
+// ── contra_create_disabled ───────────────────────────────────────────
+// Whether the "Create Contra" button should be disabled for a row —
+// plain-boolean combinator, since generic props (unlike `visible`) don't
+// evaluate $and/$or/native conditions themselves (confirmed from the
+// json-render core source: that resolver only runs for the `visible`
+// field). Disabled when the pair's currencies mismatch, or no eligible
+// clearing account was found at all.
+// Args: { blocked: boolean, clearingFound: boolean }
+const contra_create_disabled: ComputedFunction = (args) => Boolean(args.blocked) || !args.clearingFound;
+
 const elements: PluginElementsModule = {
   slug: 'xero-accounting',
   functions: {
@@ -1946,6 +2070,10 @@ const elements: PluginElementsModule = {
     bill_entry_supplier_balances,
     bill_entry_tax_rate_lookup,
     bill_entry_line_tax,
+    contra_opportunities,
+    find_clearing_account,
+    today_iso,
+    contra_create_disabled,
   },
 };
 
