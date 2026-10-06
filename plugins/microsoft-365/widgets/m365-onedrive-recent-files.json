@@ -1,0 +1,135 @@
+{
+  "id": "m365-onedrive-recent-files",
+  "title": "OneDrive — Recent Files",
+  "description": "Up to 10 files from the connected OneDrive account — name, last-modified date, size, and a one-click open in the browser. Leads with truly recently-accessed files (Microsoft Graph's activity-tracked list), then fills any remaining slots from the root folder sorted by last-modified date, so the tile stays useful even on an account with little recent-access history.",
+  "category": "productivity",
+  "tags": ["m365", "onedrive", "files", "recent", "productivity"],
+  "keywords": ["onedrive", "recent files", "documents", "m365", "office", "drive"],
+  "connectorsUsed": ["m365-files"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 9 },
+    "min": { "colSpan": 4, "rowSpan": 7 },
+    "max": { "colSpan": 8, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "mcp": "m365-files",
+    "tool": "list_recent_files",
+    "params": { "limit": 15 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "divider1", "body", "divider2", "footer"],
+        "watch": {
+          "/m365-files/list_recent_files": [
+            { "action": "m365-files.list_files", "params": { "limit": 30 } }
+          ],
+          "/m365-files/list_files": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/recentFiles",
+                "value": {
+                  "$computed": "microsoft-365_merge_recent_files",
+                  "args": {
+                    "recent": { "$state": "/m365-files/list_recent_files" },
+                    "files": { "$state": "/m365-files/list_files" },
+                    "limit": 10
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "Clock", "tone": "info", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Recent Files", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "OneDrive · Microsoft 365" } },
+
+      "divider1": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["errorBanner", "emptyState", "fileList"] },
+
+      "errorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load recent files: ${/_errors/m365-files.list_recent_files}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/m365-files.list_recent_files" }
+      },
+
+      "emptyState": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["emptyIcon", "emptyText"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/m365-files.list_files", "not": true },
+            { "$state": "/ui/recentFiles/0", "not": true }
+          ]
+        }
+      },
+      "emptyIcon": { "type": "Icon", "props": { "name": "FileX", "tone": "muted", "size": "md" } },
+      "emptyText": { "type": "Caption", "props": { "text": "No files found.", "tone": "muted" } },
+
+      "fileList": {
+        "type": "Stack",
+        "props": { "gap": "none", "maxHeight": 480 },
+        "children": ["fileRow"],
+        "repeat": { "statePath": "/ui/recentFiles", "key": "id" }
+      },
+      "fileRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true, "clickable": true },
+        "children": ["fileLeft", "fileOpenIcon"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": { "$computed": "identity", "args": { "value": { "$item": "webUrl" } } }, "target": "_blank" }
+          }
+        }
+      },
+      "fileLeft": { "type": "Row", "props": { "gap": "sm", "align": "start", "grow": true }, "children": ["fileIcon", "fileInfo"] },
+      "fileIcon": {
+        "type": "Icon",
+        "props": {
+          "name": { "$computed": "microsoft-365_item_icon", "args": { "isFolder": { "$item": "folder" } } },
+          "tone": { "$computed": "microsoft-365_item_tone", "args": { "isFolder": { "$item": "folder" } } },
+          "size": "sm"
+        }
+      },
+      "fileInfo": { "type": "Stack", "props": { "gap": "xs", "grow": true }, "children": ["fileName", "fileMeta"] },
+      "fileName": { "type": "Text", "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "truncate": true } },
+      "fileMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Modified {d} · {s}",
+              "d": { "$computed": "format_date", "args": { "value": { "$item": "lastModifiedDateTime" }, "format": "dd-mmm-yy" } },
+              "s": { "$computed": "microsoft-365_format_bytes", "args": { "value": { "$item": "size" } } }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "fileOpenIcon": { "type": "Icon", "props": { "name": "ExternalLink", "tone": "muted", "size": "sm" } },
+
+      "divider2": { "type": "Divider", "props": {} },
+      "footer": { "type": "Row", "props": { "justify": "end" }, "children": ["openOneDriveBtn"] },
+      "openOneDriveBtn": {
+        "type": "Button",
+        "props": { "label": "Open OneDrive", "tone": "info", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": { "click": { "action": "open_url", "params": { "url": "https://www.office.com/launch/onedrive", "target": "_blank" } } }
+      }
+    }
+  },
+  "status": "published"
+}
