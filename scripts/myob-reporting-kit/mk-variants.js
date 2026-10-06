@@ -31,6 +31,11 @@ const VARIANTS = [
   { id: 'ro', base: 'iv', title: ['Stock on Hand', 'Reorder'], display: { v: 'reorder' } },
   { id: 'it', base: 'iv', title: ['Stock on Hand', 'Item List'], display: { v: 'list' } },
   { id: 'vr', base: 'iv', title: ['Stock on Hand', 'Inventory Value Reconciliation'], display: { v: 'recon' } },
+  // Job profit and loss comparison (M54) = Job profit and loss (M53) side by side; Job activity (M56) and Job exceptions (M57/M58) = Job
+  // transactions (M55) by category and for the lines with no job
+  { id: 'jc', base: 'jp', title: ['Job Profit and Loss', 'Job Profit and Loss Comparison'], display: { v: 'compare' } },
+  { id: 'ja', base: 'jt', title: ['Job Transactions', 'Job Activity'], display: { v: 'activity' } },
+  { id: 'jx', base: 'jt', title: ['Job Transactions', 'Job Exceptions'], display: { v: 'exceptions' } },
 ];
 for (const v of VARIANTS) {
   let cfg = fs.readFileSync(path.join(R, v.base + '.cfg.js'), 'utf8').replace(/\r\n/g, '\n');

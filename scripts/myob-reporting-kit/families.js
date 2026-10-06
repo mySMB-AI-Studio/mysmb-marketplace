@@ -732,6 +732,208 @@ module.exports = [
     ]
   },
   {
+    "wave": "Wave 3 (P3)",
+    "m": "M53",
+    "skill": "job-profit-and-loss",
+    "name": "MYOB Job Profit and Loss",
+    "report": "jp",
+    "title": "Job Profit and Loss",
+    "menu": "Reporting → Reports → Jobs → Job profit and loss",
+    "trigger": "the user asks for a job profit and loss, job P&L, profit by job or project, job profitability, or the income and expenses of a job",
+    "discovery": "Call `list_journal_transactions` once for the period, `list_job_register` once, `list_accounts` once and `list_company_files` once. The job is on each journal line (`Lines[].Job`); there is no job list tool, so the jobs are those with lines in the period. `list_job_register` has no dates: `Year` is the financial year, `Month` the calendar month, `Activity` the net activity in the category's normal balance",
+    "dates": "`from_date` / `to_date` = the period (default: this financial year to date; display preset `p`). The view is display `v` (`job` | `compare`); `x` = a job number (empty = every job with activity).",
+    "members": [
+      [
+        "Profit and loss by job",
+        "Per job: income, cost of sales, gross profit, expenses, other income and expenses, net profit, by category"
+      ],
+      [
+        "Job picker",
+        "Job select above the report"
+      ],
+      [
+        "Jobs side by side",
+        "Report = Jobs side by side (also its own template, Job Profit and Loss Comparison)"
+      ],
+      [
+        "Header jobs, sub-job roll-ups and job budgets",
+        "N/A — no job list or job budgets in the connector"
+      ]
+    ],
+    "checks": [
+      "**Independent tie:** MYOB's job register = the job-coded journal lines, per job, category and whole month in the period (the register's `Year` read as the financial year)",
+      "Each job: section totals = Σ their categories; Net Profit = Income − Cost of Sales − Expenses + Other Income − Other Expenses",
+      "For information: income and expense lines with no job; job-coded lines on balance-sheet categories"
+    ],
+    "golden": "mySMB.com, this financial year to date: J100 Bluegum fit-out, J200 Harbour Cafe refit and J300 Coastal Freight depot — confirm one job against MYOB's own Job Profit and Loss",
+    "fileName": "myob-job-profit-and-loss.html",
+    "tags": [
+      "myob",
+      "jobs",
+      "M53",
+      "profit-and-loss"
+    ]
+  },
+  {
+    "wave": "Wave 3 (P3)",
+    "m": "M54",
+    "skill": "job-profit-and-loss-comparison",
+    "name": "MYOB Job Profit and Loss Comparison",
+    "report": "jc",
+    "title": "Job Profit and Loss Comparison",
+    "menu": "Reporting → Reports → Jobs → Job profit and loss comparison",
+    "trigger": "the user asks to compare jobs, job profit side by side, a job P&L comparison, or which job is the most profitable",
+    "discovery": "Call `list_journal_transactions` once for the period, `list_job_register` once, `list_accounts` once and `list_company_files` once. The job is on each journal line (`Lines[].Job`); there is no job list tool, so the jobs are those with lines in the period. `list_job_register` has no dates: `Year` is the financial year, `Month` the calendar month, `Activity` the net activity in the category's normal balance",
+    "dates": "`from_date` / `to_date` = the period (default: this financial year to date). The view is display `v` (`compare` by default); input `jobs` = the jobs shown (comma-separated job numbers; empty = every job with activity).",
+    "members": [
+      [
+        "Jobs side by side",
+        "Categories as rows, one column per job and a Total column, with gross and net profit per job"
+      ],
+      [
+        "Choose jobs",
+        "Checkboxes above the report"
+      ],
+      [
+        "Variance between two jobs, header jobs",
+        "N/A — compare the columns; no job list in the connector"
+      ]
+    ],
+    "checks": [
+      "**Independent tie:** MYOB's job register = the job-coded journal lines, per job, category and whole month in the period (the register's `Year` read as the financial year)",
+      "Each job's column: section totals = Σ their categories; Net Profit = the section formula"
+    ],
+    "golden": "mySMB.com, this financial year to date: three jobs side by side; each column equals that job's Job Profit and Loss",
+    "fileName": "myob-job-profit-and-loss-comparison.html",
+    "tags": [
+      "myob",
+      "jobs",
+      "M54",
+      "comparison"
+    ]
+  },
+  {
+    "wave": "Wave 3 (P3)",
+    "m": "M55",
+    "skill": "job-transactions",
+    "name": "MYOB Job Transactions",
+    "report": "jt",
+    "title": "Job Transactions",
+    "menu": "Reporting → Reports → Jobs → Job transactions (accrual)",
+    "trigger": "the user asks for job transactions, every transaction on a job, what was posted to a job, or job costing detail",
+    "discovery": "Call `list_journal_transactions` once for the period (no `job_uid`: every job at once), `list_job_register` once, `get_profit_and_loss_3m` once for the period, `list_accounts` once and `list_company_files` once. A transaction belongs to a job when any of its lines carries the job (`Lines[].Job`); there is no job list tool",
+    "dates": "`from_date` / `to_date` = the period (default: this month; display preset `p`). The view is display `v` (`transactions` | `activity` | `exceptions`); `x` = a job number (empty = every job).",
+    "members": [
+      [
+        "Job transactions",
+        "Per job: every transaction with a line coded to the job — date, ID, source, description and all its lines, the job's lines marked — and the job's debit and credit totals"
+      ],
+      [
+        "Job picker",
+        "Job select above the report"
+      ],
+      [
+        "Job activity, job exceptions",
+        "Report = Job activity by category, Job exceptions (each also its own template)"
+      ]
+    ],
+    "checks": [
+      "**Independent tie:** MYOB's job register = the job-coded journal lines, per job, category and whole month in the period (the register's `Year` read as the financial year)",
+      "**Independent tie:** income and expense lines in the journals = MYOB's Profit and Loss for the period, per category (nothing missing)",
+      "Every journal transaction balances"
+    ],
+    "golden": "mySMB.com, August–September 2026: J300 Coastal Freight depot has the 10 September sale with its receivable and GST lines",
+    "fileName": "myob-job-transactions.html",
+    "tags": [
+      "myob",
+      "jobs",
+      "M55",
+      "transactions"
+    ]
+  },
+  {
+    "wave": "Wave 3 (P3)",
+    "m": "M56",
+    "skill": "job-activity",
+    "name": "MYOB Job Activity",
+    "report": "ja",
+    "title": "Job Activity",
+    "menu": "Reporting → Reports → Jobs → Job activity",
+    "trigger": "the user asks for job activity, the lines of a job in one category or account, or a job's activity by account",
+    "discovery": "Call `list_journal_transactions` once for the period (no `job_uid`: every job at once), `list_job_register` once, `get_profit_and_loss_3m` once for the period, `list_accounts` once and `list_company_files` once. A transaction belongs to a job when any of its lines carries the job (`Lines[].Job`); there is no job list tool",
+    "dates": "`from_date` / `to_date` = the period (default: this month). The view is display `v` (`activity` by default); `x` = a job number (empty = every job).",
+    "members": [
+      [
+        "Job activity by category",
+        "Per job and category: only the lines coded to the job (date, ID, source, memo, debit, credit) and the category's net activity"
+      ],
+      [
+        "Job picker",
+        "Job select above the report; the search narrows to one category"
+      ]
+    ],
+    "checks": [
+      "**Independent tie:** MYOB's job register = the job-coded journal lines, per job, category and whole month in the period (the register's `Year` read as the financial year)",
+      "**Independent tie:** income and expense lines in the journals = MYOB's Profit and Loss for the period, per category (nothing missing)",
+      "Every journal transaction balances"
+    ],
+    "golden": "mySMB.com, September 2026: J200 Harbour Cafe refit, Purchases — the materials moved to the job on 15 September",
+    "fileName": "myob-job-activity.html",
+    "tags": [
+      "myob",
+      "jobs",
+      "M56",
+      "activity"
+    ]
+  },
+  {
+    "wave": "Wave 3 (P3) — M57 cash and M58 invoice transactions",
+    "m": "M57",
+    "also": [
+      "M58"
+    ],
+    "skill": "job-exceptions",
+    "name": "MYOB Job Exceptions",
+    "report": "jx",
+    "title": "Job Exceptions",
+    "menu": "Reporting → Reports → Jobs → Job exceptions (cash transactions) and Job exceptions (invoice transactions)",
+    "trigger": "the user asks for job exceptions, transactions not assigned to a job, uncoded or unallocated job lines, or gaps in job costing",
+    "discovery": "Call `list_journal_transactions` once for the period (no `job_uid`: every job at once), `list_job_register` once, `get_profit_and_loss_3m` once for the period, `list_accounts` once and `list_company_files` once. A transaction belongs to a job when any of its lines carries the job (`Lines[].Job`); there is no job list tool. Exceptions are lines on income and expense categories with no job: balancing lines on bank, receivables, payables and GST never carry a job",
+    "dates": "`from_date` / `to_date` = the period (default: this month). The view is display `v` (`exceptions` by default); `x` = `cash` | `invoice` (empty = both).",
+    "members": [
+      [
+        "Cash transactions (M57)",
+        "Spend money, receive money, pay runs, inventory and general journal lines on income and expense categories with no job"
+      ],
+      [
+        "Invoice transactions (M58)",
+        "Sales and purchase lines on income and expense categories with no job"
+      ],
+      [
+        "Show",
+        "Cash, invoice or both — select above the report"
+      ],
+      [
+        "Counts and amounts",
+        "Lines with no job on each side; income and expenses with no job"
+      ]
+    ],
+    "checks": [
+      "**Independent tie:** income and expense lines in the journals = MYOB's Profit and Loss for the period, per category (nothing missing)",
+      "**Independent tie:** MYOB's job register = the job-coded journal lines, per job, category and whole month in the period (the register's `Year` read as the financial year)",
+      "Every journal transaction balances"
+    ],
+    "golden": "mySMB.com, September 2026: the pay run, bank fees and interest (cash) and sales to customers without a job (invoice)",
+    "fileName": "myob-job-exceptions.html",
+    "tags": [
+      "myob",
+      "jobs",
+      "M57",
+      "M58",
+      "exceptions"
+    ]
+  },
+  {
     m: 'M23', skill: 'myob-pay-run-history', name: 'MYOB Pay Run History', report: 'py', wave: 'Wave 3 (P3)',
     title: 'Pay Run History', menu: 'Reporting → Reports → Payroll → Pay run history',
     trigger: 'the user asks for pay run history, pay runs, what was paid in each pay run, payroll totals by pay date, or wages, PAYG and super per pay run',
