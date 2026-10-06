@@ -1,27 +1,234 @@
 ---
 name: MYOB Job Profit and Loss Comparison
-description: Side-by-side P&L comparison across multiple jobs, from pre-aggregated monthly job register data. Use Job Profit and Loss instead for a single job.
+description: MYOB Job Profit and Loss Comparison (M54) as a live, validated report in MYOB styling. Use when the user asks to compare jobs, job profit side by side, a job P&L comparison, or which job is the most profitable.
 ---
+# Job Profit and Loss Comparison (M54)
 
-# Job Profit and Loss Comparison
+Use when the user asks to compare jobs, job profit side by side, a job P&L comparison, or which job is the most profitable. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Job Profit and Loss Comparison**. Template: `myob-reporting-studio` / `job-profit-and-loss-comparison` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_journal_transactions`, `list_job_register`, `list_accounts`, `list_company_files`).
 
-Prompt ID M54 · Reporting › Reports › Jobs › Job profit and loss comparison. MYOB's description: "Displays a side-by-side P&L report totalling the transactions assigned to selected jobs."
+MYOB location: Reporting → Reports → Jobs → Job profit and loss comparison. Library: MYOB Reports Prompt Library v1.2 → Prompts → M54. Delivery: Wave 3 (P3).
 
-Same tool and computation as `myob-reporting-studio:job-profit-and-loss` (`list_job_register`, period filtered client-side on `Year`/`Month` because the tool has no date params, summed `Activity` per account, every row classified via `list_accounts` into `Income`, `CostOfSales`, `Expense`, `OtherIncome`, `OtherExpense`, balance-sheet accounts excluded, same sign-verification discipline) — but for multiple jobs at once, rendered as one column per job instead of a single P&L.
+## Discovery call
 
-Bind `list_job_register` ONCE, unfiltered (no `job_uid`), and split the rows client-side by `Job.UID` — that one binding also supplies the job list. Only if the unfiltered register is too large, keep a `job_uid`-filtered binding and loop `getData` over the selected jobs (a bounded fan-out per the foundation skill). Render a table with accounts as rows and jobs as columns, plus a Net Profit/Loss row per job and, optionally, a variance column between two jobs if exactly two are selected.
+Call `list_journal_transactions` once for the period, `list_job_register` once, `list_accounts` once and `list_company_files` once. The job is on each journal line (`Lines[].Job`); there is no job list tool, so the jobs are those with lines in the period. `list_job_register` has no dates: `Year` is the financial year, `Month` the calendar month, `Activity` the net activity in the category's normal balance.
 
-**Job selection — there is no `list_jobs` tool and no multi-select input.** Job UIDs and names come from the register rows (`Job{UID, Name}`) or journal `Lines[].Job`. Offer checkboxes over the jobs found in the data (client-side selection), and persist the choice in a `jobs` `string` input of comma-separated job UIDs, parsed client-side. Disclose plainly if no job data comes back.
+## Date defaults
 
-Validate (0.01 tolerance): each job's column ties out internally the same way a single Job Profit and Loss report would (section totals = sum of account rows, Net Profit = Income − Cost of Sales + Other Income − Expenses − Other Expenses).
+`from_date` / `to_date` = the period (default: this financial year to date). The view is display `v` (`compare` by default); input `jobs` = the jobs shown (comma-separated job numbers; empty = every job with activity).
 
-## Interactivity
+## Members
 
-* Declare `jobs` as a `string` presentation input (comma-separated job UIDs; empty means "all jobs in the data") — never an enum or a multi-select, and never passed to `job_uid`.
-* Declare period inputs as presentation inputs (e.g. `from_period`/`to_period` strings `YYYY-MM`, or a `financial_year` number) filtered client-side on `Year`/`Month` — not `from_date`/`to_date`; `list_job_register`'s granularity is Year/Month integers only, and `Year` may be the financial year (verify on first run).
-* Declare `persona` and `company_file` per the foundation skill.
-* Columns sortable/reorderable client-side over already-hydrated data.
+| Member / view | How |
+|---|---|
+| Jobs side by side | Categories as rows, one column per job and a Total column, with gross and net profit per job |
+| Choose jobs | Checkboxes above the report |
+| Variance between two jobs, header jobs | N/A — compare the columns; no job list in the connector |
 
-## Sources & limitations
+## Validation checks (shown in the banner)
 
-Tools used: `list_job_register` (monthly net movement only — no transaction-level detail), `list_accounts` for classification. No job-list tool exists; jobs come from the register rows. For a single job's own P&L, use `myob-reporting-studio:job-profit-and-loss` instead.
+- **Independent tie:** MYOB's job register = the job-coded journal lines, per job, category and whole month in the period (the register's `Year` read as the financial year)
+- Each job's column: section totals = Σ their categories; Net Profit = the section formula
+
+## Save as
+
+`fileName`: `myob-job-profit-and-loss-comparison.html` · `tags`: ["myob","jobs","M54","comparison"]
+
+## QA test script (golden set)
+
+1. On the golden-set file, ask for this report at the library's example period; confirm the discovery call succeeded and the report saved.
+2. Compare the headline figures: mySMB.com, this financial year to date: three jobs side by side; each column equals that job's Job Profit and Loss.
+3. Validation banner: every check passes (the independent tie included), or shows N/A with a stated reason.
+4. Change every control and confirm the report refetches and still validates; switch View as to Client, then Bookkeeper; toggle Style and the dark theme.
+5. Download PDF and Download Excel and confirm they match the screen (the Excel file has Validation and Parameters sheets).
+6. Download or Share from the report window: the snapshot keeps the period and figures and disables the refetching controls.
+7. Cross-client isolation (LIB-002): the saved report and every export carry only this company file's figures and name.
+
+## dataBindings
+
+```json
+{
+  "inputs": [
+    {
+      "name": "from_date",
+      "label": "From",
+      "type": "date",
+      "default": "2026-07-01"
+    },
+    {
+      "name": "to_date",
+      "label": "To",
+      "type": "date",
+      "default": "today"
+    },
+    {
+      "name": "jobs",
+      "label": "Jobs side by side",
+      "type": "string",
+      "maxLength": 500,
+      "default": ""
+    },
+    {
+      "name": "company_file",
+      "label": "Company file",
+      "type": "string",
+      "maxLength": 64,
+      "default": ""
+    },
+    {
+      "name": "persona",
+      "label": "View as",
+      "type": "enum",
+      "options": [
+        "Client",
+        "Bookkeeper",
+        "Practitioner",
+        "Executive"
+      ],
+      "default": "Bookkeeper"
+    },
+    {
+      "name": "display",
+      "label": "Display settings",
+      "type": "string",
+      "maxLength": 300,
+      "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"compare\",\"x\":\"\"}"
+    }
+  ],
+  "bindings": [
+    {
+      "id": "journals",
+      "tool": {
+        "mcp": "myob-accounting",
+        "name": "list_journal_transactions"
+      },
+      "params": {
+        "from_date": {
+          "kind": "input",
+          "input": "from_date"
+        },
+        "to_date": {
+          "kind": "input",
+          "input": "to_date"
+        },
+        "myob_company_file_id": {
+          "kind": "input",
+          "input": "company_file"
+        }
+      }
+    },
+    {
+      "id": "register",
+      "tool": {
+        "mcp": "myob-accounting",
+        "name": "list_job_register"
+      },
+      "params": {
+        "page_size": {
+          "kind": "static",
+          "value": 1000
+        },
+        "myob_company_file_id": {
+          "kind": "input",
+          "input": "company_file"
+        }
+      }
+    },
+    {
+      "id": "accounts",
+      "tool": {
+        "mcp": "myob-accounting",
+        "name": "list_accounts"
+      },
+      "params": {
+        "myob_company_file_id": {
+          "kind": "input",
+          "input": "company_file"
+        }
+      }
+    },
+    {
+      "id": "company_files",
+      "tool": {
+        "mcp": "myob-accounting",
+        "name": "list_company_files"
+      },
+      "params": {}
+    }
+  ]
+}
+```
+
+## Report config ({{CFG}})
+
+```js
+// Job Profit and Loss (M53) and its comparison (M54): the income and expense lines coded to each job in MYOB's journal transactions,
+// per category, laid out as a P&L. The independent tie is MYOB's job register (GeneralLedger/JobRegister) — its own monthly net
+// activity per job and category, Year = the financial year — compared for every whole month in the period.
+MK.app({
+  title: 'Job Profit and Loss Comparison', primary: 'journals', files: 'company_files',
+  inputs: { start: 'from_date', end: 'to_date', companyFile: 'company_file', persona: 'persona', display: 'display' },
+  defaults: { from_date: '2026-07-01', to_date: '2026-09-28', jobs: '', company_file: '', persona: 'Bookkeeper',
+    display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":0,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":"compare","x":""}' },
+  uses: { journals: ['from_date', 'to_date', 'company_file'], register: ['company_file'], accounts: ['company_file'], company_files: [] },
+  tools: { journals: 'list_journal_transactions (every journal in the period — the lines coded to a job)', register: 'list_job_register (MYOB\'s monthly net activity per job and category, for the tie)', accounts: 'list_accounts (classifications)', company_files: 'list_company_files' },
+  views: [['job', 'Profit and loss by job'], ['compare', 'Jobs side by side']],
+  render: function (c) {
+    var body = c.body, h = MK.h, money = function (v) { return MK.money(v, c.currency, c.display); }, r2 = function (v) { return Math.round(v * 100) / 100; }, from = c.inputs.from_date, to = c.inputs.to_date;
+    if (c.errors.journals) { body.innerHTML = '<p class="mk-err">' + h(c.err('journals')) + '</p>'; return { checks: [{ name: 'Journal transactions loaded', pass: false, detail: c.err('journals') }] }; }
+    if (!c.data.journals) return {};
+    var idx = MK.accounts(c.data.accounts), DRN = { Asset: 1, Expense: 1, CostOfSales: 1, OtherExpense: 1 }, PLC = /^(Income|CostOfSales|Expense|OtherIncome|OtherExpense)$/;
+    var J = {}, per = {}, bsLines = 0, bsSum = 0, noJob = 0, noJobIn = 0, noJobEx = 0, unclass = {}, jk = function (j) { return j.Number || j.UID; };
+    MK.items(c.data.journals).forEach(function (t) { var d = MK.isoDate(t.DateOccurred || t.DatePosted); if (d < from || d > to) return; (t.Lines || []).forEach(function (l) {
+      var a = l.Account || {}, cls = MK.classOf(a, idx).cls || '', amt = Math.abs(MK.num(l.Amount) || 0), nat = r2((DRN[cls] ? 1 : -1) * (l.IsCredit ? -amt : amt)), j = l.Job;
+      if (!j || !(j.UID || j.Number)) { if (PLC.test(cls)) { noJob++; if (/Income/.test(cls)) noJobIn = r2(noJobIn + nat); else noJobEx = r2(noJobEx + nat); } return; }
+      var k = jk(j); J[k] = J[k] || { key: k, no: j.Number || '', name: j.Name || '' };
+      if (!cls) unclass[a.DisplayID || a.Name] = 1;
+      if (!PLC.test(cls)) { if (cls) { bsLines++; bsSum = r2(bsSum + nat); } return; }
+      var p = per[k] = per[k] || {}, ak = a.UID || a.DisplayID; p[ak] = p[ak] || { Account: { UID: a.UID, DisplayID: a.DisplayID, Name: a.Name }, AccountTotal: 0 }; p[ak].AccountTotal = r2(p[ak].AccountTotal + nat); }); });
+    var keys = Object.keys(J).sort(function (a, b) { return a.localeCompare(b, undefined, { numeric: true }); });
+    var want = String(c.inputs.jobs || '').split(',').map(function (s) { return s.trim(); }).filter(function (s) { return J[s]; });
+    var view = c.view || 'job', sel = view === 'job' ? (c.display.x && J[c.display.x] ? [c.display.x] : keys) : (want.length ? keys.filter(function (k) { return want.indexOf(k) >= 0; }) : keys);
+    var rep = function (k) { return { AccountsBreakdown: Object.keys(per[k] || {}).map(function (a) { return per[k][a]; }) }; }, label = function (k) { return (J[k].no ? J[k].no + ' ' : '') + J[k].name; };
+    var all = MK.breakdown(sel.map(rep), idx, MK.PL_LAYOUT), col = function (b, g, i) { return b.totals[g] ? b.totals[g][i] : 0; }, n = sel.length;
+    var tot = function (g) { var s = 0; for (var i = 0; i < n; i++) s += col(all, g, i); return r2(s); }, np = all.calc.NetProfit ? r2(MK.sum(all.calc.NetProfit)) : 0;
+    var html = MK.kpis([{ label: 'Jobs', value: n, money: false }, { label: 'Income', value: r2(tot('Income') + tot('OtherIncome')) }, { label: 'Cost of sales and expenses', value: r2(tot('CostOfSales') + tot('Expense') + tot('OtherExpense')) }, { label: 'Net profit', value: np }], c);
+    if (view === 'job') html += '<label class="ctl" style="display:inline-flex;margin:12px 0">Job<select id="jp-job"><option value="">All jobs with activity</option>' + keys.map(function (k) { return '<option value="' + h(k) + '"' + (sel.length === 1 && sel[0] === k && c.display.x ? ' selected' : '') + '>' + h(label(k)) + '</option>'; }).join('') + '</select></label>';
+    else html += '<div id="jp-pick" style="margin:12px 0;display:flex;flex-wrap:wrap;gap:12px">' + keys.map(function (k) { return '<label style="display:inline-flex;align-items:center;gap:6px"><input type="checkbox" value="' + h(k) + '"' + (sel.indexOf(k) >= 0 ? ' checked' : '') + '>' + h(label(k)) + '</label>'; }).join('') + '</div>';
+    if (!keys.length) html += '<p class="muted">No income or expense lines in this period are coded to a job in MYOB.</p>';
+    else if (view === 'compare') html += '<div class="mk-scroll">' + MK.statement(all.lines.map(function (l) { return Object.assign({}, l, { values: l.kind === 'header' ? [] : l.values.concat([r2(MK.sum(l.values))]) }); }), [''].concat(sel.map(label)).concat(['Total']), c) + '</div>';
+    else html += sel.map(function (k, i) { return '<div class="mk-card" style="margin-top:16px"><h3>' + h(label(k)) + '</h3><div class="mk-scroll">' + MK.statement(all.lines.map(function (l) { return Object.assign({}, l, { values: l.kind === 'header' ? [] : [l.values[i]] }); }), ['', 'Total'], c) + '</div></div>'; }).join('');
+    body.innerHTML = html;
+    var pick = document.getElementById('jp-job'); if (pick) pick.addEventListener('change', function () { c.change({}, { x: this.value }); });
+    var box = document.getElementById('jp-pick'); if (box) box.addEventListener('change', function () { var on = [].slice.call(box.querySelectorAll('input:checked')).map(function (x) { return x.value; }); c.change({ jobs: on.length === keys.length ? '' : on.join(',') }, {}); });
+    // the tie: MYOB's job register vs the job-coded journal lines, per job, category and whole month in the period (every job and category)
+    var fm = c.fy.month, months = [], y = +from.slice(0, 4), mo = +from.slice(5, 7) + (from.slice(8) > '01' ? 1 : 0);
+    for (; ; mo++) { if (mo > 12) { mo = 1; y++; } if (MK.iso(MK.eom(y, mo)) > to) break; months.push(y + '-' + (mo < 10 ? '0' : '') + mo); }
+    var tie = null;
+    if (c.data.register && months.length) {
+      var A = {}, add = function (k, side, v) { A[k] = A[k] || [0, 0]; A[k][side] = r2(A[k][side] + v); };
+      MK.items(c.data.register).forEach(function (r) { var mo = +r.Month, y = +r.Year - (fm > 1 && mo >= fm ? 1 : 0), ym = y + '-' + (mo < 10 ? '0' : '') + mo; if (months.indexOf(ym) < 0 || !r.Job) return;
+        add(jk(r.Job) + ' ' + ((r.Account || {}).DisplayID || (r.Account || {}).Name) + ' ' + ym, 0, (MK.num(r.Activity) || 0) + (MK.num(r.YearEndActivity) || 0)); });
+      MK.items(c.data.journals).forEach(function (t) { var d = MK.isoDate(t.DateOccurred || t.DatePosted); if (months.indexOf(d.slice(0, 7)) < 0) return; (t.Lines || []).forEach(function (l) {
+        if (!l.Job || !(l.Job.UID || l.Job.Number)) return; var a = l.Account || {}, cls = MK.classOf(a, idx).cls || '', amt = Math.abs(MK.num(l.Amount) || 0);
+        add(jk(l.Job) + ' ' + (a.DisplayID || a.Name) + ' ' + d.slice(0, 7), 1, (DRN[cls] ? 1 : -1) * (l.IsCredit ? -amt : amt)); }); });
+      var bad = Object.keys(A).filter(function (k) { return !MK.near(A[k][0], A[k][1]); });
+      tie = { pass: bad.length === 0, detail: bad.length ? bad.length + ' differ, e.g. ' + bad[0] + ': register ' + money(A[bad[0]][0]) + ' vs journals ' + money(A[bad[0]][1]) : Object.keys(A).length + ' job, category and month totals (' + months[0] + (months.length > 1 ? ' to ' + months[months.length - 1] : '') + ')' };
+    }
+    var ties = MK.linesTies(all.lines), npOk = !all.calc.NetProfit || all.calc.NetProfit.every(function (v, i) { return MK.near(v, col(all, 'Income', i) - col(all, 'CostOfSales', i) - col(all, 'Expense', i) + col(all, 'OtherIncome', i) - col(all, 'OtherExpense', i)); });
+    this._x = { lines: all.lines, titles: [''].concat(sel.map(label)) };
+    return { checks: [
+      { name: 'MYOB\'s job register = the job-coded journal lines, per job, category and whole month (two MYOB sources)', pass: c.errors.register ? null : tie ? tie.pass : null, detail: c.errors.register ? c.err('register') : tie ? tie.detail : 'N/A — no whole month in the period' },
+      { name: 'Every job-coded category is classified', pass: c.errors.accounts ? null : Object.keys(unclass).length === 0, detail: c.errors.accounts ? c.err('accounts') : Object.keys(unclass).length ? Object.keys(unclass).join(', ') : keys.length + ' jobs' },
+      { name: 'Each job: section totals = Σ their categories; Net Profit = Income − Cost of Sales − Expenses + Other Income − Other Expenses', pass: n ? ties.failed.length === 0 && npOk : null, detail: ties.failed.length ? 'Mismatch: ' + ties.failed.join(', ') : n + ' jobs' },
+      { name: 'Income and expense lines with no job (see Job Exceptions)', pass: null, info: true, detail: noJob + ' lines — income ' + money(noJobIn) + ', expenses ' + money(noJobEx) },
+      { name: 'Job-coded lines on balance-sheet categories (not in a P&L)', pass: null, info: true, detail: bsLines + ' lines, ' + money(bsSum) }],
+      title: view === 'compare' ? 'Job Profit and Loss Comparison' : sel.length === 1 && c.display.x ? 'Job Profit and Loss — ' + label(sel[0]) : 'Job Profit and Loss',
+      notes: ['Income and expense lines coded to a job in MYOB\'s journal transactions, dated in the period, in each category\'s normal balance. The tie compares them with MYOB\'s job register (monthly totals, its Year read as the financial year) for each whole month in the period.'],
+      na: ['Header jobs and sub-job roll-ups (the connector has no job list)', 'Job budgets', 'Cash basis (journals are accrual)'] };
+  },
+  excel: function (c) {
+    var x = this._x; if (!x) return [];
+    return [MK.sheetFromLines('Job profit and loss', c.company, MK.periodLine(c.inputs.from_date, c.inputs.to_date), x.titles, x.lines, MK.footerStamp('Accrual', c.fetchedAt), x.titles.slice(1).map(function () { return 'money'; }))];
+  }
+});
+```
