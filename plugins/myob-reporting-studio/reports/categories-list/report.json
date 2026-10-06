@@ -1,38 +1,42 @@
 {
-  "title": "MYOB General Ledger",
-  "description": "Live, validated MYOB General Ledger (M08): General ledger, Transactions, Journal entries, Category transactions.",
+  "title": "MYOB Categories List",
+  "description": "Live, validated MYOB Categories List (M10): Categories list, Balances at a date, Show zero balances.",
   "tags": [
     "myob",
-    "general-ledger",
-    "M08",
-    "journals"
+    "categories-list",
+    "M10",
+    "chart-of-accounts"
   ],
-  "fileName": "myob-general-ledger.html",
+  "fileName": "myob-categories-list.html",
   "dataBindings": {
     "inputs": [
       {
-        "name": "from_date",
-        "label": "From",
-        "type": "date",
-        "default": "2026-09-01"
-      },
-      {
-        "name": "to_date",
-        "label": "To",
+        "name": "as_at",
+        "label": "As at",
         "type": "date",
         "default": "today"
       },
       {
-        "name": "prev_day",
-        "label": "Day before the period",
-        "type": "date",
-        "default": "2026-08-31"
+        "name": "basis",
+        "label": "Accounting method",
+        "type": "enum",
+        "options": [
+          "Accrual",
+          "Cash"
+        ],
+        "default": "Accrual"
       },
       {
         "name": "fy_start",
         "label": "Financial year start",
         "type": "date",
         "default": "2026-07-01"
+      },
+      {
+        "name": "prev_fy_start",
+        "label": "Last financial year start",
+        "type": "date",
+        "default": "2025-07-01"
       },
       {
         "name": "company_file",
@@ -58,33 +62,12 @@
         "label": "Display settings",
         "type": "string",
         "maxLength": 300,
-        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"this_month\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"accounts\"}"
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"today\",\"c\":\"none\",\"v\":\"list\"}"
       }
     ],
     "bindings": [
       {
-        "id": "journals",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_journal_transactions"
-        },
-        "params": {
-          "from_date": {
-            "kind": "input",
-            "input": "from_date"
-          },
-          "to_date": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "bs_open",
+        "id": "bs",
         "tool": {
           "mcp": "myob-accounting",
           "name": "get_balance_sheet"
@@ -92,57 +75,11 @@
         "params": {
           "date": {
             "kind": "input",
-            "input": "prev_day"
+            "input": "as_at"
           },
           "reporting_basis": {
-            "kind": "static",
-            "value": "Accrual"
-          },
-          "myob_company_file_id": {
             "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "bs_close",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "get_balance_sheet"
-        },
-        "params": {
-          "date": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "reporting_basis": {
-            "kind": "static",
-            "value": "Accrual"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "pnl_period",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "get_profit_and_loss_3m"
-        },
-        "params": {
-          "from_date": {
-            "kind": "input",
-            "input": "from_date"
-          },
-          "to_date": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "reporting_basis": {
-            "kind": "static",
-            "value": "Accrual"
+            "input": "basis"
           },
           "myob_company_file_id": {
             "kind": "input",
@@ -163,11 +100,36 @@
           },
           "to_date": {
             "kind": "input",
-            "input": "to_date"
+            "input": "as_at"
           },
           "reporting_basis": {
-            "kind": "static",
-            "value": "Accrual"
+            "kind": "input",
+            "input": "basis"
+          },
+          "myob_company_file_id": {
+            "kind": "input",
+            "input": "company_file"
+          }
+        }
+      },
+      {
+        "id": "pnl_since_prev",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_profit_and_loss_3m"
+        },
+        "params": {
+          "from_date": {
+            "kind": "input",
+            "input": "prev_fy_start"
+          },
+          "to_date": {
+            "kind": "input",
+            "input": "as_at"
+          },
+          "reporting_basis": {
+            "kind": "input",
+            "input": "basis"
           },
           "myob_company_file_id": {
             "kind": "input",

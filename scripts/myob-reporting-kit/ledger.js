@@ -232,6 +232,23 @@ function payrollCategorySummary(p) {
     PayrollCategoryBreakdown: runs.length ? [cat(951, 'Base Salary', 'Wage', tot('6-5130', false)), cat(952, 'PAYG Withholding', 'Tax', tot('2-1410', true)), cat(953, 'Superannuation Guarantee', 'Superannuation', tot('6-5140', false))] : [], URI: 'x' };
 }
 function companyFiles() { return [CF1, CF2].map((id) => ({ Id: id, Name: FILES[id].Name, Country: FILES[id].Country, Uri: 'https://arl2.api.myob.com/accountright/' + id, ProductVersion: '2026.9' })); }
+// Contacts (/Contact, every type): MYOB's generic list has no addresses, but some files return them — a few customers carry an email and
+// phone; the employee's are personal and must never show. CurrentBalance = the open invoices (customers) or bills (suppliers) today.
+function listContacts(p) {
+  const cf = (p && p.myob_company_file_id) || CF1, owed = {};
+  listInvoices({ myob_company_file_id: cf, status: 'Open' }).Items.forEach((i) => { owed[i.Customer.UID] = r2((owed[i.Customer.UID] || 0) + i.BalanceDueAmount); });
+  listBills({ myob_company_file_id: cf, status: 'Open' }).Items.forEach((b) => { owed[b.Supplier.UID] = r2((owed[b.Supplier.UID] || 0) + b.BalanceDueAmount); });
+  const co = (uid, name, type, id, extra) => Object.assign({ UID: uid, CompanyName: name, FirstName: null, LastName: null, IsIndividual: false, DisplayID: id, IsActive: true, Type: type, CurrentBalance: owed[uid] || 0, LastModified: TODAY + 'T09:00:00', URI: 'https://arl2.api.myob.com/accountright/' + cf + '/Contact/' + uid }, extra || {});
+  const site = (n) => n.toLowerCase().replace(/[^a-z]+/g, '');
+  let list = CUSTOMERS.map((n, i) => co(U(cf, 1000 + i), n, 'Customer', 'CUS' + String(i + 1).padStart(6, '0'), i < 3 ? { Addresses: [{ Location: 1, Email: 'accounts@' + site(n) + '.com.au', Phone1: '02 9000 00' + String(i + 1).padStart(2, '0') }] } : null))
+    .concat([co(U(cf, 1100), null, 'Customer', 'CUS000100', { FirstName: 'Jamie', LastName: 'Nguyen', IsIndividual: true })])
+    .concat(SUPPLIERS.map((n, i) => co(U(cf, 2000 + i), n, 'Supplier', 'SUP' + String(i + 1).padStart(6, '0'))))
+    .concat([co(U(cf, 2100), 'Old Printing Co', 'Supplier', 'SUP000100', { IsActive: false }), co(U(cf, 3000), null, 'Employee', 'EMP000001', { FirstName: 'Alex', LastName: 'Morgan', IsIndividual: true, CurrentBalance: 0, Addresses: [{ Location: 1, Email: 'alex.morgan@home.example', Phone1: '0400 000 000', Street: '1 Home St' }] })]);
+  if (p && p.type && p.type !== 'All') list = list.filter((x) => x.Type === p.type);
+  if (p && p.is_active != null) list = list.filter((x) => x.IsActive === p.is_active);
+  list = list.slice(0, (p && p.page_size) || 100);
+  return { Items: list, NextPageLink: null, Count: list.length };
+}
 // expected figures computed independently of the MYOB JSON (for assertions)
 const expect = { balances: (date, cf) => balances(books(cf), date), plByAccount: (a, b, cash, cf) => plByAccount(books(cf), a, b, cash), netProfit: (a, b, cash, cf) => netProfit(books(cf), a, b, cash), movement: (a, b, cf) => movement(books(cf), a, b), books, invoiceOut: (i, cf) => invoiceOut(books(cf), i), billOut: (b, cf) => billOut(books(cf), b) };
-module.exports = { TODAY, CF1, CF2, FILES, U, profitAndLoss, balanceSheet, listAccounts, listInvoices, listBills, listJournalTransactions, listTaxCodes, taxCodeSummary, payrollCategorySummary, listInvoiceLines, listBillLines, listItems, listPayrollAdvices, agedReceivables, agedPayables, companyFiles, expect, fyStart, addDays, eom, r2 };
+module.exports = { TODAY, CF1, CF2, FILES, U, profitAndLoss, balanceSheet, listAccounts, listInvoices, listBills, listContacts, listJournalTransactions, listTaxCodes, taxCodeSummary, payrollCategorySummary, listInvoiceLines, listBillLines, listItems, listPayrollAdvices, agedReceivables, agedPayables, companyFiles, expect, fyStart, addDays, eom, r2 };
