@@ -27,6 +27,10 @@ const VARIANTS = [
   { id: 'cl', base: 'tb', title: ['Trial Balance', 'Categories List'], display: { v: 'list', zeros: 1 } },
   // Coding (M18) = Bank transactions (M16) grouped by coding status
   { id: 'bc', base: 'bt', title: ['Bank Transactions', 'Coding'], display: { v: 'coding' } },
+  // Reorder (M47), Item list (M51) and Inventory value reconciliation (M52) = the inventory report (Stock on hand, M48) on its other views
+  { id: 'ro', base: 'iv', title: ['Stock on Hand', 'Reorder'], display: { v: 'reorder' } },
+  { id: 'it', base: 'iv', title: ['Stock on Hand', 'Item List'], display: { v: 'list' } },
+  { id: 'vr', base: 'iv', title: ['Stock on Hand', 'Inventory Value Reconciliation'], display: { v: 'recon' } },
 ];
 for (const v of VARIANTS) {
   let cfg = fs.readFileSync(path.join(R, v.base + '.cfg.js'), 'utf8').replace(/\r\n/g, '\n');

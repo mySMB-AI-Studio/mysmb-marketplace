@@ -304,6 +304,8 @@ function listEmployeeLeaveBalances(p) {
   const l = all.filter((x) => (!p.employee_uid || x.Employee.UID === p.employee_uid) && (p.include_terminated || !x.TerminationDate));
   return { Count: l.length, Items: JSON.parse(JSON.stringify(l)) };
 }
+// Inventory adjustments: none (this ledger is a services business; the inventory reports are tested on fixtures-inventory.js)
+function listInventoryAdjustments() { return { Count: 0, Items: [] }; }
 // expected figures computed independently of the MYOB JSON (for assertions)
 const expect = { balances: (date, cf) => balances(books(cf), date), plByAccount: (a, b, cash, cf) => plByAccount(books(cf), a, b, cash), netProfit: (a, b, cash, cf) => netProfit(books(cf), a, b, cash), movement: (a, b, cf) => movement(books(cf), a, b), books, invoiceOut: (i, cf) => invoiceOut(books(cf), i), billOut: (b, cf) => billOut(books(cf), b) };
-module.exports = { TODAY, CF1, CF2, FILES, U, profitAndLoss, balanceSheet, listAccounts, listInvoices, listBills, listContacts, listPayments, listSupplierPayments, listBankStatementLines, listTimesheets, listEmployeeLeaveBalances, listJournalTransactions, listTaxCodes, taxCodeSummary, payrollCategorySummary, listInvoiceLines, listBillLines, listItems, listPayrollAdvices, agedReceivables, agedPayables, companyFiles, expect, fyStart, addDays, eom, r2 };
+module.exports = { TODAY, CF1, CF2, FILES, U, profitAndLoss, balanceSheet, listAccounts, listInvoices, listBills, listContacts, listPayments, listSupplierPayments, listBankStatementLines, listTimesheets, listEmployeeLeaveBalances, listInventoryAdjustments, listJournalTransactions, listTaxCodes, taxCodeSummary, payrollCategorySummary, listInvoiceLines, listBillLines, listItems, listPayrollAdvices, agedReceivables, agedPayables, companyFiles, expect, fyStart, addDays, eom, r2 };

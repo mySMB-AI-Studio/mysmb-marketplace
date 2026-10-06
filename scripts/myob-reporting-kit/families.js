@@ -554,6 +554,184 @@ module.exports = [
     fileName: 'myob-supplier-purchases-detail.html', tags: ['myob', 'supplier-purchases', 'detail', 'M44', 'purchases'],
   },
   {
+    "wave": "Wave 3 (P3)",
+    "m": "M48",
+    "skill": "stock-on-hand",
+    "name": "MYOB Stock on Hand",
+    "report": "iv",
+    "title": "Stock on Hand",
+    "menu": "Reporting → Reports → Inventory → Stock on hand",
+    "trigger": "the user asks for stock on hand, stock levels, inventory quantities, committed or on-order stock, what is available, or out-of-stock items",
+    "discovery": "Call `list_items` once, `get_balance_sheet` once with `date` = today, and `list_company_files` once. Expect per item `QuantityOnHand`, `QuantityCommitted`, `QuantityOnOrder`, `QuantityAvailable`, `AverageCost`, `CurrentValue`, `IsInventoried`, `AssetAccount` — today's figures; MYOB keeps no history of them",
+    "dates": "`as_at` = the Balance Sheet date for the value tie (default `\"today\"`; display preset `a`). Quantities and values are always today's. The view is display `v` (`stock` by default; also `reorder`, `list`, `recon`).",
+    "members": [
+      [
+        "Stock on hand",
+        "Active inventoried items: on hand, committed, on order, available, average cost, value; no stock highlighted"
+      ],
+      [
+        "Other inventory views",
+        "Report = Reorder, Item list, Inventory value reconciliation (each also its own template)"
+      ]
+    ],
+    "checks": [
+      "**Independent tie (today):** the items' value = the inventory account(s) on the Balance Sheet",
+      "MYOB's available quantity = on hand − committed (or + on order, as the file computes it)"
+    ],
+    "golden": "mySMB.com has no inventoried items — confirm on a file with stock that the values add up to the inventory account",
+    "fileName": "myob-stock-on-hand.html",
+    "tags": [
+      "myob",
+      "inventory",
+      "M48",
+      "stock"
+    ]
+  },
+  {
+    "wave": "Wave 3 (P3)",
+    "m": "M47",
+    "skill": "reorder",
+    "name": "MYOB Reorder",
+    "report": "ro",
+    "title": "Reorder",
+    "menu": "Reporting → Reports → Inventory → Reorder",
+    "trigger": "the user asks for the reorder report, items to reorder, stock below minimum levels, what to buy, or restocking",
+    "discovery": "Call `list_items` once and `list_company_files` once (as Stock on Hand). The minimum level, default order quantity and supplier come from each item's `BuyingDetails.RestockingInformation`; items without a minimum level are not watched — never invent a threshold",
+    "dates": "No dates — quantities are today's. The view is display `v` (`reorder` by default).",
+    "members": [
+      [
+        "Reorder",
+        "Items at or below their minimum level: on hand, minimum, below minimum, order quantity, supplier, estimated cost (order quantity × last purchase price), largest shortfall first"
+      ],
+      [
+        "Items without a minimum level",
+        "Counted and listed above the table — not watched"
+      ]
+    ],
+    "checks": [
+      "**Independent tie (today):** the items' value = the inventory account(s) on the Balance Sheet",
+      "Every item listed is at or below its minimum level"
+    ],
+    "golden": "Confirm on a file with stock that every listed item is at or below its MYOB minimum level",
+    "fileName": "myob-reorder.html",
+    "tags": [
+      "myob",
+      "inventory",
+      "M47",
+      "reorder"
+    ]
+  },
+  {
+    "wave": "Wave 3 (P3)",
+    "m": "M51",
+    "skill": "item-list",
+    "name": "MYOB Item List",
+    "report": "it",
+    "title": "Item List",
+    "menu": "Reporting → Reports → Inventory → Item list",
+    "trigger": "the user asks for the item list, a list of items or products with prices and costs, or inactive items",
+    "discovery": "Call `list_items` once and `list_company_files` once (as Stock on Hand). Every item, active and inactive; services too",
+    "dates": "No dates. The view is display `v` (`list` by default); `x` = `active` shows active items only.",
+    "members": [
+      [
+        "Item list",
+        "Every item: number, name, type (bought / sold / inventoried), selling price, standard cost, average cost, value, status — inactive items muted"
+      ],
+      [
+        "Active items only",
+        "Checkbox above the table"
+      ]
+    ],
+    "checks": [
+      "**Independent tie (today):** the items' value = the inventory account(s) on the Balance Sheet"
+    ],
+    "golden": "mySMB.com: Widget standard and Widget deluxe (sold items)",
+    "fileName": "myob-item-list.html",
+    "tags": [
+      "myob",
+      "inventory",
+      "M51",
+      "items"
+    ]
+  },
+  {
+    "wave": "Wave 3 (P3)",
+    "m": "M52",
+    "skill": "inventory-value-reconciliation",
+    "name": "MYOB Inventory Value Reconciliation",
+    "report": "vr",
+    "title": "Inventory Value Reconciliation",
+    "menu": "Reporting → Reports → Inventory → Inventory value reconciliation",
+    "trigger": "the user asks to reconcile inventory, the inventory value reconciliation, whether stock value matches the balance sheet, or the inventory control account",
+    "discovery": "Call `list_items` once, `get_balance_sheet` once with `date` = today, `list_accounts` once and `list_company_files` once. The control account is each inventoried item's `AssetAccount` (else asset accounts named inventory or stock). Never infer the cause of a difference",
+    "dates": "`as_at` = the Balance Sheet date (default `\"today\"`). Item values are today's, so only today compares like with like — the report says so for any other date. The view is display `v` (`recon` by default).",
+    "members": [
+      [
+        "Inventory value reconciliation",
+        "Items' value today vs the inventory account(s) at the date, the difference, the accounts and the items"
+      ],
+      [
+        "A past date",
+        "Banner: the two sides are not for the same day; the tie is N/A"
+      ]
+    ],
+    "checks": [
+      "**Independent tie (today):** the items' value = the inventory account(s) on the Balance Sheet",
+      "Each item's value = on hand × average cost"
+    ],
+    "golden": "Confirm on a file with stock that the difference is nil today, or that MYOB's own reconciliation report shows the same difference",
+    "fileName": "myob-inventory-value-reconciliation.html",
+    "tags": [
+      "myob",
+      "inventory",
+      "M52",
+      "reconciliation"
+    ]
+  },
+  {
+    "wave": "Wave 3 (P3)",
+    "m": "M50",
+    "skill": "items-register",
+    "name": "MYOB Items Register",
+    "report": "ir",
+    "title": "Items Register",
+    "menu": "Reporting → Reports → Inventory → Items register",
+    "trigger": "the user asks for the items register, stock movements, item transactions, purchases and sales of an item, or how stock levels changed",
+    "discovery": "Call `list_items` once, `list_invoice_lines` and `list_bill_lines` once each from the period start to today, `list_inventory_adjustments` once for the same dates, and `list_company_files` once. Only lines for inventoried items move stock; MYOB keeps only today's on hand, so the opening quantity is worked back from it",
+    "dates": "`from_date` = the period start (default: this month; display preset `p`); `to_date` = the end shown (movements are always read to today). The view is display `v` (`register` | `summary`); `x` = an item UID.",
+    "members": [
+      [
+        "Items register",
+        "Per inventoried item: opening quantity, each purchase, sale and adjustment (date, reference, customer / supplier / memo, quantity) with the running on hand, and the closing quantity"
+      ],
+      [
+        "Summary by item",
+        "Report = Summary by item (opening, purchased, sold, adjusted, closing)"
+      ],
+      [
+        "Item picker",
+        "Item select above the report"
+      ],
+      [
+        "Movement cost and value, transfers and builds",
+        "N/A — quantities only; not in the connector"
+      ]
+    ],
+    "checks": [
+      "No item has a negative opening quantity (worked back from today's on hand — a negative means movements are missing)",
+      "Every movement names an item in MYOB's item list",
+      "For information: lines that do not move stock (services, lines without an item)"
+    ],
+    "golden": "Confirm on a file with stock that the closing quantity today equals MYOB's on hand and the opening is not negative",
+    "fileName": "myob-items-register.html",
+    "tags": [
+      "myob",
+      "inventory",
+      "M50",
+      "register"
+    ]
+  },
+  {
     m: 'M23', skill: 'myob-pay-run-history', name: 'MYOB Pay Run History', report: 'py', wave: 'Wave 3 (P3)',
     title: 'Pay Run History', menu: 'Reporting → Reports → Payroll → Pay run history',
     trigger: 'the user asks for pay run history, pay runs, what was paid in each pay run, payroll totals by pay date, or wages, PAYG and super per pay run',
