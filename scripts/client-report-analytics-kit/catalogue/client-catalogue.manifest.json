@@ -1,0 +1,42 @@
+{
+  "inputs": [
+    {
+      "name": "client",
+      "label": "Client",
+      "type": "string",
+      "maxLength": 120,
+      "default": ""
+    }
+  ],
+  "bindings": [
+    {
+      "id": "xero_connections",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "list_connections"
+      },
+      "params": {}
+    },
+    {
+      "id": "myob_company_files",
+      "tool": {
+        "mcp": "myob-accounting",
+        "name": "list_company_files"
+      },
+      "params": {}
+    },
+    {
+      "id": "quickbooks_company",
+      "tool": {
+        "mcp": "quickbooks-accounting",
+        "name": "qbo_query"
+      },
+      "params": {
+        "query": {
+          "kind": "static",
+          "value": "SELECT * FROM CompanyInfo"
+        }
+      }
+    }
+  ]
+}

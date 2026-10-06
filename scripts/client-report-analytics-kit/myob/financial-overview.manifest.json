@@ -1,0 +1,23 @@
+{
+  "inputs": [
+    { "name": "from_date", "label": "From", "type": "date", "default": "2026-07-01" },
+    { "name": "to_date", "label": "To", "type": "date", "default": "2026-09-30" },
+    { "name": "basis", "label": "Accounting method", "type": "enum", "options": ["Accrual", "Cash"], "default": "Accrual" },
+    { "name": "company_file", "label": "Client (MYOB company file)", "type": "string", "maxLength": 64, "default": "" },
+    { "name": "persona", "label": "View as", "type": "enum", "options": ["Client", "Bookkeeper", "Practitioner", "Executive"], "default": "Bookkeeper" },
+    { "name": "display", "label": "Display settings", "type": "string", "maxLength": 300, "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"mysmb\",\"dens\":\"100\",\"p\":\"this_quarter\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\"}" },
+    { "name": "ly_from", "label": "Last year from", "type": "date", "default": "2025-07-01" },
+    { "name": "ly_to", "label": "Last year to", "type": "date", "default": "2025-09-30" }
+  ],
+  "bindings": [
+    { "id": "pnl", "tool": { "mcp": "myob-accounting", "name": "get_profit_and_loss" }, "params": { "from_date": { "kind": "input", "input": "from_date" }, "to_date": { "kind": "input", "input": "to_date" }, "reporting_basis": { "kind": "input", "input": "basis" }, "myob_company_file_id": { "kind": "input", "input": "company_file" } } },
+    { "id": "pnl_ly", "tool": { "mcp": "myob-accounting", "name": "get_profit_and_loss" }, "params": { "from_date": { "kind": "input", "input": "ly_from" }, "to_date": { "kind": "input", "input": "ly_to" }, "reporting_basis": { "kind": "input", "input": "basis" }, "myob_company_file_id": { "kind": "input", "input": "company_file" } } },
+    { "id": "bs", "tool": { "mcp": "myob-accounting", "name": "get_balance_sheet" }, "params": { "date": { "kind": "input", "input": "to_date" }, "reporting_basis": { "kind": "input", "input": "basis" }, "myob_company_file_id": { "kind": "input", "input": "company_file" } } },
+    { "id": "bs_now", "tool": { "mcp": "myob-accounting", "name": "get_balance_sheet" }, "params": { "date": { "kind": "context", "source": "now.date" }, "reporting_basis": { "kind": "static", "value": "Accrual" }, "myob_company_file_id": { "kind": "input", "input": "company_file" } } },
+    { "id": "aged_ar", "tool": { "mcp": "myob-accounting", "name": "get_aged_receivables" }, "params": { "report_date": { "kind": "context", "source": "now.date" }, "myob_company_file_id": { "kind": "input", "input": "company_file" } } },
+    { "id": "aged_ap", "tool": { "mcp": "myob-accounting", "name": "get_aged_payables" }, "params": { "report_date": { "kind": "context", "source": "now.date" }, "myob_company_file_id": { "kind": "input", "input": "company_file" } } },
+    { "id": "journals", "tool": { "mcp": "myob-accounting", "name": "list_journal_transactions" }, "params": { "from_date": { "kind": "input", "input": "ly_from" }, "to_date": { "kind": "input", "input": "to_date" }, "myob_company_file_id": { "kind": "input", "input": "company_file" } } },
+    { "id": "accounts", "tool": { "mcp": "myob-accounting", "name": "list_accounts" }, "params": { "myob_company_file_id": { "kind": "input", "input": "company_file" } } },
+    { "id": "company_files", "tool": { "mcp": "myob-accounting", "name": "list_company_files" }, "params": {  } }
+  ]
+}
