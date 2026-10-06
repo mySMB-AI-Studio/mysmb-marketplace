@@ -25,7 +25,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "divider1", "summaryRow", "clearingBanner", "divider2", "body", "divider3", "footer"],
+        "children": ["header", "divider1", "summaryRow", "clearingBanner", "divider2", "body", "divider3", "footer", "infoOverlay"],
         "watch": {
           "/xero-accounting/list_contacts": [
             {
@@ -39,17 +39,23 @@
       "header": {
         "type": "Header",
         "props": {},
-        "children": ["titleGroup"],
+        "children": ["titleRow"],
         "watch": {
           "/xero-accounting/list_contacts": [
             { "action": "xero-accounting.list_accounts", "params": { "where": "EnablePaymentsToAccount==true" } }
           ]
         }
       },
+      "titleRow": { "type": "Row", "props": { "align": "center", "justify": "between" }, "children": ["titleGroup", "infoBtn"] },
       "titleGroup": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["titleIcon", "titleStack"] },
       "titleIcon": { "type": "Icon", "props": { "name": "ArrowLeftRight", "size": "sm", "tone": "info" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
       "title": { "type": "Heading", "props": { "text": "Offsets", "level": "h2" } },
+      "infoBtn": {
+        "type": "IconButton",
+        "props": { "icon": "Info", "size": "sm", "tone": "muted", "ariaLabel": "About this tile" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": true } } }
+      },
       "eyebrow": {
         "type": "Eyebrow",
         "props": {
@@ -309,6 +315,67 @@
         "type": "Button",
         "props": { "label": "Open Xero", "leadingIcon": "ExternalLink", "size": "sm", "tone": "brand", "variant": "ghost" },
         "on": { "click": { "action": "open_url", "params": { "url": "https://go.xero.com/AccountsPayable/", "target": "_blank" } } }
+      },
+
+      "infoOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["infoCard"],
+        "visible": { "$state": "/ui/showInfo" },
+        "on": {
+          "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } }
+        }
+      },
+      "infoCard": {
+        "type": "Card",
+        "props": {},
+        "children": ["infoCloseBtn", "infoTitleRow", "infoDivider", "infoBody"]
+      },
+      "infoCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["infoTitleIcon", "infoTitleText"] },
+      "infoTitleIcon": { "type": "Icon", "props": { "name": "Info", "size": "sm", "tone": "info" } },
+      "infoTitleText": { "type": "Heading", "props": { "text": "How Offsets Works", "level": "h2" } },
+      "infoDivider": { "type": "Divider", "props": {} },
+      "infoBody": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["infoWhatLabel", "infoWhatText", "infoHowLabel", "infoHowText", "infoPairingLabel", "infoPairingText", "infoLimitsLabel", "infoLimitsText"]
+      },
+      "infoWhatLabel": { "type": "Caption", "props": { "text": "What this is", "tone": "muted", "weight": "semibold" } },
+      "infoWhatText": {
+        "type": "Text",
+        "props": {
+          "text": "Finds Xero contacts that are both a customer and a supplier, with an open invoice and an open bill at the same time — a chance to net them off instead of paying and collecting separately.",
+          "size": "sm"
+        }
+      },
+      "infoHowLabel": { "type": "Caption", "props": { "text": "How it works", "tone": "muted", "weight": "semibold" } },
+      "infoHowText": {
+        "type": "Text",
+        "props": {
+          "text": "Xero has no built-in offset feature, so this uses the standard accountant's workaround: two equal payments posted against a Clearing Account (a non-bank account used only for bookkeeping) — one settles the invoice, one settles the bill. No real money moves; the Clearing Account nets to zero.",
+          "size": "sm"
+        }
+      },
+      "infoPairingLabel": { "type": "Caption", "props": { "text": "How pairs are picked", "tone": "muted", "weight": "semibold" } },
+      "infoPairingText": {
+        "type": "Text",
+        "props": {
+          "text": "For each eligible contact, the largest open invoice is paired with the largest open bill. The offset amount is whichever of the two is smaller — the larger document keeps a remaining balance, just like a partial payment.",
+          "size": "sm"
+        }
+      },
+      "infoLimitsLabel": { "type": "Caption", "props": { "text": "Good to know", "tone": "muted", "weight": "semibold" } },
+      "infoLimitsText": {
+        "type": "Text",
+        "props": {
+          "text": "Only one pair per contact — it doesn't split a balance across several documents. Mismatched currencies are shown but blocked. The Clearing Account is never created automatically; you'll see setup steps here if one doesn't exist yet.",
+          "size": "sm"
+        }
       }
 
     }
