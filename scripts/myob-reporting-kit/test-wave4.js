@@ -31,7 +31,7 @@ const open = async (html) => { const dom = new JSDOM(html, { runScripts: 'danger
   ok('catalogue: Profit and loss is a live template, asked for by its title', st('Profit and loss') === 'Live template | Ask for “MYOB Profit and Loss”', st('Profit and loss'));
   ok('catalogue: GST return is part of MYOB GST Summary (BAS)', st('GST return') === 'Live template | Part of “MYOB GST Summary (BAS)”', st('GST return'));
   ok('catalogue: Unpaid invoices names both templates', st('Unpaid invoices') === 'Live template | Ask for “MYOB Unpaid Invoices” or “MYOB Aged Receivables”', st('Unpaid invoices'));
-  ok('catalogue: Budget management is on request (its written specification)', st('Budget management') === 'On request | Ask for “MYOB Budget Management”', st('Budget management'));
+  ok('catalogue: Budget management is a live template; the Taxable payments annual report is on request (its written specification)', st('Budget management') === 'Live template | Ask for “MYOB Budget Management”' && st('Taxable payments annual report') === 'On request | Ask for “MYOB Taxable Payments Annual Report”', [st('Budget management'), st('Taxable payments annual report')]);
   ok('catalogue: Journal entries is a live template now', st('Journal entries') === 'Live template | Ask for “MYOB Journal Entries”', st('Journal entries'));
   ok('catalogue: Journal security audit comes from the MYOB export', st('Journal security audit') === 'From your MYOB export | Attach the MYOB export, then ask for “MYOB Journal Security Audit”', st('Journal security audit'));
   ok('catalogue: Custom report is the guide', /^Guide \| Ask to save any report with your settings/.test(st('Custom report (user-defined columns and filters)')), st('Custom report (user-defined columns and filters)'));

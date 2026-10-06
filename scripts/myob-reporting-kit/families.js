@@ -934,6 +934,49 @@ module.exports = [
     ]
   },
   {
+    "m": "M01",
+    "skill": "budget-management",
+    "name": "MYOB Budget Management",
+    "report": "bu",
+    "wave": "Wave 2 (P2)",
+    "title": "Budget Management",
+    "menu": "Reporting → Reports → Business → Budget management",
+    "trigger": "the user asks for budgets, the budget, budget management, monthly budgets by category, or budget vs actual",
+    "discovery": "Call `get_budget` once with `financial_year` (the year the financial year ends: 2027 = July 2026 – June 2027; MYOB holds the current and the next year only), `get_profit_and_loss_3m` once from the year's start to the end of last month (the actuals), `list_accounts` once and `list_company_files` once. `get_budget` returns `Budgets[]` of `{Account, MonthlyBudgets: [{Year, Month, Amount}]}` (calendar year and month) and `LastMonthInFinancialYear`",
+    "dates": "Input `budget_year` = `current` | `next` (the Budget year select); `financial_year`, `fy_start` and `act_end` are worked out from it and today, so a saved report rolls into the next year — never type them. The view is display `v` (`budget` | `actual`).",
+    "members": [
+      [
+        "Budget by month",
+        "Income, cost of sales, expenses, other income and expenses per category for the 12 months and the year, with gross and net profit each month"
+      ],
+      [
+        "Balance sheet budgets",
+        "Listed under the P&L budget when MYOB holds any"
+      ],
+      [
+        "Budget vs actual",
+        "Report = Budget vs actual (year to date): the whole months so far — budget, actual, variance $ and %"
+      ],
+      [
+        "Earlier years, job budgets",
+        "N/A — MYOB's API keeps the current and next financial year only"
+      ]
+    ],
+    "checks": [
+      "MYOB's budget is for the financial year asked for, and its year ends where the report's does (`LastMonthInFinancialYear`)",
+      "Every budget month falls in the financial year",
+      "Every budgeted category is in the chart of accounts",
+      "Each category's total = Σ its months; section totals = Σ their categories; net profit = the section formula, every month"
+    ],
+    "golden": "mySMB.com FY2027: 11 categories budgeted; budget vs actual compares July and August 2026",
+    "fileName": "myob-budget-management.html",
+    "tags": [
+      "myob",
+      "budget",
+      "M01"
+    ]
+  },
+  {
     m: 'M23', skill: 'myob-pay-run-history', name: 'MYOB Pay Run History', report: 'py', wave: 'Wave 3 (P3)',
     title: 'Pay Run History', menu: 'Reporting → Reports → Payroll → Pay run history',
     trigger: 'the user asks for pay run history, pay runs, what was paid in each pay run, payroll totals by pay date, or wages, PAYG and super per pay run',
