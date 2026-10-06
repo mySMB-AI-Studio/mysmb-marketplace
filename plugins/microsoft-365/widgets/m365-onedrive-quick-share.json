@@ -1,0 +1,139 @@
+{
+  "id": "m365-onedrive-quick-share",
+  "title": "OneDrive — Quick Share",
+  "description": "Pick a recently accessed OneDrive file and generate a sharing link for it — view-only, shared within the organization by default.",
+  "category": "productivity",
+  "tags": ["m365", "onedrive", "files", "share", "productivity"],
+  "keywords": ["onedrive", "share file", "sharing link", "m365", "office", "drive"],
+  "connectorsUsed": ["m365-files"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 7 },
+    "min": { "colSpan": 4, "rowSpan": 6 },
+    "max": { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "m365-files",
+    "tool": "list_recent_files",
+    "params": { "limit": 20 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "divider1", "body", "divider2", "footer"],
+        "watch": {
+          "/m365-files/list_recent_files": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/fileOptions",
+                "value": { "$computed": "microsoft-365_file_options", "args": { "items": { "$state": "/m365-files/list_recent_files" } } }
+              }
+            }
+          ],
+          "/m365-files/share_file": [
+            {
+              "action": "setState",
+              "params": { "statePath": "/ui/shareLink", "value": { "$state": "/m365-files/share_file/link/webUrl" } }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "Share2", "tone": "success", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Quick Share", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "OneDrive · Microsoft 365" } },
+
+      "divider1": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["errorBanner", "emptyState", "formStack"] },
+
+      "errorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't create the share link: ${/_errors/m365-files.share_file}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/m365-files.share_file" }
+      },
+
+      "emptyState": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["emptyIcon", "emptyText"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/m365-files.list_recent_files", "not": true },
+            { "$state": "/ui/fileOptions/0", "not": true }
+          ]
+        }
+      },
+      "emptyIcon": { "type": "Icon", "props": { "name": "FileX", "tone": "muted", "size": "md" } },
+      "emptyText": { "type": "Caption", "props": { "text": "No recent files to share.", "tone": "muted" } },
+
+      "formStack": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["pickerRow", "generateRow", "shareResultRow"],
+        "visible": { "$state": "/ui/fileOptions/0" }
+      },
+
+      "pickerRow": { "type": "FormRow", "props": { "label": "File" }, "children": ["pickerSelect"] },
+      "pickerSelect": {
+        "type": "Select",
+        "props": { "value": { "$bindState": "/ui/selectedFileId" }, "options": { "$state": "/ui/fileOptions" }, "placeholder": "Select a file…", "size": "sm" }
+      },
+
+      "generateRow": { "type": "Row", "props": { "justify": "end" }, "children": ["generateBtn"] },
+      "generateBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Generate Share Link",
+          "leadingIcon": "Link",
+          "size": "sm",
+          "tone": "success",
+          "variant": "primary",
+          "disabled": { "$state": "/ui/selectedFileId", "not": true }
+        },
+        "on": {
+          "click": {
+            "action": "m365-files.share_file",
+            "params": { "id": { "$state": "/ui/selectedFileId" }, "type": "view", "scope": "organization" }
+          }
+        }
+      },
+
+      "shareResultRow": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["shareResultLabel", "shareResultLinkRow"],
+        "visible": { "$state": "/ui/shareLink" }
+      },
+      "shareResultLabel": { "type": "Caption", "props": { "text": "Share link ready:", "tone": "success", "weight": "semibold" } },
+      "shareResultLinkRow": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["shareLinkText", "copyLinkBtn", "openLinkBtn"] },
+      "shareLinkText": { "type": "Caption", "props": { "text": { "$state": "/ui/shareLink" }, "tone": "muted", "truncate": true } },
+      "copyLinkBtn": {
+        "type": "IconButton",
+        "props": { "icon": "Copy", "size": "sm", "variant": "ghost", "ariaLabel": "Copy link" },
+        "on": { "click": { "action": "copy_to_clipboard", "params": { "text": { "$state": "/ui/shareLink" } } } }
+      },
+      "openLinkBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ExternalLink", "size": "sm", "variant": "ghost", "ariaLabel": "Open link" },
+        "on": { "click": { "action": "open_url", "params": { "url": { "$state": "/ui/shareLink" }, "target": "_blank" } } }
+      },
+
+      "divider2": { "type": "Divider", "props": {} },
+      "footer": { "type": "Row", "props": { "justify": "end" }, "children": ["openOneDriveBtn"] },
+      "openOneDriveBtn": {
+        "type": "Button",
+        "props": { "label": "Open OneDrive", "tone": "info", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": { "click": { "action": "open_url", "params": { "url": "https://www.office.com/launch/onedrive", "target": "_blank" } } }
+      }
+    }
+  },
+  "status": "published"
+}
