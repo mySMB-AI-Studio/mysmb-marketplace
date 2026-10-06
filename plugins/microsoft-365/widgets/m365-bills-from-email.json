@@ -1,0 +1,610 @@
+{
+  "id": "m365-bills-from-email",
+  "title": "Bills from Email",
+  "description": "Finds emails from the last 7 days that look like bills (subject contains invoice/bill, or a folder literally named Bills), reads PDF attachments and shows a best-effort extracted total. Flags portal-only bills (no attachment) and likely resends.",
+  "category": "productivity",
+  "tags": [
+    "microsoft-365",
+    "outlook",
+    "mail",
+    "bills",
+    "invoices",
+    "accounts-payable"
+  ],
+  "keywords": [
+    "outlook",
+    "bills from email",
+    "invoice email",
+    "bill intake",
+    "pdf invoice",
+    "accounts payable",
+    "mailbox",
+    "extraction"
+  ],
+  "connectorsUsed": [
+    "m365-mail-read"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 9
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 6
+    },
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 14
+    }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "m365-mail-read",
+    "tool": "list_bill_emails",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Mail",
+          "tone": "accent",
+          "size": "lg"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Mailbox · Inbox › Bills"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Bills from Email",
+          "level": "h2"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3",
+          "sk4"
+        ],
+        "visible": {
+          "$state": "/_loading/m365-mail-read.list_bill_emails"
+        }
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.5rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "sk4": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No bill-like emails in the last 7 days."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/m365-mail-read.list_bill_emails",
+              "not": true
+            },
+            {
+              "$state": "/m365-mail-read/list_bill_emails/summary/total",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "stats",
+          "statsDivider",
+          "messageList",
+          "footerDivider",
+          "footerRow"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/m365-mail-read.list_bill_emails",
+              "not": true
+            },
+            {
+              "$state": "/m365-mail-read/list_bill_emails/summary/total"
+            }
+          ]
+        }
+      },
+      "stats": {
+        "type": "Grid",
+        "props": {
+          "cols": 3,
+          "gap": "sm"
+        },
+        "children": [
+          "statTotalCard",
+          "statAttachCard",
+          "statAttnCard"
+        ]
+      },
+      "statTotalCard": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "statTotal"
+        ]
+      },
+      "statTotal": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "valTotal",
+          "lblTotal"
+        ]
+      },
+      "valTotal": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/m365-mail-read/list_bill_emails/summary/total"
+          }
+        }
+      },
+      "lblTotal": {
+        "type": "Caption",
+        "props": {
+          "text": "Bill emails · 7d",
+          "tone": "info"
+        }
+      },
+      "statAttachCard": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "statAttach"
+        ]
+      },
+      "statAttach": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "valAttach",
+          "lblAttach"
+        ]
+      },
+      "valAttach": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/m365-mail-read/list_bill_emails/summary/attachmentsRead"
+          }
+        }
+      },
+      "lblAttach": {
+        "type": "Caption",
+        "props": {
+          "text": "Attachments read",
+          "tone": "info"
+        }
+      },
+      "statAttnCard": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "statAttn"
+        ]
+      },
+      "statAttn": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "valAttn",
+          "lblAttn"
+        ]
+      },
+      "valAttn": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/m365-mail-read/list_bill_emails/summary/needAttention"
+          }
+        }
+      },
+      "lblAttn": {
+        "type": "Caption",
+        "props": {
+          "text": "Need attention",
+          "tone": "warning"
+        }
+      },
+      "statsDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "messageList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "msgRow"
+        ],
+        "repeat": {
+          "statePath": "/m365-mail-read/list_bill_emails/messages",
+          "key": "id"
+        }
+      },
+      "msgRow": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "msgRowContent",
+          "msgDivider"
+        ]
+      },
+      "msgRowContent": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start",
+          "template": "auto minmax(0,1fr) auto",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "msgAvatar",
+          "msgInfo",
+          "msgRight"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "webLink"
+                  }
+                }
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "msgAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$item": "initials"
+          },
+          "tone": {
+            "$item": "avatarTone"
+          },
+          "size": "md"
+        }
+      },
+      "msgInfo": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "msgSender",
+          "msgSubject",
+          "msgChipRow"
+        ]
+      },
+      "msgSender": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "senderAddress"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "msgSubject": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "subject"
+          },
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+      "msgChipRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "chip0",
+          "chip1",
+          "chip2",
+          "chipPortal"
+        ]
+      },
+      "chip0": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "attachments/0/name"
+          },
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "attachments/0/name"
+        }
+      },
+      "chip1": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "attachments/1/name"
+          },
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "attachments/1/name"
+        }
+      },
+      "chip2": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "attachments/2/name"
+          },
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "attachments/2/name"
+        }
+      },
+      "chipPortal": {
+        "type": "Badge",
+        "props": {
+          "text": "Link to portal · no attachment",
+          "tone": "muted",
+          "variant": "outline"
+        },
+        "visible": {
+          "$item": "status",
+          "eq": "portal_only"
+        }
+      },
+      "msgRight": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "align": "end"
+        },
+        "children": [
+          "msgTime",
+          "msgAmountWrap",
+          "msgStatus"
+        ]
+      },
+      "msgTime": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "receivedAt"
+              }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "msgAmountWrap": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "end"
+        },
+        "children": [
+          "msgAmount",
+          "msgNoAmount"
+        ]
+      },
+      "msgAmount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$item": "amount"
+              }
+            }
+          },
+          "size": "sm",
+          "weight": "medium"
+        },
+        "visible": {
+          "$item": "amount"
+        }
+      },
+      "msgNoAmount": {
+        "type": "Text",
+        "props": {
+          "text": "—",
+          "size": "sm",
+          "tone": "muted"
+        },
+        "visible": {
+          "$item": "amount",
+          "not": true
+        }
+      },
+      "msgStatus": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "statusLabel"
+          },
+          "tone": {
+            "$item": "statusTone"
+          },
+          "variant": "soft"
+        }
+      },
+      "msgDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "footerDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "footerRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "footerLeft",
+          "footerOpen"
+        ]
+      },
+      "footerLeft": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/m365-mail-read/list_bill_emails/ruleText"
+          },
+          "tone": "muted"
+        }
+      },
+      "footerOpen": {
+        "type": "Button",
+        "props": {
+          "label": "Open in Outlook",
+          "variant": "primary",
+          "tone": "info",
+          "size": "sm"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://outlook.office.com/mail/inbox",
+              "target": "_blank"
+            }
+          }
+        }
+      }
+    }
+  }
+}
