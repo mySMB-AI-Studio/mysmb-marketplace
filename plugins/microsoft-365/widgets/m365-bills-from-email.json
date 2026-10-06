@@ -79,7 +79,7 @@
         "props": {
           "name": "Mail",
           "tone": "accent",
-          "size": "sm"
+          "size": "lg"
         }
       },
       "titleStack": {
@@ -495,7 +495,12 @@
         "type": "Caption",
         "props": {
           "text": {
-            "$item": "receivedLabel"
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "receivedAt"
+              }
+            }
           },
           "tone": "muted"
         }
@@ -515,7 +520,12 @@
         "type": "Text",
         "props": {
           "text": {
-            "$item": "amountText"
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$item": "amount"
+              }
+            }
           },
           "size": "sm",
           "weight": "medium"
