@@ -275,6 +275,35 @@ function statementLines(B) {
 function listBankStatementLines(p) { const B = books(p && p.myob_company_file_id);
   const l = statementLines(B).filter((x) => inRange(x.Date.slice(0, 10), p.from_date, p.to_date) && (!p.account_uid || x.Account.UID === p.account_uid) && (!p.status || p.status === 'All' || x.Status === p.status));
   return { Items: l.map((x) => Object.assign({}, x)), NextPageLink: null, Count: l.length }; }
+// Timesheets (Payroll/TimeSheet): one per employee per week (Monday–Sunday), lines by payroll category with an optional job or
+// customer, daily entries; weeks ending after 20 Sep 2026 are not yet processed. The connector keeps sheets overlapping the range.
+function listTimesheets(p) {
+  const B = books(p && p.myob_company_file_id), out = [];
+  for (let wk = '2026-06-29'; wk <= '2026-09-28'; wk = addDays(wk, 7)) EMPLOYEES.forEach(([name, id], k) => {
+    const end = addDays(wk, 6), days = k === 0 ? [0, 1, 2, 3, 4] : [0, 1, 2, 3], hrs = k === 0 ? 7.6 : 4, done = end <= '2026-09-20';
+    const entries = (ds, h) => ds.map((d) => ({ Date: addDays(wk, d) + 'T00:00:00', Hours: h, Processed: done }));
+    const lines = k === 0
+      ? [{ PayrollCategory: { UID: U(B.cf, 960), Name: 'Base Hourly' }, Job: null, Activity: null, Customer: null, Notes: '', Entries: entries([0, 1, 2], hrs) },
+         { PayrollCategory: { UID: U(B.cf, 960), Name: 'Base Hourly' }, Job: { UID: U(B.cf, 970), Number: 'J100', Name: 'Bluegum fit-out' }, Activity: null, Customer: { UID: U(B.cf, 1001), Name: 'Bluegum Architects' }, Notes: 'On site', Entries: entries([3, 4], hrs) }]
+      : [{ PayrollCategory: { UID: U(B.cf, 960), Name: 'Base Hourly' }, Job: null, Activity: null, Customer: null, Notes: '', Entries: entries(days, hrs) }];
+    out.push({ Employee: { UID: U(B.cf, 800 + k), Name: name, DisplayID: id }, StartDate: wk + 'T00:00:00', EndDate: end + 'T00:00:00', Lines: lines });
+  });
+  const l = out.filter((t) => (!p.employee_uid || t.Employee.UID === p.employee_uid) && (!p.to_date || t.StartDate.slice(0, 10) <= p.to_date) && (!p.from_date || t.EndDate.slice(0, 10) >= p.from_date));
+  return { Count: l.length, Items: l };
+}
+// Leave balances (Contact/EmployeePayrollDetails entitlements, as the connector returns them): Total = CarryOver + YearToDate.
+function listEmployeeLeaveBalances(p) {
+  const B = books(p && p.myob_company_file_id), ent = (n, name, co, ytd, assigned) => ({ UID: U(B.cf, n), Name: name, IsAssigned: assigned !== false, CarryOver: co, YearToDate: ytd, Total: r2(co + ytd) });
+  const all = [
+    { Employee: { UID: U(B.cf, 800), Name: 'Alex Morgan', DisplayID: 'EMP001' }, EmploymentStatus: 'FullTime', StartDate: '2023-02-06T00:00:00', TerminationDate: null, PayBasis: 'Hourly', HourlyRate: 45, PayFrequency: 'Monthly',
+      Entitlements: [ent(981, 'Holiday Leave Accrual', 76, 38.5), ent(982, 'Personal Leave Accrual', 30.4, 18.2), ent(983, 'Long Service Leave', 0, 0, false)] },
+    { Employee: { UID: U(B.cf, 801), Name: 'Sam Lee', DisplayID: 'EMP002' }, EmploymentStatus: 'PartTime', StartDate: '2025-03-10T00:00:00', TerminationDate: null, PayBasis: 'Hourly', HourlyRate: 38, PayFrequency: 'Monthly',
+      Entitlements: [ent(981, 'Holiday Leave Accrual', 20, 12.25), ent(982, 'Personal Leave Accrual', 10, -12.5)] },
+    { Employee: { UID: U(B.cf, 802), Name: 'Jo Park', DisplayID: 'EMP003' }, EmploymentStatus: 'Casual', StartDate: '2024-01-15T00:00:00', TerminationDate: '2026-03-31T00:00:00', PayBasis: 'Hourly', HourlyRate: 32, PayFrequency: 'Monthly',
+      Entitlements: [ent(981, 'Holiday Leave Accrual', 0, 0)] }];
+  const l = all.filter((x) => (!p.employee_uid || x.Employee.UID === p.employee_uid) && (p.include_terminated || !x.TerminationDate));
+  return { Count: l.length, Items: JSON.parse(JSON.stringify(l)) };
+}
 // expected figures computed independently of the MYOB JSON (for assertions)
 const expect = { balances: (date, cf) => balances(books(cf), date), plByAccount: (a, b, cash, cf) => plByAccount(books(cf), a, b, cash), netProfit: (a, b, cash, cf) => netProfit(books(cf), a, b, cash), movement: (a, b, cf) => movement(books(cf), a, b), books, invoiceOut: (i, cf) => invoiceOut(books(cf), i), billOut: (b, cf) => billOut(books(cf), b) };
-module.exports = { TODAY, CF1, CF2, FILES, U, profitAndLoss, balanceSheet, listAccounts, listInvoices, listBills, listContacts, listPayments, listSupplierPayments, listBankStatementLines, listJournalTransactions, listTaxCodes, taxCodeSummary, payrollCategorySummary, listInvoiceLines, listBillLines, listItems, listPayrollAdvices, agedReceivables, agedPayables, companyFiles, expect, fyStart, addDays, eom, r2 };
+module.exports = { TODAY, CF1, CF2, FILES, U, profitAndLoss, balanceSheet, listAccounts, listInvoices, listBills, listContacts, listPayments, listSupplierPayments, listBankStatementLines, listTimesheets, listEmployeeLeaveBalances, listJournalTransactions, listTaxCodes, taxCodeSummary, payrollCategorySummary, listInvoiceLines, listBillLines, listItems, listPayrollAdvices, agedReceivables, agedPayables, companyFiles, expect, fyStart, addDays, eom, r2 };

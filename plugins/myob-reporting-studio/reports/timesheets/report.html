@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Payroll Register</title>
+<title>Timesheets</title>
 <style>:root{--accent:#6F2CBA;--btn:#5A1F9E;--btn-ink:#FFFFFF;--ink:#393A3D;--muted:#6B6C72;--line:#E3E5E8;--canvas:#F4F5F8;--card:#FFFFFF;--th:#6B6C72;--zebra:transparent;--neg:#D52B1E;--pos:#1B7F4B;--pass-bg:#EAF6E8;--fail-bg:#FDECEA;--band:#FFFFFF;--band-ink:#393A3D;--cover:#1B2A4A;--cover-ink:#FFFFFF;--c1:#6F2CBA;--c2:#9E9E9E;--c3:#00B0A0;--c4:#007A6E;--c5:#E0457B;--c6:#0077C5;--d1:#6F2CBA;--d2:#00B0A0;--d3:#B28DE6;--d4:#E0457B;--d5:#0077C5;--d6:#9E9E9E}
 :root[data-myhub-theme='dark']{--accent:#A77BE8;--btn:#7A45C9;--btn-ink:#FFFFFF;--ink:#E6E8EB;--muted:#A3A7AE;--line:#33363C;--canvas:#16181B;--card:#1F2226;--th:#A3A7AE;--neg:#FF6B5E;--pos:#4CC38A;--pass-bg:#18301A;--fail-bg:#3A1B19;--band:#1F2226;--band-ink:#E6E8EB;--cover:#22324F;--cover-ink:#FFFFFF;--c1:#A77BE8;--c2:#80858D;--c3:#2BC4B3;--c4:#3CCFBF;--c5:#F06A96;--c6:#3FA2E8;--d1:#A77BE8;--d2:#2BC4B3;--d3:#CDB4F2;--d4:#F06A96;--d5:#3FA2E8;--d6:#80858D}
 :root.style-mysmb{--accent:#00B0A0;--btn:#007A6E;--zebra:#E6F7F5;--band:#007A6E;--band-ink:#FFFFFF;--cover:#007A6E;--th-bg:#007A6E;--th-ink:#FFFFFF;--c1:#007A6E;--c2:#00B0A0;--c3:#6F2CBA;--c4:#9E9E9E;--c5:#1B7F4B;--c6:#C8102E;--d1:#007A6E;--d2:#00B0A0;--d3:#6F2CBA;--d4:#9E9E9E;--d5:#1B7F4B;--d6:#C8102E;--pos:#1B7F4B;--neg:#C8102E}
@@ -744,82 +744,58 @@ DISPLAY_DEFAULT: DISPLAY_DEFAULT, readDisplay: readDisplay, writeDisplay: writeD
 PRESETS: PRESETS, preset: preset, ASAT: ASAT, asAt: asAt, compare: compare, periodLine: periodLine, asOfLine: asOfLine, footerStamp: footerStamp, freshest: freshest,
 xlsx: xlsx, sheetFromLines: sheetFromLines, download: download, reportParams: reportParams };
 })();</script>
-<script>// Payroll — Pay Run History (M23), Payroll Register (M21, variant), Payroll Summary (M20, variant), Accrual by Fund (M25/M26, variant)
-// and Superannuation Payments (M27, variant), from MYOB's pay advices (list_payroll_advices). MYOB's API has no pay-run list, so a pay
-// run is the paycheques sharing a payment date and pay period. Tie: wages and tax on the paycheques = MYOB's payroll category summary.
+<script>// Timesheets (M24): logged time from MYOB's timesheets (list_timesheets) — per employee per week, the lines with their payroll
+// category and job / customer, daily entries and whether they have been processed in a pay run. Logged time, not paid hours:
+// the report never compares it with pay advices. Entries are kept by their own date (a week can straddle the period).
 MK.app({
-  title: 'Payroll Register', primary: 'adv', files: 'company_files', optional: ['cats', 'journals', 'accounts'],
+  title: 'Timesheets', primary: 'sheets', files: 'company_files',
   inputs: { start: 'from_date', end: 'to_date', companyFile: 'company_file', persona: 'persona', display: 'display' },
-  defaults: { from_date: '2026-07-01', to_date: '2026-09-28', adv_from: '2026-05-17', adv_to: '2026-11-12', company_file: '', persona: 'Bookkeeper',
-    display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":0,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":"register"}' },
-  uses: { adv: ['adv_from', 'adv_to', 'company_file'], cats: ['from_date', 'to_date', 'company_file'], journals: ['from_date', 'to_date', 'company_file'], accounts: ['company_file'], company_files: [] },
-  tools: { adv: 'list_payroll_advices (every paycheque in the period)', cats: 'get_payroll_category_summary (the tie)', journals: 'list_journal_transactions (super payments from the super payable account)', accounts: 'list_accounts (the super payable account)', company_files: 'list_company_files' },
-  // pay runs go by payment date (as MYOB's payroll reports and BAS W1 / W2 do); the advices tool filters by pay period, so it is asked for
-  // a window 45 days wider each side and the paycheques are kept by payment date
-  derive: function (inp) { var d = function (s, n) { return MK.iso(MK.addDays(MK.parse(s), n)); }; return { adv_from: d(inp.from_date, -45), adv_to: d(inp.to_date, 45) }; },
-  views: [['runs', 'Pay run history'], ['register', 'Payroll register'], ['summary', 'Payroll summary'], ['items', 'Pay item transactions'], ['fund', 'Accrual by fund'], ['super', 'Superannuation payments']],
+  defaults: { from_date: '2026-09-01', to_date: '2026-09-28', company_file: '', persona: 'Bookkeeper',
+    display: '{"cents":1,"k":0,"zeros":1,"neg":"paren","red":0,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"this_month","a":"custom","c":"none","v":"weeks","x":""}' },
+  uses: { sheets: ['from_date', 'to_date', 'company_file'], company_files: [] },
+  tools: { sheets: 'list_timesheets (weeks overlapping the period — every page)', company_files: 'list_company_files' },
+  views: [['weeks', 'Timesheets'], ['summary', 'Hours by employee']],
   render: function (c) {
-    var body = c.body, money = function (v) { return MK.money(v, c.currency, c.display); }, r2 = function (v) { return Math.round(v * 100) / 100; }, from = c.inputs.from_date, to = c.inputs.to_date;
-    if (c.errors.adv) { body.innerHTML = '<p class="mk-err">' + MK.h(c.err('adv')) + '</p>'; return { checks: [{ name: 'Pay advices loaded', pass: false, detail: c.err('adv') }] }; }
-    if (!c.data.adv) return {};
-    var typ = function (a, t) { return MK.sum((a.Lines || []).filter(function (l) { return (l.PayrollCategory || {}).Type === t; }).map(function (l) { return MK.num(l.Amount) || 0; })); };
-    var pays = MK.items(c.data.adv).filter(Boolean).map(function (a) { var e = a.Employee || {}, f = a.SuperannuationFund || {};
-      return { emp: e.Name || '(no name)', eid: e.UID || e.Name, paid: MK.isoDate(a.PaymentDate), ps: MK.isoDate(a.PayPeriodStartDate), pe: MK.isoDate(a.PayPeriodEndDate), gross: MK.num(a.GrossPay) || 0, net: MK.num(a.NetPay) || 0, wage: typ(a, 'Wage'), tax: typ(a, 'Tax'), ded: typ(a, 'Deduction'), sup: typ(a, 'Superannuation'),
-        hours: MK.sum((a.Lines || []).filter(function (l) { return (l.PayrollCategory || {}).Type === 'Wage'; }).map(function (l) { return MK.num(l.Hours) || 0; })), fund: f.Name || '(no fund)', lines: a.Lines || [] }; }).filter(function (p) { return p.paid >= from && p.paid <= to; }).sort(function (x, y) { return x.paid.localeCompare(y.paid) || x.emp.localeCompare(y.emp); });
-    var runsBy = {}; pays.forEach(function (p) { var k = p.paid + '|' + p.ps + '|' + p.pe, r = runsBy[k] || (runsBy[k] = { paid: p.paid, period: MK.periodLine(p.ps, p.pe), n: 0, gross: 0, tax: 0, ded: 0, net: 0, sup: 0, hours: 0 }); r.n++; ['gross', 'tax', 'ded', 'net', 'sup', 'hours'].forEach(function (f) { r[f] = r2(r[f] + p[f]); }); });
-    var runs = Object.keys(runsBy).sort().map(function (k) { return runsBy[k]; }), T = {}; ['gross', 'tax', 'ded', 'net', 'sup', 'hours', 'wage'].forEach(function (f) { T[f] = MK.sum(pays.map(function (p) { return p[f]; })); });
-    var cats = {}; pays.forEach(function (p) { p.lines.forEach(function (l) { var pc = l.PayrollCategory || {}, k = (pc.Type || '?') + '|' + (pc.Name || '?'), y = cats[k] || (cats[k] = { type: pc.Type || '', name: pc.Name || '', amount: 0, hours: 0, emps: {} }); y.amount = r2(y.amount + (MK.num(l.Amount) || 0)); y.hours = r2(y.hours + (MK.num(l.Hours) || 0)); y.emps[p.eid] = 1; }); });
-    var catRows = Object.keys(cats).map(function (k) { var y = cats[k]; return { type: y.type, name: y.name, amount: y.amount, hours: y.hours || null, n: Object.keys(y.emps).length }; }).sort(function (a, b) { return a.type.localeCompare(b.type) || b.amount - a.amount; });
-    var funds = {}; pays.forEach(function (p) { if (!p.sup) return; var k = p.fund + '|' + p.eid, y = funds[k] || (funds[k] = { fund: p.fund, emp: p.emp, sup: 0, n: 0 }); y.sup = r2(y.sup + p.sup); y.n++; });
-    var fundRows = Object.keys(funds).map(function (k) { return funds[k]; }).sort(function (a, b) { return a.fund.localeCompare(b.fund) || a.emp.localeCompare(b.emp); });
-    // super paid: debits to the super payable account(s) in cash payment journals (MYOB's API has no super payment list)
-    var idx = MK.accounts(c.data.accounts), isSup = function (a) { var x = (a.UID && idx.byUid[a.UID]) || (a.DisplayID && idx.byCode[a.DisplayID]) || a; return /super/i.test(x.Name || '') && (x.Classification ? x.Classification === 'Liability' : /^2-/.test(a.DisplayID || '')); };
-    var supPaid = [], J = MK.items(c.data.journals); J.forEach(function (j) { if (!/^Cash/i.test(j.JournalType || '')) return; var d = MK.isoDate(j.DateOccurred); if (d < from || d > to) return; (j.Lines || []).forEach(function (l) { if (l.Account && !l.IsCredit && isSup(l.Account)) supPaid.push({ date: d, desc: j.Description || '', account: (l.Account.DisplayID ? l.Account.DisplayID + ' ' : '') + (l.Account.Name || ''), amount: MK.num(l.Amount) || 0 }); }); });
-    var paidT = MK.sum(supPaid.map(function (x) { return x.amount; })), view = c.view || 'runs', g = function (id) { return document.getElementById(id); };
-    var head = { runs: 'Pay run history', register: 'Payroll register', summary: 'Payroll summary', items: 'Pay item transactions', fund: 'Accrual by fund', super: 'Superannuation payments' }[view];
-    // Pay item transactions (M30): every paycheque line grouped by pay item, employees within it
-    var items = {}; pays.forEach(function (p) { p.lines.forEach(function (l) { var pc = l.PayrollCategory || {}, k = (pc.Name || '?') + '|' + (pc.Type || ''); (items[k] = items[k] || { name: pc.Name || '?', type: pc.Type || '', rows: [] }).rows.push({ emp: p.emp, paid: p.paid, pe: p.pe, hours: MK.num(l.Hours) || null, amount: MK.num(l.Amount) || 0 }); }); });
-    var itemKeys = Object.keys(items).sort(function (a, b) { return items[a].type.localeCompare(items[b].type) || items[a].name.localeCompare(items[b].name); }), allLines = MK.sum(pays.map(function (p) { return MK.sum(p.lines.map(function (l) { return MK.num(l.Amount) || 0; })); }));
-    body.innerHTML = MK.kpis(view === 'super' ? [{ label: 'Super accrued', value: T.sup }, { label: 'Super paid', value: paidT }, { label: 'Accrued − paid', value: r2(T.sup - paidT) }, { label: 'Payments', value: supPaid.length, money: false }]
-      : [{ label: 'Gross pay', value: T.gross }, { label: 'PAYG withheld', value: T.tax }, { label: 'Net pay', value: T.net }, { label: 'Superannuation', value: T.sup }], c) +
-      '<div class="mk-card" style="margin-top:16px"><h3>' + head + ' — ' + MK.h(MK.periodLine(from, to)) + '</h3><div id="py-grid"></div>' + (view === 'fund' ? '<h3 style="margin-top:16px">By employee</h3><div id="py-grid2"></div>' : '') + '</div>';
-    if (!pays.length) g('py-grid').innerHTML = '<p class="muted">No pay runs in MYOB for this period.</p>';
-    else if (view === 'register') MK.grid(g('py-grid'), { rows: pays, filter: true, columns: [{ key: 'emp', title: 'Employee' }, { key: 'paid', title: 'Payment date' }, { key: 'pe', title: 'Period end' }, { key: 'gross', title: 'Gross pay', money: true }, { key: 'tax', title: 'PAYG withheld', money: true }, { key: 'ded', title: 'Deductions', money: true }, { key: 'net', title: 'Net pay', money: true }, { key: 'sup', title: 'Super', money: true }, { key: 'hours', title: 'Hours', num: true }],
-      total: { emp: 'Total', gross: T.gross, tax: T.tax, ded: T.ded, net: T.net, sup: T.sup, hours: T.hours } }, c);
-    else if (view === 'items') g('py-grid').innerHTML = '<div class="mk-scroll"><table class="mk-stmt"><thead><tr><th>Employee</th><th>Payment date</th><th>Period end</th><th class="num">Hours</th><th class="num">Amount</th></tr></thead><tbody>' + itemKeys.map(function (k) { var it = items[k];
-      return '<tr class="k-header"><td colspan="5">' + MK.h(it.name) + (it.type ? ' <span class="muted">(' + MK.h(it.type) + ')</span>' : '') + '</td></tr>' + it.rows.map(function (r) { return '<tr class="k-row detail-block"><td style="padding-left:26px">' + MK.h(r.emp) + '</td><td>' + r.paid + '</td><td>' + r.pe + '</td><td class="num">' + (r.hours == null ? '' : r.hours) + '</td><td class="num">' + money(r.amount) + '</td></tr>'; }).join('') +
-        '<tr class="k-total"><td colspan="3">Total for ' + MK.h(it.name) + '</td><td class="num">' + (MK.sum(it.rows.map(function (r) { return r.hours; })) || '') + '</td><td class="num">' + money(MK.sum(it.rows.map(function (r) { return r.amount; }))) + '</td></tr>'; }).join('') + '</tbody></table></div>';
-    else if (view === 'summary') MK.grid(g('py-grid'), { rows: catRows, columns: [{ key: 'type', title: 'Type' }, { key: 'name', title: 'Payroll category' }, { key: 'amount', title: 'Amount', money: true }, { key: 'hours', title: 'Hours', num: true }, { key: 'n', title: 'Employees', num: true }] }, c);
-    else if (view === 'fund') { var byF = {}; fundRows.forEach(function (y) { byF[y.fund] = r2((byF[y.fund] || 0) + y.sup); });
-      MK.grid(g('py-grid'), { rows: Object.keys(byF).map(function (k) { return { fund: k, sup: byF[k] }; }), columns: [{ key: 'fund', title: 'Super fund' }, { key: 'sup', title: 'Super accrued', money: true }], total: { fund: 'Total', sup: T.sup } }, c);
-      MK.grid(g('py-grid2'), { rows: fundRows, columns: [{ key: 'fund', title: 'Super fund' }, { key: 'emp', title: 'Employee' }, { key: 'n', title: 'Pays', num: true }, { key: 'sup', title: 'Super accrued', money: true }] }, c); }
-    else if (view === 'super') MK.grid(g('py-grid'), { rows: supPaid, empty: 'No payments from the super payable account in this period.', columns: [{ key: 'date', title: 'Date' }, { key: 'desc', title: 'Description' }, { key: 'account', title: 'Account' }, { key: 'amount', title: 'Paid', money: true }], total: { date: 'Total', amount: paidT } }, c);
-    else MK.grid(g('py-grid'), { rows: runs, columns: [{ key: 'paid', title: 'Payment date' }, { key: 'period', title: 'Pay period' }, { key: 'n', title: 'Employees', num: true }, { key: 'gross', title: 'Gross pay', money: true }, { key: 'tax', title: 'PAYG withheld', money: true }, { key: 'ded', title: 'Deductions', money: true }, { key: 'net', title: 'Net pay', money: true }, { key: 'sup', title: 'Super', money: true }, { key: 'hours', title: 'Hours', num: true }],
-      total: { paid: 'Total', n: pays.length, gross: T.gross, tax: T.tax, ded: T.ded, net: T.net, sup: T.sup, hours: T.hours } }, c);
-    // checks
-    var cs = c.data.cats, cb = cs && Array.isArray(cs.PayrollCategoryBreakdown) ? cs.PayrollCategoryBreakdown : null, csum = function (t) { return MK.sum((cb || []).filter(function (x) { return (x.PayrollCategory || {}).Type === t; }).map(function (x) { return MK.num(x.Amount) || 0; })); };
-    var netBad = pays.filter(function (p) { return !MK.near(p.net, r2(p.gross - p.tax - p.ded)); });
-    var checks = [
-      !cb ? { name: 'Wages and tax on the paycheques = MYOB’s payroll category summary (information)', pass: null, info: true, detail: c.errors.cats ? 'Category summary unavailable (' + c.err('cats') + ')' : 'N/A' }
-        : { name: 'Wages and PAYG on the paycheques = MYOB’s payroll category summary for the period (two MYOB reports)', pass: MK.near(T.wage, csum('Wage')) && MK.near(T.tax, csum('Tax')), detail: 'Wages ' + money(T.wage) + ' vs ' + money(csum('Wage')) + ' · PAYG ' + money(T.tax) + ' vs ' + money(csum('Tax')) },
-      { name: 'Pay runs add up to the paycheques', pass: pays.length ? MK.near(MK.sum(runs.map(function (r) { return r.gross; })), T.gross) : null, detail: runs.length + ' pay run(s), ' + pays.length + ' paycheque(s)' },
-      { name: 'Each paycheque: net pay = gross − PAYG − deductions (information)', pass: null, info: true, detail: !pays.length ? 'N/A — no pay runs' : netBad.length ? netBad.length + ' differ (e.g. ' + netBad[0].emp + ' ' + netBad[0].paid + ': ' + money(netBad[0].net) + ' vs ' + money(r2(netBad[0].gross - netBad[0].tax - netBad[0].ded)) + ') — salary sacrifice or other pay items' : 'all ' + pays.length }
-    ];
-    if (view === 'items') checks.push({ name: 'Pay item totals = every paycheque line', pass: pays.length ? MK.near(MK.sum(itemKeys.map(function (k) { return MK.sum(items[k].rows.map(function (r) { return r.amount; })); })), allLines) : null, detail: itemKeys.length + ' pay items' });
-    if (view === 'super') checks.push({ name: 'Super accrued (paycheques) vs paid from the super payable account (information — MYOB’s API has no super payment list)', pass: null, info: true, detail: money(T.sup) + ' accrued vs ' + money(paidT) + ' paid — a payment usually clears the previous quarter’s accrual' + (J.length ? '' : '; journals unavailable') });
-    this._x = { pays: pays, runs: runs, catRows: catRows, fundRows: fundRows, supPaid: supPaid, T: T, paidT: paidT };
-    return { checks: checks, title: { runs: 'Pay Run History', register: 'Payroll Register', summary: 'Payroll Summary', items: 'Pay Item Transactions', fund: 'Accrual by Fund', super: 'Superannuation Payments' }[view],
-      notes: ['From MYOB’s pay advices (one per paycheque). MYOB’s API has no pay-run list: a pay run is the paycheques sharing a payment date and pay period, listed by payment date. Dates of birth are not shown.', 'Superannuation payments are the cash payments from the super payable account (an approximation — MYOB’s API has no super payment list).'],
-      na: ['Leave balances and entitlement accruals (see Leave balance)', 'Pay slips and STP lodgement (MYOB’s app only)'] };
+    var body = c.body, h = MK.h, from = c.inputs.from_date, to = c.inputs.to_date, r2 = function (v) { return Math.round(v * 100) / 100; };
+    if (c.errors.sheets) { body.innerHTML = '<p class="mk-err">' + h(c.err('sheets')) + '</p>'; return { checks: [{ name: 'Timesheets loaded', pass: false, detail: c.err('sheets') }] }; }
+    if (!c.data.sheets) return {};
+    var E = [], who = {}, outside = 0;
+    MK.items(c.data.sheets).forEach(function (t) { var e = t.Employee || {}, k = e.UID || e.Name || '?', ws = MK.isoDate(t.StartDate), we = MK.isoDate(t.EndDate); who[k] = e.Name || e.DisplayID || 'N/A';
+      (t.Lines || []).forEach(function (l) { var tag = [l.Job ? 'Job ' + (l.Job.Number || '') + ' ' + (l.Job.Name || '') : '', l.Activity ? (l.Activity.Name || l.Activity.DisplayID || '') : '', l.Customer ? l.Customer.Name || '' : ''].filter(Boolean).join(' · ');
+        (l.Entries || []).forEach(function (x) { var d = MK.isoDate(x.Date); if (ws && we && (d < ws || d > we)) outside++; if (d < from || d > to) return;
+          E.push({ key: k, week: ws + ' to ' + we, ws: ws, date: d, cat: (l.PayrollCategory || {}).Name || '', tag: tag, notes: l.Notes || '', hours: r2(MK.num(x.Hours) || 0), done: !!x.Processed }); }); }); });
+    var keys = Object.keys(who).sort(function (a, b) { return who[a].localeCompare(who[b]); }), sel = c.display.x && who[c.display.x] ? c.display.x : '', S = E.filter(function (x) { return !sel || x.key === sel; });
+    var sumH = function (a) { return r2(a.reduce(function (s, x) { return s + x.hours; }, 0)); }, H = sumH(S), P = sumH(S.filter(function (x) { return x.done; })), view = c.view || 'weeks';
+    var hc = function (v) { return '<td class="num">' + (v == null ? '' : v.toFixed(2)) + '</td>'; };
+    var html = MK.kpis([{ label: 'Hours logged', money: false, value: H.toFixed(2) }, { label: 'Processed in a pay run', money: false, value: P.toFixed(2) }, { label: 'Not yet processed', money: false, value: r2(H - P).toFixed(2) }, { label: 'Employees', money: false, value: Object.keys(S.reduce(function (o, x) { o[x.key] = 1; return o; }, {})).length }], c) +
+      '<label class="ctl" style="display:inline-flex;margin:12px 0">Employee<select id="tm-emp"><option value="">All employees</option>' + keys.map(function (k) { return '<option value="' + h(k) + '"' + (k === sel ? ' selected' : '') + '>' + h(who[k]) + '</option>'; }).join('') + '</select></label>';
+    var body2 = '';
+    if (view === 'summary') body2 = '<table class="mk-grid"><thead><tr><th>Employee</th><th>Payroll category</th><th class="num">Hours</th><th class="num">Processed</th><th class="num">Not yet processed</th></tr></thead><tbody>' +
+      keys.filter(function (k) { return !sel || k === sel; }).map(function (k) { var mine = S.filter(function (x) { return x.key === k; }), cats = {}; mine.forEach(function (x) { cats[x.cat] = 1; });
+        return Object.keys(cats).sort().map(function (ct) { var g = mine.filter(function (x) { return x.cat === ct; }), a = sumH(g), b = sumH(g.filter(function (x) { return x.done; })); return '<tr><td>' + h(who[k]) + '</td><td>' + h(ct) + '</td>' + hc(a) + hc(b) + hc(r2(a - b)) + '</tr>'; }).join(''); }).join('') +
+      '</tbody><tfoot><tr class="k-total"><td colspan="2">Total</td>' + hc(H) + hc(P) + hc(r2(H - P)) + '</tr></tfoot></table>';
+    else { keys.filter(function (k) { return !sel || k === sel; }).forEach(function (k) { var mine = S.filter(function (x) { return x.key === k; }); if (!mine.length) return; var weeks = {}; mine.forEach(function (x) { (weeks[x.ws] = weeks[x.ws] || []).push(x); });
+        body2 += '<tr class="k-header"><td colspan="5">' + h(who[k]) + '</td></tr>' + Object.keys(weeks).sort().map(function (w) { var g = weeks[w], lines = {}; g.forEach(function (x) { var lk = x.cat + '|' + x.tag; (lines[lk] = lines[lk] || { cat: x.cat, tag: x.tag, notes: x.notes, rows: [] }).rows.push(x); });
+          return '<tr class="k-row"><td style="padding-left:18px">Week ' + h(g[0].week) + '</td><td colspan="2"></td>' + hc(sumH(g)) + '<td>' + (g.every(function (x) { return x.done; }) ? 'Processed' : g.some(function (x) { return x.done; }) ? 'Part processed' : '<strong>Not processed</strong>') + '</td></tr>' +
+            Object.keys(lines).map(function (lk) { var L = lines[lk]; return L.rows.map(function (x) { return '<tr class="k-row detail-block"><td style="padding-left:34px">' + h(x.date) + '</td><td>' + h(L.cat) + '</td><td>' + h([L.tag, L.notes].filter(Boolean).join(' · ')) + '</td>' + hc(x.hours) + '<td>' + (x.done ? 'Yes' : 'No') + '</td></tr>'; }).join(''); }).join(''); }).join('') +
+          '<tr class="k-total"><td colspan="3">Total for ' + h(who[k]) + '</td>' + hc(sumH(mine)) + '<td></td></tr>'; });
+      body2 = '<table class="mk-stmt"><thead><tr><th>Week / date</th><th>Payroll category</th><th>Job · activity · customer · notes</th><th class="num">Hours</th><th>Processed</th></tr></thead><tbody>' + (body2 || '<tr><td colspan="5" class="muted">No timesheet entries in this period.</td></tr>') + '</tbody><tfoot><tr class="k-total"><td colspan="3">Total</td>' + hc(H) + '<td></td></tr></tfoot></table>'; }
+    body.innerHTML = html + '<div class="mk-scroll">' + body2 + '</div>';
+    document.getElementById('tm-emp').addEventListener('change', function () { c.change({}, { x: this.value }); });
+    var perEmp = keys.reduce(function (s, k) { return s + sumH(S.filter(function (x) { return x.key === k; })); }, 0);
+    this._x = { S: S, who: who };
+    return { checks: [
+      { name: 'Hours per employee add up to the hours logged', pass: S.length ? MK.near(r2(perEmp), H) : null, detail: H.toFixed(2) + ' hours' },
+      { name: 'Every entry is dated inside its timesheet week', pass: outside === 0, detail: outside ? outside + ' entries outside their week' : 'all entries' },
+      { name: 'Hours not yet processed in a pay run', pass: null, info: true, detail: r2(H - P).toFixed(2) + ' hours' }],
+      title: sel ? 'Timesheets — ' + who[sel] : 'Timesheets',
+      notes: ['Logged time from MYOB timesheets, kept by each entry\'s own date. It is not paid hours: pay advices can differ (salaried staff, leave, adjustments), so the two are never compared here.'],
+      na: ['Hourly cost and billing rates (not in the timesheet list)'] };
   },
   excel: function (c) {
     var x = this._x; if (!x) return [];
-    var mv = function (v) { return v == null ? '' : { v: v, s: 'money' }; }, b = function (a) { return a.map(function (t) { return { v: t, s: 'bold' }; }); }, head = function (t) { return [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: t, s: 'bold' }], [MK.periodLine(c.inputs.from_date, c.inputs.to_date)], []]; };
-    return [{ name: 'Pay runs', rows: head('Pay run history').concat([b(['Payment date', 'Pay period', 'Employees', 'Gross pay', 'PAYG withheld', 'Deductions', 'Net pay', 'Super', 'Hours'])]).concat(x.runs.map(function (r) { return [r.paid, r.period, r.n, mv(r.gross), mv(r.tax), mv(r.ded), mv(r.net), mv(r.sup), r.hours]; })), widths: [14, 28, 10, 14, 14, 12, 14, 12, 8] },
-      { name: 'Register', rows: head('Payroll register').concat([b(['Employee', 'Payment date', 'Period end', 'Gross pay', 'PAYG withheld', 'Deductions', 'Net pay', 'Super', 'Hours'])]).concat(x.pays.map(function (p) { return [p.emp, p.paid, p.pe, mv(p.gross), mv(p.tax), mv(p.ded), mv(p.net), mv(p.sup), p.hours]; })), widths: [24, 14, 14, 14, 14, 12, 14, 12, 8] },
-      { name: 'Summary', rows: head('Payroll summary').concat([b(['Type', 'Payroll category', 'Amount', 'Hours', 'Employees'])]).concat(x.catRows.map(function (r) { return [r.type, r.name, mv(r.amount), r.hours || '', r.n]; })), widths: [16, 30, 14, 10, 10] },
-      { name: 'By fund', rows: head('Accrual by fund').concat([b(['Super fund', 'Employee', 'Pays', 'Super accrued'])]).concat(x.fundRows.map(function (r) { return [r.fund, r.emp, r.n, mv(r.sup)]; })), widths: [28, 24, 8, 14] },
-      { name: 'Super paid', rows: head('Superannuation payments').concat([b(['Date', 'Description', 'Account', 'Paid'])]).concat(x.supPaid.map(function (r) { return [r.date, r.desc, r.account, mv(r.amount)]; })), widths: [12, 40, 30, 14] }];
+    return [{ name: 'Timesheets', widths: [24, 22, 12, 22, 36, 10, 10], rows: [[{ v: c.company || 'N/A — not in source', s: 'title' }], [{ v: 'Timesheets', s: 'bold' }], [MK.periodLine(c.inputs.from_date, c.inputs.to_date)], [], ['Employee', 'Week', 'Date', 'Payroll category', 'Job · activity · customer', 'Hours', 'Processed'].map(function (t) { return { v: t, s: 'bold' }; })]
+      .concat(x.S.map(function (e) { return [x.who[e.key], e.week, e.date, e.cat, e.tag, e.hours, e.done ? 'Yes' : 'No']; })) }];
   }
 });</script>
 </body>

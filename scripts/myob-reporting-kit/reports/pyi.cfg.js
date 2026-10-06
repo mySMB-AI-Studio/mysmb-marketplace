@@ -2,10 +2,10 @@
 // and Superannuation Payments (M27, variant), from MYOB's pay advices (list_payroll_advices). MYOB's API has no pay-run list, so a pay
 // run is the paycheques sharing a payment date and pay period. Tie: wages and tax on the paycheques = MYOB's payroll category summary.
 MK.app({
-  title: 'Payroll Register', primary: 'adv', files: 'company_files', optional: ['cats', 'journals', 'accounts'],
+  title: 'Pay Item Transactions', primary: 'adv', files: 'company_files', optional: ['cats', 'journals', 'accounts'],
   inputs: { start: 'from_date', end: 'to_date', companyFile: 'company_file', persona: 'persona', display: 'display' },
   defaults: { from_date: '2026-07-01', to_date: '2026-09-28', adv_from: '2026-05-17', adv_to: '2026-11-12', company_file: '', persona: 'Bookkeeper',
-    display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":0,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":"register"}' },
+    display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":0,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":"items"}' },
   uses: { adv: ['adv_from', 'adv_to', 'company_file'], cats: ['from_date', 'to_date', 'company_file'], journals: ['from_date', 'to_date', 'company_file'], accounts: ['company_file'], company_files: [] },
   tools: { adv: 'list_payroll_advices (every paycheque in the period)', cats: 'get_payroll_category_summary (the tie)', journals: 'list_journal_transactions (super payments from the super payable account)', accounts: 'list_accounts (the super payable account)', company_files: 'list_company_files' },
   // pay runs go by payment date (as MYOB's payroll reports and BAS W1 / W2 do); the advices tool filters by pay period, so it is asked for

@@ -18,6 +18,8 @@ const VARIANTS = [
   { id: 'pys', base: 'py', title: ['Pay Run History', 'Payroll Summary'], display: { v: 'summary' } },
   { id: 'pyf', base: 'py', title: ['Pay Run History', 'Accrual by Fund'], display: { v: 'fund' } },
   { id: 'pyp', base: 'py', title: ['Pay Run History', 'Superannuation Payments'], display: { v: 'super' } },
+  // Pay item transactions (M30) = the payroll report grouped by pay item
+  { id: 'pyi', base: 'py', title: ['Pay Run History', 'Pay Item Transactions'], display: { v: 'items' } },
   // Journal entries (M09) and Categories transactions (M11) = the General ledger's journal and category views; Categories list (M10) =
   // the Trial balance's chart-of-accounts view (every account, balances at the date — the API's own account list has today's only)
   { id: 'je', base: 'gl', title: ['General Ledger', 'Journal Entries'], display: { v: 'journal' } },

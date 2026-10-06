@@ -609,6 +609,131 @@ module.exports = [
     fileName: 'myob-superannuation-payments.html', tags: ['myob', 'payroll', 'superannuation', 'payments', 'M27'],
   },
   {
+    "m": "M30",
+    "skill": "pay-item-transactions",
+    "name": "MYOB Pay Item Transactions",
+    "report": "pyi",
+    "wave": "Wave 3 (P3)",
+    "title": "Pay Item Transactions",
+    "menu": "Reporting → Reports → Payroll → Pay item transactions",
+    "trigger": "the user asks for pay item transactions, payroll transactions grouped by pay item or payroll category, every employee paid a pay item, or totals per pay item for a period",
+    "discovery": "Call `list_payroll_advices` once with `from_date` / `to_date` 45 days wider than the period (the kit derives `adv_from` / `adv_to`), and `list_company_files` once. Every paycheque's lines are grouped by `PayrollCategory.Name` — no call per employee is needed",
+    "dates": "`from_date` / `to_date` = the period by payment date (default: this financial year to date; display preset `p`). `adv_from` / `adv_to` are derived by the kit — leave them. The view is display `v` (`items` by default; the other payroll views are there too).",
+    "members": [
+      [
+        "Pay item transactions",
+        "One section per pay item (wages, tax, super, deductions…): each employee's paycheque lines with payment date, period end, hours and amount, and a total per pay item"
+      ],
+      [
+        "Other payroll views",
+        "Report = Pay run history, Payroll register, Payroll summary, Accrual by fund, Superannuation payments"
+      ]
+    ],
+    "checks": [
+      "**Independent tie:** wages and PAYG on the paycheques = MYOB's payroll category summary for the period",
+      "Pay item totals = every paycheque line",
+      "Pay runs add up to the paycheques"
+    ],
+    "golden": "mySMB.com FY to date: Base Salary, PAYG Withholding and Superannuation Guarantee sections for Alex Morgan and Sam Lee; wages and PAYG equal the payroll category summary",
+    "fileName": "myob-pay-item-transactions.html",
+    "tags": [
+      "myob",
+      "payroll",
+      "M30",
+      "pay-items"
+    ]
+  },
+  {
+    "m": "M24",
+    "skill": "timesheets",
+    "name": "MYOB Timesheets",
+    "report": "tm",
+    "wave": "Wave 3 (P3)",
+    "title": "Timesheets",
+    "menu": "Reporting → Reports → Payroll → Timesheets",
+    "trigger": "the user asks for timesheets, hours logged by employees, time by week or by job or customer, or unprocessed timesheet hours",
+    "discovery": "Call `list_timesheets` once with `from_date` / `to_date` = the period, and `list_company_files` once. Expect `{Employee, StartDate, EndDate, Lines:[{PayrollCategory, Job, Activity, Customer, Notes, Entries:[{Date, Hours, Processed}]}]}` — entries are kept by their own date. Logged time is not paid hours: never compare it with pay advices",
+    "dates": "`from_date` / `to_date` = the period (default: this month; display preset `p`). The view is display `v` (`weeks` | `summary`); `x` = an employee UID.",
+    "members": [
+      [
+        "Timesheets",
+        "Per employee per week: hours and whether processed, with daily entries (date, payroll category, job · activity · customer, notes, hours, processed)"
+      ],
+      [
+        "Hours by employee",
+        "Report = Hours by employee (by payroll category: hours, processed, not yet processed)"
+      ],
+      [
+        "Employee picker",
+        "Employee select above the report"
+      ],
+      [
+        "Cost and billing rates",
+        "N/A — not in the timesheet list"
+      ]
+    ],
+    "checks": [
+      "Hours per employee add up to the hours logged",
+      "Every entry is dated inside its timesheet week",
+      "For information: hours not yet processed in a pay run"
+    ],
+    "golden": "mySMB.com September 2026: Alex Morgan 7.6 hours a day, Sam Lee 4 hours Monday–Thursday; the last week not yet processed",
+    "fileName": "myob-timesheets.html",
+    "tags": [
+      "myob",
+      "timesheets",
+      "M24",
+      "payroll"
+    ]
+  },
+  {
+    "m": "M28",
+    "also": [
+      "M29"
+    ],
+    "skill": "leave-balance",
+    "name": "MYOB Leave Balance",
+    "report": "lv",
+    "wave": "Wave 3 (P3) — M28 and the detail M29",
+    "title": "Leave Balance",
+    "menu": "Reporting → Reports → Payroll → Leave balance / Leave balance (detail)",
+    "trigger": "the user asks for leave balances, annual or personal leave owing, holiday leave accrued, entitlement balances, leave liability, or the leave balance detail",
+    "discovery": "Call `list_employee_leave_balances` once, and `list_company_files` once. Expect, per active employee, `Entitlements:[{Name, IsAssigned, CarryOver, YearToDate, Total}]` (Total = CarryOver + YearToDate, in hours) with `HourlyRate`. Tax file numbers, dates of birth and payslip email are not returned by the connector. Discover the entitlement names (they differ per file)",
+    "dates": "No dates — balances are today's. The view is display `v` (`employees` | `entitlements` for the detail by entitlement).",
+    "members": [
+      [
+        "Leave balance",
+        "Per employee: each entitlement's hours carried over, this year (net) and balance, and a value at the hourly rate (estimate)"
+      ],
+      [
+        "Leave balance (detail)",
+        "Report = Leave balance (detail): by entitlement, every employee under it"
+      ],
+      [
+        "Negative balances",
+        "Flagged above the table"
+      ],
+      [
+        "Balances at a past date; accrued and taken separately",
+        "N/A — MYOB keeps today's balance and the net for the year"
+      ]
+    ],
+    "checks": [
+      "Carried over + this year = balance (every entitlement — MYOB's own definition)",
+      "For information: negative leave balances",
+      "For information: balances without an hourly rate (not valued)"
+    ],
+    "golden": "mySMB.com: Alex Morgan Holiday Leave 114.50 hours (76.00 carried over + 38.50 this year); Sam Lee Personal Leave negative",
+    "fileName": "myob-leave-balance.html",
+    "tags": [
+      "myob",
+      "leave",
+      "M28",
+      "M29",
+      "payroll"
+    ]
+  },
+  {
     m: 'M40', skill: 'unpaid-bills', name: 'MYOB Unpaid Bills', report: 'ub', wave: 'Wave 2 (P2)',
     title: 'Unpaid Bills', menu: 'Reporting → Reports → Purchases → Unpaid bills',
     trigger: 'the user asks for unpaid bills, what they owe suppliers, outstanding purchase bills, a payment run list, or payables by supplier with ageing',
