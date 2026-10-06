@@ -1,0 +1,25 @@
+{
+  "inputs": [
+    { "name": "start_date", "label": "From", "type": "date", "default": "2026-04-01" },
+    { "name": "end_date", "label": "To", "type": "date", "default": "2026-06-30" },
+    { "name": "txn_where", "label": "Transaction date filter", "type": "string", "maxLength": 80, "default": "TxnDate >= '2026-04-01' AND TxnDate <= '2026-06-30'" },
+    { "name": "basis", "label": "Accounting method", "type": "enum", "options": ["Accrual", "Cash"], "default": "Accrual" },
+    { "name": "agency_id", "label": "Tax agency", "type": "string", "maxLength": 20, "default": "" },
+    { "name": "persona", "label": "View as", "type": "enum", "options": ["Client", "Bookkeeper", "Practitioner", "Executive"], "default": "Bookkeeper" },
+    { "name": "display", "label": "Display settings", "type": "string", "maxLength": 300, "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"mysmb\",\"dens\":\"100\",\"p\":\"last_quarter\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"type\",\"x\":\"\"}" }
+  ],
+  "bindings": [
+    { "id": "gst_period", "tool": { "mcp": "quickbooks-accounting", "name": "get_report_tax_summary" }, "params": { "start_date": { "kind": "input", "input": "start_date" }, "end_date": { "kind": "input", "input": "end_date" }, "accounting_method": { "kind": "input", "input": "basis" }, "agency_id": { "kind": "input", "input": "agency_id" } } },
+    { "id": "tax_agencies", "tool": { "mcp": "quickbooks-accounting", "name": "list_tax_agency" }, "params": { "maxResults": { "kind": "static", "value": 100 } } },
+    { "id": "tax_codes", "tool": { "mcp": "quickbooks-accounting", "name": "list_tax_code" }, "params": { "maxResults": { "kind": "static", "value": 1000 } } },
+    { "id": "items", "tool": { "mcp": "quickbooks-accounting", "name": "list_item" }, "params": { "where": { "kind": "static", "value": "Active IN (true, false)" }, "maxResults": { "kind": "static", "value": 1000 } } },
+    { "id": "invoices", "tool": { "mcp": "quickbooks-accounting", "name": "list_invoice" }, "params": { "where": { "kind": "input", "input": "txn_where" }, "maxResults": { "kind": "static", "value": 1000 } } },
+    { "id": "credit_memos", "tool": { "mcp": "quickbooks-accounting", "name": "list_credit_memo" }, "params": { "where": { "kind": "input", "input": "txn_where" }, "maxResults": { "kind": "static", "value": 1000 } } },
+    { "id": "sales_receipts", "tool": { "mcp": "quickbooks-accounting", "name": "list_sales_receipt" }, "params": { "where": { "kind": "input", "input": "txn_where" }, "maxResults": { "kind": "static", "value": 1000 } } },
+    { "id": "bills", "tool": { "mcp": "quickbooks-accounting", "name": "list_bill" }, "params": { "where": { "kind": "input", "input": "txn_where" }, "maxResults": { "kind": "static", "value": 1000 } } },
+    { "id": "vendor_credits", "tool": { "mcp": "quickbooks-accounting", "name": "list_vendor_credit" }, "params": { "where": { "kind": "input", "input": "txn_where" }, "maxResults": { "kind": "static", "value": 1000 } } },
+    { "id": "purchases", "tool": { "mcp": "quickbooks-accounting", "name": "list_purchase" }, "params": { "where": { "kind": "input", "input": "txn_where" }, "maxResults": { "kind": "static", "value": 1000 } } },
+    { "id": "journal_entries", "tool": { "mcp": "quickbooks-accounting", "name": "list_journal_entry" }, "params": { "where": { "kind": "input", "input": "txn_where" }, "maxResults": { "kind": "static", "value": 1000 } } },
+    { "id": "company_info", "tool": { "mcp": "quickbooks-accounting", "name": "qbo_query" }, "params": { "query": { "kind": "static", "value": "SELECT * FROM CompanyInfo" } } }
+  ]
+}
