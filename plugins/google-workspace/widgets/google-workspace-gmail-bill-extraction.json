@@ -1,7 +1,7 @@
 {
   "id": "google-workspace-gmail-bill-extraction",
   "title": "Bills from Gmail",
-  "description": "Reads the latest email in your Bills label and extracts ABN, invoice number, dates, subtotal, GST and total — plus a list of the other matched bill emails in the same label.",
+  "description": "Every bill in your Gmail bills label, extracted from its PDF: ABN, invoice number, dates, subtotal, GST and total, each with a confidence. Page through bills one at a time. An email with several PDFs gives one bill per attachment, and unreadable bills show why.",
   "category": "productivity",
   "tags": [
     "google",
@@ -30,15 +30,15 @@
   "sizing": {
     "preferred": {
       "colSpan": 6,
-      "rowSpan": 9
+      "rowSpan": 12
     },
     "min": {
       "colSpan": 4,
-      "rowSpan": 6
+      "rowSpan": 8
     },
     "max": {
       "colSpan": 10,
-      "rowSpan": 14
+      "rowSpan": 16
     }
   },
   "dataProvider": {
@@ -60,6 +60,35 @@
         "type": "Header",
         "children": [
           "headerRow"
+        ]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "headerIcon",
+          "headerStack"
+        ]
+      },
+      "headerIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Mail",
+          "tone": "brand",
+          "size": "lg"
+        }
+      },
+      "headerStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "title",
+          "labelPillRow"
         ]
       },
       "title": {
@@ -85,25 +114,17 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "Label: {name} · {n} new",
+              "pattern": "Label: {name} · {counts}",
               "name": {
                 "$state": "/google-workspace-gmail/list_bill_label_emails/label/name"
               },
-              "n": {
-                "$state": "/google-workspace-gmail/list_bill_label_emails/label/newCount"
+              "counts": {
+                "$state": "/google-workspace-gmail/list_bill_label_emails/summary/countsText"
               }
             }
           },
           "tone": "brand",
           "variant": "soft"
-        }
-      },
-      "headerIcon": {
-        "type": "Icon",
-        "props": {
-          "name": "Mail",
-          "tone": "brand",
-          "size": "lg"
         }
       },
       "body": {
@@ -125,8 +146,7 @@
         "children": [
           "sk1",
           "sk2",
-          "sk3",
-          "sk4"
+          "sk3"
         ]
       },
       "sk1": {
@@ -139,21 +159,14 @@
       "sk2": {
         "type": "Skeleton",
         "props": {
-          "height": "6rem",
+          "height": "10rem",
           "rounded": "md"
         }
       },
       "sk3": {
         "type": "Skeleton",
         "props": {
-          "height": "2.5rem",
-          "rounded": "md"
-        }
-      },
-      "sk4": {
-        "type": "Skeleton",
-        "props": {
-          "height": "2.5rem",
+          "height": "6rem",
           "rounded": "md"
         }
       },
@@ -169,7 +182,7 @@
               "not": true
             },
             {
-              "$state": "/google-workspace-gmail/list_bill_label_emails/latest/id",
+              "$state": "/google-workspace-gmail/list_bill_label_emails/bills/0",
               "not": true
             }
           ]
@@ -187,100 +200,228 @@
               "not": true
             },
             {
-              "$state": "/google-workspace-gmail/list_bill_label_emails/latest/id"
+              "$state": "/google-workspace-gmail/list_bill_label_emails/bills/0"
             }
           ]
         },
         "children": [
-          "featuredCard",
-          "othersSection",
+          "stats",
+          "featuredList",
+          "dots",
+          "listSection",
           "footerDivider",
           "footerRow"
         ]
       },
-      "featuredCard": {
+      "stats": {
+        "type": "Grid",
+        "props": {
+          "cols": 3,
+          "gap": "sm"
+        },
+        "children": [
+          "statTotal",
+          "statExtracted",
+          "statUnreadable"
+        ]
+      },
+      "statTotal": {
         "type": "Section",
         "props": {
           "variant": "bordered"
         },
         "children": [
-          "featuredHeaderRow",
-          "featuredDivider",
-          "fieldsGrid",
-          "totalRow"
+          "statTotalStack"
         ]
       },
-      "featuredHeaderRow": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "center",
-          "justify": "between"
-        },
-        "children": [
-          "featuredInfo",
-          "featuredStatus"
-        ]
-      },
-      "featuredInfo": {
+      "statTotalStack": {
         "type": "Stack",
         "props": {
           "gap": "xs"
         },
         "children": [
-          "featuredSupplier",
-          "featuredSender",
-          "featuredSubtitleWithFile",
-          "featuredSubtitleNoFile"
+          "statTotalValue",
+          "statTotalLabel"
         ]
       },
-      "featuredSender": {
-        "type": "Text",
+      "statTotalValue": {
+        "type": "Stat",
         "props": {
-          "text": {
-            "$state": "/google-workspace-gmail/list_bill_label_emails/latest/senderName"
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$state": "/google-workspace-gmail/list_bill_label_emails/summary/extractedTotal"
+              }
+            }
           },
-          "size": "md",
-          "weight": "medium",
-          "truncate": true
-        },
-        "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/supplierName",
-          "not": true
+          "size": "sm"
         }
       },
-      "featuredStatus": {
-        "type": "Badge",
+      "statTotalLabel": {
+        "type": "Caption",
         "props": {
-          "text": {
-            "$state": "/google-workspace-gmail/list_bill_label_emails/latest/statusLabel"
-          },
-          "tone": {
-            "$state": "/google-workspace-gmail/list_bill_label_emails/latest/statusTone"
-          },
-          "variant": "soft"
+          "text": "Extracted total",
+          "tone": "muted"
         }
       },
-      "featuredDivider": {
-        "type": "Divider",
-        "props": {}
-      },
-      "fieldsGrid": {
-        "type": "Grid",
+      "statExtracted": {
+        "type": "Section",
         "props": {
-          "cols": 2,
-          "gap": "md"
+          "variant": "bordered"
         },
         "children": [
-          "fieldAbn",
-          "fieldInvoiceNumber",
-          "fieldIssuedDate",
-          "fieldDueDate",
-          "fieldSubtotal",
-          "fieldGst"
+          "statExtractedStack"
         ]
       },
-      "fieldAbn": {
+      "statExtractedStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "statExtractedValue",
+          "statExtractedLabel"
+        ]
+      },
+      "statExtractedValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/google-workspace-gmail/list_bill_label_emails/summary/extractedCount"
+          },
+          "size": "sm"
+        }
+      },
+      "statExtractedLabel": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "statExtractedIcon",
+          "statExtractedCaption"
+        ]
+      },
+      "statExtractedIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Check",
+          "tone": "success",
+          "size": "xs"
+        }
+      },
+      "statExtractedCaption": {
+        "type": "Caption",
+        "props": {
+          "text": "Extracted",
+          "tone": "success"
+        }
+      },
+      "statUnreadable": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "statUnreadableStack"
+        ]
+      },
+      "statUnreadableStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "statUnreadableValue",
+          "statUnreadableLabel"
+        ]
+      },
+      "statUnreadableValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/google-workspace-gmail/list_bill_label_emails/summary/unreadableCount"
+          },
+          "size": "sm"
+        }
+      },
+      "statUnreadableLabel": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "statUnreadableIcon",
+          "statUnreadableCaption"
+        ]
+      },
+      "statUnreadableIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "X",
+          "tone": "destructive",
+          "size": "xs"
+        }
+      },
+      "statUnreadableCaption": {
+        "type": "Caption",
+        "props": {
+          "text": "Unreadable",
+          "tone": "destructive"
+        }
+      },
+      "featuredList": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "repeat": {
+          "statePath": "/google-workspace-gmail/list_bill_label_emails/bills",
+          "key": "id"
+        },
+        "children": [
+          "featured"
+        ]
+      },
+      "featured": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "visible": {
+          "$or": [
+            {
+              "$item": "position",
+              "eq": {
+                "$state": "/ui/gmailBills/sel"
+              }
+            },
+            {
+              "$and": [
+                {
+                  "$state": "/ui/gmailBills/sel",
+                  "not": true
+                },
+                {
+                  "$item": "isFirst"
+                }
+              ]
+            }
+          ]
+        },
+        "children": [
+          "fHead",
+          "fAttachmentLabel",
+          "fDivider",
+          "fFields",
+          "fReason",
+          "fTotal"
+        ]
+      },
+      "fHead": {
         "type": "Row",
         "props": {
           "gap": "sm",
@@ -288,66 +429,269 @@
           "justify": "between"
         },
         "children": [
-          "fieldAbnLabel",
-          "fieldAbnValueWrap"
+          "fInfo",
+          "fPager"
         ]
       },
-      "fieldAbnLabel": {
+      "fInfo": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "fSupplier",
+          "fSubtitleFile",
+          "fSubtitleNoFile"
+        ]
+      },
+      "fSupplier": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "supplierName"
+          },
+          "size": "md",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "fSubtitleFile": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{addr} · {time} · {file}",
+              "addr": {
+                "$item": "senderAddress"
+              },
+              "time": {
+                "$computed": "relative_time",
+                "args": {
+                  "value": {
+                    "$item": "receivedAt"
+                  }
+                }
+              },
+              "file": {
+                "$item": "attachmentName"
+              }
+            }
+          },
+          "tone": "muted",
+          "truncate": true
+        },
+        "visible": {
+          "$item": "attachmentName"
+        }
+      },
+      "fSubtitleNoFile": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{addr} · {time}",
+              "addr": {
+                "$item": "senderAddress"
+              },
+              "time": {
+                "$computed": "relative_time",
+                "args": {
+                  "value": {
+                    "$item": "receivedAt"
+                  }
+                }
+              }
+            }
+          },
+          "tone": "muted",
+          "truncate": true
+        },
+        "visible": {
+          "$item": "attachmentName",
+          "not": true
+        }
+      },
+      "fPager": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "fPrev",
+          "fPosition",
+          "fNext"
+        ]
+      },
+      "fPrev": {
+        "type": "IconButton",
+        "props": {
+          "icon": "ChevronLeft",
+          "ariaLabel": "Previous bill",
+          "variant": "outlined",
+          "disabled": {
+            "$item": "isFirst"
+          }
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/gmailBills/sel",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "prevPosition"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "fPosition": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "positionLabel"
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "fNext": {
+        "type": "IconButton",
+        "props": {
+          "icon": "ChevronRight",
+          "ariaLabel": "Next bill",
+          "variant": "outlined",
+          "disabled": {
+            "$item": "isLast"
+          }
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/gmailBills/sel",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "nextPosition"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "fAttachmentLabel": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "attachmentLabel"
+          },
+          "tone": "muted"
+        },
+        "visible": {
+          "$item": "attachmentLabel"
+        }
+      },
+      "fDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "fFields": {
+        "type": "Grid",
+        "props": {
+          "cols": 2,
+          "gap": "md"
+        },
+        "visible": {
+          "$item": "status",
+          "neq": "unreadable"
+        },
+        "children": [
+          "fAbn",
+          "fInvoice",
+          "fIssued",
+          "fDue",
+          "fSubtotal",
+          "fGst"
+        ]
+      },
+      "fAbn": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "fAbnLabel",
+          "fAbnRight"
+        ]
+      },
+      "fAbnLabel": {
         "type": "Caption",
         "props": {
           "text": "ABN",
           "tone": "muted"
         }
       },
-      "fieldAbnDotHigh": {
-        "type": "Dot",
-        "props": {
-          "size": "sm",
-          "tone": "success"
-        },
-        "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/abn/confidence",
-          "eq": "high"
-        }
-      },
-      "fieldAbnDotCheck": {
-        "type": "Dot",
-        "props": {
-          "size": "sm",
-          "tone": "warning"
-        },
-        "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/abn/confidence",
-          "eq": "check"
-        }
-      },
-      "fieldAbnValueWrap": {
+      "fAbnRight": {
         "type": "Row",
         "props": {
           "gap": "xs",
           "align": "center"
         },
         "children": [
-          "fieldAbnDotHigh",
-          "fieldAbnDotCheck",
-          "fieldAbnValue",
-          "fieldAbnNoValue"
+          "fAbnDotHigh",
+          "fAbnDotCheck",
+          "fAbnValue",
+          "fAbnNone"
         ]
       },
-      "fieldAbnValue": {
+      "fAbnDotHigh": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "success"
+        },
+        "visible": {
+          "$item": "fields/abn/confidence",
+          "eq": "high"
+        }
+      },
+      "fAbnDotCheck": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "warning"
+        },
+        "visible": {
+          "$item": "fields/abn/confidence",
+          "eq": "check"
+        }
+      },
+      "fAbnValue": {
         "type": "Text",
         "props": {
           "text": {
-            "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/abn/value"
+            "$item": "fields/abn/value"
           },
           "size": "sm",
           "weight": "medium"
         },
         "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/abn/value"
+          "$item": "fields/abn/value"
         }
       },
-      "fieldAbnNoValue": {
+      "fAbnNone": {
         "type": "Text",
         "props": {
           "text": "—",
@@ -355,11 +699,11 @@
           "tone": "muted"
         },
         "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/abn/value",
+          "$item": "fields/abn/value",
           "not": true
         }
       },
-      "fieldInvoiceNumber": {
+      "fInvoice": {
         "type": "Row",
         "props": {
           "gap": "sm",
@@ -367,66 +711,66 @@
           "justify": "between"
         },
         "children": [
-          "fieldInvoiceNumberLabel",
-          "fieldInvoiceNumberValueWrap"
+          "fInvoiceLabel",
+          "fInvoiceRight"
         ]
       },
-      "fieldInvoiceNumberLabel": {
+      "fInvoiceLabel": {
         "type": "Caption",
         "props": {
           "text": "Invoice #",
           "tone": "muted"
         }
       },
-      "fieldInvoiceNumberDotHigh": {
-        "type": "Dot",
-        "props": {
-          "size": "sm",
-          "tone": "success"
-        },
-        "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/invoiceNumber/confidence",
-          "eq": "high"
-        }
-      },
-      "fieldInvoiceNumberDotCheck": {
-        "type": "Dot",
-        "props": {
-          "size": "sm",
-          "tone": "warning"
-        },
-        "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/invoiceNumber/confidence",
-          "eq": "check"
-        }
-      },
-      "fieldInvoiceNumberValueWrap": {
+      "fInvoiceRight": {
         "type": "Row",
         "props": {
           "gap": "xs",
           "align": "center"
         },
         "children": [
-          "fieldInvoiceNumberDotHigh",
-          "fieldInvoiceNumberDotCheck",
-          "fieldInvoiceNumberValue",
-          "fieldInvoiceNumberNoValue"
+          "fInvoiceDotHigh",
+          "fInvoiceDotCheck",
+          "fInvoiceValue",
+          "fInvoiceNone"
         ]
       },
-      "fieldInvoiceNumberValue": {
+      "fInvoiceDotHigh": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "success"
+        },
+        "visible": {
+          "$item": "fields/invoiceNumber/confidence",
+          "eq": "high"
+        }
+      },
+      "fInvoiceDotCheck": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "warning"
+        },
+        "visible": {
+          "$item": "fields/invoiceNumber/confidence",
+          "eq": "check"
+        }
+      },
+      "fInvoiceValue": {
         "type": "Text",
         "props": {
           "text": {
-            "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/invoiceNumber/value"
+            "$item": "fields/invoiceNumber/value"
           },
           "size": "sm",
           "weight": "medium"
         },
         "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/invoiceNumber/value"
+          "$item": "fields/invoiceNumber/value"
         }
       },
-      "fieldInvoiceNumberNoValue": {
+      "fInvoiceNone": {
         "type": "Text",
         "props": {
           "text": "—",
@@ -434,11 +778,11 @@
           "tone": "muted"
         },
         "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/invoiceNumber/value",
+          "$item": "fields/invoiceNumber/value",
           "not": true
         }
       },
-      "fieldIssuedDate": {
+      "fIssued": {
         "type": "Row",
         "props": {
           "gap": "sm",
@@ -446,66 +790,66 @@
           "justify": "between"
         },
         "children": [
-          "fieldIssuedDateLabel",
-          "fieldIssuedDateValueWrap"
+          "fIssuedLabel",
+          "fIssuedRight"
         ]
       },
-      "fieldIssuedDateLabel": {
+      "fIssuedLabel": {
         "type": "Caption",
         "props": {
           "text": "Issued",
           "tone": "muted"
         }
       },
-      "fieldIssuedDateDotHigh": {
-        "type": "Dot",
-        "props": {
-          "size": "sm",
-          "tone": "success"
-        },
-        "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/issuedDate/confidence",
-          "eq": "high"
-        }
-      },
-      "fieldIssuedDateDotCheck": {
-        "type": "Dot",
-        "props": {
-          "size": "sm",
-          "tone": "warning"
-        },
-        "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/issuedDate/confidence",
-          "eq": "check"
-        }
-      },
-      "fieldIssuedDateValueWrap": {
+      "fIssuedRight": {
         "type": "Row",
         "props": {
           "gap": "xs",
           "align": "center"
         },
         "children": [
-          "fieldIssuedDateDotHigh",
-          "fieldIssuedDateDotCheck",
-          "fieldIssuedDateValue",
-          "fieldIssuedDateNoValue"
+          "fIssuedDotHigh",
+          "fIssuedDotCheck",
+          "fIssuedValue",
+          "fIssuedNone"
         ]
       },
-      "fieldIssuedDateValue": {
+      "fIssuedDotHigh": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "success"
+        },
+        "visible": {
+          "$item": "fields/issuedDate/confidence",
+          "eq": "high"
+        }
+      },
+      "fIssuedDotCheck": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "warning"
+        },
+        "visible": {
+          "$item": "fields/issuedDate/confidence",
+          "eq": "check"
+        }
+      },
+      "fIssuedValue": {
         "type": "Text",
         "props": {
           "text": {
-            "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/issuedDate/display"
+            "$item": "fields/issuedDate/display"
           },
           "size": "sm",
           "weight": "medium"
         },
         "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/issuedDate/display"
+          "$item": "fields/issuedDate/display"
         }
       },
-      "fieldIssuedDateNoValue": {
+      "fIssuedNone": {
         "type": "Text",
         "props": {
           "text": "—",
@@ -513,11 +857,11 @@
           "tone": "muted"
         },
         "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/issuedDate/display",
+          "$item": "fields/issuedDate/display",
           "not": true
         }
       },
-      "fieldDueDate": {
+      "fDue": {
         "type": "Row",
         "props": {
           "gap": "sm",
@@ -525,66 +869,66 @@
           "justify": "between"
         },
         "children": [
-          "fieldDueDateLabel",
-          "fieldDueDateValueWrap"
+          "fDueLabel",
+          "fDueRight"
         ]
       },
-      "fieldDueDateLabel": {
+      "fDueLabel": {
         "type": "Caption",
         "props": {
           "text": "Due",
           "tone": "muted"
         }
       },
-      "fieldDueDateDotHigh": {
-        "type": "Dot",
-        "props": {
-          "size": "sm",
-          "tone": "success"
-        },
-        "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/dueDate/confidence",
-          "eq": "high"
-        }
-      },
-      "fieldDueDateDotCheck": {
-        "type": "Dot",
-        "props": {
-          "size": "sm",
-          "tone": "warning"
-        },
-        "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/dueDate/confidence",
-          "eq": "check"
-        }
-      },
-      "fieldDueDateValueWrap": {
+      "fDueRight": {
         "type": "Row",
         "props": {
           "gap": "xs",
           "align": "center"
         },
         "children": [
-          "fieldDueDateDotHigh",
-          "fieldDueDateDotCheck",
-          "fieldDueDateValue",
-          "fieldDueDateNoValue"
+          "fDueDotHigh",
+          "fDueDotCheck",
+          "fDueValue",
+          "fDueNone"
         ]
       },
-      "fieldDueDateValue": {
+      "fDueDotHigh": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "success"
+        },
+        "visible": {
+          "$item": "fields/dueDate/confidence",
+          "eq": "high"
+        }
+      },
+      "fDueDotCheck": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "warning"
+        },
+        "visible": {
+          "$item": "fields/dueDate/confidence",
+          "eq": "check"
+        }
+      },
+      "fDueValue": {
         "type": "Text",
         "props": {
           "text": {
-            "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/dueDate/display"
+            "$item": "fields/dueDate/display"
           },
           "size": "sm",
           "weight": "medium"
         },
         "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/dueDate/display"
+          "$item": "fields/dueDate/display"
         }
       },
-      "fieldDueDateNoValue": {
+      "fDueNone": {
         "type": "Text",
         "props": {
           "text": "—",
@@ -592,11 +936,11 @@
           "tone": "muted"
         },
         "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/dueDate/display",
+          "$item": "fields/dueDate/display",
           "not": true
         }
       },
-      "fieldSubtotal": {
+      "fSubtotal": {
         "type": "Row",
         "props": {
           "gap": "sm",
@@ -604,60 +948,60 @@
           "justify": "between"
         },
         "children": [
-          "fieldSubtotalLabel",
-          "fieldSubtotalValueWrap"
+          "fSubtotalLabel",
+          "fSubtotalRight"
         ]
       },
-      "fieldSubtotalLabel": {
+      "fSubtotalLabel": {
         "type": "Caption",
         "props": {
           "text": "Subtotal",
           "tone": "muted"
         }
       },
-      "fieldSubtotalDotHigh": {
-        "type": "Dot",
-        "props": {
-          "size": "sm",
-          "tone": "success"
-        },
-        "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/subtotal/confidence",
-          "eq": "high"
-        }
-      },
-      "fieldSubtotalDotCheck": {
-        "type": "Dot",
-        "props": {
-          "size": "sm",
-          "tone": "warning"
-        },
-        "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/subtotal/confidence",
-          "eq": "check"
-        }
-      },
-      "fieldSubtotalValueWrap": {
+      "fSubtotalRight": {
         "type": "Row",
         "props": {
           "gap": "xs",
           "align": "center"
         },
         "children": [
-          "fieldSubtotalDotHigh",
-          "fieldSubtotalDotCheck",
-          "fieldSubtotalValue",
-          "fieldSubtotalNoValue"
+          "fSubtotalDotHigh",
+          "fSubtotalDotCheck",
+          "fSubtotalValue",
+          "fSubtotalNone"
         ]
       },
-      "fieldSubtotalValue": {
+      "fSubtotalDotHigh": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "success"
+        },
+        "visible": {
+          "$item": "fields/subtotal/confidence",
+          "eq": "high"
+        }
+      },
+      "fSubtotalDotCheck": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "warning"
+        },
+        "visible": {
+          "$item": "fields/subtotal/confidence",
+          "eq": "check"
+        }
+      },
+      "fSubtotalValue": {
         "type": "Text",
         "props": {
           "text": {
             "$computed": "format_currency",
             "args": {
               "value": {
-                "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/subtotal/value"
+                "$item": "fields/subtotal/value"
               }
             }
           },
@@ -665,10 +1009,10 @@
           "weight": "medium"
         },
         "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/subtotal/value"
+          "$item": "fields/subtotal/value"
         }
       },
-      "fieldSubtotalNoValue": {
+      "fSubtotalNone": {
         "type": "Text",
         "props": {
           "text": "—",
@@ -676,11 +1020,11 @@
           "tone": "muted"
         },
         "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/subtotal/value",
+          "$item": "fields/subtotal/value",
           "not": true
         }
       },
-      "fieldGst": {
+      "fGst": {
         "type": "Row",
         "props": {
           "gap": "sm",
@@ -688,60 +1032,60 @@
           "justify": "between"
         },
         "children": [
-          "fieldGstLabel",
-          "fieldGstValueWrap"
+          "fGstLabel",
+          "fGstRight"
         ]
       },
-      "fieldGstLabel": {
+      "fGstLabel": {
         "type": "Caption",
         "props": {
           "text": "GST",
           "tone": "muted"
         }
       },
-      "fieldGstDotHigh": {
-        "type": "Dot",
-        "props": {
-          "size": "sm",
-          "tone": "success"
-        },
-        "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/gst/confidence",
-          "eq": "high"
-        }
-      },
-      "fieldGstDotCheck": {
-        "type": "Dot",
-        "props": {
-          "size": "sm",
-          "tone": "warning"
-        },
-        "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/gst/confidence",
-          "eq": "check"
-        }
-      },
-      "fieldGstValueWrap": {
+      "fGstRight": {
         "type": "Row",
         "props": {
           "gap": "xs",
           "align": "center"
         },
         "children": [
-          "fieldGstDotHigh",
-          "fieldGstDotCheck",
-          "fieldGstValue",
-          "fieldGstNoValue"
+          "fGstDotHigh",
+          "fGstDotCheck",
+          "fGstValue",
+          "fGstNone"
         ]
       },
-      "fieldGstValue": {
+      "fGstDotHigh": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "success"
+        },
+        "visible": {
+          "$item": "fields/gst/confidence",
+          "eq": "high"
+        }
+      },
+      "fGstDotCheck": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "warning"
+        },
+        "visible": {
+          "$item": "fields/gst/confidence",
+          "eq": "check"
+        }
+      },
+      "fGstValue": {
         "type": "Text",
         "props": {
           "text": {
             "$computed": "format_currency",
             "args": {
               "value": {
-                "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/gst/value"
+                "$item": "fields/gst/value"
               }
             }
           },
@@ -749,10 +1093,10 @@
           "weight": "medium"
         },
         "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/gst/value"
+          "$item": "fields/gst/value"
         }
       },
-      "fieldGstNoValue": {
+      "fGstNone": {
         "type": "Text",
         "props": {
           "text": "—",
@@ -760,20 +1104,65 @@
           "tone": "muted"
         },
         "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/gst/value",
+          "$item": "fields/gst/value",
           "not": true
         }
       },
-      "totalRow": {
+      "fReason": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "visible": {
+          "$item": "status",
+          "eq": "unreadable"
+        },
+        "children": [
+          "fReasonRow"
+        ]
+      },
+      "fReasonRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "fReasonIcon",
+          "fReasonText"
+        ]
+      },
+      "fReasonIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "AlertTriangle",
+          "tone": "destructive",
+          "size": "sm"
+        }
+      },
+      "fReasonText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "reason"
+          },
+          "size": "sm"
+        }
+      },
+      "fTotal": {
         "type": "Section",
         "props": {
           "variant": "bordered"
         },
+        "visible": {
+          "$item": "status",
+          "neq": "unreadable"
+        },
         "children": [
-          "totalRowContent"
+          "fTotalRow"
         ]
       },
-      "totalRowContent": {
+      "fTotalRow": {
         "type": "Row",
         "props": {
           "gap": "sm",
@@ -781,11 +1170,12 @@
           "justify": "between"
         },
         "children": [
-          "totalLabel",
-          "totalValueWrap"
+          "fTotalLabel",
+          "fTotalValue",
+          "fTotalNone"
         ]
       },
-      "totalLabel": {
+      "fTotalLabel": {
         "type": "Text",
         "props": {
           "text": "Total",
@@ -794,25 +1184,14 @@
           "tone": "muted"
         }
       },
-      "totalValueWrap": {
-        "type": "Stack",
-        "props": {
-          "gap": "none",
-          "align": "end"
-        },
-        "children": [
-          "totalValue",
-          "totalNoValue"
-        ]
-      },
-      "totalValue": {
+      "fTotalValue": {
         "type": "Text",
         "props": {
           "text": {
             "$computed": "format_currency",
             "args": {
               "value": {
-                "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/total/value"
+                "$item": "amount"
               }
             }
           },
@@ -821,10 +1200,10 @@
           "tone": "destructive"
         },
         "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/total/value"
+          "$item": "amountText"
         }
       },
-      "totalNoValue": {
+      "fTotalNone": {
         "type": "Text",
         "props": {
           "text": "—",
@@ -832,54 +1211,93 @@
           "tone": "muted"
         },
         "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/fields/total/value",
+          "$item": "amountText",
           "not": true
         }
       },
-      "othersSection": {
+      "dots": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center",
+          "justify": "center"
+        },
+        "repeat": {
+          "statePath": "/google-workspace-gmail/list_bill_label_emails/bills",
+          "key": "id"
+        },
+        "children": [
+          "dotOn",
+          "dotOff"
+        ]
+      },
+      "dotOn": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "brand"
+        },
+        "visible": {
+          "$or": [
+            {
+              "$item": "position",
+              "eq": {
+                "$state": "/ui/gmailBills/sel"
+              }
+            },
+            {
+              "$and": [
+                {
+                  "$state": "/ui/gmailBills/sel",
+                  "not": true
+                },
+                {
+                  "$item": "isFirst"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "dotOff": {
+        "type": "Dot",
+        "props": {
+          "size": "xs",
+          "tone": "muted"
+        },
+        "visible": {
+          "$and": [
+            {
+              "$item": "position",
+              "neq": {
+                "$state": "/ui/gmailBills/sel"
+              }
+            },
+            {
+              "$or": [
+                {
+                  "$state": "/ui/gmailBills/sel"
+                },
+                {
+                  "$item": "isFirst",
+                  "not": true
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "listSection": {
         "type": "Stack",
         "props": {
           "gap": "sm"
         },
-        "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/others/0"
-        },
         "children": [
-          "othersHeading",
-          "othersList"
+          "listHeader",
+          "list"
         ]
       },
-      "othersHeading": {
-        "type": "Caption",
-        "props": {
-          "text": "Also in bills label",
-          "tone": "muted"
-        }
-      },
-      "othersList": {
-        "type": "Stack",
-        "props": {
-          "gap": "xs"
-        },
-        "repeat": {
-          "statePath": "/google-workspace-gmail/list_bill_label_emails/others",
-          "key": "id"
-        },
-        "children": [
-          "otherRow"
-        ]
-      },
-      "otherRow": {
-        "type": "Stack",
-        "props": {
-          "gap": "xs"
-        },
-        "children": [
-          "otherRowContent",
-          "otherDivider"
-        ]
-      },
-      "otherRowContent": {
+      "listHeader": {
         "type": "Row",
         "props": {
           "gap": "sm",
@@ -887,45 +1305,79 @@
           "justify": "between"
         },
         "children": [
-          "otherInfo",
-          "otherStatus"
+          "listTitle",
+          "listOrder"
         ]
       },
-      "otherInfo": {
+      "listTitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "All bills in label"
+        }
+      },
+      "listOrder": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Newest first"
+        }
+      },
+      "list": {
         "type": "Stack",
         "props": {
           "gap": "xs"
         },
+        "repeat": {
+          "statePath": "/google-workspace-gmail/list_bill_label_emails/bills",
+          "key": "id"
+        },
         "children": [
-          "otherCompany",
-          "otherMetaRow"
+          "groupDivider",
+          "groupHeader",
+          "billRow"
         ]
       },
-      "otherCompany": {
+      "groupDivider": {
+        "type": "Divider",
+        "props": {},
+        "visible": {
+          "$and": [
+            {
+              "$item": "groupStart"
+            },
+            {
+              "$item": "isFirst",
+              "not": true
+            }
+          ]
+        }
+      },
+      "groupHeader": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "visible": {
+          "$item": "groupStart"
+        },
+        "children": [
+          "groupSender",
+          "groupTime"
+        ]
+      },
+      "groupSender": {
         "type": "Text",
         "props": {
           "text": {
-            "$item": "companyName"
+            "$item": "senderAddress"
           },
           "size": "sm",
           "weight": "medium",
           "truncate": true
         }
       },
-      "otherMetaRow": {
-        "type": "Row",
-        "props": {
-          "gap": "xs",
-          "align": "center"
-        },
-        "children": [
-          "otherReceived",
-          "otherMetaSep",
-          "otherAmountPresent",
-          "otherAmountAbsent"
-        ]
-      },
-      "otherReceived": {
+      "groupTime": {
         "type": "Caption",
         "props": {
           "text": {
@@ -939,29 +1391,162 @@
           "tone": "muted"
         }
       },
-      "otherMetaSep": {
-        "type": "Caption",
+      "billRow": {
+        "type": "Row",
         "props": {
-          "text": "·",
-          "tone": "muted"
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true,
+          "selected": {
+            "$cond": {
+              "$or": [
+                {
+                  "$item": "position",
+                  "eq": {
+                    "$state": "/ui/gmailBills/sel"
+                  }
+                },
+                {
+                  "$and": [
+                    {
+                      "$state": "/ui/gmailBills/sel",
+                      "not": true
+                    },
+                    {
+                      "$item": "isFirst"
+                    }
+                  ]
+                }
+              ]
+            },
+            "$then": true,
+            "$else": false
+          }
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/gmailBills/sel",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "position"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "children": [
+          "billType",
+          "billName",
+          "billAmount",
+          "billNoAmount",
+          "billStatus"
+        ]
+      },
+      "billType": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "fileType"
+          },
+          "tone": "brand",
+          "variant": {
+            "$cond": {
+              "$or": [
+                {
+                  "$item": "position",
+                  "eq": {
+                    "$state": "/ui/gmailBills/sel"
+                  }
+                },
+                {
+                  "$and": [
+                    {
+                      "$state": "/ui/gmailBills/sel",
+                      "not": true
+                    },
+                    {
+                      "$item": "isFirst"
+                    }
+                  ]
+                }
+              ]
+            },
+            "$then": "solid",
+            "$else": "soft"
+          }
         }
       },
-      "otherAmountPresent": {
+      "billName": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center",
+          "grow": true
+        },
+        "children": [
+          "billSupplier",
+          "billFile"
+        ]
+      },
+      "billSupplier": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "supplierName"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "billFile": {
         "type": "Caption",
         "props": {
           "text": {
-            "$item": "amountText"
+            "$computed": "fmt",
+            "args": {
+              "pattern": "· {file}",
+              "file": {
+                "$item": "attachmentName"
+              }
+            }
           },
-          "tone": "muted"
+          "tone": "muted",
+          "truncate": true
+        },
+        "visible": {
+          "$item": "attachmentName"
+        }
+      },
+      "billAmount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$item": "amount"
+              }
+            }
+          },
+          "size": "sm",
+          "weight": "medium"
         },
         "visible": {
           "$item": "amountText"
         }
       },
-      "otherAmountAbsent": {
-        "type": "Caption",
+      "billNoAmount": {
+        "type": "Text",
         "props": {
           "text": "—",
+          "size": "sm",
           "tone": "muted"
         },
         "visible": {
@@ -969,7 +1554,7 @@
           "not": true
         }
       },
-      "otherStatus": {
+      "billStatus": {
         "type": "Badge",
         "props": {
           "text": {
@@ -980,10 +1565,6 @@
           },
           "variant": "soft"
         }
-      },
-      "otherDivider": {
-        "type": "Divider",
-        "props": {}
       },
       "footerDivider": {
         "type": "Divider",
@@ -997,11 +1578,11 @@
           "justify": "between"
         },
         "children": [
-          "footerLegend",
-          "footerOpen"
+          "legend",
+          "openList"
         ]
       },
-      "footerLegend": {
+      "legend": {
         "type": "Row",
         "props": {
           "gap": "xs",
@@ -1009,10 +1590,10 @@
         },
         "children": [
           "legendDotHigh",
-          "legendTextHigh",
+          "legendHigh",
           "legendSep",
           "legendDotCheck",
-          "legendTextCheck",
+          "legendCheck",
           "legendTail"
         ]
       },
@@ -1023,7 +1604,7 @@
           "tone": "success"
         }
       },
-      "legendTextHigh": {
+      "legendHigh": {
         "type": "Caption",
         "props": {
           "text": "high",
@@ -1044,7 +1625,7 @@
           "tone": "warning"
         }
       },
-      "legendTextCheck": {
+      "legendCheck": {
         "type": "Caption",
         "props": {
           "text": "check",
@@ -1058,7 +1639,20 @@
           "tone": "muted"
         }
       },
-      "footerOpen": {
+      "openList": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "repeat": {
+          "statePath": "/google-workspace-gmail/list_bill_label_emails/bills",
+          "key": "id"
+        },
+        "children": [
+          "openButton"
+        ]
+      },
+      "openButton": {
         "type": "Button",
         "props": {
           "label": "Open in Gmail",
@@ -1066,109 +1660,42 @@
           "tone": "info",
           "size": "sm"
         },
+        "visible": {
+          "$or": [
+            {
+              "$item": "position",
+              "eq": {
+                "$state": "/ui/gmailBills/sel"
+              }
+            },
+            {
+              "$and": [
+                {
+                  "$state": "/ui/gmailBills/sel",
+                  "not": true
+                },
+                {
+                  "$item": "isFirst"
+                }
+              ]
+            }
+          ]
+        },
         "on": {
           "click": {
             "action": "open_url",
             "params": {
               "url": {
-                "$state": "/google-workspace-gmail/list_bill_label_emails/latest/webLink"
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "webLink"
+                  }
+                }
               },
               "target": "_blank"
             }
           }
-        }
-      },
-      "featuredSubtitleWithFile": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{addr} · {time} · {file}",
-              "addr": {
-                "$state": "/google-workspace-gmail/list_bill_label_emails/latest/senderAddress"
-              },
-              "time": {
-                "$computed": "relative_time",
-                "args": {
-                  "value": {
-                    "$state": "/google-workspace-gmail/list_bill_label_emails/latest/receivedAt"
-                  }
-                }
-              },
-              "file": {
-                "$state": "/google-workspace-gmail/list_bill_label_emails/latest/attachmentName"
-              }
-            }
-          },
-          "tone": "muted",
-          "truncate": true
-        },
-        "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/attachmentName"
-        }
-      },
-      "featuredSubtitleNoFile": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{addr} · {time}",
-              "addr": {
-                "$state": "/google-workspace-gmail/list_bill_label_emails/latest/senderAddress"
-              },
-              "time": {
-                "$computed": "relative_time",
-                "args": {
-                  "value": {
-                    "$state": "/google-workspace-gmail/list_bill_label_emails/latest/receivedAt"
-                  }
-                }
-              }
-            }
-          },
-          "tone": "muted",
-          "truncate": true
-        },
-        "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/attachmentName",
-          "not": true
-        }
-      },
-      "headerStack": {
-        "type": "Stack",
-        "props": {
-          "gap": "xs"
-        },
-        "children": [
-          "title",
-          "labelPillRow"
-        ]
-      },
-      "headerRow": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "center"
-        },
-        "children": [
-          "headerIcon",
-          "headerStack"
-        ]
-      },
-      "featuredSupplier": {
-        "type": "Text",
-        "props": {
-          "text": {
-            "$state": "/google-workspace-gmail/list_bill_label_emails/latest/supplierName"
-          },
-          "size": "md",
-          "weight": "medium",
-          "truncate": true
-        },
-        "visible": {
-          "$state": "/google-workspace-gmail/list_bill_label_emails/latest/supplierName"
         }
       }
     }
