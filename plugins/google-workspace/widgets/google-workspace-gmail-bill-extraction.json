@@ -1,0 +1,1703 @@
+{
+  "id": "google-workspace-gmail-bill-extraction",
+  "title": "Bills from Gmail",
+  "description": "Every bill in your Gmail bills label, extracted from its PDF: ABN, invoice number, dates, subtotal, GST and total, each with a confidence. Page through bills one at a time. An email with several PDFs gives one bill per attachment, and unreadable bills show why.",
+  "category": "productivity",
+  "tags": [
+    "google",
+    "gmail",
+    "bills",
+    "invoices",
+    "accounts-payable",
+    "extraction"
+  ],
+  "keywords": [
+    "bills from gmail",
+    "invoice extraction",
+    "bill label",
+    "accounts payable",
+    "gmail bills",
+    "pdf invoice",
+    "extracted total",
+    "abn",
+    "gst"
+  ],
+  "connectorsUsed": [
+    "google-workspace-gmail"
+  ],
+  "brandColor": "#EA4335",
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 12
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 8
+    },
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 16
+    }
+  },
+  "dataProvider": {
+    "mcp": "google-workspace-gmail",
+    "tool": "list_bill_label_emails",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "headerRow"
+        ]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "headerIcon",
+          "headerStack"
+        ]
+      },
+      "headerIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Mail",
+          "tone": "default",
+          "size": "lg"
+        }
+      },
+      "headerStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "title",
+          "labelPillRow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Bills from Gmail",
+          "level": "h2"
+        }
+      },
+      "labelPillRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "labelBadge"
+        ]
+      },
+      "labelBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Label: {name} · {counts}",
+              "name": {
+                "$state": "/google-workspace-gmail/list_bill_label_emails/label/name"
+              },
+              "counts": {
+                "$state": "/google-workspace-gmail/list_bill_label_emails/summary/countsText"
+              }
+            }
+          },
+          "tone": "brand",
+          "variant": "soft"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/_loading/google-workspace-gmail.list_bill_label_emails"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ]
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "4rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "10rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "6rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No bill emails found in this label yet."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/google-workspace-gmail.list_bill_label_emails",
+              "not": true
+            },
+            {
+              "$state": "/google-workspace-gmail/list_bill_label_emails/bills/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/google-workspace-gmail.list_bill_label_emails",
+              "not": true
+            },
+            {
+              "$state": "/google-workspace-gmail/list_bill_label_emails/bills/0"
+            }
+          ]
+        },
+        "children": [
+          "stats",
+          "featuredList",
+          "dots",
+          "listSection",
+          "footerDivider",
+          "footerRow"
+        ]
+      },
+      "stats": {
+        "type": "Grid",
+        "props": {
+          "cols": 3,
+          "gap": "sm"
+        },
+        "children": [
+          "statTotal",
+          "statExtracted",
+          "statUnreadable"
+        ]
+      },
+      "statTotal": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "statTotalStack"
+        ]
+      },
+      "statTotalStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "statTotalValue",
+          "statTotalLabel"
+        ]
+      },
+      "statTotalValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$state": "/google-workspace-gmail/list_bill_label_emails/summary/extractedTotal"
+              }
+            }
+          },
+          "size": "sm"
+        }
+      },
+      "statTotalLabel": {
+        "type": "Caption",
+        "props": {
+          "text": "Extracted total",
+          "tone": "muted"
+        }
+      },
+      "statExtracted": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "statExtractedStack"
+        ]
+      },
+      "statExtractedStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "statExtractedValue",
+          "statExtractedLabel"
+        ]
+      },
+      "statExtractedValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/google-workspace-gmail/list_bill_label_emails/summary/extractedCount"
+          },
+          "size": "sm"
+        }
+      },
+      "statExtractedLabel": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "statExtractedIcon",
+          "statExtractedCaption"
+        ]
+      },
+      "statExtractedIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Check",
+          "tone": "success",
+          "size": "xs"
+        }
+      },
+      "statExtractedCaption": {
+        "type": "Caption",
+        "props": {
+          "text": "Extracted",
+          "tone": "success"
+        }
+      },
+      "statUnreadable": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "statUnreadableStack"
+        ]
+      },
+      "statUnreadableStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "statUnreadableValue",
+          "statUnreadableLabel"
+        ]
+      },
+      "statUnreadableValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/google-workspace-gmail/list_bill_label_emails/summary/unreadableCount"
+          },
+          "size": "sm"
+        }
+      },
+      "statUnreadableLabel": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "statUnreadableIcon",
+          "statUnreadableCaption"
+        ]
+      },
+      "statUnreadableIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "X",
+          "tone": "destructive",
+          "size": "xs"
+        }
+      },
+      "statUnreadableCaption": {
+        "type": "Caption",
+        "props": {
+          "text": "Unreadable",
+          "tone": "destructive"
+        }
+      },
+      "featuredList": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "repeat": {
+          "statePath": "/google-workspace-gmail/list_bill_label_emails/bills",
+          "key": "id"
+        },
+        "children": [
+          "featured"
+        ]
+      },
+      "featured": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "visible": {
+          "$or": [
+            {
+              "$item": "position",
+              "eq": {
+                "$state": "/ui/gmailBills/sel"
+              }
+            },
+            {
+              "$and": [
+                {
+                  "$state": "/ui/gmailBills/sel",
+                  "not": true
+                },
+                {
+                  "$item": "isFirst"
+                }
+              ]
+            }
+          ]
+        },
+        "children": [
+          "fHead",
+          "fAttachmentLabel",
+          "fDivider",
+          "fFields",
+          "fReason",
+          "fTotal"
+        ]
+      },
+      "fHead": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "fInfo",
+          "fPager"
+        ]
+      },
+      "fInfo": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "fSupplier",
+          "fSubtitleFile",
+          "fSubtitleNoFile"
+        ]
+      },
+      "fSupplier": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "supplierName"
+          },
+          "size": "md",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "fSubtitleFile": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{addr} · {time} · {file}",
+              "addr": {
+                "$item": "senderAddress"
+              },
+              "time": {
+                "$computed": "relative_time",
+                "args": {
+                  "value": {
+                    "$item": "receivedAt"
+                  }
+                }
+              },
+              "file": {
+                "$item": "attachmentName"
+              }
+            }
+          },
+          "tone": "muted",
+          "truncate": true
+        },
+        "visible": {
+          "$item": "attachmentName"
+        }
+      },
+      "fSubtitleNoFile": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{addr} · {time}",
+              "addr": {
+                "$item": "senderAddress"
+              },
+              "time": {
+                "$computed": "relative_time",
+                "args": {
+                  "value": {
+                    "$item": "receivedAt"
+                  }
+                }
+              }
+            }
+          },
+          "tone": "muted",
+          "truncate": true
+        },
+        "visible": {
+          "$item": "attachmentName",
+          "not": true
+        }
+      },
+      "fPager": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "fPrev",
+          "fPosition",
+          "fNext"
+        ]
+      },
+      "fPrev": {
+        "type": "IconButton",
+        "props": {
+          "icon": "ChevronLeft",
+          "ariaLabel": "Previous bill",
+          "variant": "outlined",
+          "disabled": {
+            "$item": "isFirst"
+          }
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/gmailBills/sel",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "prevPosition"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "fPosition": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "positionLabel"
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "fNext": {
+        "type": "IconButton",
+        "props": {
+          "icon": "ChevronRight",
+          "ariaLabel": "Next bill",
+          "variant": "outlined",
+          "disabled": {
+            "$item": "isLast"
+          }
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/gmailBills/sel",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "nextPosition"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "fAttachmentLabel": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "attachmentLabel"
+          },
+          "tone": "muted"
+        },
+        "visible": {
+          "$item": "attachmentLabel"
+        }
+      },
+      "fDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "fFields": {
+        "type": "Grid",
+        "props": {
+          "cols": 2,
+          "gap": "md"
+        },
+        "visible": {
+          "$item": "status",
+          "neq": "unreadable"
+        },
+        "children": [
+          "fAbn",
+          "fInvoice",
+          "fIssued",
+          "fDue",
+          "fSubtotal",
+          "fGst"
+        ]
+      },
+      "fAbn": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "fAbnLabel",
+          "fAbnRight"
+        ]
+      },
+      "fAbnLabel": {
+        "type": "Caption",
+        "props": {
+          "text": "ABN",
+          "tone": "muted"
+        }
+      },
+      "fAbnRight": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "fAbnDotHigh",
+          "fAbnDotCheck",
+          "fAbnValue",
+          "fAbnNone"
+        ]
+      },
+      "fAbnDotHigh": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "success"
+        },
+        "visible": {
+          "$item": "fields/abn/confidence",
+          "eq": "high"
+        }
+      },
+      "fAbnDotCheck": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "warning"
+        },
+        "visible": {
+          "$item": "fields/abn/confidence",
+          "eq": "check"
+        }
+      },
+      "fAbnValue": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "fields/abn/value"
+          },
+          "size": "sm",
+          "weight": "medium"
+        },
+        "visible": {
+          "$item": "fields/abn/value"
+        }
+      },
+      "fAbnNone": {
+        "type": "Text",
+        "props": {
+          "text": "—",
+          "size": "sm",
+          "tone": "muted"
+        },
+        "visible": {
+          "$item": "fields/abn/value",
+          "not": true
+        }
+      },
+      "fInvoice": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "fInvoiceLabel",
+          "fInvoiceRight"
+        ]
+      },
+      "fInvoiceLabel": {
+        "type": "Caption",
+        "props": {
+          "text": "Invoice #",
+          "tone": "muted"
+        }
+      },
+      "fInvoiceRight": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "fInvoiceDotHigh",
+          "fInvoiceDotCheck",
+          "fInvoiceValue",
+          "fInvoiceNone"
+        ]
+      },
+      "fInvoiceDotHigh": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "success"
+        },
+        "visible": {
+          "$item": "fields/invoiceNumber/confidence",
+          "eq": "high"
+        }
+      },
+      "fInvoiceDotCheck": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "warning"
+        },
+        "visible": {
+          "$item": "fields/invoiceNumber/confidence",
+          "eq": "check"
+        }
+      },
+      "fInvoiceValue": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "fields/invoiceNumber/value"
+          },
+          "size": "sm",
+          "weight": "medium"
+        },
+        "visible": {
+          "$item": "fields/invoiceNumber/value"
+        }
+      },
+      "fInvoiceNone": {
+        "type": "Text",
+        "props": {
+          "text": "—",
+          "size": "sm",
+          "tone": "muted"
+        },
+        "visible": {
+          "$item": "fields/invoiceNumber/value",
+          "not": true
+        }
+      },
+      "fIssued": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "fIssuedLabel",
+          "fIssuedRight"
+        ]
+      },
+      "fIssuedLabel": {
+        "type": "Caption",
+        "props": {
+          "text": "Issued",
+          "tone": "muted"
+        }
+      },
+      "fIssuedRight": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "fIssuedDotHigh",
+          "fIssuedDotCheck",
+          "fIssuedValue",
+          "fIssuedNone"
+        ]
+      },
+      "fIssuedDotHigh": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "success"
+        },
+        "visible": {
+          "$item": "fields/issuedDate/confidence",
+          "eq": "high"
+        }
+      },
+      "fIssuedDotCheck": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "warning"
+        },
+        "visible": {
+          "$item": "fields/issuedDate/confidence",
+          "eq": "check"
+        }
+      },
+      "fIssuedValue": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "fields/issuedDate/display"
+          },
+          "size": "sm",
+          "weight": "medium"
+        },
+        "visible": {
+          "$item": "fields/issuedDate/display"
+        }
+      },
+      "fIssuedNone": {
+        "type": "Text",
+        "props": {
+          "text": "—",
+          "size": "sm",
+          "tone": "muted"
+        },
+        "visible": {
+          "$item": "fields/issuedDate/display",
+          "not": true
+        }
+      },
+      "fDue": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "fDueLabel",
+          "fDueRight"
+        ]
+      },
+      "fDueLabel": {
+        "type": "Caption",
+        "props": {
+          "text": "Due",
+          "tone": "muted"
+        }
+      },
+      "fDueRight": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "fDueDotHigh",
+          "fDueDotCheck",
+          "fDueValue",
+          "fDueNone"
+        ]
+      },
+      "fDueDotHigh": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "success"
+        },
+        "visible": {
+          "$item": "fields/dueDate/confidence",
+          "eq": "high"
+        }
+      },
+      "fDueDotCheck": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "warning"
+        },
+        "visible": {
+          "$item": "fields/dueDate/confidence",
+          "eq": "check"
+        }
+      },
+      "fDueValue": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "fields/dueDate/display"
+          },
+          "size": "sm",
+          "weight": "medium"
+        },
+        "visible": {
+          "$item": "fields/dueDate/display"
+        }
+      },
+      "fDueNone": {
+        "type": "Text",
+        "props": {
+          "text": "—",
+          "size": "sm",
+          "tone": "muted"
+        },
+        "visible": {
+          "$item": "fields/dueDate/display",
+          "not": true
+        }
+      },
+      "fSubtotal": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "fSubtotalLabel",
+          "fSubtotalRight"
+        ]
+      },
+      "fSubtotalLabel": {
+        "type": "Caption",
+        "props": {
+          "text": "Subtotal",
+          "tone": "muted"
+        }
+      },
+      "fSubtotalRight": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "fSubtotalDotHigh",
+          "fSubtotalDotCheck",
+          "fSubtotalValue",
+          "fSubtotalNone"
+        ]
+      },
+      "fSubtotalDotHigh": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "success"
+        },
+        "visible": {
+          "$item": "fields/subtotal/confidence",
+          "eq": "high"
+        }
+      },
+      "fSubtotalDotCheck": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "warning"
+        },
+        "visible": {
+          "$item": "fields/subtotal/confidence",
+          "eq": "check"
+        }
+      },
+      "fSubtotalValue": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$item": "fields/subtotal/value"
+              }
+            }
+          },
+          "size": "sm",
+          "weight": "medium"
+        },
+        "visible": {
+          "$item": "fields/subtotal/value"
+        }
+      },
+      "fSubtotalNone": {
+        "type": "Text",
+        "props": {
+          "text": "—",
+          "size": "sm",
+          "tone": "muted"
+        },
+        "visible": {
+          "$item": "fields/subtotal/value",
+          "not": true
+        }
+      },
+      "fGst": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "fGstLabel",
+          "fGstRight"
+        ]
+      },
+      "fGstLabel": {
+        "type": "Caption",
+        "props": {
+          "text": "GST",
+          "tone": "muted"
+        }
+      },
+      "fGstRight": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "fGstDotHigh",
+          "fGstDotCheck",
+          "fGstValue",
+          "fGstNone"
+        ]
+      },
+      "fGstDotHigh": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "success"
+        },
+        "visible": {
+          "$item": "fields/gst/confidence",
+          "eq": "high"
+        }
+      },
+      "fGstDotCheck": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "warning"
+        },
+        "visible": {
+          "$item": "fields/gst/confidence",
+          "eq": "check"
+        }
+      },
+      "fGstValue": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$item": "fields/gst/value"
+              }
+            }
+          },
+          "size": "sm",
+          "weight": "medium"
+        },
+        "visible": {
+          "$item": "fields/gst/value"
+        }
+      },
+      "fGstNone": {
+        "type": "Text",
+        "props": {
+          "text": "—",
+          "size": "sm",
+          "tone": "muted"
+        },
+        "visible": {
+          "$item": "fields/gst/value",
+          "not": true
+        }
+      },
+      "fReason": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "visible": {
+          "$item": "status",
+          "eq": "unreadable"
+        },
+        "children": [
+          "fReasonRow"
+        ]
+      },
+      "fReasonRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "fReasonIcon",
+          "fReasonText"
+        ]
+      },
+      "fReasonIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "AlertTriangle",
+          "tone": "destructive",
+          "size": "sm"
+        }
+      },
+      "fReasonText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "reason"
+          },
+          "size": "sm"
+        }
+      },
+      "fTotal": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "visible": {
+          "$item": "status",
+          "neq": "unreadable"
+        },
+        "children": [
+          "fTotalRow"
+        ]
+      },
+      "fTotalRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "fTotalLabel",
+          "fTotalValue",
+          "fTotalNone"
+        ]
+      },
+      "fTotalLabel": {
+        "type": "Text",
+        "props": {
+          "text": "Total",
+          "size": "sm",
+          "weight": "medium",
+          "tone": "muted"
+        }
+      },
+      "fTotalValue": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$item": "amount"
+              }
+            }
+          },
+          "size": "lg",
+          "weight": "medium",
+          "tone": "destructive"
+        },
+        "visible": {
+          "$item": "amountText"
+        }
+      },
+      "fTotalNone": {
+        "type": "Text",
+        "props": {
+          "text": "—",
+          "size": "lg",
+          "tone": "muted"
+        },
+        "visible": {
+          "$item": "amountText",
+          "not": true
+        }
+      },
+      "dots": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center",
+          "justify": "center"
+        },
+        "repeat": {
+          "statePath": "/google-workspace-gmail/list_bill_label_emails/bills",
+          "key": "id"
+        },
+        "children": [
+          "dotOn",
+          "dotOff"
+        ]
+      },
+      "dotOn": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "brand"
+        },
+        "visible": {
+          "$or": [
+            {
+              "$item": "position",
+              "eq": {
+                "$state": "/ui/gmailBills/sel"
+              }
+            },
+            {
+              "$and": [
+                {
+                  "$state": "/ui/gmailBills/sel",
+                  "not": true
+                },
+                {
+                  "$item": "isFirst"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "dotOff": {
+        "type": "Dot",
+        "props": {
+          "size": "xs",
+          "tone": "muted"
+        },
+        "visible": {
+          "$and": [
+            {
+              "$item": "position",
+              "neq": {
+                "$state": "/ui/gmailBills/sel"
+              }
+            },
+            {
+              "$or": [
+                {
+                  "$state": "/ui/gmailBills/sel"
+                },
+                {
+                  "$item": "isFirst",
+                  "not": true
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "listSection": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "listHeader",
+          "list"
+        ]
+      },
+      "listHeader": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "listTitle",
+          "listOrder"
+        ]
+      },
+      "listTitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "All bills in label"
+        }
+      },
+      "listOrder": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Newest first"
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "statePath": "/google-workspace-gmail/list_bill_label_emails/bills",
+          "key": "id"
+        },
+        "children": [
+          "groupDivider",
+          "groupHeader",
+          "billRow"
+        ]
+      },
+      "groupDivider": {
+        "type": "Divider",
+        "props": {},
+        "visible": {
+          "$and": [
+            {
+              "$item": "groupStart"
+            },
+            {
+              "$item": "isFirst",
+              "not": true
+            }
+          ]
+        }
+      },
+      "groupHeader": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "visible": {
+          "$item": "groupStart"
+        },
+        "children": [
+          "groupSender",
+          "groupTime"
+        ]
+      },
+      "groupSender": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "senderAddress"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "groupTime": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "receivedAt"
+              }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "billRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true,
+          "selected": {
+            "$cond": {
+              "$or": [
+                {
+                  "$item": "position",
+                  "eq": {
+                    "$state": "/ui/gmailBills/sel"
+                  }
+                },
+                {
+                  "$and": [
+                    {
+                      "$state": "/ui/gmailBills/sel",
+                      "not": true
+                    },
+                    {
+                      "$item": "isFirst"
+                    }
+                  ]
+                }
+              ]
+            },
+            "$then": true,
+            "$else": false
+          }
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/gmailBills/sel",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "position"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "children": [
+          "billType",
+          "billName",
+          "billAmount",
+          "billNoAmount",
+          "billStatus"
+        ]
+      },
+      "billType": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "fileType"
+          },
+          "tone": "brand",
+          "variant": {
+            "$cond": {
+              "$or": [
+                {
+                  "$item": "position",
+                  "eq": {
+                    "$state": "/ui/gmailBills/sel"
+                  }
+                },
+                {
+                  "$and": [
+                    {
+                      "$state": "/ui/gmailBills/sel",
+                      "not": true
+                    },
+                    {
+                      "$item": "isFirst"
+                    }
+                  ]
+                }
+              ]
+            },
+            "$then": "solid",
+            "$else": "soft"
+          }
+        }
+      },
+      "billName": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center",
+          "grow": true
+        },
+        "children": [
+          "billSupplier",
+          "billFile"
+        ]
+      },
+      "billSupplier": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "supplierName"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "billFile": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "· {file}",
+              "file": {
+                "$item": "attachmentName"
+              }
+            }
+          },
+          "tone": "muted",
+          "truncate": true
+        },
+        "visible": {
+          "$item": "attachmentName"
+        }
+      },
+      "billAmount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$item": "amount"
+              }
+            }
+          },
+          "size": "sm",
+          "weight": "medium"
+        },
+        "visible": {
+          "$item": "amountText"
+        }
+      },
+      "billNoAmount": {
+        "type": "Text",
+        "props": {
+          "text": "—",
+          "size": "sm",
+          "tone": "muted"
+        },
+        "visible": {
+          "$item": "amountText",
+          "not": true
+        }
+      },
+      "billStatus": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "statusLabel"
+          },
+          "tone": {
+            "$item": "statusTone"
+          },
+          "variant": "soft"
+        }
+      },
+      "footerDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "footerRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "legend",
+          "openList"
+        ]
+      },
+      "legend": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "legendDotHigh",
+          "legendHigh",
+          "legendSep",
+          "legendDotCheck",
+          "legendCheck",
+          "legendTail"
+        ]
+      },
+      "legendDotHigh": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "success"
+        }
+      },
+      "legendHigh": {
+        "type": "Caption",
+        "props": {
+          "text": "high",
+          "tone": "muted"
+        }
+      },
+      "legendSep": {
+        "type": "Caption",
+        "props": {
+          "text": "·",
+          "tone": "muted"
+        }
+      },
+      "legendDotCheck": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "warning"
+        }
+      },
+      "legendCheck": {
+        "type": "Caption",
+        "props": {
+          "text": "check",
+          "tone": "muted"
+        }
+      },
+      "legendTail": {
+        "type": "Caption",
+        "props": {
+          "text": "— field confidence",
+          "tone": "muted"
+        }
+      },
+      "openList": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "repeat": {
+          "statePath": "/google-workspace-gmail/list_bill_label_emails/bills",
+          "key": "id"
+        },
+        "children": [
+          "openButton"
+        ]
+      },
+      "openButton": {
+        "type": "Button",
+        "props": {
+          "label": "Open in Gmail",
+          "variant": "primary",
+          "tone": "info",
+          "size": "sm"
+        },
+        "visible": {
+          "$or": [
+            {
+              "$item": "position",
+              "eq": {
+                "$state": "/ui/gmailBills/sel"
+              }
+            },
+            {
+              "$and": [
+                {
+                  "$state": "/ui/gmailBills/sel",
+                  "not": true
+                },
+                {
+                  "$item": "isFirst"
+                }
+              ]
+            }
+          ]
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "webLink"
+                  }
+                }
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      }
+    }
+  }
+}
