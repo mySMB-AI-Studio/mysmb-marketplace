@@ -2001,6 +2001,7 @@ const elements = {
     functions: {
         analyze_bill_duplicates,
         analyze_autopay_exclusions,
+        job_allocation_overview,
         time_ago,
         paginate,
         rate_variance_rows,

@@ -1,0 +1,53 @@
+{
+  "title": "Client Report Catalogue",
+  "description": "Client Report Analytics catalogue (CRA-00): pick a client from your Xero, MYOB or QuickBooks connections and see every client report as a box, grouped by Financial, Tax & BAS, Sales & purchases, Quality, Activity, Time and Platform reports, with what is live now and how to open it.",
+  "tags": [
+    "client-report-analytics",
+    "catalogue",
+    "CRA-00",
+    "CRA-16"
+  ],
+  "fileName": "client-report-catalogue.html",
+  "dataBindings": {
+    "inputs": [
+      {
+        "name": "client",
+        "label": "Client",
+        "type": "string",
+        "maxLength": 120,
+        "default": ""
+      }
+    ],
+    "bindings": [
+      {
+        "id": "xero_connections",
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_connections"
+        },
+        "params": {}
+      },
+      {
+        "id": "myob_company_files",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_company_files"
+        },
+        "params": {}
+      },
+      {
+        "id": "quickbooks_company",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "qbo_query"
+        },
+        "params": {
+          "query": {
+            "kind": "static",
+            "value": "SELECT * FROM CompanyInfo"
+          }
+        }
+      }
+    ]
+  }
+}
