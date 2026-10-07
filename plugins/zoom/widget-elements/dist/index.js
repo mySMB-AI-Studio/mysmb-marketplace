@@ -231,6 +231,20 @@ const prepend_meeting = (args) => {
     return [newMeeting, ...deduped];
 };
 const bool_not = (args) => !args.value;
+/**
+ * Zoom tools with no try/catch (list_webinars, get_webinar) let a thrown
+ * ZoomApiError propagate as a normal MCP tool result rather than a
+ * harness-level failure — confirmed live against an account without the
+ * Webinar add-on: the harness's /api/mcp/call returns `ok:true` with the
+ * error message embedded as a plain STRING in `data`, never populating
+ * `/_errors/...`. Without this, the tile would silently fall back to a
+ * generic "no webinars" empty state instead of showing the real, helpful
+ * "needs the Webinar add-on" message. Returns the raw value when it's a
+ * string (the error case); empty string otherwise (resolved to the
+ * genuine webinars object on success).
+ * Args: { value: unknown }
+ */
+const extract_string_error = (args) => typeof args.value === 'string' ? args.value : '';
 const elements = {
     slug: 'zoom',
     functions: {
@@ -259,6 +273,7 @@ const elements = {
         default_schedule_form,
         prepend_meeting,
         bool_not,
+        extract_string_error,
     },
 };
 export default elements;
