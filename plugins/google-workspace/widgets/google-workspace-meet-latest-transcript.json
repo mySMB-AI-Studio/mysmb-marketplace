@@ -73,35 +73,42 @@
       },
       "headerTitleIcon": {
         "type": "Icon",
-        "props": { "name": "Video", "tone": "accent", "size": "sm" }
+        "props": { "name": "Video", "tone": "accent", "size": "md" }
       },
       "headerStack": {
         "type": "Stack",
         "props": { "gap": "xs", "grow": true },
         "children": [
           "headerEyebrow",
-          "headerHeading",
+          "headerHeadingRow",
           "meetingTitle",
           "meetingMeta",
-          "participantAvatars",
-          "transcriptBannerRow"
+          "avatarsAndBannerRow"
         ]
       },
       "headerEyebrow": {
-        "type": "Eyebrow",
-        "props": { "text": "Google Meet · latest transcript" }
+        "type": "Heading",
+        "props": { "text": "Google Meet", "level": "h3" }
+      },
+      "headerHeadingRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "baseline" },
+        "children": ["headerHeading", "headerHeadingSuffix"]
       },
       "headerHeading": {
         "type": "Heading",
         "props": { "text": "Meeting Transcripts", "level": "h2" }
       },
+      "headerHeadingSuffix": {
+        "type": "Caption",
+        "props": { "text": "· latest transcript", "tone": "muted" }
+      },
       "meetingTitle": {
-        "type": "Text",
+        "type": "Heading",
         "props": {
           "text": { "$state": "/google-workspace-meet/get_meeting_dashboard/latestMeeting/title" },
-          "size": "lg",
-          "weight": "medium",
-          "truncate": true
+          "level": "h1",
+          "wrap": true
         }
       },
       "meetingMeta": {
@@ -125,6 +132,11 @@
           },
           "tone": "muted"
         }
+      },
+      "avatarsAndBannerRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["participantAvatars", "transcriptBannerRow"]
       },
       "participantAvatars": {
         "type": "Row",
@@ -236,11 +248,11 @@
       },
       "talkTimeEyebrow": {
         "type": "Eyebrow",
-        "props": { "text": "Talk time" }
+        "props": { "text": "TALK TIME" }
       },
       "talkTimeHint": {
         "type": "Caption",
-        "props": { "text": "Share of spoken words", "tone": "muted" }
+        "props": { "text": "share of spoken words", "tone": "muted" }
       },
       "talkTimeList": {
         "type": "Stack",
@@ -299,11 +311,26 @@
       "searchSection": {
         "type": "Section",
         "props": { "variant": "plain" },
-        "children": ["searchEyebrow", "searchInput", "searchCountCaption", "searchResults", "searchPrompt"]
+        "children": ["searchControlsAndResults"]
       },
-      "searchEyebrow": {
-        "type": "Eyebrow",
-        "props": { "text": "Transcript search" }
+      "searchControlsAndResults": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["searchControlsGroup", "searchResults"]
+      },
+      "searchControlsGroup": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["searchInputRow", "searchCountCaption"]
+      },
+      "searchInputRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["searchInputIcon", "searchInput"]
+      },
+      "searchInputIcon": {
+        "type": "Icon",
+        "props": { "name": "Search", "tone": "muted", "size": "sm" }
       },
       "searchInput": {
         "type": "TextInput",
@@ -333,11 +360,6 @@
           "tone": "muted"
         },
         "visible": { "$state": "/ui/meetTranscriptSearch/query" }
-      },
-      "searchPrompt": {
-        "type": "Caption",
-        "props": { "text": "Type to search what was said in this meeting.", "tone": "muted" },
-        "visible": { "$state": "/ui/meetTranscriptSearch/query", "not": true }
       },
       "searchResults": {
         "type": "Stack",
@@ -400,11 +422,16 @@
       "recentSection": {
         "type": "Section",
         "props": { "variant": "plain" },
-        "children": ["recentEyebrow", "recentList"]
+        "children": ["recentEyebrow", "recentList", "recentEmpty"]
       },
       "recentEyebrow": {
         "type": "Eyebrow",
         "props": { "text": "Recent meetings" }
+      },
+      "recentEmpty": {
+        "type": "Caption",
+        "props": { "text": "No other Google Meet recordings in the last 30 days.", "tone": "muted" },
+        "visible": { "$state": "/google-workspace-meet/get_meeting_dashboard/recentMeetings/0", "not": true }
       },
       "recentList": {
         "type": "Stack",

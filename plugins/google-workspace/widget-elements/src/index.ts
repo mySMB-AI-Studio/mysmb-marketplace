@@ -61,7 +61,10 @@ function normalizeStatus(value: unknown): TranscriptStatus {
 // Non-semantic tone cycle for distinguishing speakers — deliberately
 // excludes success/warning/destructive, which are reserved for transcript
 // status (ready/processing/none) elsewhere in the same tile.
-const SPEAKER_TONES = ['accent', 'info', 'brand', 'muted', 'default'];
+// "accent"/"brand" render near-invisible on the dark theme without a tile
+// brand colour set (confirmed live: the highest-talk-time speaker, index 0,
+// got "accent" and both their talk-time bar and avatar were unreadable).
+const SPEAKER_TONES = ['info', 'success', 'warning', 'destructive'];
 
 // ── mime_label ─────────────────────────────────────────────────────────
 // Referenced in widget JSON as "google-workspace_mime_label" — the slug
