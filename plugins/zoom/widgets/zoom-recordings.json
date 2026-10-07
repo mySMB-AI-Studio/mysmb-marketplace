@@ -1,7 +1,7 @@
 {
   "id": "zoom-recordings",
   "title": "Zoom — Recordings & Transcripts",
-  "description": "Everything recorded in the connected Zoom account over the last 30 days, split into tabs matching Zoom's own Hub: Cloud Recordings, Transcripts (pick a meeting to read its transcript, parsed from raw WebVTT into clean timestamped lines), and My Notes. Each tab shows a calm empty state when nothing qualifies. Deliberately excludes 'Computer recordings' — those live only on the local disk that recorded them and are invisible to Zoom's cloud API for anyone, not just this tile.",
+  "description": "Recently recorded Zoom meetings (the account's recent-recordings window — Zoom's own API default, not a fixed day count), split into tabs matching Zoom's own Hub: Cloud Recordings, Transcripts (pick a meeting to read its transcript, parsed from raw WebVTT into clean timestamped lines), and My Notes. Each tab shows a calm empty state when nothing qualifies. Deliberately excludes 'Computer recordings' — those live only on the local disk that recorded them and are invisible to Zoom's cloud API for anyone, not just this tile.",
   "category": "communications",
   "tags": ["zoom", "recordings", "transcript", "video-conferencing", "my-notes"],
   "keywords": ["zoom recordings", "call transcript", "cloud recordings", "my notes", "captions", "vtt"],
@@ -15,10 +15,7 @@
   "dataProvider": {
     "mcp": "zoom",
     "tool": "list_recordings",
-    "params": {
-      "from": { "$computed": "zoom_recent_window", "args": { "field": "from" } },
-      "to": { "$computed": "zoom_recent_window", "args": { "field": "to" } }
-    }
+    "params": {}
   },
   "spec": {
     "root": "card",
@@ -120,7 +117,7 @@
       "titleIcon": { "type": "Icon", "props": { "name": "FolderClock", "tone": "accent", "size": "sm" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
       "title": { "type": "Heading", "props": { "text": "Recordings & Transcripts", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Zoom · last 30 days" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Zoom · recent recordings" } },
 
       "divider1": { "type": "Divider", "props": {} },
 
@@ -175,7 +172,7 @@
       },
       "cloudEmpty": {
         "type": "Caption",
-        "props": { "text": "No cloud recordings in the last 30 days.", "tone": "destructive" },
+        "props": { "text": "No recent cloud recordings.", "tone": "destructive" },
         "visible": { "$state": "/ui/cloudRecordings/0", "not": true }
       },
       "cloudList": {
@@ -193,7 +190,7 @@
       },
       "notesEmpty": {
         "type": "Caption",
-        "props": { "text": "No My Notes recordings in the last 30 days.", "tone": "destructive" },
+        "props": { "text": "No recent My Notes recordings.", "tone": "destructive" },
         "visible": { "$state": "/ui/myNotesRecordings/0", "not": true }
       },
       "notesList": {
@@ -228,7 +225,7 @@
       },
       "transcriptsEmpty": {
         "type": "Caption",
-        "props": { "text": "No transcripts available in the last 30 days.", "tone": "destructive" },
+        "props": { "text": "No recent transcripts available.", "tone": "destructive" },
         "visible": { "$state": "/ui/transcriptOptions/0", "not": true }
       },
       "transcriptsContent": {

@@ -83,23 +83,6 @@ const transcript_lines: ComputedFunction = (args) => {
 const transcript_tone: ComputedFunction = (args) => (args.available ? 'success' : 'warning');
 
 /**
- * Zoom's list_recordings defaults to a same-day window when no from/to is
- * given (confirmed live) — without an explicit range the picker would almost
- * always look empty. Returns a 30-day lookback window ending today.
- * Optional { field } arg extracts "from" or "to"; omit for the full object.
- */
-const recent_window: ComputedFunction = (args) => {
-  const today = new Date();
-  const from = new Date(today);
-  from.setDate(from.getDate() - 30);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  const result = { from: fmt(from), to: fmt(today) };
-  const field = args.field as string | undefined;
-  return field ? result[field as keyof typeof result] : result;
-};
-
-/**
  * Tone for how soon a meeting starts — warning (today/tomorrow), muted
  * (further out) — so the Upcoming Meetings list reads at a glance without
  * requiring the viewer to parse every date. Deliberately NOT "accent": that
@@ -269,7 +252,6 @@ const elements: PluginElementsModule = {
     format_duration,
     transcript_lines,
     transcript_tone,
-    recent_window,
     meeting_urgency_tone,
     filter_cloud_recordings,
     filter_my_notes,
