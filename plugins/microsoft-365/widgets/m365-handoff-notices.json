@@ -1,0 +1,776 @@
+{
+  "id": "m365-handoff-notices",
+  "title": "Hand-off Notices",
+  "description": "Emails subjected 'Hand-off: ...' in the last 14 days, in either direction, with whether the other side has replied in the same conversation. Chips show parsed detail when the sender's body follows that format.",
+  "category": "productivity",
+  "tags": [
+    "m365",
+    "outlook",
+    "email",
+    "handoff",
+    "collaboration"
+  ],
+  "keywords": [
+    "hand-off",
+    "handoff",
+    "notices",
+    "acknowledged",
+    "outlook",
+    "email",
+    "work transfer"
+  ],
+  "connectorsUsed": [
+    "m365-mail-read"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 10
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 7
+    },
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 15
+    }
+  },
+  "dataProvider": {
+    "mcp": "m365-mail-read",
+    "tool": "list_handoff_notices",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "headerRow"
+        ]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start",
+          "justify": "between"
+        },
+        "children": [
+          "headerLeft",
+          "headerIcon"
+        ]
+      },
+      "headerLeft": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "eyebrow",
+          "title"
+        ]
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Work hand-offs · Outlook",
+          "tone": "accent"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Hand-off Notices",
+          "level": "h2"
+        }
+      },
+      "headerIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Mail",
+          "tone": "default",
+          "size": "lg"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/_loading/m365-mail-read.list_handoff_notices"
+        },
+        "children": [
+          "sk1",
+          "sk2"
+        ]
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "4rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "14rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No hand-off emails in the last 14 days."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/m365-mail-read.list_handoff_notices",
+              "not": true
+            },
+            {
+              "$state": "/m365-mail-read/list_handoff_notices/summary/allCount",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/m365-mail-read.list_handoff_notices",
+              "not": true
+            },
+            {
+              "$state": "/m365-mail-read/list_handoff_notices/summary/allCount"
+            }
+          ]
+        },
+        "children": [
+          "stats",
+          "tabs",
+          "list",
+          "footerDivider",
+          "footerRow"
+        ]
+      },
+      "stats": {
+        "type": "Grid",
+        "props": {
+          "cols": 2,
+          "gap": "sm"
+        },
+        "children": [
+          "statToMe",
+          "statFromMe"
+        ]
+      },
+      "statToMe": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "statToMeStack"
+        ]
+      },
+      "statToMeStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "statToMeValue",
+          "statToMeLabel"
+        ]
+      },
+      "statToMeValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/m365-mail-read/list_handoff_notices/summary/toMeCount"
+          },
+          "size": "md"
+        }
+      },
+      "statToMeLabel": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Handed to you · {n} not acknowledged",
+              "n": {
+                "$state": "/m365-mail-read/list_handoff_notices/summary/toMeUnacknowledged"
+              }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "statFromMe": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "statFromMeStack"
+        ]
+      },
+      "statFromMeStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "statFromMeValue",
+          "statFromMeLabel"
+        ]
+      },
+      "statFromMeValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/m365-mail-read/list_handoff_notices/summary/fromMeCount"
+          },
+          "size": "md"
+        }
+      },
+      "statFromMeLabel": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "You handed off · {n} waiting 24h+",
+              "n": {
+                "$state": "/m365-mail-read/list_handoff_notices/summary/fromMeWaiting"
+              }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "tabs": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "tabToMe",
+          "tabFromMe",
+          "tabAll"
+        ]
+      },
+      "tabToMe": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "To me · {n}",
+              "n": {
+                "$state": "/m365-mail-read/list_handoff_notices/summary/toMeCount"
+              }
+            }
+          },
+          "tone": {
+            "$cond": {
+              "$state": "/ui/handoffTab/value",
+              "eq": "to_me"
+            },
+            "$then": "brand",
+            "$else": "muted"
+          },
+          "variant": {
+            "$cond": {
+              "$state": "/ui/handoffTab/value",
+              "eq": "to_me"
+            },
+            "$then": "solid",
+            "$else": "soft"
+          }
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/handoffTab/value",
+              "value": "to_me"
+            }
+          }
+        }
+      },
+      "tabFromMe": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "From me · {n}",
+              "n": {
+                "$state": "/m365-mail-read/list_handoff_notices/summary/fromMeCount"
+              }
+            }
+          },
+          "tone": {
+            "$cond": {
+              "$state": "/ui/handoffTab/value",
+              "eq": "from_me"
+            },
+            "$then": "brand",
+            "$else": "muted"
+          },
+          "variant": {
+            "$cond": {
+              "$state": "/ui/handoffTab/value",
+              "eq": "from_me"
+            },
+            "$then": "solid",
+            "$else": "soft"
+          }
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/handoffTab/value",
+              "value": "from_me"
+            }
+          }
+        }
+      },
+      "tabAll": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "All · {n}",
+              "n": {
+                "$state": "/m365-mail-read/list_handoff_notices/summary/allCount"
+              }
+            }
+          },
+          "tone": {
+            "$cond": {
+              "$or": [
+                {
+                  "$state": "/ui/handoffTab/value",
+                  "not": true
+                },
+                {
+                  "$state": "/ui/handoffTab/value",
+                  "eq": "all"
+                }
+              ]
+            },
+            "$then": "brand",
+            "$else": "muted"
+          },
+          "variant": {
+            "$cond": {
+              "$or": [
+                {
+                  "$state": "/ui/handoffTab/value",
+                  "not": true
+                },
+                {
+                  "$state": "/ui/handoffTab/value",
+                  "eq": "all"
+                }
+              ]
+            },
+            "$then": "solid",
+            "$else": "soft"
+          }
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/handoffTab/value",
+              "value": "all"
+            }
+          }
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "repeat": {
+          "statePath": "/m365-mail-read/list_handoff_notices/handoffs",
+          "key": "id"
+        },
+        "children": [
+          "row"
+        ]
+      },
+      "row": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "visible": {
+          "$or": [
+            {
+              "$state": "/ui/handoffTab/value",
+              "not": true
+            },
+            {
+              "$state": "/ui/handoffTab/value",
+              "eq": "all"
+            },
+            {
+              "$item": "direction",
+              "eq": {
+                "$state": "/ui/handoffTab/value"
+              }
+            }
+          ]
+        },
+        "children": [
+          "rowStack"
+        ]
+      },
+      "rowStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "partiesRow",
+          "subject",
+          "chipsRow",
+          "metaRow"
+        ]
+      },
+      "partiesRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "fromAvatar",
+          "fromName",
+          "arrowIcon",
+          "toAvatar2",
+          "toLabel"
+        ]
+      },
+      "fromAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$cond": {
+              "$item": "direction",
+              "eq": "to_me"
+            },
+            "$then": {
+              "$item": "initials"
+            },
+            "$else": "You"
+          },
+          "tone": {
+            "$cond": {
+              "$item": "direction",
+              "eq": "to_me"
+            },
+            "$then": {
+              "$item": "avatarTone"
+            },
+            "$else": "brand"
+          },
+          "size": "sm"
+        }
+      },
+      "fromName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$cond": {
+              "$item": "direction",
+              "eq": "to_me"
+            },
+            "$then": {
+              "$item": "counterpartyName"
+            },
+            "$else": "You"
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "arrowIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ArrowRight",
+          "tone": "muted",
+          "size": "xs"
+        }
+      },
+      "toLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$cond": {
+              "$item": "direction",
+              "eq": "to_me"
+            },
+            "$then": "You",
+            "$else": {
+              "$item": "counterpartyName"
+            }
+          },
+          "size": "sm",
+          "tone": "muted"
+        }
+      },
+      "subject": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "subject"
+          },
+          "size": "md",
+          "weight": "medium"
+        }
+      },
+      "chipsRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "chip0",
+          "chip1",
+          "attachChip"
+        ]
+      },
+      "chip0": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "chips/0"
+          },
+          "tone": "muted",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "chips/0"
+        }
+      },
+      "chip1": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "chips/1"
+          },
+          "tone": "muted",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "chips/1"
+        }
+      },
+      "attachChip": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "📎 {name}",
+              "name": {
+                "$item": "attachmentNames/0"
+              }
+            }
+          },
+          "tone": "muted",
+          "variant": "outline"
+        },
+        "visible": {
+          "$item": "attachmentNames/0"
+        }
+      },
+      "metaRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "metaLeft",
+          "status"
+        ]
+      },
+      "metaLeft": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$cond": {
+              "$item": "dueText"
+            },
+            "$then": {
+              "$computed": "fmt",
+              "args": {
+                "pattern": "Received {r} · due {d}",
+                "r": {
+                  "$item": "receivedLabel"
+                },
+                "d": {
+                  "$item": "dueText"
+                }
+              }
+            },
+            "$else": {
+              "$computed": "fmt",
+              "args": {
+                "pattern": "Received {r}",
+                "r": {
+                  "$item": "receivedLabel"
+                }
+              }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "status": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "acknowledgedLabel"
+          },
+          "tone": {
+            "$item": "acknowledgedTone"
+          },
+          "variant": "soft"
+        }
+      },
+      "footerDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "footerRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "footerNote",
+          "footerOpenWrap"
+        ]
+      },
+      "footerNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/m365-mail-read/list_handoff_notices/ruleText"
+          },
+          "tone": "muted"
+        }
+      },
+      "footerOpenWrap": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "repeat": {
+          "statePath": "/m365-mail-read/list_handoff_notices/handoffs",
+          "key": "id"
+        },
+        "children": [
+          "footerOpen"
+        ]
+      },
+      "footerOpen": {
+        "type": "Button",
+        "props": {
+          "label": "Open in Outlook",
+          "variant": "primary",
+          "tone": "info",
+          "size": "sm"
+        },
+        "visible": {
+          "$index": true,
+          "eq": 0
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "webLink"
+                  }
+                }
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "toAvatar2": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$cond": {
+              "$item": "direction",
+              "eq": "to_me"
+            },
+            "$then": "You",
+            "$else": {
+              "$item": "initials"
+            }
+          },
+          "tone": {
+            "$cond": {
+              "$item": "direction",
+              "eq": "to_me"
+            },
+            "$then": "brand",
+            "$else": {
+              "$item": "avatarTone"
+            }
+          },
+          "size": "sm"
+        }
+      }
+    }
+  }
+}
