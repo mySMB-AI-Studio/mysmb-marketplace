@@ -25,7 +25,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "divider1", "summaryRow", "clearingBanner", "divider2", "body", "divider3", "footer", "infoOverlay"],
+        "children": ["header", "divider1", "summaryRow", "clearingBanner", "divider2", "body", "divider3", "footer", "infoOverlay", "confirmOverlay"],
         "watch": {
           "/xero-accounting/list_contacts": [
             {
@@ -137,7 +137,12 @@
       "clearingBanner": {
         "type": "Stack",
         "props": { "gap": "xs" },
-        "children": ["clearingFoundCaption", "clearingMissingCaption", "clearingMissingSteps"]
+        "children": ["clearingFoundCaption", "clearingMissingCaption", "clearingMissingSteps"],
+        "watch": {
+          "/xero-accounting/list_contacts": [
+            { "action": "xero-accounting.get_organisation", "params": {} }
+          ]
+        }
       },
       "clearingFoundCaption": {
         "type": "Caption",
@@ -214,10 +219,27 @@
         "props": { "text": { "$item": "contactName" }, "size": "sm", "weight": "semibold", "truncate": true }
       },
       "oppInvoice": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["oppInvoiceLabel", "oppInvoiceAmount"]
+        "type": "Row",
+        "props": { "hover": true, "clickable": true },
+        "children": ["oppInvoiceInner"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "xero-accounting_contra_document_link",
+                "args": {
+                  "shortCode": { "$state": "/xero-accounting/get_organisation/Organisations/0/ShortCode" },
+                  "invoiceId": { "$item": "invoiceId" },
+                  "type": "ACCREC"
+                }
+              },
+              "target": "_blank"
+            }
+          }
+        }
       },
+      "oppInvoiceInner": { "type": "Stack", "props": { "gap": "none" }, "children": ["oppInvoiceLabel", "oppInvoiceAmount"] },
       "oppInvoiceLabel": {
         "type": "Caption",
         "props": { "text": { "$computed": "fmt", "args": { "pattern": "Inv {n}", "n": { "$item": "invoiceNumber" } } }, "tone": "muted" }
@@ -227,10 +249,27 @@
         "props": { "text": { "$computed": "format_currency", "args": { "value": { "$item": "invoiceAmountDue" } } }, "size": "sm" }
       },
       "oppBill": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["oppBillLabel", "oppBillAmount"]
+        "type": "Row",
+        "props": { "hover": true, "clickable": true },
+        "children": ["oppBillInner"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "xero-accounting_contra_document_link",
+                "args": {
+                  "shortCode": { "$state": "/xero-accounting/get_organisation/Organisations/0/ShortCode" },
+                  "invoiceId": { "$item": "billId" },
+                  "type": "ACCPAY"
+                }
+              },
+              "target": "_blank"
+            }
+          }
+        }
       },
+      "oppBillInner": { "type": "Stack", "props": { "gap": "none" }, "children": ["oppBillLabel", "oppBillAmount"] },
       "oppBillLabel": {
         "type": "Caption",
         "props": { "text": { "$computed": "fmt", "args": { "pattern": "Bill {n}", "n": { "$item": "billNumber" } } }, "tone": "muted" }
@@ -264,32 +303,13 @@
           }
         },
         "on": {
-          "click": [
-            {
-              "action": "xero-accounting.create_payment",
-              "params": {
-                "payment": {
-                  "Invoice": { "InvoiceID": { "$computed": "identity", "args": { "value": { "$item": "invoiceId" } } } },
-                  "Account": { "AccountID": { "$state": "/ui/clearing/accountId" } },
-                  "Amount": { "$computed": "identity", "args": { "value": { "$item": "offsetAmount" } } },
-                  "Date": { "$computed": "xero-accounting_today_iso" },
-                  "Reference": { "$computed": "identity", "args": { "value": { "$item": "reference" } } }
-                }
-              }
-            },
-            {
-              "action": "xero-accounting.create_payment",
-              "params": {
-                "payment": {
-                  "Invoice": { "InvoiceID": { "$computed": "identity", "args": { "value": { "$item": "billId" } } } },
-                  "Account": { "AccountID": { "$state": "/ui/clearing/accountId" } },
-                  "Amount": { "$computed": "identity", "args": { "value": { "$item": "offsetAmount" } } },
-                  "Date": { "$computed": "xero-accounting_today_iso" },
-                  "Reference": { "$computed": "identity", "args": { "value": { "$item": "reference" } } }
-                }
-              }
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/pendingContra",
+              "value": { "$computed": "identity", "args": { "value": { "$item": "" } } }
             }
-          ]
+          }
         }
       },
       "oppBlockedReason": {
@@ -375,6 +395,106 @@
         "props": {
           "text": "Only one pair per contact — it doesn't split a balance across several documents. Mismatched currencies are shown but blocked. The Clearing Account is never created automatically; you'll see setup steps here if one doesn't exist yet.",
           "size": "sm"
+        }
+      },
+
+      "confirmOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["confirmCard"],
+        "visible": { "$state": "/ui/pendingContra/contactId" },
+        "on": {
+          "backdropClick": { "action": "setState", "params": { "statePath": "/ui/pendingContra", "value": null } }
+        }
+      },
+      "confirmCard": {
+        "type": "Card",
+        "props": {},
+        "children": ["confirmCloseBtn", "confirmTitleRow", "confirmDivider", "confirmBody", "confirmButtonsRow"]
+      },
+      "confirmCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Cancel", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/pendingContra", "value": null } } }
+      },
+      "confirmTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["confirmTitleIcon", "confirmTitleText"] },
+      "confirmTitleIcon": { "type": "Icon", "props": { "name": "AlertTriangle", "size": "sm", "tone": "warning" } },
+      "confirmTitleText": { "type": "Heading", "props": { "text": "Confirm Contra", "level": "h2" } },
+      "confirmDivider": { "type": "Divider", "props": {} },
+      "confirmBody": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["confirmContactLine", "confirmInvoiceLine", "confirmBillLine", "confirmWarning"]
+      },
+      "confirmContactLine": {
+        "type": "Text",
+        "props": { "text": { "$template": "Contact: ${/ui/pendingContra/contactName}" }, "size": "sm", "weight": "semibold" }
+      },
+      "confirmInvoiceLine": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$template": "Invoice ${/ui/pendingContra/invoiceNumber}: mark \"paid\" from the Clearing Account"
+          },
+          "size": "sm"
+        }
+      },
+      "confirmBillLine": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$template": "Bill ${/ui/pendingContra/billNumber}: mark \"paid\" to the Clearing Account"
+          },
+          "size": "sm"
+        }
+      },
+      "confirmWarning": {
+        "type": "Caption",
+        "props": {
+          "text": { "$template": "This posts two real payments in Xero immediately for the matching amount, same date, Reference ${/ui/pendingContra/reference}. It can be reversed afterward in Xero if needed." },
+          "tone": "warning"
+        }
+      },
+      "confirmButtonsRow": { "type": "Row", "props": { "gap": "sm", "justify": "end" }, "children": ["confirmCancelBtn", "confirmConfirmBtn"] },
+      "confirmCancelBtn": {
+        "type": "Button",
+        "props": { "label": "Cancel", "size": "sm", "variant": "ghost", "tone": "muted" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/pendingContra", "value": null } } }
+      },
+      "confirmConfirmBtn": {
+        "type": "Button",
+        "props": { "label": "Confirm & Create Contra", "size": "sm", "variant": "primary", "tone": "info" },
+        "on": {
+          "click": [
+            {
+              "action": "xero-accounting.create_payment",
+              "params": {
+                "payment": {
+                  "Invoice": { "InvoiceID": { "$state": "/ui/pendingContra/invoiceId" } },
+                  "Account": { "AccountID": { "$state": "/ui/clearing/accountId" } },
+                  "Amount": { "$state": "/ui/pendingContra/offsetAmount" },
+                  "Date": { "$computed": "xero-accounting_today_iso" },
+                  "Reference": { "$state": "/ui/pendingContra/reference" }
+                }
+              }
+            },
+            {
+              "action": "xero-accounting.create_payment",
+              "params": {
+                "payment": {
+                  "Invoice": { "InvoiceID": { "$state": "/ui/pendingContra/billId" } },
+                  "Account": { "AccountID": { "$state": "/ui/clearing/accountId" } },
+                  "Amount": { "$state": "/ui/pendingContra/offsetAmount" },
+                  "Date": { "$computed": "xero-accounting_today_iso" },
+                  "Reference": { "$state": "/ui/pendingContra/reference" }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": { "statePath": "/ui/pendingContra", "value": null }
+            }
+          ]
         }
       }
 

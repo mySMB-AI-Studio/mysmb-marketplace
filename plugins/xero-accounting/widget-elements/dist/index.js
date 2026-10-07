@@ -1968,6 +1968,25 @@ const find_clearing_account = (args) => {
 // ── today_iso ─────────────────────────────────────────────────────────
 // Today's date as YYYY-MM-DD, for Payment.Date on a same-day contra.
 const today_iso = () => new Date().toISOString().slice(0, 10);
+// ── contra_document_link ─────────────────────────────────────────────
+// Deep link to a specific Xero invoice/bill's edit page — same
+// `go.xero.com/organisationlogin/default.aspx?shortcode=...&
+// redirecturl=/<Module>/Edit.aspx?InvoiceID=...` format already
+// confirmed live elsewhere in this plugin (analyze_bill_duplicates,
+// ready_to_pay_held) — a bare /AccountsPayable/... URL with no
+// shortcode/org context 404s. Falls back to the generic Xero login
+// page before get_organisation resolves or if ShortCode ever comes
+// back empty.
+// Args: { shortCode: string, invoiceId: string, type: 'ACCREC'|'ACCPAY' }
+const contra_document_link = (args) => {
+    const shortCode = String(args.shortCode ?? '').trim();
+    const invoiceId = String(args.invoiceId ?? '').trim();
+    if (!shortCode || !invoiceId)
+        return 'https://go.xero.com/';
+    const module = args.type === 'ACCPAY' ? 'AccountsPayable' : 'AccountsReceivable';
+    const redirect = `/${module}/Edit.aspx?InvoiceID=${invoiceId}`;
+    return `https://go.xero.com/organisationlogin/default.aspx?shortcode=${encodeURIComponent(shortCode)}&redirecturl=${encodeURIComponent(redirect)}`;
+};
 // ── contra_create_disabled ───────────────────────────────────────────
 // Whether the "Create Contra" button should be disabled for a row —
 // plain-boolean combinator, since generic props (unlike `visible`) don't
@@ -2027,6 +2046,7 @@ const elements = {
         find_clearing_account,
         today_iso,
         contra_create_disabled,
+        contra_document_link,
     },
 };
 export default elements;
