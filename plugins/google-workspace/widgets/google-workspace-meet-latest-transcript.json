@@ -22,6 +22,7 @@
   "connectorsUsed": [
     "google-workspace-meet"
   ],
+  "brandColor": "#00ac47",
   "popularity": 0,
   "sizing": {
     "preferred": {
@@ -945,12 +946,30 @@
         "props": {
           "gap": "sm",
           "align": "center",
-          "justify": "between"
+          "justify": "between",
+          "hover": true,
+          "clickable": true
         },
         "children": [
           "recentLeft",
           "recentStatusBadge"
-        ]
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "docUrl"
+                  }
+                }
+              },
+              "target": "_blank"
+            }
+          }
+        }
       },
       "recentLeft": {
         "type": "Row",
@@ -987,7 +1006,7 @@
             }
           },
           "size": "md",
-          "tone": "muted"
+          "tone": "brand"
         }
       },
       "recentMonthCaption": {
@@ -1001,7 +1020,7 @@
               }
             }
           },
-          "tone": "muted"
+          "tone": "brand"
         }
       },
       "recentLabels": {
