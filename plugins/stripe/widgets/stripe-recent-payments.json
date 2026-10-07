@@ -1,0 +1,76 @@
+{
+  "id": "stripe-recent-payments",
+  "title": "Stripe Recent Payments",
+  "description": "Last 20 payments with customer, amount, payment method, and status.",
+  "category": "payments",
+  "tags": ["stripe","payments","transactions","billing"],
+  "keywords": ["payments","transactions","stripe","succeeded","failed","processing","recent"],
+  "connectorsUsed": ["stripe"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 6 },
+    "min": { "colSpan": 5, "rowSpan": 5 },
+    "max": { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": { "mcp": "stripe", "tool": "list_payments", "params": { "limit": 20 } },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card", "props": {}, "children": ["header","body"],
+        "watch": {
+          "/stripe/list_payments/data": [
+            { "action": "setState", "params": { "statePath": "/ui/sortKey", "value": "customer_name|asc" } },
+            { "action": "setState", "params": { "statePath": "/ui/paymentRows", "value": { "$computed": "stripe_flatten_payments", "args": { "value": { "$state": "/stripe/list_payments/data" }, "key": "customer_name|asc" } } } }
+          ],
+          "/ui/sortKey": [
+            { "action": "setState", "params": { "statePath": "/ui/paymentRows", "value": { "$computed": "stripe_flatten_payments", "args": { "value": { "$state": "/stripe/list_payments/data" }, "key": { "$state": "/ui/sortKey" } } } } }
+          ]
+        }
+      },
+      "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
+      "headerRow": { "type": "Row", "props": { "align": "center", "template": "1fr auto" }, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["titleIcon","titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "CreditCard", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title","eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Recent Payments", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": { "$computed": "fmt", "args": { "pattern": "Stripe · {n} recent", "n": { "$computed": "count", "args": { "value": { "$state": "/stripe/list_payments/data" } } } } } } },
+      "body": { "type": "Body", "props": {}, "children": ["loading","empty","listHeader","list"] },
+      "loading": { "type": "Stack", "props": { "gap": "sm" }, "children": ["sk1","sk2","sk3","sk4"], "visible": { "$state": "/_loading/stripe.list_payments" } },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "empty": { "type": "Empty", "props": { "message": "No payments found." }, "visible": { "$and": [{ "$state": "/_loading/stripe.list_payments", "not": true }, { "$state": "/stripe/list_payments/data/0", "not": true }] } },
+      "listHeader": {
+        "type": "Row", "props": { "gap": "sm", "align": "center", "template": "minmax(0, 1fr) 6rem 8rem 8rem", "padded": true },
+        "children": ["hdrCustomerOuter","hdrAmount","hdrMethod","hdrStatus"],
+        "visible": { "$and": [{ "$state": "/_loading/stripe.list_payments", "not": true }, { "$state": "/stripe/list_payments/data/0" }] }
+      },
+      "hdrCustomerOuter": { "type": "Stack", "props": { "align": "start" }, "children": ["hdrCustomerGroup"] },
+      "hdrCustomerGroup": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["hdrCustomer","sortBtn"] },
+      "hdrCustomer": { "type": "Caption", "props": { "text": "Customer" } },
+      "sortBtn": {
+        "type": "IconButton", "props": { "icon": "ArrowUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by customer" },
+        "on": { "click": [{ "action": "setState", "params": { "statePath": "/ui/sortKey", "value": { "$computed": "stripe_set_sort_field", "args": { "current": { "$state": "/ui/sortKey" }, "field": "customer_name" } } } }] }
+      },
+      "hdrAmount": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["hdrAmountLabel", "sortAmountBtn"] },
+      "hdrAmountLabel": { "type": "Caption", "props": { "text": "Amount" } },
+      "sortAmountBtn": {
+        "type": "IconButton", "props": { "icon": "ArrowUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by amount" },
+        "on": { "click": [{ "action": "setState", "params": { "statePath": "/ui/sortKey", "value": { "$computed": "stripe_set_sort_field", "args": { "current": { "$state": "/ui/sortKey" }, "field": "amount_cents" } } } }] }
+      },
+      "hdrMethod": { "type": "Caption", "props": { "text": "Method" } },
+      "hdrStatus": { "type": "Caption", "props": { "text": "Status" } },
+      "list": { "type": "Stack", "props": { "gap": "xs" }, "children": ["payRow"], "repeat": { "statePath": "/ui/paymentRows", "key": "id" }, "visible": { "$and": [{ "$state": "/_loading/stripe.list_payments", "not": true }, { "$state": "/stripe/list_payments/data/0" }] } },
+      "payRow": { "type": "Row", "props": { "gap": "sm", "align": "center", "hover": true, "template": "minmax(0, 1fr) 6rem 8rem 8rem" }, "children": ["identity","payAmount","payMethod","payStatusWrap"] },
+      "identity": { "type": "Stack", "props": { "gap": "none" }, "children": ["customerName","createdAt"] },
+      "customerName": { "type": "Text", "props": { "text": { "$item": "customer_name" }, "size": "sm", "weight": "medium", "truncate": true } },
+      "createdAt": { "type": "Caption", "props": { "text": { "$item": "created_at" }, "truncate": true } },
+      "payAmount": { "type": "Caption", "props": { "text": { "$item": "amount" } } },
+      "payMethod": { "type": "Caption", "props": { "text": { "$item": "method" }, "truncate": true } },
+      "payStatusWrap": { "type": "Stack", "props": { "align": "start" }, "children": ["payStatus"] },
+      "payStatus": { "type": "Badge", "props": { "text": { "$item": "status_label" }, "tone": { "$computed": "stripe_payment_intent_status_tone", "args": { "status": { "$item": "status" } } }, "variant": "soft" } }
+    }
+  }
+}
