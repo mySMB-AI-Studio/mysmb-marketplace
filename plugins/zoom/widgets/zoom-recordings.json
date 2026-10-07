@@ -200,7 +200,16 @@
         "repeat": { "statePath": "/ui/myNotesRecordings", "key": "id" }
       },
 
-      "recordingRow": { "type": "Stack", "props": { "gap": "none" }, "children": ["recordingTopic", "recordingMeta"] },
+      "recordingRow": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "sm", "hover": true, "clickable": true, "template": "minmax(0,1fr) auto" },
+        "children": ["recordingRowInner", "recordingOpenIcon"],
+        "on": {
+          "click": { "action": "open_url", "params": { "url": { "$bindItem": "share_url" }, "target": "_blank" } }
+        }
+      },
+      "recordingRowInner": { "type": "Stack", "props": { "gap": "none" }, "children": ["recordingTopic", "recordingMeta"] },
+      "recordingOpenIcon": { "type": "Icon", "props": { "name": "ExternalLink", "tone": "muted", "size": "sm" } },
       "recordingTopic": { "type": "Text", "props": { "text": { "$item": "topic" }, "weight": "semibold", "size": "sm" } },
       "recordingMeta": {
         "type": "Caption",
