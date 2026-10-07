@@ -291,20 +291,6 @@ const speaker_tone = (args) => {
     const safeIdx = idx === -1 ? 0 : idx;
     return SPEAKER_TONES[safeIdx % SPEAKER_TONES.length];
 };
-// ── entry_matches_query ──────────────────────────────────────────────
-//
-// Case-insensitive substring match for live transcript search. Returns
-// false (hide the row) when the query is blank, so nothing renders until
-// the user types.
-//
-// Args: { speaker: string, text: string, query: string }
-const entry_matches_query = (args) => {
-    const query = str(args.query).trim().toLowerCase();
-    if (!query)
-        return false;
-    const haystack = `${str(args.speaker)} ${str(args.text)}`.toLowerCase();
-    return haystack.includes(query);
-};
 // ── count_transcript_matches ─────────────────────────────────────────
 //
 // Counts transcript entries whose speaker or text contains the query
@@ -322,6 +308,61 @@ const count_transcript_matches = (args) => {
         return haystack.includes(query) ? count + 1 : count;
     }, 0);
 };
+// ── group_transcript_turns ─────────────────────────────────────────────
+//
+// Merges consecutive same-speaker transcript entries into one "turn" block
+// (so 3 back-to-back utterances from one person read as one card, not
+// three identical name+avatar rows in a row), in original chronological
+// order. Each group carries up to 6 of its original lines in fixed slots
+// (line1..line6) plus lineCount, since `repeat` can't iterate a nested
+// array pulled from `$item` — a block with more than 6 lines just shows
+// its first 6 (no indicator; this is a rare, soft limit for very long
+// uninterrupted turns, not expected in normal meeting chatter).
+//
+// `matches` is true for every group when `query` is blank (the full
+// transcript shows by default), or when any of the group's own lines
+// contain `query` (case-insensitive substring) once the user types.
+//
+// Args: { entries: { speaker: string, text: string, startTime: string|null }[], query?: string }
+const MAX_GROUP_LINES = 6;
+const group_transcript_turns = (args) => {
+    const entries = Array.isArray(args.entries) ? args.entries : [];
+    const query = str(args.query).trim().toLowerCase();
+    const groups = [];
+    for (const raw of entries) {
+        const e = raw;
+        const speaker = str(e?.speaker);
+        const text = str(e?.text);
+        const startTime = e?.startTime ?? null;
+        const last = groups[groups.length - 1];
+        if (last && last.speaker === speaker) {
+            last.endTime = startTime;
+            last.lineCount += 1;
+            if (last.lines.length < MAX_GROUP_LINES)
+                last.lines.push(text);
+        }
+        else {
+            groups.push({ id: startTime ?? `g${groups.length}`, speaker, startTime, endTime: startTime, lineCount: 1, lines: [text] });
+        }
+    }
+    return groups.map((g) => {
+        const matches = !query || g.lines.some((l) => l.toLowerCase().includes(query)) || g.speaker.toLowerCase().includes(query);
+        return {
+            id: g.id,
+            speaker: g.speaker,
+            startTime: g.startTime,
+            endTime: g.endTime,
+            lineCount: g.lineCount,
+            line1: g.lines[0] ?? '',
+            line2: g.lines[1] ?? '',
+            line3: g.lines[2] ?? '',
+            line4: g.lines[3] ?? '',
+            line5: g.lines[4] ?? '',
+            line6: g.lines[5] ?? '',
+            matches,
+        };
+    });
+};
 // ── module export ────────────────────────────────────────────────────
 const elements = {
     slug: 'google-workspace',
@@ -337,8 +378,8 @@ const elements = {
         transcript_status_icon,
         transcript_banner_label,
         speaker_tone,
-        entry_matches_query,
         count_transcript_matches,
+        group_transcript_turns,
     },
 };
 export default elements;
