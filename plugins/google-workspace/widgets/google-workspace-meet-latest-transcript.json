@@ -69,26 +69,35 @@
       "headerTitleRow": {
         "type": "Row",
         "props": { "gap": "sm", "align": "start" },
-        "children": ["headerTitleIcon", "headerStack"]
-      },
-      "headerTitleIcon": {
-        "type": "Icon",
-        "props": { "name": "Video", "tone": "accent", "size": "md" }
+        "children": ["headerStack"]
       },
       "headerStack": {
         "type": "Stack",
         "props": { "gap": "xs", "grow": true },
         "children": [
-          "headerEyebrow",
-          "headerHeadingRow",
+          "headerTopRow",
           "meetingTitle",
           "meetingMeta",
           "avatarsAndBannerRow"
         ]
       },
+      "headerTopRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["headerTitleIcon", "headerLabels"]
+      },
+      "headerTitleIcon": {
+        "type": "Icon",
+        "props": { "name": "Video", "tone": "accent", "size": "md" }
+      },
+      "headerLabels": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["headerEyebrow", "headerHeadingRow"]
+      },
       "headerEyebrow": {
         "type": "Heading",
-        "props": { "text": "Google Meet", "level": "h3" }
+        "props": { "text": "Google Meet", "level": "h1" }
       },
       "headerHeadingRow": {
         "type": "Row",
@@ -135,8 +144,8 @@
       },
       "avatarsAndBannerRow": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center", "justify": "between" },
-        "children": ["participantAvatars", "transcriptBannerRow"]
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["participantAvatars"]
       },
       "participantAvatars": {
         "type": "Row",
@@ -146,7 +155,7 @@
       "participantAvatar": {
         "type": "Avatar",
         "props": {
-          "initials": { "$item": "initials" },
+          "initials": { "$computed": "identity", "args": { "value": { "$item": "initials" } } },
           "size": "sm",
           "tone": {
             "$computed": "google-workspace_speaker_tone",
@@ -160,6 +169,11 @@
           "statePath": "/google-workspace-meet/get_meeting_dashboard/latestMeeting/participants",
           "key": "name"
         }
+      },
+      "transcriptBannerWrap": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["transcriptBannerRow"]
       },
       "transcriptBannerRow": {
         "type": "Row",
@@ -222,13 +236,18 @@
       "body": {
         "type": "Body",
         "props": {},
-        "children": ["talkTimeSection", "divider1", "searchSection", "divider2", "recentSection", "footer"],
+        "children": ["bodyStack"],
         "visible": {
           "$and": [
             { "$state": "/_loading/google-workspace-meet.get_meeting_dashboard", "not": true },
             { "$state": "/google-workspace-meet/get_meeting_dashboard/latestMeeting" }
           ]
         }
+      },
+      "bodyStack": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["transcriptBannerWrap", "talkTimeSection", "divider1", "searchSection", "divider2", "recentSection", "footer"]
       },
 
       "talkTimeSection": {
