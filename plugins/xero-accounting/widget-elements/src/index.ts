@@ -1900,266 +1900,148 @@ const analyze_autopay_exclusions: ComputedFunction = (args) => {
   };
 };
 
-// ── job_allocation_overview ───────────────────────────────────────────
-// Powers the "Job Allocation" tile — job costing built on a Xero Tracking
-// Category (no Xero Projects module required). "Jobs" are the active
-// Options under whichever TrackingCategory matches `jobTrackingCategoryName`
-// (default "Job").
+// ── contra_opportunities ────────────────────────────────────────────
+// Finds contacts that have BOTH an open sales invoice (ACCREC) and an
+// open bill (ACCPAY) — candidates for a contra/offset, since Xero has
+// no native offset feature. For each such contact, pairs the LARGEST
+// open invoice against the LARGEST open bill (by AmountDue) — a
+// contact with several open documents on either side is a multi-pair
+// scenario out of scope for this first pass; the suggested pair covers
+// the common single-pair case.
 //
-// Real-Xero mapping, and the assumptions baked into each:
-// - Committed spend: sum of AUTHORISED (approved, not yet billed) purchase
-//   order line items tagged to a job. A PO can have line items tagged to
-//   more than one job; this attributes each LINE's LineAmount to whichever
-//   job that line's own Tracking entry names (not the whole PO total to a
-//   single job).
-// - PO job-tagging rate: % of non-DELETED purchase orders that have at
-//   least one line item tagged to the Job category at all. Untagged POs
-//   are "to review" — there's no reliable way to guess which job they
-//   belong to.
-// - Bills matched to PO / variance: Xero's core Accounting API has no
-//   formal PurchaseOrderID field on an Invoice, so "matched" is a
-//   heuristic — same Contact, and the bill's Reference contains the PO's
-//   PurchaseOrderNumber (the common real-world convention when billing
-//   against a PO). A "variance" is a matched pair whose totals differ by
-//   more than a cent. This WILL miss a match if the biller didn't quote
-//   the PO number in Reference — documented limitation, not a bug.
-// - Expected deliveries: AUTHORISED (not yet BILLED) POs whose DeliveryDate
-//   has passed — goods/services expected but not yet received/billed.
-// - Tracking-category usage: active Job-option count vs Xero's real
-//   100-option-per-category hard limit.
-// - Budget / over-budget banner: Xero's GET /Budgets, matched to a job via
-//   a BudgetLine whose own Tracking names that job option. Sums the whole
-//   Amounts[] series as one approximate total (not period-precise) — this
-//   tile is an overview, not a budget-vs-actual report. The single
-//   worst-over-budget job is surfaced; omitted entirely if no job has
-//   budget data or none is over.
+// Blocks (but still lists, so the mismatch is visible rather than
+// silently dropped) a pair whose invoice/bill currencies differ —
+// netting across currencies isn't a straight min() of two amounts.
+// A contact whose InvoiceNumber is blank (seen in real data) falls
+// back to a short ID-based reference so the contra Reference is never
+// empty.
 //
-// Args: { trackingCategories, purchaseOrders, bills, budgets, organisation,
-//         jobTrackingCategoryName?: string, optionLimit?: number }
-const job_allocation_overview: ComputedFunction = (args) => {
-  const trackingCategories = Array.isArray(args.trackingCategories) ? (args.trackingCategories as Record<string, unknown>[]) : [];
-  const purchaseOrders = Array.isArray(args.purchaseOrders) ? (args.purchaseOrders as Record<string, unknown>[]) : [];
-  const bills = Array.isArray(args.bills) ? (args.bills as Record<string, unknown>[]) : [];
-  const budgets = Array.isArray(args.budgets) ? (args.budgets as Record<string, unknown>[]) : [];
-  const categoryName = String(args.jobTrackingCategoryName ?? 'Job');
-  const optionLimit = Number(args.optionLimit) > 0 ? Number(args.optionLimit) : 100;
+// offsetAmount = min(invoice.AmountDue, bill.AmountDue), rounded to 2dp.
+// Returns { rows, count, totalOffsettable } — rows sorted offsettable-
+// first (largest offset first), blocked pairs last.
+// Args: { contacts: Contact[], invoices: Invoice[] }
+const contra_opportunities: ComputedFunction = (args) => {
+  const contacts = Array.isArray(args.contacts) ? (args.contacts as Record<string, unknown>[]) : [];
+  const invoices = Array.isArray(args.invoices) ? (args.invoices as Record<string, unknown>[]) : [];
 
-  const org = (args.organisation as Record<string, unknown> | undefined) ?? {};
-  const orgs = Array.isArray(org.Organisations) ? (org.Organisations as Record<string, unknown>[]) : [];
-  const shortCode = String(orgs[0]?.ShortCode ?? '');
-  const currencyCode = String(orgs[0]?.BaseCurrency ?? 'AUD');
-
-  const parseDate = (raw: unknown): number => {
-    const m = String(raw ?? '').match(/\/Date\((-?\d+)(?:[+-]\d{4})?\)\//);
-    return m ? Number(m[1]) : NaN;
-  };
-  const fmtAmt = (n: unknown): string => {
-    const v = Number(n);
-    if (!Number.isFinite(v)) return '';
-    try {
-      return new Intl.NumberFormat('en-AU', { style: 'currency', currency: currencyCode, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
-    } catch {
-      return `$${v.toFixed(2)}`;
-    }
-  };
-  const fmtDate = (ms: number): string =>
-    Number.isFinite(ms) ? new Date(ms).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
-
-  const reviewUrl = shortCode
-    ? `https://go.xero.com/organisationlogin/default.aspx?shortcode=${encodeURIComponent(shortCode)}&redirecturl=${encodeURIComponent('/Purchases/PurchaseOrders')}`
-    : 'https://go.xero.com/';
-
-  const jobCategory = trackingCategories.find(
-    (c) => String(c.Name ?? '').trim().toLowerCase() === categoryName.trim().toLowerCase(),
-  );
-
-  // No matching tracking category (yet) at all — not an error, just the
-  // genuinely-empty case the tile's Empty state is for.
-  if (!jobCategory) {
-    return {
-      activeJobCount: 0,
-      totalCommitted: 0,
-      totalCommittedDisplay: fmtAmt(0),
-      currencyCode,
-      reviewUrl,
-      lastSyncedAt: new Date().toISOString(),
-      detailRows: [],
-      poTagging: { pct: 0, toReviewCount: 0 },
-      billsMatched: { varianceCount: 0 },
-      deliveries: { overdueCount: 0 },
-      trackingUsage: { used: 0, limit: optionLimit },
-    };
+  const byContact = new Map<string, { ar: Record<string, unknown>[]; ap: Record<string, unknown>[] }>();
+  for (const inv of invoices) {
+    const contact = inv.Contact as Record<string, unknown> | undefined;
+    const contactId = String(contact?.ContactID ?? '');
+    if (!contactId) continue;
+    const bucket = byContact.get(contactId) ?? { ar: [], ap: [] };
+    if (inv.Type === 'ACCREC') bucket.ar.push(inv);
+    else if (inv.Type === 'ACCPAY') bucket.ap.push(inv);
+    byContact.set(contactId, bucket);
   }
 
-  const jobCategoryId = String(jobCategory.TrackingCategoryID ?? '');
-  const allOptions = Array.isArray(jobCategory.Options) ? (jobCategory.Options as Record<string, unknown>[]) : [];
-  const activeOptions = allOptions.filter((o) => String(o.Status ?? 'ACTIVE').toUpperCase() !== 'ARCHIVED');
-  const jobNameByOptionId = new Map<string, string>(
-    activeOptions.map((o) => [String(o.TrackingOptionID ?? ''), String(o.Name ?? 'Unnamed job')]),
-  );
+  const largestBy = (docs: Record<string, unknown>[]) =>
+    docs.reduce((max, d) => (Number(d.AmountDue) > Number(max?.AmountDue ?? -1) ? d : max), docs[0]);
 
-  // First tagged job option found on a line item's Tracking array, if any.
-  const lineJobName = (line: Record<string, unknown>): string | undefined => {
-    const tracking = Array.isArray(line.Tracking) ? (line.Tracking as Record<string, unknown>[]) : [];
-    for (const t of tracking) {
-      if (String(t.TrackingCategoryID ?? '') === jobCategoryId || String(t.Name ?? '') === String(jobCategory.Name ?? '')) {
-        const name = jobNameByOptionId.get(String(t.TrackingOptionID ?? '')) ?? String(t.Option ?? '');
-        if (name) return name;
-      }
-    }
-    return undefined;
-  };
-  // Any line on a PO tagged to the Job category — used for tagging-rate,
-  // independent of whether that option is still active.
-  const poJobName = (po: Record<string, unknown>): string | undefined => {
-    const lines = Array.isArray(po.LineItems) ? (po.LineItems as Record<string, unknown>[]) : [];
-    for (const line of lines) {
-      const name = lineJobName(line);
-      if (name) return name;
-    }
-    return undefined;
+  const shortRef = (doc: Record<string, unknown>) => {
+    const num = String(doc.InvoiceNumber ?? '').trim();
+    if (num) return num;
+    return `#${String(doc.InvoiceID ?? '').slice(0, 8)}`;
   };
 
-  const livePOs = purchaseOrders.filter((po) => po.Status !== 'DELETED');
-  const taggedPOs = livePOs.filter((po) => poJobName(po) !== undefined);
-  const untaggedPOs = livePOs.filter((po) => poJobName(po) === undefined);
-  const poTaggingPct = livePOs.length ? Math.round((100 * taggedPOs.length) / livePOs.length) : 100;
+  const rows: Record<string, unknown>[] = [];
+  for (const contact of contacts) {
+    const contactId = String(contact.ContactID ?? '');
+    const bucket = byContact.get(contactId);
+    if (!bucket || bucket.ar.length === 0 || bucket.ap.length === 0) continue;
 
-  // Committed = AUTHORISED (approved, not yet billed) PO line amounts,
-  // summed per job by the LINE's own tag (not the whole PO).
-  const committedByJob = new Map<string, number>();
-  for (const po of purchaseOrders) {
-    if (po.Status !== 'AUTHORISED') continue;
-    const lines = Array.isArray(po.LineItems) ? (po.LineItems as Record<string, unknown>[]) : [];
-    for (const line of lines) {
-      const job = lineJobName(line);
-      if (!job) continue;
-      const amount = Number(line.LineAmount) || 0;
-      committedByJob.set(job, (committedByJob.get(job) ?? 0) + amount);
-    }
-  }
-  const totalCommitted = [...committedByJob.values()].reduce((s, v) => s + v, 0);
-  // "Active jobs" for the hero caption = jobs the committed total is spread
-  // across (i.e. have open AUTHORISED spend right now) — not the total
-  // option count, which the Tracking Category row already reports.
-  const activeJobCount = committedByJob.size;
+    const invoice = largestBy(bucket.ar);
+    const bill = largestBy(bucket.ap);
+    const invoiceCurrency = String(invoice.CurrencyCode ?? '');
+    const billCurrency = String(bill.CurrencyCode ?? '');
+    const blocked = invoiceCurrency !== billCurrency;
+    const offsetAmount = Math.round(Math.min(Number(invoice.AmountDue), Number(bill.AmountDue)) * 100) / 100;
 
-  // Budget per job: sum a TRACKING-type Budget's whole Amounts[] series for
-  // any BudgetLine whose own Tracking names this job option.
-  const budgetByJob = new Map<string, number>();
-  for (const budget of budgets) {
-    const lines = Array.isArray(budget.BudgetLines) ? (budget.BudgetLines as Record<string, unknown>[]) : [];
-    for (const line of lines) {
-      const tracking = Array.isArray(line.Tracking) ? (line.Tracking as Record<string, unknown>[]) : [];
-      const match = tracking.find((t) => String(t.Name ?? '') === String(jobCategory.Name ?? ''));
-      if (!match) continue;
-      const jobName = String(match.Option ?? '');
-      if (!jobName) continue;
-      const amounts = Array.isArray(line.Amounts) ? (line.Amounts as unknown[]) : [];
-      const total = amounts.reduce((s: number, a) => s + (Number(a) || 0), 0);
-      budgetByJob.set(jobName, (budgetByJob.get(jobName) ?? 0) + total);
-    }
-  }
-  let overBudgetJob: { name: string; pctOver: number } | undefined;
-  for (const [job, committed] of committedByJob) {
-    const budget = budgetByJob.get(job);
-    if (!budget || budget <= 0 || committed <= budget) continue;
-    const pctOver = Math.round((100 * (committed - budget)) / budget);
-    if (!overBudgetJob || pctOver > overBudgetJob.pctOver) overBudgetJob = { name: job, pctOver };
-  }
-
-  // Bills matched to a PO: same Contact + the bill's Reference contains the
-  // PO's own PurchaseOrderNumber. See the heuristic note in the function
-  // header comment above.
-  const variancePairs: { bill: Record<string, unknown>; po: Record<string, unknown>; job: string | undefined }[] = [];
-  for (const bill of bills) {
-    if (bill.Status === 'DELETED' || bill.Status === 'VOIDED') continue;
-    const billContactId = String((bill.Contact as Record<string, unknown> | undefined)?.ContactID ?? '');
-    const reference = String(bill.Reference ?? '').toLowerCase();
-    if (!reference) continue;
-    const matchedPO = purchaseOrders.find((po) => {
-      const poNumber = String(po.PurchaseOrderNumber ?? '').toLowerCase();
-      if (!poNumber) return false;
-      const poContactId = String((po.Contact as Record<string, unknown> | undefined)?.ContactID ?? '');
-      return poContactId === billContactId && reference.includes(poNumber);
+    rows.push({
+      contactId,
+      contactName: String(contact.Name ?? 'Unknown'),
+      invoiceId: String(invoice.InvoiceID ?? ''),
+      invoiceNumber: shortRef(invoice),
+      invoiceAmountDue: Number(invoice.AmountDue),
+      billId: String(bill.InvoiceID ?? ''),
+      billNumber: shortRef(bill),
+      billAmountDue: Number(bill.AmountDue),
+      offsetAmount,
+      currency: invoiceCurrency,
+      blocked,
+      blockedReason: blocked ? `Currency mismatch (${invoiceCurrency} vs ${billCurrency})` : '',
+      reference: `OFFSET-${shortRef(invoice)}-${shortRef(bill)}`,
     });
-    if (!matchedPO) continue;
-    const billTotal = Number(bill.Total) || 0;
-    const poTotal = Number(matchedPO.Total) || 0;
-    if (Math.abs(billTotal - poTotal) > 0.01) {
-      variancePairs.push({ bill, po: matchedPO, job: poJobName(matchedPO) });
-    }
   }
 
-  // Expected deliveries: still-open (AUTHORISED) POs whose DeliveryDate has
-  // passed.
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const overduePOs = purchaseOrders.filter((po) => {
-    if (po.Status !== 'AUTHORISED') return false;
-    const ms = parseDate(po.DeliveryDate);
-    if (!Number.isFinite(ms)) return false;
-    const d = new Date(ms);
-    d.setHours(0, 0, 0, 0);
-    return d.getTime() < today.getTime();
+  rows.sort((a, b) => {
+    if (!!a.blocked !== !!b.blocked) return a.blocked ? 1 : -1;
+    return (b.offsetAmount as number) - (a.offsetAmount as number);
   });
 
-  const detailRows = [
-    ...untaggedPOs.map((po) => ({
-      category: 'PO Tagging',
-      job: '—',
-      label: String(po.PurchaseOrderNumber ?? po.PurchaseOrderID ?? '—'),
-      detail: 'Not tagged to a job',
-      severity: 'Needs Review',
-    })),
-    ...variancePairs.map(({ bill, po, job }) => ({
-      category: 'Bill Variance',
-      job: job ?? '—',
-      label: String(bill.InvoiceNumber ?? '—'),
-      detail: `vs PO ${String(po.PurchaseOrderNumber ?? '—')}: billed ${fmtAmt(bill.Total)} vs ${fmtAmt(po.Total)}`,
-      severity: 'Variance',
-    })),
-    ...overduePOs.map((po) => {
-      const ms = parseDate(po.DeliveryDate);
-      const daysLate = Number.isFinite(ms) ? Math.round((today.getTime() - ms) / 86_400_000) : 0;
-      return {
-        category: 'Delivery',
-        job: poJobName(po) ?? '—',
-        label: String(po.PurchaseOrderNumber ?? po.PurchaseOrderID ?? '—'),
-        detail: `Expected ${fmtDate(ms)} — ${daysLate}d overdue`,
-        severity: 'Overdue',
-      };
-    }),
-    ...activeOptions.map((o) => {
-      const name = String(o.Name ?? 'Unnamed job');
-      const committed = committedByJob.get(name) ?? 0;
-      const budget = budgetByJob.get(name);
-      const isOver = overBudgetJob?.name === name;
-      return {
-        category: 'Tracking Category',
-        job: name,
-        label: name,
-        detail: budget ? `${fmtAmt(committed)} committed of ${fmtAmt(budget)} budget` : `${fmtAmt(committed)} committed`,
-        severity: isOver ? 'Over Budget' : 'On Track',
-      };
-    }),
-  ];
+  const totalOffsettable = rows
+    .filter((r) => !r.blocked)
+    .reduce((sum, r) => sum + (r.offsetAmount as number), 0);
 
+  return { rows, count: rows.length, totalOffsettable };
+};
+
+// ── find_clearing_account ────────────────────────────────────────────
+// Picks the clearing/offset account from a list already filtered to
+// EnablePaymentsToAccount==true (the dataProvider's own `where`) — a
+// generic payable-enabled account (e.g. an Owner Drawings account) is
+// NOT a clearing account and must not be silently offered as one, so
+// this only matches on Code/Name actually hinting "clearing"/"offset"/
+// "contra"/"suspense" rather than taking the first eligible account.
+// Returns { found: false } when nothing matches, so the tile can show
+// the manual Xero-UI setup instructions instead of guessing.
+// Args: { accounts: Account[] }
+const find_clearing_account: ComputedFunction = (args) => {
+  const accounts = Array.isArray(args.accounts) ? (args.accounts as Record<string, unknown>[]) : [];
+  const match = accounts.find((a) =>
+    /clearing|offset|contra|suspense/i.test(`${a.Code ?? ''} ${a.Name ?? ''}`),
+  );
+  if (!match) return { found: false };
   return {
-    activeJobCount,
-    totalCommitted,
-    totalCommittedDisplay: fmtAmt(totalCommitted),
-    currencyCode,
-    overBudgetJob,
-    poTagging: { pct: poTaggingPct, toReviewCount: untaggedPOs.length },
-    billsMatched: { varianceCount: variancePairs.length },
-    deliveries: { overdueCount: overduePOs.length },
-    trackingUsage: { used: activeOptions.length, limit: optionLimit },
-    detailRows,
-    reviewUrl,
-    lastSyncedAt: new Date().toISOString(),
+    found: true,
+    accountId: String(match.AccountID ?? ''),
+    code: String(match.Code ?? ''),
+    name: String(match.Name ?? ''),
   };
 };
+
+// ── today_iso ─────────────────────────────────────────────────────────
+// Today's date as YYYY-MM-DD, for Payment.Date on a same-day contra.
+const today_iso: ComputedFunction = () => new Date().toISOString().slice(0, 10);
+
+// ── contra_document_link ─────────────────────────────────────────────
+// Deep link to a specific Xero invoice/bill's edit page — same
+// `go.xero.com/organisationlogin/default.aspx?shortcode=...&
+// redirecturl=/<Module>/Edit.aspx?InvoiceID=...` format already
+// confirmed live elsewhere in this plugin (analyze_bill_duplicates,
+// ready_to_pay_held) — a bare /AccountsPayable/... URL with no
+// shortcode/org context 404s. Falls back to the generic Xero login
+// page before get_organisation resolves or if ShortCode ever comes
+// back empty.
+// Args: { shortCode: string, invoiceId: string, type: 'ACCREC'|'ACCPAY' }
+const contra_document_link: ComputedFunction = (args) => {
+  const shortCode = String(args.shortCode ?? '').trim();
+  const invoiceId = String(args.invoiceId ?? '').trim();
+  if (!shortCode || !invoiceId) return 'https://go.xero.com/';
+  const module = args.type === 'ACCPAY' ? 'AccountsPayable' : 'AccountsReceivable';
+  const redirect = `/${module}/Edit.aspx?InvoiceID=${invoiceId}`;
+  return `https://go.xero.com/organisationlogin/default.aspx?shortcode=${encodeURIComponent(shortCode)}&redirecturl=${encodeURIComponent(redirect)}`;
+};
+
+// ── contra_create_disabled ───────────────────────────────────────────
+// Whether the "Create Contra" button should be disabled for a row —
+// plain-boolean combinator, since generic props (unlike `visible`) don't
+// evaluate $and/$or/native conditions themselves (confirmed from the
+// json-render core source: that resolver only runs for the `visible`
+// field). Disabled when the pair's currencies mismatch, or no eligible
+// clearing account was found at all.
+// Args: { blocked: boolean, clearingFound: boolean }
+const contra_create_disabled: ComputedFunction = (args) => Boolean(args.blocked) || !args.clearingFound;
 
 const elements: PluginElementsModule = {
   slug: 'xero-accounting',
@@ -2208,6 +2090,11 @@ const elements: PluginElementsModule = {
     bill_entry_supplier_balances,
     bill_entry_tax_rate_lookup,
     bill_entry_line_tax,
+    contra_opportunities,
+    find_clearing_account,
+    today_iso,
+    contra_create_disabled,
+    contra_document_link,
   },
 };
 
