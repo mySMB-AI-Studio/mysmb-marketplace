@@ -136,7 +136,13 @@
         "props": {
           "initials": { "$item": "initials" },
           "size": "sm",
-          "tone": "muted"
+          "tone": {
+            "$computed": "google-workspace_speaker_tone",
+            "args": {
+              "speaker": { "$item": "name" },
+              "talkTime": { "$state": "/google-workspace-meet/get_meeting_dashboard/latestMeeting/talkTime" }
+            }
+          }
         },
         "repeat": {
           "statePath": "/google-workspace-meet/get_meeting_dashboard/latestMeeting/participants",
@@ -216,7 +222,12 @@
       "talkTimeSection": {
         "type": "Section",
         "props": { "variant": "plain" },
-        "children": ["talkTimeHeaderRow", "talkTimeList"]
+        "children": ["talkTimeHeaderRow", "talkTimeList", "talkTimeEmpty"]
+      },
+      "talkTimeEmpty": {
+        "type": "Caption",
+        "props": { "text": "No talk time to show yet — this meeting has no transcript.", "tone": "muted" },
+        "visible": { "$state": "/google-workspace-meet/get_meeting_dashboard/latestMeeting/talkTime/0", "not": true }
       },
       "talkTimeHeaderRow": {
         "type": "Row",
