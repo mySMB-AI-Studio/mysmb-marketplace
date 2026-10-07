@@ -96,7 +96,7 @@
           "size": "sm",
           "tone": "success",
           "variant": "primary",
-          "disabled": { "$state": "/ui/selectedFileId", "not": true }
+          "disabled": { "$cond": { "$state": "/ui/selectedFileId", "not": true }, "$then": true, "$else": false }
         },
         "on": {
           "click": {
