@@ -323,14 +323,17 @@ const count_transcript_matches = (args) => {
 // transcript shows by default), or when any of the group's own lines
 // contain `query` (case-insensitive substring) once the user types.
 //
-// Groups beyond COLLAPSED_LINES lines start clamped to their first 3 lines
-// (line4-6 blanked out even though captured) with `hasMore: true`; a
-// "Show more"/"Show less" control toggles exactly one group open at a
-// time, following the same expandedId-toggle pattern as
-// myob-accounting_classify_bill_queue: the caller re-invokes this
-// function on click with `clickedGroupId` set to the clicked group's id
-// and `expandedGroupId` set to the PREVIOUS value read back from state;
-// clicking the already-expanded group's id collapses it.
+// Collapsed groups don't show their first few raw entries — a single long
+// rambling utterance already wraps to several visual lines on its own, so
+// capping by entry COUNT doesn't actually cap the height. Instead, collapsed
+// groups show ONE preview line: all entries joined and truncated to
+// COLLAPSE_CHAR_LIMIT characters. A "Show more"/"Show less" control toggles
+// exactly one group open at a time (reveals every original entry in its own
+// line1..line6 slot), following the same expandedId-toggle pattern as
+// myob-accounting_classify_bill_queue: the caller re-invokes this function
+// on click with `clickedGroupId` set to the clicked group's id and
+// `expandedGroupId` set to the PREVIOUS value read back from state; clicking
+// the already-expanded group's id collapses it.
 //
 // Args: {
 //   entries: { speaker: string, text: string, startTime: string|null }[],
@@ -340,7 +343,7 @@ const count_transcript_matches = (args) => {
 // }
 // Returns: { items: Group[], expandedGroupId: string }
 const MAX_GROUP_LINES = 6;
-const COLLAPSED_LINES = 3;
+const COLLAPSE_CHAR_LIMIT = 140;
 const group_transcript_turns = (args) => {
     const entries = Array.isArray(args.entries) ? args.entries : [];
     const query = str(args.query).trim().toLowerCase();
@@ -367,7 +370,10 @@ const group_transcript_turns = (args) => {
     const items = groups.map((g) => {
         const matches = !query || g.lines.some((l) => l.toLowerCase().includes(query)) || g.speaker.toLowerCase().includes(query);
         const expanded = g.id === expandedGroupId;
-        const visibleLines = expanded ? g.lines : g.lines.slice(0, COLLAPSED_LINES);
+        const fullText = g.lines.join(' ').trim();
+        const isLong = fullText.length > COLLAPSE_CHAR_LIMIT;
+        const preview = isLong ? fullText.slice(0, COLLAPSE_CHAR_LIMIT).trimEnd() + '…' : fullText;
+        const visibleLines = expanded ? g.lines : [preview];
         return {
             id: g.id,
             speaker: g.speaker,
@@ -382,7 +388,7 @@ const group_transcript_turns = (args) => {
             line6: visibleLines[5] ?? '',
             matches,
             expanded,
-            hasMore: g.lineCount > COLLAPSED_LINES,
+            hasMore: isLong,
             showMoreLabel: expanded ? 'Show less' : 'Show more',
         };
     });
