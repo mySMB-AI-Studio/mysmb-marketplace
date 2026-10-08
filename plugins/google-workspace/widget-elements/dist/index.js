@@ -54,7 +54,10 @@ function normalizeStatus(value) {
 // Non-semantic tone cycle for distinguishing speakers — deliberately
 // excludes success/warning/destructive, which are reserved for transcript
 // status (ready/processing/none) elsewhere in the same tile.
-const SPEAKER_TONES = ['accent', 'info', 'brand', 'muted', 'default'];
+// "accent"/"brand" render near-invisible on the dark theme without a tile
+// brand colour set (confirmed live: the highest-talk-time speaker, index 0,
+// got "accent" and both their talk-time bar and avatar were unreadable).
+const SPEAKER_TONES = ['info', 'success', 'warning', 'destructive'];
 // ── mime_label ─────────────────────────────────────────────────────────
 // Referenced in widget JSON as "google-workspace_mime_label" — the slug
 // prefix is added automatically by the platform, not baked in here.
@@ -288,20 +291,6 @@ const speaker_tone = (args) => {
     const safeIdx = idx === -1 ? 0 : idx;
     return SPEAKER_TONES[safeIdx % SPEAKER_TONES.length];
 };
-// ── entry_matches_query ──────────────────────────────────────────────
-//
-// Case-insensitive substring match for live transcript search. Returns
-// false (hide the row) when the query is blank, so nothing renders until
-// the user types.
-//
-// Args: { speaker: string, text: string, query: string }
-const entry_matches_query = (args) => {
-    const query = str(args.query).trim().toLowerCase();
-    if (!query)
-        return false;
-    const haystack = `${str(args.speaker)} ${str(args.text)}`.toLowerCase();
-    return haystack.includes(query);
-};
 // ── count_transcript_matches ─────────────────────────────────────────
 //
 // Counts transcript entries whose speaker or text contains the query
@@ -319,6 +308,92 @@ const count_transcript_matches = (args) => {
         return haystack.includes(query) ? count + 1 : count;
     }, 0);
 };
+// ── group_transcript_turns ─────────────────────────────────────────────
+//
+// Merges consecutive same-speaker transcript entries into one "turn" block
+// (so 3 back-to-back utterances from one person read as one card, not
+// three identical name+avatar rows in a row), in original chronological
+// order. Each group carries up to 6 of its original lines in fixed slots
+// (line1..line6) plus lineCount, since `repeat` can't iterate a nested
+// array pulled from `$item` — a block with more than 6 lines just shows
+// its first 6 (no indicator; this is a rare, soft limit for very long
+// uninterrupted turns, not expected in normal meeting chatter).
+//
+// `matches` is true for every group when `query` is blank (the full
+// transcript shows by default), or when any of the group's own lines
+// contain `query` (case-insensitive substring) once the user types.
+//
+// Collapsed groups don't show their first few raw entries — a single long
+// rambling utterance already wraps to several visual lines on its own, so
+// capping by entry COUNT doesn't actually cap the height. Instead, collapsed
+// groups show ONE preview line: all entries joined and truncated to
+// COLLAPSE_CHAR_LIMIT characters. A "Show more"/"Show less" control toggles
+// exactly one group open at a time (reveals every original entry in its own
+// line1..line6 slot), following the same expandedId-toggle pattern as
+// myob-accounting_classify_bill_queue: the caller re-invokes this function
+// on click with `clickedGroupId` set to the clicked group's id and
+// `expandedGroupId` set to the PREVIOUS value read back from state; clicking
+// the already-expanded group's id collapses it.
+//
+// Args: {
+//   entries: { speaker: string, text: string, startTime: string|null }[],
+//   query?: string,
+//   expandedGroupId?: string,
+//   clickedGroupId?: string,
+// }
+// Returns: { items: Group[], expandedGroupId: string }
+const MAX_GROUP_LINES = 6;
+const COLLAPSE_CHAR_LIMIT = 140;
+const group_transcript_turns = (args) => {
+    const entries = Array.isArray(args.entries) ? args.entries : [];
+    const query = str(args.query).trim().toLowerCase();
+    const prevExpandedId = str(args.expandedGroupId);
+    const clickedGroupId = args.clickedGroupId !== undefined ? str(args.clickedGroupId) : undefined;
+    const expandedGroupId = clickedGroupId !== undefined ? (clickedGroupId === prevExpandedId ? '' : clickedGroupId) : prevExpandedId;
+    const groups = [];
+    for (const raw of entries) {
+        const e = raw;
+        const speaker = str(e?.speaker);
+        const text = str(e?.text);
+        const startTime = e?.startTime ?? null;
+        const last = groups[groups.length - 1];
+        if (last && last.speaker === speaker) {
+            last.endTime = startTime;
+            last.lineCount += 1;
+            if (last.lines.length < MAX_GROUP_LINES)
+                last.lines.push(text);
+        }
+        else {
+            groups.push({ id: startTime ?? `g${groups.length}`, speaker, startTime, endTime: startTime, lineCount: 1, lines: [text] });
+        }
+    }
+    const items = groups.map((g) => {
+        const matches = !query || g.lines.some((l) => l.toLowerCase().includes(query)) || g.speaker.toLowerCase().includes(query);
+        const expanded = g.id === expandedGroupId;
+        const fullText = g.lines.join(' ').trim();
+        const isLong = fullText.length > COLLAPSE_CHAR_LIMIT;
+        const preview = isLong ? fullText.slice(0, COLLAPSE_CHAR_LIMIT).trimEnd() + '…' : fullText;
+        const visibleLines = expanded ? g.lines : [preview];
+        return {
+            id: g.id,
+            speaker: g.speaker,
+            startTime: g.startTime,
+            endTime: g.endTime,
+            lineCount: g.lineCount,
+            line1: visibleLines[0] ?? '',
+            line2: visibleLines[1] ?? '',
+            line3: visibleLines[2] ?? '',
+            line4: visibleLines[3] ?? '',
+            line5: visibleLines[4] ?? '',
+            line6: visibleLines[5] ?? '',
+            matches,
+            expanded,
+            hasMore: isLong,
+            showMoreLabel: expanded ? 'Show less' : 'Show more',
+        };
+    });
+    return { items, expandedGroupId };
+};
 // ── module export ────────────────────────────────────────────────────
 const elements = {
     slug: 'google-workspace',
@@ -334,8 +409,8 @@ const elements = {
         transcript_status_icon,
         transcript_banner_label,
         speaker_tone,
-        entry_matches_query,
         count_transcript_matches,
+        group_transcript_turns,
     },
 };
 export default elements;
