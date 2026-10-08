@@ -199,7 +199,7 @@ This standard's tone rules will sometimes disagree with the exact colors a conne
 
 ## 10. Charts & visual summaries (confirmed 2026-10-01)
 
-**The system has four chart elements, and they're enough:** `Donut`, `BarChart`, `Sparkline`, `ProgressBar`. Richer layouts like segmented bars and "by day" strips are built by combining these with a `template`d `Row`, not with new components. Reference implementations: Xero's Duplicate Audit tile (`plugins/xero-accounting`), its Ready to Pay tile (PR #1012, open at time of writing), and all four `geotab-direct` tiles.
+**The system has four chart elements, and they're enough:** `Donut`, `BarChart`, `Sparkline`, `ProgressBar`. Richer layouts like segmented bars and "by day" strips are built by combining these with a `template`d `Row`, not with new components. Reference implementations: Xero's Duplicate Audit and Ready to Pay tiles (`plugins/xero-accounting`), all four `geotab-direct` tiles, and ServiceM8's Job History tile (`plugins/servicem8`, a job-status segmented bar). Look at more than one: each solves the same problem with slightly different choices, and the segmented bar and day strip below were first worked out in tiles like these rather than designed up front.
 
 **Compute first, draw second.** Give each chart tile one `<slug>_<tile>_dashboard` function, called once from the `Card`'s `watch` into `setState` (e.g. `/ui/dashboard`). It returns everything already display-ready: `segments` arrays, percentages, column `template` strings, per-item `tone`, formatted text. The tile JSON then only binds values, with no maths of its own. This keeps the logic testable outside a browser, and it avoids the watch-chain timing trap, where a `watch` chain can't read a state write made earlier in the same chain.
 
@@ -226,6 +226,21 @@ A `Row` whose `template` is computed (e.g. `minmax(0, 150fr) minmax(0, 60fr) min
 ### Day strip
 
 A `Row` with `template: "repeat(N, minmax(0, 1fr))"` and a `repeat` over the periods. Each cell is a `Stack` holding a value `Text`, a `ProgressBar` scaled to the period's share of the maximum, and a label. Highlight a cell (today, the peak) with a per-item `tone` from the dashboard function, not a duplicate element. Every cell gets an equal fixed share, so §6's alignment bugs don't apply.
+
+### Known platform limits (confirmed 2026-10-08)
+
+Several tiles were built from a visual mock and list "Differences from the mock (platform limits)" in their PRs. Each item below was checked against the platform code on `dev`. Don't spend time fighting these; use the workaround. Re-check before relying on one, since this list goes stale as the platform changes.
+
+| You can't | Because | Do this instead |
+|---|---|---|
+| Draw vertical bars (a column chart) or a line chart | There is no such element on `dev`. `ColumnChart` and `LineChart` exist only on the unmerged `feature/new-chart-types` branch in myHubV2. | A horizontal fill under each value (the day strip above), `BarChart` with `sort: "none"` for periods, or `Sparkline` for trend shape. |
+| Tint a `Section` or a panel (e.g. green for ready, red for held back) | `Section` only supports `plain`, `bordered` and `muted`. A row of stat cards is uniformly muted, never individually tinted. | Take the colour from text tones and `Dot`s; use `bordered` to set a panel apart. |
+| Show hover detail (tooltips) | No tooltip element exists in the system components. | A muted reason line under the row. It's wordier, but readable without interaction. |
+| Wrap items onto several lines (chips) | `Row` has no wrap option. | One item per row, or a `Grid` of fixed columns. |
+| Get blue *text* | `info` (and `accent`) resolve to the normal foreground colour in `TONE_TEXT`. | A primary `Button` with `tone: "info"` is the only way to get real blue. It costs the leading-link look. |
+| Put an icon after a button label | `Button` takes `leadingIcon` but has no trailing icon. | Put the arrow or icon first, or leave it out. |
+
+`Donut` has two more, already covered in the table above: it always centres the segment total, and it always draws its own legend.
 
 ### Gotchas
 
