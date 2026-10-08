@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Practice Report Catalogue</title>
+<style>:root{--bg:#FAFAFA;--surface:#FFFFFF;--soft:#F2F1ED;--ink:#000000;--muted:#5B6168;--line:#DADCE0;--accent:#34DFBA;--deep:#22669C;--hl:#B2EDE3;--live:#0E7C66;--na:#8A5A00;--na-bg:#FFF4DB;--pass-bg:#E7F8F2}
+:root[data-myhub-theme='dark']{--bg:#1E1E1E;--surface:#262626;--soft:#2E2E2E;--ink:#F2F2F2;--muted:#A6ADB4;--line:#3A3A3A;--accent:#34DFBA;--deep:#7DB8E8;--hl:#1F4A43;--live:#34DFBA;--na:#F5C66B;--na-bg:#3A2F14;--pass-bg:#173A31}
+*{box-sizing:border-box}body{margin:0;padding:20px;font:14px/1.45 Roboto,"Segoe UI",system-ui,sans-serif;color:var(--ink);background:var(--bg)}
+.hero{border-radius:12px;padding:16px 20px;color:#fff;background:linear-gradient(90deg,#34DFBA,#22669C)}
+.hero h1{margin:0;font-size:22px}.hero p{margin:4px 0 0;opacity:.95}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0}
+input[type=search]{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}.chip{font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:16px;padding:4px 12px;cursor:pointer}.chip[aria-pressed=true]{background:var(--hl);border-color:var(--accent)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.box .top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.id{color:var(--muted);font-size:12px}
+.pill{display:inline-block;border-radius:10px;padding:1px 8px;font-size:12px;font-weight:600}.pill.live{color:var(--live);background:var(--pass-bg)}.pill.na{color:var(--na);background:var(--na-bg)}
+.how{font-size:12px;color:var(--muted);border-top:1px dashed var(--line);padding-top:6px}.how b{color:var(--ink)}
+.muted{color:var(--muted)}
+footer{margin-top:18px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px}
+@media print{.bar,button{display:none}body{background:#fff;padding:0}}</style>
+</head>
+<body>
+<header class="hero"><h1>Practice Report Catalogue</h1><p>Practice Report Analytics · reports across every client on your Xero, MYOB and QuickBooks connections</p></header>
+<div class="bar"><input id="q" type="search" placeholder="Search reports" aria-label="Search reports"></div>
+<div id="chips" class="chips" role="toolbar" aria-label="Report groups"></div>
+<main><div id="items" class="grid"></div></main>
+<footer>Practice Report Analytics catalogue. Boxes open report templates ("Use this report"); the latest saved copy is not looked up, and there are no sparklines yet.</footer>
+<script>(function () {
+  var D = {"chips":["Clients","Sales","Purchases","Banking","Financial","Quality","Work","Time"],"na":{"wave3":"Not available yet — coming in a later wave","checks":"Not available yet — needs the checks engine (Work list), coming in step 3"},"items":[{"id":"PRA-01","name":"Client Summary Metrics","chip":"Clients","state":"live","slug":"practice-client-summary","line":"Counts of contacts, accounts, invoices, bills and employees per client — the practice’s one-page inventory."},{"id":"PRA-02","name":"Sales Summary Metrics","chip":"Sales","state":"live","slug":"practice-sales-summary","line":"Outstanding and overdue invoice counts and values, collection days (DSO), per client."},{"id":"PRA-03","name":"Purchases Summary Metrics","chip":"Purchases","state":"live","slug":"practice-purchases-summary","line":"Outstanding and overdue bills, payment days (DPO), supplier counts, per client."},{"id":"PRA-04","name":"Bank Reconciliation Summary","chip":"Banking","state":"live","slug":"practice-bank-reconciliation-summary","line":"Statement vs ledger balance, unreconciled lines, last reconciled, across every client."},{"id":"PRA-05","name":"Banking Summary Metrics","chip":"Banking","state":"live","slug":"practice-banking-summary","line":"Cash in and cash out across every bank account, per client."},{"id":"PRA-06","name":"Financial Overview","chip":"Financial","state":"live","slug":"practice-financial-overview","line":"Revenue, gross and net profit, bank balances, AR/AP ageing, for all or selected clients."},{"id":"PRA-07","name":"Quadrant","chip":"Quality","state":"wave3","slug":null,"line":"Clients plotted by two chosen metrics, four quadrants."},{"id":"PRA-08","name":"Activity Count","chip":"Work","state":"wave3","slug":null,"line":"Transaction activity across key functions, per client."},{"id":"PRA-09","name":"Data Quality","chip":"Quality","state":"checks","slug":null,"line":"Practice-wide summary of the automated checks: findings by category, severity, $ at risk."},{"id":"PRA-10","name":"Task Scope","chip":"Work","state":"wave3","slug":null,"line":"Counts of WorkQ items by status, template, client and assignee."},{"id":"PRA-11","name":"Task Completion","chip":"Work","state":"wave3","slug":null,"line":"Completion rate and ageing of WorkQ items."},{"id":"PRA-12","name":"User Activity","chip":"Quality","state":"wave3","slug":null,"line":"What people have been doing in each client’s accounting file (platform audit log export)."},{"id":"PRA-13","name":"Return on Investment","chip":"Quality","state":"wave3","slug":null,"line":"Practice savings from the agents: findings resolved, hours saved, $ risk averted."},{"id":"PRA-14","name":"Actual Time","chip":"Time","state":"time","slug":null,"line":"Time allocated by staff and process, per client."},{"id":"PRA-15","name":"Draft Time","chip":"Time","state":"time","slug":null,"line":"Unsubmitted or in-progress time entries."},{"id":"PRA-16","name":"Estimate Accuracy","chip":"Time","state":"time","slug":null,"line":"Estimated vs actual time by staff, process and work item."},{"id":"PRA-17","name":"Work Items","chip":"Work","state":"wave3","slug":null,"line":"WorkQ items across the practice, by client, assignee and due date."}]};
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (v) { return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+  var state = { chip: 'All', q: '' };
+  function match(text) { return !state.q || text.toLowerCase().indexOf(state.q.toLowerCase()) >= 0; }
+  function box(it) {
+    var isLive = it.state === 'live';
+    var how = isLive ? 'Open: Reports → From your plugins → <b>Practice ' + esc(it.name) + '</b> → Use this report.<br>Or ask the Practice Report Analytics agent: <b>“' + esc(it.name) + ' for the practice”</b>.' : esc(D.na[it.state]);
+    return '<article class="box" data-row="' + esc(it.id) + '"><div class="top"><div><h3>' + esc(it.name) + '</h3><span class="id">' + esc(it.id) + ' · ' + esc(it.chip) + '</span></div></div>' +
+      '<div><span class="pill ' + (isLive ? 'live">Live' : 'na">Not available') + '</span></div><div>' + esc(it.line) + '</div><div class="how">' + how + '</div></article>';
+  }
+  function workListBox() {
+    return '<article class="box" data-row="WL-00"><div class="top"><div><h3>Work list</h3><span class="id">WL-00 · Work</span></div></div>' +
+      '<div><span class="pill na">Not available</span></div><div>Daily data-quality checks across every client, as WorkQ items.</div>' +
+      '<div class="how">Not available yet — needs the checks engine, coming in step 3.</div></article>';
+  }
+  function render() {
+    $('chips').innerHTML = ['All'].concat(D.chips).map(function (ch) { return '<button class="chip" type="button" aria-pressed="' + (ch === state.chip) + '" data-chip="' + esc(ch) + '">' + esc(ch) + '</button>'; }).join('');
+    var shown = D.items.filter(function (it) { return (state.chip === 'All' || state.chip === it.chip) && match(it.id + ' ' + it.name + ' ' + it.line); });
+    var showWl = (state.chip === 'All' || state.chip === 'Work') && match('WL-00 Work list');
+    $('items').innerHTML = shown.map(box).join('') + (showWl ? workListBox() : '');
+    if (!shown.length && !showWl) $('items').innerHTML = '<p class="muted">No reports match.</p>';
+  }
+  $('chips').addEventListener('click', function (e) { var b = e.target.closest('[data-chip]'); if (b) { state.chip = b.getAttribute('data-chip'); render(); } });
+  $('q').addEventListener('input', function (e) { state.q = e.target.value.trim(); render(); });
+  render();
+  if (typeof MyHubReport !== 'undefined') MyHubReport.onData(function () {});
+})();</script>
+</body>
+</html>
