@@ -9,18 +9,50 @@
 
 import type { ComputedFunction, PluginElementsModule } from './types';
 
-// Graph returns dateTime strings without a timezone suffix on some fields
-// (e.g. `2026-10-07T04:30:00.0000000`), which JS `Date()` would otherwise
-// parse as local time. Append Z when no offset is present, matching the
-// parsing convention used elsewhere in this codebase for Graph instants.
-function toEpochMs(raw: unknown): number | null {
-  if (raw == null) return null;
-  if (typeof raw === 'number') return raw;
-  if (typeof raw !== 'string') return null;
-  const hasOffset = /[Zz]$|[+-]\d{2}:?\d{2}$/.test(raw);
-  const parsed = Date.parse(hasOffset ? raw : raw + 'Z');
-  return Number.isFinite(parsed) ? parsed : null;
-}
+/**
+ * Deterministic per-sender avatar color, not a status tone (nothing here
+ * represents state) — per TILE-DISPLAY-STANDARDS.md §7's "Categorical
+ * (multi-color, non-status) breakdowns" guidance, this is exactly the
+ * chart-1..5 use case: coloring several arbitrary category labels (here,
+ * senders) distinctly, where no single accent or status tone fits any one of
+ * them. Hashing the sender's name (not initials) keeps two different people
+ * who happen to share initials from also sharing a color. 'muted' if empty.
+ * Mirrors asana's flatten_recent_activity avatar_tone exactly.
+ */
+const sender_tone: ComputedFunction = (args) => {
+  const name = String(args.value ?? '').trim();
+  if (!name) return 'muted';
+  const CHART_TONES = ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5'] as const;
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return CHART_TONES[hash % CHART_TONES.length];
+};
+
+/** `/ui/activeTab` starts unset until a tab is clicked — treat that as "inbox" everywhere a tab comparison needs a concrete value. */
+const default_tab: ComputedFunction = (args) => String(args.value ?? '').trim() || 'inbox';
+
+/** Tab button variant: filled when active, ghost otherwise. Mirrors the Zoom Recordings tile's tab_variant exactly. */
+const tab_variant: ComputedFunction = (args) => (String(args.active ?? '') === String(args.match ?? '') ? 'primary' : 'ghost');
+
+/** Tab button tone: accent when active, muted otherwise. Mirrors the Zoom Recordings tile's tab_tone exactly. */
+const tab_tone: ComputedFunction = (args) => (String(args.active ?? '') === String(args.match ?? '') ? 'info' : 'muted');
+
+/** Empty-state copy for the Hotmail Inbox tile's mail folder tabs. */
+const mail_folder_empty_message: ComputedFunction = (args) => {
+  const tab = String(args.tab ?? '').trim() || 'inbox';
+  if (tab === 'sent') return 'No sent messages yet.';
+  if (tab === 'drafts') return 'No drafts saved.';
+  return 'Inbox zero — enjoy it while it lasts.';
+};
+
+/** Builds the Quick Share picker's options from a list of drive items (recent files). */
+const file_options: ComputedFunction = (args) => {
+  const items = Array.isArray(args.items) ? (args.items as Record<string, unknown>[]) : [];
+  return items
+    .filter((it) => !it.folder) // folders aren't shareable via this tile — files only
+    .map((it) => ({ value: String(it.id ?? ''), label: String(it.name ?? 'Untitled') }))
+    .filter((o) => o.value);
+};
 
 function startOfLocalDay(ms: number): number {
   const d = new Date(ms);

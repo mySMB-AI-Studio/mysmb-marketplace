@@ -1,7 +1,7 @@
 {
   "id": "hotmail-mail-inbox",
   "title": "Hotmail Inbox",
-  "description": "Recent inbox messages from a personal Hotmail/Outlook.com/Live.com account, with unread indicator and sender avatar.",
+  "description": "Inbox, Sent, and Drafts from a personal Hotmail/Outlook.com/Live.com account, with unread indicator and colored sender avatars. Drafts are view-only — opening one shows its content, not an editor.",
   "category": "productivity",
   "tags": [
     "hotmail",
@@ -57,9 +57,83 @@
         "type": "Card",
         "children": [
           "header",
+          "tabDivider",
+          "tabBar",
           "body",
           "overlay"
         ]
+      },
+      "tabDivider": { "type": "Divider", "props": {} },
+      "tabBar": {
+        "type": "Row",
+        "props": { "gap": "xs" },
+        "children": ["inboxTabBtn", "sentTabBtn", "draftsTabBtn"]
+      },
+      "inboxTabBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Inbox",
+          "leadingIcon": "Inbox",
+          "size": "sm",
+          "variant": {
+            "$computed": "microsoft-365_tab_variant",
+            "args": { "active": { "$computed": "microsoft-365_default_tab", "args": { "value": { "$state": "/ui/activeTab" } } }, "match": "inbox" }
+          },
+          "tone": {
+            "$computed": "microsoft-365_tab_tone",
+            "args": { "active": { "$computed": "microsoft-365_default_tab", "args": { "value": { "$state": "/ui/activeTab" } } }, "match": "inbox" }
+          }
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "inbox" } },
+            { "action": "hotmail-mail.list_emails", "params": { "folder": "inbox", "limit": 50 } }
+          ]
+        }
+      },
+      "sentTabBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Sent",
+          "leadingIcon": "Send",
+          "size": "sm",
+          "variant": {
+            "$computed": "microsoft-365_tab_variant",
+            "args": { "active": { "$computed": "microsoft-365_default_tab", "args": { "value": { "$state": "/ui/activeTab" } } }, "match": "sent" }
+          },
+          "tone": {
+            "$computed": "microsoft-365_tab_tone",
+            "args": { "active": { "$computed": "microsoft-365_default_tab", "args": { "value": { "$state": "/ui/activeTab" } } }, "match": "sent" }
+          }
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "sent" } },
+            { "action": "hotmail-mail.list_emails", "params": { "folder": "sentitems", "limit": 50 } }
+          ]
+        }
+      },
+      "draftsTabBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Drafts",
+          "leadingIcon": "FileEdit",
+          "size": "sm",
+          "variant": {
+            "$computed": "microsoft-365_tab_variant",
+            "args": { "active": { "$computed": "microsoft-365_default_tab", "args": { "value": { "$state": "/ui/activeTab" } } }, "match": "drafts" }
+          },
+          "tone": {
+            "$computed": "microsoft-365_tab_tone",
+            "args": { "active": { "$computed": "microsoft-365_default_tab", "args": { "value": { "$state": "/ui/activeTab" } } }, "match": "drafts" }
+          }
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "drafts" } },
+            { "action": "hotmail-mail.list_emails", "params": { "folder": "drafts", "limit": 50 } }
+          ]
+        }
       },
       "header": {
         "type": "Header",
@@ -89,7 +163,7 @@
       "title": {
         "type": "Heading",
         "props": {
-          "text": "Inbox",
+          "text": "Personal Inbox",
           "level": "h2"
         }
       },
@@ -112,6 +186,12 @@
               }
             }
           }
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/ui/activeTab", "neq": "sent" },
+            { "$state": "/ui/activeTab", "neq": "drafts" }
+          ]
         }
       },
       "body": {
@@ -168,7 +248,10 @@
       "empty": {
         "type": "Empty",
         "props": {
-          "message": "Inbox zero — enjoy it while it lasts."
+          "message": {
+            "$computed": "microsoft-365_mail_folder_empty_message",
+            "args": { "tab": { "$state": "/ui/activeTab" } }
+          }
         },
         "visible": {
           "$and": [
@@ -287,6 +370,14 @@
         "props": {
           "initials": {
             "$computed": "initials",
+            "args": {
+              "value": {
+                "$item": "from/emailAddress/name"
+              }
+            }
+          },
+          "tone": {
+            "$computed": "microsoft-365_sender_tone",
             "args": {
               "value": {
                 "$item": "from/emailAddress/name"
