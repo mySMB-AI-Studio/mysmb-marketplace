@@ -411,13 +411,14 @@ const group_transcript_turns = (args) => {
 // accent/brand/muted/default are excluded).
 //
 // Args: { value: string } — sender display name or email
-const sender_tone = (args) => {
-    const key = str(args.value).trim().toLowerCase();
+function toneFromKey(key) {
     let hash = 0;
-    for (let i = 0; i < key.length; i++)
-        hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+    const k = key.trim().toLowerCase();
+    for (let i = 0; i < k.length; i++)
+        hash = (hash * 31 + k.charCodeAt(i)) >>> 0;
     return SPEAKER_TONES[hash % SPEAKER_TONES.length];
-};
+}
+const sender_tone = (args) => toneFromKey(str(args.value));
 // ── decode_entities ─────────────────────────────────────────────────────
 //
 // Decodes the handful of HTML entities that actually show up in Gmail
@@ -754,7 +755,7 @@ const build_events_view = (args) => {
                 location: e.location ?? null,
                 hangoutLink: e.hangoutLink ?? null,
                 htmlLink: e.htmlLink ?? null,
-                calendarColor: str(e.calendarColor) || '#4285F4',
+                calendarTone: toneFromKey(str(e.calendarName) || str(e.calendarColor)),
                 calendarName: str(e.calendarName),
                 rsvp: rsvp_label({ value: e.selfResponseStatus }),
                 clash: !!e.clash,
@@ -772,7 +773,8 @@ const build_events_view = (args) => {
             location: nextUpEvent.location ?? null,
             hangoutLink: nextUpEvent.hangoutLink ?? null,
             htmlLink: nextUpEvent.htmlLink ?? null,
-            calendarColor: str(nextUpEvent.calendarColor) || '#4285F4',
+            calendarTone: toneFromKey(str(nextUpEvent.calendarName) || str(nextUpEvent.calendarColor)),
+            dayLabel: nextUpEvent.__day === today ? 'Today' : nextUpEvent.__day === weekChips[1]?.date ? 'Tomorrow' : str(nextUpEvent.__day),
             countdown: countdown_label({ start: nextUpEvent.start, end: nextUpEvent.end, now }),
         }
         : null;
