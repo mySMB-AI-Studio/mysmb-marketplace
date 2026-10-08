@@ -98,6 +98,16 @@
                 }
               }
             }
+          ],
+          "/ui/meetSelectedConferenceRecordName": [
+            {
+              "action": "google-workspace-meet.get_meeting_dashboard",
+              "params": {
+                "conferenceRecordName": {
+                  "$state": "/ui/meetSelectedConferenceRecordName"
+                }
+              }
+            }
           ]
         }
       },
@@ -1010,20 +1020,29 @@
           "recentStatusBadge"
         ],
         "on": {
-          "click": {
-            "action": "open_url",
-            "params": {
-              "url": {
-                "$computed": "identity",
-                "args": {
-                  "value": {
-                    "$item": "docUrl"
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/meetTranscriptSearch/query",
+                "value": ""
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/meetSelectedConferenceRecordName",
+                "value": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "id"
+                    }
                   }
                 }
-              },
-              "target": "_blank"
+              }
             }
-          }
+          ]
         }
       },
       "recentLeft": {
