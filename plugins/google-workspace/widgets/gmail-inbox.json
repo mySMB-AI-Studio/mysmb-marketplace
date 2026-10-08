@@ -112,7 +112,7 @@
         "type": "Icon",
         "props": {
           "name": "Mail",
-          "tone": "brand",
+          "tone": "default",
           "size": "lg"
         }
       },
@@ -174,13 +174,29 @@
       "tabAll": {
         "type": "Row",
         "props": {
-          "clickable": true,
-          "selected": { "$cond": { "$state": "/ui/gmailInboxTab", "eq": "all" }, "$then": true, "$else": false }
+          "clickable": true
         },
-        "children": ["tabAllText"],
+        "children": ["tabAllActive", "tabAllInactive"],
         "on": { "click": { "action": "setState", "params": { "statePath": "/ui/gmailInboxTab", "value": "all" } } }
       },
-      "tabAllText": {
+      "tabAllActive": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "All {n}", "n": { "$state": "/ui/gmailInbox/counts/all" } }
+          },
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": {
+          "$or": [
+            { "$state": "/ui/gmailInboxTab", "eq": "all" },
+            { "$state": "/ui/gmailInboxTab", "not": true }
+          ]
+        }
+      },
+      "tabAllInactive": {
         "type": "Text",
         "props": {
           "text": {
@@ -188,20 +204,36 @@
             "args": { "pattern": "All {n}", "n": { "$state": "/ui/gmailInbox/counts/all" } }
           },
           "size": "sm",
-          "weight": { "$cond": { "$state": "/ui/gmailInboxTab", "eq": "all" }, "$then": "medium", "$else": "regular" },
-          "tone": { "$cond": { "$state": "/ui/gmailInboxTab", "eq": "all" }, "$then": "default", "$else": "muted" }
+          "tone": "muted"
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/ui/gmailInboxTab" },
+            { "$state": "/ui/gmailInboxTab", "eq": "all", "not": true }
+          ]
         }
       },
       "tabUnread": {
         "type": "Row",
         "props": {
-          "clickable": true,
-          "selected": { "$cond": { "$state": "/ui/gmailInboxTab", "eq": "unread" }, "$then": true, "$else": false }
+          "clickable": true
         },
-        "children": ["tabUnreadText"],
+        "children": ["tabUnreadActive", "tabUnreadInactive"],
         "on": { "click": { "action": "setState", "params": { "statePath": "/ui/gmailInboxTab", "value": "unread" } } }
       },
-      "tabUnreadText": {
+      "tabUnreadActive": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Unread {n}", "n": { "$state": "/ui/gmailInbox/counts/unread" } }
+          },
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": { "$state": "/ui/gmailInboxTab", "eq": "unread" }
+      },
+      "tabUnreadInactive": {
         "type": "Text",
         "props": {
           "text": {
@@ -209,20 +241,31 @@
             "args": { "pattern": "Unread {n}", "n": { "$state": "/ui/gmailInbox/counts/unread" } }
           },
           "size": "sm",
-          "weight": { "$cond": { "$state": "/ui/gmailInboxTab", "eq": "unread" }, "$then": "medium", "$else": "regular" },
-          "tone": { "$cond": { "$state": "/ui/gmailInboxTab", "eq": "unread" }, "$then": "default", "$else": "muted" }
-        }
+          "tone": "muted"
+        },
+        "visible": { "$state": "/ui/gmailInboxTab", "eq": "unread", "not": true }
       },
       "tabAttachments": {
         "type": "Row",
         "props": {
-          "clickable": true,
-          "selected": { "$cond": { "$state": "/ui/gmailInboxTab", "eq": "attachments" }, "$then": true, "$else": false }
+          "clickable": true
         },
-        "children": ["tabAttachmentsText"],
+        "children": ["tabAttachmentsActive", "tabAttachmentsInactive"],
         "on": { "click": { "action": "setState", "params": { "statePath": "/ui/gmailInboxTab", "value": "attachments" } } }
       },
-      "tabAttachmentsText": {
+      "tabAttachmentsActive": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Attachments {n}", "n": { "$state": "/ui/gmailInbox/counts/attachments" } }
+          },
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": { "$state": "/ui/gmailInboxTab", "eq": "attachments" }
+      },
+      "tabAttachmentsInactive": {
         "type": "Text",
         "props": {
           "text": {
@@ -230,20 +273,31 @@
             "args": { "pattern": "Attachments {n}", "n": { "$state": "/ui/gmailInbox/counts/attachments" } }
           },
           "size": "sm",
-          "weight": { "$cond": { "$state": "/ui/gmailInboxTab", "eq": "attachments" }, "$then": "medium", "$else": "regular" },
-          "tone": { "$cond": { "$state": "/ui/gmailInboxTab", "eq": "attachments" }, "$then": "default", "$else": "muted" }
-        }
+          "tone": "muted"
+        },
+        "visible": { "$state": "/ui/gmailInboxTab", "eq": "attachments", "not": true }
       },
       "tabAlerts": {
         "type": "Row",
         "props": {
-          "clickable": true,
-          "selected": { "$cond": { "$state": "/ui/gmailInboxTab", "eq": "alerts" }, "$then": true, "$else": false }
+          "clickable": true
         },
-        "children": ["tabAlertsText"],
+        "children": ["tabAlertsActive", "tabAlertsInactive"],
         "on": { "click": { "action": "setState", "params": { "statePath": "/ui/gmailInboxTab", "value": "alerts" } } }
       },
-      "tabAlertsText": {
+      "tabAlertsActive": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Alerts {n}", "n": { "$state": "/ui/gmailInbox/counts/alerts" } }
+          },
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": { "$state": "/ui/gmailInboxTab", "eq": "alerts" }
+      },
+      "tabAlertsInactive": {
         "type": "Text",
         "props": {
           "text": {
@@ -251,9 +305,9 @@
             "args": { "pattern": "Alerts {n}", "n": { "$state": "/ui/gmailInbox/counts/alerts" } }
           },
           "size": "sm",
-          "weight": { "$cond": { "$state": "/ui/gmailInboxTab", "eq": "alerts" }, "$then": "medium", "$else": "regular" },
-          "tone": { "$cond": { "$state": "/ui/gmailInboxTab", "eq": "alerts" }, "$then": "warning", "$else": "muted" }
-        }
+          "tone": "muted"
+        },
+        "visible": { "$state": "/ui/gmailInboxTab", "eq": "alerts", "not": true }
       },
       "body": {
         "type": "Body",
@@ -545,17 +599,14 @@
         }
       },
       "footerLink": {
-        "type": "Row",
+        "type": "Button",
         "props": {
-          "gap": "xs",
-          "align": "center",
-          "hover": true,
-          "clickable": true
+          "label": "Open in Gmail",
+          "variant": "primary",
+          "tone": "info",
+          "size": "sm",
+          "leadingIcon": "Mail"
         },
-        "children": [
-          "footerLinkText",
-          "footerLinkIcon"
-        ],
         "on": {
           "click": {
             "action": "open_url",
@@ -564,23 +615,6 @@
               "target": "_blank"
             }
           }
-        }
-      },
-      "footerLinkText": {
-        "type": "Text",
-        "props": {
-          "text": "Open in Gmail",
-          "size": "sm",
-          "weight": "medium",
-          "tone": "brand"
-        }
-      },
-      "footerLinkIcon": {
-        "type": "Icon",
-        "props": {
-          "name": "ArrowRight",
-          "tone": "brand",
-          "size": "sm"
         }
       }
     }
