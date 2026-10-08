@@ -1,6 +1,6 @@
 # Microsoft 365
 
-Access Microsoft 365 emails, calendar, files, Teams (chat, channels, meeting transcripts), and people through Microsoft Graph.
+Access Microsoft 365 emails, calendar, files, Teams (chat, channels, meeting transcripts), and people through Microsoft Graph — plus mail and calendar for a **personal** Hotmail/Outlook.com/Live.com account via the `hotmail-mail`/`hotmail-calendar` servers below.
 
 ## Servers
 
@@ -13,6 +13,15 @@ Access Microsoft 365 emails, calendar, files, Teams (chat, channels, meeting tra
 | m365-teams | Read and send Teams channel and chat messages | `Team.ReadBasic.All`, `ChannelMessage.Read.All`, `Chat.ReadWrite` | Admin consent required |
 | m365-teams-transcripts | Read Teams meeting transcripts | `OnlineMeetingTranscript.Read.All` | **Admin consent required** |
 | m365-people | Search people, view profiles and org chart | `People.Read`, `User.Read` | User self-consent OK |
+| hotmail-mail | Read, search, and inspect emails in a **personal** Hotmail/Outlook.com/Live.com account | `Mail.Read` | **User self-consent OK** (no tenant/admin — personal accounts self-consent individually) |
+| hotmail-calendar | View, create, and manage events in a **personal** calendar | `Calendars.ReadWrite` | **User self-consent OK** |
+
+`hotmail-mail`/`hotmail-calendar` use a **separate Entra app registration**
+(`HOTMAIL_CLIENT_ID`/`HOTMAIL_CLIENT_SECRET` on the gateway) from the other
+seven servers — see the callout in
+**[OAuth redirect URIs](#oauth-redirect-uris--register-these-before-a-server-can-be-connected)**
+below for why, and don't register their redirect URIs under the main
+`ENTRA_CLIENT_ID` app by mistake.
 
 Mail is split into two servers on purpose: `Mail.Send` and `Mail.ReadWrite` are
 classified as high-risk by Entra and user self-consent is blocked by default,
@@ -131,6 +140,30 @@ without another prompt.
 - `get_manager` — Get user's manager
 - `get_direct_reports` — Get direct reports
 
+### Hotmail — Mail (5 tools, `hotmail-mail`, personal accounts only)
+- `list_emails` — List recent emails from inbox or a folder
+- `get_email` — Get a single email with full body
+- `search_emails` — Search across all folders
+- `list_email_attachments` — List an email's attachments (metadata only)
+- `get_email_attachment` — Download one file attachment (up to 15 MB)
+
+Read-only, same shape as `m365-mail-read` minus the organizational
+aggregation tools (ready-to-pay notices, bill emails, hand-offs) — those are
+work-account workflows that don't apply to a personal inbox. No send server
+exists yet for Hotmail.
+
+### Hotmail — Calendar (6 tools, `hotmail-calendar`, personal accounts only)
+- `list_events` — List upcoming events
+- `get_event` — Get event details
+- `create_event` — Create a new event
+- `update_event` — Modify an event
+- `cancel_event` — Cancel with notification
+- `respond_to_event` — Accept / tentatively accept / decline an invitation
+
+No `find_free_slots` — Graph's scheduling-assistant API
+(`/me/findMeetingTimes`) is a work-or-school (Exchange Online) feature and
+isn't available for personal Microsoft accounts.
+
 ## Briefing email source
 
 `briefing-sources/email.json` (declared as `briefingEmailSources` in
@@ -181,8 +214,30 @@ So each server needs **both** rows below registered against the Entra app regist
 
 > Register these under the Entra app registration whose id is `ENTRA_CLIENT_ID`
 > on the gateway (Azure Portal → App registrations → Authentication → Web →
-> Redirect URIs). All seven servers share one app registration, differing only
-> by requested scopes.
+> Redirect URIs). These seven servers share one app registration, differing
+> only by requested scopes.
 >
 > `m365-mail-send` is only reached when a user creates a draft, so an unregistered
 > URI there stays invisible until someone clicks "Open draft".
+
+**`hotmail-mail`/`hotmail-calendar` use a DIFFERENT, separate app registration**
+(`HOTMAIL_CLIENT_ID`/`HOTMAIL_CLIENT_SECRET`) — deliberately, because the main
+app above is configured "work or school accounts only" (confirmed live:
+signing in with a personal account there returns "You can't sign in here with
+a personal account"). The Hotmail app must be registered as **"Personal
+Microsoft accounts only"** with authority `https://login.microsoftonline.com/consumers`,
+so the two apps stay mutually exclusive by design, not just by which env vars
+happen to be set.
+
+| Server | Redirect URIs (register both, on the HOTMAIL app, not the main one) |
+|---|---|
+| `hotmail-mail` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/hotmail-mail/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/hotmail-mail/callback` |
+| `hotmail-calendar` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/hotmail-calendar/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/hotmail-calendar/callback` |
+
+> As of this writing, `HOTMAIL_CLIENT_ID`/`HOTMAIL_CLIENT_SECRET` are only
+> wired into the staging deploy (`deploy-staging.yml`) — production's
+> container doesn't have them yet (`deploy-production.yml` doesn't sync env
+> vars at all; see `sync-integration-env.yml` for the workflow that would
+> need a new block to backfill this onto production without a redeploy).
+> Registering the production redirect URI now is still worthwhile so it's
+> not forgotten later.
