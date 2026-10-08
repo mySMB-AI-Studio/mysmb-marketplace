@@ -1,14 +1,15 @@
 {
   "id": "google-workspace-calendar-today",
   "title": "Upcoming Events",
-  "description": "Upcoming Google Calendar events — title, time range, and location. Click a row to open the event in Google Calendar.",
+  "description": "A merged agenda across every calendar you have selected in Google Calendar — a Next Up card with a countdown and Join Meet button, a 7-day activity strip, and a day-grouped agenda with clash warnings and RSVP status. Today / Next 7 days / Next 30 days tabs; click a day in the strip to jump to it.",
   "category": "productivity",
   "tags": [
     "google",
     "calendar",
     "events",
     "schedule",
-    "productivity"
+    "productivity",
+    "agenda"
   ],
   "keywords": [
     "calendar",
@@ -16,20 +17,23 @@
     "today",
     "schedule",
     "meetings",
-    "google"
+    "google",
+    "agenda",
+    "upcoming"
   ],
   "connectorsUsed": [
     "google-workspace-calendar"
   ],
+  "brandColor": "#4285F4",
   "popularity": 0,
   "sizing": {
     "preferred": {
       "colSpan": 6,
-      "rowSpan": 6
+      "rowSpan": 9
     },
     "min": {
       "colSpan": 4,
-      "rowSpan": 4
+      "rowSpan": 6
     },
     "max": {
       "colSpan": 12,
@@ -38,15 +42,8 @@
   },
   "dataProvider": {
     "mcp": "google-workspace-calendar",
-    "tool": "list_events",
-    "params": {
-      "calendarId": "primary",
-      "timeMin": "$today",
-      "timeMax": "$today_end",
-      "maxResults": 50,
-      "orderBy": "startTime",
-      "singleEvents": true
-    }
+    "tool": "get_upcoming_events_dashboard",
+    "params": {}
   },
   "spec": {
     "root": "card",
@@ -56,244 +53,562 @@
         "children": [
           "header",
           "body"
-        ]
+        ],
+        "watch": {
+          "/google-workspace-calendar/get_upcoming_events_dashboard/events": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/eventsView",
+                "value": {
+                  "$computed": "google-workspace_build_events_view",
+                  "args": {
+                    "events": { "$state": "/google-workspace-calendar/get_upcoming_events_dashboard/events" },
+                    "weekDays": { "$state": "/google-workspace-calendar/get_upcoming_events_dashboard/weekDays" },
+                    "nextUpEventId": { "$state": "/google-workspace-calendar/get_upcoming_events_dashboard/nextUpEventId" },
+                    "timeZone": { "$state": "/google-workspace-calendar/get_upcoming_events_dashboard/timeZone" },
+                    "range": { "$state": "/ui/eventsRange" },
+                    "selectedDay": { "$state": "/ui/eventsSelectedDay" }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/eventsRange": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/eventsView",
+                "value": {
+                  "$computed": "google-workspace_build_events_view",
+                  "args": {
+                    "events": { "$state": "/google-workspace-calendar/get_upcoming_events_dashboard/events" },
+                    "weekDays": { "$state": "/google-workspace-calendar/get_upcoming_events_dashboard/weekDays" },
+                    "nextUpEventId": { "$state": "/google-workspace-calendar/get_upcoming_events_dashboard/nextUpEventId" },
+                    "timeZone": { "$state": "/google-workspace-calendar/get_upcoming_events_dashboard/timeZone" },
+                    "range": { "$state": "/ui/eventsRange" },
+                    "selectedDay": { "$state": "/ui/eventsSelectedDay" }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/eventsSelectedDay": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/eventsView",
+                "value": {
+                  "$computed": "google-workspace_build_events_view",
+                  "args": {
+                    "events": { "$state": "/google-workspace-calendar/get_upcoming_events_dashboard/events" },
+                    "weekDays": { "$state": "/google-workspace-calendar/get_upcoming_events_dashboard/weekDays" },
+                    "nextUpEventId": { "$state": "/google-workspace-calendar/get_upcoming_events_dashboard/nextUpEventId" },
+                    "timeZone": { "$state": "/google-workspace-calendar/get_upcoming_events_dashboard/timeZone" },
+                    "range": { "$state": "/ui/eventsRange" },
+                    "selectedDay": { "$state": "/ui/eventsSelectedDay" }
+                  }
+                }
+              }
+            }
+          ]
+        }
       },
       "header": {
         "type": "Header",
         "children": [
-          "titleRow"
+          "headerStack"
         ]
+      },
+      "headerStack": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["titleRow", "rangeTabsRow"]
       },
       "titleRow": {
         "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "start"
-        },
-        "children": [
-          "titleIcon",
-          "titleStack"
-        ]
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
       },
       "titleIcon": {
         "type": "Icon",
-        "props": {
-          "name": "CalendarDays",
-          "tone": "accent",
-          "size": "sm"
-        }
+        "props": { "name": "CalendarDays", "tone": "default", "size": "lg" }
       },
       "titleStack": {
         "type": "Stack",
-        "props": {
-          "gap": "none"
-        },
-        "children": [
-          "title",
-          "count"
-        ]
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
       },
       "title": {
         "type": "Heading",
-        "props": {
-          "text": "Upcoming Events",
-          "level": "h2"
-        }
+        "props": { "text": "Upcoming Events", "level": "h2" }
       },
-      "count": {
+      "eyebrow": {
         "type": "Eyebrow",
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{n} events",
+              "pattern": "{n} events · {label}",
               "n": {
-                "$computed": "count",
-                "args": {
-                  "value": {
-                    "$state": "/google-workspace-calendar/list_events/items"
-                  }
+                "$cond": { "$state": "/ui/eventsRange", "eq": "today" },
+                "$then": { "$state": "/ui/eventsView/counts/today" },
+                "$else": {
+                  "$cond": { "$state": "/ui/eventsRange", "eq": "month" },
+                  "$then": { "$state": "/ui/eventsView/counts/month" },
+                  "$else": { "$state": "/ui/eventsView/counts/week" }
+                }
+              },
+              "label": {
+                "$cond": { "$state": "/ui/eventsRange", "eq": "today" },
+                "$then": "today",
+                "$else": {
+                  "$cond": { "$state": "/ui/eventsRange", "eq": "month" },
+                  "$then": "next 30 days",
+                  "$else": "next 7 days"
                 }
               }
             }
           }
         }
       },
+      "rangeTabsRow": {
+        "type": "Row",
+        "props": { "gap": "md", "align": "center" },
+        "children": ["tabToday", "tabWeek", "tabMonth"]
+      },
+      "tabToday": {
+        "type": "Row",
+        "props": { "clickable": true },
+        "children": ["tabTodayActive", "tabTodayInactive"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/eventsSelectedDay", "value": "" } },
+            { "action": "setState", "params": { "statePath": "/ui/eventsRange", "value": "today" } }
+          ]
+        }
+      },
+      "tabTodayActive": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "Today {n}", "n": { "$state": "/ui/eventsView/counts/today" } } },
+          "tone": "info",
+          "variant": "soft"
+        },
+        "visible": { "$state": "/ui/eventsRange", "eq": "today" }
+      },
+      "tabTodayInactive": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "Today {n}", "n": { "$state": "/ui/eventsView/counts/today" } } },
+          "size": "sm",
+          "tone": "muted"
+        },
+        "visible": { "$state": "/ui/eventsRange", "eq": "today", "not": true }
+      },
+      "tabWeek": {
+        "type": "Row",
+        "props": { "clickable": true },
+        "children": ["tabWeekActive", "tabWeekInactive"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/eventsSelectedDay", "value": "" } },
+            { "action": "setState", "params": { "statePath": "/ui/eventsRange", "value": "week" } }
+          ]
+        }
+      },
+      "tabWeekActive": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "Next 7 days {n}", "n": { "$state": "/ui/eventsView/counts/week" } } },
+          "tone": "info",
+          "variant": "soft"
+        },
+        "visible": {
+          "$or": [
+            { "$state": "/ui/eventsRange", "eq": "week" },
+            { "$state": "/ui/eventsRange", "not": true }
+          ]
+        }
+      },
+      "tabWeekInactive": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "Next 7 days {n}", "n": { "$state": "/ui/eventsView/counts/week" } } },
+          "size": "sm",
+          "tone": "muted"
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/ui/eventsRange" },
+            { "$state": "/ui/eventsRange", "eq": "week", "not": true }
+          ]
+        }
+      },
+      "tabMonth": {
+        "type": "Row",
+        "props": { "clickable": true },
+        "children": ["tabMonthActive", "tabMonthInactive"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/eventsSelectedDay", "value": "" } },
+            { "action": "setState", "params": { "statePath": "/ui/eventsRange", "value": "month" } }
+          ]
+        }
+      },
+      "tabMonthActive": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "Next 30 days {n}", "n": { "$state": "/ui/eventsView/counts/month" } } },
+          "tone": "info",
+          "variant": "soft"
+        },
+        "visible": { "$state": "/ui/eventsRange", "eq": "month" }
+      },
+      "tabMonthInactive": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "Next 30 days {n}", "n": { "$state": "/ui/eventsView/counts/month" } } },
+          "size": "sm",
+          "tone": "muted"
+        },
+        "visible": { "$state": "/ui/eventsRange", "eq": "month", "not": true }
+      },
       "body": {
         "type": "Body",
-        "children": [
-          "loading",
-          "empty",
-          "list"
-        ]
+        "children": ["loading", "empty", "content"]
       },
       "loading": {
         "type": "Stack",
-        "props": {
-          "gap": "sm"
-        },
-        "visible": {
-          "$state": "/_loading/google-workspace-calendar.list_events"
-        },
-        "children": [
-          "sk1",
-          "sk2",
-          "sk3"
-        ]
+        "props": { "gap": "sm" },
+        "visible": { "$state": "/_loading/google-workspace-calendar.get_upcoming_events_dashboard" },
+        "children": ["sk1", "sk2", "sk3"]
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk1": { "type": "Skeleton", "props": { "height": "5rem", "rounded": "md" } },
       "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
       "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
       "empty": {
         "type": "Empty",
-        "props": {
-          "message": "No upcoming events — go do deep work."
-        },
+        "props": { "message": "Nothing on your calendars for the next 30 days." },
         "visible": {
           "$and": [
-            {
-              "$state": "/_loading/google-workspace-calendar.list_events",
-              "not": true
-            },
-            {
-              "$state": "/google-workspace-calendar/list_events/items/0",
-              "not": true
-            }
+            { "$state": "/_loading/google-workspace-calendar.get_upcoming_events_dashboard", "not": true },
+            { "$state": "/google-workspace-calendar/get_upcoming_events_dashboard/events/0", "not": true }
           ]
         }
       },
-      "list": {
+      "content": {
         "type": "Stack",
-        "props": {
-          "gap": "none"
-        },
+        "props": { "gap": "md" },
         "visible": {
-          "$state": "/_loading/google-workspace-calendar.list_events",
-          "not": true
+          "$and": [
+            { "$state": "/_loading/google-workspace-calendar.get_upcoming_events_dashboard", "not": true },
+            { "$state": "/google-workspace-calendar/get_upcoming_events_dashboard/events/0" }
+          ]
         },
-        "repeat": {
-          "statePath": "/google-workspace-calendar/list_events/items",
-          "key": "id"
-        },
-        "children": [
-          "row"
-        ]
+        "children": ["nextUpCard", "weekStripRow", "statusCard", "agendaList", "divider", "footer"]
       },
-      "row": {
+      "nextUpCard": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "visible": { "$state": "/ui/eventsView/nextUp" },
+        "children": ["nextUpEyebrow", "nextUpTopRow", "nextUpCountdownRow"]
+      },
+      "nextUpEyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Next up", "tone": "info" }
+      },
+      "nextUpTopRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "justify": "between", "align": "start" },
+        "children": ["nextUpTitleStack", "joinButton"]
+      },
+      "nextUpTitleStack": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["nextUpTitle", "nextUpSubtitle"]
+      },
+      "nextUpTitle": {
+        "type": "Heading",
+        "props": { "text": { "$state": "/ui/eventsView/nextUp/summary" }, "level": "h3" }
+      },
+      "nextUpSubtitle": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{day} · {start}–{end}{meet}",
+              "day": { "$state": "/ui/eventsView/nextUp/dayLabel" },
+              "start": {
+                "$computed": "format_time",
+                "args": { "value": { "$state": "/ui/eventsView/nextUp/start" } }
+              },
+              "end": {
+                "$computed": "format_time",
+                "args": { "value": { "$state": "/ui/eventsView/nextUp/end" } }
+              },
+              "meet": {
+                "$cond": { "$state": "/ui/eventsView/nextUp/hangoutLink" },
+                "$then": " · Google Meet",
+                "$else": ""
+              }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "joinButton": {
+        "type": "Button",
+        "props": {
+          "label": "Join Meet",
+          "variant": "primary",
+          "tone": "info",
+          "size": "sm",
+          "leadingIcon": "Video"
+        },
+        "visible": { "$state": "/ui/eventsView/nextUp/hangoutLink" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": { "$computed": "identity", "args": { "value": { "$state": "/ui/eventsView/nextUp/hangoutLink" } } },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "nextUpCountdownRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["countdownIcon", "countdownBadge"]
+      },
+      "countdownIcon": {
+        "type": "Icon",
+        "props": { "name": "Timer", "tone": "info", "size": "xs" }
+      },
+      "countdownBadge": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/ui/eventsView/nextUp/countdown" }, "tone": "info" }
+      },
+      "weekStripRow": {
+        "type": "Row",
+        "props": { "gap": "xs" },
+        "repeat": { "statePath": "/ui/eventsView/weekChips", "key": "date" },
+        "children": ["dayChip"]
+      },
+      "dayChip": {
         "type": "Row",
         "props": {
-          "gap": "sm",
-          "align": "start",
-          "hover": true,
           "clickable": true,
-          "template": "4.5rem 1fr"
+          "selected": { "$cond": { "$or": [{ "$item": "isToday" }, { "$item": "isSelected" }] }, "$then": true, "$else": false }
+        },
+        "children": ["dayChipStack"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/eventsSelectedDay",
+              "value": { "$computed": "identity", "args": { "value": { "$item": "date" } } }
+            }
+          }
+        }
+      },
+      "dayChipStack": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["dayChipAbbrev", "dayChipNumber", "dayChipDots"]
+      },
+      "dayChipAbbrev": {
+        "type": "Caption",
+        "props": { "text": { "$item": "dayAbbrev" }, "tone": "muted" }
+      },
+      "dayChipNumber": {
+        "type": "Text",
+        "props": { "text": { "$item": "dayNumber" }, "size": "sm", "weight": "medium" }
+      },
+      "dayChipDots": {
+        "type": "Caption",
+        "props": { "text": { "$item": "dots" }, "tone": "info" },
+        "visible": { "$item": "dots" }
+      },
+      "statusCard": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["statusHeadline", "statusDetail"]
+      },
+      "statusHeadline": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/eventsView/statusHeadline" }, "size": "sm", "weight": "medium" }
+      },
+      "statusDetail": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/ui/eventsView/statusDetail" }, "tone": "muted" }
+      },
+      "agendaList": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "repeat": { "statePath": "/ui/eventsView/agendaRows", "key": "id" },
+        "children": ["agendaRowWrap"]
+      },
+      "agendaRowWrap": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["dayHeaderRow", "eventRow", "eventDivider"]
+      },
+      "dayHeaderRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "visible": { "$item": "showDayHeader" },
+        "children": ["dayHeaderLabel", "dayHeaderCount"]
+      },
+      "dayHeaderLabel": {
+        "type": "Eyebrow",
+        "props": { "text": { "$item": "dayLabel" }, "tone": "muted" }
+      },
+      "dayHeaderCount": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "{n} EVENTS", "n": { "$item": "dayEventCount" } } },
+          "tone": "muted"
+        }
+      },
+      "eventRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "hover": true, "clickable": true, "justify": "between" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": { "$computed": "identity", "args": { "value": { "$item": "htmlLink" } } },
+              "target": "_blank"
+            }
+          }
+        },
+        "children": ["calendarDot", "eventLabels", "eventTrailing"]
+      },
+      "calendarDot": {
+        "type": "Dot",
+        "props": { "tone": { "$item": "calendarTone" } }
+      },
+      "eventLabels": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["eventTopRow", "eventTimeRow", "eventLocation"]
+      },
+      "eventTopRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["eventTitle", "allDayBadge", "rsvpBadge", "clashBadge"]
+      },
+      "eventTitle": {
+        "type": "Text",
+        "props": { "text": { "$item": "summary" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "allDayBadge": {
+        "type": "Badge",
+        "props": { "text": "All day", "tone": "muted", "variant": "soft" },
+        "visible": { "$item": "isAllDay" }
+      },
+      "rsvpBadge": {
+        "type": "Badge",
+        "props": { "text": { "$item": "rsvp" }, "tone": "warning", "variant": "soft" },
+        "visible": { "$item": "rsvp" }
+      },
+      "clashBadge": {
+        "type": "Badge",
+        "props": { "text": "Clash", "tone": "destructive", "variant": "soft" },
+        "visible": { "$item": "clash" }
+      },
+      "eventTimeRow": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$cond": { "$item": "isAllDay" },
+            "$then": "All day",
+            "$else": {
+              "$computed": "fmt",
+              "args": {
+                "pattern": "{start}–{end}",
+                "start": { "$computed": "format_time", "args": { "value": { "$item": "start" } } },
+                "end": { "$computed": "format_time", "args": { "value": { "$item": "end" } } }
+              }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "eventLocation": {
+        "type": "Caption",
+        "props": { "text": { "$item": "location" }, "tone": "muted", "truncate": true },
+        "visible": { "$item": "location" }
+      },
+      "eventTrailing": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["joinLinkRow"]
+      },
+      "joinLinkRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "clickable": true },
+        "visible": { "$item": "hangoutLink" },
+        "children": ["joinLinkText"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": { "$computed": "identity", "args": { "value": { "$item": "hangoutLink" } } },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "joinLinkText": {
+        "type": "Text",
+        "props": { "text": "Join", "size": "sm", "weight": "medium", "tone": "info" }
+      },
+      "eventDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "divider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "footer": {
+        "type": "Row",
+        "props": { "gap": "sm", "justify": "between", "align": "center" },
+        "children": ["footerCaption", "footerButton"]
+      },
+      "footerCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Primary calendar · times in {tz}",
+              "tz": { "$state": "/google-workspace-calendar/get_upcoming_events_dashboard/timeZone" }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "footerButton": {
+        "type": "Button",
+        "props": {
+          "label": "Open Google Calendar",
+          "variant": "primary",
+          "tone": "info",
+          "size": "sm"
         },
         "on": {
           "click": {
             "action": "open_url",
             "params": {
-              "url": {
-                "$computed": "identity",
-                "args": { "value": { "$item": "htmlLink" } }
-              },
+              "url": "https://calendar.google.com/",
               "target": "_blank"
             }
           }
-        },
-        "children": [
-          "timePill",
-          "labels"
-        ]
-      },
-      "timePill": {
-        "type": "Badge",
-        "props": {
-          "text": {
-            "$computed": "format_time",
-            "args": {
-              "value": {
-                "$item": "start/dateTime"
-              }
-            }
-          },
-          "tone": "accent",
-          "variant": "soft"
-        }
-      },
-      "labels": {
-        "type": "Stack",
-        "props": {
-          "gap": "xs",
-          "grow": true
-        },
-        "children": [
-          "eventTitle",
-          "eventSchedule",
-          "eventLocation"
-        ]
-      },
-      "eventTitle": {
-        "type": "Text",
-        "props": {
-          "text": {
-            "$item": "summary"
-          },
-          "size": "md",
-          "weight": "medium",
-          "truncate": true
-        }
-      },
-      "eventSchedule": {
-        "type": "Text",
-        "props": {
-          "size": "sm",
-          "tone": "muted",
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{start} – {end} · {dur}",
-              "start": {
-                "$computed": "format_time",
-                "args": {
-                  "value": {
-                    "$item": "start/dateTime"
-                  }
-                }
-              },
-              "end": {
-                "$computed": "format_time",
-                "args": {
-                  "value": {
-                    "$item": "end/dateTime"
-                  }
-                }
-              },
-              "dur": {
-                "$computed": "duration_between",
-                "args": {
-                  "start": {
-                    "$item": "start/dateTime"
-                  },
-                  "end": {
-                    "$item": "end/dateTime"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "eventLocation": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$item": "location"
-          },
-          "tone": "muted",
-          "truncate": true
-        },
-        "visible": {
-          "$item": "location"
         }
       }
     }
