@@ -68,6 +68,9 @@
                     },
                     "query": {
                       "$state": "/ui/meetTranscriptSearch/query"
+                    },
+                    "expandedGroupId": {
+                      "$state": "/ui/meetTranscriptSearch/groups/expandedGroupId"
                     }
                   }
                 }
@@ -87,6 +90,9 @@
                     },
                     "query": {
                       "$state": "/ui/meetTranscriptSearch/query"
+                    },
+                    "expandedGroupId": {
+                      "$state": "/ui/meetTranscriptSearch/groups/expandedGroupId"
                     }
                   }
                 }
@@ -696,7 +702,7 @@
           "searchResultRow"
         ],
         "repeat": {
-          "statePath": "/ui/meetTranscriptSearch/groups",
+          "statePath": "/ui/meetTranscriptSearch/groups/items",
           "key": "id"
         }
       },
@@ -747,7 +753,8 @@
         },
         "children": [
           "searchResultTopRow",
-          "searchResultLines"
+          "searchResultLines",
+          "searchResultShowMoreRow"
         ]
       },
       "searchResultTopRow": {
@@ -894,6 +901,54 @@
         },
         "visible": {
           "$item": "line6"
+        }
+      },
+      "searchResultShowMoreRow": {
+        "type": "Row",
+        "props": {
+          "clickable": true
+        },
+        "children": [
+          "searchResultShowMoreText"
+        ],
+        "visible": {
+          "$item": "hasMore"
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/meetTranscriptSearch/groups",
+              "value": {
+                "$computed": "google-workspace_group_transcript_turns",
+                "args": {
+                  "entries": {
+                    "$state": "/google-workspace-meet/get_meeting_dashboard/latestMeeting/entries"
+                  },
+                  "query": {
+                    "$state": "/ui/meetTranscriptSearch/query"
+                  },
+                  "expandedGroupId": {
+                    "$state": "/ui/meetTranscriptSearch/groups/expandedGroupId"
+                  },
+                  "clickedGroupId": {
+                    "$item": "id"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "searchResultShowMoreText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "showMoreLabel"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "tone": "brand"
         }
       },
       "divider2": {
@@ -1142,14 +1197,14 @@
           "text": "Open full transcript",
           "size": "sm",
           "weight": "medium",
-          "tone": "accent"
+          "tone": "brand"
         }
       },
       "footerLinkIcon": {
         "type": "Icon",
         "props": {
           "name": "ArrowRight",
-          "tone": "accent",
+          "tone": "brand",
           "size": "sm"
         }
       }

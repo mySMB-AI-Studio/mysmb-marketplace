@@ -330,13 +330,33 @@ const count_transcript_matches: ComputedFunction = (args) => {
 // transcript shows by default), or when any of the group's own lines
 // contain `query` (case-insensitive substring) once the user types.
 //
-// Args: { entries: { speaker: string, text: string, startTime: string|null }[], query?: string }
+// Groups beyond COLLAPSED_LINES lines start clamped to their first 3 lines
+// (line4-6 blanked out even though captured) with `hasMore: true`; a
+// "Show more"/"Show less" control toggles exactly one group open at a
+// time, following the same expandedId-toggle pattern as
+// myob-accounting_classify_bill_queue: the caller re-invokes this
+// function on click with `clickedGroupId` set to the clicked group's id
+// and `expandedGroupId` set to the PREVIOUS value read back from state;
+// clicking the already-expanded group's id collapses it.
+//
+// Args: {
+//   entries: { speaker: string, text: string, startTime: string|null }[],
+//   query?: string,
+//   expandedGroupId?: string,
+//   clickedGroupId?: string,
+// }
+// Returns: { items: Group[], expandedGroupId: string }
 
 const MAX_GROUP_LINES = 6;
+const COLLAPSED_LINES = 3;
 
 const group_transcript_turns: ComputedFunction = (args) => {
   const entries = Array.isArray(args.entries) ? args.entries : [];
   const query = str(args.query).trim().toLowerCase();
+
+  const prevExpandedId = str(args.expandedGroupId);
+  const clickedGroupId = args.clickedGroupId !== undefined ? str(args.clickedGroupId) : undefined;
+  const expandedGroupId = clickedGroupId !== undefined ? (clickedGroupId === prevExpandedId ? '' : clickedGroupId) : prevExpandedId;
 
   interface Group {
     id: string;
@@ -362,23 +382,30 @@ const group_transcript_turns: ComputedFunction = (args) => {
     }
   }
 
-  return groups.map((g) => {
+  const items = groups.map((g) => {
     const matches = !query || g.lines.some((l) => l.toLowerCase().includes(query)) || g.speaker.toLowerCase().includes(query);
+    const expanded = g.id === expandedGroupId;
+    const visibleLines = expanded ? g.lines : g.lines.slice(0, COLLAPSED_LINES);
     return {
       id: g.id,
       speaker: g.speaker,
       startTime: g.startTime,
       endTime: g.endTime,
       lineCount: g.lineCount,
-      line1: g.lines[0] ?? '',
-      line2: g.lines[1] ?? '',
-      line3: g.lines[2] ?? '',
-      line4: g.lines[3] ?? '',
-      line5: g.lines[4] ?? '',
-      line6: g.lines[5] ?? '',
+      line1: visibleLines[0] ?? '',
+      line2: visibleLines[1] ?? '',
+      line3: visibleLines[2] ?? '',
+      line4: visibleLines[3] ?? '',
+      line5: visibleLines[4] ?? '',
+      line6: visibleLines[5] ?? '',
       matches,
+      expanded,
+      hasMore: g.lineCount > COLLAPSED_LINES,
+      showMoreLabel: expanded ? 'Show less' : 'Show more',
     };
   });
+
+  return { items, expandedGroupId };
 };
 
 // ── module export ────────────────────────────────────────────────────
