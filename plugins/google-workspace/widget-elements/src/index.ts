@@ -163,10 +163,16 @@ const sender_name: ComputedFunction = (args) => {
 
 // ── header_date_label ────────────────────────────────────────────────
 //
-// Short weekday + day + month for a Meet dashboard header subtitle.
+// Short weekday + day + month, in the VIEWER'S LOCAL calendar day — for a
+// Meet dashboard header subtitle. Meeting timestamps are real UTC instants
+// (not naive date-only strings), and format_time already renders the
+// time-of-day in local time; extracting the day/month in UTC here would
+// disagree with that local time for any meeting that crosses midnight UTC
+// (e.g. a 10am AEDT meeting is 11pm UTC the PREVIOUS day) — confirmed live:
+// a meeting at 2026-10-07T23:30 UTC (10:36am AEDT on the 8th) showed "7 Oct".
 //
-// Examples:
-//   "2026-10-05T10:00:00Z" → "Mon 5 Oct"
+// Examples (viewer in UTC+11):
+//   "2026-10-07T23:30:00Z" → "Thu 8 Oct"
 //   null                   → ""
 //
 // Args: { value: string | null } — an ISO datetime, e.g. latestMeeting.startTime
@@ -175,41 +181,42 @@ const header_date_label: ComputedFunction = (args) => {
   const ms = parseUtcMs(args.value);
   if (ms == null) return '';
   const d = new Date(ms);
-  const weekday = WEEKDAY_ABBREV[d.getUTCDay()];
-  const day = d.getUTCDate();
-  const month = MONTH_ABBREV[d.getUTCMonth()];
+  const weekday = WEEKDAY_ABBREV[d.getDay()];
+  const day = d.getDate();
+  const month = MONTH_ABBREV[d.getMonth()];
   const monthTitle = month.charAt(0) + month.slice(1).toLowerCase();
   return `${weekday} ${day} ${monthTitle}`;
 };
 
 // ── day_number ────────────────────────────────────────────────────────
 //
-// UTC day-of-month, no leading zero — the top half of a two-line date
-// badge (day over month abbreviation).
+// Local calendar day-of-month, no leading zero — the top half of a
+// two-line date badge (day over month abbreviation). Local, not UTC — see
+// header_date_label for why.
 //
-// Examples: "2026-10-02T09:00:00Z" → "2"
+// Examples (viewer in UTC+11): "2026-10-07T23:30:00Z" → "8"
 //
 // Args: { value: string | null }
 
 const day_number: ComputedFunction = (args) => {
   const ms = parseUtcMs(args.value);
   if (ms == null) return '–';
-  return String(new Date(ms).getUTCDate());
+  return String(new Date(ms).getDate());
 };
 
 // ── month_abbrev ─────────────────────────────────────────────────────
 //
-// Upper-case 3-letter UTC month abbreviation — the bottom half of a
-// two-line date badge.
+// Upper-case 3-letter local-calendar month abbreviation — the bottom half
+// of a two-line date badge. Local, not UTC — see header_date_label for why.
 //
-// Examples: "2026-10-02T09:00:00Z" → "OCT"
+// Examples (viewer in UTC+11): "2026-10-07T23:30:00Z" → "OCT"
 //
 // Args: { value: string | null }
 
 const month_abbrev: ComputedFunction = (args) => {
   const ms = parseUtcMs(args.value);
   if (ms == null) return '';
-  return MONTH_ABBREV[new Date(ms).getUTCMonth()];
+  return MONTH_ABBREV[new Date(ms).getMonth()];
 };
 
 // ── transcript_status_tone ──────────────────────────────────────────
