@@ -1,6 +1,6 @@
 {
   "id": "hotmail-calendar-today",
-  "title": "Hotmail Calendar — Today",
+  "title": "Hotmail Calendar",
   "description": "Timeline of today's events from a personal Hotmail/Outlook.com/Live.com calendar, with attendees, description, and a quick link to open in Outlook.",
   "category": "productivity",
   "tags": [
@@ -61,28 +61,55 @@
           "overlay"
         ],
         "watch": {
-          "/hotmail-calendar/list_events": {
-            "action": "setState",
-            "params": {
-              "statePath": "/ui/todayEvents",
-              "value": {
-                "$computed": "filter_date_range",
-                "args": {
-                  "value": {
-                    "$state": "/hotmail-calendar/list_events"
-                  },
-                  "field": "start.dateTime"
+          "/hotmail-calendar/list_events": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/todayEvents",
+                "value": {
+                  "$computed": "filter_date_range",
+                  "args": {
+                    "value": { "$state": "/hotmail-calendar/list_events" },
+                    "field": "start.dateTime",
+                    "start": { "$computed": "microsoft-365_day_start_iso", "args": { "value": { "$state": "/ui/selectedDate" } } },
+                    "end": { "$computed": "microsoft-365_day_end_iso", "args": { "value": { "$state": "/ui/selectedDate" } } }
+                  }
                 }
               }
             }
-          }
+          ],
+          "/ui/selectedDate": [
+            {
+              "action": "hotmail-calendar.list_events",
+              "params": {
+                "startDateTime": { "$computed": "microsoft-365_day_start_iso", "args": { "value": { "$state": "/ui/selectedDate" } } },
+                "endDateTime": { "$computed": "microsoft-365_day_end_iso", "args": { "value": { "$state": "/ui/selectedDate" } } },
+                "limit": 50
+              }
+            }
+          ]
         }
       },
       "header": {
         "type": "Header",
         "children": [
-          "titleRow"
-        ]
+          "titleRow",
+          "dateRow"
+        ],
+        "watch": {
+          "/hotmail-calendar/list_events": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedDate",
+                "value": {
+                  "$computed": "microsoft-365_seed_default_date",
+                  "args": { "current": { "$state": "/ui/selectedDate" } }
+                }
+              }
+            }
+          ]
+        }
       },
       "titleRow": {
         "type": "Row",
@@ -94,6 +121,19 @@
           "titleIcon",
           "titleStack"
         ]
+      },
+      "dateRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["dateIcon", "dateInput"]
+      },
+      "dateIcon": { "type": "Icon", "props": { "name": "Calendar", "tone": "muted", "size": "xs" } },
+      "dateInput": {
+        "type": "DateInput",
+        "props": {
+          "size": "sm",
+          "value": { "$bindState": "/ui/selectedDate" }
+        }
       },
       "titleStack": {
         "type": "Stack",
@@ -116,7 +156,10 @@
       "title": {
         "type": "Heading",
         "props": {
-          "text": "Today's Schedule",
+          "text": {
+            "$computed": "microsoft-365_schedule_title",
+            "args": { "value": { "$state": "/ui/selectedDate" } }
+          },
           "level": "h2"
         }
       },
@@ -224,9 +267,10 @@
           "align": "start",
           "hover": true,
           "clickable": true,
-          "template": "4.5rem 1fr"
+          "template": "2.25rem 4.5rem 1fr"
         },
         "children": [
+          "eventAvatar",
           "timePill",
           "labels"
         ],
@@ -284,6 +328,14 @@
           ]
         }
       },
+      "eventAvatar": {
+        "type": "Avatar",
+        "props": {
+          "size": "sm",
+          "initials": { "$computed": "initials", "args": { "value": { "$item": "organizer/emailAddress/name" } } },
+          "tone": { "$computed": "microsoft-365_name_tone", "args": { "value": { "$item": "organizer/emailAddress/name" } } }
+        }
+      },
       "timePill": {
         "type": "Badge",
         "props": {
@@ -314,7 +366,7 @@
         "children": [
           "subject",
           "scheduleRow",
-          "subtitle"
+          "metaRow"
         ]
       },
       "subject": {
@@ -366,6 +418,34 @@
               }
             }
           }
+        }
+      },
+      "metaRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["subtitle", "meetingTypeBadge"]
+      },
+      "meetingTypeBadge": {
+        "type": "Badge",
+        "props": {
+          "variant": "soft",
+          "tone": {
+            "$cond": {
+              "$computed": "microsoft-365_meeting_type",
+              "args": { "organizerEmail": { "$item": "organizer/emailAddress/address" }, "attendees": { "$item": "attendees" } },
+              "eq": "External"
+            },
+            "$then": "warning",
+            "$else": "muted"
+          },
+          "text": {
+            "$computed": "microsoft-365_meeting_type",
+            "args": { "organizerEmail": { "$item": "organizer/emailAddress/address" }, "attendees": { "$item": "attendees" } }
+          }
+        },
+        "visible": {
+          "$computed": "microsoft-365_meeting_type",
+          "args": { "organizerEmail": { "$item": "organizer/emailAddress/address" }, "attendees": { "$item": "attendees" } }
         }
       },
       "subtitle": {
