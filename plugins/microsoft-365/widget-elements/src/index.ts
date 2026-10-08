@@ -101,12 +101,72 @@ const meeting_type: ComputedFunction = (args) => {
   return isExternal ? 'External' : 'Internal';
 };
 
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+/** Local "today" as "YYYY-MM-DD" — the format DateInput both expects and emits. */
+function todayDateString(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+}
+
+/**
+ * `/ui/selectedDate` starts unset until the user picks a date — seed it to
+ * today once (idempotent: once `current` is truthy, this just echoes it back
+ * unchanged, so it's safe to re-run every time the watched list re-fetches,
+ * including after the user has picked a different date). Mirrors
+ * zoom_seed_default_tab's exact current-or-fallback shape.
+ * Args: { current: string }
+ */
+const seed_default_date: ComputedFunction = (args) => {
+  const current = String(args.current ?? '').trim();
+  return current || todayDateString();
+};
+
+function parseDateParts(raw: unknown): { y: number; mo: number; d: number } | null {
+  const m = String(raw ?? '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  return { y: Number(m[1]), mo: Number(m[2]) - 1, d: Number(m[3]) };
+}
+
+/** "YYYY-MM-DD" → local midnight of that day, as a UTC ISO string. Args: { value: string } */
+const day_start_iso: ComputedFunction = (args) => {
+  const p = parseDateParts(args.value);
+  return p ? new Date(p.y, p.mo, p.d, 0, 0, 0, 0).toISOString() : '';
+};
+
+/** "YYYY-MM-DD" → local 23:59:59.999 of that day, as a UTC ISO string. Args: { value: string } */
+const day_end_iso: ComputedFunction = (args) => {
+  const p = parseDateParts(args.value);
+  return p ? new Date(p.y, p.mo, p.d, 23, 59, 59, 999).toISOString() : '';
+};
+
+/**
+ * "Today's Schedule" when `value` is today's date, otherwise "Schedule for
+ * <weekday>, <day> <month>" — the heading needs to track whichever date is
+ * actually selected once the date picker can show a day other than today.
+ * Args: { value: string } — "YYYY-MM-DD"
+ */
+const schedule_title: ComputedFunction = (args) => {
+  const raw = String(args.value ?? '').trim();
+  if (!raw || raw === todayDateString()) return "Today's Schedule";
+  const p = parseDateParts(raw);
+  if (!p) return "Today's Schedule";
+  const d = new Date(p.y, p.mo, p.d);
+  return `Schedule for ${d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })}`;
+};
+
 const elements: PluginElementsModule = {
   slug: 'microsoft-365',
   functions: {
     smart_day_label,
     name_tone,
     meeting_type,
+    seed_default_date,
+    day_start_iso,
+    day_end_iso,
+    schedule_title,
   },
 };
 
