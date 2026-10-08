@@ -27,6 +27,7 @@ Use when the user asks for the Financial Overview (PRA-06) across the practice: 
 | `from_date` | From | date | `2026-07-01` |
 | `to_date` | To | date | `today` |
 | `basis` | Basis | enum (Accrual / Cash) | `Accrual` |
+| `clients` | Clients | string | `` |
 
 ## Steps
 
