@@ -108,6 +108,21 @@
                 }
               }
             }
+          ],
+          "/zoom/summarize_transcript": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/summaryBullets",
+                "value": {
+                  "$computed": "zoom_summary_bullets",
+                  "args": {
+                    "keyPoints": { "$state": "/zoom/summarize_transcript/key_points" },
+                    "actionItems": { "$state": "/zoom/summarize_transcript/action_items" }
+                  }
+                }
+              }
+            }
           ]
         }
       },
@@ -240,7 +255,16 @@
       "transcriptsContent": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["pickerRow", "meetingMeta", "transcriptStateBanner", "notAvailableBanner", "transcriptPanel"],
+        "children": [
+          "pickerRow",
+          "meetingMeta",
+          "transcriptStateBanner",
+          "notAvailableBanner",
+          "summarizeRow",
+          "summarizeErrorBanner",
+          "summaryPanel",
+          "transcriptPanel"
+        ],
         "visible": { "$state": "/ui/transcriptOptions/0" }
       },
 
@@ -304,6 +328,91 @@
       },
       "notAvailableIcon": { "type": "Icon", "props": { "name": "AlertCircle", "tone": "warning", "size": "xs" } },
       "notAvailableText": { "type": "Caption", "props": { "text": { "$state": "/zoom/get_meeting_transcript/message" }, "tone": "warning" } },
+
+      "summarizeRow": {
+        "type": "Row",
+        "props": { "justify": "start" },
+        "children": ["summarizeBtn"],
+        "visible": { "$state": "/zoom/get_meeting_transcript/transcript_available" }
+      },
+      "summarizeBtn": {
+        "type": "Button",
+        "props": {
+          "label": {
+            "$cond": { "$state": "/_loading/zoom.summarize_transcript" },
+            "$then": "Summarizing…",
+            "$else": "Summarize"
+          },
+          "leadingIcon": "Sparkles",
+          "size": "sm",
+          "variant": "ghost",
+          "tone": "accent",
+          "disabled": { "$state": "/_loading/zoom.summarize_transcript" }
+        },
+        "on": {
+          "click": {
+            "action": "zoom.summarize_transcript",
+            "params": {
+              "transcript": { "$state": "/zoom/get_meeting_transcript/transcript" },
+              "topic": { "$state": "/ui/selectedMeeting/topic" },
+              "meeting_id": { "$state": "/ui/selectedMeetingId" }
+            }
+          }
+        }
+      },
+
+      "summarizeErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't summarize: ${/zoom/summarize_transcript/error}" }, "tone": "destructive" },
+        "visible": { "$state": "/zoom/summarize_transcript/error" }
+      },
+
+      "summaryPanel": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["summaryHeading", "summaryText", "keyPointsHeading", "keyPointsList", "actionItemsHeading", "actionItemsList"],
+        "visible": {
+          "$computed": "zoom_summary_matches_selected",
+          "args": {
+            "a": { "$state": "/zoom/summarize_transcript/meeting_id" },
+            "b": { "$state": "/ui/selectedMeetingId" }
+          }
+        }
+      },
+      "summaryHeading": { "type": "Caption", "props": { "text": "Summary", "tone": "muted", "weight": "semibold" } },
+      "summaryText": { "type": "Text", "props": { "text": { "$state": "/zoom/summarize_transcript/summary" }, "size": "sm" } },
+
+      "keyPointsHeading": {
+        "type": "Caption",
+        "props": { "text": "Key points", "tone": "muted", "weight": "semibold" },
+        "visible": { "$state": "/ui/summaryBullets/keyPoints/0" }
+      },
+      "keyPointsList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["bulletText"],
+        "repeat": { "statePath": "/ui/summaryBullets/keyPoints", "key": "id" }
+      },
+
+      "actionItemsHeading": {
+        "type": "Caption",
+        "props": { "text": "Action items", "tone": "muted", "weight": "semibold" },
+        "visible": { "$state": "/ui/summaryBullets/actionItems/0" }
+      },
+      "actionItemsList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["bulletText"],
+        "repeat": { "statePath": "/ui/summaryBullets/actionItems", "key": "id" }
+      },
+
+      "bulletText": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "• {t}", "t": { "$item": "text" } } },
+          "size": "sm"
+        }
+      },
 
       "transcriptPanel": {
         "type": "Stack",

@@ -259,6 +259,39 @@ const bool_not: ComputedFunction = (args) => !args.value;
 const extract_string_error: ComputedFunction = (args) =>
   typeof args.value === 'string' ? args.value : '';
 
+/**
+ * True only when both ids are non-empty and equal — gates the summary panel
+ * so a summary generated for a previously-selected meeting doesn't keep
+ * showing once the user picks a different one (summarize_transcript's
+ * response carries no live link to "the currently selected meeting" other
+ * than this echoed-back id).
+ */
+const summary_matches_selected: ComputedFunction = (args) => {
+  const a = String(args.a ?? '').trim();
+  const b = String(args.b ?? '').trim();
+  return a !== '' && a === b;
+};
+
+/** `["x", "y"]` → `[{ id: "0", text: "x" }, { id: "1", text: "y" }]`, for repeat. */
+function toBulletItems(value: unknown): { id: string; text: string }[] {
+  return Array.isArray(value)
+    ? value.map((text, i) => ({ id: String(i), text: String(text ?? '') }))
+    : [];
+}
+
+/**
+ * Bundles both summarize_transcript bullet lists into one state write so the
+ * tile's watch on "/zoom/summarize_transcript" only needs a single setState
+ * action — two separate setState actions reacting to the same watched key
+ * risk the second one silently never running (see json-render-watch-chained-
+ * action-race in project notes).
+ * Args: { keyPoints: string[], actionItems: string[] }
+ */
+const summary_bullets: ComputedFunction = (args) => ({
+  keyPoints: toBulletItems(args.keyPoints),
+  actionItems: toBulletItems(args.actionItems),
+});
+
 const elements: PluginElementsModule = {
   slug: 'zoom',
   functions: {
@@ -288,6 +321,8 @@ const elements: PluginElementsModule = {
     prepend_meeting,
     bool_not,
     extract_string_error,
+    summary_matches_selected,
+    summary_bullets,
   },
 };
 
