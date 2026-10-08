@@ -45,6 +45,23 @@ const sender_tone: ComputedFunction = (args) => {
   return CHART_TONES[hash % CHART_TONES.length];
 };
 
+/** `/ui/activeTab` starts unset until a tab is clicked — treat that as "inbox" everywhere a tab comparison needs a concrete value. */
+const default_tab: ComputedFunction = (args) => String(args.value ?? '').trim() || 'inbox';
+
+/** Tab button variant: filled when active, ghost otherwise. Mirrors the Zoom Recordings tile's tab_variant exactly. */
+const tab_variant: ComputedFunction = (args) => (String(args.active ?? '') === String(args.match ?? '') ? 'primary' : 'ghost');
+
+/** Tab button tone: accent when active, muted otherwise. Mirrors the Zoom Recordings tile's tab_tone exactly. */
+const tab_tone: ComputedFunction = (args) => (String(args.active ?? '') === String(args.match ?? '') ? 'info' : 'muted');
+
+/** Empty-state copy for the Hotmail Inbox tile's mail folder tabs. */
+const mail_folder_empty_message: ComputedFunction = (args) => {
+  const tab = String(args.tab ?? '').trim() || 'inbox';
+  if (tab === 'sent') return 'No sent messages yet.';
+  if (tab === 'drafts') return 'No drafts saved.';
+  return 'Inbox zero — enjoy it while it lasts.';
+};
+
 /** Builds the Quick Share picker's options from a list of drive items (recent files). */
 const file_options: ComputedFunction = (args) => {
   const items = Array.isArray(args.items) ? (args.items as Record<string, unknown>[]) : [];
@@ -112,6 +129,10 @@ const elements: PluginElementsModule = {
     item_tone,
     item_icon,
     sender_tone,
+    default_tab,
+    tab_variant,
+    tab_tone,
+    mail_folder_empty_message,
     file_options,
     selected_file,
     folder_items,
