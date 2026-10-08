@@ -1,0 +1,48 @@
+{
+  "title": "Practice Client Summary Metrics",
+  "description": "Practice Report Analytics PRA-01: Counts of contacts, accounts, invoices, bills and employees per client — the practice’s one-page inventory. One row per client across Xero, MYOB and QuickBooks. Live, validated; mySMB branding by default.",
+  "tags": [
+    "practice-report-analytics",
+    "PRA-01",
+    "client-summary"
+  ],
+  "fileName": "practice-client-summary.html",
+  "dataBindings": {
+    "inputs": [
+      {
+        "name": "as_at",
+        "label": "As at",
+        "type": "date",
+        "default": "today"
+      }
+    ],
+    "bindings": [
+      {
+        "id": "xero",
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_practice_client_summary"
+        },
+        "params": {
+          "as_at": {
+            "kind": "input",
+            "input": "as_at"
+          }
+        }
+      },
+      {
+        "id": "myob",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_practice_client_summary"
+        },
+        "params": {
+          "as_at": {
+            "kind": "input",
+            "input": "as_at"
+          }
+        }
+      }
+    ]
+  }
+}
