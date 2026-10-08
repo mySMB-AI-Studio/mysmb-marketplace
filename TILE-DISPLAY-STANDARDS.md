@@ -2,7 +2,7 @@
 
 One canonical reference for how every tile formats dates, money, status, headers, spacing, and color — so tiles look like one product, not twenty connectors bolted together.
 
-Grounded in a full audit of ~197 shipped widgets across 40+ plugins (2026-08-05). Before this document, no such standard existed anywhere in this repo or myHubV2 — see "Why this exists" at the bottom.
+Grounded in a full audit of ~197 shipped widgets across 40+ plugins (2026-08-05); §15–§18 were added from a second audit of 288 live tiles (2026-10-08), appended after §14 so existing `§N` citations in code, `scripts/validate.ts` and `plugin-reviewer` stay valid. Before this document, no such standard existed anywhere in this repo or myHubV2 — see "Why this exists" at the bottom.
 
 A condensed one-page PDF version of this same content exists for sharing outside the repo (meetings, prompts to other AI sessions) — ask in the team channel if you need it; this file is the canonical source.
 
@@ -272,6 +272,68 @@ This doc states the standard; it doesn't by itself make ~197 existing widgets co
 - Add the mechanically-checkable rules to `scripts/validate.ts` (already run on every plugin PR) — at minimum, fail on `"gap": "xxs"` immediately; add currency-explicit and date-format-call checks as they become checkable. A hand-rolled sortable table using `auto`/`fr` column widths instead of fixed pixels is checkable the same way. **Implemented (2026-09-02):** the `"gap": "xxs"` check — forward-only, per this section's own step 2/3 split. `scripts/xxs-baseline.json` snapshots the 43 pre-existing widget files using `"xxs"` as of this date; those stay grandfathered (not retroactively failed) until each is fixed and removed from the baseline as part of the separate retrofit initiative (step 3) — only a widget NOT on that list fails for using `"xxs"`. This mirrors exactly one rule from this doc, hardcoded into code — if §5 is ever resolved by promoting `xxs` to a real `GAP_SIZE` value instead of retrofitting the baseline files, update the check (and drop the baseline file) in the same PR that lands that change.
 - Wire the same rules into `workspace-plugin-builder:plugin-reviewer`'s checklist, so a pre-PR review actively flags violations rather than relying on the author having read this file — including the §6 decision test itself: does this tile need sorting? If yes, hand-rolled + fixed widths + the standard button convention; if no, `Table`. **Implemented (2026-09-02):** the reviewer now reads this doc section-by-section on every review rather than checking against a memorized copy, so it stays in sync as this doc changes.
 - Until enforcement lands, treat this doc as required reading before touching dates/currency/status/headers/spacing/color in any tile — but don't mistake "documented" for "enforced."
+
+## 15. Tile states: loading, empty, error (confirmed 2026-10-08)
+
+Measured across all 288 live tiles (demo companions excluded): **213 (74%) already have both a loading skeleton and an empty state**, and 263 (91%) read a `/_loading/…` flag. This section writes down the pattern they share; it isn't new, it just was never documented. Before and after 2026-09-20 the rate is the same (73% of older tiles, 77% of newer ones), so treat this as the existing norm to keep, not a recent change.
+
+**The pattern: `Body` holds three mutually exclusive children.**
+
+```
+Body → children: ["loading", "empty", "content"]
+```
+
+| Child | What it is | `visible` |
+|---|---|---|
+| `loading` | A `Stack` (`gap: "sm"`) of 2–4 `Skeleton`s, each roughly the height of the block it stands in for (e.g. `5rem` hero, `3.5rem` list row), `rounded: "md"` | `{ "$state": "/_loading/<mcp>.<tool>" }` |
+| `empty` | An `Empty` whose `message` says **what was searched**: "No bills due in the next 7 days.", never "No data" | `$and`: loading `not`, **and** the tool's count `not` |
+| `content` | A `Stack` with its own `gap` (`"md"`) holding everything else | `$and`: loading `not`, **and** the tool's count |
+
+Reference implementations: Xero's Ready to Pay, Bill Validation and Bank-Detail Check tiles, and the Microsoft 365 Bills from Email tile. Wrapping the content in its own `Stack` with its own `gap` also sidesteps §5's `Card`/`Body` spacing trap.
+
+**Gap: error state.** When a tool call fails, the platform sets `/_errors/<mcp>.<tool>` (**plural** `_errors`) to the error message, sets the loading flag back to false, and writes no data (`myHubV2/apps/web/src/features/widgets-system/registry.ts`). A tile with no error branch therefore falls through to its **empty message**: "No bills due" when the call actually failed. That reads as a true zero and breaks §13's rule against presenting incomplete data as complete.
+
+Only **one** of 288 tiles handles this correctly: `zoom-webinars` reads `/_errors/zoom.list_webinars`. `mailchimp-account-status` reads `/_error/…` (**singular**), a path the platform never writes, so its error branch can never show. Fix that when the tile is next touched. (`myob-bill-entry` only has a `$computed` helper with "error" in its name, which is not an error-state read.)
+
+- For tiles where a wrong "nothing here" would mislead (money, payments, compliance), add a fourth child shown when `/_errors/<mcp>.<tool>` is set, and add that flag (`not`) to the `empty` and `content` conditions.
+- Verified for tool calls made through actions (`registry.ts`). For a tile's own `dataProvider` fetch, check in the harness with a deliberately failing tool before relying on it.
+
+**Not every tile has these states.** 50 of the 288 (e.g. several `dataverse` and `cliniko` count tiles) have neither a skeleton nor an empty state. Per §14, add them whenever such a tile is touched; no dedicated pass is required.
+
+## 16. Summary tile anatomy (confirmed 2026-10-08)
+
+§6 covers tiles that are *tables*. Many recent tiles instead answer "how are we doing?" at a glance: a headline number, a breakdown, then detail. The shared shape (Xero Ready to Pay, Bill Validation, Bank-Detail Check) is **four zones**, separated by `Divider`s, inside the `content` `Stack` from §15:
+
+| Zone | Contents |
+|---|---|
+| **Header** | `Header` → a `Row` (`gap: "sm"`, `align: "center"`) with the title `Icon` and a `Heading` (`level: "h2"`) |
+| **Hero** | Either one `Stat` headline value (with a `ProgressBar` or `Donut` ring beside it, in a `Row` with `template: "minmax(0,1fr) auto"`), **or** a `Grid` of 2–3 `Section` (`variant: "muted"`) stat cards for a pass / warn / fail style split |
+| **Detail** | The breakdown or list: a day strip or segmented bar (§10), a compact matrix with a fixed-pixel column `template` (§6 alignment rules apply), or a short `repeat`ed list (§11 row limit applies) |
+| **Footer** | `Divider`, then a `Row` of muted `Caption`s: **coverage** ("N unpaid bills scanned") on the left and **freshness** ("Updated {t}") on the right, optionally a primary `Button` or link |
+
+The footer is §13's disclosure rule made visible: the Eyebrow (§9) states the scope, the footer states how much was actually checked and when. Compute the numbers once per §10 ("compute first, draw second") so the JSON only binds display-ready values.
+
+## 17. Font weight: decision required (found 2026-10-08)
+
+Two sources disagree, and shipped tiles follow neither exclusively:
+
+- `myHubV2/docs/design/WIDGET-STYLE-GUIDE.md` says tile text is capped at `medium` (500) and tells authors not to use `semibold`.
+- In practice **89 of 288 live tiles (31%) use `"weight": "semibold"`** somewhere, including 19 in `xero-accounting`. Among tiles added since 2026-09-20 it's 29 of 79 (37%), against 29% before, so the rule isn't catching on. Meanwhile Xero's Ready to Pay tile, one of the best-looking, uses only `medium`.
+
+This document does not pick a side silently (same approach as §7's "decision required"). The options: **(a)** adopt the style guide's cap and add a forward-only check to `scripts/validate.ts`, like the `"xxs"` one in §14; **(b)** allow `semibold` for headline numbers and headings only; **(c)** leave it as is. **Until decided:** match the tile family you're editing, and don't bulk-rewrite existing tiles for weight.
+
+## 18. Scope and related rulebooks (confirmed 2026-10-08)
+
+Three other documents also give tile guidance. They were written independently, and none of them links to the others:
+
+| Document | Covers | Doesn't cover |
+|---|---|---|
+| **This document** | Data display (dates, currency, status labels, headers, row limits) and data governance (§12–§13), plus the patterns in §10, §15 and §16 | Look and feel, typography scale |
+| `myHubV2/docs/design/WIDGET-STYLE-GUIDE.md` | Visual language: flat dense tiles, type scale, spacing, radii, header layout, colour tokens | Our data-display and governance rules |
+| `mysmb-maker-skills:tile-component` (`mysmb-developer-marketplace`) | A step-by-step procedure for Makers: file layout, schema, preview, publishing, plus a short list of style rules | Our data-display and governance rules; it doesn't link to this document |
+| `composing-widgets` (`myHubV2/.claude/skills/` and the plugin template) | A step-by-step authoring guide for developers; summarises this document's rules | Visual language beyond the basics |
+
+**Where they conflict:** on *data display and governance*, this document is the reference (`plugin-reviewer` checks tiles against it, and `scripts/validate.ts` enforces its `"xxs"` gap rule, per §14). On *visual language*, the style guide is, except for §17 above, which is open. Whether and how the Maker skill should point at this document is a decision for the owners of both, not made here.
 
 ---
 
