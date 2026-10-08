@@ -1,0 +1,62 @@
+{
+  "title": "Practice Purchases Summary Metrics",
+  "description": "Practice Report Analytics PRA-03: Outstanding and overdue bills, payment days (DPO) and supplier counts, per client. One row per client across Xero, MYOB and QuickBooks. Live, validated; mySMB branding by default.",
+  "tags": [
+    "practice-report-analytics",
+    "PRA-03",
+    "purchases-summary"
+  ],
+  "fileName": "practice-purchases-summary.html",
+  "dataBindings": {
+    "inputs": [
+      {
+        "name": "from_date",
+        "label": "From",
+        "type": "date",
+        "default": "2026-07-01"
+      },
+      {
+        "name": "to_date",
+        "label": "To",
+        "type": "date",
+        "default": "today"
+      }
+    ],
+    "bindings": [
+      {
+        "id": "xero",
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_practice_purchases_summary"
+        },
+        "params": {
+          "from_date": {
+            "kind": "input",
+            "input": "from_date"
+          },
+          "to_date": {
+            "kind": "input",
+            "input": "to_date"
+          }
+        }
+      },
+      {
+        "id": "myob",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_practice_purchases_summary"
+        },
+        "params": {
+          "from_date": {
+            "kind": "input",
+            "input": "from_date"
+          },
+          "to_date": {
+            "kind": "input",
+            "input": "to_date"
+          }
+        }
+      }
+    ]
+  }
+}

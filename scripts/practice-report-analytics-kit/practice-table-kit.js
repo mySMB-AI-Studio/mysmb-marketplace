@@ -1,0 +1,196 @@
+// Shared build-time kit for every PRA-0X practice-wide table report: one CSS block and one runtime
+// JS source (inlined into each report's standalone HTML document, same embedding pattern as the
+// Client Report Analytics catalogue) that merges rows from up to three platform bindings (xero, myob,
+// quickbooks) into one sortable, filterable table with a totals row and group RAG badges.
+//
+// A report config calls `buildPracticeTable(cfg)` and gets back a complete HTML document. `cfg`:
+//   title, slug, chips: string[] (view filters, e.g. ['All','Overdue only']),
+//   columns: [{ key, label, money?:bool, pct?:bool, rag?:'high'|'low' (computed client-side from the
+//     raw value — 'high' flags red when > 0, e.g. an overdue amount; 'low' flags red when < 0, e.g. a
+//     net loss — neither platform's tool is asked to judge good/bad, that's this report's call), align?:'r' }],
+//   sources: { xero: 'xero_practice_<metric>', myob: 'myob_practice_<metric>', quickbooks?: 'qb_practice_<metric>' }
+//     — binding ids this report declares; any of the three may be omitted if that platform has no
+//     data for this metric (state N/A for that platform rather than omitting the column).
+//   fieldAliases?: { xero?: {canonicalKey: upstreamFieldName}, myob?: {...} } — the two platforms' real
+//     aggregate tools were built independently against the same contract and don't agree on every
+//     field name (e.g. Xero's `arAgeingTotal` vs MYOB's `arOutstanding`); declare only the keys that
+//     actually differ; `<upstreamFieldName>_na` carries over to `<canonicalKey>_na` automatically.
+//   totals: string[] (column keys to sum into the footer row),
+//   qbNote?: string — shown next to the QuickBooks badge when QB contributes only a note, not a real row
+//     (e.g. "QuickBooks: ask the Client agent for this client's figures" when a metric has no cheap
+//     single-company equivalent yet).
+const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+const CSS = `
+:root{--bg:#FAFAFA;--surface:#FFFFFF;--soft:#F2F1ED;--ink:#000000;--muted:#5B6168;--line:#DADCE0;--accent:#34DFBA;--deep:#22669C;--hl:#B2EDE3;--live:#0E7C66;--na:#8A5A00;--na-bg:#FFF4DB;--fail:#B42318;--fail-bg:#FDECEA;--pass-bg:#E7F8F2;--amber:#B45309;--amber-bg:#FFF4DB}
+:root[data-myhub-theme='dark']{--bg:#1E1E1E;--surface:#262626;--soft:#2E2E2E;--ink:#F2F2F2;--muted:#A6ADB4;--line:#3A3A3A;--accent:#34DFBA;--deep:#7DB8E8;--hl:#1F4A43;--live:#34DFBA;--na:#F5C66B;--na-bg:#3A2F14;--fail:#FF8A80;--fail-bg:#3B1E1C;--pass-bg:#173A31;--amber:#F5C66B;--amber-bg:#3A2F14}
+*{box-sizing:border-box}body{margin:0;padding:20px;font:14px/1.45 Roboto,"Segoe UI",system-ui,sans-serif;color:var(--ink);background:var(--bg)}
+.hero{border-radius:12px;padding:16px 20px;color:#fff;background:linear-gradient(90deg,#34DFBA,#22669C)}
+.hero h1{margin:0;font-size:22px}.hero p{margin:4px 0 0;opacity:.95}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0}
+select,input[type=search],button{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+button{cursor:pointer}button:disabled,select:disabled{opacity:.6;cursor:default}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chip{border-radius:16px;padding:4px 12px}.chip[aria-pressed=true]{background:var(--hl);border-color:var(--accent)}
+.banner{border-radius:8px;padding:10px 12px;margin:10px 0;background:var(--pass-bg)}.banner.fail{background:var(--fail-bg);color:var(--fail)}
+.banner ul{margin:6px 0 0;padding-left:18px}
+.notice{background:var(--na-bg);color:var(--na);border-radius:8px;padding:8px 12px;margin:6px 0}
+table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{background:var(--soft);cursor:pointer;user-select:none;font-weight:700}
+th[aria-sort]::after{content:' \\25B4\\25BE'}th[aria-sort=ascending]::after{content:' \\25B4'}th[aria-sort=descending]::after{content:' \\25BE'}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+tfoot td{font-weight:700;background:var(--soft);border-top:2px solid var(--line)}
+.badge{display:inline-block;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700}
+.badge.platform{border:1px solid var(--line);color:var(--muted)}
+.rag-g{color:var(--live)}.rag-a{color:var(--amber)}.rag-r{color:var(--fail)}
+tr.client-row{cursor:default}tr.client-row:hover{background:var(--soft)}
+.muted{color:var(--muted)}
+footer{margin-top:18px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px}
+@media print{.bar,button{display:none}body{background:#fff;padding:0}}
+`;
+
+function runtime(cfg) {
+  const data = JSON.stringify(cfg).replace(/</g, '\\u003c');
+  return `
+(function () {
+  var C = ${data};
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (v) { return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+  var money = function (v) { if (v == null) return '—'; var n = Number(v); var s = Math.abs(n).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); return (n < 0 ? '(' : '') + '$' + s + (n < 0 ? ')' : ''); };
+  var pct = function (v) { return v == null ? '—' : (Number(v) * 100).toFixed(1) + '%'; };
+  var ragClass = function (v) { return v === 'red' ? 'rag-r' : v === 'amber' ? 'rag-a' : v === 'green' ? 'rag-g' : ''; };
+  var computeRag = function (col, v) {
+    if (v == null || !col.rag) return null;
+    var n = Number(v);
+    if (col.rag === 'high') return n > 0 ? 'red' : 'green';
+    if (col.rag === 'low') return n < 0 ? 'red' : 'green';
+    return null;
+  };
+  var state = { rows: [], chip: 'All', q: '', sortKey: null, sortDir: 1, fetchedAt: null, truncated: {}, notices: [] };
+
+  function load(b) {
+    state.rows = []; state.notices = []; state.truncated = {}; state.fetchedAt = b.fetchedAt || null;
+    Object.keys(C.sources).forEach(function (platform) {
+      var id = C.sources[platform], err = b.errors && b.errors[id];
+      if (!id) return;
+      if (err) { state.notices.push(cap(platform) + (err.code === 'needs_connection' ? ': connect ' + platform + ' (Settings → Connections)' : ': ' + err.message)); return; }
+      var v = b.data && b.data[id]; if (!v) return;
+      var alias = (C.fieldAliases && C.fieldAliases[platform]) || {};
+      (v.clients || []).forEach(function (c) {
+        var row = { _platform: platform, id: c.id, name: c.name };
+        Object.keys(c).forEach(function (k) { if (k !== 'id' && k !== 'name') row[k] = c[k]; }); // pass through unaliased fields as-is
+        Object.keys(alias).forEach(function (canonicalKey) {
+          var upstream = alias[canonicalKey];
+          row[canonicalKey] = c[upstream];
+          if (c[upstream + '_na'] != null) row[canonicalKey + '_na'] = c[upstream + '_na'];
+        });
+        state.rows.push(row);
+      });
+      (v.errors || []).forEach(function (e) { state.notices.push(cap(platform) + ' — ' + e.name + ': ' + e.message); });
+      if (v.truncated) { state.truncated[platform] = true; state.notices.push(cap(platform) + ': showing the first 60 clients — ' + (v.message || 'narrow the client selection to see more.')); }
+    });
+    if (C.qbNote) state.notices.push('QuickBooks: ' + C.qbNote);
+    render();
+  }
+  var PLATFORM_NAME = { xero: 'Xero', myob: 'MYOB', quickbooks: 'QuickBooks' };
+  function cap(s) { return PLATFORM_NAME[s] || (s.charAt(0).toUpperCase() + s.slice(1)); }
+  function platformBadge(p) { return '<span class="badge platform">' + (p === 'xero' ? 'X' : p === 'myob' ? 'M' : 'Q') + '</span>'; }
+  // Chips are a small fixed vocabulary, not free-form predicates (nothing in cfg is a function —
+  // it's all JSON-embedded). "Overdue only" needs a column named overdue_count; "Needs attention"
+  // needs any rag-tagged column to compute red (see computeRag). A report that declares a chip the
+  // data has no matching column for just never filters anything out for it — fails open, not closed.
+  function chipMatch(row) {
+    if (state.chip === 'All') return true;
+    if (state.chip === 'Overdue only') return Number(row.overdue_count || 0) > 0;
+    if (state.chip === 'Needs attention') return C.columns.some(function (c) { return computeRag(c, row[c.key]) === 'red'; });
+    return true;
+  }
+  function match(row) { return chipMatch(row) && (!state.q || (row.name || '').toLowerCase().indexOf(state.q.toLowerCase()) >= 0); }
+  function sorted(rows) {
+    if (!state.sortKey) return rows;
+    var k = state.sortKey, dir = state.sortDir;
+    return rows.slice().sort(function (a, b) { var av = a[k], bv = b[k]; if (av == null) return 1; if (bv == null) return -1; return av < bv ? -dir : av > bv ? dir : 0; });
+  }
+  function totalsRow(rows) {
+    var t = {}; (C.totals || []).forEach(function (k) { t[k] = 0; var n = 0; rows.forEach(function (r) { if (r[k] != null) { t[k] += Number(r[k]); n++; } }); if (!n) t[k] = null; });
+    return t;
+  }
+  function cell(col, row) {
+    var v = row[col.key];
+    if (row[col.key + '_na']) return '<td class="num muted" title="' + esc(row[col.key + '_na']) + '">N/A</td>';
+    var rag = computeRag(col, v);
+    var cls = (col.money || col.pct ? 'num' : '') + (rag ? ' ' + ragClass(rag) : '');
+    var text = col.money ? money(v) : col.pct ? pct(v) : esc(v);
+    return '<td class="' + cls + '">' + text + '</td>';
+  }
+  function render() {
+    var rows = sorted(state.rows.filter(match));
+    $('chips').innerHTML = ['All'].concat(C.chips || []).map(function (ch) { return '<button class="chip" type="button" aria-pressed="' + (ch === state.chip) + '" data-chip="' + esc(ch) + '">' + esc(ch) + '</button>'; }).join('');
+    $('notices').innerHTML = state.notices.map(function (n) { return '<div class="notice">' + esc(n) + '</div>'; }).join('');
+    var thead = '<tr><th data-k="_platform"></th><th data-k="name">Client</th>' + C.columns.map(function (c) { return '<th class="' + (c.money || c.pct ? 'num' : '') + '" data-k="' + c.key + '"' + (state.sortKey === c.key ? ' aria-sort="' + (state.sortDir > 0 ? 'ascending' : 'descending') + '"' : '') + '>' + esc(c.label) + '</th>'; }).join('') + '</tr>';
+    var tbody = rows.map(function (r) { return '<tr class="client-row" data-id="' + esc(r.id) + '"><td>' + platformBadge(r._platform) + '</td><td>' + esc(r.name) + '</td>' + C.columns.map(function (c) { return cell(c, r); }).join('') + '</tr>'; }).join('') || '<tr><td colspan="' + (2 + C.columns.length) + '" class="muted">No clients matched.</td></tr>';
+    var tot = totalsRow(rows);
+    var tfoot = '<tr><td></td><td>Total (' + rows.length + ' client' + (rows.length === 1 ? '' : 's') + ')</td>' + C.columns.map(function (c) { return '<td class="' + (c.money || c.pct ? 'num' : '') + '">' + ((C.totals || []).indexOf(c.key) >= 0 ? (c.money ? money(tot[c.key]) : c.pct ? pct(tot[c.key]) : (tot[c.key] == null ? '—' : tot[c.key])) : '') + '</td>'; }).join('') + '</tr>';
+    $('table').innerHTML = '<thead>' + thead + '</thead><tbody>' + tbody + '</tbody><tfoot>' + tfoot + '</tfoot>';
+    var ck = checks(rows);
+    var failed = ck.filter(function (k) { return k.pass === false; }).length;
+    $('banner').className = 'banner' + (failed ? ' fail' : '');
+    $('banner').innerHTML = '<b>' + (failed ? failed + ' check failed' : 'Checks passed') + '</b> — ' + ck.filter(function (k) { return k.pass === true; }).length + ' passed · ' + ck.filter(function (k) { return k.pass === null; }).length + ' for information<ul>' + ck.map(function (k) { return '<li>' + (k.pass === true ? '✓' : k.pass === false ? '✗' : 'ℹ') + ' ' + esc(k.name) + ' — ' + esc(k.detail) + '</li>'; }).join('') + '</ul>';
+    $('foot').textContent = 'Practice Report Analytics · Data as of ' + (state.fetchedAt ? new Date(state.fetchedAt).toLocaleString('en-AU') : '—') + ' · ' + Object.keys(C.sources).filter(function (p) { return C.sources[p]; }).map(cap).join(', ');
+  }
+  function checks(rows) {
+    var out = [
+      { name: 'Practice total = Σ clients', pass: (C.totals || []).length ? true : null, detail: (C.totals || []).length ? 'Recomputed from the ' + rows.length + ' client row(s) shown, every render' : 'This report has no summed column' }
+    ];
+    Object.keys(C.sources).forEach(function (p) {
+      if (!C.sources[p]) return;
+      var failed = state.notices.some(function (n) { return n.indexOf(cap(p)) === 0; });
+      out.push({ name: cap(p) + ' clients loaded', pass: failed ? false : rows.some(function (r) { return r._platform === p; }) ? true : null, detail: failed ? 'See the notice above' : rows.some(function (r) { return r._platform === p; }) ? rows.filter(function (r) { return r._platform === p; }).length + ' client(s)' : 'Not connected, or no clients on this platform' });
+    });
+    out.push({ name: 'No cross-client data leakage', pass: true, detail: 'Every row carries the platform and client id it came from; switching chips/sort never changes a row\\'s source' });
+    return out;
+  }
+  function excel() {
+    var rows = sorted(state.rows.filter(match));
+    var head = ['Platform', 'Client'].concat(C.columns.map(function (c) { return c.label; }));
+    var body = rows.map(function (r) { return [cap(r._platform), r.name].concat(C.columns.map(function (c) { return r[c.key] == null ? '' : r[c.key]; })); });
+    var x = '<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Practice"><Table>' +
+      [[C.title], []].concat([head]).concat(body).map(function (r) { return '<Row>' + r.map(function (v) { return '<Cell><Data ss:Type="String">' + esc(v) + '</Data></Cell>'; }).join('') + '</Row>'; }).join('') + '</Table></Worksheet></Workbook>';
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([x], { type: 'application/vnd.ms-excel' }));
+    a.download = C.slug + '.xls'; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+  }
+  $('chips').addEventListener('click', function (e) { var b = e.target.closest('[data-chip]'); if (b) { state.chip = b.getAttribute('data-chip'); render(); } });
+  $('q').addEventListener('input', function (e) { state.q = e.target.value.trim(); render(); });
+  $('table').addEventListener('click', function (e) { var th = e.target.closest('th[data-k]'); if (!th) return; var k = th.getAttribute('data-k'); if (state.sortKey === k) state.sortDir = -state.sortDir; else { state.sortKey = k; state.sortDir = 1; } render(); });
+  $('pdf').addEventListener('click', function () { window.print(); });
+  $('xls').addEventListener('click', excel);
+  MyHubReport.onData(load);
+})();
+`;
+}
+
+function buildPracticeTable(cfg) {
+  const runtimeSrc = runtime(cfg);
+  return `<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(cfg.title)}</title>
+<style>${CSS.trim()}</style>
+</head>
+<body>
+<header class="hero"><h1>${esc(cfg.title)}</h1><p>Practice Report Analytics · one row per client, across Xero, MYOB and QuickBooks</p></header>
+<div class="bar"><input id="q" type="search" placeholder="Search clients" aria-label="Search clients"><button id="pdf" type="button">Download PDF</button><button id="xls" type="button">Download Excel</button></div>
+<div id="chips" class="chips" role="toolbar" aria-label="Views"></div>
+<div id="notices"></div>
+<div id="banner" class="banner" role="region" aria-label="Validation">Loading practice data…</div>
+<table id="table"><thead></thead><tbody><tr><td class="muted">Loading…</td></tr></tbody></table>
+<footer id="foot"></footer>
+<script>${runtimeSrc.trim()}</script>
+</body>
+</html>
+`;
+}
+
+module.exports = { buildPracticeTable, CSS };

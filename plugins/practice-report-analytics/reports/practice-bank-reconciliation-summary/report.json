@@ -1,0 +1,48 @@
+{
+  "title": "Practice Bank Reconciliation Summary",
+  "description": "Practice Report Analytics PRA-04: Statement vs ledger balance, unreconciled lines and last-reconciled date, across every client and bank account. One row per client across Xero, MYOB and QuickBooks. Live, validated; mySMB branding by default.",
+  "tags": [
+    "practice-report-analytics",
+    "PRA-04",
+    "bank-reconciliation-summary"
+  ],
+  "fileName": "practice-bank-reconciliation-summary.html",
+  "dataBindings": {
+    "inputs": [
+      {
+        "name": "as_at",
+        "label": "As at",
+        "type": "date",
+        "default": "today"
+      }
+    ],
+    "bindings": [
+      {
+        "id": "xero",
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_practice_bank_reconciliation_summary"
+        },
+        "params": {
+          "as_at": {
+            "kind": "input",
+            "input": "as_at"
+          }
+        }
+      },
+      {
+        "id": "myob",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_practice_bank_reconciliation_summary"
+        },
+        "params": {
+          "as_at": {
+            "kind": "input",
+            "input": "as_at"
+          }
+        }
+      }
+    ]
+  }
+}

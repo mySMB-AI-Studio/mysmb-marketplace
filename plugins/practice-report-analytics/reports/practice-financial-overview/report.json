@@ -1,0 +1,80 @@
+{
+  "title": "Practice Financial Overview",
+  "description": "Practice Report Analytics PRA-06: Revenue, gross and net profit, bank balances and AR/AP ageing, for all or selected clients on one page. One row per client across Xero, MYOB and QuickBooks. Live, validated; mySMB branding by default.",
+  "tags": [
+    "practice-report-analytics",
+    "PRA-06",
+    "financial-overview"
+  ],
+  "fileName": "practice-financial-overview.html",
+  "dataBindings": {
+    "inputs": [
+      {
+        "name": "from_date",
+        "label": "From",
+        "type": "date",
+        "default": "2026-07-01"
+      },
+      {
+        "name": "to_date",
+        "label": "To",
+        "type": "date",
+        "default": "today"
+      },
+      {
+        "name": "basis",
+        "label": "Basis",
+        "type": "enum",
+        "options": [
+          "Accrual",
+          "Cash"
+        ],
+        "default": "Accrual"
+      }
+    ],
+    "bindings": [
+      {
+        "id": "xero",
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_practice_financial_overview"
+        },
+        "params": {
+          "from_date": {
+            "kind": "input",
+            "input": "from_date"
+          },
+          "to_date": {
+            "kind": "input",
+            "input": "to_date"
+          },
+          "basis": {
+            "kind": "input",
+            "input": "basis"
+          }
+        }
+      },
+      {
+        "id": "myob",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_practice_financial_overview"
+        },
+        "params": {
+          "from_date": {
+            "kind": "input",
+            "input": "from_date"
+          },
+          "to_date": {
+            "kind": "input",
+            "input": "to_date"
+          },
+          "basis": {
+            "kind": "input",
+            "input": "basis"
+          }
+        }
+      }
+    ]
+  }
+}
