@@ -26,6 +26,25 @@ const item_tone: ComputedFunction = (args) => (args.isFolder ? 'warning' : 'info
 /** Icon name for a OneDrive drive item row. */
 const item_icon: ComputedFunction = (args) => (args.isFolder ? 'Folder' : 'FileText');
 
+/**
+ * Deterministic per-sender avatar color, not a status tone (nothing here
+ * represents state) — per TILE-DISPLAY-STANDARDS.md §7's "Categorical
+ * (multi-color, non-status) breakdowns" guidance, this is exactly the
+ * chart-1..5 use case: coloring several arbitrary category labels (here,
+ * senders) distinctly, where no single accent or status tone fits any one of
+ * them. Hashing the sender's name (not initials) keeps two different people
+ * who happen to share initials from also sharing a color. 'muted' if empty.
+ * Mirrors asana's flatten_recent_activity avatar_tone exactly.
+ */
+const sender_tone: ComputedFunction = (args) => {
+  const name = String(args.value ?? '').trim();
+  if (!name) return 'muted';
+  const CHART_TONES = ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5'] as const;
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return CHART_TONES[hash % CHART_TONES.length];
+};
+
 /** Builds the Quick Share picker's options from a list of drive items (recent files). */
 const file_options: ComputedFunction = (args) => {
   const items = Array.isArray(args.items) ? (args.items as Record<string, unknown>[]) : [];
@@ -92,6 +111,7 @@ const elements: PluginElementsModule = {
     format_bytes,
     item_tone,
     item_icon,
+    sender_tone,
     file_options,
     selected_file,
     folder_items,
