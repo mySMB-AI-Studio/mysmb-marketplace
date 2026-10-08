@@ -6,6 +6,28 @@
  * to every name in `functions`, so e.g. the spec-side reference is
  * `microsoft-365_smart_day_label`.
  */
+/** Bytes → `1.2 MB` / `340 KB` / `512 B`. Graph drive items report size in raw bytes. */
+const format_bytes = (args) => {
+    const bytes = Number(args.value);
+    if (!Number.isFinite(bytes) || bytes < 0)
+        return '';
+    if (bytes < 1024)
+        return `${bytes} B`;
+    const units = ['KB', 'MB', 'GB', 'TB'];
+    let value = bytes / 1024;
+    let i = 0;
+    while (value >= 1024 && i < units.length - 1) {
+        value /= 1024;
+        i++;
+    }
+    return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[i]}`;
+};
+/**
+ * Tone for a OneDrive drive item row — amber for folders, blue for files.
+ * Deliberately "warning"/"info", not "accent"/"brand" — both of those
+ * collapse to a near-neutral color in this design system (confirmed while
+ * building the Zoom tiles), so they wouldn't actually look colorful.
+ */
 const item_tone = (args) => (args.isFolder ? 'warning' : 'info');
 /** Icon name for a OneDrive drive item row. */
 const item_icon = (args) => (args.isFolder ? 'Folder' : 'FileText');
@@ -57,6 +79,53 @@ const selected_file = (args) => {
     const items = Array.isArray(args.items) ? args.items : [];
     const id = String(args.fileId ?? '').trim();
     if (!id)
+        return null;
+    return items.find((it) => String(it.id ?? '') === id) ?? null;
+};
+/**
+ * Splits a list_files/search_files result into folders vs files — rendered
+ * as two separate lists (folders first) since each needs different click
+ * behavior (drill in vs open in browser), which a single repeat block over
+ * mixed item types can't branch on per-row.
+ */
+const folder_items = (args) => {
+    const items = Array.isArray(args.items) ? args.items : [];
+    return items.filter((it) => Boolean(it.folder));
+};
+const file_items = (args) => {
+    const items = Array.isArray(args.items) ? args.items : [];
+    return items.filter((it) => !it.folder);
+};
+/**
+ * list_recent_files is activity-tracked (Graph's /me/drive/recent) — only
+ * files someone has actually opened recently, which can be very sparse (a
+ * real account was confirmed live to return just 1 item even at limit=15).
+ * When it's thin, fills the remainder from the root file listing, sorted by
+ * lastModifiedDateTime descending, deduped against what's already shown —
+ * so the tile always has something useful instead of looking broken.
+ */
+const merge_recent_files = (args) => {
+    const recent = Array.isArray(args.recent) ? args.recent : [];
+    const allFiles = Array.isArray(args.files) ? args.files : [];
+    const limit = Number(args.limit) || 10;
+    if (recent.length >= limit)
+        return recent.slice(0, limit);
+    const seenIds = new Set(recent.map((it) => String(it.id ?? '')));
+    const fallback = allFiles
+        .filter((it) => !it.folder && !seenIds.has(String(it.id ?? '')))
+        .sort((a, b) => {
+        const aDate = Date.parse(String(a.lastModifiedDateTime ?? a.createdDateTime ?? '')) || 0;
+        const bDate = Date.parse(String(b.lastModifiedDateTime ?? b.createdDateTime ?? '')) || 0;
+        return bDate - aDate;
+    });
+    return [...recent, ...fallback].slice(0, limit);
+};
+// Graph returns dateTime strings without a timezone suffix on some fields
+// (e.g. `2026-10-07T04:30:00.0000000`), which JS `Date()` would otherwise
+// parse as local time. Append Z when no offset is present, matching the
+// parsing convention used elsewhere in this codebase for Graph instants.
+function toEpochMs(raw) {
+    if (raw == null)
         return null;
     if (typeof raw === 'number')
         return raw;
@@ -142,6 +211,58 @@ const meeting_type = (args) => {
     });
     return isExternal ? 'External' : 'Internal';
 };
+function pad2(n) {
+    return String(n).padStart(2, '0');
+}
+/** Local "today" as "YYYY-MM-DD" — the format DateInput both expects and emits. */
+function todayDateString() {
+    const now = new Date();
+    return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+}
+/**
+ * `/ui/selectedDate` starts unset until the user picks a date — seed it to
+ * today once (idempotent: once `current` is truthy, this just echoes it back
+ * unchanged, so it's safe to re-run every time the watched list re-fetches,
+ * including after the user has picked a different date). Mirrors
+ * zoom_seed_default_tab's exact current-or-fallback shape.
+ * Args: { current: string }
+ */
+const seed_default_date = (args) => {
+    const current = String(args.current ?? '').trim();
+    return current || todayDateString();
+};
+function parseDateParts(raw) {
+    const m = String(raw ?? '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m)
+        return null;
+    return { y: Number(m[1]), mo: Number(m[2]) - 1, d: Number(m[3]) };
+}
+/** "YYYY-MM-DD" → local midnight of that day, as a UTC ISO string. Args: { value: string } */
+const day_start_iso = (args) => {
+    const p = parseDateParts(args.value);
+    return p ? new Date(p.y, p.mo, p.d, 0, 0, 0, 0).toISOString() : '';
+};
+/** "YYYY-MM-DD" → local 23:59:59.999 of that day, as a UTC ISO string. Args: { value: string } */
+const day_end_iso = (args) => {
+    const p = parseDateParts(args.value);
+    return p ? new Date(p.y, p.mo, p.d, 23, 59, 59, 999).toISOString() : '';
+};
+/**
+ * "Today's Schedule" when `value` is today's date, otherwise "Schedule for
+ * <weekday>, <day> <month>" — the heading needs to track whichever date is
+ * actually selected once the date picker can show a day other than today.
+ * Args: { value: string } — "YYYY-MM-DD"
+ */
+const schedule_title = (args) => {
+    const raw = String(args.value ?? '').trim();
+    if (!raw || raw === todayDateString())
+        return "Today's Schedule";
+    const p = parseDateParts(raw);
+    if (!p)
+        return "Today's Schedule";
+    const d = new Date(p.y, p.mo, p.d);
+    return `Schedule for ${d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })}`;
+};
 const elements = {
     slug: 'microsoft-365',
     functions: {
@@ -158,6 +279,13 @@ const elements = {
         folder_items,
         file_items,
         merge_recent_files,
+        smart_day_label,
+        name_tone,
+        meeting_type,
+        seed_default_date,
+        day_start_iso,
+        day_end_iso,
+        schedule_title,
     },
 };
 export default elements;
