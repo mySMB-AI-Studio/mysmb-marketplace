@@ -5,11 +5,15 @@ const { run, suite } = require('../harness.js');
 const { ok, done } = suite('financial-overview');
 const REF = 'reports/financial-overview', man = manifest(REF);
 
+// Real field names (confirmed against both agents' source 2026-10-08): revenue/grossProfit/netProfit/
+// bankBalance agree; arAgeingTotal/apAgeingTotal and grossMargin/netMargin are Xero's own names (MYOB
+// uses arOutstanding/apOutstanding and grossProfitMargin/netProfitMargin — see the report's
+// fieldAliases). RAG is computed client-side from netProfit (rag:'low'), no upstream _rag field.
 const xeroOk = () => ({
   asOf: '2026-10-08T02:00:00.000Z',
   clients: [
-    { id: 'xt-1', name: 'Irvine Jackson Pty Ltd', revenue: 7470, gross_profit: -6238.32, gp_margin: -0.835, net_profit: -14311.07, net_profit_rag: 'red', np_margin: -1.916, bank_total: 2265.02, ar_total: 4680.50, ap_total: 22121.25 },
-    { id: 'xt-2', name: 'Southgate Services Ltd', revenue: 20000, gross_profit: 8000, gp_margin: 0.4, net_profit: 3000, net_profit_rag: 'green', np_margin: 0.15, bank_total: 5000, ar_total: 1200, ap_total: 800 }
+    { id: 'xt-1', name: 'Irvine Jackson Pty Ltd', revenue: 7470, grossProfit: -6238.32, grossMargin: -0.835, netProfit: -14311.07, netMargin: -1.916, bankBalance: 2265.02, arAgeingTotal: 4680.50, apAgeingTotal: 22121.25 },
+    { id: 'xt-2', name: 'Southgate Services Ltd', revenue: 20000, grossProfit: 8000, grossMargin: 0.4, netProfit: 3000, netMargin: 0.15, bankBalance: 5000, arAgeingTotal: 1200, apAgeingTotal: 800 }
   ],
   errors: [], totals: {}, truncated: false
 });

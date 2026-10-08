@@ -5,11 +5,13 @@ const { run, suite } = require('../harness.js');
 const { ok, done } = suite('banking-summary');
 const REF = 'reports/banking-summary', man = manifest(REF);
 
+// Real field names (confirmed against both agents' source 2026-10-08): identical on both platforms,
+// including `net` (not aliased — passes through as-is). RAG is computed client-side (rag:'low').
 const xeroOk = () => ({
   asOf: '2026-10-08T02:00:00.000Z',
   clients: [
-    { id: 'xt-1', name: 'Irvine Jackson Pty Ltd', cash_in: 7470, cash_out: 13708.32, net: -6238.32, net_rag: 'amber', unreconciled_count: 0, unreconciled_value: 0 },
-    { id: 'xt-2', name: 'Southgate Services Ltd', cash_in: 1000, cash_out: 400, net: 600, net_rag: 'green', unreconciled_count: 2, unreconciled_value: 150 }
+    { id: 'xt-1', name: 'Irvine Jackson Pty Ltd', cashIn: 7470, cashOut: 13708.32, net: -6238.32, unreconciledCount: 0, unreconciledAmount: 0 },
+    { id: 'xt-2', name: 'Southgate Services Ltd', cashIn: 1000, cashOut: 400, net: 600, unreconciledCount: 2, unreconciledAmount: 150 }
   ],
   errors: [], totals: {}, truncated: false
 });

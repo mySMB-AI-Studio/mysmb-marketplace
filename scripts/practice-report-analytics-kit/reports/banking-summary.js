@@ -9,10 +9,16 @@ module.exports = function build() {
     chips: [],
     sources: { xero: 'xero', myob: 'myob' },
     qbNote: 'one company per connection, and bank-feed/unreconciled data is not in the QuickBooks Accounting API — see the Client agent.',
+    // get_practice_banking_summary: both platforms agree on these names, except the unreconciled $
+    // amount (MYOB: unreconciledAmount, same as Xero — identity, included for clarity/regression safety).
+    fieldAliases: {
+      xero: { cash_in: 'cashIn', cash_out: 'cashOut', unreconciled_count: 'unreconciledCount', unreconciled_value: 'unreconciledAmount' },
+      myob: { cash_in: 'cashIn', cash_out: 'cashOut', unreconciled_count: 'unreconciledCount', unreconciled_value: 'unreconciledAmount' }
+    },
     columns: [
       { key: 'cash_in', label: 'Cash in', money: true },
       { key: 'cash_out', label: 'Cash out', money: true },
-      { key: 'net', label: 'Net', money: true, rag: true },
+      { key: 'net', label: 'Net', money: true, rag: 'low' },
       { key: 'unreconciled_count', label: 'Unreconciled #' },
       { key: 'unreconciled_value', label: 'Unreconciled $', money: true }
     ],

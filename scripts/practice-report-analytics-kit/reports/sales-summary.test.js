@@ -5,11 +5,13 @@ const { run, suite } = require('../harness.js');
 const { ok, done } = suite('sales-summary');
 const REF = 'reports/sales-summary', man = manifest(REF);
 
+// Real field names (confirmed against both agents' source 2026-10-08): identical on both platforms.
+// No *_rag field exists upstream — RAG is computed client-side from overdueAmount (rag:'high').
 const xeroOk = () => ({
   asOf: '2026-10-08T02:00:00.000Z',
   clients: [
-    { id: 'xt-1', name: 'Irvine Jackson Pty Ltd', outstanding: 12000, outstanding_count: 8, overdue: 4500, overdue_count: 3, overdue_rag: 'red', dso: 42, receipts: 30000, avg_invoice: 850 },
-    { id: 'xt-2', name: 'Southgate Services Ltd', outstanding: 2000, outstanding_count: 2, overdue: 0, overdue_count: 0, overdue_rag: 'green', dso: 18, receipts: 9000, avg_invoice: 400 }
+    { id: 'xt-1', name: 'Irvine Jackson Pty Ltd', outstandingAmount: 12000, outstandingCount: 8, overdueAmount: 4500, overdueCount: 3, dso: 42, receiptsViaBank: 30000, averageInvoiceValue: 850 },
+    { id: 'xt-2', name: 'Southgate Services Ltd', outstandingAmount: 2000, outstandingCount: 2, overdueAmount: 0, overdueCount: 0, dso: 18, receiptsViaBank: 9000, averageInvoiceValue: 400 }
   ],
   errors: [], totals: {}, truncated: false
 });

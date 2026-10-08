@@ -5,10 +5,16 @@
 //
 // A report config calls `buildPracticeTable(cfg)` and gets back a complete HTML document. `cfg`:
 //   title, slug, chips: string[] (view filters, e.g. ['All','Overdue only']),
-//   columns: [{ key, label, money?:bool, pct?:bool, rag?:bool (red/amber/green by `<key>_rag`), align?:'r' }],
+//   columns: [{ key, label, money?:bool, pct?:bool, rag?:'high'|'low' (computed client-side from the
+//     raw value — 'high' flags red when > 0, e.g. an overdue amount; 'low' flags red when < 0, e.g. a
+//     net loss — neither platform's tool is asked to judge good/bad, that's this report's call), align?:'r' }],
 //   sources: { xero: 'xero_practice_<metric>', myob: 'myob_practice_<metric>', quickbooks?: 'qb_practice_<metric>' }
 //     — binding ids this report declares; any of the three may be omitted if that platform has no
 //     data for this metric (state N/A for that platform rather than omitting the column).
+//   fieldAliases?: { xero?: {canonicalKey: upstreamFieldName}, myob?: {...} } — the two platforms' real
+//     aggregate tools were built independently against the same contract and don't agree on every
+//     field name (e.g. Xero's `arAgeingTotal` vs MYOB's `arOutstanding`); declare only the keys that
+//     actually differ; `<upstreamFieldName>_na` carries over to `<canonicalKey>_na` automatically.
 //   totals: string[] (column keys to sum into the footer row),
 //   qbNote?: string — shown next to the QuickBooks badge when QB contributes only a note, not a real row
 //     (e.g. "QuickBooks: ask the Client agent for this client's figures" when a metric has no cheap
@@ -53,6 +59,13 @@ function runtime(cfg) {
   var money = function (v) { if (v == null) return '—'; var n = Number(v); var s = Math.abs(n).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); return (n < 0 ? '(' : '') + '$' + s + (n < 0 ? ')' : ''); };
   var pct = function (v) { return v == null ? '—' : (Number(v) * 100).toFixed(1) + '%'; };
   var ragClass = function (v) { return v === 'red' ? 'rag-r' : v === 'amber' ? 'rag-a' : v === 'green' ? 'rag-g' : ''; };
+  var computeRag = function (col, v) {
+    if (v == null || !col.rag) return null;
+    var n = Number(v);
+    if (col.rag === 'high') return n > 0 ? 'red' : 'green';
+    if (col.rag === 'low') return n < 0 ? 'red' : 'green';
+    return null;
+  };
   var state = { rows: [], chip: 'All', q: '', sortKey: null, sortDir: 1, fetchedAt: null, truncated: {}, notices: [] };
 
   function load(b) {
@@ -62,7 +75,17 @@ function runtime(cfg) {
       if (!id) return;
       if (err) { state.notices.push(cap(platform) + (err.code === 'needs_connection' ? ': connect ' + platform + ' (Settings → Connections)' : ': ' + err.message)); return; }
       var v = b.data && b.data[id]; if (!v) return;
-      (v.clients || []).forEach(function (c) { state.rows.push(Object.assign({ _platform: platform }, c)); });
+      var alias = (C.fieldAliases && C.fieldAliases[platform]) || {};
+      (v.clients || []).forEach(function (c) {
+        var row = { _platform: platform, id: c.id, name: c.name };
+        Object.keys(c).forEach(function (k) { if (k !== 'id' && k !== 'name') row[k] = c[k]; }); // pass through unaliased fields as-is
+        Object.keys(alias).forEach(function (canonicalKey) {
+          var upstream = alias[canonicalKey];
+          row[canonicalKey] = c[upstream];
+          if (c[upstream + '_na'] != null) row[canonicalKey + '_na'] = c[upstream + '_na'];
+        });
+        state.rows.push(row);
+      });
       (v.errors || []).forEach(function (e) { state.notices.push(cap(platform) + ' — ' + e.name + ': ' + e.message); });
       if (v.truncated) { state.truncated[platform] = true; state.notices.push(cap(platform) + ': showing the first 60 clients — ' + (v.message || 'narrow the client selection to see more.')); }
     });
@@ -73,13 +96,13 @@ function runtime(cfg) {
   function cap(s) { return PLATFORM_NAME[s] || (s.charAt(0).toUpperCase() + s.slice(1)); }
   function platformBadge(p) { return '<span class="badge platform">' + (p === 'xero' ? 'X' : p === 'myob' ? 'M' : 'Q') + '</span>'; }
   // Chips are a small fixed vocabulary, not free-form predicates (nothing in cfg is a function —
-  // it's all JSON-embedded). "Overdue only" needs an *_count column named overdue_count; "Needs
-  // attention" needs any *_rag field set to 'red'. A report that declares a chip the data has no
-  // matching column for just never filters anything out for it — fails open, not closed.
+  // it's all JSON-embedded). "Overdue only" needs a column named overdue_count; "Needs attention"
+  // needs any rag-tagged column to compute red (see computeRag). A report that declares a chip the
+  // data has no matching column for just never filters anything out for it — fails open, not closed.
   function chipMatch(row) {
     if (state.chip === 'All') return true;
     if (state.chip === 'Overdue only') return Number(row.overdue_count || 0) > 0;
-    if (state.chip === 'Needs attention') return Object.keys(row).some(function (k) { return /_rag$/.test(k) && row[k] === 'red'; });
+    if (state.chip === 'Needs attention') return C.columns.some(function (c) { return computeRag(c, row[c.key]) === 'red'; });
     return true;
   }
   function match(row) { return chipMatch(row) && (!state.q || (row.name || '').toLowerCase().indexOf(state.q.toLowerCase()) >= 0); }
@@ -95,7 +118,8 @@ function runtime(cfg) {
   function cell(col, row) {
     var v = row[col.key];
     if (row[col.key + '_na']) return '<td class="num muted" title="' + esc(row[col.key + '_na']) + '">N/A</td>';
-    var cls = (col.money || col.pct ? 'num' : '') + (col.rag && row[col.key + '_rag'] ? ' ' + ragClass(row[col.key + '_rag']) : '');
+    var rag = computeRag(col, v);
+    var cls = (col.money || col.pct ? 'num' : '') + (rag ? ' ' + ragClass(rag) : '');
     var text = col.money ? money(v) : col.pct ? pct(v) : esc(v);
     return '<td class="' + cls + '">' + text + '</td>';
   }

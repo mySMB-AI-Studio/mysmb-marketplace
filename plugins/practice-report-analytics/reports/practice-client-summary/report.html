@@ -39,12 +39,19 @@ footer{margin-top:18px;font-size:12px;color:var(--muted);border-top:1px solid va
 <table id="table"><thead></thead><tbody><tr><td class="muted">Loading…</td></tr></tbody></table>
 <footer id="foot"></footer>
 <script>(function () {
-  var C = {"title":"Practice Client Summary Metrics","slug":"practice-client-summary","chips":[],"sources":{"xero":"xero","myob":"myob"},"qbNote":"one company per connection — see its Client Summary in the Client Report Analytics agent.","columns":[{"key":"contacts","label":"Contacts"},{"key":"accounts","label":"Accounts"},{"key":"invoices","label":"Invoices"},{"key":"bills","label":"Bills"},{"key":"employees","label":"Employees"},{"key":"bank_accounts","label":"Bank accounts"}],"totals":["contacts","accounts","invoices","bills","employees","bank_accounts"]};
+  var C = {"title":"Practice Client Summary Metrics","slug":"practice-client-summary","chips":[],"sources":{"xero":"xero","myob":"myob"},"qbNote":"one company per connection — see its Client Summary in the Client Report Analytics agent.","fieldAliases":{"xero":{"contacts":"contactsCount","accounts":"accountsCount","invoices":"invoicesCount","bills":"billsCount","employees":"employeesCount","bank_accounts":"bankAccountsCount"},"myob":{"contacts":"contactsCount","accounts":"accountsCount","invoices":"invoicesCount","bills":"billsCount","employees":"employeesCount","bank_accounts":"bankAccountsCount"}},"columns":[{"key":"contacts","label":"Contacts"},{"key":"accounts","label":"Accounts"},{"key":"invoices","label":"Invoices"},{"key":"bills","label":"Bills"},{"key":"employees","label":"Employees"},{"key":"bank_accounts","label":"Bank accounts"}],"totals":["contacts","accounts","invoices","bills","employees","bank_accounts"]};
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (v) { return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
   var money = function (v) { if (v == null) return '—'; var n = Number(v); var s = Math.abs(n).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); return (n < 0 ? '(' : '') + '$' + s + (n < 0 ? ')' : ''); };
   var pct = function (v) { return v == null ? '—' : (Number(v) * 100).toFixed(1) + '%'; };
   var ragClass = function (v) { return v === 'red' ? 'rag-r' : v === 'amber' ? 'rag-a' : v === 'green' ? 'rag-g' : ''; };
+  var computeRag = function (col, v) {
+    if (v == null || !col.rag) return null;
+    var n = Number(v);
+    if (col.rag === 'high') return n > 0 ? 'red' : 'green';
+    if (col.rag === 'low') return n < 0 ? 'red' : 'green';
+    return null;
+  };
   var state = { rows: [], chip: 'All', q: '', sortKey: null, sortDir: 1, fetchedAt: null, truncated: {}, notices: [] };
 
   function load(b) {
@@ -54,7 +61,17 @@ footer{margin-top:18px;font-size:12px;color:var(--muted);border-top:1px solid va
       if (!id) return;
       if (err) { state.notices.push(cap(platform) + (err.code === 'needs_connection' ? ': connect ' + platform + ' (Settings → Connections)' : ': ' + err.message)); return; }
       var v = b.data && b.data[id]; if (!v) return;
-      (v.clients || []).forEach(function (c) { state.rows.push(Object.assign({ _platform: platform }, c)); });
+      var alias = (C.fieldAliases && C.fieldAliases[platform]) || {};
+      (v.clients || []).forEach(function (c) {
+        var row = { _platform: platform, id: c.id, name: c.name };
+        Object.keys(c).forEach(function (k) { if (k !== 'id' && k !== 'name') row[k] = c[k]; }); // pass through unaliased fields as-is
+        Object.keys(alias).forEach(function (canonicalKey) {
+          var upstream = alias[canonicalKey];
+          row[canonicalKey] = c[upstream];
+          if (c[upstream + '_na'] != null) row[canonicalKey + '_na'] = c[upstream + '_na'];
+        });
+        state.rows.push(row);
+      });
       (v.errors || []).forEach(function (e) { state.notices.push(cap(platform) + ' — ' + e.name + ': ' + e.message); });
       if (v.truncated) { state.truncated[platform] = true; state.notices.push(cap(platform) + ': showing the first 60 clients — ' + (v.message || 'narrow the client selection to see more.')); }
     });
@@ -65,13 +82,13 @@ footer{margin-top:18px;font-size:12px;color:var(--muted);border-top:1px solid va
   function cap(s) { return PLATFORM_NAME[s] || (s.charAt(0).toUpperCase() + s.slice(1)); }
   function platformBadge(p) { return '<span class="badge platform">' + (p === 'xero' ? 'X' : p === 'myob' ? 'M' : 'Q') + '</span>'; }
   // Chips are a small fixed vocabulary, not free-form predicates (nothing in cfg is a function —
-  // it's all JSON-embedded). "Overdue only" needs an *_count column named overdue_count; "Needs
-  // attention" needs any *_rag field set to 'red'. A report that declares a chip the data has no
-  // matching column for just never filters anything out for it — fails open, not closed.
+  // it's all JSON-embedded). "Overdue only" needs a column named overdue_count; "Needs attention"
+  // needs any rag-tagged column to compute red (see computeRag). A report that declares a chip the
+  // data has no matching column for just never filters anything out for it — fails open, not closed.
   function chipMatch(row) {
     if (state.chip === 'All') return true;
     if (state.chip === 'Overdue only') return Number(row.overdue_count || 0) > 0;
-    if (state.chip === 'Needs attention') return Object.keys(row).some(function (k) { return /_rag$/.test(k) && row[k] === 'red'; });
+    if (state.chip === 'Needs attention') return C.columns.some(function (c) { return computeRag(c, row[c.key]) === 'red'; });
     return true;
   }
   function match(row) { return chipMatch(row) && (!state.q || (row.name || '').toLowerCase().indexOf(state.q.toLowerCase()) >= 0); }
@@ -87,7 +104,8 @@ footer{margin-top:18px;font-size:12px;color:var(--muted);border-top:1px solid va
   function cell(col, row) {
     var v = row[col.key];
     if (row[col.key + '_na']) return '<td class="num muted" title="' + esc(row[col.key + '_na']) + '">N/A</td>';
-    var cls = (col.money || col.pct ? 'num' : '') + (col.rag && row[col.key + '_rag'] ? ' ' + ragClass(row[col.key + '_rag']) : '');
+    var rag = computeRag(col, v);
+    var cls = (col.money || col.pct ? 'num' : '') + (rag ? ' ' + ragClass(rag) : '');
     var text = col.money ? money(v) : col.pct ? pct(v) : esc(v);
     return '<td class="' + cls + '">' + text + '</td>';
   }

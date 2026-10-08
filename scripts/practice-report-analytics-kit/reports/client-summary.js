@@ -12,6 +12,12 @@ module.exports = function build() {
     chips: [],
     sources: { xero: 'xero', myob: 'myob' },
     qbNote: 'one company per connection — see its Client Summary in the Client Report Analytics agent.',
+    // get_practice_client_summary agrees on names across both platforms — identity aliases, kept
+    // explicit so a future rename on either side is caught by the report tests, not silently wrong.
+    fieldAliases: {
+      xero: { contacts: 'contactsCount', accounts: 'accountsCount', invoices: 'invoicesCount', bills: 'billsCount', employees: 'employeesCount', bank_accounts: 'bankAccountsCount' },
+      myob: { contacts: 'contactsCount', accounts: 'accountsCount', invoices: 'invoicesCount', bills: 'billsCount', employees: 'employeesCount', bank_accounts: 'bankAccountsCount' }
+    },
     columns: [
       { key: 'contacts', label: 'Contacts' },
       { key: 'accounts', label: 'Accounts' },

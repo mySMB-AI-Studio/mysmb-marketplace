@@ -5,11 +5,12 @@ const { run, suite } = require('../harness.js');
 const { ok, done } = suite('purchases-summary');
 const REF = 'reports/purchases-summary', man = manifest(REF);
 
+// Real field names (confirmed against both agents' source 2026-10-08): identical on both platforms.
 const myobOk = () => ({
   asOf: '2026-10-08T02:00:00.000Z',
   clients: [
-    { id: 'cf-1', name: 'mySMB.com', outstanding: 6000, outstanding_count: 5, overdue: 1200, overdue_count: 1, overdue_rag: 'amber', dpo: 35, payments: 18000, suppliers: 9 },
-    { id: 'cf-2', name: 'Demo Pty Ltd', outstanding: 0, outstanding_count: 0, overdue: 0, overdue_count: 0, overdue_rag: 'green', dpo: 20, payments: 4000, suppliers: 3 }
+    { id: 'cf-1', name: 'mySMB.com', outstandingAmount: 6000, outstandingCount: 5, overdueAmount: 1200, overdueCount: 1, dpo: 35, bankPayments: 18000, supplierCount: 9 },
+    { id: 'cf-2', name: 'Demo Pty Ltd', outstandingAmount: 0, outstandingCount: 0, overdueAmount: 0, overdueCount: 0, dpo: 20, bankPayments: 4000, supplierCount: 3 }
   ],
   errors: [], totals: {}, truncated: false
 });

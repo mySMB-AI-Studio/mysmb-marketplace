@@ -7,17 +7,20 @@ const { run, suite } = require('../harness.js');
 const { ok, done } = suite('client-summary');
 const REF = 'reports/client-summary', man = manifest(REF);
 
+// Fixtures use the real tool's own field names (confirmed against both agents' source 2026-10-08:
+// camelCase *Count fields, identical on both platforms) — this is what actually exercises the
+// fieldAliases remap in practice-table-kit.js, not just the report's own canonical shape.
 const xeroOk = () => ({
   asOf: '2026-10-08T02:00:00.000Z',
   clients: [
-    { id: 'xt-1', name: 'Irvine Jackson Pty Ltd', contacts: 42, accounts: 68, invoices: 120, bills: 54, employees: 6, bank_accounts: 2 },
-    { id: 'xt-2', name: 'Southgate Services Ltd', contacts: 11, accounts: 55, invoices: 30, bills: 18, employees: 2, bank_accounts: 1 }
+    { id: 'xt-1', name: 'Irvine Jackson Pty Ltd', contactsCount: 42, accountsCount: 68, invoicesCount: 120, billsCount: 54, employeesCount: 6, bankAccountsCount: 2, connectionStatus: 'connected' },
+    { id: 'xt-2', name: 'Southgate Services Ltd', contactsCount: 11, accountsCount: 55, invoicesCount: 30, billsCount: 18, employeesCount: 2, bankAccountsCount: 1, connectionStatus: 'connected' }
   ],
   errors: [], totals: {}, truncated: false
 });
 const myobOk = () => ({
   asOf: '2026-10-08T02:00:00.000Z',
-  clients: [{ id: 'cf-mysmb', name: 'mySMB.com', contacts: 20, accounts: 40, invoices: 15, bills: 9, employees: 4, bank_accounts: 1 }],
+  clients: [{ id: 'cf-mysmb', name: 'mySMB.com', contactsCount: 20, accountsCount: 40, invoicesCount: 15, billsCount: 9, employeesCount: 4, bankAccountsCount: 1, connectionStatus: 'connected' }],
   errors: [], totals: {}, truncated: false
 });
 
