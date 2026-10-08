@@ -105,7 +105,7 @@
           "click": [
             { "action": "setState", "params": { "statePath": "/ui/transcriptDetail/open", "value": true } },
             { "action": "setState", "params": { "statePath": "/ui/transcriptDetail/subject", "value": { "$computed": "identity", "args": { "value": { "$item": "subject" } } } } },
-            { "action": "setState", "params": { "statePath": "/ui/transcriptDetail/joinUrl", "value": { "$computed": "identity", "args": { "value": { "$item": "onlineMeeting/joinUrl" } } } } },
+            { "action": "setState", "params": { "statePath": "/ui/transcriptDetail/webLink", "value": { "$computed": "identity", "args": { "value": { "$item": "webLink" } } } } },
             { "action": "setState", "params": { "statePath": "/ui/transcriptDetail/hasRecording", "value": { "$computed": "identity", "args": { "value": { "$item": "hasRecording" } } } } },
             {
               "action": "m365-teams-transcripts.list_transcripts_by_join_url",
@@ -243,10 +243,10 @@
         "props": { "gap": "xs", "align": "center", "clickable": true },
         "children": ["drawerOpenInTeamsLabel", "drawerOpenInTeamsIcon"],
         "on": {
-          "click": { "action": "open_url", "params": { "url": { "$state": "/ui/transcriptDetail/joinUrl" }, "target": "_blank" } }
+          "click": { "action": "open_url", "params": { "url": { "$state": "/ui/transcriptDetail/webLink" }, "target": "_blank" } }
         }
       },
-      "drawerOpenInTeamsLabel": { "type": "Text", "props": { "text": "Open in Teams", "size": "sm", "tone": "accent", "weight": "medium" } },
+      "drawerOpenInTeamsLabel": { "type": "Text", "props": { "text": "View event", "size": "sm", "tone": "accent", "weight": "medium" } },
       "drawerOpenInTeamsIcon": { "type": "Icon", "props": { "name": "ArrowUpRight", "tone": "accent", "size": "sm" } },
       "drawerTitleRow": {
         "type": "Row",
