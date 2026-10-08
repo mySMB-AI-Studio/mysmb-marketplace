@@ -19,7 +19,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "searchBar", "body"],
+        "children": ["header", "searchBar", "body", "searchDrawer"],
         "watch": {
           "/m365-teams-transcripts/search_transcripts": {
             "action": "setState",
@@ -164,10 +164,15 @@
         "props": { "gap": "sm", "align": "center", "justify": "between", "clickable": true, "hover": true },
         "children": ["matchLeft", "matchTimeBadge"],
         "on": {
-          "click": {
-            "action": "open_url",
-            "params": { "url": { "$computed": "identity", "args": { "value": { "$item": "chatDeepLink" } } }, "target": "_blank" }
-          }
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/searchDetail/open", "value": true } },
+            { "action": "setState", "params": { "statePath": "/ui/searchDetail/subject", "value": { "$computed": "identity", "args": { "value": { "$item": "subject" } } } } },
+            { "action": "setState", "params": { "statePath": "/ui/searchDetail/chatDeepLink", "value": { "$computed": "identity", "args": { "value": { "$item": "chatDeepLink" } } } } },
+            {
+              "action": "m365-teams-transcripts.list_transcripts",
+              "params": { "meetingId": { "$computed": "identity", "args": { "value": { "$item": "meetingId" } } } }
+            }
+          ]
         }
       },
       "matchLeft": { "type": "Stack", "props": { "gap": "xs", "grow": true }, "children": ["matchSubject", "matchSnippetRow"] },
@@ -197,6 +202,92 @@
             }
           },
           "tone": "muted"
+        }
+      },
+
+      "searchDrawer": {
+        "type": "Overlay",
+        "props": { "maxWidth": "32rem" },
+        "children": ["searchDrawerCard"],
+        "visible": { "$state": "/ui/searchDetail/open" },
+        "watch": {
+          "/m365-teams-transcripts/list_transcripts": {
+            "action": "m365-teams-transcripts.get_transcript_content",
+            "params": {
+              "meetingId": { "$state": "/m365-teams-transcripts/list_transcripts/0/meetingId" },
+              "transcriptId": { "$state": "/m365-teams-transcripts/list_transcripts/0/id" }
+            }
+          }
+        },
+        "on": {
+          "backdropClick": { "action": "setState", "params": { "statePath": "/ui/searchDetail/open", "value": false } }
+        }
+      },
+      "searchDrawerCard": { "type": "Card", "props": {}, "children": ["searchDrawerHeader", "searchDrawerViewInTeamsRow", "searchDrawerBody"] },
+      "searchDrawerHeader": { "type": "Header", "props": {}, "children": ["searchDrawerTitleRow"] },
+      "searchDrawerTitleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["searchDrawerTitle", "searchDrawerCloseBtn"]
+      },
+      "searchDrawerTitle": { "type": "Heading", "props": { "text": { "$state": "/ui/searchDetail/subject" }, "level": "h2" } },
+      "searchDrawerCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "tone": "muted", "ariaLabel": "Close" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/searchDetail/open", "value": false } } }
+      },
+      "searchDrawerViewInTeamsRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "clickable": true },
+        "children": ["searchDrawerViewInTeamsLabel", "searchDrawerViewInTeamsIcon"],
+        "visible": { "$state": "/ui/searchDetail/chatDeepLink" },
+        "on": {
+          "click": { "action": "open_url", "params": { "url": { "$state": "/ui/searchDetail/chatDeepLink" }, "target": "_blank" } }
+        }
+      },
+      "searchDrawerViewInTeamsLabel": { "type": "Text", "props": { "text": "View in Teams", "size": "sm", "tone": "accent", "weight": "medium" } },
+      "searchDrawerViewInTeamsIcon": { "type": "Icon", "props": { "name": "ArrowUpRight", "tone": "accent", "size": "sm" } },
+      "searchDrawerBody": { "type": "Body", "props": {}, "children": ["searchDrawerLoading", "searchDrawerEmpty", "searchDrawerContent"] },
+      "searchDrawerLoading": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["searchDrawerSpinner", "searchDrawerLoadingLabel"],
+        "visible": {
+          "$or": [
+            { "$state": "/_loading/m365-teams-transcripts.list_transcripts" },
+            {
+              "$and": [
+                { "$state": "/m365-teams-transcripts/list_transcripts/0" },
+                { "$state": "/_loading/m365-teams-transcripts.get_transcript_content" }
+              ]
+            }
+          ]
+        }
+      },
+      "searchDrawerSpinner": { "type": "Spinner", "props": { "size": "sm" } },
+      "searchDrawerLoadingLabel": { "type": "Caption", "props": { "tone": "muted", "text": "Loading transcript…" } },
+      "searchDrawerEmpty": {
+        "type": "Empty",
+        "props": { "icon": "FileX", "title": "No transcript available", "message": "This meeting's transcript couldn't be loaded." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/m365-teams-transcripts.list_transcripts", "not": true },
+            { "$state": "/m365-teams-transcripts/list_transcripts/0", "not": true }
+          ]
+        }
+      },
+      "searchDrawerContent": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "preserveLines": true,
+          "text": { "$state": "/m365-teams-transcripts/get_transcript_content" }
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/m365-teams-transcripts/list_transcripts/0" },
+            { "$state": "/_loading/m365-teams-transcripts.get_transcript_content", "not": true }
+          ]
         }
       }
 
