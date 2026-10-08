@@ -26,6 +26,7 @@ Use when the user asks for the Banking Summary Metrics (PRA-05) across the pract
 |---|---|---|---|
 | `from_date` | From | date | `2026-07-01` |
 | `to_date` | To | date | `today` |
+| `clients` | Clients | string | `` |
 
 ## Steps
 

@@ -25,6 +25,7 @@ Use when the user asks for the Bank Reconciliation Summary (PRA-04) across the p
 | Input | Label | Type | Default |
 |---|---|---|---|
 | `as_at` | As at | date | `today` |
+| `clients` | Clients | string | `` |
 
 ## Steps
 
