@@ -80,5 +80,16 @@ const myobOk = () => ({
   t = await run(REF, man, { xero: xeroOk, myob: myobOk }, { theme: 'dark' });
   ok('dark theme stamp honoured, no prefers-color-scheme', t.doc.documentElement.getAttribute('data-myhub-theme') === 'dark' && !/prefers-color-scheme/.test(t.doc.documentElement.outerHTML));
 
+  // 9. clients input: declared on the manifest, wired to both bindings, and actually narrows the
+  // result when the agent sets it (the tool itself does the filtering live — this fixture mock
+  // stands in for that by honouring the same comma-separated-ids contract the real tools accept).
+  const clientsInput = man.inputs.find((i) => i.name === 'clients');
+  ok('manifest declares a clients input (string, <=500 chars, default empty = every client)', clientsInput && clientsInput.type === 'string' && clientsInput.maxLength <= 500 && clientsInput.default === '');
+  ok('both bindings consume it', man.bindings.every((b) => b.params.clients && b.params.clients.kind === 'input' && b.params.clients.input === 'clients'));
+
+  const xeroFiltered = (p) => { const want = (p.clients || '').split(',').filter(Boolean); const all = xeroOk(); return { ...all, clients: want.length ? all.clients.filter((c) => want.includes(c.id)) : all.clients }; };
+  t = await run(REF, man, { xero: xeroFiltered, myob: myobOk }, { snapshotInputs: { clients: 'xt-2' } });
+  ok('setting clients narrows Xero to just that id, MYOB (no filter requested of it) still shows its own client', t.doc.querySelectorAll('tbody tr').length === 2 && /Southgate/.test(text('tbody')) && !/Irvine Jackson/.test(text('tbody')) && /mySMB\.com/.test(text('tbody')));
+
   done();
 })();

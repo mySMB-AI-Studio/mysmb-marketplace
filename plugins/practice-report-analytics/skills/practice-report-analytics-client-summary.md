@@ -25,6 +25,7 @@ Use when the user asks for the Client Summary Metrics (PRA-01) across the practi
 | Input | Label | Type | Default |
 |---|---|---|---|
 | `as_at` | As at | date | `today` |
+| `clients` | Clients | string | `` |
 
 ## Steps
 

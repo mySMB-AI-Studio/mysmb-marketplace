@@ -1,11 +1,53 @@
 {
   "inputs": [
-    { "name": "as_at", "label": "As at", "type": "date", "default": "today" }
+    {
+      "name": "as_at",
+      "label": "As at",
+      "type": "date",
+      "default": "today"
+    },
+    {
+      "name": "clients",
+      "label": "Clients",
+      "type": "string",
+      "maxLength": 500,
+      "default": ""
+    }
   ],
   "bindings": [
-    { "id": "xero", "tool": { "mcp": "xero-accounting", "name": "get_practice_bank_reconciliation_summary" },
-      "params": { "as_at": { "kind": "input", "input": "as_at" } } },
-    { "id": "myob", "tool": { "mcp": "myob-accounting", "name": "get_practice_bank_reconciliation_summary" },
-      "params": { "as_at": { "kind": "input", "input": "as_at" } } }
+    {
+      "id": "xero",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "get_practice_bank_reconciliation_summary"
+      },
+      "params": {
+        "as_at": {
+          "kind": "input",
+          "input": "as_at"
+        },
+        "clients": {
+          "kind": "input",
+          "input": "clients"
+        }
+      }
+    },
+    {
+      "id": "myob",
+      "tool": {
+        "mcp": "myob-accounting",
+        "name": "get_practice_bank_reconciliation_summary"
+      },
+      "params": {
+        "as_at": {
+          "kind": "input",
+          "input": "as_at"
+        },
+        "clients": {
+          "kind": "input",
+          "input": "clients"
+        }
+      }
+    }
   ]
 }

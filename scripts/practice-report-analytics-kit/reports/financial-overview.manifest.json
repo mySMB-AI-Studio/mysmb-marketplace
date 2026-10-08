@@ -1,13 +1,85 @@
 {
   "inputs": [
-    { "name": "from_date", "label": "From", "type": "date", "default": "2026-07-01" },
-    { "name": "to_date", "label": "To", "type": "date", "default": "today" },
-    { "name": "basis", "label": "Basis", "type": "enum", "options": ["Accrual", "Cash"], "default": "Accrual" }
+    {
+      "name": "from_date",
+      "label": "From",
+      "type": "date",
+      "default": "2026-07-01"
+    },
+    {
+      "name": "to_date",
+      "label": "To",
+      "type": "date",
+      "default": "today"
+    },
+    {
+      "name": "basis",
+      "label": "Basis",
+      "type": "enum",
+      "options": [
+        "Accrual",
+        "Cash"
+      ],
+      "default": "Accrual"
+    },
+    {
+      "name": "clients",
+      "label": "Clients",
+      "type": "string",
+      "maxLength": 500,
+      "default": ""
+    }
   ],
   "bindings": [
-    { "id": "xero", "tool": { "mcp": "xero-accounting", "name": "get_practice_financial_overview" },
-      "params": { "from_date": { "kind": "input", "input": "from_date" }, "to_date": { "kind": "input", "input": "to_date" }, "basis": { "kind": "input", "input": "basis" } } },
-    { "id": "myob", "tool": { "mcp": "myob-accounting", "name": "get_practice_financial_overview" },
-      "params": { "from_date": { "kind": "input", "input": "from_date" }, "to_date": { "kind": "input", "input": "to_date" }, "basis": { "kind": "input", "input": "basis" } } }
+    {
+      "id": "xero",
+      "tool": {
+        "mcp": "xero-accounting",
+        "name": "get_practice_financial_overview"
+      },
+      "params": {
+        "from_date": {
+          "kind": "input",
+          "input": "from_date"
+        },
+        "to_date": {
+          "kind": "input",
+          "input": "to_date"
+        },
+        "basis": {
+          "kind": "input",
+          "input": "basis"
+        },
+        "clients": {
+          "kind": "input",
+          "input": "clients"
+        }
+      }
+    },
+    {
+      "id": "myob",
+      "tool": {
+        "mcp": "myob-accounting",
+        "name": "get_practice_financial_overview"
+      },
+      "params": {
+        "from_date": {
+          "kind": "input",
+          "input": "from_date"
+        },
+        "to_date": {
+          "kind": "input",
+          "input": "to_date"
+        },
+        "basis": {
+          "kind": "input",
+          "input": "basis"
+        },
+        "clients": {
+          "kind": "input",
+          "input": "clients"
+        }
+      }
+    }
   ]
 }

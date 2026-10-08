@@ -26,6 +26,7 @@ Use when the user asks for the Sales Summary Metrics (PRA-02) across the practic
 |---|---|---|---|
 | `from_date` | From | date | `2026-07-01` |
 | `to_date` | To | date | `today` |
+| `clients` | Clients | string | `` |
 
 ## Steps
 
