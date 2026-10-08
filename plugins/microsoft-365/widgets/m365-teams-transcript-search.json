@@ -1,0 +1,207 @@
+{
+  "id": "m365-teams-transcript-search",
+  "title": "Transcript Search",
+  "description": "Search transcript text across recent Teams meetings for a keyword or phrase. Live-wired to m365-teams-transcripts.search_transcripts, which scans every transcribed meeting in the last 30 days and returns each hit with the meeting it came from, a highlighted snippet, and the mm:ss timestamp inside the call where available.",
+  "category": "productivity",
+  "tags": ["m365", "teams", "transcripts", "search", "meetings"],
+  "keywords": ["teams", "transcript", "search", "keyword", "meetings", "microsoft"],
+  "connectorsUsed": ["m365-teams-transcripts"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 8 },
+    "min": { "colSpan": 4, "rowSpan": 6 },
+    "max": { "colSpan": 10, "rowSpan": 12 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "searchBar", "body"],
+        "watch": {
+          "/m365-teams-transcripts/search_transcripts": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/visibleMatches",
+              "value": {
+                "$computed": "top_n",
+                "args": { "value": { "$state": "/m365-teams-transcripts/search_transcripts/matches" }, "limit": 6 }
+              }
+            }
+          }
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
+      "headerRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["titleGroup", "moreBtn"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIconBox", "titleStack"] },
+      "titleIconBox": { "type": "Icon", "props": { "name": "Search", "tone": "accent", "size": "md" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["eyebrow", "title"] },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Microsoft Teams" } },
+      "title": { "type": "Heading", "props": { "text": "Transcript Search", "level": "h2" } },
+      "moreBtn": { "type": "IconButton", "props": { "icon": "MoreHorizontal", "tone": "muted", "ariaLabel": "More options" } },
+
+      "searchBar": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["searchIcon", "searchInput"] },
+      "searchIcon": { "type": "Icon", "props": { "name": "Search", "tone": "muted", "size": "sm" } },
+      "searchInput": {
+        "type": "TextInput",
+        "props": {
+          "value": { "$bindState": "/ui/transcriptSearch/query" },
+          "placeholder": "Search transcripts…",
+          "ariaLabel": "Search Teams transcripts",
+          "debounce": 400
+        },
+        "on": {
+          "change": [
+            { "action": "setState", "params": { "statePath": "/ui/transcriptSearch/done", "value": true } },
+            {
+              "action": "m365-teams-transcripts.search_transcripts",
+              "params": {
+                "query": { "$state": "/ui/transcriptSearch/query" },
+                "startDateTime": "$days_ago_30",
+                "endDateTime": "$now",
+                "meetingLimit": 15
+              }
+            }
+          ],
+          "submit": [
+            { "action": "setState", "params": { "statePath": "/ui/transcriptSearch/done", "value": true } },
+            {
+              "action": "m365-teams-transcripts.search_transcripts",
+              "params": {
+                "query": { "$state": "/ui/transcriptSearch/query" },
+                "startDateTime": "$days_ago_30",
+                "endDateTime": "$now",
+                "meetingLimit": 15
+              }
+            }
+          ]
+        }
+      },
+
+      "body": { "type": "Body", "props": {}, "children": ["prompt", "loading", "errorState", "emptyState", "results"] },
+
+      "prompt": {
+        "type": "Stack",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["promptIcon", "promptTitle", "promptHint"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/m365-teams-transcripts.search_transcripts", "not": true },
+            {
+              "$or": [
+                { "$state": "/ui/transcriptSearch/done", "not": true },
+                { "$state": "/ui/transcriptSearch/query", "not": true }
+              ]
+            }
+          ]
+        }
+      },
+      "promptIcon": { "type": "Icon", "props": { "name": "FileSearch", "tone": "muted", "size": "lg" } },
+      "promptTitle": { "type": "Text", "props": { "text": "Search your meeting transcripts", "size": "sm", "weight": "medium" } },
+      "promptHint": { "type": "Caption", "props": { "text": "Type a keyword or phrase to find it across the last 30 days of meetings.", "tone": "muted" } },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/m365-teams-transcripts.search_transcripts" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+
+      "errorState": {
+        "type": "Empty",
+        "props": { "message": "Couldn't search transcripts. Check the connection and try again." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/m365-teams-transcripts.search_transcripts", "not": true },
+            { "$state": "/_errors/m365-teams-transcripts.search_transcripts" }
+          ]
+        }
+      },
+
+      "emptyState": {
+        "type": "Empty",
+        "props": { "icon": "FileX", "title": "No matches", "message": "No transcripts matched that search in the last 30 days." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/m365-teams-transcripts.search_transcripts", "not": true },
+            { "$state": "/_errors/m365-teams-transcripts.search_transcripts", "not": true },
+            { "$state": "/ui/transcriptSearch/done" },
+            { "$state": "/ui/transcriptSearch/query" },
+            { "$state": "/m365-teams-transcripts/search_transcripts/matches/0", "not": true }
+          ]
+        }
+      },
+
+      "results": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["list", "div1", "footerRow"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/m365-teams-transcripts.search_transcripts", "not": true },
+            { "$state": "/_errors/m365-teams-transcripts.search_transcripts", "not": true },
+            { "$state": "/ui/transcriptSearch/done" },
+            { "$state": "/ui/transcriptSearch/query" },
+            { "$state": "/m365-teams-transcripts/search_transcripts/matches/0" }
+          ]
+        }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "repeat": { "statePath": "/ui/visibleMatches" },
+        "children": ["matchRow"]
+      },
+
+      "matchRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "clickable": true, "hover": true },
+        "children": ["matchLeft", "matchTimeBadge"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": { "$computed": "identity", "args": { "value": { "$item": "chatDeepLink" } } }, "target": "_blank" }
+          }
+        }
+      },
+      "matchLeft": { "type": "Stack", "props": { "gap": "xs", "grow": true }, "children": ["matchSubject", "matchSnippetRow"] },
+      "matchSubject": { "type": "Text", "props": { "text": { "$item": "subject" }, "size": "xs", "tone": "muted" } },
+      "matchSnippetRow": { "type": "Row", "props": { "gap": "none" }, "children": ["snippetBefore", "snippetMatch", "snippetAfter"] },
+      "snippetBefore": { "type": "Text", "props": { "text": { "$item": "snippetBefore" }, "size": "sm" } },
+      "snippetMatch": { "type": "Badge", "props": { "text": { "$item": "snippetMatch" }, "tone": "accent", "variant": "soft" } },
+      "snippetAfter": { "type": "Text", "props": { "text": { "$item": "snippetAfter" }, "size": "sm" } },
+      "matchTimeBadge": {
+        "type": "Badge",
+        "props": { "text": { "$item": "timestamp" }, "tone": "accent", "variant": "soft" },
+        "visible": { "$item": "timestamp" }
+      },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "footerRow": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["footerCaption"] },
+      "footerCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} matches across {m} meetings",
+              "n": { "$computed": "count", "args": { "value": { "$state": "/m365-teams-transcripts/search_transcripts/matches" } } },
+              "m": { "$state": "/m365-teams-transcripts/search_transcripts/meetingsWithMatches" }
+            }
+          },
+          "tone": "muted"
+        }
+      }
+
+    }
+  },
+  "status": "draft"
+}
