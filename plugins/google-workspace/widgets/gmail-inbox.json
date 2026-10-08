@@ -1,7 +1,7 @@
 {
   "id": "google-workspace-gmail-inbox",
   "title": "Gmail Inbox",
-  "description": "Recent Gmail messages — sender, subject, and relative timestamp. Click a row to read the full message.",
+  "description": "Recent Gmail messages grouped by sender and day, with unread/attachment/alert tabs. Repeat notifications from the same sender on the same day (e.g. security alerts) collapse into one row with a count. Click a row to open its thread in Gmail.",
   "category": "productivity",
   "tags": [
     "google",
@@ -17,11 +17,14 @@
     "unread",
     "messages",
     "mail",
-    "google"
+    "google",
+    "alerts",
+    "attachments"
   ],
   "connectorsUsed": [
     "google-workspace-gmail"
   ],
+  "brandColor": "#EA4335",
   "popularity": 0,
   "sizing": {
     "preferred": {
@@ -53,19 +56,61 @@
         "children": [
           "header",
           "body"
-        ]
+        ],
+        "watch": {
+          "/google-workspace-gmail/list_messages/messages": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/gmailInbox",
+                "value": {
+                  "$computed": "google-workspace_build_inbox_rows",
+                  "args": {
+                    "messages": { "$state": "/google-workspace-gmail/list_messages/messages" },
+                    "tab": { "$state": "/ui/gmailInboxTab" }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/gmailInboxTab": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/gmailInbox",
+                "value": {
+                  "$computed": "google-workspace_build_inbox_rows",
+                  "args": {
+                    "messages": { "$state": "/google-workspace-gmail/list_messages/messages" },
+                    "tab": { "$state": "/ui/gmailInboxTab" }
+                  }
+                }
+              }
+            }
+          ]
+        }
       },
       "header": {
         "type": "Header",
         "children": [
-          "titleRow"
+          "headerStack"
+        ]
+      },
+      "headerStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "titleRow",
+          "tabsRow"
         ]
       },
       "titleRow": {
         "type": "Row",
         "props": {
           "gap": "sm",
-          "align": "start"
+          "align": "center"
         },
         "children": [
           "titleIcon",
@@ -76,8 +121,8 @@
         "type": "Icon",
         "props": {
           "name": "Mail",
-          "tone": "accent",
-          "size": "sm"
+          "tone": "default",
+          "size": "lg"
         }
       },
       "titleStack": {
@@ -103,25 +148,182 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{n} messages",
-              "n": {
+              "pattern": "{unread} unread · {total} messages",
+              "unread": {
+                "$computed": "count_where",
+                "args": {
+                  "value": { "$state": "/google-workspace-gmail/list_messages/messages" },
+                  "whereField": "isUnread",
+                  "equals": true
+                }
+              },
+              "total": {
                 "$computed": "count",
                 "args": {
-                  "value": {
-                    "$state": "/google-workspace-gmail/list_messages/messages"
-                  }
+                  "value": { "$state": "/google-workspace-gmail/list_messages/messages" }
                 }
               }
             }
           }
         }
       },
+      "tabsRow": {
+        "type": "Row",
+        "props": {
+          "gap": "md",
+          "align": "center"
+        },
+        "children": [
+          "tabAll",
+          "tabUnread",
+          "tabAttachments",
+          "tabAlerts"
+        ]
+      },
+      "tabAll": {
+        "type": "Row",
+        "props": {
+          "clickable": true
+        },
+        "children": ["tabAllActive", "tabAllInactive"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/gmailInboxTab", "value": "all" } } }
+      },
+      "tabAllActive": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "All {n}", "n": { "$state": "/ui/gmailInbox/counts/all" } }
+          },
+          "tone": "success",
+          "variant": "soft"
+        },
+        "visible": {
+          "$or": [
+            { "$state": "/ui/gmailInboxTab", "eq": "all" },
+            { "$state": "/ui/gmailInboxTab", "not": true }
+          ]
+        }
+      },
+      "tabAllInactive": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "All {n}", "n": { "$state": "/ui/gmailInbox/counts/all" } }
+          },
+          "size": "sm",
+          "tone": "muted"
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/ui/gmailInboxTab" },
+            { "$state": "/ui/gmailInboxTab", "eq": "all", "not": true }
+          ]
+        }
+      },
+      "tabUnread": {
+        "type": "Row",
+        "props": {
+          "clickable": true
+        },
+        "children": ["tabUnreadActive", "tabUnreadInactive"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/gmailInboxTab", "value": "unread" } } }
+      },
+      "tabUnreadActive": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Unread {n}", "n": { "$state": "/ui/gmailInbox/counts/unread" } }
+          },
+          "tone": "info",
+          "variant": "soft"
+        },
+        "visible": { "$state": "/ui/gmailInboxTab", "eq": "unread" }
+      },
+      "tabUnreadInactive": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Unread {n}", "n": { "$state": "/ui/gmailInbox/counts/unread" } }
+          },
+          "size": "sm",
+          "tone": "muted"
+        },
+        "visible": { "$state": "/ui/gmailInboxTab", "eq": "unread", "not": true }
+      },
+      "tabAttachments": {
+        "type": "Row",
+        "props": {
+          "clickable": true
+        },
+        "children": ["tabAttachmentsActive", "tabAttachmentsInactive"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/gmailInboxTab", "value": "attachments" } } }
+      },
+      "tabAttachmentsActive": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Attachments {n}", "n": { "$state": "/ui/gmailInbox/counts/attachments" } }
+          },
+          "tone": "warning",
+          "variant": "soft"
+        },
+        "visible": { "$state": "/ui/gmailInboxTab", "eq": "attachments" }
+      },
+      "tabAttachmentsInactive": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Attachments {n}", "n": { "$state": "/ui/gmailInbox/counts/attachments" } }
+          },
+          "size": "sm",
+          "tone": "muted"
+        },
+        "visible": { "$state": "/ui/gmailInboxTab", "eq": "attachments", "not": true }
+      },
+      "tabAlerts": {
+        "type": "Row",
+        "props": {
+          "clickable": true
+        },
+        "children": ["tabAlertsActive", "tabAlertsInactive"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/gmailInboxTab", "value": "alerts" } } }
+      },
+      "tabAlertsActive": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Alerts {n}", "n": { "$state": "/ui/gmailInbox/counts/alerts" } }
+          },
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": { "$state": "/ui/gmailInboxTab", "eq": "alerts" }
+      },
+      "tabAlertsInactive": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Alerts {n}", "n": { "$state": "/ui/gmailInbox/counts/alerts" } }
+          },
+          "size": "sm",
+          "tone": "muted"
+        },
+        "visible": { "$state": "/ui/gmailInboxTab", "eq": "alerts", "not": true }
+      },
       "body": {
         "type": "Body",
         "children": [
           "loading",
           "empty",
-          "list"
+          "content"
         ]
       },
       "loading": {
@@ -161,24 +363,54 @@
           ]
         }
       },
-      "list": {
+      "content": {
         "type": "Stack",
         "props": {
-          "gap": "none"
+          "gap": "md"
         },
         "visible": {
           "$state": "/_loading/google-workspace-gmail.list_messages",
           "not": true
         },
+        "children": [
+          "list",
+          "divider",
+          "footer"
+        ]
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
         "repeat": {
-          "statePath": "/google-workspace-gmail/list_messages/messages",
+          "statePath": "/ui/gmailInbox/rows",
           "key": "id"
         },
         "children": [
-          "row"
+          "rowWrap"
         ]
       },
-      "row": {
+      "rowWrap": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "dayHeader",
+          "rowContent",
+          "rowDivider"
+        ]
+      },
+      "dayHeader": {
+        "type": "Eyebrow",
+        "props": {
+          "text": { "$item": "dayLabel" },
+          "tone": "muted"
+        },
+        "visible": { "$item": "showDayHeader" }
+      },
+      "rowContent": {
         "type": "Row",
         "props": {
           "gap": "sm",
@@ -195,9 +427,7 @@
                 "$computed": "fmt",
                 "args": {
                   "pattern": "https://mail.google.com/mail/u/0/#inbox/{threadId}",
-                  "threadId": {
-                    "$item": "threadId"
-                  }
+                  "threadId": { "$item": "threadId" }
                 }
               },
               "target": "_blank"
@@ -205,10 +435,18 @@
           }
         },
         "children": [
+          "unreadDot",
           "avatar",
           "labels",
           "received"
         ]
+      },
+      "unreadDot": {
+        "type": "Dot",
+        "props": {
+          "tone": "info"
+        },
+        "visible": { "$item": "isUnread" }
       },
       "avatar": {
         "type": "Avatar",
@@ -216,14 +454,13 @@
           "initials": {
             "$computed": "initials",
             "args": {
-              "value": {
-                "$computed": "google-workspace_sender_name",
-                "args": {
-                  "value": {
-                    "$item": "from"
-                  }
-                }
-              }
+              "value": { "$item": "sender" }
+            }
+          },
+          "tone": {
+            "$computed": "google-workspace_sender_tone",
+            "args": {
+              "value": { "$item": "sender" }
             }
           },
           "size": "md"
@@ -236,44 +473,99 @@
           "grow": true
         },
         "children": [
-          "labelTop",
-          "labelBottom"
+          "senderRow",
+          "subjectText",
+          "snippetText",
+          "tagsRow"
         ]
       },
-      "labelTop": {
+      "senderRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "senderText",
+          "countBadge"
+        ]
+      },
+      "senderText": {
+        "type": "Caption",
+        "props": {
+          "text": { "$item": "sender" },
+          "tone": "muted"
+        }
+      },
+      "countBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "count" },
+          "tone": "muted",
+          "variant": "soft"
+        },
+        "visible": { "$item": "isGroup" }
+      },
+      "subjectText": {
         "type": "Text",
         "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{name} — {subject}",
-              "name": {
-                "$computed": "google-workspace_sender_name",
-                "args": {
-                  "value": {
-                    "$item": "from"
-                  }
-                }
-              },
-              "subject": {
-                "$item": "subject"
-              }
-            }
-          },
-          "size": "md",
+          "text": { "$item": "subject" },
+          "size": "sm",
           "weight": "medium",
           "truncate": true
         }
       },
-      "labelBottom": {
+      "snippetText": {
         "type": "Text",
         "props": {
-          "text": {
-            "$item": "snippet"
-          },
+          "text": { "$item": "snippet" },
           "size": "sm",
           "tone": "muted",
           "truncate": true
+        }
+      },
+      "tagsRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "alertTag",
+          "attachmentTag"
+        ]
+      },
+      "alertTag": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "tag" },
+          "tone": "warning",
+          "variant": "soft"
+        },
+        "visible": { "$item": "tag" }
+      },
+      "attachmentTag": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": ["attachmentIcon", "attachmentLabel"],
+        "visible": { "$item": "hasAttachments" }
+      },
+      "attachmentIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Paperclip",
+          "tone": "muted",
+          "size": "xs"
+        }
+      },
+      "attachmentLabel": {
+        "type": "Caption",
+        "props": {
+          "text": "Attachment",
+          "tone": "muted"
         }
       },
       "received": {
@@ -282,9 +574,54 @@
           "text": {
             "$computed": "relative_time",
             "args": {
-              "value": {
-                "$item": "internalDate"
-              }
+              "value": { "$item": "internalDate" }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "rowDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "divider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "footer": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "justify": "between",
+          "align": "center"
+        },
+        "children": [
+          "footerCaption",
+          "footerLink"
+        ]
+      },
+      "footerCaption": {
+        "type": "Caption",
+        "props": {
+          "text": "Similar alerts grouped · latest first",
+          "tone": "muted"
+        }
+      },
+      "footerLink": {
+        "type": "Button",
+        "props": {
+          "label": "Open in Gmail",
+          "variant": "primary",
+          "tone": "info",
+          "size": "sm",
+          "leadingIcon": "Mail"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://mail.google.com/mail/u/0/#inbox",
+              "target": "_blank"
             }
           }
         }

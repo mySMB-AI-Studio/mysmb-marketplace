@@ -421,6 +421,205 @@ const group_transcript_turns: ComputedFunction = (args) => {
   return { items, expandedGroupId };
 };
 
+// ── sender_tone ─────────────────────────────────────────────────────────
+//
+// Assigns a stable tone to a Gmail sender by hashing their identity (not
+// rank, since an inbox has arbitrarily many senders, unlike the Meet
+// tile's small fixed speaker list) — the same sender always gets the same
+// avatar colour across the whole inbox. Reuses the same non-semantic,
+// dark-theme-safe tone cycle as speaker_tone (see its comment for why
+// accent/brand/muted/default are excluded).
+//
+// Args: { value: string } — sender display name or email
+
+const sender_tone: ComputedFunction = (args) => {
+  const key = str(args.value).trim().toLowerCase();
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  return SPEAKER_TONES[hash % SPEAKER_TONES.length];
+};
+
+// ── decode_entities ─────────────────────────────────────────────────────
+//
+// Decodes the handful of HTML entities that actually show up in Gmail
+// snippets (which are plain text from Google except for these) — not a
+// full HTML decoder, since snippets never contain markup, only escaped
+// punctuation.
+//
+// Examples: "didn&#39;t" → "didn't", "Tom &amp; Jerry" → "Tom & Jerry"
+//
+// Args: { value: string }
+
+const ENTITY_MAP: Record<string, string> = {
+  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', '#39': "'", '#38': '&',
+};
+
+const decode_entities: ComputedFunction = (args) => {
+  const raw = str(args.value);
+  if (!raw.includes('&')) return raw;
+  return raw.replace(/&(#\d+|#x[0-9a-f]+|[a-z]+);/gi, (match, code: string) => {
+    const lower = code.toLowerCase();
+    if (lower in ENTITY_MAP) return ENTITY_MAP[lower];
+    if (lower.startsWith('#x')) {
+      const n = parseInt(lower.slice(2), 16);
+      return Number.isFinite(n) ? String.fromCodePoint(n) : match;
+    }
+    if (lower.startsWith('#')) {
+      const n = parseInt(lower.slice(1), 10);
+      return Number.isFinite(n) ? String.fromCodePoint(n) : match;
+    }
+    return match;
+  });
+};
+
+// ── build_inbox_rows ──────────────────────────────────────────────────
+//
+// Turns the raw Gmail message list into the rows an enhanced inbox tile
+// renders: cleaned snippets, a stable per-sender colour, a "Today /
+// Yesterday / Earlier" section header on the first row of each day
+// (viewer's LOCAL calendar day — see the Meet tile's header_date_label
+// comment for why UTC would disagree with a relative "2h ago" timestamp),
+// and repeat notifications from the same sender collapsed into one row
+// with a count (e.g. 4 same-day "Security alert" emails from Google become
+// one row showing the latest snippet and "4").
+//
+// Grouping key: sender + subject + local calendar day — tight enough that
+// two unrelated emails from the same sender on the same day never merge,
+// while still catching the repeat-notification case the mockup shows.
+//
+// "Alert" is a soft content classification (Gmail has no such label) — the
+// subject literally contains "security alert", a narrow deliberately-tight
+// match. A broader net (verification codes, OAuth emails, "action needed")
+// was tried and rejected: those are routine one-off emails, not alerts, and
+// tagging them produced false positives the reference design doesn't show.
+//
+// Tab counts and `all`/`unread`/`attachments`/`alerts` filtering are
+// counted over the GROUPED rows, not the raw messages — a 4-message group
+// is one row and counts once, matching the mockup (12 raw messages, 8
+// grouped rows, "All 8").
+//
+// Args: {
+//   messages: { id, threadId, from, subject, snippet, internalDate,
+//               isUnread, isStarred, hasAttachments }[],
+//   tab?: "all" | "unread" | "attachments" | "alerts",
+// }
+// Returns: { rows: Row[], counts: { all, unread, attachments, alerts } }
+
+const ALERT_RE = /security alert/i;
+
+function dayBucket(ms: number, now: number): 'TODAY' | 'YESTERDAY' | 'EARLIER' {
+  const d = new Date(ms);
+  const n = new Date(now);
+  const startOfDay = (dt: Date) => new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()).getTime();
+  const diffDays = Math.round((startOfDay(n) - startOfDay(d)) / 86_400_000);
+  if (diffDays <= 0) return 'TODAY';
+  if (diffDays === 1) return 'YESTERDAY';
+  return 'EARLIER';
+}
+
+const build_inbox_rows: ComputedFunction = (args) => {
+  const messages = Array.isArray(args.messages) ? (args.messages as Record<string, unknown>[]) : [];
+  const tab = str(args.tab) || 'all';
+  const now = Date.now();
+
+  interface Group {
+    key: string;
+    ids: string[];
+    threadId: string;
+    sender: string;
+    subject: string;
+    latestSnippet: string;
+    latestMs: number;
+    bucket: 'TODAY' | 'YESTERDAY' | 'EARLIER';
+    isUnread: boolean;
+    isStarred: boolean;
+    hasAttachments: boolean;
+    tag: string;
+  }
+  const groups = new Map<string, Group>();
+
+  for (const raw of messages) {
+    const m = raw as Record<string, unknown>;
+    const sender = sender_name({ value: m.from }) as string;
+    const subject = str(m.subject) || '(no subject)';
+    const ms = parseUtcMs(m.internalDate) ?? now;
+    const bucket = dayBucket(ms, now);
+    const tag = ALERT_RE.test(`${subject} ${sender}`) ? 'Security' : '';
+    const key = `${sender.toLowerCase()}|${subject.toLowerCase()}|${bucket}`;
+
+    const existing = groups.get(key);
+    if (existing && ms >= existing.latestMs) {
+      existing.ids.push(str(m.id));
+      existing.threadId = str(m.threadId) || existing.threadId;
+      existing.latestSnippet = decode_entities({ value: m.snippet }) as string;
+      existing.latestMs = ms;
+      existing.isUnread = existing.isUnread || !!m.isUnread;
+      existing.isStarred = existing.isStarred || !!m.isStarred;
+      existing.hasAttachments = existing.hasAttachments || !!m.hasAttachments;
+    } else if (existing) {
+      existing.ids.push(str(m.id));
+      existing.isUnread = existing.isUnread || !!m.isUnread;
+      existing.isStarred = existing.isStarred || !!m.isStarred;
+      existing.hasAttachments = existing.hasAttachments || !!m.hasAttachments;
+    } else {
+      groups.set(key, {
+        key,
+        ids: [str(m.id)],
+        threadId: str(m.threadId),
+        sender,
+        subject,
+        latestSnippet: decode_entities({ value: m.snippet }) as string,
+        latestMs: ms,
+        bucket,
+        isUnread: !!m.isUnread,
+        isStarred: !!m.isStarred,
+        hasAttachments: !!m.hasAttachments,
+        tag,
+      });
+    }
+  }
+
+  const sorted = [...groups.values()].sort((a, b) => b.latestMs - a.latestMs);
+
+  const counts = { all: sorted.length, unread: 0, attachments: 0, alerts: 0 };
+  for (const g of sorted) {
+    if (g.isUnread) counts.unread += 1;
+    if (g.hasAttachments) counts.attachments += 1;
+    if (g.tag) counts.alerts += 1;
+  }
+
+  let lastBucket = '';
+  const rows = sorted
+    .filter((g) => {
+      if (tab === 'unread') return g.isUnread;
+      if (tab === 'attachments') return g.hasAttachments;
+      if (tab === 'alerts') return !!g.tag;
+      return true;
+    })
+    .map((g) => {
+      const showDayHeader = g.bucket !== lastBucket;
+      lastBucket = g.bucket;
+      return {
+        id: g.key,
+        threadId: g.threadId,
+        sender: g.sender,
+        subject: g.subject,
+        snippet: g.latestSnippet,
+        count: g.ids.length,
+        isGroup: g.ids.length > 1,
+        tag: g.tag,
+        isUnread: g.isUnread,
+        isStarred: g.isStarred,
+        hasAttachments: g.hasAttachments,
+        dayLabel: g.bucket.charAt(0) + g.bucket.slice(1).toLowerCase(),
+        showDayHeader,
+        internalDate: new Date(g.latestMs).toISOString(),
+      };
+    });
+
+  return { rows, counts };
+};
+
 // ── module export ────────────────────────────────────────────────────
 
 const elements: PluginElementsModule = {
@@ -439,6 +638,9 @@ const elements: PluginElementsModule = {
     speaker_tone,
     count_transcript_matches,
     group_transcript_turns,
+    sender_tone,
+    decode_entities,
+    build_inbox_rows,
   },
 };
 
