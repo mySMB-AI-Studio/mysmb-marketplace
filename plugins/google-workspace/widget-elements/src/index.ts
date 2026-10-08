@@ -712,7 +712,11 @@ const build_events_view: ComputedFunction = (args) => {
   const today = ymdInTz(now, timeZone);
 
   type BucketedEvent = Record<string, unknown> & { __day: string };
+  // Don't assume the caller's `events` is already start-time sorted (the real
+  // backend does sort it, but `overallNext`/`todayRemaining` below both rely
+  // on the FIRST qualifying match being the chronologically earliest one).
   const withBucket: BucketedEvent[] = events.map((e) => ({ ...e, __day: ymdInTz(parseUtcMs(e.start) ?? now, timeZone) }));
+  withBucket.sort((a, b) => (parseUtcMs(a.start) ?? 0) - (parseUtcMs(b.start) ?? 0));
 
   // -- counts (per range window, cumulative from today) --------------------
   const next7Cutoff = weekDays[6]?.date ?? today;

@@ -672,7 +672,11 @@ const build_events_view = (args) => {
     const selectedDay = str(args.selectedDay);
     const now = typeof args.now === 'number' ? args.now : Date.now();
     const today = ymdInTz(now, timeZone);
+    // Don't assume the caller's `events` is already start-time sorted (the real
+    // backend does sort it, but `overallNext`/`todayRemaining` below both rely
+    // on the FIRST qualifying match being the chronologically earliest one).
     const withBucket = events.map((e) => ({ ...e, __day: ymdInTz(parseUtcMs(e.start) ?? now, timeZone) }));
+    withBucket.sort((a, b) => (parseUtcMs(a.start) ?? 0) - (parseUtcMs(b.start) ?? 0));
     // -- counts (per range window, cumulative from today) --------------------
     const next7Cutoff = weekDays[6]?.date ?? today;
     const counts = {
