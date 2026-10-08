@@ -496,7 +496,9 @@
             "$then": {
               "$item": "initials"
             },
-            "$else": "Me"
+            "$else": {
+              "$state": "/m365-mail-read/list_handoff_notices/meInitials"
+            }
           },
           "tone": {
             "$cond": {
@@ -751,7 +753,9 @@
               "$item": "direction",
               "eq": "to_me"
             },
-            "$then": "Me",
+            "$then": {
+              "$state": "/m365-mail-read/list_handoff_notices/meInitials"
+            },
             "$else": {
               "$item": "initials"
             }
