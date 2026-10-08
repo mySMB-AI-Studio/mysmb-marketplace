@@ -302,6 +302,8 @@ Only **one** of 288 tiles handles this correctly: `zoom-webinars` reads `/_error
 
 ## 16. Summary tile anatomy (confirmed 2026-10-08)
 
+**This is a reference pattern, not a requirement.** It describes what several well-received tiles share so new ones can reuse it. It does not make existing tiles non-compliant, and a tile that is a table or a plain list (§6) is not expected to adopt it. Review (`plugin-reviewer`) should not flag a tile for lacking this layout.
+
 §6 covers tiles that are *tables*. Many recent tiles instead answer "how are we doing?" at a glance: a headline number, a breakdown, then detail. The shared shape (Xero Ready to Pay, Bill Validation, Bank-Detail Check) is **four zones**, separated by `Divider`s, inside the `content` `Stack` from §15:
 
 | Zone | Contents |
@@ -320,7 +322,7 @@ Two sources disagree, and shipped tiles follow neither exclusively:
 - `myHubV2/docs/design/WIDGET-STYLE-GUIDE.md` says tile text is capped at `medium` (500) and tells authors not to use `semibold`.
 - In practice **89 of 288 live tiles (31%) use `"weight": "semibold"`** somewhere, including 19 in `xero-accounting`. Among tiles added since 2026-09-20 it's 29 of 79 (37%), against 29% before, so the rule isn't catching on. Meanwhile Xero's Ready to Pay tile, one of the best-looking, uses only `medium`.
 
-This document does not pick a side silently (same approach as §7's "decision required"). The options: **(a)** adopt the style guide's cap and add a forward-only check to `scripts/validate.ts`, like the `"xxs"` one in §14; **(b)** allow `semibold` for headline numbers and headings only; **(c)** leave it as is. **Until decided:** match the tile family you're editing, and don't bulk-rewrite existing tiles for weight.
+This document does not pick a side silently (same approach as §7's "decision required"). The options: **(a)** adopt the style guide's cap and add a forward-only check to `scripts/validate.ts`, like the `"xxs"` one in §14; **(b)** allow `semibold` for headline numbers and headings only; **(c)** leave it as is. **Until decided, this is not a compliance rule**: match the tile family you're editing, don't bulk-rewrite existing tiles for weight, and don't flag `semibold` in review.
 
 ## 18. Scope and related rulebooks (confirmed 2026-10-08)
 
