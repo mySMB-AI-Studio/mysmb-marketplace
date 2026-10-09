@@ -701,6 +701,10 @@ const build_events_view = (args) => {
             dots: d.count > 0 ? '•'.repeat(Math.min(d.count, 3)) : ' ',
             isToday: d.date === today,
             isSelected: d.date === selectedDay,
+            // Exactly one chip highlighted at a time: the picked day once one is
+            // picked, otherwise today — not "today OR picked" (that let both show
+            // highlighted at once when you picked a day other than today).
+            highlighted: selectedDay ? d.date === selectedDay : d.date === today,
         };
     });
     // -- today status line -----------------------------------------------------
