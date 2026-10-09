@@ -395,11 +395,16 @@
         "type": "Row",
         "props": { "gap": "xs" },
         "repeat": { "statePath": "/ui/eventsView/weekChips", "key": "date" },
+        "children": ["dayChipGrow"]
+      },
+      "dayChipGrow": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
         "children": ["dayChip"]
       },
       "dayChip": {
         "type": "Section",
-        "props": { "variant": "bordered", "grow": true },
+        "props": { "variant": "bordered" },
         "children": ["dayChipClickRow"]
       },
       "dayChipClickRow": {
@@ -587,10 +592,15 @@
       "footer": {
         "type": "Row",
         "props": { "gap": "sm", "justify": "between", "align": "center" },
-        "children": ["footerCaption", "footerButton"]
+        "children": ["footerCaptionGrow", "footerButton"]
+      },
+      "footerCaptionGrow": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["footerCaption"]
       },
       "footerCaption": {
-        "type": "Caption",
+        "type": "Text",
         "props": {
           "text": {
             "$computed": "fmt",
@@ -600,8 +610,7 @@
             }
           },
           "tone": "muted",
-          "truncate": true,
-          "grow": true
+          "truncate": true
         }
       },
       "footerButton": {
