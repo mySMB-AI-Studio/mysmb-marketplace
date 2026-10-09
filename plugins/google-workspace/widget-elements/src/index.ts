@@ -432,12 +432,14 @@ const group_transcript_turns: ComputedFunction = (args) => {
 //
 // Args: { value: string } — sender display name or email
 
-const sender_tone: ComputedFunction = (args) => {
-  const key = str(args.value).trim().toLowerCase();
+function toneFromKey(key: string): string {
   let hash = 0;
-  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  const k = key.trim().toLowerCase();
+  for (let i = 0; i < k.length; i++) hash = (hash * 31 + k.charCodeAt(i)) >>> 0;
   return SPEAKER_TONES[hash % SPEAKER_TONES.length];
-};
+}
+
+const sender_tone: ComputedFunction = (args) => toneFromKey(str(args.value));
 
 // ── decode_entities ─────────────────────────────────────────────────────
 //
@@ -620,6 +622,421 @@ const build_inbox_rows: ComputedFunction = (args) => {
   return { rows, counts };
 };
 
+// ── file_type_label / file_type_tone ────────────────────────────────────
+//
+// A short type abbreviation + a platform tone for a Drive file, used as an
+// Avatar's initials+tone (a colored rounded-square badge) replacing the old
+// generic grey Icon + separate Badge combo. Extension-aware, not just
+// mimeType-aware — uploaded Office files (ready-to-pay.xlsx,
+// myhub-tiles.pptx) are just as common as native Google Docs/Sheets/Slides
+// in a real recent-files list, and they carry Office mimeTypes, not
+// Google's application/vnd.google-apps.* ones.
+//
+// Reuses mime_label's Google-native mapping, but routes PDF to
+// "destructive" instead of mime_tone's "danger" — "danger" isn't a real
+// platform tone (confirmed earlier this session), it silently fails to
+// resolve any color.
+//
+// Args: { mimeType: string, name?: string }
+
+function extOf(name: string): string {
+  const dot = name.lastIndexOf('.');
+  return dot === -1 ? '' : name.slice(dot + 1).toLowerCase();
+}
+
+const file_type_label: ComputedFunction = (args) => {
+  const mime = str(args.mimeType).toLowerCase();
+  const ext = extOf(str(args.name));
+  if (mime === 'application/vnd.google-apps.document' || ext === 'doc' || ext === 'docx') return 'DOC';
+  if (mime === 'application/vnd.google-apps.spreadsheet' || ext === 'xls' || ext === 'xlsx' || ext === 'csv') return 'XLS';
+  if (mime === 'application/vnd.google-apps.presentation' || ext === 'ppt' || ext === 'pptx') return 'PPT';
+  if (mime === 'application/pdf' || ext === 'pdf') return 'PDF';
+  if (mime === 'application/vnd.google-apps.form') return 'FORM';
+  if (mime === 'application/vnd.google-apps.drawing') return 'DRAW';
+  if (mime.startsWith('image/')) return 'IMG';
+  if (mime.startsWith('video/')) return 'VID';
+  if (mime.startsWith('audio/')) return 'AUD';
+  if (mime === 'application/zip' || ext === 'zip') return 'ZIP';
+  return ext ? ext.slice(0, 4).toUpperCase() : 'FILE';
+};
+
+const file_type_tone: ComputedFunction = (args) => {
+  const mime = str(args.mimeType).toLowerCase();
+  const ext = extOf(str(args.name));
+  if (mime === 'application/vnd.google-apps.document' || ext === 'doc' || ext === 'docx') return 'info';
+  if (mime === 'application/vnd.google-apps.spreadsheet' || ext === 'xls' || ext === 'xlsx' || ext === 'csv') return 'success';
+  if (mime === 'application/vnd.google-apps.presentation' || ext === 'ppt' || ext === 'pptx') return 'warning';
+  if (mime === 'application/pdf' || ext === 'pdf') return 'destructive';
+  return 'muted';
+};
+
+// ── tidy_file_name ──────────────────────────────────────────────────────
+//
+// Google Meet names a call's transcript doc after the raw conference
+// identity, not something a human would want to scan in a recent-files
+// list — e.g. "goj-ncgy-mnt - Transcript" or "Weekly Ops Sync (2026-10-08
+// 09:30 GMT+8) - Transcript". Reformats any name ending in "- Transcript"
+// or "-Transcript" into "{meeting part} — transcript · {day} {month}" when
+// a parseable date is present in the name; otherwise just strips the
+// "- Transcript" suffix and leaves the rest alone. Every other file's name
+// passes through completely unchanged.
+//
+// Examples:
+//   "Weekly Ops Sync (2026-10-08 09:30 GMT+8) - Transcript" → "Weekly Ops Sync — transcript · 8 Oct"
+//   "Meeting Transcript Test - Transcript" → "Meeting Transcript Test — transcript"
+//   "Q3 Budget.xlsx" → "Q3 Budget.xlsx" (unchanged)
+//
+// Args: { value: string }
+
+const TRANSCRIPT_SUFFIX_RE = /\s*-\s*Transcript\s*$/i;
+const DATE_PAREN_RE = /\((\d{4})-(\d{2})-(\d{2})[^)]*\)/;
+
+const tidy_file_name: ComputedFunction = (args) => {
+  const raw = str(args.value);
+  if (!TRANSCRIPT_SUFFIX_RE.test(raw)) return raw;
+
+  const withoutSuffix = raw.replace(TRANSCRIPT_SUFFIX_RE, '').trim();
+  const dateMatch = withoutSuffix.match(DATE_PAREN_RE);
+  if (!dateMatch) return `${withoutSuffix} — transcript`;
+
+  const [, , month, day] = dateMatch;
+  const meetingPart = withoutSuffix.replace(DATE_PAREN_RE, '').trim();
+  const monthLabel = MONTH_ABBREV[Number(month) - 1];
+  const monthTitle = monthLabel ? monthLabel.charAt(0) + monthLabel.slice(1).toLowerCase() : '';
+  return `${meetingPart} — transcript · ${Number(day)} ${monthTitle}`;
+};
+
+// ── build_recent_files_view ──────────────────────────────────────────────
+//
+// Takes get_recent_files_dashboard's output (folders already excluded,
+// folder names and a recency reason already resolved) and builds
+// everything the tile renders: the 2 most-recent files as "quick access"
+// cards, the rest day-bucketed with headers, and All/Docs/Sheets/PDFs/
+// Shared-with-me tab counts and filtering. Tabs are independent dimensions
+// (a shared PDF counts toward both "PDFs" and "Shared with me"), not
+// mutually exclusive buckets.
+//
+// Args: { files: DashboardFile[], tab?: string, now?: number }
+// Returns: { quickAccess: Row[], agendaRows: Row[], counts: {...} }
+
+function fileCategory(f: Record<string, unknown>): 'docs' | 'sheets' | 'pdfs' | 'other' {
+  const label = file_type_label({ mimeType: f.mimeType, name: f.name }) as string;
+  if (label === 'DOC') return 'docs';
+  if (label === 'XLS') return 'sheets';
+  if (label === 'PDF') return 'pdfs';
+  return 'other';
+}
+
+const build_recent_files_view: ComputedFunction = (args) => {
+  const files = Array.isArray(args.files) ? (args.files as Record<string, unknown>[]) : [];
+  const tab = str(args.tab) || 'all';
+  const now = typeof args.now === 'number' ? args.now : Date.now();
+
+  type DecoratedFile = Record<string, unknown> & {
+    category: 'docs' | 'sheets' | 'pdfs' | 'other';
+    isShared: boolean;
+    bucket: 'TODAY' | 'YESTERDAY' | 'EARLIER';
+  };
+
+  const decorated: DecoratedFile[] = files.map((f) => {
+    const category = fileCategory(f);
+    return {
+      ...f,
+      typeLabel: file_type_label({ mimeType: f.mimeType, name: f.name }),
+      typeTone: file_type_tone({ mimeType: f.mimeType, name: f.name }),
+      tidiedName: tidy_file_name({ value: f.name }),
+      category,
+      isShared: !!f.shared,
+      bucket: dayBucket(parseUtcMs(f.modifiedTime) ?? now, now),
+    };
+  });
+
+  const counts = {
+    all: decorated.length,
+    docs: decorated.filter(f => f.category === 'docs').length,
+    sheets: decorated.filter(f => f.category === 'sheets').length,
+    pdfs: decorated.filter(f => f.category === 'pdfs').length,
+    shared: decorated.filter(f => f.isShared).length,
+  };
+
+  const filtered = decorated.filter((f) => {
+    if (tab === 'docs') return f.category === 'docs';
+    if (tab === 'sheets') return f.category === 'sheets';
+    if (tab === 'pdfs') return f.category === 'pdfs';
+    if (tab === 'shared') return f.isShared;
+    return true;
+  });
+
+  // Quick-access cards only show on the "All" tab's top 2 — once a tab
+  // filters the list, a dedicated 2-card header stops making sense (e.g.
+  // "Docs" with 1 total file shouldn't still show a 2-up card row).
+  const quickAccess = tab === 'all' ? filtered.slice(0, 2) : [];
+  const rest = tab === 'all' ? filtered.slice(2) : filtered;
+
+  const contextLabel = (f: DecoratedFile): string => {
+    const folder = f.folderName as string | null;
+    return folder ? `${folder} · ${f.reason as string}` : (f.reason as string);
+  };
+
+  let lastBucket = '';
+  const agendaRows = rest.map((f) => {
+    const showDayHeader = f.bucket !== lastBucket;
+    lastBucket = f.bucket as string;
+    return {
+      id: f.id,
+      name: f.name,
+      tidiedName: f.tidiedName,
+      typeLabel: f.typeLabel,
+      typeTone: f.typeTone,
+      folderName: f.folderName,
+      reason: f.reason,
+      contextLabel: contextLabel(f),
+      webViewLink: f.webViewLink,
+      isShared: f.isShared,
+      modifiedTime: f.modifiedTime,
+      dayLabel: f.bucket as string,
+      showDayHeader,
+    };
+  });
+
+  const quickAccessCards = quickAccess.map((f) => ({
+    id: f.id,
+    name: f.name,
+    tidiedName: f.tidiedName,
+    typeLabel: f.typeLabel,
+    typeTone: f.typeTone,
+    reason: f.reason,
+    contextLabel: contextLabel(f),
+    webViewLink: f.webViewLink,
+    modifiedTime: f.modifiedTime,
+  }));
+
+  return { quickAccess: quickAccessCards, agendaRows, counts };
+};
+
+// ── module export ────────────────────────────────────────────────────
+
+// ── countdown_label ─────────────────────────────────────────────────────
+//
+// "in 19h 20m" / "in 45m" / "Starting now" / "In progress" for an event's
+// start/end instants relative to now. Not a live-ticking timer — this
+// system has no interval primitive exposed to widget JSON — it recomputes
+// on each render/data refresh, which is good enough for a dashboard tile.
+//
+// Args: { start: string, end?: string, now?: number }
+
+const countdown_label: ComputedFunction = (args) => {
+  const startMs = parseUtcMs(args.start);
+  if (startMs == null) return '';
+  const now = typeof args.now === 'number' ? args.now : Date.now();
+  const endMs = parseUtcMs(args.end);
+  if (endMs != null && now >= startMs && now < endMs) return 'In progress';
+  const diffMs = startMs - now;
+  if (diffMs <= 0) return 'Starting now';
+  const totalMin = Math.round(diffMs / 60_000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h === 0) return `in ${m}m`;
+  if (m === 0) return `in ${h}h`;
+  return `in ${h}h ${m}m`;
+};
+
+// ── rsvp_label ────────────────────────────────────────────────────────
+//
+// Maps a Calendar attendee responseStatus to the short badge label the
+// mockup shows — only for the two states worth flagging; "accepted" (the
+// default/your-own-event case) and "declined" get no badge at all.
+//
+// Args: { value: string }
+
+const rsvp_label: ComputedFunction = (args) => {
+  const s = str(args.value);
+  if (s === 'needsAction') return 'Needs reply';
+  if (s === 'tentative') return 'Maybe';
+  return '';
+};
+
+// ── ymdInTz (local helper, not exported) ───────────────────────────────
+//
+// Mirrors the backend's own ymdInTz exactly (myhub-mcp-servers
+// api/calendar.ts) so client-side day-bucketing for the agenda list agrees
+// with the server-computed weekDays strip — both must bucket by the SAME
+// calendar's timeZone, not the viewer's browser offset, since this tile is
+// showing someone else's-ish shared calendars too, not just "my" timezone.
+
+function ymdInTz(ms: number, timeZone: string): string {
+  try {
+    const fmt = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' });
+    return fmt.format(new Date(ms));
+  } catch {
+    return new Date(ms).toISOString().slice(0, 10);
+  }
+}
+
+// ── build_events_view ───────────────────────────────────────────────────
+//
+// Takes get_upcoming_events_dashboard's raw output (already merged across
+// calendars, already clash/RSVP-tagged) and builds everything the tile
+// renders: the week strip (with per-day selection state), the agenda rows
+// (day-bucketed with header flags, filtered by range AND an optional
+// single selected day from the strip), a "nothing else today" style status
+// line, and per-range event counts for the tab labels.
+//
+// `range`: "today" | "week" | "month" — "week"/"month" are both INCLUSIVE
+// of today's remaining events, not just future days.
+// `selectedDay`: a YYYY-MM-DD from weekDays, or "" — narrows the agenda to
+// just that one day, overriding `range`, until cleared (click the same day
+// again). This is what "click a day to jump to it" means here — there's no
+// scroll-into-view primitive, so it's a filter instead.
+//
+// Args: {
+//   events: DashboardEvent[], weekDays: {date,count}[], nextUpEventId: string|null,
+//   timeZone: string, range: string, selectedDay?: string, now?: number,
+// }
+
+const build_events_view: ComputedFunction = (args) => {
+  const events = Array.isArray(args.events) ? (args.events as Record<string, unknown>[]) : [];
+  const weekDays = Array.isArray(args.weekDays) ? (args.weekDays as { date: string; count: number }[]) : [];
+  const timeZone = str(args.timeZone) || 'UTC';
+  const range = str(args.range) || 'week';
+  const selectedDay = str(args.selectedDay);
+  const now = typeof args.now === 'number' ? args.now : Date.now();
+  const today = ymdInTz(now, timeZone);
+
+  type BucketedEvent = Record<string, unknown> & { __day: string };
+  // Don't assume the caller's `events` is already start-time sorted (the real
+  // backend does sort it, but `overallNext`/`todayRemaining` below both rely
+  // on the FIRST qualifying match being the chronologically earliest one).
+  const withBucket: BucketedEvent[] = events.map((e) => ({ ...e, __day: ymdInTz(parseUtcMs(e.start) ?? now, timeZone) }));
+  withBucket.sort((a, b) => (parseUtcMs(a.start) ?? 0) - (parseUtcMs(b.start) ?? 0));
+
+  // -- counts (per range window, cumulative from today) --------------------
+  const next7Cutoff = weekDays[6]?.date ?? today;
+  const counts = {
+    today: withBucket.filter(e => e.__day === today).length,
+    week: withBucket.filter(e => e.__day >= today && e.__day <= next7Cutoff).length,
+    // No upper bound here — the backend already caps the whole fetch at 30 days.
+    month: withBucket.filter(e => e.__day >= today).length,
+  };
+
+  // -- week strip ------------------------------------------------------------
+  const weekChips = weekDays.map((d) => {
+    const dt = new Date(`${d.date}T00:00:00Z`);
+    return {
+      date: d.date,
+      dayAbbrev: WEEKDAY_ABBREV[dt.getUTCDay()].toUpperCase(),
+      dayNumber: dt.getUTCDate(),
+      count: d.count,
+      // A non-breaking space (not an empty string) when there are no
+      // events — it renders no visible dot, but still reserves the same
+      // line height as a chip with dots, so every chip stays the same
+      // height (a truly empty string collapsed that line and made chips
+      // sit at inconsistent vertical baselines).
+      dots: d.count > 0 ? '●'.repeat(Math.min(d.count, 3)) : ' ',
+      dotsTone: 'brand',
+      isToday: d.date === today,
+      isSelected: d.date === selectedDay,
+      // Exactly one chip highlighted at a time: the picked day once one is
+      // picked, otherwise today — not "today OR picked" (that let both show
+      // highlighted at once when you picked a day other than today).
+      highlighted: selectedDay ? d.date === selectedDay : d.date === today,
+    };
+  });
+
+  // -- today status line -----------------------------------------------------
+  const todayRemaining = withBucket.filter(e => e.__day === today && (parseUtcMs(e.start) ?? 0) >= now);
+  const overallNext = withBucket.find(e => (e.__day > today) || (e.__day === today && (parseUtcMs(e.start) ?? 0) >= now));
+  let statusHeadline = '';
+  let statusDetail = '';
+  if (todayRemaining.length > 0) {
+    statusHeadline = todayRemaining.length === 1 ? '1 more today' : `${todayRemaining.length} more today`;
+    statusDetail = str(todayRemaining[0].summary);
+  } else {
+    statusHeadline = 'Nothing else today';
+    if (overallNext) {
+      const dayLabel = overallNext.__day === today ? 'Today' : overallNext.__day === weekChips[1]?.date ? 'Tomorrow' : overallNext.__day;
+      statusDetail = overallNext.isAllDay
+        ? `Next: ${dayLabel} · All day — ${str(overallNext.summary)}`
+        : `Next: ${dayLabel} — ${str(overallNext.summary)}`;
+    } else {
+      statusDetail = 'Nothing else on your calendar for the next 30 days.';
+    }
+  }
+
+  // -- agenda rows -------------------------------------------------------------
+  let scoped = withBucket;
+  if (selectedDay) {
+    scoped = scoped.filter(e => e.__day === selectedDay);
+  } else if (range === 'today') {
+    scoped = scoped.filter(e => e.__day === today);
+  } else if (range === 'week') {
+    scoped = scoped.filter(e => e.__day >= today && e.__day <= next7Cutoff);
+  } else {
+    scoped = scoped.filter(e => e.__day >= today);
+  }
+  scoped.sort((a, b) => (parseUtcMs(a.start) ?? 0) - (parseUtcMs(b.start) ?? 0));
+
+  const dayGroups = new Map<string, typeof scoped>();
+  for (const e of scoped) {
+    const arr = dayGroups.get(e.__day as string) ?? [];
+    arr.push(e);
+    dayGroups.set(e.__day as string, arr);
+  }
+
+  const agendaRows: Record<string, unknown>[] = [];
+  for (const [day, dayEvents] of dayGroups) {
+    const dt = new Date(`${day}T00:00:00Z`);
+    const relative = day === today ? 'Today' : day === weekChips[1]?.date ? 'Tomorrow' : '';
+    const weekdayDate = `${WEEKDAY_ABBREV[dt.getUTCDay()]}, ${dt.getUTCDate()} ${MONTH_ABBREV[dt.getUTCMonth()].charAt(0)}${MONTH_ABBREV[dt.getUTCMonth()].slice(1).toLowerCase()}`;
+    const dayLabel = relative ? `${relative.toUpperCase()} · ${weekdayDate}` : weekdayDate.toUpperCase();
+    dayEvents.forEach((e, idx) => {
+      agendaRows.push({
+        id: str(e.id),
+        showDayHeader: idx === 0,
+        dayLabel,
+        dayEventCount: dayEvents.length,
+        summary: str(e.summary),
+        isAllDay: !!e.isAllDay,
+        start: str(e.start),
+        end: str(e.end),
+        location: e.location ?? null,
+        hangoutLink: e.hangoutLink ?? null,
+        htmlLink: e.htmlLink ?? null,
+        calendarTone: toneFromKey(str(e.calendarName) || str(e.calendarColor)),
+        calendarName: str(e.calendarName),
+        rsvp: rsvp_label({ value: e.selfResponseStatus }),
+        clash: !!e.clash,
+      });
+    });
+  }
+
+  const nextUpId = str(args.nextUpEventId);
+  const nextUpEvent = nextUpId ? withBucket.find(e => str(e.id) === nextUpId) : undefined;
+  const nextUp = nextUpEvent
+    ? {
+        id: str(nextUpEvent.id),
+        summary: str(nextUpEvent.summary),
+        start: str(nextUpEvent.start),
+        end: str(nextUpEvent.end),
+        location: nextUpEvent.location ?? null,
+        hangoutLink: nextUpEvent.hangoutLink ?? null,
+        htmlLink: nextUpEvent.htmlLink ?? null,
+        calendarTone: toneFromKey(str(nextUpEvent.calendarName) || str(nextUpEvent.calendarColor)),
+        dayLabel: nextUpEvent.__day === today ? 'Today' : nextUpEvent.__day === weekChips[1]?.date ? 'Tomorrow' : str(nextUpEvent.__day),
+        countdown: countdown_label({ start: nextUpEvent.start, end: nextUpEvent.end, now }),
+      }
+    : null;
+
+  return {
+    nextUp,
+    weekChips,
+    counts,
+    statusHeadline,
+    statusDetail,
+    agendaRows,
+  };
+};
+
 // ── module export ────────────────────────────────────────────────────
 
 const elements: PluginElementsModule = {
@@ -641,6 +1058,10 @@ const elements: PluginElementsModule = {
     sender_tone,
     decode_entities,
     build_inbox_rows,
+    file_type_label,
+    file_type_tone,
+    tidy_file_name,
+    build_recent_files_view,
   },
 };
 
