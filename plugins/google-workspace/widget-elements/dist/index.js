@@ -693,12 +693,13 @@ const build_events_view = (args) => {
             dayAbbrev: WEEKDAY_ABBREV[dt.getUTCDay()].toUpperCase(),
             dayNumber: dt.getUTCDate(),
             count: d.count,
-            // A non-breaking space (not '') when there are no events — the day chip
-            // always reserves this line's height, so every chip in the strip stays
-            // the same height regardless of dot count (confirmed live: letting this
-            // line disappear entirely on zero-event days made chips in the same row
-            // sit at different vertical baselines).
-            dots: d.count > 0 ? '•'.repeat(Math.min(d.count, 3)) : ' ',
+            // A single MUTED dot (not blank) when there are no events — both
+            // reserve the same line height so every chip stays the same height
+            // (a truly empty slot made chips sit at inconsistent vertical
+            // baselines), and a muted dot reads as deliberate "nothing here"
+            // rather than a gap that looks like a rendering glitch.
+            dots: d.count > 0 ? '•'.repeat(Math.min(d.count, 3)) : '•',
+            dotsTone: d.count > 0 ? 'brand' : 'muted',
             isToday: d.date === today,
             isSelected: d.date === selectedDay,
             // Exactly one chip highlighted at a time: the picked day once one is

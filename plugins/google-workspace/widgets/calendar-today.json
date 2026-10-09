@@ -433,12 +433,17 @@
         "props": { "text": { "$item": "dayNumber" }, "size": "sm", "weight": "medium" }
       },
       "dayChipDots": {
-        "type": "Caption",
-        "props": { "text": { "$item": "dots" }, "tone": "brand" }
+        "type": "Text",
+        "props": { "text": { "$item": "dots" }, "tone": { "$item": "dotsTone" }, "size": "xs", "weight": "medium" }
       },
       "statusCard": {
         "type": "Section",
-        "props": { "variant": "bordered" },
+        "props": { "variant": "muted" },
+        "children": ["statusCardStack"]
+      },
+      "statusCardStack": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
         "children": ["statusHeadline", "statusDetail"]
       },
       "statusHeadline": {
