@@ -127,14 +127,118 @@
         }
       },
 
-      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup", "rangeStack"] },
       "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
-      "titleIcon": { "type": "Icon", "props": { "name": "FolderClock", "tone": "accent", "size": "sm" } },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "FolderClock", "tone": "accent", "size": "sm" },
+        "watch": {
+          "/zoom/list_recordings": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rangeStart",
+                "value": { "$computed": "zoom_seed_range_start", "args": { "current": { "$state": "/ui/rangeStart" } } }
+              }
+            }
+          ]
+        }
+      },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
       "title": { "type": "Heading", "props": { "text": "Recordings & Transcripts", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Zoom · recent recordings" } },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Zoom · recent recordings" },
+        "watch": {
+          "/zoom/list_recordings": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rangeEnd",
+                "value": { "$computed": "zoom_seed_range_end", "args": { "current": { "$state": "/ui/rangeEnd" } } }
+              }
+            }
+          ]
+        }
+      },
 
-      "divider1": { "type": "Divider", "props": {} },
+      "rangeStack": { "type": "Stack", "props": { "gap": "xs" }, "children": ["rangeRow", "clampNote"] },
+      "rangeRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["rangeStartInput", "rangeToLabel", "rangeEndInput", "rangeApplyBtn"]
+      },
+      "rangeStartInput": {
+        "type": "DateInput",
+        "props": { "value": { "$bindState": "/ui/rangeStart" }, "size": "sm", "ariaLabel": "Range start date" }
+      },
+      "rangeToLabel": { "type": "Caption", "props": { "text": "to", "tone": "muted" } },
+      "rangeEndInput": {
+        "type": "DateInput",
+        "props": { "value": { "$bindState": "/ui/rangeEnd" }, "size": "sm", "ariaLabel": "Range end date" }
+      },
+      "rangeApplyBtn": {
+        "type": "Button",
+        "props": { "label": "Apply", "size": "sm", "variant": "ghost", "tone": "accent", "leadingIcon": "Search" },
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rangeWasClamped",
+                "value": {
+                  "$computed": "zoom_range_was_clamped",
+                  "args": { "start": { "$state": "/ui/rangeStart" }, "end": { "$state": "/ui/rangeEnd" } }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rangeEnd",
+                "value": {
+                  "$computed": "zoom_clamp_range_end",
+                  "args": { "start": { "$state": "/ui/rangeStart" }, "end": { "$state": "/ui/rangeEnd" } }
+                }
+              }
+            },
+            {
+              "action": "zoom.list_recordings",
+              "params": {
+                "from": { "$state": "/ui/rangeStart" },
+                "to": {
+                  "$computed": "zoom_clamp_range_end",
+                  "args": { "start": { "$state": "/ui/rangeStart" }, "end": { "$state": "/ui/rangeEnd" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "clampNote": {
+        "type": "Caption",
+        "props": { "text": "Zoom allows a 31-day span per request — the end date shown was capped.", "tone": "warning" },
+        "visible": { "$state": "/ui/rangeWasClamped" }
+      },
+
+      "divider1": {
+        "type": "Divider",
+        "props": {},
+        "watch": {
+          "/zoom/list_recordings": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/cloudRecordings",
+                "value": {
+                  "$computed": "zoom_filter_cloud_recordings",
+                  "args": { "meetings": { "$state": "/zoom/list_recordings/meetings" } }
+                }
+              }
+            }
+          ]
+        }
+      },
 
       "tabBar": { "type": "Row", "props": { "gap": "xs" }, "children": ["cloudTabBtn", "transcriptsTabBtn", "notesTabBtn"] },
       "cloudTabBtn": {
