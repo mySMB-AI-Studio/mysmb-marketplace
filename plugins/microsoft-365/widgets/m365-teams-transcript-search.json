@@ -24,7 +24,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "statsRow", "searchBar", "body", "searchDrawer", "statDrawer"],
+        "children": ["header", "statsRow", "statListSection", "searchBar", "body", "searchDrawer"],
         "watch": {
           "/m365-teams-transcripts/search_transcripts": {
             "action": "setState",
@@ -33,6 +33,56 @@
               "value": {
                 "$computed": "top_n",
                 "args": { "value": { "$state": "/m365-teams-transcripts/search_transcripts/matches" }, "limit": 6 }
+              }
+            }
+          },
+          "/m365-teams-transcripts/list_recent_meetings_with_status": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/statItems",
+              "value": {
+                "$cond": { "$state": "/ui/selectedStat", "eq": "transcripts" },
+                "$then": {
+                  "$computed": "filter_by",
+                  "args": { "value": { "$state": "/m365-teams-transcripts/list_recent_meetings_with_status" }, "field": "hasTranscript", "equals": true }
+                },
+                "$else": {
+                  "$cond": { "$state": "/ui/selectedStat", "eq": "this_week" },
+                  "$then": {
+                    "$computed": "filter_date_range",
+                    "args": {
+                      "value": { "$state": "/m365-teams-transcripts/list_recent_meetings_with_status" },
+                      "field": "start.dateTime",
+                      "start": { "$computed": "current_week_start", "args": { "anchor": "mon" } }
+                    }
+                  },
+                  "$else": { "$state": "/m365-teams-transcripts/list_recent_meetings_with_status" }
+                }
+              }
+            }
+          },
+          "/ui/selectedStat": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/statItems",
+              "value": {
+                "$cond": { "$state": "/ui/selectedStat", "eq": "transcripts" },
+                "$then": {
+                  "$computed": "filter_by",
+                  "args": { "value": { "$state": "/m365-teams-transcripts/list_recent_meetings_with_status" }, "field": "hasTranscript", "equals": true }
+                },
+                "$else": {
+                  "$cond": { "$state": "/ui/selectedStat", "eq": "this_week" },
+                  "$then": {
+                    "$computed": "filter_date_range",
+                    "args": {
+                      "value": { "$state": "/m365-teams-transcripts/list_recent_meetings_with_status" },
+                      "field": "start.dateTime",
+                      "start": { "$computed": "current_week_start", "args": { "anchor": "mon" } }
+                    }
+                  },
+                  "$else": { "$state": "/m365-teams-transcripts/list_recent_meetings_with_status" }
+                }
               }
             }
           }
@@ -55,23 +105,22 @@
       "statCardTranscripts": { "type": "Section", "props": { "variant": "bordered" }, "children": ["statCardInnerTranscripts"] },
       "statCardInnerTranscripts": {
         "type": "Row",
-        "props": { "template": "1fr", "gap": "xs", "clickable": true, "hover": true },
+        "props": {
+          "template": "1fr",
+          "gap": "xs",
+          "clickable": true,
+          "hover": true,
+          "selected": { "$cond": { "$state": "/ui/selectedStat", "eq": "transcripts" }, "$then": true, "$else": false }
+        },
         "children": ["statTopRowTranscripts", "statLabelTranscripts"],
         "on": {
-          "click": [
-            { "action": "setState", "params": { "statePath": "/ui/statDetail/open", "value": true } },
-            { "action": "setState", "params": { "statePath": "/ui/statDetail/title", "value": "Transcripts" } },
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/statDetail/items",
-                "value": {
-                  "$computed": "filter_by",
-                  "args": { "value": { "$state": "/m365-teams-transcripts/list_recent_meetings_with_status" }, "field": "hasTranscript", "equals": true }
-                }
-              }
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selectedStat",
+              "value": { "$cond": { "$state": "/ui/selectedStat", "eq": "transcripts" }, "$then": "", "$else": "transcripts" }
             }
-          ]
+          }
         }
       },
       "statTopRowTranscripts": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["statIconTranscripts", "statValueTranscripts"] },
@@ -93,14 +142,22 @@
       "statCardMeetings": { "type": "Section", "props": { "variant": "bordered" }, "children": ["statCardInnerMeetings"] },
       "statCardInnerMeetings": {
         "type": "Row",
-        "props": { "template": "1fr", "gap": "xs", "clickable": true, "hover": true },
+        "props": {
+          "template": "1fr",
+          "gap": "xs",
+          "clickable": true,
+          "hover": true,
+          "selected": { "$cond": { "$state": "/ui/selectedStat", "eq": "meetings" }, "$then": true, "$else": false }
+        },
         "children": ["statTopRowMeetings", "statLabelMeetings"],
         "on": {
-          "click": [
-            { "action": "setState", "params": { "statePath": "/ui/statDetail/open", "value": true } },
-            { "action": "setState", "params": { "statePath": "/ui/statDetail/title", "value": "Meetings" } },
-            { "action": "setState", "params": { "statePath": "/ui/statDetail/items", "value": { "$state": "/m365-teams-transcripts/list_recent_meetings_with_status" } } }
-          ]
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selectedStat",
+              "value": { "$cond": { "$state": "/ui/selectedStat", "eq": "meetings" }, "$then": "", "$else": "meetings" }
+            }
+          }
         }
       },
       "statTopRowMeetings": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["statIconMeetings", "statValueMeetings"] },
@@ -119,27 +176,22 @@
       "statCardThisWeek": { "type": "Section", "props": { "variant": "bordered" }, "children": ["statCardInnerThisWeek"] },
       "statCardInnerThisWeek": {
         "type": "Row",
-        "props": { "template": "1fr", "gap": "xs", "clickable": true, "hover": true },
+        "props": {
+          "template": "1fr",
+          "gap": "xs",
+          "clickable": true,
+          "hover": true,
+          "selected": { "$cond": { "$state": "/ui/selectedStat", "eq": "this_week" }, "$then": true, "$else": false }
+        },
         "children": ["statTopRowThisWeek", "statLabelThisWeek"],
         "on": {
-          "click": [
-            { "action": "setState", "params": { "statePath": "/ui/statDetail/open", "value": true } },
-            { "action": "setState", "params": { "statePath": "/ui/statDetail/title", "value": "This week" } },
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/statDetail/items",
-                "value": {
-                  "$computed": "filter_date_range",
-                  "args": {
-                    "value": { "$state": "/m365-teams-transcripts/list_recent_meetings_with_status" },
-                    "field": "start.dateTime",
-                    "start": { "$computed": "current_week_start", "args": { "anchor": "mon" } }
-                  }
-                }
-              }
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selectedStat",
+              "value": { "$cond": { "$state": "/ui/selectedStat", "eq": "this_week" }, "$then": "", "$else": "this_week" }
             }
-          ]
+          }
         }
       },
       "statTopRowThisWeek": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["statIconThisWeek", "statValueThisWeek"] },
@@ -416,44 +468,50 @@
         }
       },
 
-      "statDrawer": {
-        "type": "Overlay",
-        "props": { "maxWidth": "32rem" },
-        "children": ["statDrawerCard"],
-        "visible": { "$state": "/ui/statDetail/open" },
-        "on": {
-          "backdropClick": { "action": "setState", "params": { "statePath": "/ui/statDetail/open", "value": false } }
+      "statListSection": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["statListDivider", "statListHeaderRow", "statListEmpty", "statListRows"],
+        "visible": { "$state": "/ui/selectedStat", "neq": "" }
+      },
+      "statListDivider": { "type": "Divider", "props": {} },
+      "statListHeaderRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["statListTitle", "statListCloseBtn"] },
+      "statListTitle": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "weight": "medium",
+          "text": {
+            "$cond": { "$state": "/ui/selectedStat", "eq": "transcripts" },
+            "$then": "Transcripts",
+            "$else": {
+              "$cond": { "$state": "/ui/selectedStat", "eq": "this_week" },
+              "$then": "This week",
+              "$else": "Meetings"
+            }
+          }
         }
       },
-      "statDrawerCard": { "type": "Card", "props": {}, "children": ["statDrawerHeader", "statDrawerBody"] },
-      "statDrawerHeader": { "type": "Header", "props": {}, "children": ["statDrawerTitleRow"] },
-      "statDrawerTitleRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["statDrawerTitle", "statDrawerCloseBtn"]
-      },
-      "statDrawerTitle": { "type": "Heading", "props": { "text": { "$state": "/ui/statDetail/title" }, "level": "h2" } },
-      "statDrawerCloseBtn": {
+      "statListCloseBtn": {
         "type": "IconButton",
-        "props": { "icon": "X", "tone": "muted", "ariaLabel": "Close" },
-        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/statDetail/open", "value": false } } }
+        "props": { "icon": "X", "tone": "muted", "size": "sm", "ariaLabel": "Collapse" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/selectedStat", "value": "" } } }
       },
-      "statDrawerBody": { "type": "Body", "props": {}, "children": ["statDrawerEmpty", "statDrawerList"] },
-      "statDrawerEmpty": {
+      "statListEmpty": {
         "type": "Empty",
-        "props": { "icon": "CalendarX", "title": "No meetings", "message": "Nothing in this category over the last 30 days." },
-        "visible": { "$state": "/ui/statDetail/items/0", "not": true }
+        "props": { "icon": "CalendarX", "message": "Nothing in this category over the last 30 days." },
+        "visible": { "$state": "/ui/statItems/0", "not": true }
       },
-      "statDrawerList": {
+      "statListRows": {
         "type": "Stack",
         "props": { "gap": "xs" },
-        "repeat": { "statePath": "/ui/statDetail/items", "key": "id" },
-        "children": ["statDrawerRow"],
-        "visible": { "$state": "/ui/statDetail/items/0" }
+        "repeat": { "statePath": "/ui/statItems", "key": "id" },
+        "children": ["statListRow"],
+        "visible": { "$state": "/ui/statItems/0" }
       },
-      "statDrawerRow": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["statDrawerRowSubject", "statDrawerRowTime"] },
-      "statDrawerRowSubject": { "type": "Text", "props": { "text": { "$item": "subject" }, "size": "sm", "truncate": true } },
-      "statDrawerRowTime": {
+      "statListRow": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["statListRowSubject", "statListRowTime"] },
+      "statListRowSubject": { "type": "Text", "props": { "text": { "$item": "subject" }, "size": "sm", "truncate": true } },
+      "statListRowTime": {
         "type": "Badge",
         "props": {
           "tone": "muted",
