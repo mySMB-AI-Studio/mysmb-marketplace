@@ -14,7 +14,7 @@ This extension keeps no database of its own. Everything it remembers lives in Kn
 ```
 PracticeManager/Practices/<practice-slug>.json       one file per practice this workspace manages
 PracticeManager/Commitments/<practice-slug>.json      open loops for that practice (SK-12)
-PracticeManager/AuditLog/<practice-slug>/<YYYY-MM-DD>.jsonl   one line per guardrail-checked action, append-only (SK-13)
+PracticeManager/AuditLog/<practice-slug>-<YYYY-MM-DD>.jsonl   one line per guardrail-checked action, append-only (SK-13)
 ```
 
 `<practice-slug>` is a short kebab-case id for the practice (e.g. `samantha-bake-clinic`). Most workspaces manage exactly one practice; the per-practice-file pattern still applies so the same automations work unchanged if a second site (a locum, or a clinic-owned Cliniko account) is added later.
@@ -75,7 +75,7 @@ A JSON array, one object per open or resolved loop:
 
 `type` is one of `payment_promise`, `reschedule_offer`, `result_pending_review`, `practitioner_action`. See `healthcare-practice-management-commitment-memory` for how to read, add and resolve entries.
 
-## `PracticeManager/AuditLog/<practice-slug>/<YYYY-MM-DD>.jsonl`
+## `PracticeManager/AuditLog/<practice-slug>-<YYYY-MM-DD>.jsonl`
 
 Append-only, one JSON object per line (JSON Lines, not a JSON array — never read-modify-write the whole file):
 
@@ -89,4 +89,4 @@ Required keys: `ts` (ISO 8601, practice timezone), `practice_slug`, `actor` (`"a
 
 - Never invent a `practice-slug`. If a conversation or automation run doesn't say which practice, and the workspace manages only one, read its single file; if more than one exists and it's ambiguous, ask.
 - Never write patient-identifying detail into the audit log beyond a name already visible in Cliniko or the email thread — no clinical content, no account numbers.
-- `Knowledge` folders nest at most two levels deep (the same limit `bookkeeping-xero` works around), which is why `AuditLog/<slug>/<date>.jsonl` is already at the limit — don't add a third level under it.
+- `Knowledge` folders nest at most two levels deep (the same limit `bookkeeping-xero` works around). `PracticeManager/AuditLog/` is already at that limit, which is exactly why the audit file is named `<slug>-<date>.jsonl` rather than nested under a per-practice subfolder — don't add `AuditLog/<slug>/` as a folder, it will fail.
