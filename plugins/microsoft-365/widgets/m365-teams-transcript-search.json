@@ -12,6 +12,11 @@
     "min": { "colSpan": 4, "rowSpan": 6 },
     "max": { "colSpan": 10, "rowSpan": 12 }
   },
+  "dataProvider": {
+    "mcp": "m365-teams-transcripts",
+    "tool": "list_recent_meetings_with_status",
+    "params": { "startDateTime": "$days_ago_30", "endDateTime": "$now", "limit": 50, "sortOrder": "desc" }
+  },
   "spec": {
     "root": "card",
     "elements": {
@@ -19,7 +24,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "searchBar", "body", "searchDrawer"],
+        "children": ["header", "statsRow", "searchBar", "body", "searchDrawer"],
         "watch": {
           "/m365-teams-transcripts/search_transcripts": {
             "action": "setState",
@@ -41,6 +46,68 @@
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
       "title": { "type": "Heading", "props": { "text": "Transcript Search", "level": "h2" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Microsoft Teams" } },
+
+      "statsRow": {
+        "type": "Row",
+        "props": { "template": "1fr 1fr 1fr", "gap": "sm" },
+        "children": ["statCardTranscripts", "statCardMeetings", "statCardThisWeek"]
+      },
+      "statCardTranscripts": { "type": "Section", "props": { "variant": "bordered" }, "children": ["statTopRowTranscripts", "statLabelTranscripts"] },
+      "statTopRowTranscripts": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["statIconTranscripts", "statValueTranscripts"] },
+      "statIconTranscripts": { "type": "Icon", "props": { "name": "FileText", "tone": "chart-1", "size": "sm" } },
+      "statValueTranscripts": {
+        "type": "Text",
+        "props": {
+          "size": "lg",
+          "weight": "semibold",
+          "tone": "chart-1",
+          "text": {
+            "$computed": "count_where",
+            "args": { "value": { "$state": "/m365-teams-transcripts/list_recent_meetings_with_status" }, "whereField": "hasTranscript", "equals": true }
+          }
+        }
+      },
+      "statLabelTranscripts": { "type": "Caption", "props": { "text": "Transcripts", "tone": "muted" } },
+
+      "statCardMeetings": { "type": "Section", "props": { "variant": "bordered" }, "children": ["statTopRowMeetings", "statLabelMeetings"] },
+      "statTopRowMeetings": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["statIconMeetings", "statValueMeetings"] },
+      "statIconMeetings": { "type": "Icon", "props": { "name": "Users", "tone": "chart-5", "size": "sm" } },
+      "statValueMeetings": {
+        "type": "Text",
+        "props": {
+          "size": "lg",
+          "weight": "semibold",
+          "tone": "chart-5",
+          "text": { "$computed": "count", "args": { "value": { "$state": "/m365-teams-transcripts/list_recent_meetings_with_status" } } }
+        }
+      },
+      "statLabelMeetings": { "type": "Caption", "props": { "text": "Meetings", "tone": "muted" } },
+
+      "statCardThisWeek": { "type": "Section", "props": { "variant": "bordered" }, "children": ["statTopRowThisWeek", "statLabelThisWeek"] },
+      "statTopRowThisWeek": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["statIconThisWeek", "statValueThisWeek"] },
+      "statIconThisWeek": { "type": "Icon", "props": { "name": "Calendar", "tone": "chart-2", "size": "sm" } },
+      "statValueThisWeek": {
+        "type": "Text",
+        "props": {
+          "size": "lg",
+          "weight": "semibold",
+          "tone": "chart-2",
+          "text": {
+            "$computed": "count",
+            "args": {
+              "value": {
+                "$computed": "filter_date_range",
+                "args": {
+                  "value": { "$state": "/m365-teams-transcripts/list_recent_meetings_with_status" },
+                  "field": "start.dateTime",
+                  "start": { "$computed": "current_week_start", "args": { "anchor": "mon" } }
+                }
+              }
+            }
+          }
+        }
+      },
+      "statLabelThisWeek": { "type": "Caption", "props": { "text": "This week", "tone": "muted" } },
 
       "searchBar": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["searchIcon", "searchInput"] },
       "searchIcon": { "type": "Icon", "props": { "name": "Search", "tone": "muted", "size": "sm" } },
