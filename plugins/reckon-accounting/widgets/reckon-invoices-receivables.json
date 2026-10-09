@@ -25,9 +25,6 @@
         "type": "Card",
         "props": {},
         "children": ["headerRow", "statSection", "overdueDetail", "overdueViewRow", "div0", "bucketList"],
-        "on": {
-          "mount": { "action": "reckon-accounting.get_company", "params": {} }
-        },
         "watch": {
           "/reckon-accounting/list_invoices": {
             "action": "setState",
@@ -161,7 +158,14 @@
         }
       },
 
-      "headerRow": { "type": "Row", "props": { "align": "start" }, "children": ["titleGroup"] },
+      "headerRow": {
+        "type": "Row",
+        "props": { "align": "start" },
+        "children": ["titleGroup"],
+        "watch": {
+          "/reckon-accounting/list_invoices": { "action": "reckon-accounting.get_company", "params": {} }
+        }
+      },
       "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["titleIcon", "titleStack"] },
       "titleIcon": { "type": "Icon", "props": { "name": "FileText", "tone": "accent", "size": "md" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
