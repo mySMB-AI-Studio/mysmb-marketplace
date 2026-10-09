@@ -292,6 +292,71 @@ const summary_bullets: ComputedFunction = (args) => ({
   actionItems: toBulletItems(args.actionItems),
 });
 
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+/** Local date → "yyyy-mm-dd", the exact format Zoom's recordings API documents for `from`/`to`. */
+function toDateString(d: Date): string {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function parseDateOnly(raw: unknown): Date | null {
+  const m = String(raw ?? '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+}
+
+/**
+ * `/ui/rangeStart`/`/ui/rangeEnd` start unset until the picker is touched —
+ * seed them once to a sensible last-7-days default (current || fallback,
+ * idempotent once set, same shape as hotmail's seed_default_date). Zoom's
+ * own API default when from/to are omitted is just "today + tomorrow" —
+ * confirmed live, and the whole reason this picker exists — so the
+ * pre-filled default here is deliberately wider than that, not a mirror of it.
+ * Args: { current: string }
+ */
+const seed_range_end: ComputedFunction = (args) => {
+  const current = String(args.current ?? '').trim();
+  return current || toDateString(new Date());
+};
+
+const seed_range_start: ComputedFunction = (args) => {
+  const current = String(args.current ?? '').trim();
+  if (current) return current;
+  const d = new Date();
+  d.setDate(d.getDate() - 6);
+  return toDateString(d);
+};
+
+/**
+ * Zoom's "List all recordings" endpoint caps `from`..`to` at 31 days per
+ * request (confirmed from Zoom's own docs/devforum — not a guess). Rather
+ * than let an out-of-range request fail with a raw Zoom error, silently
+ * clamp `to` back to `start + 31 days` when the picked span is wider —
+ * range_was_clamped (below) drives a one-line note so this isn't a silent
+ * surprise.
+ * Args: { start: string, end: string }
+ */
+const clamp_range_end: ComputedFunction = (args) => {
+  const start = parseDateOnly(args.start);
+  const end = parseDateOnly(args.end);
+  if (!start || !end) return String(args.end ?? '');
+  const maxEnd = new Date(start);
+  maxEnd.setDate(maxEnd.getDate() + 31);
+  return end.getTime() > maxEnd.getTime() ? toDateString(maxEnd) : toDateString(end);
+};
+
+/** True when clamp_range_end would actually narrow the picked range — drives the "capped at 31 days" note. Args: { start: string, end: string } */
+const range_was_clamped: ComputedFunction = (args) => {
+  const start = parseDateOnly(args.start);
+  const end = parseDateOnly(args.end);
+  if (!start || !end) return false;
+  const maxEnd = new Date(start);
+  maxEnd.setDate(maxEnd.getDate() + 31);
+  return end.getTime() > maxEnd.getTime();
+};
+
 const elements: PluginElementsModule = {
   slug: 'zoom',
   functions: {
@@ -323,6 +388,10 @@ const elements: PluginElementsModule = {
     extract_string_error,
     summary_matches_selected,
     summary_bullets,
+    seed_range_start,
+    seed_range_end,
+    clamp_range_end,
+    range_was_clamped,
   },
 };
 
