@@ -1,0 +1,847 @@
+{
+  "id": "reckon-invoices-receivables",
+  "title": "Invoices & Receivables",
+  "description": "Accounts receivable aging snapshot from Reckon One: total outstanding across unpaid invoices, how many are overdue, and a Current / 1-30 days / 31+ days aging breakdown. Field names (customer.name, dueDate, balance) are confirmed against a real list_invoices response from a live test account — there is no IsOverdue field in the real response (despite Reckon's own docs implying one), so overdue/aging status is computed client-side from dueDate vs today instead. Depends on one new widget-elements helper (reckon-accounting_days_ago) not yet written.",
+  "category": "accounting",
+  "tags": ["reckon", "accounting", "invoices", "receivables", "aging", "ar"],
+  "keywords": ["reckon", "invoices", "receivables", "accounts receivable", "aging", "overdue", "outstanding"],
+  "connectorsUsed": ["reckon-accounting"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 6 },
+    "min":       { "colSpan": 3, "rowSpan": 5 },
+    "max":       { "colSpan": 6, "rowSpan": 8 }
+  },
+  "dataProvider": {
+    "mcp": "reckon-accounting",
+    "tool": "list_invoices",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "statSection", "overdueDetail", "overdueViewRow", "div0", "bucketList"],
+        "on": {
+          "mount": { "action": "reckon-accounting.get_company", "params": {} }
+        },
+        "watch": {
+          "/reckon-accounting/list_invoices": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonAr/unpaid",
+              "value": {
+                "$computed": "filter_by",
+                "args": { "value": { "$state": "/reckon-accounting/list_invoices/list" }, "field": "balance" }
+              }
+            }
+          },
+          "/ui/reckonAr/unpaid": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonAr/overdue",
+              "value": {
+                "$computed": "filter_date_range",
+                "args": {
+                  "value": { "$state": "/ui/reckonAr/unpaid" },
+                  "field": "dueDate",
+                  "start": { "$computed": "reckon-accounting_days_ago", "args": { "days": 3650 } },
+                  "end": { "$computed": "reckon-accounting_days_ago", "args": { "days": 1 } }
+                }
+              }
+            }
+          },
+          "/ui/reckonAr/overdue": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonAr/bucketItems",
+              "value": {
+                "$cond": { "$state": "/ui/reckonAr/selectedBucket", "eq": "current" },
+                "$then": {
+                  "$computed": "filter_date_range",
+                  "args": {
+                    "value": { "$state": "/ui/reckonAr/unpaid" },
+                    "field": "dueDate",
+                    "start": { "$computed": "reckon-accounting_days_ago", "args": { "days": 0 } },
+                    "end": { "$computed": "reckon-accounting_days_ago", "args": { "days": -3650 } }
+                  }
+                },
+                "$else": {
+                  "$cond": { "$state": "/ui/reckonAr/selectedBucket", "eq": "1to30" },
+                  "$then": {
+                    "$computed": "filter_date_range",
+                    "args": {
+                      "value": { "$state": "/ui/reckonAr/unpaid" },
+                      "field": "dueDate",
+                      "start": { "$computed": "reckon-accounting_days_ago", "args": { "days": 31 } },
+                      "end": { "$computed": "reckon-accounting_days_ago", "args": { "days": 1 } }
+                    }
+                  },
+                  "$else": {
+                    "$cond": { "$state": "/ui/reckonAr/selectedBucket", "eq": "31plus" },
+                    "$then": {
+                      "$computed": "filter_date_range",
+                      "args": {
+                        "value": { "$state": "/ui/reckonAr/unpaid" },
+                        "field": "dueDate",
+                        "start": { "$computed": "reckon-accounting_days_ago", "args": { "days": 3650 } },
+                        "end": { "$computed": "reckon-accounting_days_ago", "args": { "days": 31 } }
+                      }
+                    },
+                    "$else": {
+                      "$cond": { "$state": "/ui/reckonAr/selectedBucket", "eq": "overdue" },
+                      "$then": { "$state": "/ui/reckonAr/overdue" },
+                      "$else": { "$state": "/ui/reckonAr/unpaid" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "/ui/reckonAr/selectedBucket": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonAr/bucketItems",
+              "value": {
+                "$cond": { "$state": "/ui/reckonAr/selectedBucket", "eq": "current" },
+                "$then": {
+                  "$computed": "filter_date_range",
+                  "args": {
+                    "value": { "$state": "/ui/reckonAr/unpaid" },
+                    "field": "dueDate",
+                    "start": { "$computed": "reckon-accounting_days_ago", "args": { "days": 0 } },
+                    "end": { "$computed": "reckon-accounting_days_ago", "args": { "days": -3650 } }
+                  }
+                },
+                "$else": {
+                  "$cond": { "$state": "/ui/reckonAr/selectedBucket", "eq": "1to30" },
+                  "$then": {
+                    "$computed": "filter_date_range",
+                    "args": {
+                      "value": { "$state": "/ui/reckonAr/unpaid" },
+                      "field": "dueDate",
+                      "start": { "$computed": "reckon-accounting_days_ago", "args": { "days": 31 } },
+                      "end": { "$computed": "reckon-accounting_days_ago", "args": { "days": 1 } }
+                    }
+                  },
+                  "$else": {
+                    "$cond": { "$state": "/ui/reckonAr/selectedBucket", "eq": "31plus" },
+                    "$then": {
+                      "$computed": "filter_date_range",
+                      "args": {
+                        "value": { "$state": "/ui/reckonAr/unpaid" },
+                        "field": "dueDate",
+                        "start": { "$computed": "reckon-accounting_days_ago", "args": { "days": 3650 } },
+                        "end": { "$computed": "reckon-accounting_days_ago", "args": { "days": 31 } }
+                      }
+                    },
+                    "$else": {
+                      "$cond": { "$state": "/ui/reckonAr/selectedBucket", "eq": "overdue" },
+                      "$then": { "$state": "/ui/reckonAr/overdue" },
+                      "$else": { "$state": "/ui/reckonAr/unpaid" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "/ui/reckonAr/bucketItems": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonAr/visibleBucketItems",
+              "value": {
+                "$computed": "top_n",
+                "args": { "value": { "$state": "/ui/reckonAr/bucketItems" }, "limit": 10 }
+              }
+            }
+          }
+        }
+      },
+
+      "headerRow": { "type": "Row", "props": { "align": "start" }, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "FileText", "tone": "accent", "size": "md" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Invoices & Receivables", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Reckon" } },
+
+      "statSection": { "type": "Stack", "props": { "gap": "xs" }, "children": ["bigStat", "captionRow"] },
+      "captionRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["statCaption", "overdueBadgeWrap"] },
+      "overdueBadgeWrap": {
+        "type": "Row",
+        "props": { "clickable": true },
+        "children": ["overdueBadge"],
+        "visible": { "$state": "/ui/reckonAr/overdue/0" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonAr/selectedBucket",
+              "value": { "$cond": { "$state": "/ui/reckonAr/selectedBucket", "eq": "overdue" }, "$then": "", "$else": "overdue" }
+            }
+          }
+        }
+      },
+      "overdueBadge": {
+        "type": "Badge",
+        "props": {
+          "tone": "destructive",
+          "variant": "soft",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} overdue",
+              "n": { "$computed": "count", "args": { "value": { "$state": "/ui/reckonAr/overdue" } } }
+            }
+          }
+        }
+      },
+      "bigStat": {
+        "type": "Stat",
+        "props": {
+          "size": "lg",
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$computed": "sum", "args": { "value": { "$state": "/ui/reckonAr/unpaid" }, "field": "balance" } } }
+          }
+        }
+      },
+      "statCaption": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "outstanding across {n} invoices",
+              "n": { "$computed": "count", "args": { "value": { "$state": "/ui/reckonAr/unpaid" } } }
+            }
+          }
+        }
+      },
+
+      "overdueViewRow": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["overdueViewLink"],
+        "visible": { "$state": "/ui/reckonAr/selectedBucket", "eq": "overdue" }
+      },
+      "overdueViewLink": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "clickable": true },
+        "children": ["overdueViewLabel", "overdueViewIcon"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "https://app.reckonone.com/v2/invoices#bookId={bookId}",
+                  "bookId": { "$state": "/reckon-accounting/get_company/id" }
+                }
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "overdueViewLabel": { "type": "Text", "props": { "text": "View in Reckon", "size": "xs", "tone": "accent", "weight": "medium" } },
+      "overdueViewIcon": { "type": "Icon", "props": { "name": "ArrowUpRight", "tone": "accent", "size": "xs" } },
+      "overdueDetail": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["overdueDetailEmpty", "overdueDetailScroll"],
+        "visible": { "$state": "/ui/reckonAr/selectedBucket", "eq": "overdue" }
+      },
+      "overdueDetailEmpty": {
+        "type": "Empty",
+        "props": { "message": "No overdue invoices." },
+        "visible": { "$state": "/ui/reckonAr/bucketItems/0", "not": true }
+      },
+      "overdueDetailScroll": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["overdueDetailRows", "overdueDetailMoreCaption"],
+        "visible": { "$state": "/ui/reckonAr/bucketItems/0" }
+      },
+      "overdueDetailRows": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "repeat": { "statePath": "/ui/reckonAr/visibleBucketItems", "key": "id" },
+        "children": ["overdueDetailRow"]
+      },
+      "overdueDetailMoreCaption": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "+{n} more",
+              "n": {
+                "$computed": "add_number",
+                "args": {
+                  "a": { "$computed": "count", "args": { "value": { "$state": "/ui/reckonAr/bucketItems" } } },
+                  "b": -10
+                }
+              }
+            }
+          }
+        },
+        "visible": { "$state": "/ui/reckonAr/bucketItems/10" }
+      },
+      "overdueDetailRow": { "type": "Stack", "props": { "gap": "xs" }, "children": ["overdueDetailTopRow", "overdueDetailMeta"] },
+      "overdueDetailTopRow": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["overdueDetailCustomer", "overdueDetailAmount"] },
+      "overdueDetailCustomer": { "type": "Text", "props": { "text": { "$item": "customer/name" }, "size": "sm", "truncate": true } },
+      "overdueDetailAmount": {
+        "type": "Text",
+        "props": { "size": "sm", "weight": "semibold", "text": { "$computed": "format_currency", "args": { "value": { "$item": "balance" } } } }
+      },
+      "overdueDetailMeta": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{invoiceNumber} · due {dueDate}",
+              "invoiceNumber": { "$item": "invoiceNumber" },
+              "dueDate": { "$computed": "format_date", "args": { "value": { "$item": "dueDate" }, "format": "dd-mmm-yy" } }
+            }
+          }
+        }
+      },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "bucketList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": [
+          "currentRow", "currentDetail", "currentViewLinkRow",
+          "bucket1to30Row", "bucket1to30Detail", "bucket1to30ViewLinkRow",
+          "bucket31plusRow", "bucket31plusDetail", "bucket31plusViewLinkRow"
+        ]
+      },
+
+      "currentRow": {
+        "type": "Row",
+        "props": {
+          "template": "5rem 1fr 4.5rem",
+          "gap": "sm",
+          "align": "center",
+          "clickable": true,
+          "hover": true,
+          "selected": { "$cond": { "$state": "/ui/reckonAr/selectedBucket", "eq": "current" }, "$then": true, "$else": false }
+        },
+        "children": ["currentLabel", "currentBar", "currentAmount"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonAr/selectedBucket",
+              "value": { "$cond": { "$state": "/ui/reckonAr/selectedBucket", "eq": "current" }, "$then": "", "$else": "current" }
+            }
+          }
+        }
+      },
+      "currentLabel": { "type": "Text", "props": { "text": "Current", "size": "sm", "tone": "muted" } },
+      "currentBar": {
+        "type": "ProgressBar",
+        "props": {
+          "tone": "chart-5",
+          "value": {
+            "$computed": "pct",
+            "args": {
+              "part": {
+                "$computed": "sum",
+                "args": {
+                  "value": {
+                    "$computed": "filter_date_range",
+                    "args": {
+                      "value": { "$state": "/ui/reckonAr/unpaid" },
+                      "field": "dueDate",
+                      "start": { "$computed": "reckon-accounting_days_ago", "args": { "days": 0 } },
+                      "end": { "$computed": "reckon-accounting_days_ago", "args": { "days": -3650 } }
+                    }
+                  },
+                  "field": "balance"
+                }
+              },
+              "whole": { "$computed": "sum", "args": { "value": { "$state": "/ui/reckonAr/unpaid" }, "field": "balance" } }
+            }
+          }
+        }
+      },
+      "currentAmount": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "weight": "semibold",
+          "align": "right",
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "sum",
+                "args": {
+                  "value": {
+                    "$computed": "filter_date_range",
+                    "args": {
+                      "value": { "$state": "/ui/reckonAr/unpaid" },
+                      "field": "dueDate",
+                      "start": { "$computed": "reckon-accounting_days_ago", "args": { "days": 0 } },
+                      "end": { "$computed": "reckon-accounting_days_ago", "args": { "days": -3650 } }
+                    }
+                  },
+                  "field": "balance"
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "bucket1to30Row": {
+        "type": "Row",
+        "props": {
+          "template": "5rem 1fr 4.5rem",
+          "gap": "sm",
+          "align": "center",
+          "clickable": true,
+          "hover": true,
+          "selected": { "$cond": { "$state": "/ui/reckonAr/selectedBucket", "eq": "1to30" }, "$then": true, "$else": false }
+        },
+        "children": ["bucket1to30Label", "bucket1to30Bar", "bucket1to30Amount"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonAr/selectedBucket",
+              "value": { "$cond": { "$state": "/ui/reckonAr/selectedBucket", "eq": "1to30" }, "$then": "", "$else": "1to30" }
+            }
+          }
+        }
+      },
+      "bucket1to30Label": { "type": "Text", "props": { "text": "1-30 days", "size": "sm", "tone": "muted" } },
+      "bucket1to30Bar": {
+        "type": "ProgressBar",
+        "props": {
+          "tone": "warning",
+          "value": {
+            "$computed": "pct",
+            "args": {
+              "part": {
+                "$computed": "sum",
+                "args": {
+                  "value": {
+                    "$computed": "filter_date_range",
+                    "args": {
+                      "value": { "$state": "/ui/reckonAr/unpaid" },
+                      "field": "dueDate",
+                      "start": { "$computed": "reckon-accounting_days_ago", "args": { "days": 31 } },
+                      "end": { "$computed": "reckon-accounting_days_ago", "args": { "days": 1 } }
+                    }
+                  },
+                  "field": "balance"
+                }
+              },
+              "whole": { "$computed": "sum", "args": { "value": { "$state": "/ui/reckonAr/unpaid" }, "field": "balance" } }
+            }
+          }
+        }
+      },
+      "bucket1to30Amount": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "weight": "semibold",
+          "align": "right",
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "sum",
+                "args": {
+                  "value": {
+                    "$computed": "filter_date_range",
+                    "args": {
+                      "value": { "$state": "/ui/reckonAr/unpaid" },
+                      "field": "dueDate",
+                      "start": { "$computed": "reckon-accounting_days_ago", "args": { "days": 31 } },
+                      "end": { "$computed": "reckon-accounting_days_ago", "args": { "days": 1 } }
+                    }
+                  },
+                  "field": "balance"
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "bucket31plusRow": {
+        "type": "Row",
+        "props": {
+          "template": "5rem 1fr 4.5rem",
+          "gap": "sm",
+          "align": "center",
+          "clickable": true,
+          "hover": true,
+          "selected": { "$cond": { "$state": "/ui/reckonAr/selectedBucket", "eq": "31plus" }, "$then": true, "$else": false }
+        },
+        "children": ["bucket31plusLabel", "bucket31plusBar", "bucket31plusAmount"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonAr/selectedBucket",
+              "value": { "$cond": { "$state": "/ui/reckonAr/selectedBucket", "eq": "31plus" }, "$then": "", "$else": "31plus" }
+            }
+          }
+        }
+      },
+      "bucket31plusLabel": { "type": "Text", "props": { "text": "31+ days", "size": "sm", "tone": "muted" } },
+      "bucket31plusBar": {
+        "type": "ProgressBar",
+        "props": {
+          "tone": "destructive",
+          "value": {
+            "$computed": "pct",
+            "args": {
+              "part": {
+                "$computed": "sum",
+                "args": {
+                  "value": {
+                    "$computed": "filter_date_range",
+                    "args": {
+                      "value": { "$state": "/ui/reckonAr/unpaid" },
+                      "field": "dueDate",
+                      "start": { "$computed": "reckon-accounting_days_ago", "args": { "days": 3650 } },
+                      "end": { "$computed": "reckon-accounting_days_ago", "args": { "days": 31 } }
+                    }
+                  },
+                  "field": "balance"
+                }
+              },
+              "whole": { "$computed": "sum", "args": { "value": { "$state": "/ui/reckonAr/unpaid" }, "field": "balance" } }
+            }
+          }
+        }
+      },
+      "bucket31plusAmount": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "weight": "semibold",
+          "align": "right",
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "sum",
+                "args": {
+                  "value": {
+                    "$computed": "filter_date_range",
+                    "args": {
+                      "value": { "$state": "/ui/reckonAr/unpaid" },
+                      "field": "dueDate",
+                      "start": { "$computed": "reckon-accounting_days_ago", "args": { "days": 3650 } },
+                      "end": { "$computed": "reckon-accounting_days_ago", "args": { "days": 31 } }
+                    }
+                  },
+                  "field": "balance"
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "currentDetail": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["currentDetailEmpty", "currentDetailScroll"],
+        "visible": { "$state": "/ui/reckonAr/selectedBucket", "eq": "current" }
+      },
+      "currentViewLinkRow": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["currentViewLink"],
+        "visible": { "$state": "/ui/reckonAr/selectedBucket", "eq": "current" }
+      },
+      "currentViewLink": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "clickable": true },
+        "children": ["currentViewLabel", "currentViewIcon"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "https://app.reckonone.com/v2/invoices#bookId={bookId}",
+                  "bookId": { "$state": "/reckon-accounting/get_company/id" }
+                }
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "currentViewLabel": { "type": "Text", "props": { "text": "View in Reckon", "size": "xs", "tone": "accent", "weight": "medium" } },
+      "currentViewIcon": { "type": "Icon", "props": { "name": "ArrowUpRight", "tone": "accent", "size": "xs" } },
+      "currentDetailEmpty": {
+        "type": "Empty",
+        "props": { "message": "No invoices in this category." },
+        "visible": { "$state": "/ui/reckonAr/bucketItems/0", "not": true }
+      },
+      "currentDetailScroll": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["currentDetailRows", "currentDetailMoreCaption"],
+        "visible": { "$state": "/ui/reckonAr/bucketItems/0" }
+      },
+      "currentDetailMoreCaption": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "+{n} more",
+              "n": {
+                "$computed": "add_number",
+                "args": {
+                  "a": { "$computed": "count", "args": { "value": { "$state": "/ui/reckonAr/bucketItems" } } },
+                  "b": -10
+                }
+              }
+            }
+          }
+        },
+        "visible": { "$state": "/ui/reckonAr/bucketItems/10" }
+      },
+      "currentDetailRows": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "repeat": { "statePath": "/ui/reckonAr/visibleBucketItems", "key": "id" },
+        "children": ["currentDetailRow"]
+      },
+      "currentDetailRow": { "type": "Stack", "props": { "gap": "xs" }, "children": ["currentDetailTopRow", "currentDetailMeta"] },
+      "currentDetailTopRow": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["currentDetailCustomer", "currentDetailAmount"] },
+      "currentDetailCustomer": { "type": "Text", "props": { "text": { "$item": "customer/name" }, "size": "sm", "truncate": true } },
+      "currentDetailAmount": {
+        "type": "Text",
+        "props": { "size": "sm", "weight": "semibold", "text": { "$computed": "format_currency", "args": { "value": { "$item": "balance" } } } }
+      },
+      "currentDetailMeta": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{invoiceNumber} · due {dueDate}",
+              "invoiceNumber": { "$item": "invoiceNumber" },
+              "dueDate": { "$computed": "format_date", "args": { "value": { "$item": "dueDate" }, "format": "dd-mmm-yy" } }
+            }
+          }
+        }
+      },
+
+      "bucket1to30Detail": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["bucket1to30DetailEmpty", "bucket1to30DetailScroll"],
+        "visible": { "$state": "/ui/reckonAr/selectedBucket", "eq": "1to30" }
+      },
+      "bucket1to30ViewLinkRow": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["bucket1to30ViewLink"],
+        "visible": { "$state": "/ui/reckonAr/selectedBucket", "eq": "1to30" }
+      },
+      "bucket1to30ViewLink": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "clickable": true },
+        "children": ["bucket1to30ViewLabel", "bucket1to30ViewIcon"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "https://app.reckonone.com/v2/invoices#bookId={bookId}",
+                  "bookId": { "$state": "/reckon-accounting/get_company/id" }
+                }
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "bucket1to30ViewLabel": { "type": "Text", "props": { "text": "View in Reckon", "size": "xs", "tone": "accent", "weight": "medium" } },
+      "bucket1to30ViewIcon": { "type": "Icon", "props": { "name": "ArrowUpRight", "tone": "accent", "size": "xs" } },
+      "bucket1to30DetailEmpty": {
+        "type": "Empty",
+        "props": { "message": "No invoices in this category." },
+        "visible": { "$state": "/ui/reckonAr/bucketItems/0", "not": true }
+      },
+      "bucket1to30DetailScroll": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["bucket1to30DetailRows", "bucket1to30DetailMoreCaption"],
+        "visible": { "$state": "/ui/reckonAr/bucketItems/0" }
+      },
+      "bucket1to30DetailMoreCaption": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "+{n} more",
+              "n": {
+                "$computed": "add_number",
+                "args": {
+                  "a": { "$computed": "count", "args": { "value": { "$state": "/ui/reckonAr/bucketItems" } } },
+                  "b": -10
+                }
+              }
+            }
+          }
+        },
+        "visible": { "$state": "/ui/reckonAr/bucketItems/10" }
+      },
+      "bucket1to30DetailRows": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "repeat": { "statePath": "/ui/reckonAr/visibleBucketItems", "key": "id" },
+        "children": ["bucket1to30DetailRow"]
+      },
+      "bucket1to30DetailRow": { "type": "Stack", "props": { "gap": "xs" }, "children": ["bucket1to30DetailTopRow", "bucket1to30DetailMeta"] },
+      "bucket1to30DetailTopRow": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["bucket1to30DetailCustomer", "bucket1to30DetailAmount"] },
+      "bucket1to30DetailCustomer": { "type": "Text", "props": { "text": { "$item": "customer/name" }, "size": "sm", "truncate": true } },
+      "bucket1to30DetailAmount": {
+        "type": "Text",
+        "props": { "size": "sm", "weight": "semibold", "text": { "$computed": "format_currency", "args": { "value": { "$item": "balance" } } } }
+      },
+      "bucket1to30DetailMeta": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{invoiceNumber} · due {dueDate}",
+              "invoiceNumber": { "$item": "invoiceNumber" },
+              "dueDate": { "$computed": "format_date", "args": { "value": { "$item": "dueDate" }, "format": "dd-mmm-yy" } }
+            }
+          }
+        }
+      },
+
+      "bucket31plusDetail": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["bucket31plusDetailEmpty", "bucket31plusDetailScroll"],
+        "visible": { "$state": "/ui/reckonAr/selectedBucket", "eq": "31plus" }
+      },
+      "bucket31plusViewLinkRow": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["bucket31plusViewLink"],
+        "visible": { "$state": "/ui/reckonAr/selectedBucket", "eq": "31plus" }
+      },
+      "bucket31plusViewLink": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "clickable": true },
+        "children": ["bucket31plusViewLabel", "bucket31plusViewIcon"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": {
+                  "pattern": "https://app.reckonone.com/v2/invoices#bookId={bookId}",
+                  "bookId": { "$state": "/reckon-accounting/get_company/id" }
+                }
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "bucket31plusViewLabel": { "type": "Text", "props": { "text": "View in Reckon", "size": "xs", "tone": "accent", "weight": "medium" } },
+      "bucket31plusViewIcon": { "type": "Icon", "props": { "name": "ArrowUpRight", "tone": "accent", "size": "xs" } },
+      "bucket31plusDetailEmpty": {
+        "type": "Empty",
+        "props": { "message": "No invoices in this category." },
+        "visible": { "$state": "/ui/reckonAr/bucketItems/0", "not": true }
+      },
+      "bucket31plusDetailScroll": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["bucket31plusDetailRows", "bucket31plusDetailMoreCaption"],
+        "visible": { "$state": "/ui/reckonAr/bucketItems/0" }
+      },
+      "bucket31plusDetailMoreCaption": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "+{n} more",
+              "n": {
+                "$computed": "add_number",
+                "args": {
+                  "a": { "$computed": "count", "args": { "value": { "$state": "/ui/reckonAr/bucketItems" } } },
+                  "b": -10
+                }
+              }
+            }
+          }
+        },
+        "visible": { "$state": "/ui/reckonAr/bucketItems/10" }
+      },
+      "bucket31plusDetailRows": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "repeat": { "statePath": "/ui/reckonAr/visibleBucketItems", "key": "id" },
+        "children": ["bucket31plusDetailRow"]
+      },
+      "bucket31plusDetailRow": { "type": "Stack", "props": { "gap": "xs" }, "children": ["bucket31plusDetailTopRow", "bucket31plusDetailMeta"] },
+      "bucket31plusDetailTopRow": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["bucket31plusDetailCustomer", "bucket31plusDetailAmount"] },
+      "bucket31plusDetailCustomer": { "type": "Text", "props": { "text": { "$item": "customer/name" }, "size": "sm", "truncate": true } },
+      "bucket31plusDetailAmount": {
+        "type": "Text",
+        "props": { "size": "sm", "weight": "semibold", "text": { "$computed": "format_currency", "args": { "value": { "$item": "balance" } } } }
+      },
+      "bucket31plusDetailMeta": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{invoiceNumber} · due {dueDate}",
+              "invoiceNumber": { "$item": "invoiceNumber" },
+              "dueDate": { "$computed": "format_date", "args": { "value": { "$item": "dueDate" }, "format": "dd-mmm-yy" } }
+            }
+          }
+        }
+      }
+
+    }
+  },
+  "status": "draft"
+}
