@@ -755,7 +755,7 @@ const build_recent_files_view = (args) => {
             webViewLink: f.webViewLink,
             isShared: f.isShared,
             modifiedTime: f.modifiedTime,
-            dayLabel: f.bucket.charAt(0) + f.bucket.slice(1).toLowerCase(),
+            dayLabel: f.bucket,
             showDayHeader,
         };
     });

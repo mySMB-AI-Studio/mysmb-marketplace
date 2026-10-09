@@ -792,7 +792,7 @@ const build_recent_files_view: ComputedFunction = (args) => {
       webViewLink: f.webViewLink,
       isShared: f.isShared,
       modifiedTime: f.modifiedTime,
-      dayLabel: (f.bucket as string).charAt(0) + (f.bucket as string).slice(1).toLowerCase(),
+      dayLabel: f.bucket as string,
       showDayHeader,
     };
   });
