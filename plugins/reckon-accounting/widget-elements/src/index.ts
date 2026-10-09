@@ -68,7 +68,7 @@ const account_summary: ComputedFunction = (args) => {
 };
 
 // ── days_ago ─────────────────────────────────────────────────────────
-// Today (local midnight), shifted by `days` days — a real resolved ISO
+// Today (UTC midnight), shifted by `days` days — a real resolved ISO
 // instant usable as a `filter_date_range` start/end boundary. Negative
 // `days` shifts into the future (e.g. -3650 for "no practical upper
 // bound"). Needed because the system's `$days_ago_30`-style magic tokens
@@ -76,19 +76,50 @@ const account_summary: ComputedFunction = (args) => {
 // params, an action's params), never inside a $computed expression
 // evaluated client-side — there is no other way to get a real "N days
 // from today" date boundary for aging-bucket math.
+//
+// Deliberately UTC, not local midnight: a bare `YYYY-MM-DD` due date (e.g.
+// Reckon's `dueDate`) gets parsed elsewhere (filter_date_range's
+// parseInstant) as UTC midnight, since it appends "Z" rather than
+// interpreting the string in the viewer's timezone. Computing this
+// boundary from LOCAL midnight instead — as an earlier version did —
+// skews every cutoff by the server's UTC offset: confirmed live, a bill
+// due exactly 6 days out fell into "due later" instead of "due this week"
+// because local midnight landed hours earlier than the UTC midnight the
+// due date itself parses to.
 // Args: { days: number }
 const days_ago: ComputedFunction = (args) => {
   const n = Number(args.days);
   const days = Number.isFinite(n) ? n : 0;
   const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - days);
+  d.setUTCHours(0, 0, 0, 0);
+  d.setUTCDate(d.getUTCDate() - days);
   return d.toISOString();
+};
+
+// ── abs_balance ──────────────────────────────────────────────────────
+// Returns a copy of a bills/invoices array with `balance` normalized to
+// its absolute value. Confirmed live: GET /bills returns balance as a
+// NEGATIVE number (e.g. -820 for an $820 unpaid bill) — the opposite
+// sign convention from GET /invoices, where balance is positive for the
+// same "amount still owed" meaning. Normalizing once here, at the point
+// the raw list first enters widget state, means every sum/format call
+// downstream can treat balance as a plain positive amount without each
+// one needing its own sign-correction.
+// Args: { value: array }
+const abs_balance: ComputedFunction = (args) => {
+  const arr = args.value;
+  if (!Array.isArray(arr)) return [];
+  return arr.map((row) => {
+    if (!row || typeof row !== 'object') return row;
+    const r = row as Record<string, unknown>;
+    const n = Number(r.balance);
+    return Number.isFinite(n) ? { ...r, balance: Math.abs(n) } : row;
+  });
 };
 
 const elements: PluginElementsModule = {
   slug: 'reckon-accounting',
-  functions: { company_name, account_summary, days_ago },
+  functions: { company_name, account_summary, days_ago, abs_balance },
 };
 
 export default elements;
