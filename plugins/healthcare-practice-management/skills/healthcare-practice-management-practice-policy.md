@@ -7,7 +7,7 @@ description: Applies the practice's own configured rules — cancellation window
 
 Use at the start of any automation or draft that depends on a practice-specific rule rather than a universal one. Load `healthcare-practice-management-foundation` first for the file layout.
 
-1. Read `PracticeManager/Practices/<practice-slug>.json` with `api.files.read`. If it doesn't exist, stop: this practice has no policy configured yet, and nothing patient-facing or diary-changing should proceed on a guessed default.
+1. Read `PracticeManager/Practices/<practice-slug>.json`. As the chat agent: `knowledge_read(scope="org", path="PracticeManager/Practices", fileName="<practice-slug>.json")`. Inside an automation: `api.files.read(file="PracticeManager/Practices/<practice-slug>.json")` — scope is locked to `org` automatically there. If it doesn't exist, stop: this practice has no policy configured yet (point the practitioner to the **Healthcare Practice Management: Start practice setup** automation), and nothing patient-facing or diary-changing should proceed on a guessed default.
 2. Apply the relevant `policy` field for the decision at hand:
    - `cancellation_window_hours` — how close to an appointment a cancellation/reschedule stops being auto-offered a new slot (see `healthcare-practice-management-scheduling-reasoning`).
    - `tone` — feeds `healthcare-practice-management-practitioner-voice-drafting`.

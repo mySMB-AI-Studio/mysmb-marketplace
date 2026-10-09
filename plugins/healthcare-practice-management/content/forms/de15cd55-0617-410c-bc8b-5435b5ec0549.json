@@ -1,0 +1,38 @@
+{
+  "kind": "form",
+  "originKey": "de15cd55-0617-410c-bc8b-5435b5ec0549",
+  "title": "Practice setup",
+  "schema": {
+    "version": 1,
+    "title": "Practice setup",
+    "description": "The Practice Manager Agent can't read or act for a practice until this is saved. Sensible defaults are applied for anything not asked here (tone, email tiers, never-do list) — those can be refined by editing the practice's settings file directly later.",
+    "sections": [
+      {
+        "id": "practice",
+        "title": "Practice details",
+        "questions": [
+          { "id": "q_practice_name", "type": "short_text", "label": "Practice name", "required": true, "maxLength": 120 },
+          { "id": "q_cliniko_business_id", "type": "short_text", "label": "Cliniko business ID", "required": true, "helpText": "Ask the agent to \"list the Cliniko businesses\" if you don't have this to hand." }
+        ]
+      },
+      {
+        "id": "connections",
+        "title": "Connections",
+        "questions": [
+          { "id": "q_email_provider", "type": "single_choice", "label": "Which email platform does this practice use?", "required": true, "options": ["Outlook (Microsoft 365)", "Gmail (Google Workspace)"] },
+          { "id": "q_xero_org", "type": "short_text", "label": "Xero organisation name (exactly as it appears in Xero)", "required": false, "helpText": "Leave blank if this practice doesn't use Xero yet.", "maxLength": 200 }
+        ]
+      },
+      {
+        "id": "policy",
+        "title": "Policy basics",
+        "questions": [
+          { "id": "q_timezone", "type": "short_text", "label": "Timezone (IANA, e.g. Australia/Sydney)", "required": false, "placeholder": "Australia/Sydney" },
+          { "id": "q_cancellation_window", "type": "short_text", "label": "Cancellation window in hours, before a reschedule stops being auto-offered", "required": false, "placeholder": "24" },
+          { "id": "q_reviewer", "type": "lookup", "entity": "user", "label": "Who reviews and approves drafts and diary changes for this practice?", "required": true }
+        ]
+      }
+    ]
+  },
+  "contentHash": "0a99304f9a84b8edb1896722dc289df9bd2c710e38d3ddcadb5ef50c4be00e71"
+}
