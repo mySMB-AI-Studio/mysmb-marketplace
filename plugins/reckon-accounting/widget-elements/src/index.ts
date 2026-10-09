@@ -67,9 +67,28 @@ const account_summary: ComputedFunction = (args) => {
   return { totalAccounts: list.length, byType };
 };
 
+// ── days_ago ─────────────────────────────────────────────────────────
+// Today (local midnight), shifted by `days` days — a real resolved ISO
+// instant usable as a `filter_date_range` start/end boundary. Negative
+// `days` shifts into the future (e.g. -3650 for "no practical upper
+// bound"). Needed because the system's `$days_ago_30`-style magic tokens
+// only resolve inside tool-call params (list_invoices' own dataProvider
+// params, an action's params), never inside a $computed expression
+// evaluated client-side — there is no other way to get a real "N days
+// from today" date boundary for aging-bucket math.
+// Args: { days: number }
+const days_ago: ComputedFunction = (args) => {
+  const n = Number(args.days);
+  const days = Number.isFinite(n) ? n : 0;
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - days);
+  return d.toISOString();
+};
+
 const elements: PluginElementsModule = {
   slug: 'reckon-accounting',
-  functions: { company_name, account_summary },
+  functions: { company_name, account_summary, days_ago },
 };
 
 export default elements;
