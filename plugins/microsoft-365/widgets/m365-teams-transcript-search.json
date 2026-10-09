@@ -24,7 +24,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "statsRow", "searchBar", "body", "searchDrawer"],
+        "children": ["header", "statsRow", "searchBar", "body", "searchDrawer", "statDrawer"],
         "watch": {
           "/m365-teams-transcripts/search_transcripts": {
             "action": "setState",
@@ -52,7 +52,28 @@
         "props": { "template": "1fr 1fr 1fr", "gap": "sm" },
         "children": ["statCardTranscripts", "statCardMeetings", "statCardThisWeek"]
       },
-      "statCardTranscripts": { "type": "Section", "props": { "variant": "bordered" }, "children": ["statTopRowTranscripts", "statLabelTranscripts"] },
+      "statCardTranscripts": { "type": "Section", "props": { "variant": "bordered" }, "children": ["statCardInnerTranscripts"] },
+      "statCardInnerTranscripts": {
+        "type": "Row",
+        "props": { "template": "1fr", "gap": "xs", "clickable": true, "hover": true },
+        "children": ["statTopRowTranscripts", "statLabelTranscripts"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/statDetail/open", "value": true } },
+            { "action": "setState", "params": { "statePath": "/ui/statDetail/title", "value": "Transcripts" } },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/statDetail/items",
+                "value": {
+                  "$computed": "filter_by",
+                  "args": { "value": { "$state": "/m365-teams-transcripts/list_recent_meetings_with_status" }, "field": "hasTranscript", "equals": true }
+                }
+              }
+            }
+          ]
+        }
+      },
       "statTopRowTranscripts": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["statIconTranscripts", "statValueTranscripts"] },
       "statIconTranscripts": { "type": "Icon", "props": { "name": "FileText", "tone": "chart-1", "size": "sm" } },
       "statValueTranscripts": {
@@ -69,7 +90,19 @@
       },
       "statLabelTranscripts": { "type": "Caption", "props": { "text": "Transcripts", "tone": "muted" } },
 
-      "statCardMeetings": { "type": "Section", "props": { "variant": "bordered" }, "children": ["statTopRowMeetings", "statLabelMeetings"] },
+      "statCardMeetings": { "type": "Section", "props": { "variant": "bordered" }, "children": ["statCardInnerMeetings"] },
+      "statCardInnerMeetings": {
+        "type": "Row",
+        "props": { "template": "1fr", "gap": "xs", "clickable": true, "hover": true },
+        "children": ["statTopRowMeetings", "statLabelMeetings"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/statDetail/open", "value": true } },
+            { "action": "setState", "params": { "statePath": "/ui/statDetail/title", "value": "Meetings" } },
+            { "action": "setState", "params": { "statePath": "/ui/statDetail/items", "value": { "$state": "/m365-teams-transcripts/list_recent_meetings_with_status" } } }
+          ]
+        }
+      },
       "statTopRowMeetings": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["statIconMeetings", "statValueMeetings"] },
       "statIconMeetings": { "type": "Icon", "props": { "name": "Users", "tone": "chart-5", "size": "sm" } },
       "statValueMeetings": {
@@ -83,7 +116,32 @@
       },
       "statLabelMeetings": { "type": "Caption", "props": { "text": "Meetings", "tone": "muted" } },
 
-      "statCardThisWeek": { "type": "Section", "props": { "variant": "bordered" }, "children": ["statTopRowThisWeek", "statLabelThisWeek"] },
+      "statCardThisWeek": { "type": "Section", "props": { "variant": "bordered" }, "children": ["statCardInnerThisWeek"] },
+      "statCardInnerThisWeek": {
+        "type": "Row",
+        "props": { "template": "1fr", "gap": "xs", "clickable": true, "hover": true },
+        "children": ["statTopRowThisWeek", "statLabelThisWeek"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/statDetail/open", "value": true } },
+            { "action": "setState", "params": { "statePath": "/ui/statDetail/title", "value": "This week" } },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/statDetail/items",
+                "value": {
+                  "$computed": "filter_date_range",
+                  "args": {
+                    "value": { "$state": "/m365-teams-transcripts/list_recent_meetings_with_status" },
+                    "field": "start.dateTime",
+                    "start": { "$computed": "current_week_start", "args": { "anchor": "mon" } }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
       "statTopRowThisWeek": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["statIconThisWeek", "statValueThisWeek"] },
       "statIconThisWeek": { "type": "Icon", "props": { "name": "Calendar", "tone": "chart-2", "size": "sm" } },
       "statValueThisWeek": {
@@ -355,6 +413,52 @@
             { "$state": "/m365-teams-transcripts/list_transcripts/0" },
             { "$state": "/_loading/m365-teams-transcripts.get_transcript_content", "not": true }
           ]
+        }
+      },
+
+      "statDrawer": {
+        "type": "Overlay",
+        "props": { "maxWidth": "32rem" },
+        "children": ["statDrawerCard"],
+        "visible": { "$state": "/ui/statDetail/open" },
+        "on": {
+          "backdropClick": { "action": "setState", "params": { "statePath": "/ui/statDetail/open", "value": false } }
+        }
+      },
+      "statDrawerCard": { "type": "Card", "props": {}, "children": ["statDrawerHeader", "statDrawerBody"] },
+      "statDrawerHeader": { "type": "Header", "props": {}, "children": ["statDrawerTitleRow"] },
+      "statDrawerTitleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["statDrawerTitle", "statDrawerCloseBtn"]
+      },
+      "statDrawerTitle": { "type": "Heading", "props": { "text": { "$state": "/ui/statDetail/title" }, "level": "h2" } },
+      "statDrawerCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "tone": "muted", "ariaLabel": "Close" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/statDetail/open", "value": false } } }
+      },
+      "statDrawerBody": { "type": "Body", "props": {}, "children": ["statDrawerEmpty", "statDrawerList"] },
+      "statDrawerEmpty": {
+        "type": "Empty",
+        "props": { "icon": "CalendarX", "title": "No meetings", "message": "Nothing in this category over the last 30 days." },
+        "visible": { "$state": "/ui/statDetail/items/0", "not": true }
+      },
+      "statDrawerList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "repeat": { "statePath": "/ui/statDetail/items", "key": "id" },
+        "children": ["statDrawerRow"],
+        "visible": { "$state": "/ui/statDetail/items/0" }
+      },
+      "statDrawerRow": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["statDrawerRowSubject", "statDrawerRowTime"] },
+      "statDrawerRowSubject": { "type": "Text", "props": { "text": { "$item": "subject" }, "size": "sm", "truncate": true } },
+      "statDrawerRowTime": {
+        "type": "Badge",
+        "props": {
+          "tone": "muted",
+          "variant": "soft",
+          "text": { "$computed": "microsoft-365_smart_day_label", "args": { "value": { "$item": "start/dateTime" } } }
         }
       }
 
