@@ -31,7 +31,7 @@ See the `healthcare-practice-management-foundation` skill for the full schema. I
 
 - `PracticeManager/Practices/<practice-slug>.json` — one file per practice: which Cliniko business, which email provider, which Xero organisation, and the practice's own policy (cancellation window, tone, email tiers, approval rules, a never-do list).
 - `PracticeManager/Commitments/<practice-slug>.json` — open loops: promised payments, reschedule offers awaiting reply, results not yet reviewed.
-- `PracticeManager/AuditLog/<practice-slug>/<YYYY-MM-DD>.jsonl` — an append-only audit trail of every read, draft, approval, send, rejection, edit or guardrail block. This is the data source the later "Agent activity and approvals log" report reads — its JSON-lines schema is fixed now so that report doesn't need a migration later.
+- `PracticeManager/AuditLog/<practice-slug>-<YYYY-MM-DD>.jsonl` — an append-only audit trail of every read, draft, approval, send, rejection, edit or guardrail block. This is the data source the later "Agent activity and approvals log" report reads — its JSON-lines schema is fixed now so that report doesn't need a migration later.
 
 There is no setup form yet in this step — a practice's settings file is created by hand (or by a setup step added in a later extension update) before the agent or any later automation can act for that practice.
 
