@@ -735,7 +735,12 @@ const build_events_view: ComputedFunction = (args) => {
       dayAbbrev: WEEKDAY_ABBREV[dt.getUTCDay()].toUpperCase(),
       dayNumber: dt.getUTCDate(),
       count: d.count,
-      dots: '•'.repeat(Math.min(d.count, 3)),
+      // A non-breaking space (not '') when there are no events — the day chip
+      // always reserves this line's height, so every chip in the strip stays
+      // the same height regardless of dot count (confirmed live: letting this
+      // line disappear entirely on zero-event days made chips in the same row
+      // sit at different vertical baselines).
+      dots: d.count > 0 ? '•'.repeat(Math.min(d.count, 3)) : ' ',
       isToday: d.date === today,
       isSelected: d.date === selectedDay,
     };
