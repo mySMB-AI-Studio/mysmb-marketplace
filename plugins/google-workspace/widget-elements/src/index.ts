@@ -735,13 +735,13 @@ const build_events_view: ComputedFunction = (args) => {
       dayAbbrev: WEEKDAY_ABBREV[dt.getUTCDay()].toUpperCase(),
       dayNumber: dt.getUTCDate(),
       count: d.count,
-      // A single MUTED dot (not blank) when there are no events — both
-      // reserve the same line height so every chip stays the same height
-      // (a truly empty slot made chips sit at inconsistent vertical
-      // baselines), and a muted dot reads as deliberate "nothing here"
-      // rather than a gap that looks like a rendering glitch.
-      dots: d.count > 0 ? '•'.repeat(Math.min(d.count, 3)) : '•',
-      dotsTone: d.count > 0 ? 'brand' : 'muted',
+      // A non-breaking space (not an empty string) when there are no
+      // events — it renders no visible dot, but still reserves the same
+      // line height as a chip with dots, so every chip stays the same
+      // height (a truly empty string collapsed that line and made chips
+      // sit at inconsistent vertical baselines).
+      dots: d.count > 0 ? '•'.repeat(Math.min(d.count, 3)) : ' ',
+      dotsTone: 'brand',
       isToday: d.date === today,
       isSelected: d.date === selectedDay,
       // Exactly one chip highlighted at a time: the picked day once one is
