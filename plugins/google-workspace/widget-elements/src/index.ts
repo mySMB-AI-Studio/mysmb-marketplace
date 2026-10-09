@@ -740,7 +740,7 @@ const build_events_view: ComputedFunction = (args) => {
       // line height as a chip with dots, so every chip stays the same
       // height (a truly empty string collapsed that line and made chips
       // sit at inconsistent vertical baselines).
-      dots: d.count > 0 ? '•'.repeat(Math.min(d.count, 3)) : ' ',
+      dots: d.count > 0 ? '●'.repeat(Math.min(d.count, 3)) : ' ',
       dotsTone: 'brand',
       isToday: d.date === today,
       isSelected: d.date === selectedDay,

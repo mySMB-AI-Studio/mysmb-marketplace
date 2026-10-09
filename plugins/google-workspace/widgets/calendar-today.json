@@ -411,6 +411,7 @@
         "type": "Row",
         "props": {
           "clickable": true,
+          "justify": "center",
           "selected": { "$cond": { "$item": "highlighted" }, "$then": true, "$else": false }
         },
         "children": ["dayChipStack"],
@@ -439,7 +440,7 @@
       },
       "dayChipDots": {
         "type": "Text",
-        "props": { "text": { "$item": "dots" }, "tone": { "$item": "dotsTone" }, "size": "xs", "weight": "medium" }
+        "props": { "text": { "$item": "dots" }, "tone": { "$item": "dotsTone" }, "size": "sm", "weight": "bold" }
       },
       "statusCard": {
         "type": "Section",
@@ -508,7 +509,7 @@
       "eventLabels": {
         "type": "Stack",
         "props": { "gap": "xs", "grow": true },
-        "children": ["eventTopRow", "eventTimeRow", "eventLocation"]
+        "children": ["eventTopRow", "eventMeta"]
       },
       "eventTopRow": {
         "type": "Row",
@@ -534,28 +535,32 @@
         "props": { "text": "Clash", "tone": "destructive", "variant": "soft" },
         "visible": { "$item": "clash" }
       },
-      "eventTimeRow": {
+      "eventMeta": {
         "type": "Caption",
         "props": {
           "text": {
-            "$cond": { "$item": "isAllDay" },
-            "$then": "All day",
-            "$else": {
-              "$computed": "fmt",
-              "args": {
-                "pattern": "{start}–{end}",
-                "start": { "$computed": "format_time", "args": { "value": { "$item": "start" } } },
-                "end": { "$computed": "format_time", "args": { "value": { "$item": "end" } } }
-              }
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{time}{sep}{loc}",
+              "time": {
+                "$cond": { "$item": "isAllDay" },
+                "$then": "All day",
+                "$else": {
+                  "$computed": "fmt",
+                  "args": {
+                    "pattern": "{start}–{end}",
+                    "start": { "$computed": "format_time", "args": { "value": { "$item": "start" } } },
+                    "end": { "$computed": "format_time", "args": { "value": { "$item": "end" } } }
+                  }
+                }
+              },
+              "sep": { "$cond": { "$item": "location" }, "$then": " · ", "$else": "" },
+              "loc": { "$item": "location" }
             }
           },
-          "tone": "muted"
+          "tone": "muted",
+          "truncate": true
         }
-      },
-      "eventLocation": {
-        "type": "Caption",
-        "props": { "text": { "$item": "location" }, "tone": "muted", "truncate": true },
-        "visible": { "$item": "location" }
       },
       "eventTrailing": {
         "type": "Stack",
