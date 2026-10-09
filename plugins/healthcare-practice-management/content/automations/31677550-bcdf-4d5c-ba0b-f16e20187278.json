@@ -1,0 +1,86 @@
+{
+  "contentHash": "e353ef0184fc12343d70480b63a1628a53459c31e4af330c6dd62cce7e9b7142",
+  "declaredScopes": [
+    "files:read",
+    "files:write",
+    "workq:write",
+    "connectors:xero-accounting"
+  ],
+  "dependencies": [
+    {
+      "entityKind": "form",
+      "originKey": "de15cd55-0617-410c-bc8b-5435b5ec0549",
+      "sourceId": "d40791b5-9590-4b71-8af2-88d285284c42"
+    }
+  ],
+  "description": "Saves the Practice setup form's answers as PracticeManager/Practices/<slug>.json in Knowledge (org scope), matching a Xero organisation name to its tenant id the same way Bookkeeping for Xero does. This is the only path that can create or update a practice's settings file - the Practice Manager Agent itself can only read it.",
+  "flowIr": {
+    "description": "Saves the Practice setup form's answers as PracticeManager/Practices/<slug>.json in Knowledge (org scope), matching a Xero organisation name to its tenant id the same way Bookkeeping for Xero does. This is the only path that can create or update a practice's settings file - the Practice Manager Agent itself can only read it.",
+    "irVersion": 1,
+    "name": "Healthcare Practice Management: Apply practice setup",
+    "nodes": [
+      {
+        "code": "import json\nimport re\n\n\ndef slugify(name):\n    s = re.sub(r\"[^a-z0-9]+\", \"-\", str(name or \"\").lower()).strip(\"-\")\n    return s[:40].strip(\"-\") or \"practice\"\n\n\ndef read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\n\ndef write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True))\n\n\ndef answer(responses, qid):\n    return (responses or {}).get(qid)\n\n\ndef lookup_id(value):\n    if isinstance(value, dict):\n        return value.get(\"id\") or None\n    return None\n\n\ndef norm(name):\n    s = re.sub(r\"[^a-z0-9 ]+\", \" \", str(name or \"\").lower())\n    s = re.sub(r\"\\b(pty|ltd|limited|p/l|the|inc|co)\\b\", \" \", s)\n    return re.sub(r\"\\s+\", \" \", s).strip()\n\n\ndef xero_connections():\n    res = api.connectors.invoke(server=\"xero-accounting\", tool=\"list_connections\", args={})\n    if isinstance(res, dict):\n        res = res.get(\"connections\") or res.get(\"tenants\") or []\n    return [c for c in (res or []) if isinstance(c, dict)]\n\n\nresponses = params.get(\"responses\") or {}\ntodo_id = params.get(\"todo_id\") or \"\"\nactor = params.get(\"actor\") or \"\"\noutcome = \"ignored\"\n\n\ndef note(body, done=True):\n    if not todo_id:\n        return\n    api.workq.comment(todo_id=todo_id, body=body)\n    if done:\n        api.workq.complete(todo_id=todo_id)\n\n\nif not responses:\n    # No answers: the Publish practice run sends a sample event with an empty payload.\n    outcome = \"ignored\"\nelse:\n    name = str(answer(responses, \"q_practice_name\") or \"\").strip()\n    slug = slugify(name)\n    business_id = str(answer(responses, \"q_cliniko_business_id\") or \"\").strip()\n    email_choice = str(answer(responses, \"q_email_provider\") or \"\")\n    email_provider = \"outlook\" if email_choice.lower().startswith(\"outlook\") else \"gmail\"\n    org_name = str(answer(responses, \"q_xero_org\") or \"\").strip()\n    xero_tenant_id = \"\"\n    xero_org_matched = \"\"\n\n    if org_name:\n        connections = xero_connections()\n        match = None\n        for c in connections:\n            if norm(c.get(\"tenantName\")) == norm(org_name):\n                match = c\n                break\n        if not match:\n            for c in connections:\n                if norm(org_name) and norm(org_name) in norm(c.get(\"tenantName\")):\n                    match = c\n                    break\n        if match:\n            xero_tenant_id = match.get(\"tenantId\") or \"\"\n            xero_org_matched = match.get(\"tenantName\") or \"\"\n        else:\n            available = \", \".join(sorted(str(c.get(\"tenantName\")) for c in connections)) or \"none\"\n            note(\n                \"I couldn't find a Xero organisation called **\" + org_name + \"** in this automation's owner's Xero \"\n                \"connection.\\n\\nOrganisations available: \" + available + \".\\n\\nSubmit the Practice setup form again \"\n                \"with the name exactly as it appears in Xero, or leave it blank if this practice doesn't use Xero yet.\",\n                done=False,\n            )\n            outcome = \"xero_org_not_found\"\n\n    if outcome != \"xero_org_not_found\":\n        timezone = str(answer(responses, \"q_timezone\") or \"\").strip() or \"Australia/Sydney\"\n        window_raw = str(answer(responses, \"q_cancellation_window\") or \"\").strip()\n        try:\n            cancellation_window_hours = int(float(window_raw)) if window_raw else 24\n        except ValueError:\n            cancellation_window_hours = 24\n        reviewer_id = lookup_id(answer(responses, \"q_reviewer\"))\n\n        practice = {\n            \"slug\": slug,\n            \"name\": name,\n            \"cliniko_business_id\": business_id,\n            \"email_provider\": email_provider,\n            \"xero_tenant_id\": xero_tenant_id,\n            \"timezone\": timezone,\n            \"policy\": {\n                \"cancellation_window_hours\": cancellation_window_hours,\n                \"tone\": \"warm, concise, no jargon\",\n                \"email_tiers\": [\n                    {\"key\": \"clinical\", \"label\": \"Reschedules, cancellations, results\", \"mode\": \"approve\"},\n                    {\"key\": \"patient_query\", \"label\": \"Patient queries\", \"mode\": \"approve\"},\n                    {\"key\": \"industry\", \"label\": \"Industry news and newsletters\", \"mode\": \"auto\"},\n                ],\n                \"payer_addressing\": \"parent_or_guardian_when_patient_is_a_child\",\n                \"approval_required_for\": [\"patient_facing_email\", \"diary_change\", \"invoice_status_change\"],\n                \"never_do\": [\n                    \"give clinical advice, diagnosis or interpretation\",\n                    \"threaten fees or legal action on an overdue account\",\n                    \"mark a Cliniko invoice as paid or closed (the API is read-only for invoices)\",\n                    \"store a card or bank account number\",\n                ],\n            },\n            \"digest_recipient_ids\": [x for x in [reviewer_id] if x],\n            \"reviewer_id\": reviewer_id or \"\",\n        }\n        write_json(\"PracticeManager/Practices/\" + slug + \".json\", practice)\n        if read_json(\"PracticeManager/Commitments/\" + slug + \".json\") is None:\n            write_json(\"PracticeManager/Commitments/\" + slug + \".json\", [])\n        outcome = \"practice_saved\"\n        xero_note = (\"Xero: \" + xero_org_matched) if xero_org_matched else \"Xero: not set up yet\"\n        note(\n            \"Saved practice settings for **\" + name + \"** (slug `\" + slug + \"`). \" + xero_note + \".\\n\\n\"\n            \"The Practice Manager Agent can now read `PracticeManager/Practices/\" + slug + \".json` for this practice.\\n\\n\"\n            \"Sensible defaults were applied for tone, email tiers, approval rules and the never-do list \\u2014 edit \"\n            \"`PracticeManager/Practices/\" + slug + \".json` directly in Knowledge to change them.\"\n        )\n",
+        "id": "apply_setup",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "practice_saved, xero_org_not_found or ignored",
+            "name": "outcome",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ trigger.event.payload.responses }}",
+            "control": "hidden",
+            "label": "Form answers",
+            "name": "responses",
+            "required": false,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ trigger.event.subject.todo_id }}",
+            "control": "hidden",
+            "label": "Setup item",
+            "name": "todo_id",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ trigger.actor_user_id }}",
+            "control": "hidden",
+            "label": "Person who submitted it",
+            "name": "actor",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Saves the Practice setup form's answers as the practice's settings file in Knowledge.",
+        "title": "Apply practice setup"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "apply_setup"
+    ],
+    "triggers": [
+      {
+        "kind": "event",
+        "eventType": "form.response_submitted",
+        "filter": {
+          "form_id": "d40791b5-9590-4b71-8af2-88d285284c42"
+        }
+      }
+    ]
+  },
+  "kind": "automation",
+  "knowledgeFiles": [],
+  "level": "org",
+  "name": "Healthcare Practice Management: Apply practice setup",
+  "originKey": "31677550-bcdf-4d5c-ba0b-f16e20187278",
+  "tags": [
+    "healthcare-practice-management",
+    "setup"
+  ]
+}
