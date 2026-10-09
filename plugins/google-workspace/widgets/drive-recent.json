@@ -1,7 +1,7 @@
 {
   "id": "google-workspace-drive-recent",
   "title": "Recent Files",
-  "description": "Recently accessed Google Drive files — name, type badge, and last modified time. Click a row to open the file.",
+  "description": "Recently viewed Google Drive files — folders excluded, colored type icons, Meet transcript names tidied, and a folder + reason context line. Tabs for Docs/Sheets/PDFs/Shared with me, plus quick-access cards for the 2 most recent files. Click a file to open it in Drive.",
   "category": "productivity",
   "tags": [
     "google",
@@ -13,20 +13,22 @@
   "keywords": [
     "drive",
     "files",
-    "recent",
     "documents",
+    "recent",
     "sheets",
-    "slides",
+    "docs",
+    "pdf",
     "google"
   ],
   "connectorsUsed": [
     "google-workspace-drive"
   ],
+  "brandColor": "#4285F4",
   "popularity": 0,
   "sizing": {
     "preferred": {
       "colSpan": 6,
-      "rowSpan": 5
+      "rowSpan": 6
     },
     "min": {
       "colSpan": 4,
@@ -34,14 +36,14 @@
     },
     "max": {
       "colSpan": 12,
-      "rowSpan": 10
+      "rowSpan": 12
     }
   },
   "dataProvider": {
     "mcp": "google-workspace-drive",
-    "tool": "list_recent_files",
+    "tool": "get_recent_files_dashboard",
     "params": {
-      "pageSize": 15
+      "pageSize": 30
     }
   },
   "spec": {
@@ -52,19 +54,61 @@
         "children": [
           "header",
           "body"
-        ]
+        ],
+        "watch": {
+          "/google-workspace-drive/get_recent_files_dashboard/files": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/recentFiles",
+                "value": {
+                  "$computed": "google-workspace_build_recent_files_view",
+                  "args": {
+                    "files": { "$state": "/google-workspace-drive/get_recent_files_dashboard/files" },
+                    "tab": { "$state": "/ui/recentFilesTab" }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/recentFilesTab": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/recentFiles",
+                "value": {
+                  "$computed": "google-workspace_build_recent_files_view",
+                  "args": {
+                    "files": { "$state": "/google-workspace-drive/get_recent_files_dashboard/files" },
+                    "tab": { "$state": "/ui/recentFilesTab" }
+                  }
+                }
+              }
+            }
+          ]
+        }
       },
       "header": {
         "type": "Header",
         "children": [
-          "titleRow"
+          "headerStack"
+        ]
+      },
+      "headerStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "titleRow",
+          "tabsRow"
         ]
       },
       "titleRow": {
         "type": "Row",
         "props": {
           "gap": "sm",
-          "align": "start"
+          "align": "center"
         },
         "children": [
           "titleIcon",
@@ -75,8 +119,8 @@
         "type": "Icon",
         "props": {
           "name": "HardDrive",
-          "tone": "accent",
-          "size": "sm"
+          "tone": "default",
+          "size": "lg"
         }
       },
       "titleStack": {
@@ -102,25 +146,207 @@
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{n} files",
+              "pattern": "{n} files · last 3 days",
               "n": {
                 "$computed": "count",
                 "args": {
-                  "value": {
-                    "$state": "/google-workspace-drive/list_recent_files/files"
-                  }
+                  "value": { "$state": "/google-workspace-drive/get_recent_files_dashboard/files" }
                 }
               }
             }
           }
         }
       },
+      "tabsRow": {
+        "type": "Row",
+        "props": {
+          "gap": "md",
+          "align": "center"
+        },
+        "children": [
+          "tabAll",
+          "tabDocs",
+          "tabSheets",
+          "tabPdfs",
+          "tabShared"
+        ]
+      },
+      "tabAll": {
+        "type": "Row",
+        "props": {
+          "clickable": true
+        },
+        "children": ["tabAllActive", "tabAllInactive"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/recentFilesTab", "value": "all" } } }
+      },
+      "tabAllActive": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "All {n}", "n": { "$state": "/ui/recentFiles/counts/all" } }
+          },
+          "tone": "muted",
+          "variant": "soft"
+        },
+        "visible": {
+          "$or": [
+            { "$state": "/ui/recentFilesTab", "eq": "all" },
+            { "$state": "/ui/recentFilesTab", "not": true }
+          ]
+        }
+      },
+      "tabAllInactive": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "All {n}", "n": { "$state": "/ui/recentFiles/counts/all" } }
+          },
+          "size": "sm",
+          "tone": "muted"
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/ui/recentFilesTab" },
+            { "$state": "/ui/recentFilesTab", "eq": "all", "not": true }
+          ]
+        }
+      },
+      "tabDocs": {
+        "type": "Row",
+        "props": {
+          "clickable": true
+        },
+        "children": ["tabDocsActive", "tabDocsInactive"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/recentFilesTab", "value": "docs" } } }
+      },
+      "tabDocsActive": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Docs {n}", "n": { "$state": "/ui/recentFiles/counts/docs" } }
+          },
+          "tone": "info",
+          "variant": "soft"
+        },
+        "visible": { "$state": "/ui/recentFilesTab", "eq": "docs" }
+      },
+      "tabDocsInactive": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Docs {n}", "n": { "$state": "/ui/recentFiles/counts/docs" } }
+          },
+          "size": "sm",
+          "tone": "muted"
+        },
+        "visible": { "$state": "/ui/recentFilesTab", "eq": "docs", "not": true }
+      },
+      "tabSheets": {
+        "type": "Row",
+        "props": {
+          "clickable": true
+        },
+        "children": ["tabSheetsActive", "tabSheetsInactive"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/recentFilesTab", "value": "sheets" } } }
+      },
+      "tabSheetsActive": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Sheets {n}", "n": { "$state": "/ui/recentFiles/counts/sheets" } }
+          },
+          "tone": "success",
+          "variant": "soft"
+        },
+        "visible": { "$state": "/ui/recentFilesTab", "eq": "sheets" }
+      },
+      "tabSheetsInactive": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Sheets {n}", "n": { "$state": "/ui/recentFiles/counts/sheets" } }
+          },
+          "size": "sm",
+          "tone": "muted"
+        },
+        "visible": { "$state": "/ui/recentFilesTab", "eq": "sheets", "not": true }
+      },
+      "tabPdfs": {
+        "type": "Row",
+        "props": {
+          "clickable": true
+        },
+        "children": ["tabPdfsActive", "tabPdfsInactive"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/recentFilesTab", "value": "pdfs" } } }
+      },
+      "tabPdfsActive": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "PDFs {n}", "n": { "$state": "/ui/recentFiles/counts/pdfs" } }
+          },
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": { "$state": "/ui/recentFilesTab", "eq": "pdfs" }
+      },
+      "tabPdfsInactive": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "PDFs {n}", "n": { "$state": "/ui/recentFiles/counts/pdfs" } }
+          },
+          "size": "sm",
+          "tone": "muted"
+        },
+        "visible": { "$state": "/ui/recentFilesTab", "eq": "pdfs", "not": true }
+      },
+      "tabShared": {
+        "type": "Row",
+        "props": {
+          "clickable": true
+        },
+        "children": ["tabSharedActive", "tabSharedInactive"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/recentFilesTab", "value": "shared" } } }
+      },
+      "tabSharedActive": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Shared with me {n}", "n": { "$state": "/ui/recentFiles/counts/shared" } }
+          },
+          "tone": "warning",
+          "variant": "soft"
+        },
+        "visible": { "$state": "/ui/recentFilesTab", "eq": "shared" }
+      },
+      "tabSharedInactive": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Shared with me {n}", "n": { "$state": "/ui/recentFiles/counts/shared" } }
+          },
+          "size": "sm",
+          "tone": "muted"
+        },
+        "visible": { "$state": "/ui/recentFilesTab", "eq": "shared", "not": true }
+      },
       "body": {
         "type": "Body",
         "children": [
           "loading",
           "empty",
-          "list"
+          "content"
         ]
       },
       "loading": {
@@ -129,7 +355,7 @@
           "gap": "sm"
         },
         "visible": {
-          "$state": "/_loading/google-workspace-drive.list_recent_files"
+          "$state": "/_loading/google-workspace-drive.get_recent_files_dashboard"
         },
         "children": [
           "sk1",
@@ -150,40 +376,61 @@
         "visible": {
           "$and": [
             {
-              "$state": "/_loading/google-workspace-drive.list_recent_files",
+              "$state": "/_loading/google-workspace-drive.get_recent_files_dashboard",
               "not": true
             },
             {
-              "$state": "/google-workspace-drive/list_recent_files/files/0",
+              "$state": "/google-workspace-drive/get_recent_files_dashboard/files/0",
               "not": true
             }
           ]
         }
       },
-      "list": {
+      "content": {
         "type": "Stack",
         "props": {
-          "gap": "none"
+          "gap": "md"
         },
         "visible": {
-          "$state": "/_loading/google-workspace-drive.list_recent_files",
+          "$state": "/_loading/google-workspace-drive.get_recent_files_dashboard",
           "not": true
         },
+        "children": [
+          "quickAccessRow",
+          "list",
+          "divider",
+          "footer"
+        ]
+      },
+      "quickAccessRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": { "$state": "/ui/recentFiles/quickAccess/0" },
         "repeat": {
-          "statePath": "/google-workspace-drive/list_recent_files/files",
+          "statePath": "/ui/recentFiles/quickAccess",
           "key": "id"
         },
         "children": [
-          "row"
+          "quickCard"
         ]
       },
-      "row": {
+      "quickCard": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered",
+          "grow": true
+        },
+        "children": [
+          "quickCardClickRow"
+        ]
+      },
+      "quickCardClickRow": {
         "type": "Row",
         "props": {
           "gap": "sm",
           "align": "start",
-          "justify": "between",
-          "hover": true,
           "clickable": true
         },
         "on": {
@@ -193,88 +440,247 @@
               "url": {
                 "$computed": "identity",
                 "args": { "value": { "$item": "webViewLink" } }
-              }
+              },
+              "target": "_blank"
             }
           }
         },
         "children": [
-          "rowLeft",
-          "mimeTypeBadge"
+          "quickCardIcon",
+          "quickCardLabels"
         ]
       },
-      "rowLeft": {
-        "type": "Row",
+      "quickCardIcon": {
+        "type": "Avatar",
         "props": {
-          "gap": "sm",
-          "align": "start",
-          "grow": true
-        },
-        "children": [
-          "fileIcon",
-          "fileInfo"
-        ]
-      },
-      "fileIcon": {
-        "type": "Icon",
-        "props": {
-          "name": "FileText",
-          "tone": "muted",
-          "size": "sm"
+          "initials": { "$item": "typeLabel" },
+          "tone": { "$item": "typeTone" },
+          "size": "md"
         }
       },
-      "fileInfo": {
+      "quickCardLabels": {
         "type": "Stack",
         "props": {
           "gap": "xs",
           "grow": true
         },
         "children": [
-          "fileName",
-          "fileMeta"
+          "quickCardName",
+          "quickCardMeta"
         ]
       },
-      "fileName": {
+      "quickCardName": {
         "type": "Text",
         "props": {
-          "text": {
-            "$item": "name"
-          },
+          "text": { "$item": "tidiedName" },
           "size": "sm",
-          "weight": "medium",
-          "truncate": true
+          "weight": "bold"
         }
       },
-      "fileMeta": {
+      "quickCardMeta": {
         "type": "Caption",
         "props": {
           "text": {
-            "$computed": "relative_time",
+            "$computed": "fmt",
             "args": {
-              "value": {
-                "$item": "modifiedTime"
+              "pattern": "{reason} · {time}",
+              "reason": { "$item": "reason" },
+              "time": {
+                "$computed": "relative_time",
+                "args": { "value": { "$item": "modifiedTime" } }
               }
             }
           },
           "tone": "muted"
         }
       },
-      "mimeTypeBadge": {
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "repeat": {
+          "statePath": "/ui/recentFiles/agendaRows",
+          "key": "id"
+        },
+        "children": [
+          "rowWrap"
+        ]
+      },
+      "rowWrap": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "dayHeader",
+          "rowContent",
+          "rowDivider"
+        ]
+      },
+      "dayHeader": {
+        "type": "Eyebrow",
+        "props": {
+          "text": { "$item": "dayLabel" },
+          "tone": "muted"
+        },
+        "visible": { "$item": "showDayHeader" }
+      },
+      "rowContent": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start",
+          "hover": true,
+          "clickable": true,
+          "justify": "between"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "identity",
+                "args": { "value": { "$item": "webViewLink" } }
+              },
+              "target": "_blank"
+            }
+          }
+        },
+        "children": [
+          "rowIcon",
+          "rowLabels",
+          "rowMeta"
+        ]
+      },
+      "rowIcon": {
+        "type": "Avatar",
+        "props": {
+          "initials": { "$item": "typeLabel" },
+          "tone": { "$item": "typeTone" },
+          "size": "sm"
+        }
+      },
+      "rowLabels": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "rowNameRow",
+          "rowContext"
+        ]
+      },
+      "rowNameRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "rowName",
+          "sharedTag"
+        ]
+      },
+      "rowName": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "tidiedName" },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "sharedTag": {
         "type": "Badge",
         "props": {
+          "text": "Shared",
+          "tone": "warning",
+          "variant": "soft"
+        },
+        "visible": { "$item": "isShared" }
+      },
+      "rowContext": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "rowFolderIcon",
+          "rowContextText"
+        ]
+      },
+      "rowFolderIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Folder",
+          "tone": "muted",
+          "size": "xs"
+        },
+        "visible": { "$item": "folderName" }
+      },
+      "rowContextText": {
+        "type": "Caption",
+        "props": {
+          "text": { "$item": "contextLabel" },
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+      "rowMeta": {
+        "type": "Caption",
+        "props": {
           "text": {
-            "$computed": "google-workspace_mime_label",
-            "args": {
-              "value": {
-                "$item": "mimeType"
-              }
-            }
+            "$computed": "relative_time",
+            "args": { "value": { "$item": "modifiedTime" } }
           },
-          "tone": {
-            "$computed": "google-workspace_mime_tone",
-            "args": {
-              "value": {
-                "$item": "mimeType"
-              }
+          "tone": "muted"
+        }
+      },
+      "rowDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "divider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "footer": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "justify": "between",
+          "align": "center"
+        },
+        "children": [
+          "footerCaption",
+          "footerLink"
+        ]
+      },
+      "footerCaption": {
+        "type": "Caption",
+        "props": {
+          "text": "My Drive + shared with me · folders hidden",
+          "tone": "muted"
+        }
+      },
+      "footerLink": {
+        "type": "Button",
+        "props": {
+          "label": "Open Google Drive",
+          "variant": "primary",
+          "tone": "info",
+          "size": "sm",
+          "leadingIcon": "HardDrive"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://drive.google.com/drive/recent",
+              "target": "_blank"
             }
           }
         }
