@@ -1,0 +1,71 @@
+{
+  "contentHash": "f6b3025d160aca9a0bfd158465d8eafa18935a501f451ef0b7519d3a3865cb2e",
+  "declaredScopes": [
+    "workq:write"
+  ],
+  "dependencies": [
+    {
+      "entityKind": "form",
+      "originKey": "de15cd55-0617-410c-bc8b-5435b5ec0549",
+      "sourceId": "d40791b5-9590-4b71-8af2-88d285284c42"
+    }
+  ],
+  "description": "Creates a WorkQ item with the Practice setup form attached. Run it once for the pilot practice, and again any time a second practice needs onboarding.",
+  "flowIr": {
+    "description": "Creates a WorkQ item with the Practice setup form attached. Run it once for the pilot practice, and again any time a second practice needs onboarding.",
+    "irVersion": 1,
+    "name": "Healthcare Practice Management: Start practice setup",
+    "nodes": [
+      {
+        "code": "actor = params.get(\"actor\") or \"\"\nassignees = [actor] if actor else None\n\nitem = api.workq.create(\n    title=\"Set up a practice for Healthcare Practice Management\",\n    scope=\"org\",\n    description=(\n        \"Fill in the **Practice setup** form attached to this item: the practice name, its Cliniko \"\n        \"business ID, which email platform it uses, its Xero organisation (if any), timezone, \"\n        \"cancellation window and who reviews drafts.\\n\\n\"\n        \"The Practice Manager Agent can't read or act for a practice until this is saved.\"\n    ),\n    priority=\"high\",\n    assignee_ids=assignees,\n    labels=[\"healthcare-practice-management\", \"setup\"],\n)\napi.workq.attach_form(todo_id=item[\"id\"], form_id=params[\"setup_form\"])\ncreated_id = item[\"id\"]\n",
+        "id": "start_setup",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "The id of the WorkQ item created for this setup run.",
+            "name": "created_id",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ trigger.actor_user_id }}",
+            "control": "hidden",
+            "label": "Person who ran it",
+            "name": "actor",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "control": "form-picker",
+            "label": "Practice setup form",
+            "name": "setup_form",
+            "required": true,
+            "type": "uuid",
+            "value": "d40791b5-9590-4b71-8af2-88d285284c42"
+          }
+        ],
+        "summary": "Creates a WorkQ item with the Practice setup form attached.",
+        "title": "Start practice setup"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "start_setup"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "knowledgeFiles": [],
+  "level": "org",
+  "name": "Healthcare Practice Management: Start practice setup",
+  "originKey": "79b5efec-3a2c-42a4-87a8-d804c8d36c0d",
+  "tags": [
+    "healthcare-practice-management",
+    "setup"
+  ]
+}
