@@ -622,6 +622,198 @@ const build_inbox_rows: ComputedFunction = (args) => {
   return { rows, counts };
 };
 
+// ── file_type_label / file_type_tone ────────────────────────────────────
+//
+// A short type abbreviation + a platform tone for a Drive file, used as an
+// Avatar's initials+tone (a colored rounded-square badge) replacing the old
+// generic grey Icon + separate Badge combo. Extension-aware, not just
+// mimeType-aware — uploaded Office files (ready-to-pay.xlsx,
+// myhub-tiles.pptx) are just as common as native Google Docs/Sheets/Slides
+// in a real recent-files list, and they carry Office mimeTypes, not
+// Google's application/vnd.google-apps.* ones.
+//
+// Reuses mime_label's Google-native mapping, but routes PDF to
+// "destructive" instead of mime_tone's "danger" — "danger" isn't a real
+// platform tone (confirmed earlier this session), it silently fails to
+// resolve any color.
+//
+// Args: { mimeType: string, name?: string }
+
+function extOf(name: string): string {
+  const dot = name.lastIndexOf('.');
+  return dot === -1 ? '' : name.slice(dot + 1).toLowerCase();
+}
+
+const file_type_label: ComputedFunction = (args) => {
+  const mime = str(args.mimeType).toLowerCase();
+  const ext = extOf(str(args.name));
+  if (mime === 'application/vnd.google-apps.document' || ext === 'doc' || ext === 'docx') return 'DOC';
+  if (mime === 'application/vnd.google-apps.spreadsheet' || ext === 'xls' || ext === 'xlsx' || ext === 'csv') return 'XLS';
+  if (mime === 'application/vnd.google-apps.presentation' || ext === 'ppt' || ext === 'pptx') return 'PPT';
+  if (mime === 'application/pdf' || ext === 'pdf') return 'PDF';
+  if (mime === 'application/vnd.google-apps.form') return 'FORM';
+  if (mime === 'application/vnd.google-apps.drawing') return 'DRAW';
+  if (mime.startsWith('image/')) return 'IMG';
+  if (mime.startsWith('video/')) return 'VID';
+  if (mime.startsWith('audio/')) return 'AUD';
+  if (mime === 'application/zip' || ext === 'zip') return 'ZIP';
+  return ext ? ext.slice(0, 4).toUpperCase() : 'FILE';
+};
+
+const file_type_tone: ComputedFunction = (args) => {
+  const mime = str(args.mimeType).toLowerCase();
+  const ext = extOf(str(args.name));
+  if (mime === 'application/vnd.google-apps.document' || ext === 'doc' || ext === 'docx') return 'info';
+  if (mime === 'application/vnd.google-apps.spreadsheet' || ext === 'xls' || ext === 'xlsx' || ext === 'csv') return 'success';
+  if (mime === 'application/vnd.google-apps.presentation' || ext === 'ppt' || ext === 'pptx') return 'warning';
+  if (mime === 'application/pdf' || ext === 'pdf') return 'destructive';
+  return 'muted';
+};
+
+// ── tidy_file_name ──────────────────────────────────────────────────────
+//
+// Google Meet names a call's transcript doc after the raw conference
+// identity, not something a human would want to scan in a recent-files
+// list — e.g. "goj-ncgy-mnt - Transcript" or "Weekly Ops Sync (2026-10-08
+// 09:30 GMT+8) - Transcript". Reformats any name ending in "- Transcript"
+// or "-Transcript" into "{meeting part} — transcript · {day} {month}" when
+// a parseable date is present in the name; otherwise just strips the
+// "- Transcript" suffix and leaves the rest alone. Every other file's name
+// passes through completely unchanged.
+//
+// Examples:
+//   "Weekly Ops Sync (2026-10-08 09:30 GMT+8) - Transcript" → "Weekly Ops Sync — transcript · 8 Oct"
+//   "Meeting Transcript Test - Transcript" → "Meeting Transcript Test — transcript"
+//   "Q3 Budget.xlsx" → "Q3 Budget.xlsx" (unchanged)
+//
+// Args: { value: string }
+
+const TRANSCRIPT_SUFFIX_RE = /\s*-\s*Transcript\s*$/i;
+const DATE_PAREN_RE = /\((\d{4})-(\d{2})-(\d{2})[^)]*\)/;
+
+const tidy_file_name: ComputedFunction = (args) => {
+  const raw = str(args.value);
+  if (!TRANSCRIPT_SUFFIX_RE.test(raw)) return raw;
+
+  const withoutSuffix = raw.replace(TRANSCRIPT_SUFFIX_RE, '').trim();
+  const dateMatch = withoutSuffix.match(DATE_PAREN_RE);
+  if (!dateMatch) return `${withoutSuffix} — transcript`;
+
+  const [, , month, day] = dateMatch;
+  const meetingPart = withoutSuffix.replace(DATE_PAREN_RE, '').trim();
+  const monthLabel = MONTH_ABBREV[Number(month) - 1];
+  const monthTitle = monthLabel ? monthLabel.charAt(0) + monthLabel.slice(1).toLowerCase() : '';
+  return `${meetingPart} — transcript · ${Number(day)} ${monthTitle}`;
+};
+
+// ── build_recent_files_view ──────────────────────────────────────────────
+//
+// Takes get_recent_files_dashboard's output (folders already excluded,
+// folder names and a recency reason already resolved) and builds
+// everything the tile renders: the 2 most-recent files as "quick access"
+// cards, the rest day-bucketed with headers, and All/Docs/Sheets/PDFs/
+// Shared-with-me tab counts and filtering. Tabs are independent dimensions
+// (a shared PDF counts toward both "PDFs" and "Shared with me"), not
+// mutually exclusive buckets.
+//
+// Args: { files: DashboardFile[], tab?: string, now?: number }
+// Returns: { quickAccess: Row[], agendaRows: Row[], counts: {...} }
+
+function fileCategory(f: Record<string, unknown>): 'docs' | 'sheets' | 'pdfs' | 'other' {
+  const label = file_type_label({ mimeType: f.mimeType, name: f.name }) as string;
+  if (label === 'DOC') return 'docs';
+  if (label === 'XLS') return 'sheets';
+  if (label === 'PDF') return 'pdfs';
+  return 'other';
+}
+
+const build_recent_files_view: ComputedFunction = (args) => {
+  const files = Array.isArray(args.files) ? (args.files as Record<string, unknown>[]) : [];
+  const tab = str(args.tab) || 'all';
+  const now = typeof args.now === 'number' ? args.now : Date.now();
+
+  type DecoratedFile = Record<string, unknown> & {
+    category: 'docs' | 'sheets' | 'pdfs' | 'other';
+    isShared: boolean;
+    bucket: 'TODAY' | 'YESTERDAY' | 'EARLIER';
+  };
+
+  const decorated: DecoratedFile[] = files.map((f) => {
+    const category = fileCategory(f);
+    return {
+      ...f,
+      typeLabel: file_type_label({ mimeType: f.mimeType, name: f.name }),
+      typeTone: file_type_tone({ mimeType: f.mimeType, name: f.name }),
+      tidiedName: tidy_file_name({ value: f.name }),
+      category,
+      isShared: !!f.shared,
+      bucket: dayBucket(parseUtcMs(f.modifiedTime) ?? now, now),
+    };
+  });
+
+  const counts = {
+    all: decorated.length,
+    docs: decorated.filter(f => f.category === 'docs').length,
+    sheets: decorated.filter(f => f.category === 'sheets').length,
+    pdfs: decorated.filter(f => f.category === 'pdfs').length,
+    shared: decorated.filter(f => f.isShared).length,
+  };
+
+  const filtered = decorated.filter((f) => {
+    if (tab === 'docs') return f.category === 'docs';
+    if (tab === 'sheets') return f.category === 'sheets';
+    if (tab === 'pdfs') return f.category === 'pdfs';
+    if (tab === 'shared') return f.isShared;
+    return true;
+  });
+
+  // Quick-access cards only show on the "All" tab's top 2 — once a tab
+  // filters the list, a dedicated 2-card header stops making sense (e.g.
+  // "Docs" with 1 total file shouldn't still show a 2-up card row).
+  const quickAccess = tab === 'all' ? filtered.slice(0, 2) : [];
+  const rest = tab === 'all' ? filtered.slice(2) : filtered;
+
+  const contextLabel = (f: DecoratedFile): string => {
+    const folder = f.folderName as string | null;
+    return folder ? `${folder} · ${f.reason as string}` : (f.reason as string);
+  };
+
+  let lastBucket = '';
+  const agendaRows = rest.map((f) => {
+    const showDayHeader = f.bucket !== lastBucket;
+    lastBucket = f.bucket as string;
+    return {
+      id: f.id,
+      name: f.name,
+      tidiedName: f.tidiedName,
+      typeLabel: f.typeLabel,
+      typeTone: f.typeTone,
+      folderName: f.folderName,
+      reason: f.reason,
+      contextLabel: contextLabel(f),
+      webViewLink: f.webViewLink,
+      isShared: f.isShared,
+      modifiedTime: f.modifiedTime,
+      dayLabel: f.bucket as string,
+      showDayHeader,
+    };
+  });
+
+  const quickAccessCards = quickAccess.map((f) => ({
+    id: f.id,
+    name: f.name,
+    tidiedName: f.tidiedName,
+    typeLabel: f.typeLabel,
+    typeTone: f.typeTone,
+    reason: f.reason,
+    contextLabel: contextLabel(f),
+    webViewLink: f.webViewLink,
+    modifiedTime: f.modifiedTime,
+  }));
+
+  return { quickAccess: quickAccessCards, agendaRows, counts };
+};
+
 // ── module export ────────────────────────────────────────────────────
 
 // ── countdown_label ─────────────────────────────────────────────────────
@@ -866,9 +1058,10 @@ const elements: PluginElementsModule = {
     sender_tone,
     decode_entities,
     build_inbox_rows,
-    countdown_label,
-    rsvp_label,
-    build_events_view,
+    file_type_label,
+    file_type_tone,
+    tidy_file_name,
+    build_recent_files_view,
   },
 };
 
