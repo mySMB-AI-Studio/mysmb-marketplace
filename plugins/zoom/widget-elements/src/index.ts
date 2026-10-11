@@ -97,8 +97,27 @@ const meeting_urgency_tone: ComputedFunction = (args) => {
   const start = new Date(value);
   if (Number.isNaN(start.getTime())) return 'muted';
   const now = new Date();
-  const diffDays = (start.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
-  return diffDays <= 1 ? 'warning' : 'muted';
+  const diffHours = (start.getTime() - now.getTime()) / (1000 * 60 * 60);
+  if (diffHours <= 1) return 'destructive';
+  if (diffHours <= 24) return 'warning';
+  if (diffHours <= 72) return 'info';
+  return 'muted';
+};
+
+/**
+ * Deterministic per-topic color so a scrolling meeting list reads as
+ * visually distinct rows instead of a wall of identical gray avatars —
+ * same hash-and-pick approach as microsoft-365's sender_tone. Empty/blank
+ * topics (an unnamed "Zoom Meeting") fall back to muted rather than always
+ * landing on the same chart color.
+ */
+const topic_tone: ComputedFunction = (args) => {
+  const topic = String(args.value ?? '').trim();
+  if (!topic) return 'muted';
+  const CHART_TONES = ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5'] as const;
+  let hash = 0;
+  for (let i = 0; i < topic.length; i++) hash = (hash * 31 + topic.charCodeAt(i)) >>> 0;
+  return CHART_TONES[hash % CHART_TONES.length];
 };
 
 /**
@@ -367,6 +386,7 @@ const elements: PluginElementsModule = {
     transcript_lines,
     transcript_tone,
     meeting_urgency_tone,
+    topic_tone,
     filter_cloud_recordings,
     filter_my_notes,
     filter_transcribable,
