@@ -1,0 +1,689 @@
+{
+  "id": "reckon-bills-payables",
+  "title": "Bills & Payables",
+  "description": "Accounts payable snapshot from Reckon One: total outstanding across unpaid supplier bills, how many are overdue, and a Due this week / Due later / Overdue breakdown. UNVERIFIED FIELD NAMES — see the dependency note in chat: the connected sandbox has zero bills to check field casing against (unlike reckon-invoices-receivables, which was corrected against real customer.name/dueDate/balance invoice data). Bill fields here (supplier.name, billNumber, dueDate, balance) are a best guess mirroring the confirmed invoice shape, not yet live-verified. Also assumes (unconfirmed) a Reckon One bills page at /v2/bills, by analogy with the confirmed /v2/invoices URL.",
+  "category": "accounting",
+  "tags": ["reckon", "accounting", "bills", "payables", "ap", "overdue"],
+  "keywords": ["reckon", "bills", "payables", "accounts payable", "overdue", "outstanding", "due"],
+  "connectorsUsed": ["reckon-accounting"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 6 },
+    "min":       { "colSpan": 3, "rowSpan": 5 },
+    "max":       { "colSpan": 6, "rowSpan": 8 }
+  },
+  "dataProvider": {
+    "mcp": "reckon-accounting",
+    "tool": "list_bills",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "statSection", "div0", "bucketList"],
+        "watch": {
+          "/reckon-accounting/list_bills": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonAp/unpaid",
+              "value": {
+                "$computed": "filter_by",
+                "args": {
+                  "value": {
+                    "$computed": "reckon-accounting_abs_balance",
+                    "args": { "value": { "$state": "/reckon-accounting/list_bills/list" } }
+                  },
+                  "field": "balance"
+                }
+              }
+            }
+          },
+          "/ui/reckonAp/unpaid": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonAp/overdue",
+              "value": {
+                "$computed": "filter_date_range",
+                "args": {
+                  "value": { "$state": "/ui/reckonAp/unpaid" },
+                  "field": "dueDate",
+                  "start": { "$computed": "reckon-accounting_days_ago", "args": { "days": 3650 } },
+                  "end": { "$computed": "reckon-accounting_days_ago", "args": { "days": 1 } }
+                }
+              }
+            }
+          },
+          "/ui/reckonAp/overdue": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonAp/bucketItems",
+              "value": {
+                "$cond": { "$state": "/ui/reckonAp/selectedBucket", "eq": "thisweek" },
+                "$then": {
+                  "$computed": "filter_date_range",
+                  "args": {
+                    "value": { "$state": "/ui/reckonAp/unpaid" },
+                    "field": "dueDate",
+                    "start": { "$computed": "reckon-accounting_days_ago", "args": { "days": 0 } },
+                    "end": { "$computed": "reckon-accounting_days_ago", "args": { "days": -6 } }
+                  }
+                },
+                "$else": {
+                  "$cond": { "$state": "/ui/reckonAp/selectedBucket", "eq": "later" },
+                  "$then": {
+                    "$computed": "filter_date_range",
+                    "args": {
+                      "value": { "$state": "/ui/reckonAp/unpaid" },
+                      "field": "dueDate",
+                      "start": { "$computed": "reckon-accounting_days_ago", "args": { "days": -7 } },
+                      "end": { "$computed": "reckon-accounting_days_ago", "args": { "days": -3650 } }
+                    }
+                  },
+                  "$else": {
+                    "$cond": { "$state": "/ui/reckonAp/selectedBucket", "eq": "overdue" },
+                    "$then": { "$state": "/ui/reckonAp/overdue" },
+                    "$else": { "$state": "/ui/reckonAp/unpaid" }
+                  }
+                }
+              }
+            }
+          },
+          "/ui/reckonAp/selectedBucket": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonAp/bucketItems",
+              "value": {
+                "$cond": { "$state": "/ui/reckonAp/selectedBucket", "eq": "thisweek" },
+                "$then": {
+                  "$computed": "filter_date_range",
+                  "args": {
+                    "value": { "$state": "/ui/reckonAp/unpaid" },
+                    "field": "dueDate",
+                    "start": { "$computed": "reckon-accounting_days_ago", "args": { "days": 0 } },
+                    "end": { "$computed": "reckon-accounting_days_ago", "args": { "days": -6 } }
+                  }
+                },
+                "$else": {
+                  "$cond": { "$state": "/ui/reckonAp/selectedBucket", "eq": "later" },
+                  "$then": {
+                    "$computed": "filter_date_range",
+                    "args": {
+                      "value": { "$state": "/ui/reckonAp/unpaid" },
+                      "field": "dueDate",
+                      "start": { "$computed": "reckon-accounting_days_ago", "args": { "days": -7 } },
+                      "end": { "$computed": "reckon-accounting_days_ago", "args": { "days": -3650 } }
+                    }
+                  },
+                  "$else": {
+                    "$cond": { "$state": "/ui/reckonAp/selectedBucket", "eq": "overdue" },
+                    "$then": { "$state": "/ui/reckonAp/overdue" },
+                    "$else": { "$state": "/ui/reckonAp/unpaid" }
+                  }
+                }
+              }
+            }
+          },
+          "/ui/reckonAp/bucketItems": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonAp/visibleBucketItems",
+              "value": {
+                "$computed": "top_n",
+                "args": { "value": { "$state": "/ui/reckonAp/bucketItems" }, "limit": 10 }
+              }
+            }
+          }
+        }
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "align": "start" },
+        "children": ["titleGroup"],
+        "watch": {
+          "/reckon-accounting/list_bills": { "action": "reckon-accounting.get_company", "params": {} }
+        }
+      },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "Receipt", "tone": "accent", "size": "md" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Bills & Payables", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Reckon" } },
+
+      "statSection": { "type": "Stack", "props": { "gap": "xs" }, "children": ["bigStat", "captionRow"] },
+      "bigStat": {
+        "type": "Stat",
+        "props": {
+          "size": "lg",
+          "value": {
+            "$computed": "format_currency",
+            "args": { "value": { "$computed": "sum", "args": { "value": { "$state": "/ui/reckonAp/unpaid" }, "field": "balance" } } }
+          }
+        }
+      },
+      "captionRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["statCaption", "overdueBadgeWrap"] },
+      "statCaption": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "outstanding across {n} bills",
+              "n": { "$computed": "count", "args": { "value": { "$state": "/ui/reckonAp/unpaid" } } }
+            }
+          }
+        }
+      },
+      "overdueBadgeWrap": {
+        "type": "Row",
+        "props": { "clickable": true },
+        "children": ["overdueBadge"],
+        "visible": { "$state": "/ui/reckonAp/overdue/0" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonAp/selectedBucket",
+              "value": { "$cond": { "$state": "/ui/reckonAp/selectedBucket", "eq": "overdue" }, "$then": "", "$else": "overdue" }
+            }
+          }
+        }
+      },
+      "overdueBadge": {
+        "type": "Badge",
+        "props": {
+          "tone": "destructive",
+          "variant": "soft",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} overdue",
+              "n": { "$computed": "count", "args": { "value": { "$state": "/ui/reckonAp/overdue" } } }
+            }
+          }
+        }
+      },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "bucketList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": [
+          "thisWeekRow", "thisWeekDetail", "thisWeekViewLinkRow",
+          "laterRow", "laterDetail", "laterViewLinkRow",
+          "overdueRow", "overdueBucketDetail", "overdueBucketViewLinkRow"
+        ]
+      },
+
+      "thisWeekRow": {
+        "type": "Row",
+        "props": {
+          "template": "6rem 1fr 4.5rem",
+          "gap": "sm",
+          "align": "center",
+          "clickable": true,
+          "hover": true,
+          "selected": { "$cond": { "$state": "/ui/reckonAp/selectedBucket", "eq": "thisweek" }, "$then": true, "$else": false }
+        },
+        "children": ["thisWeekLabel", "thisWeekBar", "thisWeekAmount"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonAp/selectedBucket",
+              "value": { "$cond": { "$state": "/ui/reckonAp/selectedBucket", "eq": "thisweek" }, "$then": "", "$else": "thisweek" }
+            }
+          }
+        }
+      },
+      "thisWeekLabel": { "type": "Text", "props": { "text": "Due this week", "size": "sm", "tone": "muted" } },
+      "thisWeekBar": {
+        "type": "ProgressBar",
+        "props": {
+          "tone": "warning",
+          "value": {
+            "$computed": "pct",
+            "args": {
+              "part": {
+                "$computed": "sum",
+                "args": {
+                  "value": {
+                    "$computed": "filter_date_range",
+                    "args": {
+                      "value": { "$state": "/ui/reckonAp/unpaid" },
+                      "field": "dueDate",
+                      "start": { "$computed": "reckon-accounting_days_ago", "args": { "days": 0 } },
+                      "end": { "$computed": "reckon-accounting_days_ago", "args": { "days": -6 } }
+                    }
+                  },
+                  "field": "balance"
+                }
+              },
+              "whole": { "$computed": "sum", "args": { "value": { "$state": "/ui/reckonAp/unpaid" }, "field": "balance" } }
+            }
+          }
+        }
+      },
+      "thisWeekAmount": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "weight": "semibold",
+          "align": "right",
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "sum",
+                "args": {
+                  "value": {
+                    "$computed": "filter_date_range",
+                    "args": {
+                      "value": { "$state": "/ui/reckonAp/unpaid" },
+                      "field": "dueDate",
+                      "start": { "$computed": "reckon-accounting_days_ago", "args": { "days": 0 } },
+                      "end": { "$computed": "reckon-accounting_days_ago", "args": { "days": -6 } }
+                    }
+                  },
+                  "field": "balance"
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "thisWeekDetail": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["thisWeekDetailEmpty", "thisWeekDetailScroll"],
+        "visible": { "$state": "/ui/reckonAp/selectedBucket", "eq": "thisweek" }
+      },
+      "thisWeekDetailEmpty": {
+        "type": "Empty",
+        "props": { "message": "No bills due this week." },
+        "visible": { "$state": "/ui/reckonAp/bucketItems/0", "not": true }
+      },
+      "thisWeekDetailScroll": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["thisWeekDetailRows", "thisWeekDetailMoreCaption"],
+        "visible": { "$state": "/ui/reckonAp/bucketItems/0" }
+      },
+      "thisWeekDetailRows": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "repeat": { "statePath": "/ui/reckonAp/visibleBucketItems", "key": "id" },
+        "children": ["thisWeekDetailRow"]
+      },
+      "thisWeekDetailMoreCaption": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "+{n} more",
+              "n": {
+                "$computed": "add_number",
+                "args": { "a": { "$computed": "count", "args": { "value": { "$state": "/ui/reckonAp/bucketItems" } } }, "b": -10 }
+              }
+            }
+          }
+        },
+        "visible": { "$state": "/ui/reckonAp/bucketItems/10" }
+      },
+      "thisWeekDetailRow": { "type": "Stack", "props": { "gap": "xs" }, "children": ["thisWeekDetailTopRow", "thisWeekDetailMeta"] },
+      "thisWeekDetailTopRow": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["thisWeekDetailSupplier", "thisWeekDetailAmount"] },
+      "thisWeekDetailSupplier": { "type": "Text", "props": { "text": { "$item": "supplier/name" }, "size": "sm", "truncate": true } },
+      "thisWeekDetailAmount": {
+        "type": "Text",
+        "props": { "size": "sm", "weight": "semibold", "text": { "$computed": "format_currency", "args": { "value": { "$item": "balance" } } } }
+      },
+      "thisWeekDetailMeta": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{billNumber} · due {dueDate}",
+              "billNumber": { "$item": "billNumber" },
+              "dueDate": { "$computed": "format_date", "args": { "value": { "$item": "dueDate" }, "format": "dd-mmm-yy" } }
+            }
+          }
+        }
+      },
+      "thisWeekViewLinkRow": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["thisWeekViewLink"],
+        "visible": { "$state": "/ui/reckonAp/selectedBucket", "eq": "thisweek" }
+      },
+      "thisWeekViewLink": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "clickable": true },
+        "children": ["thisWeekViewLabel", "thisWeekViewIcon"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": { "pattern": "https://app.reckonone.com/{bookId}/Core/Bill", "bookId": { "$state": "/reckon-accounting/get_company/id" } }
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "thisWeekViewLabel": { "type": "Text", "props": { "text": "View in Reckon", "size": "xs", "tone": "accent", "weight": "medium" } },
+      "thisWeekViewIcon": { "type": "Icon", "props": { "name": "ArrowUpRight", "tone": "accent", "size": "xs" } },
+
+      "laterRow": {
+        "type": "Row",
+        "props": {
+          "template": "6rem 1fr 4.5rem",
+          "gap": "sm",
+          "align": "center",
+          "clickable": true,
+          "hover": true,
+          "selected": { "$cond": { "$state": "/ui/reckonAp/selectedBucket", "eq": "later" }, "$then": true, "$else": false }
+        },
+        "children": ["laterLabel", "laterBar", "laterAmount"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonAp/selectedBucket",
+              "value": { "$cond": { "$state": "/ui/reckonAp/selectedBucket", "eq": "later" }, "$then": "", "$else": "later" }
+            }
+          }
+        }
+      },
+      "laterLabel": { "type": "Text", "props": { "text": "Due later", "size": "sm", "tone": "muted" } },
+      "laterBar": {
+        "type": "ProgressBar",
+        "props": {
+          "tone": "chart-5",
+          "value": {
+            "$computed": "pct",
+            "args": {
+              "part": {
+                "$computed": "sum",
+                "args": {
+                  "value": {
+                    "$computed": "filter_date_range",
+                    "args": {
+                      "value": { "$state": "/ui/reckonAp/unpaid" },
+                      "field": "dueDate",
+                      "start": { "$computed": "reckon-accounting_days_ago", "args": { "days": -7 } },
+                      "end": { "$computed": "reckon-accounting_days_ago", "args": { "days": -3650 } }
+                    }
+                  },
+                  "field": "balance"
+                }
+              },
+              "whole": { "$computed": "sum", "args": { "value": { "$state": "/ui/reckonAp/unpaid" }, "field": "balance" } }
+            }
+          }
+        }
+      },
+      "laterAmount": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "weight": "semibold",
+          "align": "right",
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "sum",
+                "args": {
+                  "value": {
+                    "$computed": "filter_date_range",
+                    "args": {
+                      "value": { "$state": "/ui/reckonAp/unpaid" },
+                      "field": "dueDate",
+                      "start": { "$computed": "reckon-accounting_days_ago", "args": { "days": -7 } },
+                      "end": { "$computed": "reckon-accounting_days_ago", "args": { "days": -3650 } }
+                    }
+                  },
+                  "field": "balance"
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "laterDetail": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["laterDetailEmpty", "laterDetailScroll"],
+        "visible": { "$state": "/ui/reckonAp/selectedBucket", "eq": "later" }
+      },
+      "laterDetailEmpty": {
+        "type": "Empty",
+        "props": { "message": "No bills due later." },
+        "visible": { "$state": "/ui/reckonAp/bucketItems/0", "not": true }
+      },
+      "laterDetailScroll": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["laterDetailRows", "laterDetailMoreCaption"],
+        "visible": { "$state": "/ui/reckonAp/bucketItems/0" }
+      },
+      "laterDetailRows": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "repeat": { "statePath": "/ui/reckonAp/visibleBucketItems", "key": "id" },
+        "children": ["laterDetailRow"]
+      },
+      "laterDetailMoreCaption": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "+{n} more",
+              "n": {
+                "$computed": "add_number",
+                "args": { "a": { "$computed": "count", "args": { "value": { "$state": "/ui/reckonAp/bucketItems" } } }, "b": -10 }
+              }
+            }
+          }
+        },
+        "visible": { "$state": "/ui/reckonAp/bucketItems/10" }
+      },
+      "laterDetailRow": { "type": "Stack", "props": { "gap": "xs" }, "children": ["laterDetailTopRow", "laterDetailMeta"] },
+      "laterDetailTopRow": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["laterDetailSupplier", "laterDetailAmount"] },
+      "laterDetailSupplier": { "type": "Text", "props": { "text": { "$item": "supplier/name" }, "size": "sm", "truncate": true } },
+      "laterDetailAmount": {
+        "type": "Text",
+        "props": { "size": "sm", "weight": "semibold", "text": { "$computed": "format_currency", "args": { "value": { "$item": "balance" } } } }
+      },
+      "laterDetailMeta": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{billNumber} · due {dueDate}",
+              "billNumber": { "$item": "billNumber" },
+              "dueDate": { "$computed": "format_date", "args": { "value": { "$item": "dueDate" }, "format": "dd-mmm-yy" } }
+            }
+          }
+        }
+      },
+      "laterViewLinkRow": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["laterViewLink"],
+        "visible": { "$state": "/ui/reckonAp/selectedBucket", "eq": "later" }
+      },
+      "laterViewLink": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "clickable": true },
+        "children": ["laterViewLabel", "laterViewIcon"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": { "pattern": "https://app.reckonone.com/{bookId}/Core/Bill", "bookId": { "$state": "/reckon-accounting/get_company/id" } }
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "laterViewLabel": { "type": "Text", "props": { "text": "View in Reckon", "size": "xs", "tone": "accent", "weight": "medium" } },
+      "laterViewIcon": { "type": "Icon", "props": { "name": "ArrowUpRight", "tone": "accent", "size": "xs" } },
+
+      "overdueRow": {
+        "type": "Row",
+        "props": {
+          "template": "6rem 1fr 4.5rem",
+          "gap": "sm",
+          "align": "center",
+          "clickable": true,
+          "hover": true,
+          "selected": { "$cond": { "$state": "/ui/reckonAp/selectedBucket", "eq": "overdue" }, "$then": true, "$else": false }
+        },
+        "children": ["overdueRowLabel", "overdueRowBar", "overdueRowAmount"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonAp/selectedBucket",
+              "value": { "$cond": { "$state": "/ui/reckonAp/selectedBucket", "eq": "overdue" }, "$then": "", "$else": "overdue" }
+            }
+          }
+        }
+      },
+      "overdueRowLabel": { "type": "Text", "props": { "text": "Overdue", "size": "sm", "tone": "muted" } },
+      "overdueRowBar": {
+        "type": "ProgressBar",
+        "props": {
+          "tone": "destructive",
+          "value": {
+            "$computed": "pct",
+            "args": {
+              "part": { "$computed": "sum", "args": { "value": { "$state": "/ui/reckonAp/overdue" }, "field": "balance" } },
+              "whole": { "$computed": "sum", "args": { "value": { "$state": "/ui/reckonAp/unpaid" }, "field": "balance" } }
+            }
+          }
+        }
+      },
+      "overdueRowAmount": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "weight": "semibold",
+          "align": "right",
+          "text": { "$computed": "format_currency", "args": { "value": { "$computed": "sum", "args": { "value": { "$state": "/ui/reckonAp/overdue" }, "field": "balance" } } } }
+        }
+      },
+
+      "overdueBucketDetail": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["overdueBucketDetailEmpty", "overdueBucketDetailScroll"],
+        "visible": { "$state": "/ui/reckonAp/selectedBucket", "eq": "overdue" }
+      },
+      "overdueBucketDetailEmpty": {
+        "type": "Empty",
+        "props": { "message": "No overdue bills." },
+        "visible": { "$state": "/ui/reckonAp/bucketItems/0", "not": true }
+      },
+      "overdueBucketDetailScroll": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["overdueBucketDetailRows", "overdueBucketDetailMoreCaption"],
+        "visible": { "$state": "/ui/reckonAp/bucketItems/0" }
+      },
+      "overdueBucketDetailRows": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "repeat": { "statePath": "/ui/reckonAp/visibleBucketItems", "key": "id" },
+        "children": ["overdueBucketDetailRow"]
+      },
+      "overdueBucketDetailMoreCaption": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "+{n} more",
+              "n": {
+                "$computed": "add_number",
+                "args": { "a": { "$computed": "count", "args": { "value": { "$state": "/ui/reckonAp/bucketItems" } } }, "b": -10 }
+              }
+            }
+          }
+        },
+        "visible": { "$state": "/ui/reckonAp/bucketItems/10" }
+      },
+      "overdueBucketDetailRow": { "type": "Stack", "props": { "gap": "xs" }, "children": ["overdueBucketDetailTopRow", "overdueBucketDetailMeta"] },
+      "overdueBucketDetailTopRow": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["overdueBucketDetailSupplier", "overdueBucketDetailAmount"] },
+      "overdueBucketDetailSupplier": { "type": "Text", "props": { "text": { "$item": "supplier/name" }, "size": "sm", "truncate": true } },
+      "overdueBucketDetailAmount": {
+        "type": "Text",
+        "props": { "size": "sm", "weight": "semibold", "text": { "$computed": "format_currency", "args": { "value": { "$item": "balance" } } } }
+      },
+      "overdueBucketDetailMeta": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{billNumber} · due {dueDate}",
+              "billNumber": { "$item": "billNumber" },
+              "dueDate": { "$computed": "format_date", "args": { "value": { "$item": "dueDate" }, "format": "dd-mmm-yy" } }
+            }
+          }
+        }
+      },
+      "overdueBucketViewLinkRow": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["overdueBucketViewLink"],
+        "visible": { "$state": "/ui/reckonAp/selectedBucket", "eq": "overdue" }
+      },
+      "overdueBucketViewLink": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "clickable": true },
+        "children": ["overdueBucketViewLabel", "overdueBucketViewIcon"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": { "pattern": "https://app.reckonone.com/{bookId}/Core/Bill", "bookId": { "$state": "/reckon-accounting/get_company/id" } }
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "overdueBucketViewLabel": { "type": "Text", "props": { "text": "View in Reckon", "size": "xs", "tone": "accent", "weight": "medium" } },
+      "overdueBucketViewIcon": { "type": "Icon", "props": { "name": "ArrowUpRight", "tone": "accent", "size": "xs" } }
+
+    }
+  },
+  "status": "draft"
+}
