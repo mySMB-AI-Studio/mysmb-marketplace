@@ -719,7 +719,11 @@ const tidy_file_name: ComputedFunction = (args) => {
 
 function fileCategory(f: Record<string, unknown>): 'docs' | 'sheets' | 'pdfs' | 'other' {
   const label = file_type_label({ mimeType: f.mimeType, name: f.name }) as string;
-  if (label === 'DOC') return 'docs';
+  // Slides has no tab of its own (the mockup only specifies Docs/Sheets/
+  // PDFs/Shared with me) — fold it into Docs so a presentation still lands
+  // in some tab instead of only ever showing under "All". The type badge
+  // still reads "PPT" regardless; this only affects tab counting/filtering.
+  if (label === 'DOC' || label === 'PPT') return 'docs';
   if (label === 'XLS') return 'sheets';
   if (label === 'PDF') return 'pdfs';
   return 'other';
