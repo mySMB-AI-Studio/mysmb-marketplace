@@ -73,6 +73,22 @@ const status_tone: ComputedFunction = (args) => {
   return 'muted';
 };
 
+// ── status_badge_label ──────────────────────────────────────────────────
+//
+// Prefixes the row's status badge with the same glyphs already used on the
+// stat-row labels ("✓ Extracted", "! Check") for visual consistency between
+// the summary counts and the per-row badges.
+//
+// Args: { statusLabel: string, status: "extracted"|"check"|"needsOcr"|"skipped" }
+
+const status_badge_label: ComputedFunction = (args) => {
+  const status = str(args.status);
+  const label = str(args.statusLabel);
+  if (status === 'extracted') return `✓ ${label}`;
+  if (status === 'check') return `! ${label}`;
+  return label;
+};
+
 // ── build_bills_view ───────────────────────────────────────────────────
 //
 // Takes get_bills_drop_folder_dashboard's raw output and builds everything
@@ -174,6 +190,7 @@ const elements: PluginElementsModule = {
     file_type_label,
     file_type_tone,
     status_tone,
+    status_badge_label,
     build_bills_view,
   },
 };

@@ -350,14 +350,14 @@
       },
       "list": {
         "type": "Stack",
-        "props": { "gap": "none" },
+        "props": { "gap": "sm" },
         "repeat": { "statePath": "/ui/billsView/rows", "key": "id" },
-        "children": ["rowWrap"]
+        "children": ["rowCard"]
       },
-      "rowWrap": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["rowContent", "rowDivider"]
+      "rowCard": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["rowContent"]
       },
       "rowContent": {
         "type": "Row",
@@ -407,14 +407,10 @@
       "rowStatusBadge": {
         "type": "Badge",
         "props": {
-          "text": { "$item": "statusLabel" },
+          "text": { "$computed": "dropbox_status_badge_label", "args": { "statusLabel": { "$item": "statusLabel" }, "status": { "$item": "status" } } },
           "tone": { "$computed": "dropbox_status_tone", "args": { "value": { "$item": "status" } } },
           "variant": "soft"
         }
-      },
-      "rowDivider": {
-        "type": "Divider",
-        "props": {}
       },
       "footer": {
         "type": "Row",
