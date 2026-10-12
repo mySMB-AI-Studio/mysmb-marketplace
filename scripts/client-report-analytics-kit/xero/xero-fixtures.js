@@ -5,7 +5,20 @@ const fs = require('fs'), path = require('path');
 const { run } = require('../harness.js');
 const build = require('../build.js');
 const L = require('../../xero-reporting-kit/ledger.js');
-const TOOL = { get_profit_and_loss: L.pnl, get_balance_sheet: L.bs, get_bank_summary: L.bankSummary, get_trial_balance: L.trialBalance, list_invoices: L.listInvoices, list_credit_notes: L.listCreditNotes, list_overpayments: L.listOverpayments, list_payments: L.listPayments, list_bank_transactions: L.listBankTransactions, list_accounts: L.listAccounts, list_tax_rates: L.listTaxRates, get_organisation: L.organisation, list_connections: L.connections };
+const TOOL = { get_profit_and_loss: L.pnl, get_balance_sheet: L.bs, get_bank_summary: L.bankSummary, get_trial_balance: L.trialBalance, list_invoices: L.listInvoices, list_credit_notes: L.listCreditNotes, list_overpayments: L.listOverpayments, list_payments: L.listPayments, list_bank_transactions: L.listBankTransactions, list_accounts: L.listAccounts, list_tax_rates: L.listTaxRates, get_organisation: L.organisation, list_connections: L.connections, list_tracking_categories: L.listTrackingCategories, list_contacts: contactsFromLedger, list_manual_journals: L.listManualJournals };
+// list_contacts has no ledger.js fixture (Contacts aren't part of the books model): this kit's own derivation, built from the
+// same documents every other CRA report already reads (invoices, bills, credit notes, overpayments), so the contact list is
+// consistent with the rest of the fixtures rather than invented. The ledger has no ABN/TaxNumber field, so TaxNumber is left
+// null — CRA-06 shows that honestly as "No ABN on file", never a fabricated registration status.
+function contactsFromLedger(p) {
+  if (p && p.page && p.page > 1) return { Contacts: [] };
+  const byId = {};
+  const add = (c, sale) => { if (!c || !c.ContactID) return; const e = byId[c.ContactID] || (byId[c.ContactID] = { ContactID: c.ContactID, Name: c.Name, ContactStatus: 'ACTIVE', IsCustomer: false, IsSupplier: false, TaxNumber: null }); if (sale) e.IsCustomer = true; else e.IsSupplier = true; };
+  (L.listInvoices(Object.assign({}, p, { page: 1 })).Invoices || []).forEach((d) => add(d.Contact, d.Type === 'ACCREC'));
+  (L.listCreditNotes(Object.assign({}, p, { page: 1 })).CreditNotes || []).forEach((d) => add(d.Contact, d.Type === 'ACCRECCREDIT'));
+  (L.listOverpayments(Object.assign({}, p, { page: 1 })).Overpayments || []).forEach((d) => add(d.Contact, true));
+  return { Contacts: Object.values(byId) };
+}
 const man = (id) => build.manifest('xero/' + id);
 const fixtures = (m, over) => { const f = {}; m.bindings.forEach((b) => { if (!TOOL[b.tool.name]) throw new Error('no ledger answer for ' + b.tool.name); f[b.id] = TOOL[b.tool.name]; }); return Object.assign(f, over || {}); };
 const text = (doc, sel) => (doc.querySelector(sel) || { textContent: '' }).textContent.replace(/\s+/g, ' ');
