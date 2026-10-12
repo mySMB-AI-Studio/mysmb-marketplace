@@ -1,0 +1,400 @@
+{
+  "id": "reckon-duplicate-check",
+  "title": "Duplicate & Exclusion Check",
+  "description": "Data-integrity scan across Reckon One contacts, bills, and invoices: duplicate contacts/organizations (union of /contacts people + bill suppliers + invoice customers, since Reckon has no dedicated /customers or /suppliers list endpoint), duplicate bill numbers (by the reference field, not Reckon's own auto-assigned billNumber), and contacts marked inactive that still have bill/invoice activity. All three checks and their underlying data shapes confirmed against a live test account. Clicking the \"Needs review\" badge or any individual check row expands that check's flagged records inline. \"View in Reckon\" is wired for all three checks with confirmed real URLs: Duplicate bill numbers → https://app.reckonone.com/{bookId}/Core/Bill; Duplicate contacts → https://app.reckonone.com/{bookId}/Core/Supplier; Inactive-contact activity → https://app.reckonone.com/{bookId}/Core/ContactsV2 (all bookId-templated from a live get_company fetch, not hardcoded).",
+  "category": "accounting",
+  "tags": ["reckon", "accounting", "data integrity", "duplicates", "cleanup"],
+  "keywords": ["reckon", "duplicate", "duplicates", "dedupe", "data quality", "cleanup", "exclusion", "contacts"],
+  "connectorsUsed": ["reckon-accounting"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 6 },
+    "min":       { "colSpan": 3, "rowSpan": 5 },
+    "max":       { "colSpan": 6, "rowSpan": 8 }
+  },
+  "dataProvider": {
+    "mcp": "reckon-accounting",
+    "tool": "list_contacts",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "statSection", "div0", "checkList"],
+        "watch": {
+          "/reckon-accounting/list_contacts": [
+            { "action": "reckon-accounting.list_bills", "params": {} },
+            { "action": "reckon-accounting.list_invoices", "params": {} }
+          ],
+          "/reckon-accounting/list_bills": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonDup/result",
+              "value": {
+                "$computed": "reckon-accounting_analyze_data_issues",
+                "args": {
+                  "contacts": { "$state": "/reckon-accounting/list_contacts/list" },
+                  "bills": { "$state": "/reckon-accounting/list_bills/list" },
+                  "invoices": { "$state": "/reckon-accounting/list_invoices/list" }
+                }
+              }
+            }
+          },
+          "/reckon-accounting/list_invoices": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonDup/result",
+              "value": {
+                "$computed": "reckon-accounting_analyze_data_issues",
+                "args": {
+                  "contacts": { "$state": "/reckon-accounting/list_contacts/list" },
+                  "bills": { "$state": "/reckon-accounting/list_bills/list" },
+                  "invoices": { "$state": "/reckon-accounting/list_invoices/list" }
+                }
+              }
+            }
+          },
+          "/ui/reckonDup/result": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonDup/visibleContacts",
+              "value": { "$computed": "top_n", "args": { "value": { "$state": "/ui/reckonDup/result/duplicateContactsDetail" }, "limit": 10 } }
+            }
+          },
+          "/ui/reckonDup/visibleContacts": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonDup/visibleBills",
+              "value": { "$computed": "top_n", "args": { "value": { "$state": "/ui/reckonDup/result/duplicateBillNumbersDetail" }, "limit": 10 } }
+            }
+          },
+          "/ui/reckonDup/visibleBills": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonDup/visibleInactive",
+              "value": { "$computed": "top_n", "args": { "value": { "$state": "/ui/reckonDup/result/inactiveContactActivityDetail" }, "limit": 10 } }
+            }
+          }
+        }
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "align": "start" },
+        "children": ["titleGroup"],
+        "watch": {
+          "/reckon-accounting/list_contacts": { "action": "reckon-accounting.get_company", "params": {} }
+        }
+      },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "ShieldCheck", "tone": "accent", "size": "md" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Duplicate & Exclusion Check", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Reckon" } },
+
+      "statSection": { "type": "Stack", "props": { "gap": "xs" }, "children": ["bigStat", "captionRow"] },
+      "bigStat": { "type": "Stat", "props": { "size": "lg", "value": { "$state": "/ui/reckonDup/result/totalIssues" } } },
+      "captionRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["statCaption", "statusBadgeWrap"] },
+      "statCaption": {
+        "type": "Caption",
+        "props": { "tone": "muted", "text": "issues flagged across contacts, bills & invoices" }
+      },
+      "statusBadgeWrap": {
+        "type": "Row",
+        "props": { "clickable": true },
+        "children": ["statusBadge"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/reckonDup/open/contacts", "value": true } },
+            { "action": "setState", "params": { "statePath": "/ui/reckonDup/open/bills", "value": true } },
+            { "action": "setState", "params": { "statePath": "/ui/reckonDup/open/inactive", "value": true } }
+          ]
+        }
+      },
+      "statusBadge": {
+        "type": "Badge",
+        "props": {
+          "variant": "soft",
+          "tone": { "$cond": { "$state": "/ui/reckonDup/result/totalIssues" }, "$then": "destructive", "$else": "success" },
+          "text": { "$cond": { "$state": "/ui/reckonDup/result/totalIssues" }, "$then": "Needs review", "$else": "Clean" }
+        }
+      },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "checkList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["dupContactsSection", "dupBillNumbersSection", "inactiveActivitySection"]
+      },
+      "dupContactsSection": { "type": "Section", "props": { "variant": "bordered" }, "children": ["dupContactsRow", "dupContactsDetail"] },
+      "dupBillNumbersSection": { "type": "Section", "props": { "variant": "bordered" }, "children": ["dupBillNumbersRow", "dupBillNumbersDetail"] },
+      "inactiveActivitySection": { "type": "Section", "props": { "variant": "bordered" }, "children": ["inactiveActivityRow", "inactiveActivityDetail"] },
+
+      "dupContactsRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm", "align": "center", "justify": "between", "clickable": true, "hover": true,
+          "selected": { "$state": "/ui/reckonDup/open/contacts" }
+        },
+        "children": ["dupContactsLeft", "dupContactsValue"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonDup/open/contacts",
+              "value": { "$cond": { "$state": "/ui/reckonDup/open/contacts" }, "$then": false, "$else": true }
+            }
+          }
+        }
+      },
+      "dupContactsLeft": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["dupContactsDot", "dupContactsLabel"] },
+      "dupContactsDot": {
+        "type": "Dot",
+        "props": { "tone": { "$cond": { "$state": "/ui/reckonDup/result/duplicateContacts" }, "$then": "destructive", "$else": "success" } }
+      },
+      "dupContactsLabel": { "type": "Text", "props": { "text": "Duplicate contacts", "size": "sm" } },
+      "dupContactsValue": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "weight": "semibold",
+          "tone": { "$cond": { "$state": "/ui/reckonDup/result/duplicateContacts" }, "$then": "destructive", "$else": "success" },
+          "text": { "$cond": { "$state": "/ui/reckonDup/result/duplicateContacts" }, "$then": { "$state": "/ui/reckonDup/result/duplicateContacts" }, "$else": "Clean" }
+        }
+      },
+      "dupContactsDetail": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["dupContactsDetailRows", "dupContactsMoreCaption", "dupContactsViewLinkRow"],
+        "visible": { "$state": "/ui/reckonDup/open/contacts" }
+      },
+      "dupContactsDetailRows": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "repeat": { "statePath": "/ui/reckonDup/visibleContacts", "key": "id" },
+        "children": ["dupContactsDetailRow"]
+      },
+      "dupContactsDetailRow": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["dupContactsDetailName"] },
+      "dupContactsDetailName": { "type": "Text", "props": { "text": { "$item": "name" }, "size": "sm", "tone": "muted" } },
+      "dupContactsMoreCaption": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "+{n} more",
+              "n": { "$computed": "add_number", "args": { "a": { "$computed": "count", "args": { "value": { "$state": "/ui/reckonDup/result/duplicateContactsDetail" } } }, "b": -10 } }
+            }
+          }
+        },
+        "visible": { "$state": "/ui/reckonDup/result/duplicateContactsDetail/10" }
+      },
+      "dupContactsViewLinkRow": { "type": "Row", "props": { "justify": "end" }, "children": ["dupContactsViewLink"] },
+      "dupContactsViewLink": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "clickable": true },
+        "children": ["dupContactsViewLabel", "dupContactsViewIcon"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": { "pattern": "https://app.reckonone.com/{bookId}/Core/Supplier", "bookId": { "$state": "/reckon-accounting/get_company/id" } }
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "dupContactsViewLabel": { "type": "Text", "props": { "text": "View in Reckon", "size": "xs", "tone": "accent", "weight": "medium" } },
+      "dupContactsViewIcon": { "type": "Icon", "props": { "name": "ArrowUpRight", "tone": "accent", "size": "xs" } },
+
+      "dupBillNumbersRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm", "align": "center", "justify": "between", "clickable": true, "hover": true,
+          "selected": { "$state": "/ui/reckonDup/open/bills" }
+        },
+        "children": ["dupBillNumbersLeft", "dupBillNumbersValue"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonDup/open/bills",
+              "value": { "$cond": { "$state": "/ui/reckonDup/open/bills" }, "$then": false, "$else": true }
+            }
+          }
+        }
+      },
+      "dupBillNumbersLeft": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["dupBillNumbersDot", "dupBillNumbersLabel"] },
+      "dupBillNumbersDot": {
+        "type": "Dot",
+        "props": { "tone": { "$cond": { "$state": "/ui/reckonDup/result/duplicateBillNumbers" }, "$then": "destructive", "$else": "success" } }
+      },
+      "dupBillNumbersLabel": { "type": "Text", "props": { "text": "Duplicate bill numbers", "size": "sm" } },
+      "dupBillNumbersValue": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "weight": "semibold",
+          "tone": { "$cond": { "$state": "/ui/reckonDup/result/duplicateBillNumbers" }, "$then": "destructive", "$else": "success" },
+          "text": { "$cond": { "$state": "/ui/reckonDup/result/duplicateBillNumbers" }, "$then": { "$state": "/ui/reckonDup/result/duplicateBillNumbers" }, "$else": "Clean" }
+        }
+      },
+      "dupBillNumbersDetail": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["dupBillNumbersDetailRows", "dupBillNumbersMoreCaption", "dupBillNumbersViewLinkRow"],
+        "visible": { "$state": "/ui/reckonDup/open/bills" }
+      },
+      "dupBillNumbersDetailRows": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "repeat": { "statePath": "/ui/reckonDup/visibleBills", "key": "id" },
+        "children": ["dupBillNumbersDetailRow"]
+      },
+      "dupBillNumbersMoreCaption": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "+{n} more",
+              "n": { "$computed": "add_number", "args": { "a": { "$computed": "count", "args": { "value": { "$state": "/ui/reckonDup/result/duplicateBillNumbersDetail" } } }, "b": -10 } }
+            }
+          }
+        },
+        "visible": { "$state": "/ui/reckonDup/result/duplicateBillNumbersDetail/10" }
+      },
+      "dupBillNumbersDetailRow": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["dupBillNumbersDetailLeft", "dupBillNumbersDetailAmount"] },
+      "dupBillNumbersDetailLeft": { "type": "Stack", "props": { "gap": "none", "grow": true }, "children": ["dupBillNumbersDetailSupplier", "dupBillNumbersDetailMeta"] },
+      "dupBillNumbersDetailSupplier": { "type": "Text", "props": { "text": { "$item": "supplier" }, "size": "sm", "truncate": true } },
+      "dupBillNumbersDetailMeta": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{billNumber} · ref {reference}", "billNumber": { "$item": "billNumber" }, "reference": { "$item": "reference" } }
+          }
+        }
+      },
+      "dupBillNumbersDetailAmount": {
+        "type": "Text",
+        "props": { "size": "sm", "weight": "semibold", "text": { "$computed": "format_currency", "args": { "value": { "$item": "totalAmount" } } } }
+      },
+      "dupBillNumbersViewLinkRow": { "type": "Row", "props": { "justify": "end" }, "children": ["dupBillNumbersViewLink"] },
+      "dupBillNumbersViewLink": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "clickable": true },
+        "children": ["dupBillNumbersViewLabel", "dupBillNumbersViewIcon"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": { "pattern": "https://app.reckonone.com/{bookId}/Core/Bill", "bookId": { "$state": "/reckon-accounting/get_company/id" } }
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "dupBillNumbersViewLabel": { "type": "Text", "props": { "text": "View in Reckon", "size": "xs", "tone": "accent", "weight": "medium" } },
+      "dupBillNumbersViewIcon": { "type": "Icon", "props": { "name": "ArrowUpRight", "tone": "accent", "size": "xs" } },
+
+      "inactiveActivityRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm", "align": "center", "justify": "between", "clickable": true, "hover": true,
+          "selected": { "$state": "/ui/reckonDup/open/inactive" }
+        },
+        "children": ["inactiveActivityLeft", "inactiveActivityValue"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonDup/open/inactive",
+              "value": { "$cond": { "$state": "/ui/reckonDup/open/inactive" }, "$then": false, "$else": true }
+            }
+          }
+        }
+      },
+      "inactiveActivityLeft": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["inactiveActivityDot", "inactiveActivityLabel"] },
+      "inactiveActivityDot": {
+        "type": "Dot",
+        "props": { "tone": { "$cond": { "$state": "/ui/reckonDup/result/inactiveContactActivity" }, "$then": "destructive", "$else": "success" } }
+      },
+      "inactiveActivityLabel": { "type": "Text", "props": { "text": "Inactive-contact activity", "size": "sm" } },
+      "inactiveActivityValue": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "weight": "semibold",
+          "tone": { "$cond": { "$state": "/ui/reckonDup/result/inactiveContactActivity" }, "$then": "destructive", "$else": "success" },
+          "text": { "$cond": { "$state": "/ui/reckonDup/result/inactiveContactActivity" }, "$then": { "$state": "/ui/reckonDup/result/inactiveContactActivity" }, "$else": "Clean" }
+        }
+      },
+      "inactiveActivityDetail": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["inactiveActivityDetailRows", "inactiveActivityMoreCaption", "inactiveActivityViewLinkRow"],
+        "visible": { "$state": "/ui/reckonDup/open/inactive" }
+      },
+      "inactiveActivityDetailRows": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "repeat": { "statePath": "/ui/reckonDup/visibleInactive", "key": "id" },
+        "children": ["inactiveActivityDetailRow"]
+      },
+      "inactiveActivityMoreCaption": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "+{n} more",
+              "n": { "$computed": "add_number", "args": { "a": { "$computed": "count", "args": { "value": { "$state": "/ui/reckonDup/result/inactiveContactActivityDetail" } } }, "b": -10 } }
+            }
+          }
+        },
+        "visible": { "$state": "/ui/reckonDup/result/inactiveContactActivityDetail/10" }
+      },
+      "inactiveActivityDetailRow": { "type": "Stack", "props": { "gap": "none" }, "children": ["inactiveActivityDetailName", "inactiveActivityDetailOrg"] },
+      "inactiveActivityDetailName": { "type": "Text", "props": { "text": { "$item": "name" }, "size": "sm" } },
+      "inactiveActivityDetailOrg": { "type": "Caption", "props": { "text": { "$item": "organisation" }, "tone": "muted" } },
+      "inactiveActivityViewLinkRow": { "type": "Row", "props": { "justify": "end" }, "children": ["inactiveActivityViewLink"] },
+      "inactiveActivityViewLink": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "clickable": true },
+        "children": ["inactiveActivityViewLabel", "inactiveActivityViewIcon"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": { "pattern": "https://app.reckonone.com/{bookId}/Core/ContactsV2", "bookId": { "$state": "/reckon-accounting/get_company/id" } }
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "inactiveActivityViewLabel": { "type": "Text", "props": { "text": "View in Reckon", "size": "xs", "tone": "accent", "weight": "medium" } },
+      "inactiveActivityViewIcon": { "type": "Icon", "props": { "name": "ArrowUpRight", "tone": "accent", "size": "xs" } }
+
+    }
+  },
+  "status": "draft"
+}
