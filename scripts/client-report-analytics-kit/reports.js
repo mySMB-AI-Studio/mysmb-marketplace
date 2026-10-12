@@ -14,6 +14,26 @@ const ITEMS = {
   'bas-transactions': {
     cra: 'CRA-07', name: 'BAS Related Transactions and GST', chip: 'Tax & BAS',
     blurb: 'every BAS-relevant transaction line by tax type, with contact, source and GL account, and totals that tie to the GST figures.'
+  },
+  'sales-by-tracking': {
+    cra: 'CRA-03', name: 'Sales by Tracking Category', chip: 'Sales & purchases',
+    blurb: 'sales split by one tracking category / class / job at a time, with each option\'s share of the total, tied to the platform\'s own sales figure.'
+  },
+  'purchases-by-tracking': {
+    cra: 'CRA-04', name: 'Purchases by Tracking Category', chip: 'Sales & purchases',
+    blurb: 'purchases and spend split by one tracking category / class / job at a time, with each option\'s share of the total, tied to the platform\'s own purchases figure.'
+  },
+  'contacts-bas': {
+    cra: 'CRA-06', name: 'Contact Details for BAS Preparation', chip: 'Tax & BAS',
+    blurb: 'every contact with the tax types used on their transactions and GST evidence on file; registry (ABR) match is not built yet, shown as N/A — pending ABR.'
+  },
+  'activity-count': {
+    cra: 'CRA-11', name: 'Activity Count', chip: 'Activity',
+    blurb: 'transaction counts by month across sales, purchases, banking, payroll and journals, so you can see how active the file has been.'
+  },
+  'workspace-activity': {
+    cra: 'CRA-15', name: 'Workspace User Activity', chip: 'Activity',
+    blurb: "this client's WorkQ tasks and findings activity in mySMB Workspace; mostly empty until the checks engine (WL-00) ships findings."
   }
 };
 const REPORTS = [{

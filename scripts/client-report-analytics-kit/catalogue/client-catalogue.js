@@ -13,23 +13,25 @@ const NA = {
   checks: 'Not available yet — needs the checks engine (Work list), coming next',
   time: 'Not available — no time source; Xero Practice Manager practices get it in Wave 3'
 };
-// [id, name, chip, state, one line] — the Index tab of the Prompt Library v1.1
+// [id, name, chip, state, one line] — the Index tab of the Prompt Library v1.1. state 'export' (CRA-14 only) is live in the
+// sense that asking for it does something real now, but it has no "Use this report" template in this extension: it routes to
+// the QuickBooks and MYOB Reporting Studios' own export-based audit-log skills (Xero has no org-wide audit log at all).
 const ITEMS = [
   ['CRA-01', 'Financial Overview', 'Financial', 'live', 'Revenue, gross and net profit, trends, bank balances and receivables / payables ageing for any period, cash or accrual.'],
   ['CRA-02', 'Data Quality', 'Quality', 'checks', 'Findings of the automated checks on this client: by category and severity, with $ at risk.'],
-  ['CRA-03', 'Sales by Tracking Category', 'Sales & purchases', 'wave2', 'Sales by tracking category / class / job and its options, one category at a time.'],
-  ['CRA-04', 'Purchases by Tracking Category', 'Sales & purchases', 'wave2', 'Purchases by tracking category / class / job and its options.'],
+  ['CRA-03', 'Sales by Tracking Category', 'Sales & purchases', 'live', 'Sales by tracking category / class / job and its options, one category at a time.'],
+  ['CRA-04', 'Purchases by Tracking Category', 'Sales & purchases', 'live', 'Purchases by tracking category / class / job and its options.'],
   ['CRA-05', 'Summary of Tax Amounts by Type', 'Tax & BAS', 'live', 'Total value per month for each tax type, reconciled to the GST figures, for BAS preparation review.'],
-  ['CRA-06', 'Contact Details for BAS Preparation', 'Tax & BAS', 'wave2', 'All contacts with GST registration status and tax types used (registry match when the ABR lookup exists).'],
+  ['CRA-06', 'Contact Details for BAS Preparation', 'Tax & BAS', 'live', 'All contacts with tax types used and GST evidence on file (base build — no ABR registry match yet: shown as "N/A — pending ABR").'],
   ['CRA-07', 'BAS Related Transactions and GST', 'Tax & BAS', 'live', 'Every BAS-relevant transaction per tax type, by contact, source and GL account, tied to the GST figures.'],
   ['CRA-08', 'Client Queries', 'Quality', 'checks', 'Transactions that need information from the client (uncoded, missing attachment, unexplained), to view and send.'],
   ['CRA-09', 'Health Check', 'Quality', 'checks', "Key summary of the client's financial activity and data quality on one page."],
   ['CRA-10', 'GST Check', 'Tax & BAS', 'checks', 'Scope and method of the GST checks, with resolved vs unresolved GST risk.'],
-  ['CRA-11', 'Activity Count', 'Activity', 'wave2', 'Transaction activity across key functions for the client.'],
+  ['CRA-11', 'Activity Count', 'Activity', 'live', 'Transaction activity across key functions for the client.'],
   ['CRA-12', 'Actual Time', 'Time', 'time', 'Time allocated to this client by staff and task source.'],
   ['CRA-13', 'Estimate Accuracy', 'Time', 'time', "Estimated vs actual time for this client's work items."],
-  ['CRA-14', 'Ledger User Activity', 'Activity', 'wave2', "What people have been doing in the client's accounting file (from the platform's audit log export)."],
-  ['CRA-15', 'Workspace User Activity', 'Activity', 'wave2', "Actions taken in Workspace to resolve this client's findings and tasks."]
+  ['CRA-14', 'Ledger User Activity', 'Activity', 'export', "What people have been doing in the client's accounting file — routes to the QuickBooks and MYOB audit-log skills (export-based); Xero has no org-wide audit log, only per-record history on request."],
+  ['CRA-15', 'Workspace User Activity', 'Activity', 'live', "Actions taken in Workspace to resolve this client's findings and tasks. Mostly empty until the checks engine (WL-00) ships findings — that is expected."]
 ];
 const live = {}; REPORTS.filter((r) => r.platform).forEach((r) => { (live[r.cra] = live[r.cra] || {})[r.platform] = { slug: r.slug, title: r.title }; });
 const DATA = {
@@ -99,10 +101,12 @@ const SCRIPT = `
   function badges(on) { return '<span class="badges">' + ['xero', 'myob', 'quickbooks'].map(function (p) { return '<span class="badge' + (p === on ? ' on' : '') + '" title="' + esc(D.platforms[p]) + '">' + D.platforms[p].charAt(0) + '</span>'; }).join('') + '</span>'; }
   function match(text) { return !state.q || text.toLowerCase().indexOf(state.q.toLowerCase()) >= 0; }
   function itemBox(it, c) {
-    var p = c && c.platform, t = it.live && p ? it.live[p] : null, isLive = it.state === 'live';
-    var how = isLive ? (t ? 'Open: Reports → From your plugins → <b>' + esc(t.title) + '</b> → Use this report' + (p === 'quickbooks' ? '' : ', then pick <b>' + esc(c.name) + '</b>') + '.<br>Or ask the Client Report Analytics agent: <b>“' + esc(it.name) + ' for ' + esc(c.name) + '”</b>.' : 'Pick a client above to see how to open it.') : esc(D.na[it.state]);
-    return '<article class="box" data-row="' + esc(it.id) + '"><div class="top"><div><h3>' + esc(it.name) + '</h3><span class="id">' + esc(it.id) + ' · ' + esc(it.chip) + '</span></div>' + badges(isLive ? p : null) + '</div>' +
-      '<div><span class="pill ' + (isLive ? 'live">Live' : 'na">Not available') + '</span></div><div>' + esc(it.line) + '</div><div class="how">' + how + '</div></article>';
+    var p = c && c.platform, t = it.live && p ? it.live[p] : null, isLive = it.state === 'live', isExport = it.state === 'export';
+    var how = isLive ? (t ? 'Open: Reports → From your plugins → <b>' + esc(t.title) + '</b> → Use this report' + (p === 'quickbooks' ? '' : ', then pick <b>' + esc(c.name) + '</b>') + '.<br>Or ask the Client Report Analytics agent: <b>“' + esc(it.name) + ' for ' + esc(c.name) + '”</b>.' : 'Pick a client above to see how to open it.')
+      : isExport ? 'No "Use this report" template: ask the Client Report Analytics agent (<b>“' + esc(it.name) + ' for ' + esc(c ? c.name : 'a client') + '”</b>). QuickBooks and MYOB route to their own audit-log skills (you attach an export); Xero has no org-wide audit log, only per-record history on request.'
+      : esc(D.na[it.state]);
+    return '<article class="box" data-row="' + esc(it.id) + '"><div class="top"><div><h3>' + esc(it.name) + '</h3><span class="id">' + esc(it.id) + ' · ' + esc(it.chip) + '</span></div>' + badges((isLive || isExport) ? p : null) + '</div>' +
+      '<div><span class="pill ' + ((isLive || isExport) ? 'live">Live' : 'na">Not available') + '</span></div><div>' + esc(it.line) + '</div><div class="how">' + how + '</div></article>';
   }
   function libBox(r, lib, c) {
     return '<article class="box" data-row="' + esc(r.slug) + '"><div class="top"><div><h3>' + esc(r.title) + '</h3><span class="id">' + esc(r.code || 'Library') + ' · Platform reports</span></div>' + badges(c.platform) + '</div>' +
@@ -141,7 +145,7 @@ const SCRIPT = `
   }
   function excel() {
     var c = current(), rows = [['Client Report Catalogue'], ['Client', c ? c.name + ' (' + D.platforms[c.platform] + ')' : 'None'], [], ['ID', 'Report', 'Group', 'State', 'How to open']];
-    D.items.forEach(function (it) { var t = it.live && c ? it.live[c.platform] : null; rows.push([it.id, it.name, it.chip, it.state === 'live' ? 'Live' : D.na[it.state], t ? 'Use this report: ' + t.title : '']); });
+    D.items.forEach(function (it) { var t = it.live && c ? it.live[c.platform] : null; rows.push([it.id, it.name, it.chip, it.state === 'live' ? 'Live' : it.state === 'export' ? 'Live (ask the agent — no template)' : D.na[it.state], t ? 'Use this report: ' + t.title : '']); });
     if (c) D.libraries[c.platform].reports.forEach(function (r) { rows.push([r.code, r.title, 'Platform reports', 'Live · ' + D.libraries[c.platform].studio, 'Use this report: ' + r.title]); });
     var x = '<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Catalogue"><Table>' + rows.map(function (r) { return '<Row>' + r.map(function (v) { return '<Cell><Data ss:Type="String">' + esc(v) + '</Data></Cell>'; }).join('') + '</Row>'; }).join('') + '</Table></Worksheet></Workbook>';
     var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([x], { type: 'application/vnd.ms-excel' }));
