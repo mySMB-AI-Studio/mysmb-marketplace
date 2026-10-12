@@ -98,23 +98,36 @@
       },
       "titleIcon": {
         "type": "Icon",
-        "props": { "name": "Cloud", "tone": "brand", "size": "lg" }
+        "props": { "name": "Cloud", "tone": "default", "size": "lg" }
       },
       "titleStack": {
         "type": "Stack",
         "props": { "gap": "none" },
         "children": [
           "titleEyebrow",
-          "title"
+          "connectorRow"
         ]
       },
       "titleEyebrow": {
         "type": "Caption",
-        "props": { "text": "WATCHED FOLDER", "tone": "brand" }
+        "props": { "text": "BILL INTAKE", "tone": "default" }
       },
-      "title": {
-        "type": "Heading",
-        "props": { "text": "Bills Drop Folder", "level": "h2" }
+      "connectorRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["connectorLabel", "connectorDot", "connectorName"]
+      },
+      "connectorLabel": {
+        "type": "Text",
+        "props": { "text": "Dropbox", "size": "sm", "weight": "bold" }
+      },
+      "connectorDot": {
+        "type": "Dot",
+        "props": { "tone": "muted", "size": "xs" }
+      },
+      "connectorName": {
+        "type": "Text",
+        "props": { "text": "Bills Drop Folder", "size": "sm", "weight": "bold" }
       },
       "pathRow": {
         "type": "Row",
@@ -152,7 +165,8 @@
         "props": {
           "values": { "$state": "/dropbox/get_bills_drop_folder_dashboard/activityByDay" },
           "tone": "brand",
-          "height": 32
+          "height": 32,
+          "fill": false
         }
       },
       "body": {
