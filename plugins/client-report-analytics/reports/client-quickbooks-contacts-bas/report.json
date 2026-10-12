@@ -1,0 +1,83 @@
+{
+  "title": "QuickBooks Contact Details for BAS Preparation",
+  "description": "Client Report Analytics CRA-06 for one QuickBooks client: every contact with the tax types used on their transactions and GST evidence on file; registry (ABR) match is not built yet, shown as N/A — pending ABR. Live and validated on every open; mySMB branding by default.",
+  "tags": [
+    "client-report-analytics",
+    "CRA-06",
+    "quickbooks",
+    "contacts-bas"
+  ],
+  "fileName": "client-quickbooks-contacts-bas.html",
+  "dataBindings": {
+    "inputs": [
+      {
+        "name": "persona",
+        "label": "View as",
+        "type": "enum",
+        "options": [
+          "Client",
+          "Bookkeeper",
+          "Practitioner",
+          "Executive"
+        ],
+        "default": "Practitioner"
+      },
+      {
+        "name": "display",
+        "label": "Display settings",
+        "type": "string",
+        "maxLength": 300,
+        "default": "{\"cents\":0,\"k\":0,\"zeros\":1,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"mysmb\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\",\"x\":\"\"}"
+      }
+    ],
+    "bindings": [
+      {
+        "id": "customers",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "qbo_query"
+        },
+        "params": {
+          "query": {
+            "kind": "static",
+            "value": "SELECT * FROM Customer"
+          }
+        }
+      },
+      {
+        "id": "vendors",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "qbo_query"
+        },
+        "params": {
+          "query": {
+            "kind": "static",
+            "value": "SELECT * FROM Vendor"
+          }
+        }
+      },
+      {
+        "id": "company_info",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "qbo_query"
+        },
+        "params": {
+          "query": {
+            "kind": "static",
+            "value": "SELECT * FROM CompanyInfo"
+          }
+        }
+      },
+      {
+        "id": "prefs",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_preferences"
+        },
+        "params": {}
+      }
+    ]
+  }
+}
