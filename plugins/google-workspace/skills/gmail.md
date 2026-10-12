@@ -1,53 +1,59 @@
 ---
 name: google-workspace-gmail
-description: Read and search Gmail emails via the Google Workspace MCP server. Use when the user asks to check their inbox, find an email, or read a message. Send, reply, forward, label, and trash are not available (read-only scope).
+description: Read and search Gmail emails via the Google Workspace MCP server. Use when the user asks to check their inbox, find an email, read a message, or see their bills. Send, reply, forward, label, and trash are not available (read-only scope).
 ---
 
 # Gmail — reading and searching email
 
-Use the `google-workspace-gmail` MCP server for all Gmail operations.
+Use the `google-workspace-gmail` MCP server for all Gmail operations. It is connected with the `gmail.readonly` scope.
 
 ## Reading the inbox
 
-Call `list_messages` with `labelIds: ["INBOX"]` to retrieve recent messages. Default page size is typically 10–20; increase with a `maxResults` parameter if the user asks for more. Messages returned by list are stubs — fetch the full body with `get_message` using the `id` field.
+Call `list_messages` with `labelIds: ["INBOX"]` (add `"UNREAD"` for unread only) and `maxResults` up to 50. Each result already carries sender, subject, snippet, timestamp, `threadId` and read/starred/attachment flags, so a summary rarely needs more calls.
 
-Always present emails as a concise summary: sender name, subject, date, and a one-sentence snippet. Never dump the full raw body unless the user explicitly asks.
+Present emails as a concise summary: sender name, subject, date, and a one-sentence snippet.
 
 ## Searching
 
-Use `search_messages` with a `q` parameter that accepts Gmail's search syntax:
+Pass Gmail search syntax to `list_messages` as `q`:
 
 - `from:alice@example.com` — filter by sender
 - `subject:invoice` — filter by subject keyword
 - `has:attachment` — only messages with attachments
-- `after:2025/01/01 before:2025/02/01` — date range
+- `after:2026/01/01 before:2026/02/01` — date range
 - `is:unread` — unread only
 - `label:important` — by label
 
-Combine terms with spaces (implicit AND) or `OR`. Present results as a numbered list with sender, subject, and date.
+Combine terms with spaces (implicit AND) or `OR`.
 
 ## Getting a full message
 
-Call `get_message` with the message `id`. Parse the `payload.parts` tree to extract `text/plain` or `text/html` body parts. Surface the plain-text body; render HTML only if plain-text is absent.
+Call `get_message` with the message `id`. It returns sender, subject, Date header, snippet, labels and an `attachments` list (`attachmentId`, `filename`, `mimeType`, `size`).
+
+## Attachments
+
+Call `get_attachment` with `messageId` and an `attachmentId` from `get_message`. It returns the file as base64 (15 MB limit). Describe the file rather than dumping base64 to the user.
+
+## Bills
+
+Call `list_bill_label_emails` for bills filed under a Gmail label (default "AP Bills"). It reads each PDF and returns supplier, invoice number, dates, GST and total. A label literally named "Bills" cannot be used — Gmail reserves it.
 
 ## Labels
 
-Call `list_labels` to return all user-created and system labels with their `id` and `name`. Labels are read-only — modifying or applying labels is not available with this scope.
+Call `list_labels` for the mailbox's system and user labels. Applying or removing labels is not available.
 
 ## What is not available
-
-Gmail is connected with `gmail.readonly` scope. The following operations are not available:
 
 - Sending, replying to, or forwarding emails
 - Trashing or archiving messages
 - Applying or removing labels
-- Any modification to mailbox state
+- Any change to mailbox state
 
-If the user asks to send or manage email, explain that the Gmail connection is read-only and they would need to reconnect with a broader scope.
+For a reply, the morning briefing's "Draft a reply" opens Gmail's own compose window pre-filled; the user reviews and sends it in Gmail.
 
 ## Error handling
 
-- `401 Unauthorized` — the `GOOGLE_ACCESS_TOKEN` is expired or lacks the `gmail.readonly` scope. Ask the user to reconnect.
-- `403 Forbidden` — insufficient scope; the token does not include `https://www.googleapis.com/auth/gmail.readonly`.
-- `404 Not Found` — the message ID no longer exists.
+- `401 Unauthorized` — the connection needs re-authorising; ask the user to reconnect Gmail in Settings → Extensions → Connections.
+- `403 Forbidden` — the connection lacks `https://www.googleapis.com/auth/gmail.readonly`; reconnect.
+- `404 Not Found` — the message no longer exists.
 - Rate limits: back off and retry once; if it fails again, surface the error.
