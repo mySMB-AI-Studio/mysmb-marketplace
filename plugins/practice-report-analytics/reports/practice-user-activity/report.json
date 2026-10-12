@@ -1,0 +1,63 @@
+{
+  "title": "Practice User Activity",
+  "description": "Practice Report Analytics PRA-12: What people have been doing in client files, where the platform exposes it; shows each client’s last connection sync as the closest signal available (neither Xero nor MYOB exposes a practice-wide bulk audit log). One row per client across Xero, MYOB and QuickBooks. Live, validated; mySMB branding by default.",
+  "tags": [
+    "practice-report-analytics",
+    "PRA-12",
+    "user-activity"
+  ],
+  "fileName": "practice-user-activity.html",
+  "dataBindings": {
+    "inputs": [
+      {
+        "name": "as_at",
+        "label": "As at",
+        "type": "date",
+        "default": "today"
+      },
+      {
+        "name": "clients",
+        "label": "Clients",
+        "type": "string",
+        "maxLength": 500,
+        "default": ""
+      }
+    ],
+    "bindings": [
+      {
+        "id": "xero",
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_practice_client_summary"
+        },
+        "params": {
+          "as_at": {
+            "kind": "input",
+            "input": "as_at"
+          },
+          "clients": {
+            "kind": "input",
+            "input": "clients"
+          }
+        }
+      },
+      {
+        "id": "myob",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_practice_client_summary"
+        },
+        "params": {
+          "as_at": {
+            "kind": "input",
+            "input": "as_at"
+          },
+          "clients": {
+            "kind": "input",
+            "input": "clients"
+          }
+        }
+      }
+    ]
+  }
+}
