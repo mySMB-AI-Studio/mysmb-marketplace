@@ -163,24 +163,16 @@ const build_bills_view: ComputedFunction = (args) => {
     : `last checked ${formatClockTime(now)}`;
 
   const activityByDay = Array.isArray(dashboard.activityByDay) ? (dashboard.activityByDay as number[]) : [];
-  const activitySeries = smoothSeries(activityByDay);
+  const activityWindowDays = activityByDay.length;
+  const activityTotal = activityByDay.reduce((sum, v) => sum + v, 0);
+  const newFilesToday = typeof dashboard.newFilesToday === 'number' ? dashboard.newFilesToday : 0;
+  const todayShare = activityTotal > 0 ? Math.min(1, newFilesToday / activityTotal) : 0;
+  const todayShareLabel = activityTotal > 0
+    ? `${Math.round(todayShare * 100)}% of the last ${activityWindowDays} days' activity`
+    : `No new files in the last ${activityWindowDays} days`;
 
-  return { rows, footerLabel, activitySeries };
+  return { rows, footerLabel, todayShare, todayShareLabel };
 };
-
-// Sparkline always auto-scales from the series' own min/max and draws
-// straight segments between points — a day of real activity surrounded by
-// mostly-zero days (the common case for a low-traffic watched folder) draws
-// as a flat line that jumps in a single sharp segment at the very end. A
-// trailing 3-point moving average turns that into a gradual ramp instead,
-// for display only — the exact daily count is still shown as the Stat
-// number next to the sparkline.
-function smoothSeries(values: number[]): number[] {
-  return values.map((_, i) => {
-    const window = values.slice(Math.max(0, i - 1), i + 2);
-    return window.reduce((sum, v) => sum + v, 0) / window.length;
-  });
-}
 
 // ── module export ────────────────────────────────────────────────────
 
