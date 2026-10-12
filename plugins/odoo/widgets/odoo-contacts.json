@@ -1,120 +1,323 @@
 {
-  "id": "odoo-contacts",
-  "title": "Odoo — Contacts",
-  "description": "Contacts from mySMB's Odoo instance — people and companies, with email and phone, via Odoo's native MCP server (ai_tool_search on res.partner).",
   "category": "sales",
-  "tags": ["odoo", "contacts", "crm", "erp"],
-  "keywords": ["odoo", "contacts", "customers", "partners", "erp"],
-  "connectorsUsed": ["odoo"],
-  "popularity": 0,
-  "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 9 },
-    "min": { "colSpan": 4, "rowSpan": 6 },
-    "max": { "colSpan": 8, "rowSpan": 16 }
-  },
+  "connectorsUsed": [
+    "odoo"
+  ],
   "dataProvider": {
     "kind": "tool",
     "mcp": "odoo",
-    "tool": "ai_tool_search",
     "params": {
-      "model_name": "res.partner",
       "domain": "[]",
-      "fields": ["name", "email", "phone", "is_company"],
+      "fields": [
+        "name",
+        "email",
+        "phone",
+        "is_company"
+      ],
       "limit": 30,
+      "model_name": "res.partner",
       "order": "name asc"
+    },
+    "tool": "ai_tool_search"
+  },
+  "description": "Contacts from mySMB's Odoo instance — people and companies, with email and phone, via Odoo's native MCP server (ai_tool_search on res.partner).",
+  "id": "odoo-contacts",
+  "keywords": [
+    "odoo",
+    "contacts",
+    "customers",
+    "partners",
+    "erp"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 16
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 6
+    },
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 9
     }
   },
   "spec": {
-    "root": "card",
     "elements": {
-      "card": { "type": "Card", "props": {}, "children": ["header", "divider1", "body"] },
-      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
-      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
-      "titleIcon": { "type": "Icon", "props": { "name": "Users", "tone": "accent", "size": "sm" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Contacts", "level": "h2" } },
-      "eyebrow": {
-        "type": "Eyebrow",
+      "body": {
+        "children": [
+          "errorBanner",
+          "loading",
+          "empty",
+          "content"
+        ],
+        "props": {},
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "header",
+          "divider1",
+          "body"
+        ],
+        "props": {},
+        "type": "Card"
+      },
+      "companyBadge": {
         "props": {
-          "text": { "$computed": "fmt", "args": { "pattern": "Odoo · {n} contact(s)", "n": { "$state": "/odoo/ai_tool_search/response/total_count" } } }
-        }
-      },
-      "divider1": { "type": "Divider", "props": {} },
-
-      "body": { "type": "Body", "props": {}, "children": ["errorBanner", "loading", "empty", "content"] },
-
-      "errorBanner": {
-        "type": "Caption",
-        "props": { "text": { "$template": "Couldn't load contacts: ${/_errors/odoo.ai_tool_search}" }, "tone": "destructive" },
-        "visible": { "$state": "/_errors/odoo.ai_tool_search" }
-      },
-
-      "loading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3"],
-        "visible": { "$state": "/_loading/odoo.ai_tool_search" }
-      },
-      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-
-      "empty": {
-        "type": "Empty",
-        "props": { "message": "No contacts found." },
+          "text": "Company",
+          "tone": "accent",
+          "variant": "soft"
+        },
+        "type": "Badge",
         "visible": {
-          "$and": [
-            { "$state": "/_loading/odoo.ai_tool_search", "not": true },
-            { "$state": "/odoo/ai_tool_search/response/records/0", "not": true }
-          ]
+          "$item": "is_company"
         }
-      },
-
-      "content": {
-        "type": "Stack",
-        "props": { "gap": "sm", "maxHeight": 440 },
-        "children": ["contactRow"],
-        "repeat": { "statePath": "/odoo/ai_tool_search/response/records", "key": "id" },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/odoo.ai_tool_search", "not": true },
-            { "$state": "/odoo/ai_tool_search/response/records/0" }
-          ]
-        }
-      },
-
-      "contactRow": {
-        "type": "Row",
-        "props": { "align": "center", "gap": "sm", "template": "auto minmax(0,1fr)" },
-        "children": ["contactAvatar", "contactInfo"]
       },
       "contactAvatar": {
-        "type": "Avatar",
         "props": {
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$item": "name"
+              }
+            }
+          },
           "size": "sm",
-          "tone": { "$computed": "odoo_contact_tone", "args": { "value": { "$item": "is_company" } } },
-          "initials": { "$computed": "initials", "args": { "value": { "$item": "name" } } }
-        }
+          "tone": {
+            "$computed": "odoo_contact_tone",
+            "args": {
+              "value": {
+                "$item": "is_company"
+              }
+            }
+          }
+        },
+        "type": "Avatar"
       },
-      "contactInfo": { "type": "Stack", "props": { "gap": "none" }, "children": ["contactNameRow", "contactMeta"] },
-      "contactNameRow": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["contactName", "companyBadge"] },
-      "contactName": { "type": "Text", "props": { "text": { "$item": "name" }, "size": "sm", "weight": "semibold", "truncate": true } },
-      "companyBadge": {
-        "type": "Badge",
-        "props": { "text": "Company", "tone": "accent", "variant": "soft" },
-        "visible": { "$item": "is_company" }
+      "contactInfo": {
+        "children": [
+          "contactNameRow",
+          "contactMeta"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
       },
       "contactMeta": {
-        "type": "Caption",
         "props": {
           "text": {
             "$computed": "odoo_contact_meta",
-            "args": { "email": { "$item": "email" }, "phone": { "$item": "phone" } }
+            "args": {
+              "email": {
+                "$item": "email"
+              },
+              "phone": {
+                "$item": "phone"
+              }
+            }
           },
           "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "contactName": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "name"
+          },
+          "truncate": true,
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "contactNameRow": {
+        "children": [
+          "contactName",
+          "companyBadge"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "contactRow": {
+        "children": [
+          "contactAvatar",
+          "contactInfo"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "template": "auto minmax(0,1fr)"
+        },
+        "type": "Row"
+      },
+      "content": {
+        "children": [
+          "contactRow"
+        ],
+        "props": {
+          "gap": "sm",
+          "maxHeight": 440
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/odoo/ai_tool_search/response/records"
+        },
+        "type": "Stack",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/odoo.ai_tool_search",
+              "not": true
+            },
+            {
+              "$state": "/odoo/ai_tool_search/response/records/0"
+            }
+          ]
         }
+      },
+      "divider1": {
+        "props": {},
+        "type": "Divider"
+      },
+      "empty": {
+        "props": {
+          "message": "No contacts found."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/odoo.ai_tool_search",
+              "not": true
+            },
+            {
+              "$state": "/odoo/ai_tool_search/response/records/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "errorBanner": {
+        "props": {
+          "text": {
+            "$template": "Couldn't load contacts: ${/_errors/odoo.ai_tool_search}"
+          },
+          "tone": "destructive"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/_errors/odoo.ai_tool_search"
+        }
+      },
+      "eyebrow": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/odoo/ai_tool_search/response/total_count"
+              },
+              "pattern": "Odoo · {n} contact(s)"
+            }
+          }
+        },
+        "type": "Eyebrow"
+      },
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {},
+        "type": "Header"
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/odoo.ai_tool_search"
+        }
+      },
+      "sk1": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Contacts"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Users",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
       }
-    }
+    },
+    "root": "card"
   },
-  "status": "published"
+  "tags": [
+    "odoo",
+    "contacts",
+    "crm",
+    "erp"
+  ],
+  "title": "Odoo — Contacts"
 }

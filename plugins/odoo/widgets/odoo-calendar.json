@@ -1,36 +1,73 @@
 {
-  "id": "odoo-calendar",
-  "title": "Odoo — Calendar",
-  "description": "Upcoming meetings from mySMB's Odoo calendar, soonest first, via Odoo's native MCP server (ai_tool_search on calendar.event). Times are converted from Odoo's UTC wire format to mySMB's own Asia/Manila timezone — this plugin targets one specific company instance, not a generic multi-tenant Odoo connection, so that conversion is safe here.",
   "category": "productivity",
-  "tags": ["odoo", "calendar", "meetings", "schedule", "erp"],
-  "keywords": ["odoo", "calendar", "meetings", "schedule", "events", "erp"],
-  "connectorsUsed": ["odoo"],
-  "popularity": 0,
-  "sizing": {
-    "preferred": { "colSpan": 6, "rowSpan": 8 },
-    "min": { "colSpan": 4, "rowSpan": 5 },
-    "max": { "colSpan": 10, "rowSpan": 14 }
-  },
+  "connectorsUsed": [
+    "odoo"
+  ],
   "dataProvider": {
     "kind": "tool",
     "mcp": "odoo",
-    "tool": "ai_tool_search",
     "params": {
-      "model_name": "calendar.event",
       "domain": "[]",
-      "fields": ["name", "start", "stop", "allday", "location", "videocall_location", "show_as"],
+      "fields": [
+        "name",
+        "start",
+        "stop",
+        "allday",
+        "location",
+        "videocall_location",
+        "show_as"
+      ],
       "limit": 30,
+      "model_name": "calendar.event",
       "order": "start asc"
+    },
+    "tool": "ai_tool_search"
+  },
+  "description": "Upcoming meetings from mySMB's Odoo calendar, soonest first, via Odoo's native MCP server (ai_tool_search on calendar.event). Times are converted from Odoo's UTC wire format to mySMB's own Asia/Manila timezone — this plugin targets one specific company instance, not a generic multi-tenant Odoo connection, so that conversion is safe here.",
+  "id": "odoo-calendar",
+  "keywords": [
+    "odoo",
+    "calendar",
+    "meetings",
+    "schedule",
+    "events",
+    "erp"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 14
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 5
+    },
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 8
     }
   },
   "spec": {
-    "root": "card",
     "elements": {
-      "card": {
-        "type": "Card",
+      "body": {
+        "children": [
+          "errorBanner",
+          "loading",
+          "empty",
+          "content"
+        ],
         "props": {},
-        "children": ["header", "divider1", "body"],
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "header",
+          "divider1",
+          "body"
+        ],
+        "props": {},
+        "type": "Card",
         "watch": {
           "/odoo/ai_tool_search": {
             "action": "setState",
@@ -38,143 +75,387 @@
               "statePath": "/ui/odooUpcomingEvents",
               "value": {
                 "$computed": "odoo_filter_upcoming",
-                "args": { "value": { "$state": "/odoo/ai_tool_search/response/records" } }
+                "args": {
+                  "value": {
+                    "$state": "/odoo/ai_tool_search/response/records"
+                  }
+                }
               }
             }
           }
         }
       },
-      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
-      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
-      "titleIcon": { "type": "Icon", "props": { "name": "CalendarDays", "tone": "accent", "size": "sm" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Calendar", "level": "h2" } },
-      "eyebrow": {
-        "type": "Eyebrow",
+      "content": {
+        "children": [
+          "eventRow"
+        ],
+        "props": {
+          "gap": "sm",
+          "maxHeight": 420
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/odooUpcomingEvents"
+        },
+        "type": "Stack",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/odoo.ai_tool_search",
+              "not": true
+            },
+            {
+              "$state": "/ui/odooUpcomingEvents/0"
+            }
+          ]
+        }
+      },
+      "dayBadge": {
         "props": {
           "text": {
-            "$computed": "fmt",
+            "$computed": "odoo_event_day_label",
             "args": {
-              "pattern": "Odoo · {n} upcoming",
-              "n": { "$computed": "count", "args": { "value": { "$state": "/ui/odooUpcomingEvents" } } }
+              "value": {
+                "$item": "start"
+              }
             }
-          }
-        }
+          },
+          "tone": {
+            "$computed": "odoo_event_day_tone",
+            "args": {
+              "value": {
+                "$item": "start"
+              }
+            }
+          },
+          "variant": "soft"
+        },
+        "type": "Badge"
       },
-      "divider1": { "type": "Divider", "props": {} },
-
-      "body": { "type": "Body", "props": {}, "children": ["errorBanner", "loading", "empty", "content"] },
-
-      "errorBanner": {
-        "type": "Caption",
-        "props": { "text": { "$template": "Couldn't load the calendar: ${/_errors/odoo.ai_tool_search}" }, "tone": "destructive" },
-        "visible": { "$state": "/_errors/odoo.ai_tool_search" }
+      "divider1": {
+        "props": {},
+        "type": "Divider"
       },
-
-      "loading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3"],
-        "visible": { "$state": "/_loading/odoo.ai_tool_search" }
-      },
-      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-
       "empty": {
+        "props": {
+          "message": "No upcoming meetings."
+        },
         "type": "Empty",
-        "props": { "message": "No upcoming meetings." },
         "visible": {
           "$and": [
-            { "$state": "/_loading/odoo.ai_tool_search", "not": true },
-            { "$state": "/ui/odooUpcomingEvents/0", "not": true }
+            {
+              "$state": "/_loading/odoo.ai_tool_search",
+              "not": true
+            },
+            {
+              "$state": "/ui/odooUpcomingEvents/0",
+              "not": true
+            }
           ]
         }
       },
-
-      "content": {
-        "type": "Stack",
-        "props": { "gap": "sm", "maxHeight": 420 },
-        "children": ["eventRow"],
-        "repeat": { "statePath": "/ui/odooUpcomingEvents", "key": "id" },
+      "errorBanner": {
+        "props": {
+          "text": {
+            "$template": "Couldn't load the calendar: ${/_errors/odoo.ai_tool_search}"
+          },
+          "tone": "destructive"
+        },
+        "type": "Caption",
         "visible": {
-          "$and": [
-            { "$state": "/_loading/odoo.ai_tool_search", "not": true },
-            { "$state": "/ui/odooUpcomingEvents/0" }
-          ]
+          "$state": "/_errors/odoo.ai_tool_search"
         }
       },
-
+      "eventInfo": {
+        "children": [
+          "eventNameRow",
+          "eventMetaRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "eventMetaRow": {
+        "children": [
+          "locationCaption",
+          "joinBtn"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "eventName": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "name"
+          },
+          "truncate": true,
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "eventNameRow": {
+        "children": [
+          "eventName",
+          "showAsBadge"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
       "eventRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "start", "template": "4.5rem 1fr", "hover": true, "clickable": true },
-        "children": ["timeCol", "eventInfo"],
+        "children": [
+          "timeCol",
+          "eventInfo"
+        ],
         "on": {
           "click": {
             "action": "open_url",
             "params": {
-              "url": { "$computed": "odoo_event_url", "args": { "id": { "$item": "id" } } }
+              "url": {
+                "$computed": "odoo_event_url",
+                "args": {
+                  "id": {
+                    "$item": "id"
+                  }
+                }
+              }
             }
           }
-        }
-      },
-      "timeCol": {
-        "type": "Stack",
-        "props": { "gap": "xs", "align": "start" },
-        "children": ["dayBadge", "timeRow"]
-      },
-      "dayBadge": {
-        "type": "Badge",
+        },
         "props": {
-          "text": { "$computed": "odoo_event_day_label", "args": { "value": { "$item": "start" } } },
-          "tone": { "$computed": "odoo_event_day_tone", "args": { "value": { "$item": "start" } } },
-          "variant": "soft"
-        }
+          "align": "start",
+          "clickable": true,
+          "gap": "sm",
+          "hover": true,
+          "template": "4.5rem 1fr"
+        },
+        "type": "Row"
       },
-      "timeRow": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["showAsDot", "timeLabel"],
-        "visible": { "$item": "allday", "not": true }
-      },
-      "showAsDot": {
-        "type": "Dot",
-        "props": { "tone": { "$computed": "odoo_show_as_tone", "args": { "value": { "$item": "show_as" } } }, "size": "sm" }
-      },
-      "timeLabel": {
-        "type": "Caption",
-        "props": { "text": { "$computed": "odoo_event_time_label", "args": { "value": { "$item": "start" } } }, "tone": "muted" }
-      },
-
-      "eventInfo": { "type": "Stack", "props": { "gap": "xs" }, "children": ["eventNameRow", "eventMetaRow"] },
-      "eventNameRow": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["eventName", "showAsBadge"] },
-      "eventName": { "type": "Text", "props": { "text": { "$item": "name" }, "size": "sm", "weight": "semibold", "truncate": true } },
-      "showAsBadge": {
-        "type": "Badge",
+      "eyebrow": {
         "props": {
-          "text": { "$computed": "odoo_show_as_label", "args": { "value": { "$item": "show_as" } } },
-          "tone": { "$computed": "odoo_show_as_tone", "args": { "value": { "$item": "show_as" } } },
-          "variant": "soft"
-        }
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/ui/odooUpcomingEvents"
+                  }
+                }
+              },
+              "pattern": "Odoo · {n} upcoming"
+            }
+          }
+        },
+        "type": "Eyebrow"
       },
-      "eventMetaRow": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["locationCaption", "joinBtn"] },
-      "locationCaption": {
-        "type": "Caption",
-        "props": { "text": { "$item": "location" }, "tone": "muted", "truncate": true },
-        "visible": { "$item": "location" }
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {},
+        "type": "Header"
       },
       "joinBtn": {
-        "type": "Button",
-        "props": { "label": "Join", "variant": "ghost", "tone": "info", "size": "sm", "leadingIcon": "Video" },
-        "visible": { "$item": "videocall_location" },
         "on": {
           "click": {
             "action": "open_url",
-            "params": { "url": { "$item": "videocall_location" } }
+            "params": {
+              "url": {
+                "$item": "videocall_location"
+              }
+            }
           }
+        },
+        "props": {
+          "label": "Join",
+          "leadingIcon": "Video",
+          "size": "sm",
+          "tone": "info",
+          "variant": "ghost"
+        },
+        "type": "Button",
+        "visible": {
+          "$item": "videocall_location"
         }
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/odoo.ai_tool_search"
+        }
+      },
+      "locationCaption": {
+        "props": {
+          "text": {
+            "$item": "location"
+          },
+          "tone": "muted",
+          "truncate": true
+        },
+        "type": "Caption",
+        "visible": {
+          "$item": "location"
+        }
+      },
+      "showAsBadge": {
+        "props": {
+          "text": {
+            "$computed": "odoo_show_as_label",
+            "args": {
+              "value": {
+                "$item": "show_as"
+              }
+            }
+          },
+          "tone": {
+            "$computed": "odoo_show_as_tone",
+            "args": {
+              "value": {
+                "$item": "show_as"
+              }
+            }
+          },
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "showAsDot": {
+        "props": {
+          "size": "sm",
+          "tone": {
+            "$computed": "odoo_show_as_tone",
+            "args": {
+              "value": {
+                "$item": "show_as"
+              }
+            }
+          }
+        },
+        "type": "Dot"
+      },
+      "sk1": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "timeCol": {
+        "children": [
+          "dayBadge",
+          "timeRow"
+        ],
+        "props": {
+          "align": "start",
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "timeLabel": {
+        "props": {
+          "text": {
+            "$computed": "odoo_event_time_label",
+            "args": {
+              "value": {
+                "$item": "start"
+              }
+            }
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "timeRow": {
+        "children": [
+          "showAsDot",
+          "timeLabel"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row",
+        "visible": {
+          "$item": "allday",
+          "not": true
+        }
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Calendar"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "CalendarDays",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
       }
-    }
+    },
+    "root": "card"
   },
-  "status": "published"
+  "tags": [
+    "odoo",
+    "calendar",
+    "meetings",
+    "schedule",
+    "erp"
+  ],
+  "title": "Odoo — Calendar"
 }
