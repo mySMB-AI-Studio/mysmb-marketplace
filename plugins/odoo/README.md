@@ -10,9 +10,9 @@ This MCP capability is **not a stock Odoo feature** — it comes from a communit
 
 ## Configuration
 
-| Variable | Required | Description |
-|---|---|---|
-| `ODOO_API_KEY` | Yes | Personal Odoo API key, pasted when connecting. Grants full access to your Odoo account — treat it like a password. |
+| Variable | Used by |
+|---|---|
+| `ODOO_API_KEY` | `odoo` MCP server |
 
 ## Tools
 
