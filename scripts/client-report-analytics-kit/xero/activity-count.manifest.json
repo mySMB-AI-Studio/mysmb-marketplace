@@ -1,0 +1,84 @@
+{
+  "inputs": [
+    {
+      "name": "from_date",
+      "label": "From",
+      "type": "date",
+      "default": "2026-07-01"
+    },
+    {
+      "name": "to_date",
+      "label": "To",
+      "type": "date",
+      "default": "today"
+    },
+    {
+      "name": "org",
+      "label": "Organisation",
+      "type": "string",
+      "maxLength": 64,
+      "default": ""
+    },
+    {
+      "name": "page",
+      "label": "Page",
+      "type": "number",
+      "min": 1,
+      "max": 20,
+      "default": 1
+    },
+    {
+      "name": "display",
+      "label": "Display settings",
+      "type": "string",
+      "maxLength": 300,
+      "default": "{\"cents\":0,\"k\":0,\"zeros\":1,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"mysmb\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\"}"
+    }
+  ],
+  "bindings": [
+    {
+      "id": "invoices",
+      "tool": { "mcp": "xero-accounting", "name": "list_invoices" },
+      "params": {
+        "page": { "kind": "input", "input": "page" },
+        "xero_tenant_id": { "kind": "input", "input": "org" }
+      }
+    },
+    {
+      "id": "bank_tx",
+      "tool": { "mcp": "xero-accounting", "name": "list_bank_transactions" },
+      "params": {
+        "page": { "kind": "input", "input": "page" },
+        "xero_tenant_id": { "kind": "input", "input": "org" }
+      }
+    },
+    {
+      "id": "journals",
+      "tool": { "mcp": "xero-accounting", "name": "list_manual_journals" },
+      "params": {
+        "page": { "kind": "input", "input": "page" },
+        "xero_tenant_id": { "kind": "input", "input": "org" }
+      }
+    },
+    {
+      "id": "payroll",
+      "tool": { "mcp": "xero-accounting", "name": "list_pay_runs" },
+      "params": {
+        "page": { "kind": "input", "input": "page" },
+        "xero_tenant_id": { "kind": "input", "input": "org" }
+      }
+    },
+    {
+      "id": "org",
+      "tool": { "mcp": "xero-accounting", "name": "get_organisation" },
+      "params": {
+        "xero_tenant_id": { "kind": "input", "input": "org" }
+      }
+    },
+    {
+      "id": "connections",
+      "tool": { "mcp": "xero-accounting", "name": "list_connections" },
+      "params": {}
+    }
+  ]
+}
