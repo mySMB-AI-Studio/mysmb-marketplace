@@ -759,7 +759,7 @@ MK.app({
     var body = c.body, h = MK.h, money = function (v) { return MK.money(v, c.currency, c.display); }, r2 = function (v) { return Math.round(v * 100) / 100; }, view = c.view || 'stock';
     if (c.errors.items) { body.innerHTML = '<p class="mk-err">' + h(c.err('items')) + '</p>'; return { checks: [{ name: 'Items loaded', pass: false, detail: c.err('items') }] }; }
     if (!c.data.items) return {};
-    var n = function (v) { return MK.num(v) || 0; }, q = function (v) { return v == null ? '' : (Math.round(v * 1000) / 1000).toLocaleString('en-AU'); };
+    var n = function (v) { return MK.num(v) || 0; }, q = function (v) { return v == null ? '' : (Math.round(v * 1000) / 1000 || 0).toLocaleString('en-AU'); };
     var I = MK.items(c.data.items).map(function (x) { var b = x.BuyingDetails || {}, rs = b.RestockingInformation || {}, sup = rs.Supplier || {};
       return { no: x.Number || '', name: x.Name || '', active: x.IsActive !== false, inv: !!x.IsInventoried, sold: !!x.IsSold, bought: !!x.IsBought, oh: n(x.QuantityOnHand), cm: n(x.QuantityCommitted), oo: n(x.QuantityOnOrder), av: x.QuantityAvailable == null ? null : n(x.QuantityAvailable),
         avg: x.AverageCost == null ? null : n(x.AverageCost), value: n(x.CurrentValue), price: x.BaseSellingPrice != null ? n(x.BaseSellingPrice) : (x.SellingDetails || {}).BaseSellingPrice != null ? n(x.SellingDetails.BaseSellingPrice) : null,

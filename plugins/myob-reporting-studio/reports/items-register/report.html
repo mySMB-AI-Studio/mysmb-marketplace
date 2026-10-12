@@ -756,7 +756,7 @@ MK.app({
   tools: { items: 'list_items (today\'s on hand)', inv_lines: 'list_invoice_lines (sales, from the period start to today)', bill_lines: 'list_bill_lines (purchases, from the period start to today)', adjustments: 'list_inventory_adjustments (from the period start to today)', company_files: 'list_company_files' },
   views: [['register', 'Items register'], ['summary', 'Summary by item']],
   render: function (c) {
-    var body = c.body, h = MK.h, from = c.inputs.from_date, to = c.inputs.to_date, r3 = function (v) { return Math.round(v * 1000) / 1000; }, q = function (v) { return v == null ? '' : r3(v).toLocaleString('en-AU'); };
+    var body = c.body, h = MK.h, from = c.inputs.from_date, to = c.inputs.to_date, r3 = function (v) { return Math.round(v * 1000) / 1000; }, q = function (v) { return v == null ? '' : (r3(v) || 0).toLocaleString('en-AU'); };
     var need = ['items', 'inv_lines', 'bill_lines', 'adjustments'].filter(function (id) { return c.errors[id]; });
     if (need.length) { body.innerHTML = '<p class="mk-err">' + h(c.err(need[0])) + '</p>'; return { checks: [{ name: 'Items and movements loaded', pass: false, detail: c.err(need[0]) }] }; }
     if (!c.data.items || !c.data.inv_lines || !c.data.bill_lines || !c.data.adjustments) return {};
