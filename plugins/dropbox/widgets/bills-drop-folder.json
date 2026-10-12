@@ -357,7 +357,7 @@
       "rowWrap": {
         "type": "Stack",
         "props": { "gap": "xs" },
-        "children": ["rowContent", "bottomRow", "rowDivider"]
+        "children": ["rowContent", "rowDivider"]
       },
       "rowContent": {
         "type": "Row",
@@ -380,40 +380,40 @@
       "rowLabels": {
         "type": "Stack",
         "props": { "gap": "xs", "grow": true },
-        "children": ["rowName", "rowMeta"]
+        "children": ["rowName", "metaReasonRow"]
       },
       "rowName": {
         "type": "Text",
         "props": { "text": { "$item": "name" }, "size": "sm", "weight": "bold", "truncate": true }
       },
+      "metaReasonRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["rowMeta", "reasonSeparator", "rowReason"]
+      },
       "rowMeta": {
         "type": "Caption",
         "props": { "text": { "$item": "metaLine" }, "tone": "muted" }
       },
-      "rowRight": {
-        "type": "Stack",
-        "props": { "gap": "xs", "align": "end" },
-        "children": ["rowAmount"]
-      },
-      "rowAmount": {
-        "type": "Text",
-        "props": { "text": { "$item": "amountLabel" }, "size": "sm", "weight": "bold" },
-        "visible": { "$item": "hasAmount" }
-      },
-      "bottomRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center", "justify": "between" },
-        "children": ["rowReasonGrow", "rowStatusBadge"]
-      },
-      "rowReasonGrow": {
-        "type": "Stack",
-        "props": { "gap": "none", "grow": true },
-        "children": ["rowReason"]
+      "reasonSeparator": {
+        "type": "Caption",
+        "props": { "text": "·", "tone": "muted" },
+        "visible": { "$item": "hasReason" }
       },
       "rowReason": {
         "type": "Caption",
         "props": { "text": { "$item": "reason" }, "tone": "warning" },
         "visible": { "$item": "hasReason" }
+      },
+      "rowRight": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["rowAmount", "rowStatusBadge"]
+      },
+      "rowAmount": {
+        "type": "Text",
+        "props": { "text": { "$item": "amountLabel" }, "size": "sm", "weight": "bold" },
+        "visible": { "$item": "hasAmount" }
       },
       "rowStatusBadge": {
         "type": "Badge",
