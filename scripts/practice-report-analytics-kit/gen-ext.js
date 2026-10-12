@@ -24,7 +24,12 @@ const COMMON = `## Rules for every practice report
 `;
 
 function metricSkill(id) {
-  const it = ITEMS[id], r = REPORTS.find((x) => x.item === id), key = id;
+  const it = ITEMS[id], r = REPORTS.find((x) => x.item === id), key = id, mf = man(r);
+  // Read the real tool name(s) off the manifest rather than guessing `get_practice_<id>` — that
+  // convention breaks for a report like user-activity (PRA-12) that deliberately REUSES an existing
+  // tool (get_practice_client_summary) instead of shipping its own. Both platform bindings are
+  // expected to call the same tool name (every report here keeps names identical across Xero/MYOB).
+  const toolName = mf && mf.bindings.length ? mf.bindings[0].tool.name : 'get_practice_' + id.replace(/-/g, '_');
   const body = `---
 name: ${PLUGIN}-${key}
 description: ${it.pra} ${it.name} across every client. Use when the user asks for ${it.name.toLowerCase()} for the practice, for all clients, or to compare clients on this metric.
@@ -39,9 +44,9 @@ ${COMMON}
 
 | Template slug | Tool (per platform) |
 |---|---|
-| \`${r.slug}\` | \`get_practice_${id.replace(/-/g, '_')}\` on \`xero-accounting\` and \`myob-accounting\` |
+| \`${r.slug}\` | \`${toolName}\` on \`xero-accounting\` and \`myob-accounting\` |
 
-${inputsTable(man(r))}
+${inputsTable(mf)}
 ## Steps
 
 1. Confirm the period (and client scope, if the user wants to narrow it) per the rules above.
@@ -50,9 +55,9 @@ ${inputsTable(man(r))}
 
 ## Validation (shown in the report, recomputed on every open)
 
-- Every client row comes from \`get_practice_${id.replace(/-/g, '_')}\`; a client that failed to load is named in a notice, not silently dropped from the totals.
+- Every client row comes from \`${toolName}\`; a client that failed to load is named in a notice, not silently dropped from the totals.
 - The totals row sums only the clients that loaded; switching the view or sorting never changes a row's source platform or client id (no cross-client leakage).
-${id === 'client-summary' ? '' : id === 'financial-overview' ? '- Gross profit and net profit follow the same P&L formulas as the Client agent\'s own Financial Overview, per client — not a separate calculation.\n' : '- Figures follow the same model as the matching Client Report Analytics report, per client — not a separate calculation.\n'}
+${id === 'client-summary' ? '' : id === 'financial-overview' ? '- Gross profit and net profit follow the same P&L formulas as the Client agent\'s own Financial Overview, per client — not a separate calculation.\n' : id === 'activity-count' ? '- Xero never sources payroll (a separate Xero Payroll AU connector this agent doesn\'t connect) — shown as N/A with that reason, not estimated.\n' : id === 'user-activity' ? '- This reuses get_practice_client_summary\'s connection-level last-sync field — neither Xero nor MYOB exposes a practice-wide bulk audit-log API through this connector, so "events by user" and "edits/deletes" are shown as a named N/A, not a separate calculation.\n' : '- Figures follow the same model as the matching Client Report Analytics report, per client — not a separate calculation.\n'}
 ## QA test (sandbox / demo organisations only)
 
 On a QA workspace with the Xero demo company and a MYOB sandbox company file connected: ask for the ${it.name} for the practice. The report opens with a green banner (or a named notice for whichever platform isn't connected); every client the connections expose appears as one row; the totals row matches summing the rows by hand.
@@ -71,7 +76,7 @@ description: PRA-00 Practice catalogue — every practice-wide report as a box, 
 Use when the user asks which practice-wide reports exist, for the practice report catalogue or menu, or is unsure which report they need.
 
 1. Call \`artifact_from_template\` with \`plugin: "${PLUGIN}"\`, \`slug: "practice-report-catalogue"\`, \`title: "Practice Report Catalogue"\`. This is a static catalogue (no inputs).
-2. Reply with the report button and a short summary: live now are ${Object.values(ITEMS).map((it) => it.pra).join(', ')} (Client Summary, Sales, Purchases, Bank Reconciliation, Banking, Financial Overview). Data Quality and other quality/activity reports need the checks engine (step 3); time reports need a time source; Quadrant/Activity Count/Work Items are a later wave.
+2. Reply with the report button and a short summary: live now are ${Object.values(ITEMS).map((it) => it.pra + ' ' + it.name).join(', ')}. Data Quality (PRA-09) and the Quadrant (PRA-07) need the checks engine (step 3); time reports need a time source; Task Scope/Task Completion/Work Items are a later wave.
 3. To open a box, the user presses **Use this report** on that template in Reports → From your plugins, or asks you; then load the matching skill.
 ` };
 }
@@ -88,21 +93,22 @@ for (const s of skills) {
 // ── the agent ───────────────────────────────────────────────────────────────────────────────────────
 const AGENT = {
   name: 'Practice Report Analytics Agent',
-  description: 'Builds live, validated practice-wide reports — one row per client — across every Xero and MYOB connection (Client Summary, Sales, Purchases, Bank Reconciliation, Banking, Financial Overview). QuickBooks is one company per connection and is not consolidated.',
+  description: 'Builds live, validated practice-wide reports — one row per client — across every Xero and MYOB connection (Client Summary, Sales, Purchases, Bank Reconciliation, Banking, Financial Overview, Activity Count, User Activity). QuickBooks is one company per connection and is not consolidated.',
   connectors: ['xero-accounting', 'myob-accounting'],
   skills: skills.map((s) => S(s.key)),
   model: 'sonnet',
   prompt: `You are the Practice Report Analytics Agent in mySMB Workspace › Reporting. You produce reports across EVERY client the user's Xero and MYOB connections expose, one row per client, server-side (never by looping calls yourself).
 
 For every request:
-1. Pick the skill: the practice catalogue or "what reports are there" → ${S('catalogue')}; Client Summary Metrics (PRA-01) → ${S('client-summary')}; Sales Summary Metrics (PRA-02) → ${S('sales-summary')}; Purchases Summary Metrics (PRA-03) → ${S('purchases-summary')}; Bank Reconciliation Summary (PRA-04) → ${S('bank-reconciliation-summary')}; Banking Summary Metrics (PRA-05) → ${S('banking-summary')}; Financial Overview (PRA-06) → ${S('financial-overview')}. Load it with load_skill before calling any tool.
+1. Pick the skill: the practice catalogue or "what reports are there" → ${S('catalogue')}; Client Summary Metrics (PRA-01) → ${S('client-summary')}; Sales Summary Metrics (PRA-02) → ${S('sales-summary')}; Purchases Summary Metrics (PRA-03) → ${S('purchases-summary')}; Bank Reconciliation Summary (PRA-04) → ${S('bank-reconciliation-summary')}; Banking Summary Metrics (PRA-05) → ${S('banking-summary')}; Financial Overview (PRA-06) → ${S('financial-overview')}; Activity Count (PRA-08) → ${S('activity-count')}; User Activity (PRA-12) → ${S('user-activity')}. Load it with load_skill before calling any tool.
 2. Confirm the period (or as-at date) and, only if the user wants to narrow it, the client scope. Default is every client the connections expose.
 3. Create the report with artifact_from_template from the template the skill names, setting only the inputs the request changes. You never write report HTML and never type figures: the report fetches live data on every open, fans out server-side across every client, validates itself and shows a checks banner.
 
 Rules:
 - Connections are Xero and MYOB only for practice-wide reports. QuickBooks is one company per connection, so it is never consolidated here — point the user at the Client Report Analytics agent for their one QuickBooks company.
 - Never invent or estimate a figure. A client that fails to load is named in the report's notices, not silently dropped; the totals only sum the clients that loaded.
-- Reports that are not built yet (Data Quality and other checks-engine reports need step 3; time reports need a time source; Quadrant/Activity Count/Work Items are a later wave): say so plainly.
+- Reports that are not built yet (Data Quality and the Quadrant need the checks engine, step 3; time reports need a time source; Task Scope/Task Completion/Work Items are a later wave): say so plainly.
+- Activity Count (PRA-08) never sources Xero payroll (that's a separate Xero Payroll AU connector this agent doesn't connect) — show it as N/A with that reason, never estimate it. User Activity (PRA-12) shows each client's last connection sync, not a ledger audit log — neither Xero nor MYOB exposes a practice-wide bulk audit-log API through this connector; say so if asked for "who did what".
 - A needs_connection error means "Connect <platform> (Settings → Connections)". Show tool errors word for word.
 - Reports use the mySMB.com brand by default.`
 };

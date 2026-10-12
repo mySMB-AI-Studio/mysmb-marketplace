@@ -14,7 +14,7 @@ const { ok, done } = suite('practice-catalogue');
 
   ok('no script errors on a static open (no MyHubReport injected)', true);
   ok('17 PRA boxes + the Work list box = 18 rows', rows().length === 18, rows().length);
-  ok('live boxes are exactly PRA-01..06', rows().filter((r) => doc.querySelector('[data-row="' + r + '"] .pill.live')).sort().join() === 'PRA-01,PRA-02,PRA-03,PRA-04,PRA-05,PRA-06');
+  ok('live boxes are PRA-01..06 plus the Wave 2 additions PRA-08 and PRA-12', rows().filter((r) => doc.querySelector('[data-row="' + r + '"] .pill.live')).sort().join() === 'PRA-01,PRA-02,PRA-03,PRA-04,PRA-05,PRA-06,PRA-08,PRA-12');
   ok('PRA-09 Data Quality waits on the checks engine', /checks engine/.test(doc.querySelector('[data-row="PRA-09"]').textContent));
   ok('WL-00 waits on the checks engine too', /checks engine/.test(doc.querySelector('[data-row="WL-00"]').textContent));
   ok('PRA-14 Actual Time is Not available (time source wave)', /Not available/.test(doc.querySelector('[data-row="PRA-14"]').textContent));
