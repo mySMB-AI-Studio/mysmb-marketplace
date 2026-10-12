@@ -25,6 +25,7 @@ tfoot td{font-weight:700;background:var(--soft);border-top:2px solid var(--line)
 .badge{display:inline-block;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700}
 .badge.platform{border:1px solid var(--line);color:var(--muted)}
 .rag-g{color:var(--live)}.rag-a{color:var(--amber)}.rag-r{color:var(--fail)}
+.heat-0{background:transparent}.heat-1{background:rgba(52,223,186,.10)}.heat-2{background:rgba(52,223,186,.20)}.heat-3{background:rgba(52,223,186,.32)}.heat-4{background:rgba(52,223,186,.46)}
 tr.client-row{cursor:default}tr.client-row:hover{background:var(--soft)}
 .muted{color:var(--muted)}
 footer{margin-top:18px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px}
@@ -70,12 +71,21 @@ footer{margin-top:18px;font-size:12px;color:var(--muted);border-top:1px solid va
           row[canonicalKey] = c[upstream];
           if (c[upstream + '_na'] != null) row[canonicalKey + '_na'] = c[upstream + '_na'];
         });
+        // staticNA: columns this report never sources from any tool (e.g. no platform exposes a
+        // bulk/practice-wide version of the figure at all) — stamped on every row so the generic
+        // cell() N/A rendering kicks in, same as a tool-sourced "<key>_na", instead of leaving the
+        // cell blank with no explanation.
+        Object.keys(C.staticNA || {}).forEach(function (key) { row[key + '_na'] = C.staticNA[key]; });
         state.rows.push(row);
       });
       (v.errors || []).forEach(function (e) { state.notices.push(cap(platform) + ' — ' + e.name + ': ' + e.message); });
       if (v.truncated) { state.truncated[platform] = true; state.notices.push(cap(platform) + ': showing the first 60 clients — ' + (v.message || 'narrow the client selection to see more.')); }
     });
     if (C.qbNote) state.notices.push('QuickBooks: ' + C.qbNote);
+    // notice: one report-wide explanation shown regardless of platform (e.g. a genuine, named gap
+    // in every platform's API, not a per-connection error) — distinct from qbNote, which is specific
+    // to QuickBooks' single-company exclusion.
+    if (C.notice) state.notices.push(C.notice);
     render();
   }
   var PLATFORM_NAME = { xero: 'Xero', myob: 'MYOB', quickbooks: 'QuickBooks' };
@@ -101,22 +111,68 @@ footer{margin-top:18px;font-size:12px;color:var(--muted);border-top:1px solid va
     var t = {}; (C.totals || []).forEach(function (k) { t[k] = 0; var n = 0; rows.forEach(function (r) { if (r[k] != null) { t[k] += Number(r[k]); n++; } }); if (!n) t[k] = null; });
     return t;
   }
-  function cell(col, row) {
+  // Heat strip: per heat-flagged column, shade each cell by where its value falls between the
+  // min and max of that SAME column among the currently visible (filtered/sorted) rows — a
+  // relative heat map, recomputed every render, same "recomputes for the filtered set" philosophy
+  // as totalsRow. Not a separate chart element; the layout family's "heat strip" lives inside the
+  // practice table itself, consistent with how RAG badges are this kit's "chart" layer elsewhere.
+  function heatStats(rows) {
+    var stats = {};
+    C.columns.forEach(function (c) {
+      if (!c.heat) return;
+      var vals = [];
+      rows.forEach(function (r) {
+        if (r[c.key + '_na']) return;
+        var n = Number(r[c.key]);
+        if (r[c.key] != null && isFinite(n)) vals.push(n);
+      });
+      stats[c.key] = vals.length ? { min: Math.min.apply(null, vals), max: Math.max.apply(null, vals) } : null;
+    });
+    return stats;
+  }
+  function heatClass(col, row, stats) {
+    if (!col.heat) return '';
+    var s = stats[col.key];
+    if (!s || row[col.key + '_na']) return '';
+    var v = Number(row[col.key]);
+    if (!isFinite(v)) return '';
+    var range = s.max - s.min;
+    var t = range > 0 ? (v - s.min) / range : (s.max > 0 ? 1 : 0);
+    return ' heat-' + Math.max(0, Math.min(4, Math.floor(t * 5)));
+  }
+  function cell(col, row, stats) {
     var v = row[col.key];
     if (row[col.key + '_na']) return '<td class="num muted" title="' + esc(row[col.key + '_na']) + '">N/A</td>';
     var rag = computeRag(col, v);
-    var cls = (col.money || col.pct ? 'num' : '') + (rag ? ' ' + ragClass(rag) : '');
+    var cls = (col.money || col.pct ? 'num' : '') + (rag ? ' ' + ragClass(rag) : '') + heatClass(col, row, stats || {});
     var text = col.money ? money(v) : col.pct ? pct(v) : esc(v);
     return '<td class="' + cls + '">' + text + '</td>';
+  }
+  // Rank: when a report declares rankKey, every client is ranked 1..N by that column's value,
+  // descending, among the currently visible rows (same recompute-on-filter philosophy as totals).
+  function computeRanks(rows) {
+    if (!C.rankKey) return null;
+    var ranked = rows.slice().sort(function (a, b) {
+      var av = a[C.rankKey], bv = b[C.rankKey];
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      return bv - av;
+    });
+    var m = {};
+    ranked.forEach(function (r, i) { m[r.id] = i + 1; });
+    return m;
   }
   function render() {
     var rows = sorted(state.rows.filter(match));
     $('chips').innerHTML = ['All'].concat(C.chips || []).map(function (ch) { return '<button class="chip" type="button" aria-pressed="' + (ch === state.chip) + '" data-chip="' + esc(ch) + '">' + esc(ch) + '</button>'; }).join('');
     $('notices').innerHTML = state.notices.map(function (n) { return '<div class="notice">' + esc(n) + '</div>'; }).join('');
-    var thead = '<tr><th data-k="_platform"></th><th data-k="name">Client</th>' + C.columns.map(function (c) { return '<th class="' + (c.money || c.pct ? 'num' : '') + '" data-k="' + c.key + '"' + (state.sortKey === c.key ? ' aria-sort="' + (state.sortDir > 0 ? 'ascending' : 'descending') + '"' : '') + '>' + esc(c.label) + '</th>'; }).join('') + '</tr>';
-    var tbody = rows.map(function (r) { return '<tr class="client-row" data-id="' + esc(r.id) + '"><td>' + platformBadge(r._platform) + '</td><td>' + esc(r.name) + '</td>' + C.columns.map(function (c) { return cell(c, r); }).join('') + '</tr>'; }).join('') || '<tr><td colspan="' + (2 + C.columns.length) + '" class="muted">No clients matched.</td></tr>';
+    var ranks = computeRanks(rows);
+    var rankTh = ranks ? '<th class="num">Rank</th>' : '';
+    var hstats = heatStats(rows);
+    var thead = '<tr><th data-k="_platform"></th><th data-k="name">Client</th>' + rankTh + C.columns.map(function (c) { return '<th class="' + (c.money || c.pct ? 'num' : '') + '" data-k="' + c.key + '"' + (state.sortKey === c.key ? ' aria-sort="' + (state.sortDir > 0 ? 'ascending' : 'descending') + '"' : '') + '>' + esc(c.label) + '</th>'; }).join('') + '</tr>';
+    var tbody = rows.map(function (r) { return '<tr class="client-row" data-id="' + esc(r.id) + '"><td>' + platformBadge(r._platform) + '</td><td>' + esc(r.name) + '</td>' + (ranks ? '<td class="num">' + ranks[r.id] + '</td>' : '') + C.columns.map(function (c) { return cell(c, r, hstats); }).join('') + '</tr>'; }).join('') || '<tr><td colspan="' + (2 + (ranks ? 1 : 0) + C.columns.length) + '" class="muted">No clients matched.</td></tr>';
     var tot = totalsRow(rows);
-    var tfoot = '<tr><td></td><td>Total (' + rows.length + ' client' + (rows.length === 1 ? '' : 's') + ')</td>' + C.columns.map(function (c) { return '<td class="' + (c.money || c.pct ? 'num' : '') + '">' + ((C.totals || []).indexOf(c.key) >= 0 ? (c.money ? money(tot[c.key]) : c.pct ? pct(tot[c.key]) : (tot[c.key] == null ? '—' : tot[c.key])) : '') + '</td>'; }).join('') + '</tr>';
+    var tfoot = '<tr><td></td><td>Total (' + rows.length + ' client' + (rows.length === 1 ? '' : 's') + ')</td>' + (ranks ? '<td></td>' : '') + C.columns.map(function (c) { return '<td class="' + (c.money || c.pct ? 'num' : '') + '">' + ((C.totals || []).indexOf(c.key) >= 0 ? (c.money ? money(tot[c.key]) : c.pct ? pct(tot[c.key]) : (tot[c.key] == null ? '—' : tot[c.key])) : '') + '</td>'; }).join('') + '</tr>';
     $('table').innerHTML = '<thead>' + thead + '</thead><tbody>' + tbody + '</tbody><tfoot>' + tfoot + '</tfoot>';
     var ck = checks(rows);
     var failed = ck.filter(function (k) { return k.pass === false; }).length;

@@ -14,7 +14,11 @@ const ITEMS = {
   'banking-summary': { pra: 'PRA-05', name: 'Banking Summary Metrics', chip: 'Banking',
     blurb: 'Cash in, cash out and net movement across every bank account, per client.' },
   'financial-overview': { pra: 'PRA-06', name: 'Financial Overview', chip: 'Financial',
-    blurb: 'Revenue, gross and net profit, bank balances and AR/AP ageing, for all or selected clients on one page.' }
+    blurb: 'Revenue, gross and net profit, bank balances and AR/AP ageing, for all or selected clients on one page.' },
+  'activity-count': { pra: 'PRA-08', name: 'Activity Count', chip: 'Work',
+    blurb: 'Transaction counters across sales, purchases, banking, journals and payroll (MYOB only), per client, ranked by total activity.' },
+  'user-activity': { pra: 'PRA-12', name: 'User Activity', chip: 'Quality',
+    blurb: 'What people have been doing in client files, where the platform exposes it; shows each client’s last connection sync as the closest signal available (neither Xero nor MYOB exposes a practice-wide bulk audit log).' }
 };
 const REPORTS = [{
   pra: 'PRA-00', ref: 'catalogue/practice-catalogue', slug: 'practice-report-catalogue', table: false,
