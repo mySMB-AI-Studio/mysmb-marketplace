@@ -1,0 +1,432 @@
+{
+  "id": "dropbox-bills-drop-folder",
+  "title": "Bills Drop Folder",
+  "description": "Every file in a watched Dropbox folder, with PDF bills extracted (supplier, invoice number, total). Scanned PDFs and photos are honestly flagged \"Needs OCR\" rather than guessed, oversized or non-bill files are skipped, and a GST-vs-subtotal mismatch is flagged for a human to check.",
+  "category": "finance",
+  "tags": [
+    "dropbox",
+    "bills",
+    "invoices",
+    "accounts-payable",
+    "extraction",
+    "file-storage"
+  ],
+  "keywords": [
+    "dropbox",
+    "bills",
+    "invoices",
+    "accounts payable",
+    "watched folder",
+    "pdf extraction",
+    "needs ocr",
+    "gst"
+  ],
+  "connectorsUsed": [
+    "dropbox"
+  ],
+  "brandColor": "#0061FF",
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 10
+    },
+    "min": {
+      "colSpan": 5,
+      "rowSpan": 8
+    },
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 14
+    }
+  },
+  "dataProvider": {
+    "mcp": "dropbox",
+    "tool": "get_bills_drop_folder_dashboard",
+    "params": {
+      "path": "/Accounts/Bills Inbox"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/dropbox/get_bills_drop_folder_dashboard": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/billsView",
+                "value": {
+                  "$computed": "dropbox_build_bills_view",
+                  "args": {
+                    "dashboard": { "$state": "/dropbox/get_bills_drop_folder_dashboard" }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "headerStack"
+        ]
+      },
+      "headerStack": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": [
+          "titleRow",
+          "pathRow",
+          "newFilesRow"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Cloud", "tone": "brand", "size": "lg" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": [
+          "titleEyebrow",
+          "title"
+        ]
+      },
+      "titleEyebrow": {
+        "type": "Caption",
+        "props": { "text": "WATCHED FOLDER", "tone": "brand" }
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Bills Drop Folder", "level": "h2" }
+      },
+      "pathRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["pathIcon", "pathText"]
+      },
+      "pathIcon": {
+        "type": "Icon",
+        "props": { "name": "Folder", "tone": "muted", "size": "xs" }
+      },
+      "pathText": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/dropbox/get_bills_drop_folder_dashboard/path" }, "tone": "muted" }
+      },
+      "newFilesRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["newFilesLabel", "activitySparkline"]
+      },
+      "newFilesLabel": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["newFilesStat", "newFilesCaption"]
+      },
+      "newFilesStat": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/dropbox/get_bills_drop_folder_dashboard/newFilesToday" }, "size": "md" }
+      },
+      "newFilesCaption": {
+        "type": "Caption",
+        "props": { "text": "new files today", "tone": "muted" }
+      },
+      "activitySparkline": {
+        "type": "Sparkline",
+        "props": {
+          "values": { "$state": "/dropbox/get_bills_drop_folder_dashboard/activityByDay" },
+          "tone": "brand",
+          "height": 32
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$state": "/_loading/dropbox.get_bills_drop_folder_dashboard" },
+        "children": ["sk1", "sk2", "sk3"]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No files in this folder." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/dropbox.get_bills_drop_folder_dashboard", "not": true },
+            { "$state": "/dropbox/get_bills_drop_folder_dashboard/rows/0", "not": true }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "visible": { "$state": "/_loading/dropbox.get_bills_drop_folder_dashboard", "not": true },
+        "children": [
+          "summaryRow",
+          "statsRow",
+          "list",
+          "footer"
+        ]
+      },
+      "summaryRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["summaryTotal", "summaryExtractedLabel", "summaryCheckLabel"],
+        "visible": { "$state": "/dropbox/get_bills_drop_folder_dashboard/totalExtracted" }
+      },
+      "summaryTotal": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": { "value": { "$state": "/dropbox/get_bills_drop_folder_dashboard/totalExtracted" } }
+          },
+          "size": "sm",
+          "weight": "bold"
+        }
+      },
+      "summaryExtractedLabel": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "extracted from {n} bills", "n": { "$state": "/dropbox/get_bills_drop_folder_dashboard/counts/extracted" } }
+          },
+          "tone": "muted"
+        }
+      },
+      "summaryCheckLabel": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "+ {amount} to check",
+              "amount": {
+                "$computed": "format_currency",
+                "args": { "value": { "$state": "/dropbox/get_bills_drop_folder_dashboard/totalToCheck" } }
+              }
+            }
+          },
+          "tone": "warning"
+        },
+        "visible": { "$state": "/dropbox/get_bills_drop_folder_dashboard/totalToCheck" }
+      },
+      "statsRow": {
+        "type": "Row",
+        "props": { "gap": "sm" },
+        "children": ["statExtractedGrow", "statCheckGrow", "statNeedsOcrGrow", "statSkippedGrow"]
+      },
+      "statExtractedGrow": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["statExtracted"]
+      },
+      "statExtracted": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["statExtractedStack"]
+      },
+      "statExtractedStack": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["statExtractedValue", "statExtractedLabel"]
+      },
+      "statExtractedValue": {
+        "type": "Text",
+        "props": { "text": { "$state": "/dropbox/get_bills_drop_folder_dashboard/counts/extracted" }, "size": "sm", "weight": "bold", "tone": "success" }
+      },
+      "statExtractedLabel": {
+        "type": "Caption",
+        "props": { "text": "✓ Extracted", "tone": "muted" }
+      },
+      "statCheckGrow": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["statCheck"]
+      },
+      "statCheck": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["statCheckStack"]
+      },
+      "statCheckStack": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["statCheckValue", "statCheckLabel"]
+      },
+      "statCheckValue": {
+        "type": "Text",
+        "props": { "text": { "$state": "/dropbox/get_bills_drop_folder_dashboard/counts/check" }, "size": "sm", "weight": "bold", "tone": "warning" }
+      },
+      "statCheckLabel": {
+        "type": "Caption",
+        "props": { "text": "! Check", "tone": "muted" }
+      },
+      "statNeedsOcrGrow": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["statNeedsOcr"]
+      },
+      "statNeedsOcr": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["statNeedsOcrStack"]
+      },
+      "statNeedsOcrStack": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["statNeedsOcrValue", "statNeedsOcrLabel"]
+      },
+      "statNeedsOcrValue": {
+        "type": "Text",
+        "props": { "text": { "$state": "/dropbox/get_bills_drop_folder_dashboard/counts/needsOcr" }, "size": "sm", "weight": "bold", "tone": "info" }
+      },
+      "statNeedsOcrLabel": {
+        "type": "Caption",
+        "props": { "text": "Needs OCR", "tone": "muted" }
+      },
+      "statSkippedGrow": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["statSkipped"]
+      },
+      "statSkipped": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["statSkippedStack"]
+      },
+      "statSkippedStack": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["statSkippedValue", "statSkippedLabel"]
+      },
+      "statSkippedValue": {
+        "type": "Text",
+        "props": { "text": { "$state": "/dropbox/get_bills_drop_folder_dashboard/counts/skipped" }, "size": "sm", "weight": "bold" }
+      },
+      "statSkippedLabel": {
+        "type": "Caption",
+        "props": { "text": "Skipped", "tone": "muted" }
+      },
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "repeat": { "statePath": "/ui/billsView/rows", "key": "id" },
+        "children": ["rowWrap"]
+      },
+      "rowWrap": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["rowContent", "rowDivider"]
+      },
+      "rowContent": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "justify": "between" },
+        "children": ["rowLeft", "rowRight"]
+      },
+      "rowLeft": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["fileTypeAvatar", "rowLabels"]
+      },
+      "fileTypeAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": { "$computed": "dropbox_file_type_label", "args": { "name": { "$item": "name" } } },
+          "tone": { "$computed": "dropbox_file_type_tone", "args": { "name": { "$item": "name" } } },
+          "size": "md"
+        }
+      },
+      "rowLabels": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["rowName", "rowMeta", "rowReason"]
+      },
+      "rowName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "bold", "truncate": true }
+      },
+      "rowMeta": {
+        "type": "Caption",
+        "props": { "text": { "$item": "metaLine" }, "tone": "muted" }
+      },
+      "rowReason": {
+        "type": "Caption",
+        "props": { "text": { "$item": "reason" }, "tone": "warning" },
+        "visible": { "$item": "hasReason" }
+      },
+      "rowRight": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["rowAmount", "rowStatusBadge"]
+      },
+      "rowAmount": {
+        "type": "Text",
+        "props": { "text": { "$item": "amountLabel" }, "size": "sm", "weight": "bold" },
+        "visible": { "$item": "hasAmount" }
+      },
+      "rowStatusBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "statusLabel" },
+          "tone": { "$computed": "dropbox_status_tone", "args": { "value": { "$item": "status" } } },
+          "variant": "soft"
+        }
+      },
+      "rowDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "footer": {
+        "type": "Row",
+        "props": { "gap": "sm", "justify": "between", "align": "center" },
+        "children": ["footerCaptionGrow", "footerButton"]
+      },
+      "footerCaptionGrow": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["footerCaption"]
+      },
+      "footerCaption": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/billsView/footerLabel" }, "tone": "muted", "truncate": true }
+      },
+      "footerButton": {
+        "type": "Button",
+        "props": { "label": "Open in Dropbox", "variant": "primary", "tone": "info", "size": "sm", "leadingIcon": "Cloud" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": "https://www.dropbox.com/home", "target": "_blank" }
+          }
+        }
+      }
+    }
+  }
+}
