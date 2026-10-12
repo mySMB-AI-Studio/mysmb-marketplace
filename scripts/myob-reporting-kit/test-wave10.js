@@ -27,7 +27,14 @@ const budNp = (n) => { let s = 0; L.getBudget({ myob_company_file_id: L.CF1, fin
   calls.length = 0; t = await go(null, { financial_year: 2026, fy_start: '2025-07-01', act_end: '2025-08-31' });
   ok('budget: a saved report with last year\'s inputs rolls to the current year (MYOB refuses older years)', green(t) && calls.some(([id, p]) => id === 'budget' && p.financial_year === 2027) && /FY2027/.test(banner(t)), [banner(t).slice(0, 300), calls.filter((c) => c[0] === 'budget').map((c) => c[1].financial_year)]);
   t = await go(null, { budget_year: 'next' });
-  ok('budget: next year (FY2028) has no budget — said plainly, nothing invented, not red', /No budget is set up in MYOB for the financial year 1 July 2027 – 30 June 2028/.test(text(t.doc, '#mk-body')) && !red(t) && !t.doc.querySelector('#mk-body table'), banner(t).slice(0, 300));
+  ok('budget: next year (FY2028) has no budget — said plainly, nothing invented, not red', /No budget is set up in MYOB for the financial year 1 July 2027 – 30 June 2028 \(FY2028\)\. To see one here, set it up in MYOB, or choose This financial year/.test(text(t.doc, '#mk-body')) && !red(t) && !t.doc.querySelector('#mk-body table'), banner(t).slice(0, 300));
+  // Live QA (12 Oct 2026): MYOB answers 404 "The resource can't be found" for a year with no budget; the connector (mcp #733) says so plainly
+  t = await go({ budget: () => ({ __error: 'No budget is set up for the 2027 financial year in this MYOB file (MYOB GeneralLedger/AccountBudget/2027: not found). Set one up in MYOB, or choose the other financial year.' }) });
+  ok('budget: MYOB has no budget for this year — said plainly, one line for information, not red', /No budget is set up in MYOB for the financial year 1 July 2026 – 30 June 2027 \(FY2027\)\. To see one here, set it up in MYOB, or choose Next financial year/.test(text(t.doc, '#mk-body')) && !red(t) && /ℹ Budget for FY2027 in MYOB — none set up \(MYOB: not found\)/.test(banner(t)) && /Financial year 1 July 2026 – 30 June 2027/.test(text(t.doc, 'header')) && !t.doc.querySelector('#mk-body .mk-err'), [banner(t).slice(0, 300), text(t.doc, '#mk-body').slice(0, 300)]);
+  t = await go({ budget: () => ({ __error: 'MYOB GET https://arl1.api.myob.com/accountright/x/GeneralLedger/AccountBudget/2027 404: "The resource can\'t be found. It might have been deleted."' }) });
+  ok('budget: the raw 404 (before mcp #733) reads the same way', !red(t) && /No budget is set up in MYOB for the financial year 1 July 2026/.test(text(t.doc, '#mk-body')), banner(t).slice(0, 300));
+  t = await go({ budget: () => ({ __error: 'MYOB refused access — the session has expired or this connection lacks permission for this data; please re-connect MYOB (GET https://x/GeneralLedger/AccountBudget/2027 401: ...)' }) });
+  ok('budget: any other budget error still fails', red(t) && /✗ Budget loaded — .*401/.test(banner(t)) && !!t.doc.querySelector('#mk-body .mk-err'), banner(t).slice(0, 300));
   // ---------------- Budget vs actual
   t = await go(null, { display: disp({ v: 'actual' }) });
   const act = L.expect.netProfit('2026-07-01', '2026-08-31', false, L.CF1);

@@ -188,6 +188,9 @@ MK.app({
   defaults: { budget_year: 'current', financial_year: 2027, fy_start: '2026-07-01', act_end: '2026-08-31', company_file: '', persona: 'Bookkeeper',
     display: '{"cents":0,"k":0,"zeros":0,"neg":"paren","red":0,"hdr":1,"ftr":1,"style":"myob","dens":"100","p":"custom","a":"custom","c":"none","v":"budget","x":""}' },
   uses: { budget: ['financial_year', 'company_file'], pnl: ['fy_start', 'act_end', 'company_file'], accounts: ['company_file'], company_files: [] },
+  // The report reports its own budget errors: MYOB answers "not found" for a year with no budget (live QA, 12 Oct 2026), which is a
+  // state to say plainly, not a failure. Any other budget error still fails below.
+  optional: ['budget'],
   tools: { budget: 'get_budget (the account budgets for the financial year)', pnl: 'get_profit_and_loss_3m (actuals: the year\'s start to the end of last month)', accounts: 'list_accounts (classifications)', company_files: 'list_company_files' },
   enums: [{ input: 'budget_year', label: 'Budget year', options: [['current', 'This financial year'], ['next', 'Next financial year']] }],
   views: [['budget', 'Budget by month'], ['actual', 'Budget vs actual (year to date)']],
@@ -195,11 +198,17 @@ MK.app({
     var s = (fm > 1 ? fy - 1 : fy) + '-' + (fm < 10 ? '0' : '') + fm + '-01', lm = MK.asAt('end_last_month'); return { financial_year: fy, fy_start: s, act_end: lm >= s ? lm : s }; },
   render: function (c) {
     var body = c.body, h = MK.h, money = function (v) { return MK.money(v, c.currency, c.display); }, r2 = function (v) { return Math.round(v * 100) / 100; }, inp = c.inputs, fy = +inp.financial_year, fm = c.fy.month;
-    if (c.errors.budget) { body.innerHTML = '<p class="mk-err">' + h(c.err('budget')) + '</p>'; return { checks: [{ name: 'Budget loaded', pass: false, detail: c.err('budget') }] }; }
-    var B = c.data.budget; if (!B) return {};
-    var idx = MK.accounts(c.data.accounts), PLC = /^(Income|CostOfSales|Expense|OtherIncome|OtherExpense)$/, M = [], k;
+    var M = [], k;
     for (k = 0; k < 12; k++) { var mo = (fm - 1 + k) % 12 + 1; M.push(((fm > 1 ? fy - 1 : fy) + (fm > 1 && mo < fm ? 1 : 0)) + '-' + (mo < 10 ? '0' : '') + mo); }
     var lbl = M.map(function (ym) { return MK.MONTHS[+ym.slice(5) - 1].slice(0, 3) + ' ' + ym.slice(2, 4); }), out = 0, per = '1 ' + MK.MONTHS[fm - 1] + ' ' + M[0].slice(0, 4) + ' – ' + MK.iso(MK.eom(+M[11].slice(0, 4), +M[11].slice(5))).slice(8) + ' ' + MK.MONTHS[+M[11].slice(5) - 1] + ' ' + M[11].slice(0, 4);
+    var none = '<p class="muted">No budget is set up in MYOB for the financial year ' + h(per) + ' (FY' + fy + '). To see one here, set it up in MYOB, or choose ' + (inp.budget_year === 'next' ? 'This' : 'Next') + ' financial year.</p>';
+    if (c.errors.budget) { var em = c.err('budget');
+      if (/No budget is set up|AccountBudget\/\d+ 404/.test(em)) { body.innerHTML = none; this._x = { sheets: [] };
+        return { checks: [{ name: 'Budget for FY' + fy + ' in MYOB', pass: null, info: true, detail: 'none set up (MYOB: not found)' }], title: c.view === 'actual' ? 'Budget vs Actual' : 'Budget Management', period: 'Financial year ' + per,
+          na: ['Budgets for earlier years (MYOB\'s API keeps the current and next financial year only)', 'Job and category (tracking) budgets'] }; }
+      body.innerHTML = '<p class="mk-err">' + h(em) + '</p>'; return { checks: [{ name: 'Budget loaded', pass: false, detail: em }] }; }
+    var B = c.data.budget; if (!B) return {};
+    var idx = MK.accounts(c.data.accounts), PLC = /^(Income|CostOfSales|Expense|OtherIncome|OtherExpense)$/;
     var rows = (B.Budgets || []).map(function (b) { var v = M.map(function () { return 0; });
       (b.MonthlyBudgets || []).forEach(function (x) { var i = M.indexOf(x.Year + '-' + (x.Month < 10 ? '0' : '') + x.Month); if (i < 0) out++; else v[i] = r2(v[i] + (MK.num(x.Amount) || 0)); });
       var ci = MK.classOf(b.Account || {}, idx); return { a: b.Account || {}, v: v, cls: ci.cls || '', listed: ci.from === 'accounts' }; });
@@ -208,7 +217,7 @@ MK.app({
     var pl = MK.breakdown(reps, idx, MK.PL_LAYOUT), last = function (g) { return pl.totals[g] ? pl.totals[g][12] : 0; }, bs = rows.filter(function (r) { return r.cls && !PLC.test(r.cls); }), unc = rows.filter(function (r) { return !r.listed; });
     var view = c.view || 'budget', html, x = { sheets: [] }, sumNp = function (b, i) { return b.totals.Income[i] - b.totals.CostOfSales[i] - b.totals.Expense[i] + b.totals.OtherIncome[i] - b.totals.OtherExpense[i]; };
     var ytdM = M.filter(function (ym) { return ym <= String(inp.act_end).slice(0, 7) && inp.act_end > inp.fy_start; }), cmp = null;
-    if (!rows.length) html = '<p class="muted">No budget is set up in MYOB for the financial year ' + h(per) + ' (FY' + fy + ').</p>';
+    if (!rows.length) html = none;
     else if (view === 'actual') {
       if (!ytdM.length) html = '<p class="muted">No whole month of the financial year ' + h(per) + ' has ended yet, so there is nothing to compare.</p>';
       else if (c.errors.pnl) html = '<p class="mk-err">' + h(c.err('pnl')) + '</p>';
