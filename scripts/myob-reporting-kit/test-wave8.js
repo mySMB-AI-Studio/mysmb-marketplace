@@ -63,6 +63,9 @@ const disp = (r, patch) => { const d = JSON.parse(man(r).inputs.find((i) => i.na
   ok('items register: an extra purchase makes an opening negative — missing movements flagged', red(t) && /✗ No item has a negative opening quantity .*WID-200/.test(banner(t)), banner(t).slice(0, 300));
   t = await go('ir', { inv_lines: (p) => { const r = V.listInvoiceLines(p); r.Items = r.Items.concat([Object.assign({}, r.Items[0], { Item: { UID: 'zzz', Number: 'ZZZ-1', Name: 'Unknown' } })]); return r; } });
   ok('items register: a line with an item MYOB does not list fails', red(t) && /✗ Every movement names an item/.test(banner(t)), banner(t).slice(0, 300));
+  // Live QA (12 Oct 2026): a file with no inventoried items showed "Sold -0"
+  t = await go('ir', { items: () => ({ Count: 0, Items: [] }), inv_lines: () => ({ Count: 0, Items: [] }), bill_lines: () => ({ Count: 0, Items: [] }) });
+  ok('items register: nothing moved reads 0, never -0', ['Purchased', 'Sold', 'Adjusted'].every((l) => kpi(t, l) === '0') && !/-0\b/.test(text(t.doc, '#mk-body')), ['Purchased', 'Sold', 'Adjusted'].map((l) => kpi(t, l)));
 
   console.log(fails ? `\n${fails}/${total} checks FAILED` : `\nALL ${total} checks passed`);
   process.exit(fails ? 1 : 0);
