@@ -8,6 +8,7 @@ const EXT = path.join(__dirname, '..', '..', 'plugins', PLUGIN);
 const w = (rel, s) => { const f = path.join(EXT, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, s.replace(/\r\n/g, '\n')); };
 const man = (r) => { const f = path.join(__dirname, r.ref + '.manifest.json'); return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : null; };
 const S = (key) => PLUGIN + ':' + PLUGIN + '-' + key;
+const ITEM_14 = { cra: 'CRA-14', name: 'Ledger User Activity' };
 const CLIENT_INPUT = { xero: 'the organisation id (`tenantId` from `list_connections`)', myob: 'the company file id (`Id` from `list_company_files`)', quickbooks: 'none: QuickBooks is the one connected company' };
 const DISCOVERY = { xero: '`list_connections` (xero-accounting)', myob: '`list_company_files` (myob-accounting)', quickbooks: '`qbo_query` with `SELECT * FROM CompanyInfo` (quickbooks-accounting)' };
 
@@ -30,7 +31,7 @@ function reportSkill(id) {
   const key = id;
   const body = `---
 name: ${PLUGIN}-${key}
-description: ${it.cra} ${it.name} for one client (Xero, MYOB or QuickBooks) as a live, validated report. Use when the user asks for the ${it.name.toLowerCase()} of a client${id === 'financial-overview' ? ', a client dashboard, revenue / profit / bank / ageing overview' : id === 'tax-by-type' ? ', GST by tax type by month, a BAS preparation review' : ', BAS transaction detail, the transactions behind the GST figures'}.
+description: ${it.cra} ${it.name} for one client (Xero, MYOB or QuickBooks) as a live, validated report. Use when the user asks for the ${it.name.toLowerCase()} of a client${id === 'financial-overview' ? ', a client dashboard, revenue / profit / bank / ageing overview' : id === 'tax-by-type' ? ', GST by tax type by month, a BAS preparation review' : id === 'bas-transactions' ? ', BAS transaction detail, the transactions behind the GST figures' : id === 'sales-by-tracking' ? ', sales by tracking category, class, job or department' : id === 'purchases-by-tracking' ? ', purchases or spend by tracking category, class, job or department' : id === 'contacts-bas' ? ', a contact list for BAS preparation, GST evidence on file per contact' : id === 'activity-count' ? ', how active a client file has been, transaction counts by month' : ', WorkQ activity for a client, what has been actioned in Workspace'}.
 ---
 
 # ${it.cra} ${it.name}
@@ -54,12 +55,12 @@ ${rows.map((r) => '### ' + r.title + ' (`' + r.slug + '`)\n\n' + inputsTable(man
 
 ## Validation (shown in the report, recomputed on every open)
 
-${id === 'financial-overview' ? '- Revenue, gross profit and net profit equal the platform\'s own Profit and Loss for the same client, period and basis; last year comes from a P&L for exactly the comparison dates.\n- Bank balances total the balance sheet\'s bank accounts at the period end.\n- Receivables and payables ageing totals tie to the balance sheet\'s receivables and payables (accrual).' : id === 'tax-by-type' ? '- Each tax type\'s period total equals the platform\'s GST / tax summary for the same period and basis.\n- The months add up to the period total.\n- Net GST ties to the movement in the GST control account; any difference is shown and explained.' : '- GST per tax type equals the same tax type in the platform\'s GST / tax summary for the period.\n- The grand total GST equals the period\'s net GST; every line\'s net + GST = gross.\n- Every page of transactions is loaded, or the truncation is a failed check (never a silent short total).'}
+${id === 'financial-overview' ? '- Revenue, gross profit and net profit equal the platform\'s own Profit and Loss for the same client, period and basis; last year comes from a P&L for exactly the comparison dates.\n- Bank balances total the balance sheet\'s bank accounts at the period end.\n- Receivables and payables ageing totals tie to the balance sheet\'s receivables and payables (accrual).' : id === 'tax-by-type' ? '- Each tax type\'s period total equals the platform\'s GST / tax summary for the same period and basis.\n- The months add up to the period total.\n- Net GST ties to the movement in the GST control account; any difference is shown and explained.' : id === 'bas-transactions' ? '- GST per tax type equals the same tax type in the platform\'s GST / tax summary for the period.\n- The grand total GST equals the period\'s net GST; every line\'s net + GST = gross.\n- Every page of transactions is loaded, or the truncation is a failed check (never a silent short total).' : id === 'sales-by-tracking' || id === 'purchases-by-tracking' ? '- Options (or jobs / classes), including an Unassigned / No job / Unclassified bucket, add up to the total.\n- The total ties to the same platform\'s own Profit and Loss for the same period, without a tracking split (a separate call).\n- One tracking category / dimension at a time, to avoid double counting.' : id === 'contacts-bas' ? '- Every contact seen on a transaction in the period appears in the contact list.\n- No ABR (Australian Business Register) registry-match column yet: every row shows "N/A — pending ABR" rather than a guessed status (an ABR API credential has not arrived).\n- GST evidence and tax types used are shown only where the platform actually exposes them; otherwise "N/A — not in source" (never guessed).' : id === 'activity-count' ? '- The months for each category add up to that category\'s period total.\n- The categories add up to the grand total.\n- Payroll (and, on QuickBooks, Journals) read "N/A — not in source" where this connector has no countable source, rather than a fabricated zero.' : '- Every item shown is dated inside the report\'s period.\n- The client match is best-effort (the client\'s name against the activity item) and is stated as such, not presented as a precise per-client filter.\n- No activity in the period is expected while the checks engine (WL-00) is not live, and renders as a plain message, never an error or an invented row.'}
 - Switching client refetches every source for the new client; nothing of the previous client stays on the page or in the Excel download.
 
 ## QA test (sandbox / demo organisations only)
 
-On a QA workspace with the Xero demo company, a MYOB sandbox company file and a QuickBooks sandbox company connected: ask for the ${it.name} of each, for the last complete quarter, accrual. Each report opens with a green banner; compare the headline figures with the same platform's library report (${id === 'financial-overview' ? 'Profit and Loss and Balance Sheet' : 'GST Summary (BAS) / GST Reconciliation'}) for the same dates; switch client in the report and check nothing of the first client remains; download Excel and PDF.
+On a QA workspace with the Xero demo company, a MYOB sandbox company file and a QuickBooks sandbox company connected: ask for the ${it.name} of each, for the last complete quarter, accrual. Each report opens with a green banner; compare the headline figures with the same platform's library report (${id === 'financial-overview' ? 'Profit and Loss and Balance Sheet' : id === 'tax-by-type' || id === 'bas-transactions' ? 'GST Summary (BAS) / GST Reconciliation' : id === 'sales-by-tracking' || id === 'purchases-by-tracking' ? 'Profit and Loss by tracking category / job / class' : id === 'contacts-bas' ? 'the platform\'s own contact list' : id === 'activity-count' ? 'a manual count of invoices, bills and bank transactions in the period' : 'the WorkQ work list for the same client'}) for the same dates; switch client in the report and check nothing of the first client remains; download Excel and PDF.
 `;
   return { key, body };
 }
@@ -77,7 +78,7 @@ Use when the user asks which reports exist for a client, for the client report c
 
 1. If the user named a client, find it with the discovery call for its platform (Xero \`list_connections\`, MYOB \`list_company_files\`, QuickBooks \`qbo_query\` \`SELECT * FROM CompanyInfo\`) and build the client value \`<platform>:<id>\` (\`xero:<tenantId>\`, \`myob:<company file Id>\`, \`quickbooks:<CompanyInfo Id>\`).
 2. Call \`artifact_from_template\` with \`plugin: "${PLUGIN}"\`, \`slug: "client-report-catalogue"\`, \`title: "Client Report Catalogue — <client name>"\` and, when you have it, \`inputs: { "client": "<platform>:<id>" }\`. The catalogue lists the user's clients from their own connections; they can switch client in it.
-3. Reply with the report button and a short summary: live now are ${ITEMS['financial-overview'].cra} ${ITEMS['financial-overview'].name}, ${ITEMS['tax-by-type'].cra} ${ITEMS['tax-by-type'].name} and ${ITEMS['bas-transactions'].cra} ${ITEMS['bas-transactions'].name} for Xero, MYOB and QuickBooks, plus the platform's own report library (CRA-16). Data Quality, Client Queries, Health Check and GST Check need the checks engine; tracking-category, contact, activity and ledger-activity reports come in Wave 2; time reports need a time source (Xero Practice Manager practices, Wave 3).
+3. Reply with the report button and a short summary: live now for Xero, MYOB and QuickBooks are ${Object.keys(ITEMS).map((k) => ITEMS[k].cra + ' ' + ITEMS[k].name).join(', ')}, plus the platform's own report library (CRA-16) and ${ITEM_14.cra} ${ITEM_14.name} (routes to the platform's own audit-log skill for QuickBooks and MYOB; Xero has no org-wide audit log, only per-record history on request). Data Quality, Client Queries, Health Check and GST Check need the checks engine (WL-00); time reports need a time source (Xero Practice Manager practices, Wave 3). Contact Details for BAS Preparation (CRA-06) and Workspace User Activity (CRA-15) are partial builds: no ABR registry match yet, and little or no WorkQ activity until the checks engine ships findings — say so plainly if asked.
 4. To open a box, the user presses **Use this report** on that template in Reports → From your plugins, or asks you ("Financial overview for <client>"); then load the matching skill.
 
 The catalogue does not look up the latest saved copy of each report and shows no sparklines yet; Workspace has no "Display in client portal" setting for reports, so the catalogue's portal check is "for information". Say so if asked.
@@ -106,7 +107,33 @@ ${lists}
 ` };
 }
 
-const skills = [catalogueSkill(), ...Object.keys(ITEMS).map(reportSkill), platformSkill()];
+// CRA-14 Ledger User Activity: no templates in this extension (routes to the platform's own export-based audit-log skills
+// for QuickBooks and MYOB; Xero has no org-wide audit log at all). Hand-built like platformSkill(), not from ITEMS/REPORTS.
+function ledgerActivitySkill() {
+  const key = 'ledger-user-activity';
+  return { key, body: `---
+name: ${PLUGIN}-${key}
+description: ${ITEM_14.cra} ${ITEM_14.name} — what people have been doing in a client's accounting file. Routes to the QuickBooks Audit Log (Q21) and MYOB Journal Security Audit (M13) skills; Xero has no organisation-wide audit log. Use when the user asks who changed, added or deleted a transaction, for an audit trail, or for ledger user activity for a client.
+---
+
+# ${ITEM_14.cra} ${ITEM_14.name}
+
+Use when the user asks what people have been doing in a client's Xero, MYOB or QuickBooks file: who added, changed or deleted which transactions, and when. This skill does not build a report itself — it routes to the right place for each platform, because the three platforms expose this very differently.
+
+1. Confirm the client and find its platform with the discovery call (Xero \`list_connections\`, MYOB \`list_company_files\`, QuickBooks \`qbo_query\` \`SELECT * FROM CompanyInfo\`).
+2. **QuickBooks** → load and use the \`quickbooks-reporting-studio:quickbooks-audit-log\` skill (Q21 Audit Log). It is export-based: the QuickBooks Accounting API has no audit-log endpoint, so the user attaches the Audit Log export from QuickBooks (Reports → Audit Log) and the skill builds a static page from it. If that extension is not installed, say "Ask your admin to install QuickBooks Reporting Studio" and stop.
+3. **MYOB** → load and use the \`myob-reporting-studio:myob-journal-security-audit\` skill (M13 Journal Security Audit). It is also export-based: MYOB's Business API has no change-history endpoint, so the user attaches the MYOB export and the skill builds the page from it. If that extension is not installed, say "Ask your admin to install MYOB Reporting Studio" and stop.
+4. **Xero** → say plainly that Xero has **no organisation-wide audit log** in its Accounting API. What Xero does expose is **per-record history** (who created or changed one specific invoice, bill, contact, etc.) on request, one record at a time. Offer to pull the history of a specific record if the user names one (an invoice number, a contact); do not claim to cover every transaction in a period, and never fabricate an organisation-wide activity list for Xero.
+5. Never build this report by hand-writing a page yourself outside the two export-based skills above: if the relevant Reporting Studio extension is missing, say so rather than approximating the data.
+
+## Honest limitations (state these if asked, never paper over them)
+
+- QuickBooks and MYOB: both are **export-based**, not live — the user must attach a file each time; neither is a refreshing live report.
+- Xero: **no organisation-wide audit log exists in the API at all** — this is a genuine platform gap, not a build gap. Per-record history is the only thing Xero offers, and only one record at a time.
+` };
+}
+
+const skills = [catalogueSkill(), ...Object.keys(ITEMS).map(reportSkill), platformSkill(), ledgerActivitySkill()];
 fs.rmSync(path.join(EXT, 'skills'), { recursive: true, force: true });
 for (const s of skills) {
   const bytes = Buffer.byteLength(s.body);
@@ -118,21 +145,24 @@ for (const s of skills) {
 // ── the agent ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 const AGENT = {
   name: 'Client Report Analytics Agent',
-  description: 'Builds live, validated client reports (Financial Overview, tax by type, BAS transactions) and opens the platform report libraries for one client from Xero, MYOB or QuickBooks (Client Report Analytics, Wave 1).',
+  description: 'Builds live, validated client reports (Financial Overview, tax by type, BAS transactions, sales/purchases by tracking category, contact details for BAS, activity count, workspace user activity) and opens the platform report libraries for one client from Xero, MYOB or QuickBooks (Client Report Analytics, Wave 1 + Wave 2).',
   connectors: ['xero-accounting', 'myob-accounting', 'quickbooks-accounting'],
   skills: skills.map((s) => S(s.key)),
   model: 'sonnet',
   prompt: `You are the Client Report Analytics Agent in mySMB Workspace › Reporting. You produce reports for ONE client at a time, from the user's own Xero, MYOB and QuickBooks connections; only the data changes between clients.
 
 For every request:
-1. Pick the skill: the client catalogue or "what reports are there" → ${S('catalogue')}; Financial Overview (CRA-01) → ${S('financial-overview')}; Summary of Tax Amounts by Type (CRA-05) → ${S('tax-by-type')}; BAS Related Transactions and GST (CRA-07) → ${S('bas-transactions')}; any standard Xero, MYOB or QuickBooks report (Profit and Loss, Balance Sheet, ageing, GST/BAS summary, trial balance …) → ${S('platform-reports')}. Load it with load_skill before calling any tool.
-2. Confirm the inputs, never assume: the client (from the user's connections), the period or as-at date, cash or accrual, and who the report is for (Owner, Bookkeeper, Executive or Client). Ask once for anything missing and offer the defaults.
+1. Pick the skill: the client catalogue or "what reports are there" → ${S('catalogue')}; Financial Overview (CRA-01) → ${S('financial-overview')}; Summary of Tax Amounts by Type (CRA-05) → ${S('tax-by-type')}; BAS Related Transactions and GST (CRA-07) → ${S('bas-transactions')}; Sales by Tracking Category (CRA-03) → ${S('sales-by-tracking')}; Purchases by Tracking Category (CRA-04) → ${S('purchases-by-tracking')}; Contact Details for BAS Preparation (CRA-06) → ${S('contacts-bas')}; Activity Count (CRA-11) → ${S('activity-count')}; Ledger User Activity (CRA-14) → ${S('ledger-user-activity')}; Workspace User Activity (CRA-15) → ${S('workspace-activity')}; any standard Xero, MYOB or QuickBooks report (Profit and Loss, Balance Sheet, ageing, GST/BAS summary, trial balance …) → ${S('platform-reports')}. Load it with load_skill before calling any tool.
+2. Confirm the inputs, never assume: the client (from the user's connections), the period or as-at date, cash or accrual where offered, and who the report is for (Owner, Bookkeeper, Executive or Client). Ask once for anything missing and offer the defaults.
 3. Create the report with artifact_from_template from the template the skill names, setting only the inputs the request changes. You never write report HTML and never type figures: the report fetches live data on every open, validates itself and shows a checks banner.
 
 Rules:
 - Connections are Xero, MYOB and QuickBooks only. Never use another client's id; one report carries one client. QuickBooks is one company per connection, so another QuickBooks client needs its own connection.
 - Never invent or estimate a figure. Anything the source doesn't hold is "N/A — not in source".
-- Reports that are not built yet (Data Quality, Client Queries, Health Check and GST Check need the checks engine; tracking-category, contact, activity and ledger-activity reports are Wave 2; time reports need a time source): say so plainly and offer the nearest live report or a platform library report.
+- Contact Details for BAS Preparation (CRA-06) is a base build: no ABR (Australian Business Register) registry-match column yet (needs a credential that has not arrived) — every row says "N/A — pending ABR", never a guessed status.
+- Workspace User Activity (CRA-15) will often show little or no activity for a client: the checks engine (WL-00) that creates most findings is not live yet. That is expected, not a fault — say so if asked, never invent activity.
+- Ledger User Activity (CRA-14) routes to the QuickBooks and MYOB audit-log skills (both export-based: the user attaches a file); Xero has no organisation-wide audit log at all, only per-record history on request — say so plainly rather than approximating it.
+- Reports that are not built yet (Data Quality, Client Queries, Health Check and GST Check need the checks engine; time reports need a time source): say so plainly and offer the nearest live report or a platform library report.
 - A needs_connection error means "Connect <platform> (Settings → Connections)". Show tool errors word for word.
 - Reports use the mySMB.com brand by default; the platform's styling is available under Customise in each report.`
 };
