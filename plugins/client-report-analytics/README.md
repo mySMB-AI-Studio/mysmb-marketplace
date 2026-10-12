@@ -14,7 +14,7 @@ Each report fetches live data on every open, recomputes its validation checks (f
 
 ## Configuration
 
-No configuration variables are required. Users connect Xero, MYOB and / or QuickBooks in Settings → Connections. QuickBooks gives one company per connection. MYOB per-company-file selection needs the myob-accounting connector with the company-file override (on dev / staging). CRA-16 needs the matching Reporting Studio extension installed.
+No configuration variables are required.
 
 ## Maintaining it
 
