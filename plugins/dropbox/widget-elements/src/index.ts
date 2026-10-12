@@ -122,6 +122,11 @@ const build_bills_view: ComputedFunction = (args) => {
     const metaLine = supplierName
       ? [supplierName, invoiceNumber, timeLabel].filter(Boolean).join(' · ')
       : [sizeLabel, timeLabel].filter(Boolean).join(' · ');
+    const reason = r.reason ? str(r.reason) : null;
+    // One line, always — appending the reason onto metaLine instead of
+    // giving it its own line avoids uneven row heights (a long combined
+    // string wrapping mid-row looks worse than a single truncated line).
+    const subtitleLine = reason ? `${metaLine} · ${reason}` : metaLine;
 
     return {
       id: str(r.id),
@@ -129,9 +134,8 @@ const build_bills_view: ComputedFunction = (args) => {
       fileKind: str(r.fileKind),
       status: str(r.status),
       statusLabel: str(r.statusLabel),
-      reason: r.reason ?? null,
-      hasReason: !!r.reason,
-      metaLine,
+      hasReason: !!reason,
+      subtitleLine,
       amountLabel: extractedTotal != null ? formatMoney(extractedTotal) : '—',
       hasAmount: extractedTotal != null,
     };

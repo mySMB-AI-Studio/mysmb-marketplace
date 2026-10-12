@@ -380,30 +380,19 @@
       "rowLabels": {
         "type": "Stack",
         "props": { "gap": "xs", "grow": true },
-        "children": ["rowName", "metaReasonRow"]
+        "children": ["rowName", "rowSubtitle"]
       },
       "rowName": {
         "type": "Text",
         "props": { "text": { "$item": "name" }, "size": "sm", "weight": "bold", "truncate": true }
       },
-      "metaReasonRow": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["rowMeta", "reasonSeparator", "rowReason"]
-      },
-      "rowMeta": {
-        "type": "Caption",
-        "props": { "text": { "$item": "metaLine" }, "tone": "muted" }
-      },
-      "reasonSeparator": {
-        "type": "Caption",
-        "props": { "text": "·", "tone": "muted" },
-        "visible": { "$item": "hasReason" }
-      },
-      "rowReason": {
-        "type": "Caption",
-        "props": { "text": { "$item": "reason" }, "tone": "warning" },
-        "visible": { "$item": "hasReason" }
+      "rowSubtitle": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "subtitleLine" },
+          "tone": { "$cond": { "$item": "hasReason" }, "$then": "warning", "$else": "muted" },
+          "truncate": true
+        }
       },
       "rowRight": {
         "type": "Stack",
