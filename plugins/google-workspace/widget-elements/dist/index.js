@@ -773,7 +773,6 @@ const build_recent_files_view = (args) => {
     }));
     return { quickAccess: quickAccessCards, agendaRows, counts };
 };
-// ── module export ────────────────────────────────────────────────────
 // ── countdown_label ─────────────────────────────────────────────────────
 //
 // "in 19h 20m" / "in 45m" / "Starting now" / "In progress" for an event's
@@ -990,6 +989,167 @@ const build_events_view = (args) => {
         agendaRows,
     };
 };
+// ── build_meeting_summaries_view ─────────────────────────────────────────
+//
+// Takes get_meeting_summaries_dashboard's raw output ({ meetings, stats,
+// aiUnavailable }) and builds everything the tile renders: a date badge and
+// "Mon 10:00 AM · 1h 10m" schedule label per meeting (precomputed here
+// rather than composed in JSON — it combines a weekday name, 12-hour clock
+// time, and a humanized duration, which isn't one existing $computed), a
+// colored initials avatar per participant (hashed the same way as Gmail's
+// sender avatars), an actions badge that reads differently depending on
+// whether the meeting has action items / a transcript at all / neither, and
+// All / With action items / No transcript tab counts. Expand/collapse is a
+// single selected id, defaulting to the newest meeting when nothing's been
+// clicked yet — matches the "newest is open" behavior from the mockup.
+//
+// Args: {
+//   meetings: MeetingSummaryCard[], stats: {...}, tab: string,
+//   expandedId?: string,
+// }
+function formatClockTime(ms) {
+    try {
+        return new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(ms));
+    }
+    catch {
+        return '';
+    }
+}
+function humanDuration(minutes) {
+    if (minutes == null || !Number.isFinite(minutes) || minutes <= 0)
+        return '';
+    if (minutes >= 1440)
+        return 'all day';
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours === 0)
+        return `${mins}m`;
+    if (mins === 0)
+        return `${hours}h`;
+    return `${hours}h ${mins}m`;
+}
+const MAX_VISIBLE_PARTICIPANTS = 4;
+const MAX_VISIBLE_DECISIONS = 4;
+const MAX_VISIBLE_ACTION_ITEMS = 5;
+const build_meeting_summaries_view = (args) => {
+    const meetings = Array.isArray(args.meetings) ? args.meetings : [];
+    const stats = args.stats ?? {};
+    const tab = str(args.tab) || 'all';
+    const requestedExpandedId = str(args.expandedId);
+    const decorated = meetings.map((m) => {
+        const actionItems = Array.isArray(m.actionItems) ? m.actionItems : [];
+        const transcriptStatus = str(m.transcriptStatus) || 'none';
+        const hasActionItems = actionItems.length > 0;
+        return { ...m, actionItems, transcriptStatus, hasActionItems };
+    });
+    const counts = {
+        all: decorated.length,
+        withActions: decorated.filter(m => m.hasActionItems).length,
+        noTranscript: decorated.filter(m => m.transcriptStatus === 'none').length,
+    };
+    const filtered = decorated.filter((m) => {
+        if (tab === 'withActions')
+            return m.hasActionItems;
+        if (tab === 'noTranscript')
+            return m.transcriptStatus === 'none';
+        return true;
+    });
+    const expandedId = requestedExpandedId || str(filtered[0]?.id);
+    const rows = filtered.map((m) => {
+        const startMs = parseUtcMs(m.startTime);
+        const monthAbbrev = startMs != null ? MONTH_ABBREV[new Date(startMs).getMonth()] : '';
+        const dayNumber = startMs != null ? String(new Date(startMs).getDate()) : '–';
+        const weekday = startMs != null ? WEEKDAY_ABBREV[new Date(startMs).getDay()] : '';
+        const clockTime = startMs != null ? formatClockTime(startMs) : '';
+        const duration = humanDuration(typeof m.durationMinutes === 'number' ? m.durationMinutes : null);
+        const scheduleLabel = [weekday, clockTime].filter(Boolean).join(' ') + (duration ? ` · ${duration}` : '');
+        // Fixed slots instead of a nested repeat — this codebase has no nested-
+        // repeat-over-an-item's-own-array-field pattern anywhere (every
+        // multi-list tile pre-buckets into separate flat top-level state arrays
+        // instead), so a per-row avatar list is capped at MAX_VISIBLE_PARTICIPANTS
+        // named fields, each with its own visible flag, rather than risking a
+        // "repeat" statePath that silently resolves to nothing at render time.
+        const allParticipants = Array.isArray(m.participants) ? m.participants : [];
+        const participantSlots = Array.from({ length: MAX_VISIBLE_PARTICIPANTS }, (_, i) => {
+            const p = allParticipants[i];
+            return p ? { initials: p.initials, tone: toneFromKey(p.name), visible: true } : { initials: '', tone: 'muted', visible: false };
+        });
+        const participantOverflow = Math.max(0, allParticipants.length - MAX_VISIBLE_PARTICIPANTS);
+        let actionsBadgeLabel;
+        let actionsBadgeTone;
+        if (m.transcriptStatus === 'none') {
+            actionsBadgeLabel = 'No transcript';
+            actionsBadgeTone = 'muted';
+        }
+        else if (m.hasActionItems) {
+            actionsBadgeLabel = `${m.actionItems.length} action${m.actionItems.length === 1 ? '' : 's'}`;
+            actionsBadgeTone = 'warning';
+        }
+        else {
+            actionsBadgeLabel = 'No actions';
+            actionsBadgeTone = 'success';
+        }
+        const decisionsList = Array.isArray(m.decisions) ? m.decisions : [];
+        const decisionSlots = Array.from({ length: MAX_VISIBLE_DECISIONS }, (_, i) => {
+            const text = decisionsList[i];
+            return { text: text ?? '', visible: !!text };
+        });
+        const actionItemSlots = Array.from({ length: MAX_VISIBLE_ACTION_ITEMS }, (_, i) => {
+            const item = m.actionItems[i];
+            return item
+                ? { text: item.text, assignee: item.assignee ?? '', hasAssignee: !!item.assignee, visible: true }
+                : { text: '', assignee: '', hasAssignee: false, visible: false };
+        });
+        const hasTranscript = m.transcriptStatus !== 'none';
+        const hasSummary = hasTranscript && !!m.summary;
+        return {
+            id: m.id,
+            title: m.title,
+            monthAbbrev,
+            dayNumber,
+            scheduleLabel,
+            participant1: participantSlots[0],
+            participant2: participantSlots[1],
+            participant3: participantSlots[2],
+            participant4: participantSlots[3],
+            participantOverflow,
+            hasParticipantOverflow: participantOverflow > 0,
+            actionsBadgeLabel,
+            actionsBadgeTone,
+            transcriptStatus: m.transcriptStatus,
+            hasTranscript,
+            docUrl: m.docUrl ?? null,
+            calendarEventUrl: m.calendarEventUrl ?? null,
+            summary: m.summary ?? null,
+            hasSummary,
+            showNoSummaryNotice: hasTranscript && !hasSummary,
+            decision1: decisionSlots[0],
+            decision2: decisionSlots[1],
+            decision3: decisionSlots[2],
+            decision4: decisionSlots[3],
+            hasDecisions: decisionsList.length > 0,
+            actionItem1: actionItemSlots[0],
+            actionItem2: actionItemSlots[1],
+            actionItem3: actionItemSlots[2],
+            actionItem4: actionItemSlots[3],
+            actionItem5: actionItemSlots[4],
+            hasActionItemsList: m.actionItems.length > 0,
+            expanded: str(m.id) === expandedId,
+            chevronIcon: str(m.id) === expandedId ? 'ChevronUp' : 'ChevronDown',
+            toggleId: str(m.id) === expandedId ? '' : str(m.id),
+        };
+    });
+    return {
+        stats: {
+            meetingsSummarised: Number(stats.meetingsSummarised ?? 0),
+            actionItemsTotal: Number(stats.actionItemsTotal ?? 0),
+            assignedToYouTotal: Number(stats.assignedToYouTotal ?? 0),
+        },
+        counts,
+        rows,
+        expandedId,
+    };
+};
 // ── module export ────────────────────────────────────────────────────
 const elements = {
     slug: 'google-workspace',
@@ -1014,6 +1174,10 @@ const elements = {
         file_type_tone,
         tidy_file_name,
         build_recent_files_view,
+        countdown_label,
+        rsvp_label,
+        build_events_view,
+        build_meeting_summaries_view,
     },
 };
 export default elements;

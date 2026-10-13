@@ -1,0 +1,733 @@
+{
+  "id": "google-workspace-meeting-summaries",
+  "title": "Meeting Summaries",
+  "description": "Recent Google Meet meetings summarised by AI: a 2-3 sentence overview, decisions, and action items with assignees, drawn from each meeting's transcript. Click a card to expand it; open the matching Calendar event or the full transcript from there.",
+  "category": "productivity",
+  "tags": [
+    "google",
+    "meet",
+    "meetings",
+    "summaries",
+    "productivity"
+  ],
+  "keywords": [
+    "meet",
+    "meetings",
+    "summary",
+    "summaries",
+    "action items",
+    "decisions",
+    "transcript",
+    "google meet",
+    "ai"
+  ],
+  "connectorsUsed": [
+    "google-workspace-meet"
+  ],
+  "brandColor": "#00ac47",
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 9
+    },
+    "min": {
+      "colSpan": 5,
+      "rowSpan": 7
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "google-workspace-meet",
+    "tool": "get_meeting_summaries_dashboard",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/google-workspace-meet/get_meeting_summaries_dashboard/meetings": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/meetingSummariesView",
+                "value": {
+                  "$computed": "google-workspace_build_meeting_summaries_view",
+                  "args": {
+                    "meetings": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/meetings" },
+                    "stats": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/stats" },
+                    "tab": { "$state": "/ui/meetingSummariesTab" },
+                    "expandedId": { "$state": "/ui/meetingSummariesExpandedId" }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/meetingSummariesTab": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/meetingSummariesView",
+                "value": {
+                  "$computed": "google-workspace_build_meeting_summaries_view",
+                  "args": {
+                    "meetings": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/meetings" },
+                    "stats": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/stats" },
+                    "tab": { "$state": "/ui/meetingSummariesTab" },
+                    "expandedId": { "$state": "/ui/meetingSummariesExpandedId" }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/meetingSummariesExpandedId": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/meetingSummariesView",
+                "value": {
+                  "$computed": "google-workspace_build_meeting_summaries_view",
+                  "args": {
+                    "meetings": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/meetings" },
+                    "stats": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/stats" },
+                    "tab": { "$state": "/ui/meetingSummariesTab" },
+                    "expandedId": { "$state": "/ui/meetingSummariesExpandedId" }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "headerStack"
+        ]
+      },
+      "headerStack": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": [
+          "titleRow",
+          "statsRow"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Video", "tone": "brand", "size": "lg" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": [
+          "titleEyebrow",
+          "title"
+        ]
+      },
+      "titleEyebrow": {
+        "type": "Caption",
+        "props": { "text": "GOOGLE MEET", "tone": "brand" }
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Meeting Summaries", "level": "h2" }
+      },
+      "statsRow": {
+        "type": "Row",
+        "props": { "gap": "sm" },
+        "children": [
+          "statSummarisedGrow",
+          "statActionsGrow",
+          "statAssignedGrow"
+        ]
+      },
+      "statSummarisedGrow": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["statSummarised"]
+      },
+      "statSummarised": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["statSummarisedStack"]
+      },
+      "statSummarisedStack": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["statSummarisedValue", "statSummarisedLabel"]
+      },
+      "statSummarisedValue": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/ui/meetingSummariesView/stats/meetingsSummarised" }, "size": "md" }
+      },
+      "statSummarisedLabel": {
+        "type": "Caption",
+        "props": { "text": "Meetings summarised", "tone": "muted" }
+      },
+      "statActionsGrow": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["statActions"]
+      },
+      "statActions": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["statActionsStack"]
+      },
+      "statActionsStack": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["statActionsValue", "statActionsLabel"]
+      },
+      "statActionsValue": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/ui/meetingSummariesView/stats/actionItemsTotal" }, "size": "md" }
+      },
+      "statActionsLabel": {
+        "type": "Caption",
+        "props": { "text": "Action items", "tone": "warning" }
+      },
+      "statAssignedGrow": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["statAssigned"]
+      },
+      "statAssigned": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["statAssignedStack"]
+      },
+      "statAssignedStack": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["statAssignedValue", "statAssignedLabel"]
+      },
+      "statAssignedValue": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/ui/meetingSummariesView/stats/assignedToYouTotal" }, "size": "md" }
+      },
+      "statAssignedLabel": {
+        "type": "Caption",
+        "props": { "text": "Assigned to you", "tone": "muted" }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$state": "/_loading/google-workspace-meet.get_meeting_summaries_dashboard" },
+        "children": ["sk1", "sk2", "sk3"]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No recent meetings with transcripts." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/google-workspace-meet.get_meeting_summaries_dashboard", "not": true },
+            { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/meetings/0", "not": true }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "visible": { "$state": "/_loading/google-workspace-meet.get_meeting_summaries_dashboard", "not": true },
+        "children": [
+          "tabsRow",
+          "list",
+          "footer"
+        ]
+      },
+      "tabsRow": {
+        "type": "Row",
+        "props": { "gap": "md", "align": "center" },
+        "children": ["tabAll", "tabWithActions", "tabNoTranscript"]
+      },
+      "tabAll": {
+        "type": "Row",
+        "props": { "clickable": true },
+        "children": ["tabAllActive", "tabAllInactive"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/meetingSummariesTab", "value": "all" } } }
+      },
+      "tabAllActive": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "All {n}", "n": { "$state": "/ui/meetingSummariesView/counts/all" } } },
+          "tone": "success",
+          "variant": "soft"
+        },
+        "visible": {
+          "$or": [
+            { "$state": "/ui/meetingSummariesTab", "eq": "all" },
+            { "$state": "/ui/meetingSummariesTab", "not": true }
+          ]
+        }
+      },
+      "tabAllInactive": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "All {n}", "n": { "$state": "/ui/meetingSummariesView/counts/all" } } },
+          "size": "sm",
+          "tone": "muted"
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/ui/meetingSummariesTab" },
+            { "$state": "/ui/meetingSummariesTab", "eq": "all", "not": true }
+          ]
+        }
+      },
+      "tabWithActions": {
+        "type": "Row",
+        "props": { "clickable": true },
+        "children": ["tabWithActionsActive", "tabWithActionsInactive"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/meetingSummariesTab", "value": "withActions" } } }
+      },
+      "tabWithActionsActive": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "With action items {n}", "n": { "$state": "/ui/meetingSummariesView/counts/withActions" } } },
+          "tone": "warning",
+          "variant": "soft"
+        },
+        "visible": { "$state": "/ui/meetingSummariesTab", "eq": "withActions" }
+      },
+      "tabWithActionsInactive": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "With action items {n}", "n": { "$state": "/ui/meetingSummariesView/counts/withActions" } } },
+          "size": "sm",
+          "tone": "muted"
+        },
+        "visible": { "$state": "/ui/meetingSummariesTab", "eq": "withActions", "not": true }
+      },
+      "tabNoTranscript": {
+        "type": "Row",
+        "props": { "clickable": true },
+        "children": ["tabNoTranscriptActive", "tabNoTranscriptInactive"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/meetingSummariesTab", "value": "noTranscript" } } }
+      },
+      "tabNoTranscriptActive": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "No transcript {n}", "n": { "$state": "/ui/meetingSummariesView/counts/noTranscript" } } },
+          "tone": "muted",
+          "variant": "soft"
+        },
+        "visible": { "$state": "/ui/meetingSummariesTab", "eq": "noTranscript" }
+      },
+      "tabNoTranscriptInactive": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "No transcript {n}", "n": { "$state": "/ui/meetingSummariesView/counts/noTranscript" } } },
+          "size": "sm",
+          "tone": "muted"
+        },
+        "visible": { "$state": "/ui/meetingSummariesTab", "eq": "noTranscript", "not": true }
+      },
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "repeat": { "statePath": "/ui/meetingSummariesView/rows", "key": "id" },
+        "children": ["rowWrap"]
+      },
+      "rowWrap": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["collapsedRow", "expandedContent", "rowDivider"]
+      },
+      "collapsedRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "hover": true, "clickable": true, "justify": "between" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/meetingSummariesExpandedId",
+              "value": { "$computed": "identity", "args": { "value": { "$item": "toggleId" } } }
+            }
+          }
+        },
+        "children": ["dateBadgeGrow", "rowMain", "collapsedTrailing"]
+      },
+      "dateBadgeGrow": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["dateBadge"]
+      },
+      "dateBadge": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["dateBadgeStack"]
+      },
+      "dateBadgeStack": {
+        "type": "Stack",
+        "props": { "gap": "none", "align": "center" },
+        "children": ["dateBadgeMonth", "dateBadgeDay"]
+      },
+      "dateBadgeMonth": {
+        "type": "Caption",
+        "props": { "text": { "$item": "monthAbbrev" }, "tone": "muted" }
+      },
+      "dateBadgeDay": {
+        "type": "Text",
+        "props": { "text": { "$item": "dayNumber" }, "size": "sm", "weight": "bold" }
+      },
+      "rowMain": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["rowTitle", "rowMetaRow"]
+      },
+      "rowTitle": {
+        "type": "Text",
+        "props": { "text": { "$item": "title" }, "size": "sm", "weight": "bold", "truncate": true }
+      },
+      "rowMetaRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["rowParticipants", "rowSchedule"]
+      },
+      "rowParticipants": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["participantAvatar1", "participantAvatar2", "participantAvatar3", "participantAvatar4", "participantOverflowBadge"]
+      },
+      "participantAvatar1": {
+        "type": "Avatar",
+        "props": { "initials": { "$item": "participant1/initials" }, "tone": { "$item": "participant1/tone" }, "size": "sm" },
+        "visible": { "$item": "participant1/visible" }
+      },
+      "participantAvatar2": {
+        "type": "Avatar",
+        "props": { "initials": { "$item": "participant2/initials" }, "tone": { "$item": "participant2/tone" }, "size": "sm" },
+        "visible": { "$item": "participant2/visible" }
+      },
+      "participantAvatar3": {
+        "type": "Avatar",
+        "props": { "initials": { "$item": "participant3/initials" }, "tone": { "$item": "participant3/tone" }, "size": "sm" },
+        "visible": { "$item": "participant3/visible" }
+      },
+      "participantAvatar4": {
+        "type": "Avatar",
+        "props": { "initials": { "$item": "participant4/initials" }, "tone": { "$item": "participant4/tone" }, "size": "sm" },
+        "visible": { "$item": "participant4/visible" }
+      },
+      "participantOverflowBadge": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "+{n}", "n": { "$item": "participantOverflow" } } },
+          "tone": "muted"
+        },
+        "visible": { "$item": "hasParticipantOverflow" }
+      },
+      "rowSchedule": {
+        "type": "Caption",
+        "props": { "text": { "$item": "scheduleLabel" }, "tone": "muted" }
+      },
+      "collapsedTrailing": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["actionsBadge", "chevronIcon"]
+      },
+      "actionsBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "actionsBadgeLabel" },
+          "tone": { "$item": "actionsBadgeTone" },
+          "variant": "soft"
+        }
+      },
+      "chevronIcon": {
+        "type": "Icon",
+        "props": { "name": { "$item": "chevronIcon" }, "tone": "muted", "size": "sm" }
+      },
+      "expandedContent": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$item": "expanded" },
+        "children": [
+          "noTranscriptNotice",
+          "noSummaryNotice",
+          "summaryRow",
+          "decisionsSection",
+          "actionItemsSection",
+          "linksRow"
+        ]
+      },
+      "noTranscriptNotice": {
+        "type": "Caption",
+        "props": { "text": "No transcript for this meeting.", "tone": "muted" },
+        "visible": { "$item": "hasTranscript", "not": true }
+      },
+      "noSummaryNotice": {
+        "type": "Caption",
+        "props": { "text": "AI summary unavailable for this meeting.", "tone": "muted" },
+        "visible": { "$item": "showNoSummaryNotice" }
+      },
+      "summaryRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "start" },
+        "visible": { "$item": "hasSummary" },
+        "children": ["summaryIcon", "summaryText"]
+      },
+      "summaryIcon": {
+        "type": "Icon",
+        "props": { "name": "Sparkles", "tone": "brand", "size": "xs" }
+      },
+      "summaryText": {
+        "type": "Text",
+        "props": { "text": { "$item": "summary" }, "size": "sm" }
+      },
+      "decisionsSection": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "visible": { "$item": "hasDecisions" },
+        "children": ["decisionsStack"]
+      },
+      "decisionsStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["decisionsHeader", "decisionsList"]
+      },
+      "decisionsHeader": {
+        "type": "Caption",
+        "props": { "text": "DECISIONS", "tone": "muted" }
+      },
+      "decisionsList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["decisionRow1", "decisionRow2", "decisionRow3", "decisionRow4"]
+      },
+      "decisionRow1": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "start" },
+        "visible": { "$item": "decision1/visible" },
+        "children": ["decisionBullet1", "decisionText1"]
+      },
+      "decisionBullet1": { "type": "Icon", "props": { "name": "Diamond", "tone": "muted", "size": "xs" } },
+      "decisionText1": { "type": "Text", "props": { "text": { "$item": "decision1/text" }, "size": "sm" } },
+      "decisionRow2": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "start" },
+        "visible": { "$item": "decision2/visible" },
+        "children": ["decisionBullet2", "decisionText2"]
+      },
+      "decisionBullet2": { "type": "Icon", "props": { "name": "Diamond", "tone": "muted", "size": "xs" } },
+      "decisionText2": { "type": "Text", "props": { "text": { "$item": "decision2/text" }, "size": "sm" } },
+      "decisionRow3": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "start" },
+        "visible": { "$item": "decision3/visible" },
+        "children": ["decisionBullet3", "decisionText3"]
+      },
+      "decisionBullet3": { "type": "Icon", "props": { "name": "Diamond", "tone": "muted", "size": "xs" } },
+      "decisionText3": { "type": "Text", "props": { "text": { "$item": "decision3/text" }, "size": "sm" } },
+      "decisionRow4": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "start" },
+        "visible": { "$item": "decision4/visible" },
+        "children": ["decisionBullet4", "decisionText4"]
+      },
+      "decisionBullet4": { "type": "Icon", "props": { "name": "Diamond", "tone": "muted", "size": "xs" } },
+      "decisionText4": { "type": "Text", "props": { "text": { "$item": "decision4/text" }, "size": "sm" } },
+      "actionItemsSection": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "visible": { "$item": "hasActionItemsList" },
+        "children": ["actionItemsStack"]
+      },
+      "actionItemsStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["actionItemsHeader", "actionItemsList"]
+      },
+      "actionItemsHeader": {
+        "type": "Caption",
+        "props": { "text": "ACTION ITEMS", "tone": "warning" }
+      },
+      "actionItemsList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["actionItemRow1", "actionItemRow2", "actionItemRow3", "actionItemRow4", "actionItemRow5"]
+      },
+      "actionItemRow1": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "visible": { "$item": "actionItem1/visible" },
+        "children": ["actionItemLeft1", "actionItemAssignee1"]
+      },
+      "actionItemLeft1": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["actionItemCheck1", "actionItemText1"]
+      },
+      "actionItemCheck1": { "type": "Icon", "props": { "name": "Square", "tone": "muted", "size": "xs" } },
+      "actionItemText1": { "type": "Text", "props": { "text": { "$item": "actionItem1/text" }, "size": "sm" } },
+      "actionItemAssignee1": {
+        "type": "Caption",
+        "props": { "text": { "$item": "actionItem1/assignee" }, "tone": "muted" },
+        "visible": { "$item": "actionItem1/hasAssignee" }
+      },
+      "actionItemRow2": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "visible": { "$item": "actionItem2/visible" },
+        "children": ["actionItemLeft2", "actionItemAssignee2"]
+      },
+      "actionItemLeft2": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["actionItemCheck2", "actionItemText2"]
+      },
+      "actionItemCheck2": { "type": "Icon", "props": { "name": "Square", "tone": "muted", "size": "xs" } },
+      "actionItemText2": { "type": "Text", "props": { "text": { "$item": "actionItem2/text" }, "size": "sm" } },
+      "actionItemAssignee2": {
+        "type": "Caption",
+        "props": { "text": { "$item": "actionItem2/assignee" }, "tone": "muted" },
+        "visible": { "$item": "actionItem2/hasAssignee" }
+      },
+      "actionItemRow3": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "visible": { "$item": "actionItem3/visible" },
+        "children": ["actionItemLeft3", "actionItemAssignee3"]
+      },
+      "actionItemLeft3": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["actionItemCheck3", "actionItemText3"]
+      },
+      "actionItemCheck3": { "type": "Icon", "props": { "name": "Square", "tone": "muted", "size": "xs" } },
+      "actionItemText3": { "type": "Text", "props": { "text": { "$item": "actionItem3/text" }, "size": "sm" } },
+      "actionItemAssignee3": {
+        "type": "Caption",
+        "props": { "text": { "$item": "actionItem3/assignee" }, "tone": "muted" },
+        "visible": { "$item": "actionItem3/hasAssignee" }
+      },
+      "actionItemRow4": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "visible": { "$item": "actionItem4/visible" },
+        "children": ["actionItemLeft4", "actionItemAssignee4"]
+      },
+      "actionItemLeft4": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["actionItemCheck4", "actionItemText4"]
+      },
+      "actionItemCheck4": { "type": "Icon", "props": { "name": "Square", "tone": "muted", "size": "xs" } },
+      "actionItemText4": { "type": "Text", "props": { "text": { "$item": "actionItem4/text" }, "size": "sm" } },
+      "actionItemAssignee4": {
+        "type": "Caption",
+        "props": { "text": { "$item": "actionItem4/assignee" }, "tone": "muted" },
+        "visible": { "$item": "actionItem4/hasAssignee" }
+      },
+      "actionItemRow5": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "visible": { "$item": "actionItem5/visible" },
+        "children": ["actionItemLeft5", "actionItemAssignee5"]
+      },
+      "actionItemLeft5": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["actionItemCheck5", "actionItemText5"]
+      },
+      "actionItemCheck5": { "type": "Icon", "props": { "name": "Square", "tone": "muted", "size": "xs" } },
+      "actionItemText5": { "type": "Text", "props": { "text": { "$item": "actionItem5/text" }, "size": "sm" } },
+      "actionItemAssignee5": {
+        "type": "Caption",
+        "props": { "text": { "$item": "actionItem5/assignee" }, "tone": "muted" },
+        "visible": { "$item": "actionItem5/hasAssignee" }
+      },
+      "linksRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["calendarEventButton", "transcriptLinkButton"]
+      },
+      "calendarEventButton": {
+        "type": "Button",
+        "props": { "label": "Calendar event", "variant": "secondary", "size": "sm", "leadingIcon": "Calendar" },
+        "visible": { "$item": "calendarEventUrl" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": { "$computed": "identity", "args": { "value": { "$item": "calendarEventUrl" } } },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "transcriptLinkButton": {
+        "type": "Button",
+        "props": { "label": "Open transcript", "variant": "secondary", "size": "sm", "leadingIcon": "FileText" },
+        "visible": { "$item": "docUrl" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": { "$computed": "identity", "args": { "value": { "$item": "docUrl" } } },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "rowDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "footer": {
+        "type": "Row",
+        "props": { "gap": "sm", "justify": "between", "align": "center" },
+        "children": ["footerCaptionGrow", "footerButton"]
+      },
+      "footerCaptionGrow": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["footerCaption"]
+      },
+      "footerCaption": {
+        "type": "Text",
+        "props": { "text": "Summaries from transcripts · last 30 days", "tone": "muted", "truncate": true }
+      },
+      "footerButton": {
+        "type": "Button",
+        "props": { "label": "Open Google Meet", "variant": "primary", "tone": "info", "size": "sm", "leadingIcon": "Video" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": "https://meet.google.com/landing", "target": "_blank" }
+          }
+        }
+      }
+    }
+  }
+}
