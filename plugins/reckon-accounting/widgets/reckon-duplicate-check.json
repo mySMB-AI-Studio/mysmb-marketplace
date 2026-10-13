@@ -1,12 +1,13 @@
 {
   "id": "reckon-duplicate-check",
   "title": "Duplicate & Exclusion Check",
-  "description": "Data-integrity scan across Reckon One contacts, bills, and invoices: duplicate contacts/organizations (union of /contacts people + bill suppliers + invoice customers, since Reckon has no dedicated /customers or /suppliers list endpoint), duplicate bill numbers (by the reference field, not Reckon's own auto-assigned billNumber), and contacts marked inactive that still have bill/invoice activity. All three checks and their underlying data shapes confirmed against a live test account. Clicking the \"Needs review\" badge or any individual check row expands that check's flagged records inline. \"View in Reckon\" is wired for all three checks with confirmed real URLs: Duplicate bill numbers → https://app.reckonone.com/{bookId}/Core/Bill; Duplicate contacts → https://app.reckonone.com/{bookId}/Core/Supplier; Inactive-contact activity → https://app.reckonone.com/{bookId}/Core/ContactsV2 (all bookId-templated from a live get_company fetch, not hardcoded). PAGINATION: Reckon's v2 /invoices and /bills endpoints genuinely paginate (~10/page, no total-count or next-page field in the response body — confirmed live; /contacts does not paginate further in this account). Page 1 of each is fetched via list_contacts' own trigger, page 2 is chained in and merged via reckon-accounting_concat_arrays before analyze_data_issues runs, covering up to 20 bills and 20 invoices (the real test account has exactly 12 of each). A 3rd page is not fetched.",
+  "description": "Data-integrity scan across Reckon One contacts, bills, and invoices: duplicate contacts/organizations (union of /contacts people + bill suppliers + invoice customers, since Reckon has no dedicated /customers or /suppliers list endpoint), duplicate bill numbers (by the reference field, not Reckon's own auto-assigned billNumber), and contacts marked inactive that still have bill/invoice activity. All three checks and their underlying data shapes confirmed against a live test account. Clicking the \"Needs review\" badge or any individual check row expands that check's flagged records inline. \"View in Reckon\" is wired for all three checks with confirmed real URLs: Duplicate bill numbers → https://app.reckonone.com/{bookId}/Core/Bill; Duplicate contacts → https://app.reckonone.com/{bookId}/Core/Supplier; Inactive-contact activity → https://app.reckonone.com/{bookId}/Core/ContactsV2 (all bookId-templated from a live get_company fetch, not hardcoded). PAGINATION: Reckon's v2 /invoices and /bills endpoints genuinely paginate (~10/page, no total-count or next-page field in the response body — confirmed live; /contacts does not paginate further in this account). Page 1 of each is fetched via list_contacts' own trigger, page 2 is chained in and merged via reckon-accounting_concat_arrays before analyze_data_issues runs, covering up to 20 bills and 20 invoices (the real test account has exactly 12 of each). A 3rd page is not fetched. CONFIRMED SCOPE LIMIT (Inactive-contact activity): this check can only ever flag an inactive /contacts PERSON whose linked organisation has bill/invoice activity — it cannot see a customer/supplier ORGANIZATION record marked inactive directly, even though Reckon's own 'Contacts centre' UI lets a user do exactly that. Confirmed via live testing: get_contact 404s on every invoice-customer/bill-supplier id (they are not /contacts resource records at all), and neither invoice.customer nor bill.supplier carries any status field — Reckon's API exposes no organization-level active/inactive signal anywhere this connector can reach — confirmed and accepted as a known scope limit (not surfaced in-tile; documented here only).",
   "category": "accounting",
   "tags": ["reckon", "accounting", "data integrity", "duplicates", "cleanup"],
   "keywords": ["reckon", "duplicate", "duplicates", "dedupe", "data quality", "cleanup", "exclusion", "contacts"],
   "connectorsUsed": ["reckon-accounting"],
   "popularity": 0,
+  "brandColor": "#34DFBA",
   "sizing": {
     "preferred": { "colSpan": 4, "rowSpan": 6 },
     "min":       { "colSpan": 3, "rowSpan": 5 },
@@ -26,10 +27,7 @@
         "props": {},
         "children": ["headerRow", "statSection", "div0", "checkList"],
         "watch": {
-          "/reckon-accounting/list_contacts": [
-            { "action": "reckon-accounting.list_bills", "params": {} },
-            { "action": "reckon-accounting.list_invoices", "params": {} }
-          ],
+          "/reckon-accounting/list_contacts": { "action": "reckon-accounting.list_bills", "params": {} },
           "/reckon-accounting/list_bills": {
             "action": "setState",
             "params": {
@@ -119,12 +117,19 @@
         }
       },
       "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["titleIcon", "titleStack"] },
-      "titleIcon": { "type": "Icon", "props": { "name": "ShieldCheck", "tone": "accent", "size": "md" } },
+      "titleIcon": { "type": "Icon", "props": { "name": "ShieldCheck", "tone": "brand", "size": "md" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
       "title": { "type": "Heading", "props": { "text": "Duplicate & Exclusion Check", "level": "h2" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Reckon" } },
 
-      "statSection": { "type": "Stack", "props": { "gap": "xs" }, "children": ["bigStat", "captionRow"] },
+      "statSection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["bigStat", "captionRow"],
+        "watch": {
+          "/reckon-accounting/list_contacts": { "action": "reckon-accounting.list_invoices", "params": {} }
+        }
+      },
       "bigStat": { "type": "Stat", "props": { "size": "lg", "value": { "$state": "/ui/reckonDup/result/totalIssues" } } },
       "captionRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["statCaption", "statusBadgeWrap"] },
       "statCaption": {
@@ -185,7 +190,15 @@
         "type": "Dot",
         "props": { "tone": { "$cond": { "$state": "/ui/reckonDup/result/duplicateContacts" }, "$then": "destructive", "$else": "success" } }
       },
-      "dupContactsLabel": { "type": "Text", "props": { "text": "Duplicate contacts", "size": "sm" } },
+      "dupContactsLabel": {
+        "type": "Text",
+        "props": {
+          "text": "Duplicate contacts",
+          "size": "sm",
+          "weight": "medium",
+          "tone": { "$cond": { "$state": "/ui/reckonDup/result/duplicateContacts" }, "$then": "destructive", "$else": "success" }
+        }
+      },
       "dupContactsValue": {
         "type": "Text",
         "props": {
@@ -241,8 +254,8 @@
           }
         }
       },
-      "dupContactsViewLabel": { "type": "Text", "props": { "text": "View in Reckon", "size": "xs", "tone": "accent", "weight": "medium" } },
-      "dupContactsViewIcon": { "type": "Icon", "props": { "name": "ArrowUpRight", "tone": "accent", "size": "xs" } },
+      "dupContactsViewLabel": { "type": "Text", "props": { "text": "View in Reckon", "size": "xs", "tone": "brand", "weight": "medium" } },
+      "dupContactsViewIcon": { "type": "Icon", "props": { "name": "ArrowUpRight", "tone": "brand", "size": "xs" } },
 
       "dupBillNumbersRow": {
         "type": "Row",
@@ -266,7 +279,15 @@
         "type": "Dot",
         "props": { "tone": { "$cond": { "$state": "/ui/reckonDup/result/duplicateBillNumbers" }, "$then": "destructive", "$else": "success" } }
       },
-      "dupBillNumbersLabel": { "type": "Text", "props": { "text": "Duplicate bill numbers", "size": "sm" } },
+      "dupBillNumbersLabel": {
+        "type": "Text",
+        "props": {
+          "text": "Duplicate bill numbers",
+          "size": "sm",
+          "weight": "medium",
+          "tone": { "$cond": { "$state": "/ui/reckonDup/result/duplicateBillNumbers" }, "$then": "destructive", "$else": "success" }
+        }
+      },
       "dupBillNumbersValue": {
         "type": "Text",
         "props": {
@@ -337,8 +358,8 @@
           }
         }
       },
-      "dupBillNumbersViewLabel": { "type": "Text", "props": { "text": "View in Reckon", "size": "xs", "tone": "accent", "weight": "medium" } },
-      "dupBillNumbersViewIcon": { "type": "Icon", "props": { "name": "ArrowUpRight", "tone": "accent", "size": "xs" } },
+      "dupBillNumbersViewLabel": { "type": "Text", "props": { "text": "View in Reckon", "size": "xs", "tone": "brand", "weight": "medium" } },
+      "dupBillNumbersViewIcon": { "type": "Icon", "props": { "name": "ArrowUpRight", "tone": "brand", "size": "xs" } },
 
       "inactiveActivityRow": {
         "type": "Row",
@@ -362,7 +383,15 @@
         "type": "Dot",
         "props": { "tone": { "$cond": { "$state": "/ui/reckonDup/result/inactiveContactActivity" }, "$then": "destructive", "$else": "success" } }
       },
-      "inactiveActivityLabel": { "type": "Text", "props": { "text": "Inactive-contact activity", "size": "sm" } },
+      "inactiveActivityLabel": {
+        "type": "Text",
+        "props": {
+          "text": "Inactive-contact activity",
+          "size": "sm",
+          "weight": "medium",
+          "tone": { "$cond": { "$state": "/ui/reckonDup/result/inactiveContactActivity" }, "$then": "destructive", "$else": "success" }
+        }
+      },
       "inactiveActivityValue": {
         "type": "Text",
         "props": {
@@ -419,8 +448,8 @@
           }
         }
       },
-      "inactiveActivityViewLabel": { "type": "Text", "props": { "text": "View in Reckon", "size": "xs", "tone": "accent", "weight": "medium" } },
-      "inactiveActivityViewIcon": { "type": "Icon", "props": { "name": "ArrowUpRight", "tone": "accent", "size": "xs" } }
+      "inactiveActivityViewLabel": { "type": "Text", "props": { "text": "View in Reckon", "size": "xs", "tone": "brand", "weight": "medium" } },
+      "inactiveActivityViewIcon": { "type": "Icon", "props": { "name": "ArrowUpRight", "tone": "brand", "size": "xs" } }
 
     }
   },
