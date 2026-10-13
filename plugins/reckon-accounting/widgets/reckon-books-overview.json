@@ -1,0 +1,719 @@
+{
+  "id": "reckon-books-overview",
+  "title": "Reckon Books Overview",
+  "description": "Rollup dashboard combining four already-verified Reckon One data points: Receivables (same logic as reckon-invoices-receivables), Payables (same logic as reckon-bills-payables, including the confirmed-negative bill balance sign fix), Bank Balance (same logic as the paused reckon-bank-cash), and Net Position (Receivables minus Payables, replacing the earlier mockup's RECONCILED quadrant — Reckon's API has no reconciliation endpoint at all, confirmed against Reckon's own canonical API docs while building reckon-bank-cash). The Follow Up card shows overdue invoices + overdue bills combined (reusing the exact same overdue date-boundary logic already proven in reckon-invoices-receivables / reckon-bills-payables) — not a data-integrity check, so list_contacts and analyze_data_issues aren't needed here at all. Uses widget-elements helpers reckon-accounting_subtract (Net Position) and reckon-accounting_concat_arrays (pagination merge, below). PAGINATION: Reckon's v2 /invoices and /bills endpoints genuinely paginate (~10/page, no total-count or next-page field in the response body — confirmed live; /accounts also paginates but all 3 real bank accounts sit on page 1, so it's fetched as a single page with no functional gap). Page 1 of invoices and bills is fetched first, page 2 of each is chained in and merged via reckon-accounting_concat_arrays, covering up to 20 invoices and 20 bills (the real test account has exactly 12 of each). A 3rd page is not fetched.",
+  "category": "accounting",
+  "tags": ["reckon", "accounting", "overview", "dashboard", "rollup"],
+  "keywords": ["reckon", "overview", "dashboard", "receivables", "payables", "bank", "net position", "overdue", "rollup"],
+  "connectorsUsed": ["reckon-accounting"],
+  "popularity": 0,
+  "brandColor": "#34DFBA",
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 7 },
+    "min":       { "colSpan": 4, "rowSpan": 6 },
+    "max":       { "colSpan": 7, "rowSpan": 9 }
+  },
+  "dataProvider": {
+    "mcp": "reckon-accounting",
+    "tool": "list_invoices",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "viewInReckonRow", "quadrantGrid", "followUpCard"],
+        "watch": {
+          "/reckon-accounting/list_invoices": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonOverview/rawInvoices",
+              "value": {
+                "$computed": "reckon-accounting_concat_arrays",
+                "args": { "a": { "$state": "/ui/reckonOverview/rawInvoices" }, "b": { "$state": "/reckon-accounting/list_invoices/list" } }
+              }
+            }
+          },
+          "/ui/reckonOverview/rawInvoices": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonOverview/unpaidInvoices",
+              "value": { "$computed": "filter_by", "args": { "value": { "$state": "/ui/reckonOverview/rawInvoices" }, "field": "balance" } }
+            }
+          },
+          "/reckon-accounting/list_bills": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonOverview/rawBills",
+              "value": {
+                "$computed": "reckon-accounting_concat_arrays",
+                "args": { "a": { "$state": "/ui/reckonOverview/rawBills" }, "b": { "$state": "/reckon-accounting/list_bills/list" } }
+              }
+            }
+          },
+          "/ui/reckonOverview/rawBills": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonOverview/unpaidBills",
+              "value": {
+                "$computed": "filter_by",
+                "args": {
+                  "value": { "$computed": "reckon-accounting_abs_balance", "args": { "value": { "$state": "/ui/reckonOverview/rawBills" } } },
+                  "field": "balance"
+                }
+              }
+            }
+          },
+          "/reckon-accounting/list_accounts": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonOverview/bankAccounts",
+              "value": {
+                "$computed": "filter_by",
+                "args": { "value": { "$state": "/reckon-accounting/list_accounts/list" }, "field": "accountType", "equals": "CurrentAsset_Bank" }
+              }
+            }
+          },
+          "/ui/reckonOverview/unpaidInvoices": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonOverview/netPosition",
+              "value": {
+                "$computed": "reckon-accounting_subtract",
+                "args": {
+                  "a": { "$computed": "sum", "args": { "value": { "$state": "/ui/reckonOverview/unpaidInvoices" }, "field": "balance" } },
+                  "b": { "$computed": "sum", "args": { "value": { "$state": "/ui/reckonOverview/unpaidBills" }, "field": "balance" } }
+                }
+              }
+            }
+          },
+          "/ui/reckonOverview/unpaidBills": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonOverview/netPosition",
+              "value": {
+                "$computed": "reckon-accounting_subtract",
+                "args": {
+                  "a": { "$computed": "sum", "args": { "value": { "$state": "/ui/reckonOverview/unpaidInvoices" }, "field": "balance" } },
+                  "b": { "$computed": "sum", "args": { "value": { "$state": "/ui/reckonOverview/unpaidBills" }, "field": "balance" } }
+                }
+              }
+            }
+          },
+          "/ui/reckonOverview/bankAccounts": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonOverview/netPosition",
+              "value": {
+                "$computed": "reckon-accounting_subtract",
+                "args": {
+                  "a": { "$computed": "sum", "args": { "value": { "$state": "/ui/reckonOverview/unpaidInvoices" }, "field": "balance" } },
+                  "b": { "$computed": "sum", "args": { "value": { "$state": "/ui/reckonOverview/unpaidBills" }, "field": "balance" } }
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "align": "center" },
+        "children": ["titleGroup"],
+        "watch": {
+          "/ui/reckonOverview/rawInvoices/0": { "action": "reckon-accounting.get_company", "params": {} }
+        }
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"],
+        "watch": {
+          "/ui/reckonOverview/overdueBills": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonOverview/visibleOverdueBills",
+              "value": { "$computed": "top_n", "args": { "value": { "$state": "/ui/reckonOverview/overdueBills" }, "limit": 10 } }
+            }
+          }
+        }
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "BarChart3", "tone": "brand", "size": "md" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Reckon Books Overview", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Reckon" } },
+
+      "div0": {
+        "type": "Divider",
+        "props": {},
+        "watch": {
+          "/ui/reckonOverview/rawInvoices/0": { "action": "reckon-accounting.list_invoices", "params": { "page": 2 } }
+        }
+      },
+
+      "viewInReckonRow": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["viewInReckonLink"],
+        "watch": {
+          "/ui/reckonOverview/rawInvoices/0": { "action": "reckon-accounting.list_bills", "params": {} }
+        }
+      },
+      "viewInReckonLink": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "clickable": true },
+        "children": ["viewInReckonLabel", "viewInReckonIcon"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "fmt",
+                "args": { "pattern": "https://app.reckonone.com/{bookId}/Core", "bookId": { "$state": "/reckon-accounting/get_company/id" } }
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "viewInReckonLabel": { "type": "Text", "props": { "text": "View in Reckon", "size": "sm", "tone": "brand", "weight": "medium" } },
+      "viewInReckonIcon": { "type": "Icon", "props": { "name": "ArrowUpRight", "tone": "brand", "size": "sm" } },
+
+      "quadrantGrid": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "md" },
+        "children": ["receivablesCard", "payablesCard", "bankCard", "netPositionCard"],
+        "watch": {
+          "/ui/reckonOverview/rawBills/0": { "action": "reckon-accounting.list_bills", "params": { "page": 2 } }
+        }
+      },
+
+      "receivablesCard": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["receivablesClickRow", "receivablesDetail"],
+        "watch": {
+          "/ui/reckonOverview/unpaidInvoices": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonOverview/overdueInvoices",
+              "value": {
+                "$computed": "filter_date_range",
+                "args": {
+                  "value": { "$state": "/ui/reckonOverview/unpaidInvoices" },
+                  "field": "dueDate",
+                  "start": { "$computed": "reckon-accounting_days_ago", "args": { "days": 3650 } },
+                  "end": { "$computed": "reckon-accounting_days_ago", "args": { "days": 1 } }
+                }
+              }
+            }
+          }
+        }
+      },
+      "receivablesClickRow": {
+        "type": "Row",
+        "props": {
+          "template": "1fr", "clickable": true,
+          "selected": { "$state": "/ui/reckonOverview/selectedQuadrant", "eq": "receivables" }
+        },
+        "children": ["receivablesQuadrant"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonOverview/selectedQuadrant",
+              "value": { "$cond": { "$state": "/ui/reckonOverview/selectedQuadrant", "eq": "receivables" }, "$then": "", "$else": "receivables" }
+            }
+          }
+        }
+      },
+      "receivablesQuadrant": { "type": "Stack", "props": { "gap": "xs" }, "children": ["receivablesLabelRow", "receivablesValue", "receivablesCaption"] },
+      "receivablesLabelRow": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["receivablesIcon", "receivablesLabel"] },
+      "receivablesIcon": { "type": "Icon", "props": { "name": "TrendingUp", "tone": "chart-2", "size": "xs" } },
+      "receivablesLabel": { "type": "Caption", "props": { "text": "RECEIVABLES", "tone": "chart-2", "weight": "medium" } },
+      "receivablesValue": {
+        "type": "Stat",
+        "props": {
+          "size": "md",
+          "tone": "chart-2",
+          "value": { "$computed": "format_currency", "args": { "value": { "$computed": "sum", "args": { "value": { "$state": "/ui/reckonOverview/unpaidInvoices" }, "field": "balance" } } } }
+        }
+      },
+      "receivablesCaption": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": { "$computed": "fmt", "args": { "pattern": "{n} invoices", "n": { "$computed": "count", "args": { "value": { "$state": "/ui/reckonOverview/unpaidInvoices" } } } } }
+        }
+      },
+
+      "payablesCard": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["payablesClickRow", "payablesDetail"],
+        "watch": {
+          "/ui/reckonOverview/unpaidBills": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonOverview/overdueBills",
+              "value": {
+                "$computed": "filter_date_range",
+                "args": {
+                  "value": { "$state": "/ui/reckonOverview/unpaidBills" },
+                  "field": "dueDate",
+                  "start": { "$computed": "reckon-accounting_days_ago", "args": { "days": 3650 } },
+                  "end": { "$computed": "reckon-accounting_days_ago", "args": { "days": 1 } }
+                }
+              }
+            }
+          }
+        }
+      },
+      "payablesClickRow": {
+        "type": "Row",
+        "props": {
+          "template": "1fr", "clickable": true,
+          "selected": { "$state": "/ui/reckonOverview/selectedQuadrant", "eq": "payables" }
+        },
+        "children": ["payablesQuadrant"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonOverview/selectedQuadrant",
+              "value": { "$cond": { "$state": "/ui/reckonOverview/selectedQuadrant", "eq": "payables" }, "$then": "", "$else": "payables" }
+            }
+          }
+        }
+      },
+      "payablesQuadrant": { "type": "Stack", "props": { "gap": "xs" }, "children": ["payablesLabelRow", "payablesValue", "payablesCaption"] },
+      "payablesLabelRow": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["payablesIcon", "payablesLabel"] },
+      "payablesIcon": { "type": "Icon", "props": { "name": "TrendingDown", "tone": "chart-3", "size": "xs" } },
+      "payablesLabel": { "type": "Caption", "props": { "text": "PAYABLES", "tone": "chart-3", "weight": "medium" } },
+      "payablesValue": {
+        "type": "Stat",
+        "props": {
+          "size": "md",
+          "tone": "chart-3",
+          "value": { "$computed": "format_currency", "args": { "value": { "$computed": "sum", "args": { "value": { "$state": "/ui/reckonOverview/unpaidBills" }, "field": "balance" } } } }
+        }
+      },
+      "payablesCaption": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": { "$computed": "fmt", "args": { "pattern": "{n} bills", "n": { "$computed": "count", "args": { "value": { "$state": "/ui/reckonOverview/unpaidBills" } } } } }
+        }
+      },
+
+      "bankCard": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["bankClickRow", "bankDetail"],
+        "watch": {
+          "/ui/reckonOverview/rawBills/0": { "action": "reckon-accounting.list_accounts", "params": {} }
+        }
+      },
+      "bankClickRow": {
+        "type": "Row",
+        "props": {
+          "template": "1fr", "clickable": true,
+          "selected": { "$state": "/ui/reckonOverview/selectedQuadrant", "eq": "bank" }
+        },
+        "children": ["bankQuadrant"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonOverview/selectedQuadrant",
+              "value": { "$cond": { "$state": "/ui/reckonOverview/selectedQuadrant", "eq": "bank" }, "$then": "", "$else": "bank" }
+            }
+          }
+        }
+      },
+      "bankQuadrant": { "type": "Stack", "props": { "gap": "xs" }, "children": ["bankLabelRow", "bankValue", "bankCaption"] },
+      "bankLabelRow": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["bankIcon", "bankLabel"] },
+      "bankIcon": { "type": "Icon", "props": { "name": "Landmark", "tone": "chart-5", "size": "xs" } },
+      "bankLabel": { "type": "Caption", "props": { "text": "BANK BALANCE", "tone": "chart-5", "weight": "medium" } },
+      "bankValue": {
+        "type": "Stat",
+        "props": {
+          "size": "md",
+          "tone": "chart-5",
+          "value": { "$computed": "format_currency", "args": { "value": { "$computed": "sum", "args": { "value": { "$state": "/ui/reckonOverview/bankAccounts" }, "field": "balance" } } } }
+        }
+      },
+      "bankCaption": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": { "$computed": "fmt", "args": { "pattern": "{n} accounts", "n": { "$computed": "count", "args": { "value": { "$state": "/ui/reckonOverview/bankAccounts" } } } } }
+        }
+      },
+
+      "netPositionCard": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["netPositionClickRow", "netPositionDetail"],
+        "watch": {
+          "/ui/reckonOverview/overdueInvoices": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonOverview/overdueTotal",
+              "value": {
+                "$computed": "add_number",
+                "args": {
+                  "a": { "$computed": "count", "args": { "value": { "$state": "/ui/reckonOverview/overdueInvoices" } } },
+                  "b": { "$computed": "count", "args": { "value": { "$state": "/ui/reckonOverview/overdueBills" } } }
+                }
+              }
+            }
+          }
+        }
+      },
+      "netPositionClickRow": {
+        "type": "Row",
+        "props": {
+          "template": "1fr", "clickable": true,
+          "selected": { "$state": "/ui/reckonOverview/selectedQuadrant", "eq": "netposition" }
+        },
+        "children": ["netPositionQuadrant"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonOverview/selectedQuadrant",
+              "value": { "$cond": { "$state": "/ui/reckonOverview/selectedQuadrant", "eq": "netposition" }, "$then": "", "$else": "netposition" }
+            }
+          }
+        }
+      },
+      "netPositionQuadrant": { "type": "Stack", "props": { "gap": "xs" }, "children": ["netPositionLabelRow", "netPositionValue", "netPositionCaption"] },
+      "netPositionLabelRow": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["netPositionIcon", "netPositionLabel"] },
+      "netPositionIcon": { "type": "Icon", "props": { "name": "Scale", "tone": "chart-1", "size": "xs" } },
+      "netPositionLabel": { "type": "Caption", "props": { "text": "NET POSITION", "tone": "chart-1", "weight": "medium" } },
+      "netPositionValue": {
+        "type": "Stat",
+        "props": { "size": "md", "tone": "chart-1", "value": { "$computed": "format_currency", "args": { "value": { "$state": "/ui/reckonOverview/netPosition" } } } }
+      },
+      "netPositionCaption": { "type": "Caption", "props": { "text": "receivables − payables", "tone": "muted" } },
+
+      "receivablesDetail": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["receivablesDetailRows", "receivablesMoreCaption"],
+        "visible": { "$state": "/ui/reckonOverview/selectedQuadrant", "eq": "receivables" },
+        "watch": {
+          "/ui/reckonOverview/unpaidInvoices": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonOverview/visibleInvoicesDetail",
+              "value": { "$computed": "top_n", "args": { "value": { "$state": "/ui/reckonOverview/unpaidInvoices" }, "limit": 10 } }
+            }
+          }
+        }
+      },
+      "receivablesDetailRows": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "repeat": { "statePath": "/ui/reckonOverview/visibleInvoicesDetail", "key": "id" },
+        "children": ["receivablesDetailRow"]
+      },
+      "receivablesDetailRow": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["receivablesDetailLeft", "receivablesDetailAmount"] },
+      "receivablesDetailLeft": { "type": "Stack", "props": { "gap": "none", "grow": true }, "children": ["receivablesDetailCustomer", "receivablesDetailMeta"] },
+      "receivablesDetailCustomer": { "type": "Text", "props": { "text": { "$item": "customer/name" }, "size": "sm", "truncate": true } },
+      "receivablesDetailMeta": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{invoiceNumber} · due {dueDate}",
+              "invoiceNumber": { "$item": "invoiceNumber" },
+              "dueDate": { "$computed": "format_date", "args": { "value": { "$item": "dueDate" }, "format": "dd-mmm-yy" } }
+            }
+          }
+        }
+      },
+      "receivablesDetailAmount": {
+        "type": "Text",
+        "props": { "size": "sm", "weight": "semibold", "text": { "$computed": "format_currency", "args": { "value": { "$item": "balance" } } } }
+      },
+      "receivablesMoreCaption": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "+{n} more",
+              "n": { "$computed": "add_number", "args": { "a": { "$computed": "count", "args": { "value": { "$state": "/ui/reckonOverview/unpaidInvoices" } } }, "b": -10 } }
+            }
+          }
+        },
+        "visible": { "$state": "/ui/reckonOverview/unpaidInvoices/10" }
+      },
+
+      "payablesDetail": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["payablesDetailRows", "payablesMoreCaption"],
+        "visible": { "$state": "/ui/reckonOverview/selectedQuadrant", "eq": "payables" },
+        "watch": {
+          "/ui/reckonOverview/unpaidBills": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonOverview/visibleBillsDetail",
+              "value": { "$computed": "top_n", "args": { "value": { "$state": "/ui/reckonOverview/unpaidBills" }, "limit": 10 } }
+            }
+          }
+        }
+      },
+      "payablesDetailRows": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "repeat": { "statePath": "/ui/reckonOverview/visibleBillsDetail", "key": "id" },
+        "children": ["payablesDetailRow"]
+      },
+      "payablesDetailRow": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["payablesDetailLeft", "payablesDetailAmount"] },
+      "payablesDetailLeft": { "type": "Stack", "props": { "gap": "none", "grow": true }, "children": ["payablesDetailSupplier", "payablesDetailMeta"] },
+      "payablesDetailSupplier": { "type": "Text", "props": { "text": { "$item": "supplier/name" }, "size": "sm", "truncate": true } },
+      "payablesDetailMeta": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{billNumber} · due {dueDate}",
+              "billNumber": { "$item": "billNumber" },
+              "dueDate": { "$computed": "format_date", "args": { "value": { "$item": "dueDate" }, "format": "dd-mmm-yy" } }
+            }
+          }
+        }
+      },
+      "payablesDetailAmount": {
+        "type": "Text",
+        "props": { "size": "sm", "weight": "semibold", "text": { "$computed": "format_currency", "args": { "value": { "$item": "balance" } } } }
+      },
+      "payablesMoreCaption": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "+{n} more",
+              "n": { "$computed": "add_number", "args": { "a": { "$computed": "count", "args": { "value": { "$state": "/ui/reckonOverview/unpaidBills" } } }, "b": -10 } }
+            }
+          }
+        },
+        "visible": { "$state": "/ui/reckonOverview/unpaidBills/10" }
+      },
+
+      "bankDetail": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["bankDetailRows"],
+        "visible": { "$state": "/ui/reckonOverview/selectedQuadrant", "eq": "bank" },
+        "watch": {
+          "/ui/reckonOverview/bankAccounts": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonOverview/visibleBankDetail",
+              "value": { "$computed": "top_n", "args": { "value": { "$state": "/ui/reckonOverview/bankAccounts" }, "limit": 10 } }
+            }
+          }
+        }
+      },
+      "bankDetailRows": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "repeat": { "statePath": "/ui/reckonOverview/visibleBankDetail", "key": "id" },
+        "children": ["bankDetailRow"]
+      },
+      "bankDetailRow": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["bankDetailName", "bankDetailAmount"] },
+      "bankDetailName": { "type": "Text", "props": { "text": { "$item": "name" }, "size": "sm", "truncate": true } },
+      "bankDetailAmount": {
+        "type": "Text",
+        "props": { "size": "sm", "weight": "semibold", "text": { "$computed": "format_currency", "args": { "value": { "$item": "balance" } } } }
+      },
+
+      "netPositionDetail": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["netPositionDetailReceivablesRow", "netPositionDetailPayablesRow", "netPositionDetailDivider", "netPositionDetailNetRow"],
+        "visible": { "$state": "/ui/reckonOverview/selectedQuadrant", "eq": "netposition" },
+        "watch": {
+          "/ui/reckonOverview/overdueInvoices": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonOverview/visibleOverdueInvoices",
+              "value": { "$computed": "top_n", "args": { "value": { "$state": "/ui/reckonOverview/overdueInvoices" }, "limit": 10 } }
+            }
+          }
+        }
+      },
+      "netPositionDetailReceivablesRow": { "type": "Row", "props": { "gap": "sm", "justify": "between" }, "children": ["netPositionDetailReceivablesLabel", "netPositionDetailReceivablesAmount"] },
+      "netPositionDetailReceivablesLabel": { "type": "Text", "props": { "text": "Receivables", "size": "sm", "tone": "muted" } },
+      "netPositionDetailReceivablesAmount": {
+        "type": "Text",
+        "props": { "size": "sm", "text": { "$computed": "format_currency", "args": { "value": { "$computed": "sum", "args": { "value": { "$state": "/ui/reckonOverview/unpaidInvoices" }, "field": "balance" } } } } }
+      },
+      "netPositionDetailPayablesRow": { "type": "Row", "props": { "gap": "sm", "justify": "between" }, "children": ["netPositionDetailPayablesLabel", "netPositionDetailPayablesAmount"] },
+      "netPositionDetailPayablesLabel": { "type": "Text", "props": { "text": "Payables", "size": "sm", "tone": "muted" } },
+      "netPositionDetailPayablesAmount": {
+        "type": "Text",
+        "props": { "size": "sm", "text": { "$computed": "fmt", "args": { "pattern": "− {v}", "v": { "$computed": "format_currency", "args": { "value": { "$computed": "sum", "args": { "value": { "$state": "/ui/reckonOverview/unpaidBills" }, "field": "balance" } } } } } } }
+      },
+      "netPositionDetailDivider": { "type": "Divider", "props": {} },
+      "netPositionDetailNetRow": { "type": "Row", "props": { "gap": "sm", "justify": "between" }, "children": ["netPositionDetailNetLabel", "netPositionDetailNetAmount"] },
+      "netPositionDetailNetLabel": { "type": "Text", "props": { "text": "Net position", "size": "sm", "weight": "semibold" } },
+      "netPositionDetailNetAmount": {
+        "type": "Text",
+        "props": { "size": "sm", "weight": "semibold", "text": { "$computed": "format_currency", "args": { "value": { "$state": "/ui/reckonOverview/netPosition" } } } }
+      },
+
+      "followUpCard": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["banner", "followUpDetail"],
+        "visible": { "$state": "/ui/reckonOverview/overdueTotal" },
+        "watch": {
+          "/ui/reckonOverview/overdueBills": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonOverview/overdueTotal",
+              "value": {
+                "$computed": "add_number",
+                "args": {
+                  "a": { "$computed": "count", "args": { "value": { "$state": "/ui/reckonOverview/overdueInvoices" } } },
+                  "b": { "$computed": "count", "args": { "value": { "$state": "/ui/reckonOverview/overdueBills" } } }
+                }
+              }
+            }
+          }
+        }
+      },
+      "banner": {
+        "type": "Row",
+        "props": {
+          "gap": "sm", "align": "center", "justify": "between", "clickable": true,
+          "selected": { "$state": "/ui/reckonOverview/followUpOpen" }
+        },
+        "children": ["bannerLeft", "bannerRight"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonOverview/followUpOpen",
+              "value": { "$cond": { "$state": "/ui/reckonOverview/followUpOpen" }, "$then": false, "$else": true }
+            }
+          }
+        }
+      },
+      "bannerLeft": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["bannerIcon", "bannerLabel"] },
+      "bannerIcon": { "type": "Icon", "props": { "name": "AlertTriangle", "tone": "destructive", "size": "sm" } },
+      "bannerLabel": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "weight": "semibold",
+          "tone": "destructive",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{total} overdue · {invCount} invoices, {billCount} bills",
+              "total": { "$state": "/ui/reckonOverview/overdueTotal" },
+              "invCount": { "$computed": "count", "args": { "value": { "$state": "/ui/reckonOverview/overdueInvoices" } } },
+              "billCount": { "$computed": "count", "args": { "value": { "$state": "/ui/reckonOverview/overdueBills" } } }
+            }
+          }
+        }
+      },
+      "bannerRight": { "type": "Text", "props": { "text": "Follow up", "size": "sm", "tone": "destructive", "weight": "medium" } },
+
+      "followUpDetail": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["followUpInvoicesSection", "followUpBillsSection"],
+        "visible": { "$state": "/ui/reckonOverview/followUpOpen" }
+      },
+      "followUpInvoicesSection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["followUpInvoicesLabel", "followUpInvoicesRows"],
+        "visible": { "$state": "/ui/reckonOverview/overdueInvoices/0" }
+      },
+      "followUpInvoicesLabel": { "type": "Caption", "props": { "text": "Overdue invoices", "tone": "muted", "weight": "medium" } },
+      "followUpInvoicesRows": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "repeat": { "statePath": "/ui/reckonOverview/visibleOverdueInvoices", "key": "id" },
+        "children": ["followUpInvoiceRow"]
+      },
+      "followUpInvoiceRow": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["followUpInvoiceLeft", "followUpInvoiceAmount"] },
+      "followUpInvoiceLeft": { "type": "Stack", "props": { "gap": "none", "grow": true }, "children": ["followUpInvoiceCustomer", "followUpInvoiceMeta"] },
+      "followUpInvoiceCustomer": { "type": "Text", "props": { "text": { "$item": "customer/name" }, "size": "sm", "truncate": true } },
+      "followUpInvoiceMeta": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{invoiceNumber} · due {dueDate}",
+              "invoiceNumber": { "$item": "invoiceNumber" },
+              "dueDate": { "$computed": "format_date", "args": { "value": { "$item": "dueDate" }, "format": "dd-mmm-yy" } }
+            }
+          }
+        }
+      },
+      "followUpInvoiceAmount": {
+        "type": "Text",
+        "props": { "size": "sm", "weight": "semibold", "text": { "$computed": "format_currency", "args": { "value": { "$item": "balance" } } } }
+      },
+
+      "followUpBillsSection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["followUpBillsLabel", "followUpBillsRows"],
+        "visible": { "$state": "/ui/reckonOverview/overdueBills/0" }
+      },
+      "followUpBillsLabel": { "type": "Caption", "props": { "text": "Overdue bills", "tone": "muted", "weight": "medium" } },
+      "followUpBillsRows": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "repeat": { "statePath": "/ui/reckonOverview/visibleOverdueBills", "key": "id" },
+        "children": ["followUpBillRow"]
+      },
+      "followUpBillRow": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["followUpBillLeft", "followUpBillAmount"] },
+      "followUpBillLeft": { "type": "Stack", "props": { "gap": "none", "grow": true }, "children": ["followUpBillSupplier", "followUpBillMeta"] },
+      "followUpBillSupplier": { "type": "Text", "props": { "text": { "$item": "supplier/name" }, "size": "sm", "truncate": true } },
+      "followUpBillMeta": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{billNumber} · due {dueDate}",
+              "billNumber": { "$item": "billNumber" },
+              "dueDate": { "$computed": "format_date", "args": { "value": { "$item": "dueDate" }, "format": "dd-mmm-yy" } }
+            }
+          }
+        }
+      },
+      "followUpBillAmount": {
+        "type": "Text",
+        "props": { "size": "sm", "weight": "semibold", "text": { "$computed": "format_currency", "args": { "value": { "$item": "balance" } } } }
+      }
+
+    }
+  },
+  "status": "draft"
+}

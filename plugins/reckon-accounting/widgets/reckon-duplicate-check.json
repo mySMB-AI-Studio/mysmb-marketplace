@@ -1,7 +1,7 @@
 {
   "id": "reckon-duplicate-check",
   "title": "Duplicate & Exclusion Check",
-  "description": "Data-integrity scan across Reckon One contacts, bills, and invoices: duplicate contacts/organizations (union of /contacts people + bill suppliers + invoice customers, since Reckon has no dedicated /customers or /suppliers list endpoint), duplicate bill numbers (by the reference field, not Reckon's own auto-assigned billNumber), and contacts marked inactive that still have bill/invoice activity. All three checks and their underlying data shapes confirmed against a live test account. Clicking the \"Needs review\" badge or any individual check row expands that check's flagged records inline. \"View in Reckon\" is wired for all three checks with confirmed real URLs: Duplicate bill numbers → https://app.reckonone.com/{bookId}/Core/Bill; Duplicate contacts → https://app.reckonone.com/{bookId}/Core/Supplier; Inactive-contact activity → https://app.reckonone.com/{bookId}/Core/ContactsV2 (all bookId-templated from a live get_company fetch, not hardcoded).",
+  "description": "Data-integrity scan across Reckon One contacts, bills, and invoices: duplicate contacts/organizations (union of /contacts people + bill suppliers + invoice customers, since Reckon has no dedicated /customers or /suppliers list endpoint), duplicate bill numbers (by the reference field, not Reckon's own auto-assigned billNumber), and contacts marked inactive that still have bill/invoice activity. All three checks and their underlying data shapes confirmed against a live test account. Clicking the \"Needs review\" badge or any individual check row expands that check's flagged records inline. \"View in Reckon\" is wired for all three checks with confirmed real URLs: Duplicate bill numbers → https://app.reckonone.com/{bookId}/Core/Bill; Duplicate contacts → https://app.reckonone.com/{bookId}/Core/Supplier; Inactive-contact activity → https://app.reckonone.com/{bookId}/Core/ContactsV2 (all bookId-templated from a live get_company fetch, not hardcoded). PAGINATION: Reckon's v2 /invoices and /bills endpoints genuinely paginate (~10/page, no total-count or next-page field in the response body — confirmed live; /contacts does not paginate further in this account). Page 1 of each is fetched via list_contacts' own trigger, page 2 is chained in and merged via reckon-accounting_concat_arrays before analyze_data_issues runs, covering up to 20 bills and 20 invoices (the real test account has exactly 12 of each). A 3rd page is not fetched.",
   "category": "accounting",
   "tags": ["reckon", "accounting", "data integrity", "duplicates", "cleanup"],
   "keywords": ["reckon", "duplicate", "duplicates", "dedupe", "data quality", "cleanup", "exclusion", "contacts"],
@@ -33,18 +33,32 @@
           "/reckon-accounting/list_bills": {
             "action": "setState",
             "params": {
-              "statePath": "/ui/reckonDup/result",
+              "statePath": "/ui/reckonDup/rawBills",
               "value": {
-                "$computed": "reckon-accounting_analyze_data_issues",
-                "args": {
-                  "contacts": { "$state": "/reckon-accounting/list_contacts/list" },
-                  "bills": { "$state": "/reckon-accounting/list_bills/list" },
-                  "invoices": { "$state": "/reckon-accounting/list_invoices/list" }
-                }
+                "$computed": "reckon-accounting_concat_arrays",
+                "args": { "a": { "$state": "/ui/reckonDup/rawBills" }, "b": { "$state": "/reckon-accounting/list_bills/list" } }
               }
             }
           },
+          "/ui/reckonDup/rawBills/0": {
+            "action": "reckon-accounting.list_bills",
+            "params": { "page": 2 }
+          },
           "/reckon-accounting/list_invoices": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonDup/rawInvoices",
+              "value": {
+                "$computed": "reckon-accounting_concat_arrays",
+                "args": { "a": { "$state": "/ui/reckonDup/rawInvoices" }, "b": { "$state": "/reckon-accounting/list_invoices/list" } }
+              }
+            }
+          },
+          "/ui/reckonDup/rawInvoices/0": {
+            "action": "reckon-accounting.list_invoices",
+            "params": { "page": 2 }
+          },
+          "/ui/reckonDup/rawBills": {
             "action": "setState",
             "params": {
               "statePath": "/ui/reckonDup/result",
@@ -52,8 +66,22 @@
                 "$computed": "reckon-accounting_analyze_data_issues",
                 "args": {
                   "contacts": { "$state": "/reckon-accounting/list_contacts/list" },
-                  "bills": { "$state": "/reckon-accounting/list_bills/list" },
-                  "invoices": { "$state": "/reckon-accounting/list_invoices/list" }
+                  "bills": { "$state": "/ui/reckonDup/rawBills" },
+                  "invoices": { "$state": "/ui/reckonDup/rawInvoices" }
+                }
+              }
+            }
+          },
+          "/ui/reckonDup/rawInvoices": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonDup/result",
+              "value": {
+                "$computed": "reckon-accounting_analyze_data_issues",
+                "args": {
+                  "contacts": { "$state": "/reckon-accounting/list_contacts/list" },
+                  "bills": { "$state": "/ui/reckonDup/rawBills" },
+                  "invoices": { "$state": "/ui/reckonDup/rawInvoices" }
                 }
               }
             }
