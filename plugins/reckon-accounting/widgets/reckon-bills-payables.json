@@ -1,7 +1,7 @@
 {
   "id": "reckon-bills-payables",
   "title": "Bills & Payables",
-  "description": "Accounts payable snapshot from Reckon One: total outstanding across unpaid supplier bills, how many are overdue, and a Due this week / Due later / Overdue breakdown. UNVERIFIED FIELD NAMES — see the dependency note in chat: the connected sandbox has zero bills to check field casing against (unlike reckon-invoices-receivables, which was corrected against real customer.name/dueDate/balance invoice data). Bill fields here (supplier.name, billNumber, dueDate, balance) are a best guess mirroring the confirmed invoice shape, not yet live-verified. Also assumes (unconfirmed) a Reckon One bills page at /v2/bills, by analogy with the confirmed /v2/invoices URL.",
+  "description": "Accounts payable snapshot from Reckon One: total outstanding across unpaid supplier bills, how many are overdue, and a Due this week / Due later / Overdue breakdown. Bill fields (supplier.name, billNumber, dueDate, balance) and the confirmed-negative balance sign are live-verified against a real test account. \"View in Reckon\" uses the confirmed real URL https://app.reckonone.com/{bookId}/Core/Bill. PAGINATION: Reckon's v2 /bills endpoint genuinely paginates (~10/page, no total-count or next-page field in the response body — confirmed live). The widget fetches page 1, then page 2 is chained in and merged via reckon-accounting_concat_arrays, covering up to 20 bills (the real test account has exactly 12, across pages 1-2). A 3rd page is not fetched; if the account grows past 20 bills, the same chained-fetch-and-merge pattern would need extending to page 3.",
   "category": "accounting",
   "tags": ["reckon", "accounting", "bills", "payables", "ap", "overdue"],
   "keywords": ["reckon", "bills", "payables", "accounts payable", "overdue", "outstanding", "due"],
@@ -29,13 +29,30 @@
           "/reckon-accounting/list_bills": {
             "action": "setState",
             "params": {
+              "statePath": "/ui/reckonAp/rawBills",
+              "value": {
+                "$computed": "reckon-accounting_concat_arrays",
+                "args": {
+                  "a": { "$state": "/ui/reckonAp/rawBills" },
+                  "b": { "$state": "/reckon-accounting/list_bills/list" }
+                }
+              }
+            }
+          },
+          "/ui/reckonAp/rawBills/0": {
+            "action": "reckon-accounting.list_bills",
+            "params": { "page": 2 }
+          },
+          "/ui/reckonAp/rawBills": {
+            "action": "setState",
+            "params": {
               "statePath": "/ui/reckonAp/unpaid",
               "value": {
                 "$computed": "filter_by",
                 "args": {
                   "value": {
                     "$computed": "reckon-accounting_abs_balance",
-                    "args": { "value": { "$state": "/reckon-accounting/list_bills/list" } }
+                    "args": { "value": { "$state": "/ui/reckonAp/rawBills" } }
                   },
                   "field": "balance"
                 }
@@ -145,7 +162,7 @@
         "props": { "align": "start" },
         "children": ["titleGroup"],
         "watch": {
-          "/reckon-accounting/list_bills": { "action": "reckon-accounting.get_company", "params": {} }
+          "/ui/reckonAp/rawBills/0": { "action": "reckon-accounting.get_company", "params": {} }
         }
       },
       "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["titleIcon", "titleStack"] },
