@@ -11,7 +11,8 @@ const CHIPS = ['Financial', 'Tax & BAS', 'Sales & purchases', 'Quality', 'Activi
 const NA = {
   wave2: 'Not available yet — coming in Wave 2',
   checks: 'Not available yet — needs the checks engine (Work list), coming next',
-  time: 'Not available — no time source; Xero Practice Manager practices get it in Wave 3'
+  time: 'Not available — no time source; Xero Practice Manager practices get it in Wave 3',
+  platform: 'Not available — Workspace\u2019s WorkQ activity data is workspace-wide per user, with no link to a client yet (platform gap)'
 };
 // [id, name, chip, state, one line] — the Index tab of the Prompt Library v1.1. state 'export' (CRA-14 only) is live in the
 // sense that asking for it does something real now, but it has no "Use this report" template in this extension: it routes to
@@ -31,7 +32,7 @@ const ITEMS = [
   ['CRA-12', 'Actual Time', 'Time', 'time', 'Time allocated to this client by staff and task source.'],
   ['CRA-13', 'Estimate Accuracy', 'Time', 'time', "Estimated vs actual time for this client's work items."],
   ['CRA-14', 'Ledger User Activity', 'Activity', 'export', "What people have been doing in the client's accounting file — routes to the QuickBooks and MYOB audit-log skills (export-based); Xero has no org-wide audit log, only per-record history on request."],
-  ['CRA-15', 'Workspace User Activity', 'Activity', 'live', "Actions taken in Workspace to resolve this client's findings and tasks. Mostly empty until the checks engine (WL-00) ships findings — that is expected."]
+  ['CRA-15', 'Workspace User Activity', 'Activity', 'platform', "Actions taken in Workspace to resolve this client's findings and tasks."]
 ];
 const live = {}; REPORTS.filter((r) => r.platform).forEach((r) => { (live[r.cra] = live[r.cra] || {})[r.platform] = { slug: r.slug, title: r.title }; });
 const DATA = {

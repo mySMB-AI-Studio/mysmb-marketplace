@@ -30,11 +30,9 @@ const ITEMS = {
   'activity-count': {
     cra: 'CRA-11', name: 'Activity Count', chip: 'Activity',
     blurb: 'transaction counts by month across sales, purchases, banking, payroll and journals, so you can see how active the file has been.'
-  },
-  'workspace-activity': {
-    cra: 'CRA-15', name: 'Workspace User Activity', chip: 'Activity',
-    blurb: "this client's WorkQ tasks and findings activity in mySMB Workspace; mostly empty until the checks engine (WL-00) ships findings."
   }
+  // CRA-15 Workspace User Activity is not built: the platform's workq_activity data is workspace-wide counts per user over
+  // the last N days, with no client link and no date range, so a per-client report cannot be honest yet (live QA 2026-10-13).
 };
 const REPORTS = [{
   cra: 'CRA-00', ref: 'catalogue/client-catalogue', slug: 'client-report-catalogue', platform: null,

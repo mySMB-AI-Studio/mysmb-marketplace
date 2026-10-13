@@ -16,15 +16,15 @@ QB.app({
     if (!c.data.customers || !c.data.vendors) return {};
     var cust = ((c.data.customers.QueryResponse || {}).Customer || []).map(function (x) { return { name: x.DisplayName || '(no name)', role: 'Customer', active: x.Active !== false }; });
     var vend = ((c.data.vendors.QueryResponse || {}).Vendor || []).map(function (x) { return { name: x.DisplayName || '(no name)', role: 'Vendor', active: x.Active !== false }; });
-    var rows = cust.concat(vend).sort(function (a, b) { return a.name.localeCompare(b.name); }).map(function (r) { return { name: r.name, role: r.role, status: r.active ? 'Active' : 'Inactive', gst: 'N/A — not in source', types: 'N/A — not in source', registry: 'N/A — pending ABR' }; });
+    var rows = cust.concat(vend).sort(function (a, b) { return a.name.localeCompare(b.name); }).map(function (r) { return { name: r.name, role: r.role, status: r.active ? 'Active' : 'Inactive', gst: 'N/A — not in source', types: 'N/A — not built for QuickBooks yet', registry: 'N/A — pending ABR' }; });
     body.innerHTML = QB.kpis([{ label: 'Contacts', text: String(rows.length) }, { label: 'Customers', text: String(cust.length) }, { label: 'Vendors', text: String(vend.length) }], c) +
-      '<div class="qb-banner na" style="margin:12px 0"><strong>Registry (ABR) match is not built yet</strong> — it needs an ABR API credential that has not arrived. GST evidence and tax types used also read "N/A — not in source": this kit has no reliable per-contact tax-code source for QuickBooks yet.</div>' +
+      '<div class="qb-banner na" style="margin:12px 0"><strong>Registry (ABR) match is not built yet</strong> — it needs an ABR API credential that has not arrived. GST evidence reads "N/A — not in source" (QuickBooks contacts carry no ABN field); tax types used read "N/A — not built for QuickBooks yet" (the codes are on each transaction line, not aggregated per contact yet).</div>' +
       '<div class="qb-card"><h3>Contacts</h3><div id="cb-grid"></div></div>';
     QB.grid(document.getElementById('cb-grid'), { columns: [{ key: 'name', title: 'Contact' }, { key: 'role', title: 'Role' }, { key: 'status', title: 'Status' }, { key: 'gst', title: 'GST evidence on file' }, { key: 'types', title: 'Tax types used' }, { key: 'registry', title: 'Registry (ABR) match' }], rows: rows, empty: 'No contacts.' }, c);
     var checks = [
       { name: 'Every Customer and Vendor loaded', pass: true, detail: cust.length + ' customer(s), ' + vend.length + ' vendor(s)' },
       { name: 'GST evidence on file', pass: null, info: true, detail: 'N/A — not in source: no ABN-equivalent field on the base QuickBooks Customer/Vendor entity in this kit' },
-      { name: 'Tax types used', pass: null, info: true, detail: 'N/A — not in source: no per-contact tax-code aggregation built for QuickBooks yet' },
+      { name: 'Tax types used', pass: null, info: true, detail: 'N/A — not built for QuickBooks yet: the tax codes are on each invoice and bill line, but this report does not aggregate them per contact yet' },
       { name: 'Registry (ABR) match', pass: null, info: true, detail: 'N/A — pending ABR: this release has no ABR API credential, so no registry status is shown or guessed' }
     ];
     this._x = { rows: rows };
