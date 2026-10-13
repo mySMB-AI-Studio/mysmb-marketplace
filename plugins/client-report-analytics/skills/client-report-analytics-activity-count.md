@@ -50,6 +50,7 @@ Use when the user asks for the Activity Count (CRA-11) of one client: transactio
 |---|---|---|---|
 | `start_date` | From | date | `2026-07-01` |
 | `end_date` | To | date | `2026-09-30` |
+| `txn_where` | Transaction filter | string | `TxnDate >= '2026-07-01' AND TxnDate <= '2026-09-30'` |
 | `persona` | View as | enum (Client / Bookkeeper / Practitioner / Executive) | `Practitioner` |
 | `display` | Display settings | string | `{"cents":0,"k":0,"zeros":1,"neg":"paren","red":0,"hdr":1,…` |
 

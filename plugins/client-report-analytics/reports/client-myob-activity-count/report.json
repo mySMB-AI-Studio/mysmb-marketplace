@@ -57,6 +57,10 @@
           "name": "list_invoices"
         },
         "params": {
+          "status": {
+            "kind": "static",
+            "value": "All"
+          },
           "from_date": {
             "kind": "input",
             "input": "from_date"
@@ -78,6 +82,10 @@
           "name": "list_bills"
         },
         "params": {
+          "status": {
+            "kind": "static",
+            "value": "All"
+          },
           "from_date": {
             "kind": "input",
             "input": "from_date"
@@ -93,10 +101,10 @@
         }
       },
       {
-        "id": "bank_lines",
+        "id": "spend_money",
         "tool": {
           "mcp": "myob-accounting",
-          "name": "list_bank_statement_lines"
+          "name": "list_spend_money"
         },
         "params": {
           "from_date": {
@@ -106,6 +114,31 @@
           "to_date": {
             "kind": "input",
             "input": "to_date"
+          },
+          "myob_company_file_id": {
+            "kind": "input",
+            "input": "company_file"
+          }
+        }
+      },
+      {
+        "id": "payments",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_payments"
+        },
+        "params": {
+          "from_date": {
+            "kind": "input",
+            "input": "from_date"
+          },
+          "to_date": {
+            "kind": "input",
+            "input": "to_date"
+          },
+          "page_size": {
+            "kind": "static",
+            "value": 1000
           },
           "myob_company_file_id": {
             "kind": "input",

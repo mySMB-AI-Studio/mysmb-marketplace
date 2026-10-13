@@ -23,6 +23,13 @@
         "default": "2026-09-30"
       },
       {
+        "name": "txn_where",
+        "label": "Transaction filter",
+        "type": "string",
+        "maxLength": 120,
+        "default": "TxnDate >= '2026-07-01' AND TxnDate <= '2026-09-30'"
+      },
+      {
         "name": "persona",
         "label": "View as",
         "type": "enum",
@@ -47,12 +54,16 @@
         "id": "invoices",
         "tool": {
           "mcp": "quickbooks-accounting",
-          "name": "qbo_query"
+          "name": "list_invoice"
         },
         "params": {
-          "query": {
+          "where": {
+            "kind": "input",
+            "input": "txn_where"
+          },
+          "maxResults": {
             "kind": "static",
-            "value": "SELECT * FROM Invoice"
+            "value": 1000
           }
         }
       },
@@ -60,12 +71,16 @@
         "id": "bills",
         "tool": {
           "mcp": "quickbooks-accounting",
-          "name": "qbo_query"
+          "name": "list_bill"
         },
         "params": {
-          "query": {
+          "where": {
+            "kind": "input",
+            "input": "txn_where"
+          },
+          "maxResults": {
             "kind": "static",
-            "value": "SELECT * FROM Bill"
+            "value": 1000
           }
         }
       },
@@ -73,12 +88,16 @@
         "id": "purchases",
         "tool": {
           "mcp": "quickbooks-accounting",
-          "name": "qbo_query"
+          "name": "list_purchase"
         },
         "params": {
-          "query": {
+          "where": {
+            "kind": "input",
+            "input": "txn_where"
+          },
+          "maxResults": {
             "kind": "static",
-            "value": "SELECT * FROM Purchase"
+            "value": 1000
           }
         }
       },
@@ -86,12 +105,16 @@
         "id": "payments",
         "tool": {
           "mcp": "quickbooks-accounting",
-          "name": "qbo_query"
+          "name": "list_payment"
         },
         "params": {
-          "query": {
+          "where": {
+            "kind": "input",
+            "input": "txn_where"
+          },
+          "maxResults": {
             "kind": "static",
-            "value": "SELECT * FROM Payment"
+            "value": 1000
           }
         }
       },
@@ -99,12 +122,33 @@
         "id": "bill_payments",
         "tool": {
           "mcp": "quickbooks-accounting",
-          "name": "qbo_query"
+          "name": "list_bill_payment"
         },
         "params": {
-          "query": {
+          "where": {
+            "kind": "input",
+            "input": "txn_where"
+          },
+          "maxResults": {
             "kind": "static",
-            "value": "SELECT * FROM BillPayment"
+            "value": 1000
+          }
+        }
+      },
+      {
+        "id": "journal_entries",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "list_journal_entry"
+        },
+        "params": {
+          "where": {
+            "kind": "input",
+            "input": "txn_where"
+          },
+          "maxResults": {
+            "kind": "static",
+            "value": 1000
           }
         }
       },
