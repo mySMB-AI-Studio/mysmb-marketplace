@@ -1,0 +1,158 @@
+{
+  "id": "m365-onedrive-folder-browser",
+  "title": "OneDrive — My Files",
+  "description": "Browse OneDrive folders starting from the root — click a folder to drill in, click a file to open it in the browser. Folders and files are listed separately (folders first) so each can have its own click behavior.",
+  "category": "productivity",
+  "tags": ["m365", "onedrive", "files", "folders", "browser", "productivity"],
+  "keywords": ["onedrive", "folder browser", "files", "documents", "m365", "office", "drive"],
+  "connectorsUsed": ["m365-files"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 9 },
+    "min": { "colSpan": 4, "rowSpan": 7 },
+    "max": { "colSpan": 8, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "mcp": "m365-files",
+    "tool": "list_files",
+    "params": { "limit": 30 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "divider1", "breadcrumbRow", "body", "divider2", "footer"],
+        "watch": {
+          "/m365-files/list_files": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/folders",
+                "value": { "$computed": "microsoft-365_folder_items", "args": { "items": { "$state": "/m365-files/list_files" } } }
+              }
+            }
+          ],
+          "/ui/folders": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/files",
+                "value": { "$computed": "microsoft-365_file_items", "args": { "items": { "$state": "/m365-files/list_files" } } }
+              }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "FolderOpen", "tone": "warning", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "My Files", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "OneDrive · Microsoft 365" } },
+
+      "divider1": { "type": "Divider", "props": {} },
+
+      "breadcrumbRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["backBtn", "currentFolderLabel"],
+        "visible": { "$state": "/ui/currentFolderName" }
+      },
+      "backBtn": {
+        "type": "Button",
+        "props": { "label": "Back to Root", "size": "sm", "variant": "ghost", "tone": "info", "leadingIcon": "ArrowLeft" },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/currentFolderName", "value": "" } },
+            { "action": "m365-files.list_files", "params": { "limit": 30 } }
+          ]
+        }
+      },
+      "currentFolderLabel": { "type": "Caption", "props": { "text": { "$state": "/ui/currentFolderName" }, "tone": "warning", "weight": "semibold" } },
+
+      "body": { "type": "Body", "props": {}, "children": ["errorBanner", "emptyState", "folderList", "fileList"] },
+
+      "errorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load this folder: ${/_errors/m365-files.list_files}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/m365-files.list_files" }
+      },
+
+      "emptyState": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["emptyIcon", "emptyText"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/m365-files.list_files", "not": true },
+            { "$state": "/m365-files/list_files/0", "not": true }
+          ]
+        }
+      },
+      "emptyIcon": { "type": "Icon", "props": { "name": "FolderX", "tone": "muted", "size": "md" } },
+      "emptyText": { "type": "Caption", "props": { "text": "This folder is empty.", "tone": "muted" } },
+
+      "folderList": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["folderRow"],
+        "repeat": { "statePath": "/ui/folders", "key": "id" }
+      },
+      "folderRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true, "clickable": true },
+        "children": ["folderLeft", "folderEnterIcon"],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": { "statePath": "/ui/currentFolderName", "value": { "$computed": "identity", "args": { "value": { "$item": "name" } } } }
+            },
+            {
+              "action": "m365-files.list_files",
+              "params": { "folderId": { "$computed": "identity", "args": { "value": { "$item": "id" } } }, "limit": 30 }
+            }
+          ]
+        }
+      },
+      "folderLeft": { "type": "Row", "props": { "gap": "sm", "align": "center", "grow": true }, "children": ["folderIcon", "folderName"] },
+      "folderIcon": { "type": "Icon", "props": { "name": "Folder", "tone": "warning", "size": "sm" } },
+      "folderName": { "type": "Text", "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "truncate": true } },
+      "folderEnterIcon": { "type": "Icon", "props": { "name": "ChevronRight", "tone": "muted", "size": "sm" } },
+
+      "fileList": {
+        "type": "Stack",
+        "props": { "gap": "none", "maxHeight": 360 },
+        "children": ["fileRow"],
+        "repeat": { "statePath": "/ui/files", "key": "id" }
+      },
+      "fileRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true, "clickable": true },
+        "children": ["fileLeft", "fileOpenIcon"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": { "$computed": "identity", "args": { "value": { "$item": "webUrl" } } }, "target": "_blank" }
+          }
+        }
+      },
+      "fileLeft": { "type": "Row", "props": { "gap": "sm", "align": "center", "grow": true }, "children": ["fileIcon", "fileName"] },
+      "fileIcon": { "type": "Icon", "props": { "name": "FileText", "tone": "info", "size": "sm" } },
+      "fileName": { "type": "Text", "props": { "text": { "$item": "name" }, "size": "sm", "truncate": true } },
+      "fileOpenIcon": { "type": "Icon", "props": { "name": "ExternalLink", "tone": "muted", "size": "sm" } },
+
+      "divider2": { "type": "Divider", "props": {} },
+      "footer": { "type": "Row", "props": { "justify": "end" }, "children": ["openOneDriveBtn"] },
+      "openOneDriveBtn": {
+        "type": "Button",
+        "props": { "label": "Open OneDrive", "tone": "info", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": { "click": { "action": "open_url", "params": { "url": "https://www.office.com/launch/onedrive", "target": "_blank" } } }
+      }
+    }
+  },
+  "status": "published"
+}
