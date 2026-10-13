@@ -256,8 +256,65 @@ const analyze_data_issues = (args) => {
         inactiveContactActivityDetail,
     };
 };
+// ── concat_arrays ────────────────────────────────────────────────────
+// a ++ b, deduped by each row's `id` (first occurrence wins; rows with no
+// `id` pass through unchecked). Exists to merge paginated
+// list_invoices/list_bills pages: Reckon One's v2 API genuinely paginates
+// at ~10 records/page (confirmed live — 12 real invoices and 12 real
+// bills in the test account each split as 10 + 2 across pages 1-2, page 3
+// empty) with NO total-count or next-page-link field anywhere in the
+// response body to signal more pages exist — the only way to know is to
+// ask for page 2 and see if it's non-empty.
+//
+// The dedupe is deliberate, not defensive paranoia: confirmed live in
+// reckon-books-overview, the tile's `dataProvider`-driven initial fetch
+// (a different code path from everything else, which goes through the
+// widget runtime's regular `watch`/execute mechanism) applied page 1's
+// data to this merge TWICE, producing 22 invoices instead of 12 — while
+// every page fetched via a plain `watch` entry merged exactly once. Rather
+// than chase the exact cause inside the host runtime, merging is made
+// idempotent here: the same page's rows landing in this function any
+// number of times can never double-count.
+//
+// Safe to chain repeatedly (no unbounded loop) because of how the widget
+// runtime's state store applies writes (confirmed by reading
+// @json-render/core directly): setState is a no-op, by reference
+// equality, when the new value is identical to what's already stored, and
+// this function preserves each existing element's own object reference,
+// so index 0 of the merged array never changes once set — any watch
+// gating a one-time "fetch page 2" action off that index (rather than off
+// the whole array) fires exactly once.
+// Args: { a: array, b: array }
+const concat_arrays = (args) => {
+    const a = Array.isArray(args.a) ? args.a : [];
+    const b = Array.isArray(args.b) ? args.b : [];
+    const seen = new Set();
+    const out = [];
+    for (const row of [...a, ...b]) {
+        const id = row && typeof row === 'object' ? row.id : undefined;
+        const key = typeof id === 'string' && id.length > 0 ? id : undefined;
+        if (key) {
+            if (seen.has(key))
+                continue;
+            seen.add(key);
+        }
+        out.push(row);
+    }
+    return out;
+};
+// ── subtract ─────────────────────────────────────────────────────────
+// a - b, both dynamic values. Needed because add_number only adds — there
+// is no existing way to subtract two values that aren't a literal
+// constant (e.g. Net Position = Receivables minus Payables, where both
+// sides are live sums, not a fixed number).
+// Args: { a: number, b: number }
+const subtract = (args) => {
+    const a = Number(args.a);
+    const b = Number(args.b);
+    return (Number.isFinite(a) ? a : 0) - (Number.isFinite(b) ? b : 0);
+};
 const elements = {
     slug: 'reckon-accounting',
-    functions: { company_name, account_summary, days_ago, abs_balance, analyze_data_issues },
+    functions: { company_name, account_summary, days_ago, abs_balance, analyze_data_issues, subtract, concat_arrays },
 };
 export default elements;
