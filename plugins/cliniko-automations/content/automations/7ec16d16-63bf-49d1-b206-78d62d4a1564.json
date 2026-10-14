@@ -22,7 +22,7 @@
     "name": "Cliniko Automations: Draft reschedule or cancellation reply",
     "nodes": [
       {
-        "code": "import json\n\ndef read_json(path):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return None\n    try:\n        return json.loads(raw)\n    except Exception:\n        return None\n\nslug = (params.get(\"practice_slug\") or \"\").strip()\nproblem = \"\"\nsettings = {}\nstate = {\"last_seen_received_at\": \"\"}\n\nif not slug:\n    problem = \"No practice_slug configured for this automation.\"\nelse:\n    found = read_json(\"PracticeManager/Practices/\" + slug + \".json\")\n    if found is None:\n        problem = (\"No practice settings file found for slug '\" + slug\n                    + \"'. Run Healthcare Practice Management: Start practice setup first.\")\n    else:\n        settings = found\n        state = read_json(\"PracticeManager/State/\" + slug + \"-reschedule-desk.json\") or {\"last_seen_received_at\": \"\"}\n",
+        "code": "import json\n\nslug = (params.get(\"practice_slug\") or \"\").strip()\nproblem = \"\"\nsettings = {}\nstate = {\"last_seen_received_at\": \"\"}\n\ndef read_json(path):\n    try:\n        raw = api.files.read(file=path)\n    except Exception as exc:\n        return None, \"Couldn't read \" + path + \": \" + str(exc)\n    try:\n        return json.loads(raw), None\n    except Exception as exc:\n        return None, path + \" isn't valid JSON (\" + str(exc) + \")\"\n\nif not slug:\n    problem = \"No practice_slug configured for this automation.\"\nelse:\n    found, err = read_json(\"PracticeManager/Practices/\" + slug + \".json\")\n    if found is None:\n        problem = err or (\"No practice settings file found for slug '\" + slug\n                           + \"'. Run Healthcare Practice Management: Start practice setup first.\")\n    else:\n        settings = found\n        state_data, _ = read_json(\"PracticeManager/State/\" + slug + \"-reschedule-desk.json\")\n        state = state_data or {\"last_seen_received_at\": \"\"}\n",
         "id": "load_context",
         "kind": "python",
         "outputs": [
@@ -401,5 +401,5 @@
     "scheduling",
     "email"
   ],
-  "contentHash": "e4f455f2bcdb691b8ad17111ddd648e2be0e4fd85ab8cab3d270244dd400c20b"
+  "contentHash": "8442b95bf5d10c129ab4875fc890ba033ec93859a77838506d667c9f02730d6a"
 }
