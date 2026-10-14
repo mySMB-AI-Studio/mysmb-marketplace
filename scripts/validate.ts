@@ -61,7 +61,9 @@
  *      `cancellation.compensation[].capability`), the automation / form /
  *      template originKeys its steps name, and its `tests[]` evaluations must
  *      be bundled in the same plugin or in a plugin listed in the entry's
- *      `dependencies[]`; so must `evaluation.definition.process`. For an entry
+ *      `dependencies[]`; so must `evaluation.definition.process`. Built-in
+ *      platform capabilities (records.read:client, workq.create, ...) resolve
+ *      without being bundled and may not be redefined. For an entry
  *      with `listing.agent`: `processes[]` must be bundled process
  *      `definition.key`s and `requiredCapabilities[]` bundled capability keys
  *      (same plugin or a declared dependency).
@@ -94,7 +96,9 @@ import {
   checkVersionAgreement,
   collectProcessReferences,
   contentHashOf,
+  isPlatformCapabilityKey,
   loadStudioSchemaValidators,
+  PLATFORM_CAPABILITY_KEYS,
   validateAgentListingShape,
   validateDependencies,
   validateReleaseShape,
@@ -528,6 +532,9 @@ function validateStudioPayload(
   if (!validateEnvelopeFloor(where, payload)) return component;
   const definition = payload.definition as Record<string, unknown>;
   if (typeof definition.key === "string") component.key = definition.key;
+  if (kind === "capability" && typeof definition.key === "string" && PLATFORM_CAPABILITY_KEYS.has(definition.key)) {
+    fail(`${where} capability key "${definition.key}" is a built-in platform capability and cannot be redefined by a package`);
+  }
   if (typeof definition.originKey === "string" && definition.originKey !== payload.originKey) {
     fail(
       `${where} definition.originKey "${definition.originKey}" does not match the payload originKey "${String(payload.originKey)}"`,
@@ -1157,14 +1164,20 @@ function validateAgentRules(entries: readonly MarketplacePlugin[]) {
       if (component.kind === "process") {
         const refs = collectProcessReferences(component.definition);
         const label = `process "${component.key ?? "?"}"`;
-        const check = (found: Map<string, string>, available: ReadonlySet<string>, noun: string) => {
+        const check = (
+          found: Map<string, string>,
+          available: ReadonlySet<string>,
+          noun: string,
+          alsoResolves: (key: string) => boolean = () => false,
+        ) => {
           for (const [key, pointer] of found) {
-            if (!available.has(key)) {
+            if (!available.has(key) && !alsoResolves(key)) {
               fail(`${at} ${label} references ${noun} ${key} at /definition${pointer}, which ${NOT_BUNDLED}`);
             }
           }
         };
-        check(refs.capabilities, capabilityKeys, "capability");
+        // Platform capabilities (records.read:client, workq.create, ...) need no bundled adapter.
+        check(refs.capabilities, capabilityKeys, "capability", isPlatformCapabilityKey);
         check(refs.automations, automationKeys, "automation");
         check(refs.forms, formKeys, "form");
         check(refs.templates, templateKeys, "template");

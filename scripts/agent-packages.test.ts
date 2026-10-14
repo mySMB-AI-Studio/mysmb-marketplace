@@ -11,9 +11,11 @@ import {
   collectProcessReferences,
   contentHashOf,
   findDependencyCycles,
+  isPlatformCapabilityKey,
   isSemverRange,
   isStrictSemver,
   loadStudioSchemaValidators,
+  PLATFORM_CAPABILITY_KEYS,
   StudioContractError,
   validateAgentListingShape,
   validateDependencies,
@@ -316,6 +318,26 @@ describe("listing.agent and release shapes", () => {
   });
 });
 
+describe("platform capabilities", () => {
+  it("pins the Workspace catalogue and accepts a qualifier only when it is well formed", () => {
+    expect([...PLATFORM_CAPABILITY_KEYS].sort()).toEqual([
+      "artifacts.write",
+      "knowledge.read",
+      "notifications.send",
+      "records.read",
+      "records.write",
+      "workq.create",
+      "workq.update",
+    ]);
+    for (const ok of ["records.read", "records.read:client", "workq.create", "artifacts.write", "records.read:records.client-v2"]) {
+      expect(isPlatformCapabilityKey(ok)).toBe(true);
+    }
+    for (const bad of ["records.read:", "records.read:Client", "records.read:a:b", "records.reads", "email.send_reviewed", "crm.read:client", ":client", ""]) {
+      expect(isPlatformCapabilityKey(bad)).toBe(false);
+    }
+  });
+});
+
 describe("process references", () => {
   it("collects capabilities from every place a process names one, plus the entities its steps use", () => {
     const refs = collectProcessReferences(processDefinition());
@@ -444,7 +466,7 @@ describe("validator CLI: business-agent packages", () => {
     const broken = agentPackage();
     broken.entry = { ...broken.entry, dependencies: undefined };
     const process = processDefinition();
-    process.capabilities = ["email.send_reviewed", "records.read:client"];
+    process.capabilities = ["email.send_reviewed", "crm.read:client"];
     process.steps[1].automation = ID.ghost;
     process.steps[3].form = "a1000000-0000-4000-8000-0000000000f1";
     process.steps[4].template = "a1000000-0000-4000-8000-0000000000f2";
@@ -460,7 +482,7 @@ describe("validator CLI: business-agent packages", () => {
     const suffix = "which is not bundled in this plugin or in a plugin listed in its dependencies[]";
     expect(ok).toBe(false);
     expect(output).toContain(`${at} capability email.send_reviewed at /definition/capabilities/0, ${suffix}`);
-    expect(output).toContain(`${at} capability records.read:client at /definition/capabilities/1, ${suffix}`);
+    expect(output).toContain(`${at} capability crm.read:client at /definition/capabilities/1, ${suffix}`);
     expect(output).toContain(`${at} automation ${ID.ghost} at /definition/steps/1/automation, ${suffix}`);
     expect(output).toContain(`${at} form a1000000-0000-4000-8000-0000000000f1 at /definition/steps/3/form, ${suffix}`);
     expect(output).toContain(`${at} template a1000000-0000-4000-8000-0000000000f2 at /definition/steps/4/template, ${suffix}`);
@@ -481,6 +503,33 @@ describe("validator CLI: business-agent packages", () => {
     expect(ok).toBe(false);
     expect(output).toContain("capability crm.update at /definition/steps/2/options/0/intent/capability");
     expect(output).not.toContain("capability email.send_reviewed at");
+  }, 30_000);
+
+  it("resolves platform capabilities without bundling them, and refuses a package that redefines one", () => {
+    const agent = agentPackage();
+    const process = processDefinition();
+    process.capabilities = ["email.send_reviewed", "records.read:client", "workq.create", "knowledge.read", "artifacts.write"];
+    agent.files = { ...agent.files, [PATHS.process]: envelope("process", process) };
+    const accepted = run(registry([capabilityProvider(), agent]));
+    expect(accepted.output).toContain("validate: OK");
+    expect(accepted.ok).toBe(true);
+
+    const unknownBase = processDefinition();
+    unknownBase.capabilities = ["email.send_reviewed", "crm.read:client"];
+    const stillUnresolved = agentPackage();
+    stillUnresolved.files = { ...stillUnresolved.files, [PATHS.process]: envelope("process", unknownBase) };
+    const unresolved = run(registry([capabilityProvider(), stillUnresolved]));
+    expect(unresolved.ok).toBe(false);
+    expect(unresolved.output).toContain("capability crm.read:client at /definition/capabilities/1");
+
+    const redefining = capabilityProvider();
+    const platformKey = capabilityDefinition();
+    platformKey.key = "workq.create";
+    const capabilityPath = `content/capabilities/${ID.capability}.json`;
+    redefining.files = { [capabilityPath]: envelope("capability", platformKey) };
+    const refused = run(registry([redefining, agent]));
+    expect(refused.ok).toBe(false);
+    expect(refused.output).toContain(`plugins/mail-capabilities: ${capabilityPath} capability key "workq.create" is a built-in platform capability and cannot be redefined by a package`);
   }, 30_000);
 
   it("reports contract-schema errors with the plugin path and the instance path", () => {

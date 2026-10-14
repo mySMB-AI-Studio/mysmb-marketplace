@@ -268,6 +268,41 @@ function formatSchemaErrors(errors: ErrorObject[]): SchemaIssue[] {
   return issues;
 }
 
+// ── Platform capabilities ─────────────────────────────────────────────────────
+
+/**
+ * Base keys of the Workspace's built-in platform capabilities: the workspace's
+ * own records, WorkQ, knowledge, artifacts and notifications surface. They are
+ * served by in-process servers, so a package neither ships nor can redefine
+ * them, and a process may list them in `capabilities[]` without bundling
+ * anything. Mirror of PLATFORM_CAPABILITY_KEYS in myHubV2
+ * packages/shared/src/process/platform-capabilities.ts: when the Workspace adds
+ * one, add it here (agent-packages.test.ts pins the list).
+ */
+export const PLATFORM_CAPABILITY_KEYS: ReadonlySet<string> = new Set([
+  "records.read",
+  "records.write",
+  "workq.create",
+  "workq.update",
+  "knowledge.read",
+  "artifacts.write",
+  "notifications.send",
+]);
+
+const PLATFORM_QUALIFIER_RE = /^[a-z0-9_.-]+$/;
+
+/**
+ * True for a platform capability key, qualified or not: `records.read` and
+ * `records.read:client` are; `records.read:` (empty qualifier),
+ * `email.send_reviewed` and `records.reads` are not. Same rule as the
+ * Workspace's isPlatformCapabilityKey.
+ */
+export function isPlatformCapabilityKey(key: string): boolean {
+  const separator = key.indexOf(":");
+  if (separator === -1) return PLATFORM_CAPABILITY_KEYS.has(key);
+  return PLATFORM_CAPABILITY_KEYS.has(key.slice(0, separator)) && PLATFORM_QUALIFIER_RE.test(key.slice(separator + 1));
+}
+
 // ── Process references ────────────────────────────────────────────────────────
 
 export interface ProcessReferences {
@@ -287,6 +322,8 @@ export interface ProcessReferences {
  *
  * Capability references: the declared `capabilities[]`, every decision option's
  * `intent.capability` and every `cancellation.compensation[].capability`.
+ * (Platform capabilities are reported like any other key; the caller resolves
+ * them with isPlatformCapabilityKey.)
  * `output.template` and `compensation[].template` are package resource NAMES,
  * not originKeys, so they are not references.
  */
