@@ -1051,8 +1051,14 @@ const build_events_view: ComputedFunction = (args) => {
 //
 // Args: {
 //   meetings: MeetingSummaryCard[], stats: {...}, tab: string,
-//   expandedId?: string,
+//   expandedId?: string, overrides?: Record<string, SummaryOverride>,
 // }
+//
+// `overrides` holds results from the "Summarize" button's on-demand
+// summarize_meeting_transcript calls, keyed by meeting id (see
+// merge_summary_override below) — applied per meeting ON TOP OF whatever
+// the dashboard tool itself returned, so a manually-summarized meeting
+// updates in place without needing a full dashboard refetch.
 
 function formatClockTime(ms: number): string {
   try {
@@ -1076,11 +1082,50 @@ const MAX_VISIBLE_PARTICIPANTS = 4;
 const MAX_VISIBLE_DECISIONS = 4;
 const MAX_VISIBLE_ACTION_ITEMS = 5;
 
+interface SummaryOverride {
+  ok: boolean;
+  summary: string | null;
+  decisions: string[];
+  actionItems: { text: string; assignee: string | null }[];
+  error: string | null;
+}
+
+// ── merge_summary_override ──────────────────────────────────────────────
+//
+// The "Summarize" button calls summarize_meeting_transcript directly, whose
+// result always lands at the same fixed state slot regardless of which
+// meeting was clicked (the platform has no per-invocation state path) — so
+// each result has to be folded into a persistent id-keyed map rather than
+// read straight off that slot, or a second click would wipe out the first
+// meeting's result. Call with the previous overrides map plus the tool's
+// latest result; returns the updated map with that one id's entry replaced.
+//
+// Args: { overrides: Record<string, SummaryOverride> | undefined, result: {
+//   id: string, ok: boolean, summary: string|null, decisions: string[],
+//   actionItems: {...}[], error: string|null
+// } }
+
+const merge_summary_override: ComputedFunction = (args) => {
+  const overrides = { ...((args.overrides as Record<string, SummaryOverride>) ?? {}) };
+  const result = args.result as Record<string, unknown> | undefined;
+  const id = str(result?.id);
+  if (!id) return overrides;
+  overrides[id] = {
+    ok: !!result?.ok,
+    summary: (result?.summary as string | null) ?? null,
+    decisions: Array.isArray(result?.decisions) ? (result!.decisions as string[]) : [],
+    actionItems: Array.isArray(result?.actionItems) ? (result!.actionItems as { text: string; assignee: string | null }[]) : [],
+    error: (result?.error as string | null) ?? null,
+  };
+  return overrides;
+};
+
 const build_meeting_summaries_view: ComputedFunction = (args) => {
   const meetings = Array.isArray(args.meetings) ? (args.meetings as Record<string, unknown>[]) : [];
   const stats = (args.stats as Record<string, unknown>) ?? {};
   const tab = str(args.tab) || 'all';
   const requestedExpandedId = str(args.expandedId);
+  const overrides = (args.overrides as Record<string, SummaryOverride>) ?? {};
 
   type DecoratedMeeting = Record<string, unknown> & {
     actionItems: { text: string; assignee: string | null }[];
@@ -1144,21 +1189,31 @@ const build_meeting_summaries_view: ComputedFunction = (args) => {
       actionsBadgeTone = 'success';
     }
 
-    const decisionsList = Array.isArray(m.decisions) ? (m.decisions as string[]) : [];
+    // A successful "Summarize" button click (see merge_summary_override)
+    // overrides the dashboard tool's own summary/decisions/action items for
+    // this one meeting — a failed attempt leaves the dashboard's original
+    // values in place (summarizing is additive, never destructive) and
+    // surfaces its error instead of the generic "unavailable" notice.
+    const override = overrides[str(m.id)];
+    const effectiveSummary = override?.ok ? override.summary : (m.summary as string | null) ?? null;
+    const effectiveDecisions = override?.ok ? override.decisions : (Array.isArray(m.decisions) ? (m.decisions as string[]) : []);
+    const effectiveActionItems = override?.ok ? override.actionItems : m.actionItems;
+
+    const decisionsList = effectiveDecisions;
     const decisionSlots = Array.from({ length: MAX_VISIBLE_DECISIONS }, (_, i) => {
       const text = decisionsList[i];
       return { text: text ?? '', visible: !!text };
     });
 
     const actionItemSlots = Array.from({ length: MAX_VISIBLE_ACTION_ITEMS }, (_, i) => {
-      const item = m.actionItems[i];
+      const item = effectiveActionItems[i];
       return item
         ? { text: item.text, assignee: item.assignee ?? '', hasAssignee: !!item.assignee, visible: true }
         : { text: '', assignee: '', hasAssignee: false, visible: false };
     });
 
     const hasTranscript = m.transcriptStatus !== 'none';
-    const hasSummary = hasTranscript && !!m.summary;
+    const hasSummary = hasTranscript && !!effectiveSummary;
 
     return {
       id: m.id,
@@ -1178,9 +1233,12 @@ const build_meeting_summaries_view: ComputedFunction = (args) => {
       hasTranscript,
       docUrl: m.docUrl ?? null,
       calendarEventUrl: m.calendarEventUrl ?? null,
-      summary: m.summary ?? null,
+      summary: effectiveSummary,
       hasSummary,
       showNoSummaryNotice: hasTranscript && !hasSummary,
+      canSummarize: hasTranscript && !hasSummary,
+      summarizeErrorText: override && !override.ok ? override.error : null,
+      hasSummarizeError: !!(override && !override.ok && override.error),
       decision1: decisionSlots[0],
       decision2: decisionSlots[1],
       decision3: decisionSlots[2],
@@ -1191,7 +1249,7 @@ const build_meeting_summaries_view: ComputedFunction = (args) => {
       actionItem3: actionItemSlots[2],
       actionItem4: actionItemSlots[3],
       actionItem5: actionItemSlots[4],
-      hasActionItemsList: m.actionItems.length > 0,
+      hasActionItemsList: effectiveActionItems.length > 0,
       expanded: str(m.id) === expandedId,
       chevronIcon: str(m.id) === expandedId ? 'ChevronUp' : 'ChevronDown',
       toggleId: str(m.id) === expandedId ? '' : str(m.id),
@@ -1239,6 +1297,7 @@ const elements: PluginElementsModule = {
     rsvp_label,
     build_events_view,
     build_meeting_summaries_view,
+    merge_summary_override,
   },
 };
 

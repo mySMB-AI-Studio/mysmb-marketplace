@@ -66,7 +66,8 @@
                     "meetings": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/meetings" },
                     "stats": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/stats" },
                     "tab": { "$state": "/ui/meetingSummariesTab" },
-                    "expandedId": { "$state": "/ui/meetingSummariesExpandedId" }
+                    "expandedId": { "$state": "/ui/meetingSummariesExpandedId" },
+                    "overrides": { "$state": "/ui/meetingSummaryOverrides" }
                   }
                 }
               }
@@ -83,7 +84,8 @@
                     "meetings": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/meetings" },
                     "stats": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/stats" },
                     "tab": { "$state": "/ui/meetingSummariesTab" },
-                    "expandedId": { "$state": "/ui/meetingSummariesExpandedId" }
+                    "expandedId": { "$state": "/ui/meetingSummariesExpandedId" },
+                    "overrides": { "$state": "/ui/meetingSummaryOverrides" }
                   }
                 }
               }
@@ -100,7 +102,41 @@
                     "meetings": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/meetings" },
                     "stats": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/stats" },
                     "tab": { "$state": "/ui/meetingSummariesTab" },
-                    "expandedId": { "$state": "/ui/meetingSummariesExpandedId" }
+                    "expandedId": { "$state": "/ui/meetingSummariesExpandedId" },
+                    "overrides": { "$state": "/ui/meetingSummaryOverrides" }
+                  }
+                }
+              }
+            }
+          ],
+          "/google-workspace-meet/summarize_meeting_transcript": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/meetingSummaryOverrides",
+                "value": {
+                  "$computed": "google-workspace_merge_summary_override",
+                  "args": {
+                    "overrides": { "$state": "/ui/meetingSummaryOverrides" },
+                    "result": { "$state": "/google-workspace-meet/summarize_meeting_transcript" }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/meetingSummaryOverrides": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/meetingSummariesView",
+                "value": {
+                  "$computed": "google-workspace_build_meeting_summaries_view",
+                  "args": {
+                    "meetings": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/meetings" },
+                    "stats": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/stats" },
+                    "tab": { "$state": "/ui/meetingSummariesTab" },
+                    "expandedId": { "$state": "/ui/meetingSummariesExpandedId" },
+                    "overrides": { "$state": "/ui/meetingSummaryOverrides" }
                   }
                 }
               }
@@ -474,7 +510,7 @@
         "visible": { "$item": "expanded" },
         "children": [
           "noTranscriptNotice",
-          "noSummaryNotice",
+          "noSummaryGroup",
           "summaryRow",
           "decisionsSection",
           "actionItemsSection",
@@ -486,10 +522,44 @@
         "props": { "text": "No transcript for this meeting.", "tone": "muted" },
         "visible": { "$item": "hasTranscript", "not": true }
       },
+      "noSummaryGroup": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "visible": { "$item": "showNoSummaryNotice" },
+        "children": ["noSummaryNotice", "summarizeButton"]
+      },
       "noSummaryNotice": {
         "type": "Caption",
-        "props": { "text": "AI summary unavailable for this meeting.", "tone": "muted" },
-        "visible": { "$item": "showNoSummaryNotice" }
+        "props": {
+          "text": {
+            "$cond": { "$item": "hasSummarizeError" },
+            "$then": { "$item": "summarizeErrorText" },
+            "$else": "AI summary unavailable for this meeting."
+          },
+          "tone": { "$cond": { "$item": "hasSummarizeError" }, "$then": "warning", "$else": "muted" }
+        }
+      },
+      "summarizeButton": {
+        "type": "Button",
+        "props": {
+          "label": {
+            "$cond": { "$state": "/_loading/google-workspace-meet.summarize_meeting_transcript" },
+            "$then": "Summarizing…",
+            "$else": "Summarize"
+          },
+          "variant": "secondary",
+          "size": "sm",
+          "leadingIcon": "Sparkles",
+          "disabled": { "$state": "/_loading/google-workspace-meet.summarize_meeting_transcript" }
+        },
+        "on": {
+          "click": {
+            "action": "google-workspace-meet.summarize_meeting_transcript",
+            "params": {
+              "conferenceRecordName": { "$computed": "identity", "args": { "value": { "$item": "id" } } }
+            }
+          }
+        }
       },
       "summaryRow": {
         "type": "Row",
