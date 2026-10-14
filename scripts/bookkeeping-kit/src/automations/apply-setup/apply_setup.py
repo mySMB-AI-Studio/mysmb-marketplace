@@ -32,6 +32,8 @@ elif form_id == params["setup_form"]:
         "reviewer_name": bk_lookup_label(reviewer),
         "exceptions_owner_id": bk_lookup_id(exceptions) or bk_lookup_id(reviewer),
         "digest_recipient_ids": [x for x in [bk_lookup_id(digest) or bk_lookup_id(reviewer)] if x],
+        "checks_owner_id": bk_lookup_id(bk_answer(responses, "q_checks_owner")),
+        "checks_owner_name": bk_lookup_label(bk_answer(responses, "q_checks_owner")),
         "approved_status": "AUTHORISED" if approved.lower().startswith("approved") else "SUBMITTED",
         "auto_approve_below": bk_money(bk_answer(responses, "q_auto_below")) or 0,
         "client_approval_above": bk_money(bk_answer(responses, "q_client_above")),
@@ -53,7 +55,7 @@ elif form_id == params["setup_form"]:
         "- Skip review below: " + (bk_fmt(settings["auto_approve_below"]) if settings["auto_approve_below"] else "never (always review)") + "\n"
         "- Client approval above: " + (bk_fmt(limit) if limit else "never") + "\n\n"
         "**Next steps**\n\n"
-        "1. Publish these automation drafts: *Process bill (Xero)*, *Apply bill review (Xero)*, *Weekly AP digest (Xero)*, and *Email intake (Outlook)* or *Email intake (Gmail)* for the inbox that receives bills.\n"
+        "1. Publish these automation drafts: *Process bill (Xero)*, *Apply bill review (Xero)*, *Weekly AP digest (Xero)*, *Ledger checks (Xero)*, and *Email intake (Outlook)* or *Email intake (Gmail)* for the inbox that receives bills.\n"
         "2. Run **Bookkeeping: Start setup** again with your client business names (one per line), and fill in each client's settings form.\n"
         "3. Drop a supplier bill PDF into `" + BK_INBOX + "/<client>` in Knowledge to try it."
     )
@@ -153,6 +155,12 @@ elif form_id == params["client_form"]:
             "contact_name": str(bk_answer(responses, "q_contact_name") or "").strip(),
             "contact_email": str(bk_answer(responses, "q_contact_email") or "").strip(),
             "notes": str(bk_answer(responses, "q_notes") or "").strip(),
+            # Ledger checks: on unless the form says No (clients saved before the question existed are checked too).
+            "checks_enabled": not str(bk_answer(responses, "q_checks") or "").lower().startswith("no"),
+            "checks_owner_id": bk_lookup_id(bk_answer(responses, "q_checks_owner")),
+            "checks_owner_name": bk_lookup_label(bk_answer(responses, "q_checks_owner")),
+            "tpar": bool(bk_answer(responses, "q_tpar")),
+            "suspense_codes": [c.strip() for c in re.split(r"[,;\s]+", str(bk_answer(responses, "q_suspense") or "")) if c.strip()],
             "updated_by": actor,
             "updated_at": bk_now_iso(settings),
         }

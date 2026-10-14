@@ -75,6 +75,18 @@ class SalesTests(Base):
         self.assertIn("Nothing was emailed", self.w.items[item["id"]]["comments"][-1])
         self.assertNotIn("email_invoice", [t for t, _ in self.w.xero.writes])
 
+    def test_captured_invoices_are_remembered_so_ledger_checks_dont_call_them_unsent(self):
+        self.setup_practice()
+        self.drop(name="AP-2045.pdf")
+        self.approve(self.invoice_item())
+        index = json.loads(self.w.files["Bookkeeping/Checks/acme-plumbing-intake.json"])
+        self.assertEqual(index["captured"], [self.sales()[0]["InvoiceID"]], "a new customer's invoice is created on approval")
+        self.add_customer(history_code="200")
+        self.invoice.update(invoice_number="AP-2046")
+        self.drop(name="AP-2046.pdf")
+        index = json.loads(self.w.files["Bookkeeping/Checks/acme-plumbing-intake.json"])
+        self.assertEqual(len(index["captured"]), 2, "an existing customer's draft is remembered at intake")
+
     def test_existing_customer_gets_a_draft_coded_from_its_invoice_history(self):
         self.setup_practice()
         self.add_customer(history_code="260")

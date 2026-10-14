@@ -402,3 +402,190 @@ def xero_bill_markdown(proposal, warnings=None, blocking=None, bill_id="", file_
                    "reject or ask the client." + (" Approving records it in Xero as awaiting payment; nothing is emailed "
                                                   "to the customer." if sales else ""))
     return "\n".join(out)
+
+
+# ── Ledger checks: the neutral ledger snapshot (see checks.py for the shape) ──
+XERO_MAX_PAGES = 20
+XERO_DOC_STATUS = {"DRAFT": "draft", "SUBMITTED": "submitted", "AUTHORISED": "authorised", "PAID": "paid",
+                   "VOIDED": "void", "DELETED": "void"}
+XERO_DOC_KIND = {"ACCPAY": "bill", "ACCREC": "invoice", "ACCPAYCREDIT": "bill_credit", "ACCRECCREDIT": "invoice_credit"}
+
+
+def xero_date(value):
+    """A Xero date (/Date(ms+0000)/ or an ISO string) as YYYY-MM-DD, or ''."""
+    s = str(value or "")
+    m = re.match(r"/Date\((-?\d+)", s)
+    if m:
+        return str(datetime.datetime.fromtimestamp(int(m.group(1)) / 1000, datetime.timezone.utc).date())
+    m = re.match(r"(\d{4}-\d{2}-\d{2})", s)
+    return m.group(1) if m else ""
+
+
+def xero_pages(tool, tenant_id, key, **args):
+    """Every page of a list tool (100 rows a page), up to XERO_MAX_PAGES. Returns (rows, truncated)."""
+    rows = []
+    for page in range(1, XERO_MAX_PAGES + 1):
+        batch = xero_rows(xero_call(tool, tenant_id, page=page, **args), key)
+        rows.extend(batch)
+        if len(batch) < 100:
+            return rows, False
+    return rows, True
+
+
+def xero_since(day):
+    return "DateTime(%d,%d,%d)" % (day.year, day.month, day.day)
+
+
+def xero_lines(doc):
+    """Line items as {account, tax_type, amount (excluding GST), tax}."""
+    inclusive = doc.get("LineAmountTypes") == "Inclusive"
+    out = []
+    for li in doc.get("LineItems") or []:
+        amount = bk_money(li.get("LineAmount")) or 0.0
+        tax = bk_money(li.get("TaxAmount")) or 0.0
+        out.append({"account": str(li.get("AccountCode") or ""), "tax_type": str(li.get("TaxType") or ""),
+                    "amount": round(amount - tax if inclusive else amount, 2), "tax": round(tax, 2)})
+    return out
+
+
+def xero_doc(inv, credit=False):
+    """A bill, sales invoice or credit note as a neutral document."""
+    kind = XERO_DOC_KIND.get(str(inv.get("Type") or ""), "")
+    doc_id = str((inv.get("CreditNoteID") if credit else inv.get("InvoiceID")) or "")
+    if credit:
+        area = "AccountsPayable" if kind == "bill_credit" else "AccountsReceivable"
+        link = "https://go.xero.com/" + area + "/ViewCreditNote.aspx?creditNoteID=" + doc_id
+    else:
+        link = xero_bill_link(doc_id, "ACCREC" if kind == "invoice" else "ACCPAY")
+    contact = inv.get("Contact") or {}
+    return {"id": doc_id, "kind": kind,
+            "number": str((inv.get("CreditNoteNumber") if credit else inv.get("InvoiceNumber")) or ""),
+            "contact_id": str(contact.get("ContactID") or ""), "contact": str(contact.get("Name") or ""),
+            "date": xero_date(inv.get("DateString") or inv.get("Date")),
+            "due": xero_date(inv.get("DueDateString") or inv.get("DueDate")),
+            "status": XERO_DOC_STATUS.get(str(inv.get("Status") or ""), "draft"),
+            "total": round(bk_money(inv.get("Total")) or 0.0, 2), "tax": round(bk_money(inv.get("TotalTax")) or 0.0, 2),
+            "due_amount": round(bk_money(inv.get("AmountDue")) or 0.0, 2), "paid_on": xero_date(inv.get("FullyPaidOnDate")),
+            "attachments": bool(inv.get("HasAttachments")), "sent": inv.get("SentToContact"),
+            "lines": xero_lines(inv), "link": link}
+
+
+def xero_bank_txn(t):
+    """A spend or receive money transaction as a neutral bank transaction."""
+    contact = t.get("Contact") or {}
+    txn_id = str(t.get("BankTransactionID") or "")
+    # Only plain spend and receive money: transfers, prepayments and overpayments aren't purchases or sales.
+    kind = {"SPEND": "spend", "RECEIVE": "receive"}.get(str(t.get("Type") or ""), "other")
+    return {"id": txn_id, "kind": kind,
+            "contact_id": str(contact.get("ContactID") or ""), "contact": str(contact.get("Name") or ""),
+            "date": xero_date(t.get("DateString") or t.get("Date")), "total": round(bk_money(t.get("Total")) or 0.0, 2),
+            "tax": round(bk_money(t.get("TotalTax")) or 0.0, 2), "attachments": bool(t.get("HasAttachments")),
+            "reconciled": bool(t.get("IsReconciled")), "lines": xero_lines(t),
+            "link": "https://go.xero.com/Bank/ViewTransaction.aspx?bankTransactionID=" + txn_id}
+
+
+def xero_contact(c):
+    """A contact as a neutral contact. bank is digits only and is never stored: the checks keep a keyed hash."""
+    contact_id = str(c.get("ContactID") or "")
+    return {"id": contact_id, "name": str(c.get("Name") or ""),
+            "tax_number": re.sub(r"\D", "", str(c.get("TaxNumber") or "")),
+            "bank": re.sub(r"\D", "", str(c.get("BankAccountDetails") or "")),
+            "has_address": any(str(a.get("AddressLine1") or a.get("City") or "").strip() for a in c.get("Addresses") or []),
+            "link": "https://go.xero.com/Contacts/View/" + contact_id}
+
+
+def xero_report_rows(report):
+    """Every data row of a Xero report as (section title, cells)."""
+    if isinstance(report, dict) and isinstance(report.get("Reports"), list):
+        report = report["Reports"][0] if report["Reports"] else {}
+    out = []
+    for section in (report or {}).get("Rows") or []:
+        title = str(section.get("Title") or "")
+        for row in section.get("Rows") or []:
+            if row.get("RowType") == "Row":
+                out.append((title, row.get("Cells") or []))
+    return out
+
+
+def xero_cell_account(cell):
+    for a in (cell or {}).get("Attributes") or []:
+        if a.get("Id") == "account":
+            return str(a.get("Value") or "")
+    return ""
+
+
+def xero_balances(tenant_id, day):
+    """Each account's balance on a day (debit positive), from the trial balance's year-to-date columns, by AccountID."""
+    out = {}
+    for _title, cells in xero_report_rows(xero_call("get_trial_balance", tenant_id, date=str(day))):
+        if len(cells) >= 5 and xero_cell_account(cells[0]):
+            debit = bk_money(cells[3].get("Value")) or 0.0
+            credit = bk_money(cells[4].get("Value")) or 0.0
+            out[xero_cell_account(cells[0])] = round(debit - credit, 2)
+    return out
+
+
+def xero_ledger(tenant_id, today, since, weekly):
+    """The neutral ledger snapshot the checks read (shape in checks.py). Weekly adds the chart of accounts, tax rates,
+    credit notes, manual journals, lock dates, two trial balances and a 12-month profit and loss."""
+    truncated = []
+    contacts, cut = xero_pages("list_contacts", tenant_id, "Contacts", where='ContactStatus=="ACTIVE"')
+    if cut:
+        truncated.append("contacts")
+    docs, seen = [], set()
+    for kind in ("ACCPAY", "ACCREC"):
+        rows, cut = xero_pages("list_invoices", tenant_id, "Invoices", where='Type=="' + kind + '" AND Date>=' + xero_since(since))
+        if cut:
+            truncated.append("bills" if kind == "ACCPAY" else "sales invoices")
+        if kind == "ACCPAY":
+            # Approved bills still to pay, whatever their date: what a changed bank account would be paid against.
+            more, _ = xero_pages("list_invoices", tenant_id, "Invoices", where='Type=="ACCPAY" AND Status=="AUTHORISED"')
+            rows = rows + more
+        for inv in rows:
+            d = xero_doc(inv)
+            if d["id"] and d["id"] not in seen:
+                seen.add(d["id"])
+                docs.append(d)
+    bank, cut = xero_pages("list_bank_transactions", tenant_id, "BankTransactions", where="Date>=" + xero_since(since))
+    if cut:
+        truncated.append("bank transactions")
+    ledger = {"ledger": "xero", "weekly": bool(weekly), "truncated": truncated,
+              "contacts": [xero_contact(c) for c in contacts if c.get("ContactID")],
+              "docs": docs,
+              "bank": [xero_bank_txn(t) for t in bank if t.get("BankTransactionID") and t.get("Status") != "DELETED"]}
+    if not weekly:
+        return ledger
+    credits, _ = xero_pages("list_credit_notes", tenant_id, "CreditNotes", where="Date>=" + xero_since(since))
+    ledger["docs"] += [xero_doc(c, credit=True) for c in credits if c.get("CreditNoteID")]
+    ledger["accounts"] = [{"id": str(a.get("AccountID") or ""), "code": str(a.get("Code") or ""), "name": str(a.get("Name") or ""),
+                           "type": str(a.get("Type") or ""), "tax_type": str(a.get("TaxType") or ""),
+                           "active": str(a.get("Status") or "ACTIVE") == "ACTIVE",
+                           "pl": str(a.get("Class") or "") in ("REVENUE", "EXPENSE")
+                           or a.get("Type") in XERO_REVENUE_TYPES | {"EXPENSE", "DIRECTCOSTS", "OVERHEADS", "DEPRECIATN"}}
+                          for a in xero_rows(xero_call("list_accounts", tenant_id), "Accounts")]
+    ledger["tax_rates"] = {str(t.get("TaxType") or ""): bk_money(t.get("EffectiveRate")) or 0.0
+                           for t in xero_rows(xero_call("list_tax_rates", tenant_id), "TaxRates")}
+    journal_since = (today.replace(day=1) - datetime.timedelta(days=100)).replace(day=1)
+    journals, _ = xero_pages("list_manual_journals", tenant_id, "ManualJournals", where="Date>=" + xero_since(journal_since))
+    ledger["journals"] = [{"id": str(j.get("ManualJournalID") or ""), "date": xero_date(j.get("DateString") or j.get("Date")),
+                           "narration": str(j.get("Narration") or ""),
+                           "link": "https://go.xero.com/Journal/View.aspx?invoiceID=" + str(j.get("ManualJournalID") or "")}
+                          for j in journals if j.get("Status") in ("POSTED", None)]
+    org = xero_call("get_organisation", tenant_id)
+    if isinstance(org, dict) and isinstance(org.get("Organisations"), list):
+        org = org["Organisations"][0] if org["Organisations"] else {}
+    org = org if isinstance(org, dict) else {}
+    ledger["org"] = {"lock_date": xero_date(org.get("PeriodLockDate")), "eoy_lock_date": xero_date(org.get("EndOfYearLockDate")),
+                     "settings_link": "https://go.xero.com/Setup/FinancialSettings.aspx"}
+    ledger["balances"] = {"now": xero_balances(tenant_id, today),
+                          "month_ago": xero_balances(tenant_id, today - datetime.timedelta(days=30))}
+    pl = xero_report_rows(xero_call("get_profit_and_loss", tenant_id, fromDate=str(today - datetime.timedelta(days=364)),
+                                    toDate=str(today)))
+    ledger["pl_12m"] = {
+        # Trading income only (sections titled Income or Trading Income), the closest the P&L gets to GST turnover.
+        "income": round(sum(bk_money(c[1].get("Value")) or 0.0 for t, c in pl
+                            if len(c) > 1 and "income" in t.lower() and "other" not in t.lower()), 2),
+        "moved": sorted({xero_cell_account(c[0]) for _t, c in pl
+                         if len(c) > 1 and xero_cell_account(c[0]) and (bk_money(c[1].get("Value")) or 0) != 0}),
+    }
+    return ledger

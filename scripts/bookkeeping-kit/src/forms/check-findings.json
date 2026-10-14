@@ -1,0 +1,21 @@
+{
+  "key": "form:check-findings",
+  "title": "Check findings",
+  "schema": {
+    "version": 1,
+    "title": "Check findings",
+    "description": "Dismiss or snooze ledger checks findings on this item, using the ref at the end of each line. (To dismiss one, you can also just tick its line.)",
+    "sections": [
+      {
+        "id": "findings",
+        "title": "Which findings",
+        "questions": [
+          { "id": "q_refs", "type": "short_text", "label": "Refs of the findings (e.g. 3FA21C, 9B0D4E), or \"all\" (not needed to just check again)", "maxLength": 400 },
+          { "id": "q_action", "type": "single_choice", "label": "What should happen to them?", "required": true, "options": ["Not an issue: hide until their details change", "Snooze until the date below", "Nothing: just check this client again now"] },
+          { "id": "q_until", "type": "date", "label": "Snooze until" },
+          { "id": "q_note", "type": "long_text", "label": "Note (kept with the findings)", "maxLength": 2000 }
+        ]
+      }
+    ]
+  }
+}

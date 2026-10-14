@@ -74,7 +74,7 @@ function parseLib(name) {
   }
   return { name, header: header.join('\n').trim(), defs };
 }
-const LIBS = Object.fromEntries(['util', 'xero', 'mail', 'payroll'].map((n) => [n, parseLib(n)]));
+const LIBS = Object.fromEntries(['util', 'xero', 'mail', 'payroll', 'checks'].map((n) => [n, parseLib(n)]));
 // Only the helpers the node (transitively) calls, so each automation carries — and is scope-checked on — what it uses.
 function prelude(libNames, body) {
   const available = new Map();
@@ -96,7 +96,7 @@ const substituteForms = (json) => json.replace(/@form:([a-z-]+)/g, (_, key) => {
 const automationFiles = AUTOMATIONS.map((a) => {
   const nodes = a.nodes.map((n) => {
     if (n.kind !== 'python') return n;
-    const body = fs.readFileSync(path.join(SRC, 'automations', a.codeKey || a.key, `${n.id}.py`), 'utf8').trim();
+    const body = fs.readFileSync(path.join(SRC, 'automations', a.codeKey || a.key, `${n.id}.py`), 'utf8').replace(/\r\n/g, '\n').trim();
     const code = [...prelude(n.libs, body), '# ── ' + n.title + ' ──', body].join('\n\n\n') + '\n';
     const { libs, ...rest } = n;
     return { ...rest, code };

@@ -54,6 +54,25 @@ else:
         "history": [],
     }
     sales = proposal.get("doc_type") == "ACCREC"
+    # The checks catalogue IDs raised at intake, so the findings reports can count them.
+    record["checks"] = sorted(set(re.findall(r"\[(CHK-\d{3})\]", " ".join(warnings))))
+    # What later intake checks compare against: files seen (CHK-130), ABNs per supplier (CHK-090), and the sales
+    # invoices captured here, which Ledger checks mustn't flag as "not sent" (CHK-024).
+    seen = proposal.get("intake") or {}
+    index_path = BK_CHECKS + "/" + client["slug"] + "-intake.json"
+    index = bk_read_json(index_path) or {}
+    files = index.get("files") or {}
+    if seen.get("file_hash"):
+        files[seen["file_hash"]] = {"date": str(today), "number": proposal.get("invoice_number") or ""}
+    abns = index.get("abns") or {}
+    if seen.get("abn") and seen.get("contact_key"):
+        known = abns.get(seen["contact_key"]) or []
+        abns[seen["contact_key"]] = (known + [seen["abn"]] if seen["abn"] not in known else known)[-5:]
+    captured = index.get("captured") or []
+    if sales and bill_id:
+        captured = (captured + [bill_id])[-2000:]
+    keep = sorted(files.items(), key=lambda kv: kv[1].get("date") or "")[-3000:]
+    bk_write_json(index_path, {"files": dict(keep), "abns": abns, "captured": captured})
     can_skip = (bill_id and not sales and not blocking and not warnings and record["confidence"] == "high"
                 and auto_below > 0 and total is not None and total < auto_below
                 and not (proposal.get("contact") or {}).get("is_new"))

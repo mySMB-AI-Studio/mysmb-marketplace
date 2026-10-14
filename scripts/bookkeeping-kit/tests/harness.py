@@ -138,7 +138,22 @@ class WorkQ:
         return dict(self.world.items[todo_id])
 
     def list(self, status=None, scope=None, priority=None, search=None):
-        return [dict(i) for i in self.world.items.values() if status is None or i["status"] == status]
+        return [dict(i) for i in self.world.items.values() if (status is None or i["status"] == status)
+                and (not search or str(search).lower() in i["title"].lower())]
+
+    def get(self, todo_id):
+        if todo_id not in self.world.items:
+            raise RuntimeError("Todo not found: " + todo_id)
+        return dict(self.world.items[todo_id])
+
+    def update(self, todo_id, title=None, description=None, status=None, priority=None, due_date=None,
+               assignee_ids=None, assigned_group_ids=None, labels=None):
+        item = self.world.items[todo_id]
+        for key, value in (("title", title), ("description", description), ("status", status), ("priority", priority),
+                           ("dueDate", due_date), ("assigneeIds", assignee_ids), ("labels", labels)):
+            if value is not None:
+                item[key] = value
+        return dict(item)
 
 
 class Connectors:
@@ -287,7 +302,27 @@ class FakeXero:
                 terms["Bills"] = org["bill_terms"]
             if org["sales_terms"]:
                 terms["Sales"] = org["sales_terms"]
-            return {"Organisations": [{"Name": org["name"], "LegalName": org["name"], "TaxNumber": org["abn"], "PaymentTerms": terms}]}
+            return {"Organisations": [{"Name": org["name"], "LegalName": org["name"], "TaxNumber": org["abn"], "PaymentTerms": terms,
+                                       "PeriodLockDate": org.get("lock_date"), "EndOfYearLockDate": org.get("eoy_lock_date")}]}
+        if tool in ("list_bank_transactions", "list_credit_notes", "list_manual_journals"):
+            key = {"list_bank_transactions": "BankTransactions", "list_credit_notes": "CreditNotes",
+                   "list_manual_journals": "ManualJournals"}[tool]
+            return {key: [] if args.get("page", 1) > 1 else copy.deepcopy(org.get(key) or [])}
+        if tool == "get_trial_balance":
+            # {date: {AccountID: balance}}; a missing date is an empty trial balance.
+            rows = [{"RowType": "Row", "Cells": [{"Value": aid, "Attributes": [{"Id": "account", "Value": aid}]}, {"Value": ""},
+                                                 {"Value": ""}, {"Value": "%.2f" % max(bal, 0)}, {"Value": "%.2f" % max(-bal, 0)}]}
+                    for aid, bal in (org.get("trial_balance") or {}).get(args.get("date"), {}).items()]
+            return {"Reports": [{"ReportID": "TrialBalance", "Rows": [{"RowType": "Section", "Title": "Assets", "Rows": rows}]}]}
+        if tool == "get_profit_and_loss":
+            # {"income": {AccountID: amount}, "expenses": {AccountID: amount}} over the period asked for.
+            pl = org.get("profit_and_loss") or {}
+            def section(title, values):
+                return {"RowType": "Section", "Title": title, "Rows": [
+                    {"RowType": "Row", "Cells": [{"Value": aid, "Attributes": [{"Id": "account", "Value": aid}]}, {"Value": "%.2f" % v}]}
+                    for aid, v in values.items()]}
+            return {"Reports": [{"ReportID": "ProfitAndLoss", "Rows": [section("Income", pl.get("income") or {}),
+                                                                         section("Operating Expenses", pl.get("expenses") or {})]}]}
         if tool == "create_contact":
             c = dict(args["contact"])
             if any(x["Name"].lower() == c["Name"].lower() for x in org["contacts"]):

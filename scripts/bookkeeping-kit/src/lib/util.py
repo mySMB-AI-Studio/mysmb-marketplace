@@ -2,6 +2,7 @@
 import json
 import re
 import datetime
+import hashlib
 from zoneinfo import ZoneInfo
 
 # Knowledge layout. Folders may nest at most 2 levels, so inbox folders are top-level.
@@ -14,6 +15,9 @@ BK_PROCESSED = "Bookkeeping Processed"
 BK_FAILED = "Bookkeeping Failed"
 BK_MAIL = "Bookkeeping/Mail"
 BK_REQUESTS = "Bookkeeping Requests"
+BK_CHECKS = "Bookkeeping/Checks"
+# One threshold for "needs a tax invoice / an ABN / an attachment": $75 excluding GST = $82.50 including GST.
+BK_GST_INVOICE_LIMIT = 82.5
 
 
 def bk_slug(name):
@@ -137,6 +141,11 @@ def bk_client_for(settings, slug):
 
 def bk_reviewer(settings, client):
     return (client or {}).get("reviewer_id") or (settings or {}).get("reviewer_id")
+
+
+def bk_checks_owner(settings, client):
+    """Who follows up a client's ledger checks findings: the client's own, the practice default, then the reviewer."""
+    return (client or {}).get("checks_owner_id") or (settings or {}).get("checks_owner_id") or bk_reviewer(settings, client)
 
 
 def bk_exceptions_owner(settings, client):
