@@ -1,0 +1,79 @@
+{
+  "declaredScopes": [
+    "files:read",
+    "workq:write",
+    "connectors:cliniko-scheduling",
+    "connectors:m365-mail-send"
+  ],
+  "dependencies": [
+    {
+      "entityKind": "form",
+      "originKey": "f660cc88-e525-4b42-b3fb-a6f6537fb763",
+      "sourceId": "f660cc88-e525-4b42-b3fb-a6f6537fb763"
+    }
+  ],
+  "description": "Applies the reviewer's decision on a No-show follow-up approval form: sends the (possibly edited) message through the practice's own email provider, or leaves the item open with instructions when that provider can't send yet. On a successful send, checks the patient's no-show history and flags the practitioner if this is a repeat (2+ in the same history).",
+  "flowIr": {
+    "description": "Applies the reviewer's decision on a No-show follow-up approval form: sends the (possibly edited) message through the practice's own email provider, or leaves the item open with instructions when that provider can't send yet. On a successful send, checks the patient's no-show history and flags the practitioner if this is a repeat (2+ in the same history).",
+    "irVersion": 1,
+    "name": "Healthcare Practice Management: Apply no-show follow-up decision",
+    "nodes": [
+      {
+        "code": "import json\n\n\ndef read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\n\nresponses = params.get(\"responses\") or {}\ntodo_id = params.get(\"todo_id\") or \"\"\noutcome = \"ignored\"\n\nif responses and todo_id:\n    draft = read_json(\"PracticeManager/NoShowDrafts/\" + todo_id + \".json\", None)\n    if not draft:\n        api.workq.comment(todo_id=todo_id, body=\"Couldn't find the drafted follow-up for this item — nothing was sent.\")\n        outcome = \"draft_missing\"\n    else:\n        decision = str(responses.get(\"q_decision\") or \"\")\n        edited = str(responses.get(\"q_edited_message\") or \"\").strip()\n        patient_name = draft.get(\"patient_name\") or \"the patient\"\n\n        if decision == \"Don't send\":\n            api.workq.comment(todo_id=todo_id, body=\"Marked as don't send. No message was sent to \" + patient_name + \".\")\n            api.workq.complete(todo_id=todo_id)\n            outcome = \"not_sent\"\n        else:\n            body = edited if (decision == \"Edit and send\" and edited) else (draft.get(\"body\") or \"\")\n            subject = draft.get(\"subject\") or \"We missed you\"\n            email = draft.get(\"email\") or \"\"\n            slug = draft.get(\"slug\") or \"\"\n            practice = read_json(\"PracticeManager/Practices/\" + slug + \".json\", {}) or {}\n            provider = str(practice.get(\"email_provider\") or \"outlook\")\n\n            if not email:\n                api.workq.comment(todo_id=todo_id, body=\"No email on file for \" + patient_name + \" — nothing was sent. Send it another way if needed.\")\n                outcome = \"no_email\"\n            elif provider == \"outlook\":\n                api.connectors.invoke(\n                    server=\"m365-mail-send\",\n                    tool=\"send_email\",\n                    args={\"to\": [email], \"subject\": subject, \"body\": body, \"contentType\": \"Text\"},\n                )\n                api.workq.comment(todo_id=todo_id, body=\"Sent to \" + email + \".\")\n                api.workq.complete(todo_id=todo_id)\n                outcome = \"sent\"\n            else:\n                # Gmail has no send tool in this workspace today — never claim it was sent.\n                api.workq.comment(\n                    todo_id=todo_id,\n                    body=(\n                        \"This practice's email provider is Gmail, which isn't wired up for sending yet. \"\n                        \"Please send this yourself:\\n\\n**To:** \" + email + \"\\n**Subject:** \" + subject + \"\\n\\n\" + body\n                    ),\n                )\n                outcome = \"needs_manual_send\"\n\n            if outcome == \"sent\" and draft.get(\"patient_id\"):\n                try:\n                    hist = api.connectors.invoke(\n                        server=\"cliniko-scheduling\",\n                        tool=\"list_individual_appointments\",\n                        args={\n                            \"q\": [\"did_not_arrive:=true\", \"patient_id:=\" + str(draft[\"patient_id\"])],\n                            \"per_page\": 100,\n                        },\n                    )\n                    count = len((hist or {}).get(\"individual_appointments\") or [])\n                except Exception:\n                    count = 0\n                if count >= 2:\n                    reviewer = practice.get(\"reviewer_id\") or \"\"\n                    api.workq.create(\n                        title=\"Repeat no-show: \" + patient_name,\n                        scope=\"org\",\n                        description=(\n                            patient_name + \" has \" + str(count) + \" recorded no-shows in Cliniko. \"\n                            \"Worth a conversation before their next booking.\"\n                        ),\n                        priority=\"normal\",\n                        assignee_ids=[reviewer] if reviewer else None,\n                        labels=[\"healthcare-practice-management\", \"no-show-recovery\", \"repeat-no-show\"],\n                    )\n",
+        "id": "apply_decision",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "sent, needs_manual_send, not_sent, no_email, draft_missing or ignored.",
+            "name": "outcome",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ trigger.event.payload.responses }}",
+            "control": "hidden",
+            "label": "Form answers",
+            "name": "responses",
+            "required": false,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ trigger.event.subject.todo_id }}",
+            "control": "hidden",
+            "label": "Approval item",
+            "name": "todo_id",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Sends the approved follow-up (or records why it wasn't sent) and flags repeat no-shows.",
+        "title": "Apply no-show follow-up decision"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "apply_decision"
+    ],
+    "triggers": [
+      {
+        "kind": "event",
+        "eventType": "form.response_submitted",
+        "filter": {
+          "form_id": "f660cc88-e525-4b42-b3fb-a6f6537fb763"
+        }
+      }
+    ]
+  },
+  "kind": "automation",
+  "knowledgeFiles": [],
+  "level": "org",
+  "name": "Healthcare Practice Management: Apply no-show follow-up decision",
+  "originKey": "bb75c134-c483-4581-890e-3355b5d611f6",
+  "tags": [
+    "healthcare-practice-management",
+    "no-show-recovery",
+    "scheduling"
+  ],
+  "contentHash": "6d6b95f7af765a73ee14c9ae687ead6d2912a847fa1c22589ddf171b21ef3984"
+}

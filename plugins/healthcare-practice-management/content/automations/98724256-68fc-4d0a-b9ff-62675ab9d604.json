@@ -1,0 +1,113 @@
+{
+  "declaredScopes": [
+    "files:read",
+    "files:write",
+    "workq:write",
+    "connectors:cliniko-scheduling",
+    "connectors:cliniko-patients"
+  ],
+  "dependencies": [
+    {
+      "entityKind": "form",
+      "originKey": "f660cc88-e525-4b42-b3fb-a6f6537fb763",
+      "sourceId": "f660cc88-e525-4b42-b3fb-a6f6537fb763"
+    }
+  ],
+  "description": "Every 30 minutes, checks Cliniko for newly-marked Did Not Arrive appointments across every configured practice, drafts a courteous follow-up with real open times and the practice's cancellation policy, and raises a WorkQ item with the No-show follow-up approval form attached. Nothing is sent until that item is approved.",
+  "flowIr": {
+    "description": "Every 30 minutes, checks Cliniko for newly-marked Did Not Arrive appointments across every configured practice, drafts a courteous follow-up with real open times and the practice's cancellation policy, and raises a WorkQ item with the No-show follow-up approval form attached. Nothing is sent until that item is approved.",
+    "irVersion": 1,
+    "name": "Healthcare Practice Management: Detect no-show, draft follow-up",
+    "nodes": [
+      {
+        "code": "import json\nimport re\n\n\ndef extract_id(link):\n    if not isinstance(link, dict):\n        return \"\"\n    url = ((link.get(\"links\") or {}).get(\"self\")) or \"\"\n    m = re.search(r\"/(\\d+)(?:$|\\?)\", str(url))\n    return m.group(1) if m else \"\"\n\n\ndef read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\n\n# Every configured practice, not a single hardcoded one — PracticeManager/Practices/*.json\n# is the real list (see Apply practice setup), so this scales past the pilot practice\n# without anyone editing this automation.\npractices = []\ntry:\n    entries = api.files.list(path=\"PracticeManager/Practices\", scope=\"org\")\nexcept Exception:\n    entries = []\nfor entry in entries or []:\n    fname = entry.get(\"name\") if isinstance(entry, dict) else entry\n    if not fname or not str(fname).endswith(\".json\"):\n        continue\n    slug = str(fname)[:-5]\n    practice = read_json(\"PracticeManager/Practices/\" + fname, {}) or {}\n    if practice:\n        practices.append({\"slug\": slug, \"practice\": practice})\n\nresult = api.connectors.invoke(\n    server=\"cliniko-scheduling\",\n    tool=\"list_individual_appointments\",\n    args={\"q\": [\"did_not_arrive:=true\"], \"sort\": \"starts_at:desc\", \"per_page\": 50},\n)\nrows = (result or {}).get(\"individual_appointments\") or []\n\nnew_items = []\nfor p in practices:\n    business_id = str(p[\"practice\"].get(\"cliniko_business_id\") or \"\")\n    seen = read_json(\"PracticeManager/NoShows/\" + p[\"slug\"] + \".json\", []) or []\n    seen_ids = {str(x) for x in seen}\n    for row in rows:\n        appt_id = str(row.get(\"id\") or \"\")\n        row_business_id = extract_id(row.get(\"business\"))\n        if not appt_id or appt_id in seen_ids:\n            continue\n        if business_id and row_business_id and row_business_id != business_id:\n            continue\n        new_items.append({\n            \"slug\": p[\"slug\"],\n            \"practice\": p[\"practice\"],\n            \"appointment_id\": appt_id,\n            \"patient_name\": row.get(\"patient_name\") or \"\",\n            \"patient_id\": extract_id(row.get(\"patient\")),\n            \"practitioner_id\": extract_id(row.get(\"practitioner\")),\n            \"business_id\": row_business_id,\n            \"appointment_type_id\": extract_id(row.get(\"appointment_type\")),\n            \"starts_at\": row.get(\"starts_at\") or \"\",\n        })\n",
+        "id": "find_new_no_shows",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "One entry per newly-detected no-show not yet drafted, across every configured practice.",
+            "name": "new_items",
+            "type": "list[dict]"
+          }
+        ],
+        "params": [],
+        "summary": "Reads every configured practice and finds Cliniko no-shows not yet drafted.",
+        "title": "Find new no-shows"
+      },
+      {
+        "body": [
+          "draft_followup"
+        ],
+        "id": "foreach_no_show",
+        "itemVar": "item",
+        "items": "{{ steps.find_new_no_shows.outputs.new_items }}",
+        "kind": "foreach",
+        "maxIterations": 50,
+        "title": "For each new no-show"
+      },
+      {
+        "code": "import json\nimport re\n\nAI_PROMPT = (\n    \"You are drafting a short, warm follow-up email on behalf of a healthcare clinic to a patient who did not \"\n    \"arrive for their appointment. Offer to rebook using the times given, mention the clinic's cancellation \"\n    \"policy in one brief sentence, and match the tone instructed. Never give clinical advice, diagnosis or \"\n    \"interpretation. Keep it under 120 words.\"\n)\nAI_HINT = '{\"subject\": \"\", \"body\": \"\"}'\n\n\ndef read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\n\ndef write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True))\n\n\ndef format_time(iso):\n    # No tool here exposes the practice's configured timezone, so times are shown\n    # plainly rather than guessing one — same constraint as the No Shows tile.\n    return str(iso or \"\").replace(\"T\", \" \").replace(\"Z\", \" UTC\")\n\n\nitem = params.get(\"item\") or {}\nslug = item.get(\"slug\") or \"\"\npractice = item.get(\"practice\") or {}\nappointment_id = item.get(\"appointment_id\") or \"\"\npatient_id = item.get(\"patient_id\") or \"\"\npatient_name = item.get(\"patient_name\") or \"this patient\"\noutcome = \"skipped\"\nworkq_id = \"\"\n\nif slug and appointment_id:\n    policy = practice.get(\"policy\") or {}\n    tone = policy.get(\"tone\") or \"warm, concise, no jargon\"\n    window_hours = policy.get(\"cancellation_window_hours\") or 24\n\n    slots = []\n    if item.get(\"practitioner_id\") and item.get(\"business_id\") and item.get(\"appointment_type_id\"):\n        try:\n            avail = api.connectors.invoke(\n                server=\"cliniko-scheduling\",\n                tool=\"get_available_times\",\n                args={\n                    \"business_id\": item[\"business_id\"],\n                    \"practitioner_id\": item[\"practitioner_id\"],\n                    \"appointment_type_id\": item[\"appointment_type_id\"],\n                },\n            )\n            raw_slots = avail if isinstance(avail, list) else (avail or {}).get(\"available_times\") or []\n            for s in raw_slots[:3]:\n                t = s.get(\"appointment_start\") if isinstance(s, dict) else s\n                if t:\n                    slots.append(format_time(t))\n        except Exception:\n            slots = []\n\n    email = \"\"\n    if patient_id:\n        try:\n            patient = api.connectors.invoke(server=\"cliniko-patients\", tool=\"get_patient\", args={\"id\": patient_id})\n            email = (patient or {}).get(\"email\") or \"\"\n        except Exception:\n            email = \"\"\n\n    try:\n        drafted = api.ai.extract(\n            prompt=AI_PROMPT,\n            input=json.dumps({\n                \"patient_name\": patient_name,\n                \"missed_time\": format_time(item.get(\"starts_at\")),\n                \"available_times\": slots,\n                \"cancellation_window_hours\": window_hours,\n                \"tone\": tone,\n            }),\n            schema_hint=AI_HINT,\n        )\n    except Exception:\n        drafted = {}\n    drafted = drafted if isinstance(drafted, dict) else {}\n    subject = drafted.get(\"subject\") or \"We missed you\"\n    body = drafted.get(\"body\") or (\n        \"Hi \" + patient_name + \", we noticed you weren't able to make your recent appointment. \"\n        \"Reply to this email or call us to rebook.\"\n    )\n\n    description = (\n        \"**Patient:** \" + patient_name + \"  \\n\"\n        \"**Missed appointment:** \" + format_time(item.get(\"starts_at\")) + \"  \\n\"\n        \"**Email on file:** \" + (email or \"none on file\") + \"  \\n\\n\"\n        \"**Drafted subject:** \" + subject + \"  \\n\\n\"\n        \"**Drafted message:**\\n\\n\" + body\n    )\n    if not email:\n        description += \"\\n\\n_No email on file for this patient — \\\"Send as drafted\\\" won't be able to send._\"\n\n    reviewer = practice.get(\"reviewer_id\") or \"\"\n    workq_item = api.workq.create(\n        title=\"No-show follow-up: \" + patient_name,\n        scope=\"org\",\n        description=description,\n        priority=\"normal\",\n        assignee_ids=[reviewer] if reviewer else None,\n        labels=[\"healthcare-practice-management\", \"no-show-recovery\"],\n    )\n    workq_id = workq_item[\"id\"]\n    api.workq.attach_form(todo_id=workq_id, form_id=params[\"approval_form\"])\n\n    write_json(\"PracticeManager/NoShowDrafts/\" + workq_id + \".json\", {\n        \"slug\": slug,\n        \"appointment_id\": appointment_id,\n        \"patient_id\": patient_id,\n        \"patient_name\": patient_name,\n        \"email\": email,\n        \"subject\": subject,\n        \"body\": body,\n    })\n\n    seen = read_json(\"PracticeManager/NoShows/\" + slug + \".json\", []) or []\n    seen_set = {str(x) for x in seen}\n    seen_set.add(appointment_id)\n    write_json(\"PracticeManager/NoShows/\" + slug + \".json\", sorted(seen_set))\n\n    outcome = \"requested_approval\"\n",
+        "id": "draft_followup",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "requested_approval or skipped.",
+            "name": "outcome",
+            "type": "str"
+          },
+          {
+            "description": "The WorkQ item id raised for approval, if any.",
+            "name": "workq_id",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ item }}",
+            "control": "hidden",
+            "label": "No-show item",
+            "name": "item",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "control": "hidden",
+            "label": "Approval form",
+            "name": "approval_form",
+            "required": true,
+            "type": "uuid",
+            "value": "f660cc88-e525-4b42-b3fb-a6f6537fb763"
+          }
+        ],
+        "summary": "Drafts the follow-up and raises a WorkQ item with the approval form attached.",
+        "title": "Draft follow-up and request approval"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "find_new_no_shows",
+      "foreach_no_show"
+    ],
+    "triggers": [
+      {
+        "cron": "*/30 * * * *",
+        "kind": "schedule",
+        "timezone": "Australia/Sydney"
+      },
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "knowledgeFiles": [],
+  "level": "org",
+  "name": "Healthcare Practice Management: Detect no-show, draft follow-up",
+  "originKey": "98724256-68fc-4d0a-b9ff-62675ab9d604",
+  "tags": [
+    "healthcare-practice-management",
+    "no-show-recovery",
+    "scheduling"
+  ],
+  "contentHash": "f3346052938b645259f2c1d774584046cefde93cdfc9391d19c1da6e669a5f39"
+}
