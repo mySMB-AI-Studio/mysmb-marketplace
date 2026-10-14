@@ -1,14 +1,4 @@
 {
-  "kind": "automation",
-  "originKey": "da664533-ceda-471a-bda4-d3a0b729f507",
-  "name": "Cliniko Automations: Apply reschedule or cancellation reply",
-  "description": "When a manager submits the Reschedule or cancellation reply review form, sends the approved (or edited) reply and, for a cancellation, cancels the Cliniko booking. A reschedule's booking is left for the patient's own reply to resolve — no automation yet reads that reply and moves the booking.",
-  "level": "org",
-  "tags": [
-    "cliniko",
-    "scheduling",
-    "email"
-  ],
   "declaredScopes": [
     "files:read",
     "files:write",
@@ -23,52 +13,16 @@
       "sourceId": "b0b596aa-778f-4f43-85c2-367a920bf67f"
     }
   ],
+  "description": "When a manager submits the Reschedule or cancellation reply review form, sends the approved (or edited) reply and, for a cancellation, cancels the Cliniko booking. A reschedule's booking is left for the patient's own reply to resolve — no automation yet reads that reply and moves the booking.",
   "flowIr": {
+    "description": "Triggered by the review form's submission: sends the reply (as drafted, or edited) and cancels the Cliniko booking for a cancellation.",
     "irVersion": 1,
     "name": "Cliniko Automations: Apply reschedule or cancellation reply",
-    "description": "Triggered by the review form's submission: sends the reply (as drafted, or edited) and cancels the Cliniko booking for a cancellation.",
-    "params": [],
-    "triggers": [
-      {
-        "kind": "event",
-        "eventType": "form.response_submitted",
-        "filter": {
-          "form_id": "b0b596aa-778f-4f43-85c2-367a920bf67f"
-        }
-      }
-    ],
     "nodes": [
       {
+        "code": "import json\n\ndef read_json(path):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return None\n    try:\n        return json.loads(raw)\n    except Exception:\n        return None\n\ntodo_id = params[\"todo_id\"] or \"\"\nresponses = params[\"responses\"] or {}\ndecision = responses.get(\"q_decision\") or \"\"\nedited_reply = responses.get(\"q_edited_reply\") or \"\"\n\nslug = \"\"\npending = {}\nproblem = \"\"\n\ntry:\n    entries = api.files.list(path=\"PracticeManager/State\") or []\nexcept Exception:\n    entries = []\n\nsuffix = \"-reschedule-pending-\" + todo_id + \".json\"\nmatch_name = None\nfor e in entries:\n    name = e.get(\"name\") if isinstance(e, dict) else str(e)\n    if name and name.endswith(suffix):\n        match_name = name\n        break\n\nif match_name:\n    slug = match_name[: -len(suffix)]\n    pending = read_json(\"PracticeManager/State/\" + match_name) or {}\n\nif not pending:\n    problem = \"No pending reschedule record found for WorkQ item \" + todo_id + \".\"\nelif not decision:\n    problem = \"Form response had no decision answer.\"\n",
         "id": "load_decision",
         "kind": "python",
-        "title": "Load the reviewer's decision and the pending record",
-        "params": [
-          {
-            "binding": "{{ trigger.event.subject.todo_id }}",
-            "control": "hidden",
-            "label": "Review item",
-            "name": "todo_id",
-            "required": true,
-            "type": "str"
-          },
-          {
-            "binding": "{{ trigger.event.payload.responses }}",
-            "control": "hidden",
-            "label": "Form answers",
-            "name": "responses",
-            "required": false,
-            "type": "dict"
-          },
-          {
-            "control": "form-picker",
-            "label": "Reschedule or cancellation reply review form",
-            "name": "review_form",
-            "required": true,
-            "type": "uuid",
-            "value": "b0b596aa-778f-4f43-85c2-367a920bf67f"
-          }
-        ],
-        "code": "import json\n\ndef read_json(path):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return None\n    try:\n        return json.loads(raw)\n    except Exception:\n        return None\n\ntodo_id = params[\"todo_id\"] or \"\"\nresponses = params[\"responses\"] or {}\ndecision = responses.get(\"q_decision\") or \"\"\nedited_reply = responses.get(\"q_edited_reply\") or \"\"\n\nslug = \"\"\npending = {}\nproblem = \"\"\n\ntry:\n    entries = api.files.list(path=\"PracticeManager/State\") or []\nexcept Exception:\n    entries = []\n\nsuffix = \"-reschedule-pending-\" + todo_id + \".json\"\nmatch_name = None\nfor e in entries:\n    name = e.get(\"name\") if isinstance(e, dict) else str(e)\n    if name and name.endswith(suffix):\n        match_name = name\n        break\n\nif match_name:\n    slug = match_name[: -len(suffix)]\n    pending = read_json(\"PracticeManager/State/\" + match_name) or {}\n\nif not pending:\n    problem = \"No pending reschedule record found for WorkQ item \" + todo_id + \".\"\nelif not decision:\n    problem = \"Form response had no decision answer.\"\n",
         "outputs": [
           {
             "name": "todo_id",
@@ -94,24 +48,52 @@
             "name": "problem",
             "type": "str"
           }
-        ]
+        ],
+        "params": [
+          {
+            "binding": "{{ trigger.event.subject.todo_id }}",
+            "control": "hidden",
+            "label": "Review item",
+            "name": "todo_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ trigger.event.payload.responses }}",
+            "control": "hidden",
+            "label": "Form answers",
+            "name": "responses",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "control": "form-picker",
+            "label": "Reschedule or cancellation reply review form",
+            "name": "review_form",
+            "required": true,
+            "type": "uuid",
+            "value": "b0b596aa-778f-4f43-85c2-367a920bf67f"
+          }
+        ],
+        "title": "Load the reviewer's decision and the pending record"
       },
       {
+        "cond": "not steps[\"load_decision\"][\"outputs\"][\"problem\"]",
+        "else": [
+          "log_problem"
+        ],
         "id": "gate_found",
         "kind": "if",
-        "title": "Pending record found?",
-        "cond": "not steps[\"load_decision\"][\"outputs\"][\"problem\"]",
         "then": [
           "apply_decision"
         ],
-        "else": [
-          "log_problem"
-        ]
+        "title": "Pending record found?"
       },
       {
+        "code": "todo_id = params[\"todo_id\"] or \"\"\nproblem = params[\"problem\"] or \"Unknown error.\"\nif todo_id:\n    try:\n        api.workq.comment(todo_id=todo_id, body=\"Couldn't apply this decision automatically: \" + problem)\n    except Exception:\n        pass\n",
         "id": "log_problem",
         "kind": "python",
-        "title": "Note the failure on the WorkQ item",
+        "outputs": [],
         "params": [
           {
             "binding": "{{ steps.load_decision.outputs.todo_id }}",
@@ -126,17 +108,17 @@
             "control": "hidden",
             "label": "Problem",
             "name": "problem",
-            "required": false,
+            "required": true,
             "type": "str"
           }
         ],
-        "code": "todo_id = params[\"todo_id\"] or \"\"\nproblem = params[\"problem\"] or \"Unknown error.\"\nif todo_id:\n    try:\n        api.workq.comment(todo_id=todo_id, body=\"Couldn't apply this decision automatically: \" + problem)\n    except Exception:\n        pass\n",
-        "outputs": []
+        "title": "Note the failure on the WorkQ item"
       },
       {
+        "code": "import json\nimport datetime\n\ndef cliniko(server, tool, args):\n    return api.connectors.invoke(server=server, tool=tool, args=args) or {}\n\ndef read_json(path):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return None\n    try:\n        return json.loads(raw)\n    except Exception:\n        return None\n\ndef write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True))\n\nslug = params[\"slug\"]\npending = params[\"pending\"] or {}\ndecision = params[\"decision\"] or \"\"\nedited_reply = params[\"edited_reply\"] or \"\"\ntodo_id = params[\"todo_id\"]\n\nemail_id = pending.get(\"email_id\") or \"\"\nfrom_email = pending.get(\"from_email\") or \"\"\nintent = pending.get(\"intent\") or \"reschedule\"\nappointment_id = pending.get(\"appointment_id\") or \"\"\ndraft_text = pending.get(\"draft_text\") or \"\"\npatient_name = pending.get(\"patient_name\") or from_email\n\noutcome = \"\"\nsent = False\n\nif decision == \"Don't send\":\n    outcome = \"rejected\"\nelse:\n    reply_text = edited_reply.strip() if (decision == \"Edit and send\" and edited_reply.strip()) else draft_text\n    if not reply_text:\n        outcome = \"no_text\"\n    else:\n        try:\n            api.connectors.invoke(\n                server=\"m365-mail-send\", tool=\"reply_to_email\",\n                args={\"id\": email_id, \"comment\": reply_text},\n            )\n            sent = True\n        except Exception:\n            sent = False\n        outcome = \"sent\" if sent else \"send_failed\"\n\n# A cancellation has one unambiguous outcome, so it's safe to apply here. A\n# reschedule's booking is intentionally left untouched — the patient still\n# has to reply picking one of the offered times, and no automation yet\n# reads that reply and moves the booking. This stops at \"offer sent\";\n# closing that loop is a follow-up automation, not this one.\nif sent and intent == \"cancel\" and appointment_id:\n    try:\n        cliniko(\"cliniko-scheduling\", \"cancel_individual_appointment\", {\"id\": appointment_id})\n    except Exception:\n        pass\n\ntry:\n    api.workq.complete(todo_id=todo_id)\nexcept Exception:\n    pass\n\nif outcome == \"sent\":\n    status = \"resolved\" if intent == \"cancel\" else \"awaiting_patient_reply\"\nelif outcome == \"rejected\":\n    status = \"cancelled\"\nelse:\n    status = \"open\"\n\ncommitments_path = \"PracticeManager/Commitments/\" + slug + \".json\"\ncommitments = read_json(commitments_path) or []\nfor c in commitments:\n    if c.get(\"id\") == todo_id:\n        c[\"status\"] = status\n        if status != \"open\":\n            c[\"resolved_at\"] = datetime.datetime.now(datetime.timezone.utc).isoformat()\nwrite_json(commitments_path, commitments)\n\ntoday_str = datetime.date.today().isoformat()\naudit_path = \"PracticeManager/AuditLog/\" + slug + \"-\" + today_str + \".jsonl\"\ntry:\n    existing_log = api.files.read(file=audit_path)\nexcept Exception:\n    existing_log = \"\"\naction = \"sent\" if outcome == \"sent\" else (\"rejected\" if outcome == \"rejected\" else \"blocked\")\naudit_line = json.dumps({\n    \"ts\": datetime.datetime.now(datetime.timezone.utc).isoformat(),\n    \"practice_slug\": slug,\n    \"actor\": \"agent\",\n    \"source\": \"automation:Cliniko Automations: Apply reschedule or cancellation reply\",\n    \"action\": action,\n    \"target\": {\"kind\": \"email\", \"id\": email_id},\n    \"summary\": \"Applied reviewer decision (\" + decision + \") for \" + patient_name,\n    \"workq_item_id\": todo_id,\n}, sort_keys=True)\napi.files.put(file=audit_path, content=existing_log + audit_line + \"\\n\")\n",
         "id": "apply_decision",
         "kind": "python",
-        "title": "Send the reply and apply the Cliniko change",
+        "outputs": [],
         "params": [
           {
             "binding": "{{ steps.load_decision.outputs.slug }}",
@@ -167,7 +149,7 @@
             "control": "hidden",
             "label": "Edited reply",
             "name": "edited_reply",
-            "required": false,
+            "required": true,
             "type": "str"
           },
           {
@@ -179,14 +161,32 @@
             "type": "str"
           }
         ],
-        "code": "import json\nimport datetime\n\ndef cliniko(server, tool, args):\n    return api.connectors.invoke(server=server, tool=tool, args=args) or {}\n\ndef read_json(path):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return None\n    try:\n        return json.loads(raw)\n    except Exception:\n        return None\n\ndef write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True))\n\nslug = params[\"slug\"]\npending = params[\"pending\"] or {}\ndecision = params[\"decision\"] or \"\"\nedited_reply = params[\"edited_reply\"] or \"\"\ntodo_id = params[\"todo_id\"]\n\nemail_id = pending.get(\"email_id\") or \"\"\nfrom_email = pending.get(\"from_email\") or \"\"\nintent = pending.get(\"intent\") or \"reschedule\"\nappointment_id = pending.get(\"appointment_id\") or \"\"\ndraft_text = pending.get(\"draft_text\") or \"\"\npatient_name = pending.get(\"patient_name\") or from_email\n\noutcome = \"\"\nsent = False\n\nif decision == \"Don't send\":\n    outcome = \"rejected\"\nelse:\n    reply_text = edited_reply.strip() if (decision == \"Edit and send\" and edited_reply.strip()) else draft_text\n    if not reply_text:\n        outcome = \"no_text\"\n    else:\n        try:\n            api.connectors.invoke(\n                server=\"m365-mail-send\", tool=\"reply_to_email\",\n                args={\"id\": email_id, \"comment\": reply_text},\n            )\n            sent = True\n        except Exception:\n            sent = False\n        outcome = \"sent\" if sent else \"send_failed\"\n\n# A cancellation has one unambiguous outcome, so it's safe to apply here. A\n# reschedule's booking is intentionally left untouched — the patient still\n# has to reply picking one of the offered times, and no automation yet\n# reads that reply and moves the booking. This stops at \"offer sent\";\n# closing that loop is a follow-up automation, not this one.\nif sent and intent == \"cancel\" and appointment_id:\n    try:\n        cliniko(\"cliniko-scheduling\", \"cancel_individual_appointment\", {\"id\": appointment_id})\n    except Exception:\n        pass\n\ntry:\n    api.workq.complete(todo_id=todo_id)\nexcept Exception:\n    pass\n\nif outcome == \"sent\":\n    status = \"resolved\" if intent == \"cancel\" else \"awaiting_patient_reply\"\nelif outcome == \"rejected\":\n    status = \"cancelled\"\nelse:\n    status = \"open\"\n\ncommitments_path = \"PracticeManager/Commitments/\" + slug + \".json\"\ncommitments = read_json(commitments_path) or []\nfor c in commitments:\n    if c.get(\"id\") == todo_id:\n        c[\"status\"] = status\n        if status != \"open\":\n            c[\"resolved_at\"] = datetime.datetime.now(datetime.timezone.utc).isoformat()\nwrite_json(commitments_path, commitments)\n\ntoday_str = datetime.date.today().isoformat()\naudit_path = \"PracticeManager/AuditLog/\" + slug + \"-\" + today_str + \".jsonl\"\ntry:\n    existing_log = api.files.read(file=audit_path)\nexcept Exception:\n    existing_log = \"\"\naction = \"sent\" if outcome == \"sent\" else (\"rejected\" if outcome == \"rejected\" else \"blocked\")\naudit_line = json.dumps({\n    \"ts\": datetime.datetime.now(datetime.timezone.utc).isoformat(),\n    \"practice_slug\": slug,\n    \"actor\": \"agent\",\n    \"source\": \"automation:Cliniko Automations: Apply reschedule or cancellation reply\",\n    \"action\": action,\n    \"target\": {\"kind\": \"email\", \"id\": email_id},\n    \"summary\": \"Applied reviewer decision (\" + decision + \") for \" + patient_name,\n    \"workq_item_id\": todo_id,\n}, sort_keys=True)\napi.files.put(file=audit_path, content=existing_log + audit_line + \"\\n\")\n",
-        "outputs": []
+        "title": "Send the reply and apply the Cliniko change"
       }
     ],
+    "params": [],
     "rootOrder": [
       "load_decision",
       "gate_found"
+    ],
+    "triggers": [
+      {
+        "eventType": "form.response_submitted",
+        "filter": {
+          "form_id": "b0b596aa-778f-4f43-85c2-367a920bf67f"
+        },
+        "kind": "event"
+      }
     ]
   },
-  "contentHash": "60a15f8b36c1eab038ed97a28cb12fa4ea56cbfb7a55e5945b78707a31e4b0b3"
+  "kind": "automation",
+  "level": "org",
+  "name": "Cliniko Automations: Apply reschedule or cancellation reply",
+  "originKey": "da664533-ceda-471a-bda4-d3a0b729f507",
+  "tags": [
+    "cliniko",
+    "scheduling",
+    "email"
+  ],
+  "contentHash": "ecf4564946cf71fba90e1c6cbfe4e6c30ca55dfc7a1de25874e41e76408cfffd"
 }
