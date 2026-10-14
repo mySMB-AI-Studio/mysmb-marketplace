@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 
 sys.path.insert(0, os.path.dirname(__file__))
 from harness import World, run_flow  # noqa: E402
-from test_flows import AUTOS, T_ACME, Base, source_id  # noqa: E402
+from test_flows import AUTOS, INVOICE_TEXT, T_ACME, Base, make_pdf, source_id  # noqa: E402
 
 AUTO = "Bookkeeping: Ledger checks (Xero)"
 T = "tenant-checks"
@@ -377,7 +377,19 @@ class Checks(unittest.TestCase):
         self.overnight()
         self.assertEqual(self.items(), [])
         steps = self.check_now("Acme Plumbing")
-        self.assertIn("No client with ledger checks turned on", steps["run_checks"]["outputs"]["problem"])
+        self.assertIn("No client business has ledger checks on", steps["run_checks"]["outputs"]["problem"])
+
+    def test_a_manual_run_finds_the_client_by_its_xero_name_too(self):
+        self.duplicate_bills()
+        self.check_now("Acme Plumbing Pty Ltd")
+        self.assertIn("CHK-055", self.open_item()["description"])
+        steps = self.check_now("Nobody Here")
+        self.assertIn("Acme Plumbing", steps["run_checks"]["outputs"]["problem"])
+
+    def test_no_clients_set_up_says_so(self):
+        del self.w.files["Bookkeeping/Clients/acme-plumbing.json"]
+        steps = self.overnight()
+        self.assertIn("No client business has ledger checks on", steps["run_checks"]["outputs"]["problem"])
 
     def test_checks_only_read_xero(self):
         self.duplicate_bills()
@@ -433,14 +445,15 @@ class IntakeChecks(Base):
     def test_same_file_twice_and_a_new_abn_for_a_known_supplier(self):
         self.setup_practice()
         self.add_supplier(T_ACME, history_code="449")
-        self.drop()
+        pdf = make_pdf(INVOICE_TEXT)  # one copy: the PDF embeds the time it was made
+        self.drop(data=pdf)
         index = json.loads(self.w.files["Bookkeeping/Checks/acme-plumbing-intake.json"])
         self.assertEqual(len(index["files"]), 1)
         self.assertEqual(index["abns"]["contact-sparky"], ["51824753556"])
         first = self.review_item()["id"]
         self.w.items[first]["labels"] = ["done"]
         self.invoice.update(invoice_number="INV-1002", supplier_abn="53 004 085 616")
-        self.drop(name="INV-1002.pdf")
+        self.drop(name="INV-1002.pdf", data=pdf)
         desc = self.review_item()["description"]
         self.assertIn("This exact file was processed before", desc)
         self.assertIn("[CHK-130]", desc)

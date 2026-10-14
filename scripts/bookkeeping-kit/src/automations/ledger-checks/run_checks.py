@@ -14,12 +14,25 @@ if not settings:
 else:
     today = bk_today(settings)
     clients = []
+    known = []
+
+    def _same(a, b):
+        # "Irvine Jackson Pty Ltd", "irvine-jackson-pty-ltd" and "Irvine Jackson" are the same client.
+        return bool(a) and bk_norm(str(a).replace("-", " ")) == bk_norm(str(b or "").replace("-", " "))
+
     for f in api.files.list(path=BK_CLIENTS):
         c = bk_read_json(f["path"]) if str(f.get("name") or "").endswith(".json") else None
-        if c and c.get("xero_tenant_id") and c.get("checks_enabled", True) is not False and (not only or c.get("slug") in only):
-            clients.append(c)
-    if only and not clients:
-        problem = "No client with ledger checks turned on matches " + ", ".join(only) + "."
+        if c and c.get("xero_tenant_id") and c.get("checks_enabled", True) is not False:
+            known.append(str(c.get("name") or c.get("slug") or ""))
+            if not only or any(_same(o, c.get(k)) for o in only for k in ("slug", "name", "xero_org_name")):
+                clients.append(c)
+    if not known:
+        problem = ("No client business has ledger checks on (none in " + BK_CLIENTS + " with a Xero organisation and ledger "
+                   "checks on). To add one, run **Bookkeeping: Start setup** with the business name and submit its Client bookkeeping "
+                   "settings form.")
+    elif only and not clients:
+        problem = ("No client with ledger checks turned on matches \"" + ", ".join(only) + "\". Use the business name from its "
+                   "Client bookkeeping settings" + (": " + ", ".join(sorted(known)) if known else "") + ".")
     secret = ck_secret()
     key_id = hashlib.sha256(secret.encode("utf-8")).hexdigest()[:8]
     for client in clients:
