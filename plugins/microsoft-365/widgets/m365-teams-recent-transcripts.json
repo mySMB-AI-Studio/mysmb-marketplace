@@ -234,7 +234,7 @@
       "drawerCard": {
         "type": "Card",
         "props": {},
-        "children": ["drawerHeader", "drawerMetaRow2", "summarizeRow", "summaryLoadingRow", "summaryError", "summarySection", "summaryDivider", "drawerBody"],
+        "children": ["drawerHeader", "drawerMetaRow2", "drawerOpenInTeamsRow", "summarizeRow", "summaryLoadingRow", "summaryError", "summarySection", "summaryDivider", "drawerBody"],
         "watch": {
           "/m365-teams-transcripts/summarize_transcript/summary": {
             "action": "setState",
@@ -338,7 +338,7 @@
         "visible": { "$state": "/ui/transcriptDetail/summaryOpen" }
       },
       "summaryDivider": { "type": "Divider", "props": {}, "visible": { "$state": "/m365-teams-transcripts/summarize_transcript/summary" } },
-      "drawerMetaRow2": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["recordingTypeBadge", "drawerOpenInTeamsRow"] },
+      "drawerMetaRow2": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["recordingTypeBadge"] },
       "recordingTypeBadge": {
         "type": "Badge",
         "props": {
@@ -377,9 +377,21 @@
       "drawerTitleRow": {
         "type": "Row",
         "props": { "justify": "between", "align": "center" },
-        "children": ["drawerTitle", "drawerCloseBtn"]
+        "children": ["drawerTitle", "drawerTitleRight"]
       },
       "drawerTitle": { "type": "Heading", "props": { "text": { "$state": "/ui/transcriptDetail/subject" }, "level": "h2" } },
+      "drawerTitleRight": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["drawerDate", "drawerCloseBtn"] },
+      "drawerDate": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "format_date",
+            "args": { "value": { "$state": "/m365-teams-transcripts/list_transcripts_by_join_url/0/createdDateTime" }, "format": "dd-mmm-yy" }
+          }
+        },
+        "visible": { "$state": "/m365-teams-transcripts/list_transcripts_by_join_url/0/createdDateTime" }
+      },
       "drawerCloseBtn": {
         "type": "IconButton",
         "props": { "icon": "X", "tone": "muted", "ariaLabel": "Close" },
@@ -421,7 +433,7 @@
           "preserveLines": true,
           "text": {
             "$computed": "microsoft-365_transcript_display_text",
-            "args": { "value": { "$state": "/m365-teams-transcripts/get_transcript_content" } }
+            "args": { "value": { "$state": "/m365-teams-transcripts/get_transcript_content" }, "showTimestamp": true }
           }
         },
         "visible": {
