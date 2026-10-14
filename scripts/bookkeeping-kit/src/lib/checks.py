@@ -154,7 +154,7 @@ def ck_contact_rules(ledger, snap, today, secret):
             banks[cid] = {"h": h, "changed": str(today)}
         elif h and prev is None:
             banks[cid] = {"h": h}
-        elif h and prev.get("h") != h:
+        elif h and prev is not None and prev.get("h") != h:
             # A change only counts once there is a snapshot to compare with (the second run onwards).
             banks[cid] = {"h": h, "changed": str(today)}
         if cid not in seen:
