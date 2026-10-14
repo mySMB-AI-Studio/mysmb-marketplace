@@ -709,6 +709,116 @@ Setup stores nonsecret per-user answers and selected connector IDs; authenticati
 uses Connections. Installation never publishes automations or expands grants.
 See [the complete contracts](website/docs/reference/extension-content.md).
 
+### Business-agent content (processes, capabilities, evaluations)
+
+A **business agent** is a package that carries `listing.agent` on its
+`marketplace.json` entry. Besides the content kinds above it may bundle three
+more, one JSON file per component, listed in `plugin.json`'s `content` section
+and installed by the same origin-key upsert:
+
+| `kind` | `content` section | Path | What it defines | Limit |
+|---|---|---|---|---|
+| `process` | `processes` | `content/processes/<originKey>.json` | A versioned business process: steps, decisions, roles, outcomes | ≤ 30 |
+| `capability` | `capabilities` | `content/capabilities/<originKey>.json` | A named side-effect surface (`email.send_reviewed`) mapped onto connector tools | ≤ 30 |
+| `evaluation` | `evaluations` | `content/evaluations/<originKey>.json` | A scenario suite that gates a process's release | ≤ 30 |
+
+Every file is the same envelope; the contract lives in `definition`:
+
+```json
+{
+  "kind": "process",
+  "originKey": "5b0a7c1e-3f64-4d5e-9a21-0c8d1e2f3a40",
+  "name": "New client onboarding",
+  "contentHash": "<64 hex chars>",
+  "definition": {
+    "kind": "process",
+    "schemaVersion": 1,
+    "originKey": "5b0a7c1e-3f64-4d5e-9a21-0c8d1e2f3a40",
+    "key": "client-onboarding",
+    "version": "1.0.0",
+    "title": "New client onboarding"
+  }
+}
+```
+
+(`definition` is abbreviated here — see the required fields below.)
+
+- **Envelope.** `kind` must match the `content` section the file is listed under;
+  `originKey` is a UUID and the file must be named `<originKey>.json` directly
+  inside its `content/<dir>/` folder (nested paths and other names are rejected);
+  `name` is 1–200 characters; `contentHash` is the sha256 of the payload's
+  canonical (recursively key-sorted) JSON **without** `contentHash` — AI Studio
+  writes it, so re-publish rather than hand-edit; each file is ≤ 1 MB.
+- **`definition` repeats `kind` and `originKey`**, and the two copies must equal
+  the envelope's.
+- **Required `definition` fields.**
+  - `process`: `kind`, `schemaVersion` (`1`), `originKey`, `key` (kebab slug —
+    what `listing.agent.processes[]` names), `version` (semver), `title`, `subject`,
+    `inputs`, `capabilities`, `roles`, `variationPoints`, `protectedRules`, `steps`
+    (≥ 1), `transitions`, `exceptions`, `rework`, `outcomes`. Optional:
+    `description`, `vocabulary`, `cancellation`, `safeTest`, `tests`, `modelPolicy`,
+    `limits`.
+  - `capability`: `kind`, `schemaVersion`, `originKey`, `key` (e.g.
+    `email.send_reviewed`; what processes and `listing.agent.requiredCapabilities[]`
+    name), `title`, `sideEffectClass`, `inputsSchema`, `outputsSchema`,
+    `idempotency`, `bindings` (≥ 1). Optional: `reconcile`, `permissionRequirements`.
+  - `evaluation`: `kind`, `schemaVersion`, `originKey`, `key`, `title`,
+    `process` (the **originKey** of the process under test), `scenarios` (≥ 1),
+    `thresholds`, `required`.
+
+The validator checks `definition` against
+[`contracts/studio-contracts-v1.json`](./contracts/studio-contracts-v1.json) — the
+JSON Schema artefact the Workspace generates from its own schemas
+(`packages/shared/src/process/`) and the **only** source of truth for the
+fields. Copy a regenerated artefact over the file; never hand-edit it. JSON Schema
+covers *shape* only: reachability, terminal outcomes, decision eligibility and the
+like are enforced by the Workspace when the package is published.
+
+**The listing block.** An entry is an agent package when `listing.agent` is
+present:
+
+```json
+{
+  "name": "client-onboarding-agent",
+  "version": "1.0.0",
+  "dependencies": [{ "plugin": "mail-capabilities", "version": "^1.2.0" }],
+  "listing": {
+    "agent": {
+      "role": "Onboarding coordinator",
+      "outcomes": ["Handover accepted"],
+      "processes": ["client-onboarding"],
+      "requiredCapabilities": ["email.send_reviewed"],
+      "setupEffort": "an-hour"
+    }
+  }
+}
+```
+
+`role` (≤ 120 chars), `outcomes` (≤ 8 × 200), `processes` (≤ 20 × 80) and
+`requiredCapabilities` (≤ 40 × 120) are required; `setupEffort` is `minutes`,
+`an-hour` or `half-day`; `priceDisplay` / `usageDisplay` are optional strings
+(≤ 200). Unknown keys are rejected. Each `processes[]` entry must be the
+`definition.key` of a bundled process and each `requiredCapabilities[]` entry the
+`definition.key` of a bundled capability.
+
+**Resolving references.** A process's capability keys (`capabilities[]`, every
+decision option's `intent.capability`, `cancellation.compensation[].capability`),
+the automation / form / template originKeys its steps name, and its `tests[]`
+evaluations must be bundled in the same plugin or in a plugin listed in the
+entry's `dependencies[]`; so must the process an evaluation tests. Only
+**direct** dependencies count. `dependencies[]` holds `{ plugin, version }` pairs:
+`plugin` is another entry of this registry, `version` an exact version or a
+`^` / `~` / x-range (`^1.2.0`, `~1.2.3`, `1.x`) — no `>=`, `||` or bare `*` — and
+the graph must be acyclic. Whether a dependency's current version satisfies the
+range is checked at publish time (the version differs per tier), not here.
+
+**Versions.** An agent package's `version` must be strict semver (`x.y.z`,
+optional `-prerelease`, no `+build`) and `plugin.json`'s `version` must equal the
+entry's. For every other plugin a mismatch is only a warning.
+
+Release evidence (`release: { candidate?, evidenceHash? }`) may also sit on the
+entry; it is written by the release process, not by hand.
+
 ## 12. Reference: rules the validator enforces
 
 From `scripts/validate.ts`:
@@ -723,6 +833,11 @@ From `scripts/validate.ts`:
 8. No new widget uses `"gap": "xxs"` ([`TILE-DISPLAY-STANDARDS.md`](TILE-DISPLAY-STANDARDS.md) §5; pre-existing files are grandfathered in `scripts/xxs-baseline.json`).
 9. Every myhub-hosted MCP URL uses the **production** host, on every branch tier.
 10. Store `branding` / `listing` on a `marketplace.json` entry (when present): `color` is `#rgb`/`#rrggbb`, `tagline` ≤ 90 chars, `highlights` ≤ 4 × ≤ 120 chars, `screenshots` ≤ 6, publisher/support URLs parse, and every image is an https URL, a `data:image/…` URI, or a bundle-relative svg/png/jpg/webp/gif that exists in the plugin dir and is ≤ 96 KB — see [Store branding and listing](#store-branding-and-listing-optional).
+11. Business-agent content (`processes`, `capabilities`, `evaluations` — ≤ 30 files each): same filename = `originKey`, `kind` = section and canonical-path rules as `recordTypes` / `setups`; the envelope's `contentHash` matches its content, `definition.originKey` equals the envelope's, and `definition` conforms to `contracts/studio-contracts-v1.json` (every error is reported with the plugin path and the JSON-pointer path). `recordTypes` / `setups` payloads must also carry an `originKey` and an object `definition`.
+12. Business-agent references resolve: the capabilities, automations, forms, templates and evaluations a process uses, the process an evaluation tests, `listing.agent.processes[]` and `listing.agent.requiredCapabilities[]` are all bundled in the plugin or in a plugin listed in its `dependencies[]`.
+13. `dependencies[]` entries name another plugin of the registry with an exact / caret / tilde / x-range version, no self- or duplicate entries, and the dependency graph is acyclic.
+14. `listing.agent` and `release` have the documented shape.
+15. Version agreement: agent packages need a strict-semver `version` equal in `plugin.json` and `marketplace.json` (error); for every other plugin a mismatch is a warning.
 
 Other rules enforced by convention (and reviewed in PR):
 

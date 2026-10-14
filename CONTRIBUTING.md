@@ -7,11 +7,12 @@ plugins are called **Workspace Extensions**) and by local Claude Code. It uses
 ## Branch tiers
 
 ```
-dev ──publish──► qa ──promote──► uat ──promote──► main (production)
+feature/* ──PR──► dev ──publish──► qa ──promote──► uat ──promote──► main (production)
 ```
 
 | Branch | Who installs it | What lives here |
 |--------|-----------------|-----------------|
+| `feature/*` (any short-lived branch) | Nobody | Optional review path for code changes: push the branch and open a PR into `dev`. Nothing is published from it |
 | `dev` | Local Claude Code / local MyHub | Unpublished work — AI Studio auto-commits and code-driven pushes |
 | `qa` | QA tenants | Extensions published from AI Studio |
 | `uat` | UAT tenants | Extensions promoted from QA |
@@ -27,9 +28,12 @@ dev ──publish──► qa ──promote──► uat ──promote──► 
   immediately.
 - Branches differ **only by which extensions/versions exist** — never by URLs or
   environment config.
-- CI ([`validate.yml`](./.github/workflows/validate.yml)) runs the validator on
-  every PR and on every push to each tier. A publish or promotion that breaks a
-  rule shows up in the AI Studio promotion log.
+- CI ([`validate.yml`](./.github/workflows/validate.yml)) runs on **every pull
+  request, whatever branch it targets**, and on every push to `main`, `uat`,
+  `qa` and `dev` (plus the retired `staging`, kept until that branch is
+  archived). It does `npm ci`, `npm test` and `npm run validate`, so the
+  validator and its fixture tests gate every tier. A publish or promotion that
+  breaks a rule shows up in the AI Studio promotion log.
 
 ### Versioning (automatic)
 
@@ -79,9 +83,15 @@ this same flow. Want a review first? Push a short-lived branch and open a PR
 into `dev` instead — CI validates it — then Pull and Publish once it merges.
 
 > `scripts/promote-plugin.mjs` is a break-glass fallback for when AI Studio is
-> unavailable. It copies the subtree and the manifest entry between branches but
-> does **not** rewrite the version or refresh the environment's marketplace —
-> do both by hand and tell the extension's owner.
+> unavailable. Run it **while checked out on the target branch**:
+> `node scripts/promote-plugin.mjs <plugin> [--from uat] [--to main]`. It
+> replaces `plugins/<plugin>/` with the copy on the `--from` branch and upserts
+> that branch's `marketplace.json` entry, leaving the changes in your working
+> tree. `--to` only labels the log line — the script never switches branches,
+> commits or pushes. It does **not** rewrite the version or refresh the
+> environment's marketplace: set both by hand (publish = patch + 1, promote to
+> UAT = major + 1, UAT → production = unchanged), refresh the environment in
+> AMP, and tell the extension's owner.
 
 `qa` is the canonical QA marketplace branch. `staging` remains only as a legacy
 rollback branch and is not a new publish target.
@@ -117,7 +127,8 @@ route.
 ## Definition of done (before you push to `dev`)
 
 ```bash
-npx tsx scripts/validate.ts        # schema, README config, transport, URL rule, store branding
+npx tsx scripts/validate.ts        # schema, README config, transport, URL rule, store branding, business-agent content
+npm test                           # the validator's own fixture tests (what CI runs before the validator)
 node scripts/normalize-mcp-urls.mjs --check   # no non-prod myhub URLs
 ```
 
@@ -127,5 +138,30 @@ node scripts/normalize-mcp-urls.mjs --check   # no non-prod myhub URLs
 - [ ] Plugin registered in `.claude-plugin/marketplace.json`
 - [ ] Store assets (if any) live in the bundle — SVG preferred, ≤ 96 KB each
 - [ ] Change lands on `dev` (pushed, or a PR into `dev`); `version` left alone
+- [ ] Business-agent package? `listing.agent` keys match the bundled processes and capabilities, `dependencies[]` is declared, and `plugin.json` / `marketplace.json` versions agree (see below)
+
+## Business-agent packages
+
+A package whose `marketplace.json` entry carries `listing.agent` is a **business
+agent**. It may bundle three extra content kinds — `process`, `capability` and
+`evaluation` (see [CREATING_PLUGINS.md → Business-agent content](./CREATING_PLUGINS.md#business-agent-content-processes-capabilities-evaluations)) —
+and the validator holds it to a stricter standard than an ordinary plugin:
+
+- `version` must be **strict semver** (`x.y.z`, optional prerelease, no `+build`)
+  and `plugin.json`'s `version` must **equal** the `marketplace.json` entry's.
+  AI Studio's `0.0.0 → patch + 1 → major + 1` scheme already satisfies this, which
+  is another reason not to bump `version` by hand. For every *other* plugin a
+  disagreement between the two files is only a **warning** (several existing
+  plugins have one).
+- Anything a process uses — capability keys, automations, forms, templates,
+  evaluations — must be bundled in the same plugin or in a plugin listed in the
+  entry's `dependencies[]` (`[{ "plugin": "<name>", "version": "^1.2.0" }]`; the
+  plugin must exist in this registry, the version is an exact, `^`, `~` or
+  x-range, and the dependency graph must be acyclic).
+- Each process / capability / evaluation `definition` is validated against
+  [`contracts/studio-contracts-v1.json`](./contracts/studio-contracts-v1.json),
+  the schema artefact the Workspace generates. **Never hand-edit it** — when the
+  Workspace regenerates it, copy the new file over this one in the same PR as any
+  package change that needs it.
 
 New here? Start with **[ONBOARDING.md](./ONBOARDING.md)**.

@@ -9,7 +9,8 @@
   },
   "scripts": {
     "validate": "tsx scripts/validate.ts",
-    "test": "vitest run scripts/extension-content.test.ts",
+    "test": "vitest run scripts/extension-content.test.ts scripts/agent-packages.test.ts",
+    "validate:fixtures": "vitest run scripts/agent-packages.test.ts",
     "create-plugin": "node scripts/create-plugin/index.js"
   },
   "engines": {
@@ -17,6 +18,8 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
     "tsx": "4.23.15",
     "vitest": "4.1.11",
     "vite": "8.3.2",
