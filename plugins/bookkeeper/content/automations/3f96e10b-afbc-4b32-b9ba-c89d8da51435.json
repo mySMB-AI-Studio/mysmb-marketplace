@@ -1,0 +1,131 @@
+{
+  "contentHash": "4120d357d081c3248637c2a2c7179b1e5eb7a2fef68d3f66cddd5c46540e0d7e",
+  "declaredScopes": [],
+  "dependencies": [],
+  "description": "Works out, in whole cents, the difference between what an invoice should have received and the payment that arrived. Says whether it balances, whether a shortfall is within the write-off threshold, and, only then, prepares the credit note body. Reads only; posts nothing.",
+  "flowIr": {
+    "description": "Exact difference between an invoice and its payment, with the write-off policy applied. Reads only; posts nothing.",
+    "irVersion": 1,
+    "name": "Invoice and payment difference check",
+    "nodes": [
+      {
+        "code": "from decimal import Decimal, InvalidOperation, ROUND_HALF_UP\n\n\ndef to_cents(value):\n    if value is None or value == \"\":\n        return 0\n    try:\n        amount = Decimal(str(value))\n    except InvalidOperation:\n        raise ValueError(\"Amount is not a number: \" + str(value))\n    return int((amount * 100).quantize(Decimal(1), rounding=ROUND_HALF_UP))\n\n\ndef fmt(cents_value):\n    sign = \"-\" if cents_value < 0 else \"\"\n    whole, part = divmod(abs(cents_value), 100)\n    return sign + str(whole) + \".\" + str(part).zfill(2)\n\n\ninvoice = params.get(\"invoice\") or {}\npayment = params.get(\"payment\") or {}\nlimit_cents = to_cents(params.get(\"threshold\"))\naccount_code = str(params.get(\"account_code\") or \"\")\nnotes = []\n\nexpected_cents = to_cents(invoice.get(\"amountExpected\"))\nreceived_cents = to_cents(payment.get(\"amount\"))\ndifference_cents = expected_cents - received_cents\ndifference = fmt(difference_cents)\n\ncurrency_matches = (invoice.get(\"currency\") or \"\") == (payment.get(\"currency\") or \"\")\nif not currency_matches:\n    notes.append(\"The invoice and the payment are in different currencies; no adjustment is offered.\")\n\nbalanced = difference_cents == 0 and currency_matches\nis_short = difference_cents > 0\nwithin_threshold = is_short and difference_cents <= limit_cents and currency_matches\nif is_short and currency_matches and not within_threshold:\n    notes.append(\"The shortfall is above the write-off threshold; an adjustment is not offered.\")\nif difference_cents < 0:\n    notes.append(\"The payment is more than the invoice. Treat it as an overpayment, not a write-off.\")\n\nexternal_ref = \"RECON-\" + str(invoice.get(\"number\") or \"\") + \"-\" + str(payment.get(\"reference\") or \"\")\ncredit_note = {}\nif within_threshold:\n    if not account_code:\n        notes.append(\"No write-off account code is set in Preferences, so an adjustment cannot be built.\")\n    else:\n        credit_note = {\n            \"Type\": \"ACCRECCREDIT\",\n            \"Contact\": {\"ContactID\": invoice.get(\"contactId\")},\n            \"Date\": payment.get(\"date\") or invoice.get(\"date\"),\n            \"Status\": \"AUTHORISED\",\n            \"Reference\": external_ref,\n            \"CurrencyCode\": invoice.get(\"currency\"),\n            \"LineAmountTypes\": \"NoTax\",\n            \"LineItems\": [\n                {\n                    \"Description\": \"Short payment adjustment for invoice \" + str(invoice.get(\"number\")) + \" (payment \" + str(payment.get(\"reference\")) + \")\",\n                    \"Quantity\": 1,\n                    \"UnitAmount\": float(Decimal(difference_cents) / 100),\n                    \"AccountCode\": account_code,\n                }\n            ],\n        }",
+        "id": "difference",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "Invoice amount expected minus payment received, to two decimals.",
+            "name": "difference",
+            "type": "str"
+          },
+          {
+            "description": "True when the amounts match exactly in the same currency.",
+            "name": "balanced",
+            "type": "bool"
+          },
+          {
+            "description": "True when the shortfall is positive and within the write-off threshold.",
+            "name": "within_threshold",
+            "type": "bool"
+          },
+          {
+            "description": "The credit note body to post, or an empty object when no adjustment is offered.",
+            "name": "credit_note",
+            "type": "dict"
+          },
+          {
+            "description": "Deterministic reference stamped on the credit note and used to reconcile.",
+            "name": "external_ref",
+            "type": "str"
+          },
+          {
+            "description": "Plain-language remarks for the decision brief.",
+            "name": "notes",
+            "type": "list[str]"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.invoice }}",
+            "control": "hidden",
+            "label": "Invoice",
+            "name": "invoice",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ params.payment }}",
+            "control": "hidden",
+            "label": "Payment",
+            "name": "payment",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ params.threshold }}",
+            "control": "hidden",
+            "label": "Write-off threshold",
+            "name": "threshold",
+            "required": false,
+            "type": "float"
+          },
+          {
+            "binding": "{{ params.account_code }}",
+            "control": "hidden",
+            "label": "Write-off account code",
+            "name": "account_code",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Compares the amount the invoice should have received with the payment in whole cents, applies the write-off threshold and, when a shortfall is within it, prepares the credit note body.",
+        "title": "Work out the difference"
+      }
+    ],
+    "params": [
+      {
+        "control": "hidden",
+        "label": "Invoice",
+        "name": "invoice",
+        "required": true,
+        "type": "dict"
+      },
+      {
+        "control": "hidden",
+        "label": "Payment",
+        "name": "payment",
+        "required": true,
+        "type": "dict"
+      },
+      {
+        "control": "hidden",
+        "label": "Write-off threshold",
+        "name": "threshold",
+        "required": false,
+        "type": "float"
+      },
+      {
+        "control": "hidden",
+        "label": "Write-off account code",
+        "name": "account_code",
+        "required": false,
+        "type": "str"
+      }
+    ],
+    "rootOrder": [
+      "difference"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Invoice and payment difference check",
+  "originKey": "3f96e10b-afbc-4b32-b9ba-c89d8da51435",
+  "tags": [
+    "bookkeeper"
+  ]
+}

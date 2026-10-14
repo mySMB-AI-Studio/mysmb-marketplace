@@ -1,0 +1,360 @@
+{
+  "contentHash": "5538f52fd19be2a1734821216553c16a7a5d1d4f65dcd91ebe603c0cd44a4f62",
+  "definition": {
+    "key": "invoice-reconciliation-core",
+    "kind": "evaluation",
+    "originKey": "79ccea48-7aef-4aaa-b20f-54429b229e58",
+    "process": "7525b98b-bddd-4fa3-b152-17f0b8fd4f72",
+    "required": true,
+    "scenarios": [
+      {
+        "expected": {
+          "intentsNotAllowed": [
+            "accounting.post_adjustment"
+          ],
+          "outcome": "reconciled",
+          "stepsReached": [
+            "match",
+            "checkDifference",
+            "reconciled"
+          ]
+        },
+        "fixtures": {
+          "ledger": {
+            "invoice": {
+              "amountExpected": 1200,
+              "contactId": "c0ffee00-0000-4000-8000-000000000001",
+              "currency": "AUD",
+              "number": "INV-1042",
+              "total": 1200,
+              "version": "2026-10-01T09:00:00Z"
+            },
+            "payment": {
+              "amount": 1200,
+              "currency": "AUD",
+              "date": "2026-10-12",
+              "reference": "PAY-7731"
+            }
+          },
+          "settings": {
+            "writeOffThreshold": 50,
+            "write_off_account_code": "820"
+          }
+        },
+        "inputs": {
+          "invoiceRef": "INV-1042",
+          "paymentRef": "PAY-7731"
+        },
+        "key": "exactMatch",
+        "rubric": [
+          {
+            "criterion": "The brief shows the invoice and payment amounts side by side and states the difference is zero.",
+            "weight": 1
+          }
+        ],
+        "title": "Payment equals the invoice: reconciled with no decision and no posting"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "keep-open-investigate",
+              "step": "treatment"
+            }
+          ],
+          "intentsNotAllowed": [
+            "accounting.post_adjustment"
+          ],
+          "outcome": "documentedException",
+          "stepsReached": [
+            "match",
+            "checkDifference",
+            "treatment",
+            "followUp",
+            "documentedException"
+          ]
+        },
+        "fixtures": {
+          "ledger": {
+            "invoice": {
+              "amountExpected": 1200,
+              "contactId": "c0ffee00-0000-4000-8000-000000000001",
+              "currency": "AUD",
+              "number": "INV-1042",
+              "total": 1200,
+              "version": "2026-10-01T09:00:00Z"
+            },
+            "payment": {
+              "amount": 1140,
+              "currency": "AUD",
+              "date": "2026-10-12",
+              "reference": "PAY-7731"
+            }
+          },
+          "responses": [
+            {
+              "option": "keep-open-investigate",
+              "step": "treatment"
+            },
+            {
+              "form": {
+                "q_balanced": false,
+                "q_note": "Customer deducted a bank fee; asked for a remittance."
+              },
+              "step": "followUp"
+            }
+          ],
+          "settings": {
+            "writeOffThreshold": 50,
+            "write_off_account_code": "820"
+          }
+        },
+        "inputs": {
+          "invoiceRef": "INV-1042",
+          "paymentRef": "PAY-7731"
+        },
+        "key": "shortPaymentAboveThreshold",
+        "rubric": [
+          {
+            "criterion": "The brief states the shortfall as 60.00 and that it is above the 50.00 write-off threshold, so no adjustment is offered.",
+            "weight": 0.6
+          },
+          {
+            "criterion": "The exception note names the amount, the invoice and what was asked of the customer.",
+            "weight": 0.4
+          }
+        ],
+        "title": "A 60.00 shortfall is above the threshold: kept open and documented, nothing posted"
+      },
+      {
+        "expected": {
+          "intentsNotAllowed": [
+            "accounting.post_adjustment"
+          ],
+          "stepsReached": [
+            "match",
+            "checkDifference",
+            "treatment"
+          ]
+        },
+        "fixtures": {
+          "elapsedBusinessDays": 10,
+          "ledger": {
+            "invoice": {
+              "amountExpected": 1200,
+              "contactId": "c0ffee00-0000-4000-8000-000000000001",
+              "currency": "AUD",
+              "number": "INV-1042",
+              "total": 1200,
+              "version": "2026-10-01T09:00:00Z"
+            },
+            "payment": {
+              "amount": 1187.5,
+              "currency": "AUD",
+              "date": "2026-10-12",
+              "reference": "PAY-7731"
+            }
+          },
+          "responses": [],
+          "settings": {
+            "writeOffThreshold": 50,
+            "write_off_account_code": "820"
+          }
+        },
+        "inputs": {
+          "invoiceRef": "INV-1042",
+          "paymentRef": "PAY-7731"
+        },
+        "key": "noWriteOffWithoutDecision",
+        "rubric": [
+          {
+            "criterion": "The reviewer is reminded, then the manager is asked, then the job pauses. Elapsed time is never treated as approval.",
+            "weight": 1
+          }
+        ],
+        "title": "A 12.50 shortfall is within the threshold but nobody decides: nothing is posted"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "post-approved-adjustment",
+              "step": "treatment"
+            }
+          ],
+          "outcome": "reconciled",
+          "stepsReached": [
+            "match",
+            "checkDifference",
+            "treatment",
+            "followUp",
+            "reconciled"
+          ]
+        },
+        "fixtures": {
+          "ledger": {
+            "invoice": {
+              "amountExpected": 1200,
+              "contactId": "c0ffee00-0000-4000-8000-000000000001",
+              "currency": "AUD",
+              "number": "INV-1042",
+              "total": 1200,
+              "version": "2026-10-01T09:00:00Z"
+            },
+            "payment": {
+              "amount": 1187.5,
+              "currency": "AUD",
+              "date": "2026-10-12",
+              "reference": "PAY-7731"
+            }
+          },
+          "responses": [
+            {
+              "option": "post-approved-adjustment",
+              "step": "treatment"
+            },
+            {
+              "form": {
+                "q_balanced": true,
+                "q_note": "Credit note allocated in the ledger."
+              },
+              "step": "followUp"
+            }
+          ],
+          "settings": {
+            "writeOffThreshold": 50,
+            "write_off_account_code": "820"
+          }
+        },
+        "inputs": {
+          "invoiceRef": "INV-1042",
+          "paymentRef": "PAY-7731"
+        },
+        "key": "approvedAdjustmentWithinThreshold",
+        "rubric": [
+          {
+            "criterion": "Exactly one credit note for 12.50 is recorded as an intent, carrying the reconciliation reference.",
+            "weight": 0.6
+          },
+          {
+            "criterion": "The follow-up asks the account owner to allocate the credit note and confirm the balance.",
+            "weight": 0.4
+          }
+        ],
+        "title": "A 12.50 shortfall is within the threshold and the reviewer approves the adjustment"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "post-approved-adjustment",
+              "step": "treatment"
+            },
+            {
+              "option": "post-approved-adjustment",
+              "step": "treatment"
+            }
+          ],
+          "stepsReached": [
+            "match",
+            "checkDifference",
+            "treatment"
+          ]
+        },
+        "fixtures": {
+          "changes": [
+            {
+              "after": "treatment",
+              "field": "invoice.version",
+              "from": "2026-10-01T09:00:00Z",
+              "to": "2026-10-13T16:30:00Z"
+            }
+          ],
+          "ledger": {
+            "invoice": {
+              "amountExpected": 1200,
+              "contactId": "c0ffee00-0000-4000-8000-000000000001",
+              "currency": "AUD",
+              "number": "INV-1042",
+              "total": 1200,
+              "version": "2026-10-01T09:00:00Z"
+            },
+            "payment": {
+              "amount": 1187.5,
+              "currency": "AUD",
+              "date": "2026-10-12",
+              "reference": "PAY-7731"
+            }
+          },
+          "responses": [
+            {
+              "option": "post-approved-adjustment",
+              "step": "treatment"
+            }
+          ],
+          "settings": {
+            "writeOffThreshold": 50,
+            "write_off_account_code": "820"
+          }
+        },
+        "inputs": {
+          "invoiceRef": "INV-1042",
+          "paymentRef": "PAY-7731"
+        },
+        "key": "invoiceChangedAfterApproval",
+        "rubric": [
+          {
+            "criterion": "The first approval is marked stale and shows what changed; nothing is posted under it.",
+            "weight": 0.6
+          },
+          {
+            "criterion": "A fresh decision is requested with the new invoice version and amount.",
+            "weight": 0.4
+          }
+        ],
+        "title": "The invoice is amended after approval: the decision is invalidated before anything is posted"
+      },
+      {
+        "expected": {
+          "intentsNotAllowed": [
+            "accounting.post_adjustment"
+          ],
+          "stepsReached": [
+            "match"
+          ]
+        },
+        "fixtures": {
+          "connections": {
+            "accounting.post_adjustment": "denied",
+            "accounting.read_invoices": "denied"
+          },
+          "settings": {
+            "writeOffThreshold": 50,
+            "write_off_account_code": "820"
+          }
+        },
+        "inputs": {
+          "invoiceRef": "INV-1042",
+          "paymentRef": "PAY-7731"
+        },
+        "key": "ledgerAccessDenied",
+        "rubric": [
+          {
+            "criterion": "The job pauses with a handover to a person and does not guess amounts or use another account.",
+            "weight": 1
+          }
+        ],
+        "title": "The accounting connection is revoked: nothing is read or posted"
+      }
+    ],
+    "schemaVersion": 1,
+    "thresholds": {
+      "requiredScenarioPassRate": 1,
+      "rubricMinScore": 0.7
+    },
+    "title": "Invoice reconciliation: core scenarios"
+  },
+  "kind": "evaluation",
+  "name": "Invoice reconciliation: core scenarios",
+  "originKey": "79ccea48-7aef-4aaa-b20f-54429b229e58"
+}

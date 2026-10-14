@@ -1,0 +1,66 @@
+{
+  "body": {
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "description": "A reviewer has decided how to treat the difference on **{{invoice_ref}}** against payment **{{payment_ref}}**. Work through the checklist, then submit the Reconciliation outcome form.",
+        "dueOffset": {
+          "businessDays": true,
+          "days": 3
+        },
+        "id": "reconciliation_follow_up",
+        "priority": "medium",
+        "roleVarRef": "account_owner",
+        "scope": "org",
+        "subtasks": [
+          {
+            "id": "open_invoice",
+            "label": "Open the invoice in the ledger and confirm the balance after the decision"
+          },
+          {
+            "id": "allocate_credit_note",
+            "label": "If a credit note was posted, allocate it to the invoice in the ledger (the connector creates it but does not allocate)"
+          },
+          {
+            "id": "check_tax",
+            "label": "If a credit note was posted, review its tax treatment"
+          },
+          {
+            "id": "contact_customer",
+            "label": "If the invoice stays open, contact the customer about the shortfall and note their answer"
+          },
+          {
+            "id": "attach_evidence",
+            "label": "Attach the ledger extract that shows the final balance"
+          }
+        ],
+        "title": "Reconciliation follow-up: {{invoice_ref}} / {{payment_ref}}"
+      }
+    ]
+  },
+  "contentHash": "55841c02418e6e01f980f765fda705c67fd91c8fec607828f52c2e4c5673c6b2",
+  "kind": "workq_template",
+  "level": "org",
+  "name": "Reconciliation follow-up",
+  "originKey": "656d7222-e064-4e1c-9b9b-4f9356b12a33",
+  "slots": [
+    {
+      "displayName": "Invoice reference",
+      "logicalName": "invoice_ref",
+      "type": "text"
+    },
+    {
+      "displayName": "Payment reference",
+      "logicalName": "payment_ref",
+      "type": "text"
+    },
+    {
+      "displayName": "Account owner",
+      "logicalName": "account_owner",
+      "type": "principal"
+    }
+  ],
+  "tags": [
+    "bookkeeper"
+  ]
+}

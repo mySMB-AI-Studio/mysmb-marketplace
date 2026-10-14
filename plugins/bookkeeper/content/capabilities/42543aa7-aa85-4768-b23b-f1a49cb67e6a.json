@@ -1,0 +1,89 @@
+{
+  "contentHash": "4a58ae38f19b57f6005714b47fb780a32449a26102461f9e5e4b26bb2fa28364",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "invoiceNumber": "invoiceNumbers",
+          "where": "where"
+        },
+        "scopes": [
+          "accounting.transactions"
+        ],
+        "server": "xero-accounting",
+        "tool": "list_invoices"
+      },
+      {
+        "argMap": {
+          "invoiceId": "invoiceId"
+        },
+        "scopes": [
+          "accounting.transactions"
+        ],
+        "server": "xero-accounting",
+        "tool": "get_invoice"
+      },
+      {
+        "argMap": {
+          "where": "where"
+        },
+        "scopes": [
+          "accounting.transactions"
+        ],
+        "server": "xero-accounting",
+        "tool": "list_payments"
+      },
+      {
+        "argMap": {
+          "paymentId": "paymentId"
+        },
+        "scopes": [
+          "accounting.transactions"
+        ],
+        "server": "xero-accounting",
+        "tool": "get_payment"
+      }
+    ],
+    "idempotency": {
+      "supported": false
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "invoiceId": {
+          "description": "Ledger id of the invoice.",
+          "type": "string"
+        },
+        "invoiceNumber": {
+          "description": "Invoice number as printed on the invoice.",
+          "type": "string"
+        },
+        "paymentId": {
+          "description": "Ledger id of the payment.",
+          "type": "string"
+        },
+        "where": {
+          "description": "Provider filter expression, for example Reference==\"PAY-1042\" for payments.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "key": "accounting.read_invoices",
+    "kind": "capability",
+    "originKey": "42543aa7-aa85-4768-b23b-f1a49cb67e6a",
+    "outputsSchema": {
+      "description": "The provider's invoice or payment records as returned: amounts, currency, status, contact, dates, and the payments applied to an invoice.",
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Read invoices and payments"
+  },
+  "kind": "capability",
+  "name": "Read invoices and payments",
+  "originKey": "42543aa7-aa85-4768-b23b-f1a49cb67e6a"
+}

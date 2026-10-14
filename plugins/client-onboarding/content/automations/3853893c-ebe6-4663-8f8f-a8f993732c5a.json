@@ -1,0 +1,81 @@
+{
+  "contentHash": "e33900456ed445196d63142254eab221c3967985ef9086892f93f11adc3a02cb",
+  "declaredScopes": [],
+  "dependencies": [],
+  "description": "Checks a prepared kickoff plan has everything the reviewer needs to decide: kickoff date, scope version, client contact, invitation draft and billing contact. Returns ok and the list of what is missing. Reads only; sends nothing.",
+  "flowIr": {
+    "description": "Checks a prepared kickoff plan is complete enough for a reviewer to decide on. Reads only; sends nothing.",
+    "irVersion": 1,
+    "name": "Kickoff plan completeness check",
+    "nodes": [
+      {
+        "code": "plan = params.get(\"plan\") or {}\nreported = params.get(\"reported\") or []\nif isinstance(reported, str):\n    reported = [reported]\nrequired_fields = [\n    (\"kickoffDate\", \"Kickoff date\"),\n    (\"scopeVersion\", \"Scope version\"),\n    (\"recipient\", \"Client contact\"),\n    (\"invitation\", \"Kickoff invitation draft\"),\n    (\"billingContact\", \"Billing contact\"),\n]\nfound = []\nfor field_key, field_label in required_fields:\n    if not plan.get(field_key):\n        found.append(field_label)\nfor note in reported:\n    text = str(note).strip()\n    if text and text not in found:\n        found.append(text)\nmissing = found\nok = len(missing) == 0",
+        "id": "check",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "True when nothing is missing.",
+            "name": "ok",
+            "type": "bool"
+          },
+          {
+            "description": "Plain-language list of what is missing.",
+            "name": "missing",
+            "type": "list[str]"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.plan }}",
+            "control": "hidden",
+            "label": "Kickoff plan",
+            "name": "plan",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ params.missing }}",
+            "control": "hidden",
+            "label": "Gaps already reported",
+            "name": "reported",
+            "required": false,
+            "type": "list[str]"
+          }
+        ],
+        "summary": "Looks for the kickoff date, scope version, client contact, invitation draft and billing contact in the plan and lists whatever is missing.",
+        "title": "Check the kickoff plan"
+      }
+    ],
+    "params": [
+      {
+        "control": "hidden",
+        "label": "Kickoff plan",
+        "name": "plan",
+        "required": true,
+        "type": "dict"
+      },
+      {
+        "control": "hidden",
+        "label": "Gaps the agent already reported",
+        "name": "missing",
+        "required": false,
+        "type": "list[str]"
+      }
+    ],
+    "rootOrder": [
+      "check"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Kickoff plan completeness check",
+  "originKey": "3853893c-ebe6-4663-8f8f-a8f993732c5a",
+  "tags": [
+    "client-onboarding"
+  ]
+}

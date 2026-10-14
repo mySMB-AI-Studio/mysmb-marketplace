@@ -1,0 +1,250 @@
+{
+  "contentHash": "71055d805d5ec842e4b19f0377665320a0108d3de04a281c28b2a595b88f65ad",
+  "definition": {
+    "capabilities": [
+      "campaign.publish",
+      "artifacts.write"
+    ],
+    "description": "Turns a campaign idea (audience, offer, budget cap) into a draft, checks its claims and spend, asks a named reviewer to approve the exact version for a date, and publishes only after that approval. The job ends with the publication receipt.",
+    "exceptions": [
+      {
+        "allowedPaths": [
+          "brief"
+        ],
+        "blocks": [
+          "approveCampaign",
+          "published"
+        ],
+        "key": "claimEvidenceMissing"
+      }
+    ],
+    "inputs": [
+      {
+        "key": "audience",
+        "label": "Audience",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "key": "offer",
+        "label": "Offer",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "key": "budgetCap",
+        "label": "Budget cap",
+        "required": true,
+        "type": "money"
+      },
+      {
+        "key": "publishDate",
+        "label": "Preferred publish date",
+        "required": false,
+        "type": "date"
+      }
+    ],
+    "key": "campaign-approval",
+    "kind": "process",
+    "limits": {
+      "maxActiveHours": 2,
+      "maxAgentTurnsPerStep": 8,
+      "maxAiUnits": 400,
+      "maxSteps": 30,
+      "maxWaitingDays": 14
+    },
+    "modelPolicy": {
+      "brief": "sonnet",
+      "judgement": "sonnet",
+      "plan": "sonnet"
+    },
+    "originKey": "53c6a486-ac6d-459a-815b-c3e1eea24f34",
+    "outcomes": [
+      {
+        "evidence": [
+          "action_receipt"
+        ],
+        "key": "publishedWithReceipt",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "decision_record"
+        ],
+        "key": "cancelled",
+        "terminal": true
+      }
+    ],
+    "protectedRules": [
+      {
+        "description": "Nothing is published or scheduled until a reviewer has approved a decision that still matches the budget cap, audience, copy version and publish time.",
+        "key": "noPublishWithoutApproval"
+      },
+      {
+        "description": "Every campaign carries a working unsubscribe link and the sender's physical address. Neither can be switched off.",
+        "key": "unsubscribeAndAddressAlwaysPresent"
+      }
+    ],
+    "rework": [
+      {
+        "from": "checkClaims",
+        "to": "brief"
+      }
+    ],
+    "roles": {
+      "manager": "installation.manager",
+      "reviewer": "installation.reviewer"
+    },
+    "safeTest": {
+      "assertions": [
+        "steps.brief.brief != null",
+        "steps.checkClaims.ok != null"
+      ],
+      "sampleInputs": {
+        "audience": "Sample customers",
+        "budgetCap": {
+          "amount": 500,
+          "currency": "AUD"
+        },
+        "offer": "Sample 10% offer"
+      }
+    },
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "key": "brief",
+        "kind": "agent",
+        "outputs": [
+          "brief",
+          "copyVersion",
+          "campaignId",
+          "publishAt",
+          "estimatedCost"
+        ],
+        "proposalSchema": "campaignBrief",
+        "skill": "draft-campaign-brief",
+        "title": "Draft the campaign"
+      },
+      {
+        "automation": "8b7fd664-420f-4110-8717-0fc46a362309",
+        "inputs": {
+          "banned_phrases": "{{bannedPhrases}}",
+          "brief": "steps.brief.brief",
+          "budget_cap": "inputs.budgetCap",
+          "campaign_id": "steps.brief.campaignId",
+          "estimated_cost": "steps.brief.estimatedCost",
+          "lead_days": "{{minReviewLeadDays}}",
+          "publish_at": "steps.brief.publishAt"
+        },
+        "key": "checkClaims",
+        "kind": "automation",
+        "title": "Check claims, spend and timing"
+      },
+      {
+        "eligible": [
+          "reviewer"
+        ],
+        "key": "approveCampaign",
+        "kind": "decision",
+        "materiality": [
+          "budgetCap",
+          "audience",
+          "copyVersion",
+          "publishAt"
+        ],
+        "options": [
+          {
+            "effect": "Schedules the approved draft in the campaign tool for the date shown. Once scheduled, it can be changed or cancelled only in the campaign tool.",
+            "intent": {
+              "capability": "campaign.publish",
+              "payloadFrom": "steps.checkClaims.publish_request"
+            },
+            "key": "approve-v2",
+            "label": "Approve this version for the date"
+          },
+          {
+            "effect": "Sends the draft back to preparation with your note. Nothing is published.",
+            "key": "request-changes",
+            "label": "Request changes",
+            "transition": "brief"
+          },
+          {
+            "effect": "Leaves the draft unpublished and pauses the job until a manager resumes or cancels it.",
+            "key": "hold",
+            "label": "Hold"
+          }
+        ],
+        "separation": "preparerCannotDecide",
+        "sla": {
+          "escalateTo": "installation.backupManager",
+          "expireAfterBusinessDays": 5,
+          "remindAfterBusinessDays": 1
+        },
+        "title": "Approve the campaign",
+        "type": "approve_campaign"
+      },
+      {
+        "evidence": [
+          "steps.approveCampaign.actionReceipt"
+        ],
+        "key": "published",
+        "kind": "gate",
+        "outcome": "publishedWithReceipt",
+        "requires": [
+          "steps.approveCampaign.receipt"
+        ],
+        "title": "Published with receipt"
+      }
+    ],
+    "subject": {
+      "dedupeBy": [
+        "audience",
+        "offer"
+      ],
+      "kind": "none"
+    },
+    "tests": [
+      "963c7980-966e-4baa-819a-07c80322c82f"
+    ],
+    "title": "Campaign approval",
+    "transitions": [
+      {
+        "from": "brief",
+        "to": "checkClaims"
+      },
+      {
+        "from": "checkClaims",
+        "to": "approveCampaign",
+        "when": "steps.checkClaims.ok"
+      },
+      {
+        "from": "approveCampaign",
+        "to": "published",
+        "when": "steps.approveCampaign.option == 'approve-v2'"
+      }
+    ],
+    "variationPoints": [
+      {
+        "default": "guaranteed, risk-free, 100% free, no obligation, cure",
+        "editableBy": "manager",
+        "key": "bannedPhrases",
+        "type": "string"
+      },
+      {
+        "default": 1,
+        "editableBy": "manager",
+        "key": "minReviewLeadDays",
+        "max": 14,
+        "min": 0,
+        "type": "number"
+      }
+    ],
+    "version": "0.1.0",
+    "vocabulary": {
+      "subject": "Campaign"
+    }
+  },
+  "kind": "process",
+  "name": "Campaign approval",
+  "originKey": "53c6a486-ac6d-459a-815b-c3e1eea24f34"
+}

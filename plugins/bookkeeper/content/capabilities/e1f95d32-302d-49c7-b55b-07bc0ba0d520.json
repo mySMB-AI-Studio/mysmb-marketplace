@@ -1,0 +1,130 @@
+{
+  "contentHash": "38749aec6b2cf563999fb1950141a9ef740367adf1fbec732eb06d89743bc43b",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "creditNote": "creditNote"
+        },
+        "scopes": [
+          "accounting.transactions"
+        ],
+        "server": "xero-accounting",
+        "tool": "create_credit_note"
+      }
+    ],
+    "idempotency": {
+      "supported": false
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "creditNote": {
+          "description": "A Xero credit note body. Reference carries the externalRef the platform later reconciles on. The tool creates the credit note; it does not allocate it to the invoice.",
+          "properties": {
+            "Contact": {
+              "properties": {
+                "ContactID": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "ContactID"
+              ],
+              "type": "object"
+            },
+            "CurrencyCode": {
+              "type": "string"
+            },
+            "Date": {
+              "type": "string"
+            },
+            "LineAmountTypes": {
+              "enum": [
+                "NoTax",
+                "Exclusive",
+                "Inclusive"
+              ],
+              "type": "string"
+            },
+            "LineItems": {
+              "items": {
+                "properties": {
+                  "AccountCode": {
+                    "type": "string"
+                  },
+                  "Description": {
+                    "type": "string"
+                  },
+                  "Quantity": {
+                    "type": "number"
+                  },
+                  "UnitAmount": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "Description",
+                  "Quantity",
+                  "UnitAmount",
+                  "AccountCode"
+                ],
+                "type": "object"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            "Reference": {
+              "maxLength": 255,
+              "type": "string"
+            },
+            "Status": {
+              "enum": [
+                "DRAFT",
+                "AUTHORISED"
+              ],
+              "type": "string"
+            },
+            "Type": {
+              "enum": [
+                "ACCRECCREDIT"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "Type",
+            "Contact",
+            "LineItems",
+            "Reference"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "creditNote"
+      ],
+      "type": "object"
+    },
+    "key": "accounting.post_adjustment",
+    "kind": "capability",
+    "originKey": "e1f95d32-302d-49c7-b55b-07bc0ba0d520",
+    "outputsSchema": {
+      "description": "The created credit note as returned by the ledger, including its CreditNoteID and Status.",
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "reconcile": {
+      "by": "externalRef",
+      "tool": "list_credit_notes"
+    },
+    "schemaVersion": 1,
+    "sideEffectClass": "financial",
+    "title": "Post an approved adjustment (credit note)"
+  },
+  "kind": "capability",
+  "name": "Post an approved adjustment (credit note)",
+  "originKey": "e1f95d32-302d-49c7-b55b-07bc0ba0d520"
+}

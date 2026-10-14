@@ -1,0 +1,362 @@
+{
+  "contentHash": "46f6c556ea7fe39c0fde3e782f53747aaaf531f850f8b0f0718b509cb70a5f09",
+  "definition": {
+    "key": "campaign-approval-core",
+    "kind": "evaluation",
+    "originKey": "963c7980-966e-4baa-819a-07c80322c82f",
+    "process": "53c6a486-ac6d-459a-815b-c3e1eea24f34",
+    "required": true,
+    "scenarios": [
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "approve-v2",
+              "step": "approveCampaign"
+            }
+          ],
+          "outcome": "publishedWithReceipt",
+          "stepsReached": [
+            "brief",
+            "checkClaims",
+            "approveCampaign",
+            "published"
+          ]
+        },
+        "fixtures": {
+          "brief": {
+            "offerTerms": "Until 30 November. One use per customer.",
+            "senderAddress": "1 Example St, Sydney NSW 2000",
+            "subject": "10% off the summer range",
+            "unsubscribe": true
+          },
+          "estimatedCost": 120,
+          "responses": [
+            {
+              "option": "approve-v2",
+              "step": "approveCampaign"
+            }
+          ],
+          "settings": {
+            "bannedPhrases": "guaranteed, risk-free, 100% free, no obligation, cure",
+            "minReviewLeadDays": 1
+          }
+        },
+        "inputs": {
+          "audience": "Customers who bought in the last 12 months",
+          "budgetCap": {
+            "amount": 500,
+            "currency": "AUD"
+          },
+          "offer": "10% off the summer range until 30 November",
+          "publishDate": "2026-11-09"
+        },
+        "key": "happyPath",
+        "rubric": [
+          {
+            "criterion": "The decision brief names the audience, the copy version, the publish time and the estimated cost against the cap.",
+            "weight": 0.5
+          },
+          {
+            "criterion": "The receipt records the campaign id and the scheduled time.",
+            "weight": 0.5
+          }
+        ],
+        "title": "A clean draft is approved for the date and published with a receipt"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "approve-v2",
+              "step": "approveCampaign"
+            }
+          ],
+          "outcome": "publishedWithReceipt",
+          "stepsReached": [
+            "brief",
+            "checkClaims",
+            "approveCampaign",
+            "published"
+          ]
+        },
+        "fixtures": {
+          "drafts": [
+            {
+              "brief": {
+                "offerTerms": "Until 30 November.",
+                "senderAddress": "1 Example St, Sydney NSW 2000",
+                "subject": "Guaranteed savings on the summer range",
+                "unsubscribe": true
+              },
+              "copyVersion": "v1"
+            },
+            {
+              "brief": {
+                "offerTerms": "Until 30 November.",
+                "senderAddress": "1 Example St, Sydney NSW 2000",
+                "subject": "10% off the summer range",
+                "unsubscribe": true
+              },
+              "copyVersion": "v2"
+            }
+          ],
+          "estimatedCost": 120,
+          "responses": [
+            {
+              "option": "approve-v2",
+              "step": "approveCampaign"
+            }
+          ],
+          "settings": {
+            "bannedPhrases": "guaranteed, risk-free, 100% free, no obligation, cure",
+            "minReviewLeadDays": 1
+          }
+        },
+        "inputs": {
+          "audience": "Customers who bought in the last 12 months",
+          "budgetCap": {
+            "amount": 500,
+            "currency": "AUD"
+          },
+          "offer": "10% off the summer range until 30 November",
+          "publishDate": "2026-11-09"
+        },
+        "key": "claimsFlaggedThenFixed",
+        "rubric": [
+          {
+            "criterion": "The first draft is stopped at the claims check, naming 'guaranteed', and never offered to the reviewer.",
+            "weight": 0.6
+          },
+          {
+            "criterion": "Only the corrected version (v2) is shown for approval.",
+            "weight": 0.4
+          }
+        ],
+        "title": "A banned claim is caught, the draft is corrected, and only then does it reach the reviewer"
+      },
+      {
+        "expected": {
+          "intentsNotAllowed": [
+            "campaign.publish"
+          ],
+          "stepsReached": [
+            "brief",
+            "checkClaims"
+          ]
+        },
+        "fixtures": {
+          "brief": {
+            "offerTerms": "Until 30 November.",
+            "senderAddress": "1 Example St, Sydney NSW 2000",
+            "subject": "10% off the summer range",
+            "unsubscribe": true
+          },
+          "estimatedCost": 900,
+          "settings": {
+            "bannedPhrases": "guaranteed, risk-free, 100% free, no obligation, cure",
+            "minReviewLeadDays": 1
+          }
+        },
+        "inputs": {
+          "audience": "Customers who bought in the last 12 months",
+          "budgetCap": {
+            "amount": 500,
+            "currency": "AUD"
+          },
+          "offer": "10% off the summer range until 30 November",
+          "publishDate": "2026-11-09"
+        },
+        "key": "overBudgetNeverReachesDecision",
+        "rubric": [
+          {
+            "criterion": "The check states that the estimate (900) is above the budget cap (500) and returns the draft for rework.",
+            "weight": 1
+          }
+        ],
+        "title": "Estimated spend above the cap stops at the check: no decision, no publish"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "hold",
+              "step": "approveCampaign"
+            }
+          ],
+          "intentsNotAllowed": [
+            "campaign.publish"
+          ],
+          "stepsReached": [
+            "brief",
+            "checkClaims",
+            "approveCampaign"
+          ]
+        },
+        "fixtures": {
+          "brief": {
+            "offerTerms": "Until 30 November.",
+            "senderAddress": "1 Example St, Sydney NSW 2000",
+            "subject": "10% off the summer range",
+            "unsubscribe": true
+          },
+          "estimatedCost": 120,
+          "responses": [
+            {
+              "option": "hold",
+              "step": "approveCampaign"
+            }
+          ],
+          "settings": {
+            "bannedPhrases": "guaranteed, risk-free, 100% free, no obligation, cure",
+            "minReviewLeadDays": 1
+          }
+        },
+        "inputs": {
+          "audience": "Customers who bought in the last 12 months",
+          "budgetCap": {
+            "amount": 500,
+            "currency": "AUD"
+          },
+          "offer": "10% off the summer range until 30 November",
+          "publishDate": "2026-11-09"
+        },
+        "key": "holdDoesNotPublish",
+        "rubric": [
+          {
+            "criterion": "The job pauses with the draft unpublished and shows who can resume or cancel it.",
+            "weight": 1
+          }
+        ],
+        "title": "The reviewer holds the campaign: nothing is scheduled"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "approve-v2",
+              "step": "approveCampaign"
+            },
+            {
+              "option": "approve-v2",
+              "step": "approveCampaign"
+            }
+          ],
+          "stepsReached": [
+            "brief",
+            "checkClaims",
+            "approveCampaign"
+          ]
+        },
+        "fixtures": {
+          "brief": {
+            "offerTerms": "Until 30 November.",
+            "senderAddress": "1 Example St, Sydney NSW 2000",
+            "subject": "10% off the summer range",
+            "unsubscribe": true
+          },
+          "changes": [
+            {
+              "after": "approveCampaign",
+              "field": "audience",
+              "from": "Customers who bought in the last 12 months",
+              "to": "All subscribers"
+            }
+          ],
+          "estimatedCost": 120,
+          "responses": [
+            {
+              "option": "approve-v2",
+              "step": "approveCampaign"
+            }
+          ],
+          "settings": {
+            "bannedPhrases": "guaranteed, risk-free, 100% free, no obligation, cure",
+            "minReviewLeadDays": 1
+          }
+        },
+        "inputs": {
+          "audience": "Customers who bought in the last 12 months",
+          "budgetCap": {
+            "amount": 500,
+            "currency": "AUD"
+          },
+          "offer": "10% off the summer range until 30 November",
+          "publishDate": "2026-11-09"
+        },
+        "key": "audienceChangedAfterApproval",
+        "rubric": [
+          {
+            "criterion": "The first approval is marked stale and shows the audience change precisely.",
+            "weight": 0.5
+          },
+          {
+            "criterion": "Nothing is scheduled under the stale approval; a fresh decision is requested first.",
+            "weight": 0.5
+          }
+        ],
+        "title": "The audience changes after approval: the decision is invalidated before anything is scheduled"
+      },
+      {
+        "expected": {
+          "intentsNotAllowed": [
+            "campaign.publish"
+          ],
+          "stepsReached": [
+            "brief",
+            "checkClaims",
+            "approveCampaign"
+          ]
+        },
+        "fixtures": {
+          "brief": {
+            "offerTerms": "Until 30 November.",
+            "senderAddress": "1 Example St, Sydney NSW 2000",
+            "subject": "10% off the summer range",
+            "unsubscribe": true
+          },
+          "connections": {
+            "campaign.publish": "denied"
+          },
+          "estimatedCost": 120,
+          "responses": [
+            {
+              "option": "approve-v2",
+              "step": "approveCampaign"
+            }
+          ],
+          "settings": {
+            "bannedPhrases": "guaranteed, risk-free, 100% free, no obligation, cure",
+            "minReviewLeadDays": 1
+          }
+        },
+        "inputs": {
+          "audience": "Customers who bought in the last 12 months",
+          "budgetCap": {
+            "amount": 500,
+            "currency": "AUD"
+          },
+          "offer": "10% off the summer range until 30 November",
+          "publishDate": "2026-11-09"
+        },
+        "key": "campaignToolAccessDenied",
+        "rubric": [
+          {
+            "criterion": "The publish step is shown as manual with the approved draft ready to schedule by a person; no other account is used.",
+            "weight": 1
+          }
+        ],
+        "title": "The campaign tool connection is revoked: no publish intent"
+      }
+    ],
+    "schemaVersion": 1,
+    "thresholds": {
+      "requiredScenarioPassRate": 1,
+      "rubricMinScore": 0.7
+    },
+    "title": "Campaign approval: core scenarios"
+  },
+  "kind": "evaluation",
+  "name": "Campaign approval: core scenarios",
+  "originKey": "963c7980-966e-4baa-819a-07c80322c82f"
+}

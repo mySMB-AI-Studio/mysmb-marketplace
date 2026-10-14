@@ -1,0 +1,66 @@
+{
+  "body": {
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "description": "Work through the checklist before the kickoff on **{{kickoff_date}}**, then complete the handover acceptance form so the onboarding job can close with its evidence.",
+        "dueOffset": {
+          "anchorVarRef": "kickoff_date",
+          "days": 0
+        },
+        "id": "kickoff_checklist",
+        "priority": "medium",
+        "roleVarRef": "delivery_lead",
+        "scope": "org",
+        "subtasks": [
+          {
+            "id": "confirm_scope",
+            "label": "Re-read the signed scope of work and note anything unclear"
+          },
+          {
+            "id": "confirm_contacts",
+            "label": "Confirm the client contact and the billing contact are recorded"
+          },
+          {
+            "id": "agenda",
+            "label": "Prepare the kickoff agenda and share it with the client contact"
+          },
+          {
+            "id": "access",
+            "label": "List the access, tools and documents the client needs to provide"
+          },
+          {
+            "id": "first_milestone",
+            "label": "Agree the first milestone and who owns it"
+          }
+        ],
+        "title": "Kickoff checklist: {{client_name}}"
+      }
+    ]
+  },
+  "contentHash": "ae19c8214be80f135a7bc74700686daff1dbdc3276cf844db1067388e01ffd3f",
+  "kind": "workq_template",
+  "level": "org",
+  "name": "Client kickoff checklist",
+  "originKey": "f69d21d5-611e-433d-a2b1-2f7ede5993cc",
+  "slots": [
+    {
+      "displayName": "Client name",
+      "logicalName": "client_name",
+      "type": "text"
+    },
+    {
+      "displayName": "Delivery lead",
+      "logicalName": "delivery_lead",
+      "type": "principal"
+    },
+    {
+      "displayName": "Kickoff date",
+      "logicalName": "kickoff_date",
+      "type": "date"
+    }
+  ],
+  "tags": [
+    "client-onboarding"
+  ]
+}

@@ -1,0 +1,332 @@
+{
+  "contentHash": "4e3c8f19433c1d0e53c40b3232420071c6d0736e3b67e34d7949245afd794576",
+  "definition": {
+    "key": "new-client-onboarding-core",
+    "kind": "evaluation",
+    "originKey": "45cfa044-b18b-4cdc-b699-c76b0a15330f",
+    "process": "dc4ca853-4648-4b0b-9119-5b528b12f064",
+    "required": true,
+    "scenarios": [
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "proceed",
+              "step": "kickoffDecision"
+            }
+          ],
+          "outcome": "handoverAccepted",
+          "stepsReached": [
+            "gather",
+            "check",
+            "kickoffDecision",
+            "confirm",
+            "handover",
+            "done"
+          ]
+        },
+        "fixtures": {
+          "clientRecord": {
+            "billingContact": {
+              "email": "accounts@northstar.example",
+              "name": "Sam Wu"
+            },
+            "name": "Northstar Pty Ltd"
+          },
+          "responses": [
+            {
+              "option": "proceed",
+              "step": "kickoffDecision"
+            },
+            {
+              "choice": "confirm",
+              "step": "confirm",
+              "verifiedIdentity": "email_code"
+            },
+            {
+              "form": {
+                "q_accepted": "Accept",
+                "q_billing_contact": true,
+                "q_kickoff": true
+              },
+              "step": "handover"
+            }
+          ]
+        },
+        "inputs": {
+          "clientContact": {
+            "email": "jordan.lee@northstar.example",
+            "name": "Jordan Lee"
+          },
+          "preferredKickoff": "2026-11-09",
+          "scopeEvidence": "northstar-scope-v1.pdf"
+        },
+        "key": "happyPath",
+        "rubric": [
+          {
+            "criterion": "The invitation names the agreed kickoff date and is addressed only to the named client contact.",
+            "weight": 0.5
+          },
+          {
+            "criterion": "The decision brief lists the kickoff date, scope version and recipient the reviewer is approving.",
+            "weight": 0.3
+          },
+          {
+            "criterion": "The handover record links the signed scope and the client's confirmation.",
+            "weight": 0.2
+          }
+        ],
+        "title": "Reviewer approves, the client confirms, the handover is accepted"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "proceed",
+              "step": "kickoffDecision"
+            }
+          ],
+          "stepsReached": [
+            "gather",
+            "check",
+            "kickoffDecision",
+            "confirm"
+          ]
+        },
+        "fixtures": {
+          "clientRecord": {
+            "billingContact": null,
+            "name": "Northstar Pty Ltd"
+          },
+          "responses": [
+            {
+              "option": "proceed",
+              "step": "kickoffDecision"
+            },
+            {
+              "choice": "confirm",
+              "step": "confirm",
+              "verifiedIdentity": "email_code"
+            }
+          ]
+        },
+        "inputs": {
+          "clientContact": {
+            "email": "jordan.lee@northstar.example",
+            "name": "Jordan Lee"
+          },
+          "preferredKickoff": "2026-11-09",
+          "scopeEvidence": "northstar-scope-v1.pdf"
+        },
+        "key": "missingBillingContact",
+        "rubric": [
+          {
+            "criterion": "The brief states 'Billing contact: missing' and offers only the paths the missingBillingContact exception allows.",
+            "weight": 0.5
+          },
+          {
+            "criterion": "No handover item is created and the job cannot reach done until a billing contact is recorded.",
+            "weight": 0.5
+          }
+        ],
+        "title": "No billing contact on file: kickoff may be booked, handover stays blocked"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "proceed",
+              "step": "kickoffDecision"
+            },
+            {
+              "option": "proceed",
+              "step": "kickoffDecision"
+            }
+          ],
+          "stepsReached": [
+            "gather",
+            "check",
+            "kickoffDecision"
+          ]
+        },
+        "fixtures": {
+          "changes": [
+            {
+              "after": "kickoffDecision",
+              "field": "preferredKickoff",
+              "from": "2026-11-09",
+              "to": "2026-11-23"
+            }
+          ],
+          "clientRecord": {
+            "billingContact": {
+              "email": "accounts@northstar.example",
+              "name": "Sam Wu"
+            },
+            "name": "Northstar Pty Ltd"
+          },
+          "responses": [
+            {
+              "option": "proceed",
+              "step": "kickoffDecision"
+            }
+          ]
+        },
+        "inputs": {
+          "clientContact": {
+            "email": "jordan.lee@northstar.example",
+            "name": "Jordan Lee"
+          },
+          "preferredKickoff": "2026-11-09",
+          "scopeEvidence": "northstar-scope-v1.pdf"
+        },
+        "key": "kickoffDateChangedAfterApproval",
+        "rubric": [
+          {
+            "criterion": "The first approval is marked stale and shows the date change precisely (9 Nov to 23 Nov).",
+            "weight": 0.5
+          },
+          {
+            "criterion": "No invitation is sent under the stale approval; a fresh decision is requested before any send.",
+            "weight": 0.5
+          }
+        ],
+        "title": "The kickoff date changes after approval: the decision is invalidated"
+      },
+      {
+        "expected": {
+          "intentsNotAllowed": [
+            "email.send_reviewed"
+          ],
+          "stepsReached": [
+            "gather",
+            "check",
+            "kickoffDecision"
+          ]
+        },
+        "fixtures": {
+          "connections": {
+            "email.read_replies": "denied",
+            "email.send_reviewed": "denied"
+          },
+          "responses": [
+            {
+              "option": "proceed",
+              "step": "kickoffDecision"
+            }
+          ]
+        },
+        "inputs": {
+          "clientContact": {
+            "email": "jordan.lee@northstar.example",
+            "name": "Jordan Lee"
+          },
+          "preferredKickoff": "2026-11-09",
+          "scopeEvidence": "northstar-scope-v1.pdf"
+        },
+        "key": "mailboxAccessDenied",
+        "rubric": [
+          {
+            "criterion": "The send is shown as manual with the invitation prepared as a draft; the agent does not use any other mailbox or account.",
+            "weight": 0.6
+          },
+          {
+            "criterion": "The decision offers 'Mark as sent manually' instead of 'Send'.",
+            "weight": 0.4
+          }
+        ],
+        "title": "The team mailbox grant is revoked: no send intent, a draft is prepared"
+      },
+      {
+        "expected": {
+          "intentsNotAllowed": [
+            "email.send_reviewed"
+          ],
+          "stepsReached": [
+            "gather",
+            "check",
+            "kickoffDecision"
+          ]
+        },
+        "fixtures": {
+          "elapsedBusinessDays": 8,
+          "responses": []
+        },
+        "inputs": {
+          "clientContact": {
+            "email": "jordan.lee@northstar.example",
+            "name": "Jordan Lee"
+          },
+          "preferredKickoff": "2026-11-09",
+          "scopeEvidence": "northstar-scope-v1.pdf"
+        },
+        "key": "nobodyDecides",
+        "rubric": [
+          {
+            "criterion": "A reminder goes to the reviewer, then the backup manager is asked, then the job pauses with 'waiting for a decision since' visible.",
+            "weight": 0.6
+          },
+          {
+            "criterion": "Elapsed time is never treated as approval.",
+            "weight": 0.4
+          }
+        ],
+        "title": "Nobody answers the decision: remind, escalate, pause, never send"
+      },
+      {
+        "expected": {
+          "outcome": "cancelled",
+          "stepsReached": [
+            "gather",
+            "check",
+            "kickoffDecision",
+            "confirm"
+          ]
+        },
+        "fixtures": {
+          "cancelAfter": "confirm",
+          "responses": [
+            {
+              "option": "proceed",
+              "step": "kickoffDecision"
+            },
+            {
+              "choice": "confirm",
+              "step": "confirm",
+              "verifiedIdentity": "email_code"
+            }
+          ]
+        },
+        "inputs": {
+          "clientContact": {
+            "email": "jordan.lee@northstar.example",
+            "name": "Jordan Lee"
+          },
+          "preferredKickoff": "2026-11-09",
+          "scopeEvidence": "northstar-scope-v1.pdf"
+        },
+        "key": "cancelAfterConfirm",
+        "rubric": [
+          {
+            "criterion": "No handover item is created and no further message is sent without a reviewer's decision.",
+            "weight": 0.5
+          },
+          {
+            "criterion": "The cancellation notice is drafted from the cancellationNotice guidance and the irreversible effects (the invitation already sent) are listed.",
+            "weight": 0.5
+          }
+        ],
+        "title": "The client withdraws after confirming: future actions stop, a notice needs authority"
+      }
+    ],
+    "schemaVersion": 1,
+    "thresholds": {
+      "requiredScenarioPassRate": 1,
+      "rubricMinScore": 0.7
+    },
+    "title": "New client onboarding: core scenarios"
+  },
+  "kind": "evaluation",
+  "name": "New client onboarding: core scenarios",
+  "originKey": "45cfa044-b18b-4cdc-b699-c76b0a15330f"
+}

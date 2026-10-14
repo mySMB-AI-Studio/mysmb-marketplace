@@ -1,0 +1,166 @@
+{
+  "contentHash": "6a0c15c5c19de1f4b3e6b57c40b4c8035ccb0a490ab131a6d2230849df0dabf2",
+  "declaredScopes": [],
+  "dependencies": [],
+  "description": "Checks a campaign draft before a reviewer sees it: banned or unsupported claims, offer terms, an unsubscribe link and sender address, estimated spend against the budget cap, and a valid publish time. When everything passes it prepares the exact publish request. Reads only; publishes nothing.",
+  "flowIr": {
+    "description": "Checks a campaign draft for claims, spend and timing, and prepares the publish request when it passes. Reads only; publishes nothing.",
+    "irVersion": 1,
+    "name": "Campaign claims and spend check",
+    "nodes": [
+      {
+        "code": "import re\nfrom datetime import datetime, timedelta, timezone\nfrom decimal import Decimal, InvalidOperation, ROUND_HALF_UP\n\n\ndef to_cents(value):\n    if value is None or value == \"\":\n        return 0\n    try:\n        amount = Decimal(str(value))\n    except InvalidOperation:\n        raise ValueError(\"Amount is not a number: \" + str(value))\n    return int((amount * 100).quantize(Decimal(1), rounding=ROUND_HALF_UP))\n\n\nbrief = params.get(\"brief\") or {}\nbudget = params.get(\"budget_cap\") or {}\nissues = []\n\n# Claims: banned phrases, offer terms, unsubscribe link and sender address.\ntext = \" \".join([str(brief.get(\"subject\") or \"\"), str(brief.get(\"preheader\") or \"\"), str(brief.get(\"body\") or \"\")])\nlowered = text.lower()\nfor phrase in str(params.get(\"banned_phrases\") or \"\").split(\",\"):\n    phrase = phrase.strip().lower()\n    if phrase and phrase in lowered:\n        issues.append(\"The copy contains a phrase that needs evidence or removal: \" + phrase)\nif re.search(r\"[%$]\", text) and not str(brief.get(\"offerTerms\") or \"\").strip():\n    issues.append(\"The copy states a price or percentage but the offer terms are missing.\")\nif \"unsubscribe\" not in lowered and brief.get(\"unsubscribe\") is not True:\n    issues.append(\"There is no unsubscribe link.\")\nif not str(brief.get(\"senderAddress\") or \"\").strip():\n    issues.append(\"The sender's physical address is missing.\")\n\n# Spend against the budget cap, in whole cents.\nestimated = params.get(\"estimated_cost\")\ncap = budget.get(\"amount\")\nwithin_budget = False\nif estimated is None or cap is None:\n    issues.append(\"The estimated cost or the budget cap is missing.\")\nelse:\n    within_budget = to_cents(estimated) <= to_cents(cap)\n    if not within_budget:\n        issues.append(\"The estimated cost is above the budget cap.\")\n\n# Timing: a valid UTC quarter-hour that leaves the minimum review lead.\ncampaign_id = str(params.get(\"campaign_id\") or \"\")\nif not campaign_id:\n    issues.append(\"No draft campaign exists in the campaign tool yet.\")\npublish_at = str(params.get(\"publish_at\") or \"\")\nschedule_time = \"\"\ntry:\n    parsed = datetime.fromisoformat(publish_at.replace(\"Z\", \"+00:00\"))\n    if parsed.tzinfo is None:\n        parsed = parsed.replace(tzinfo=timezone.utc)\n    parsed = parsed.astimezone(timezone.utc)\n    schedule_time = parsed.strftime(\"%Y-%m-%dT%H:%M:%S+00:00\")\n    if parsed.minute % 15 != 0 or parsed.second != 0:\n        issues.append(\"The campaign tool only schedules on a quarter hour (:00, :15, :30, :45).\")\n    earliest = datetime.now(timezone.utc) + timedelta(days=float(params.get(\"lead_days\") or 0))\n    if parsed < earliest:\n        issues.append(\"The publish time is sooner than the minimum review lead time.\")\nexcept ValueError:\n    issues.append(\"The publish time is missing or is not a valid date and time.\")\n\nok = len(issues) == 0\npublish_request = {\"campaignId\": campaign_id, \"scheduleTime\": schedule_time} if ok else {}",
+        "id": "check",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "True when nothing is flagged.",
+            "name": "ok",
+            "type": "bool"
+          },
+          {
+            "description": "Plain-language list of what must be fixed.",
+            "name": "issues",
+            "type": "list[str]"
+          },
+          {
+            "description": "True when the estimated cost is within the budget cap.",
+            "name": "within_budget",
+            "type": "bool"
+          },
+          {
+            "description": "The exact publish request (campaignId, scheduleTime), or an empty object when anything is flagged.",
+            "name": "publish_request",
+            "type": "dict"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.brief }}",
+            "control": "hidden",
+            "label": "Campaign brief",
+            "name": "brief",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ params.campaign_id }}",
+            "control": "hidden",
+            "label": "Draft campaign id",
+            "name": "campaign_id",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.publish_at }}",
+            "control": "hidden",
+            "label": "Proposed publish time",
+            "name": "publish_at",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.estimated_cost }}",
+            "control": "hidden",
+            "label": "Estimated cost",
+            "name": "estimated_cost",
+            "required": false,
+            "type": "float"
+          },
+          {
+            "binding": "{{ params.budget_cap }}",
+            "control": "hidden",
+            "label": "Budget cap",
+            "name": "budget_cap",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ params.banned_phrases }}",
+            "control": "hidden",
+            "label": "Phrases that need evidence",
+            "name": "banned_phrases",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.lead_days }}",
+            "control": "hidden",
+            "label": "Minimum review lead (days)",
+            "name": "lead_days",
+            "required": false,
+            "type": "float"
+          }
+        ],
+        "summary": "Scans the copy for banned phrases and missing offer terms, unsubscribe link and sender address, compares the estimated cost with the budget cap in whole cents, validates the publish time, and prepares the publish request when nothing is flagged.",
+        "title": "Check the campaign draft"
+      }
+    ],
+    "params": [
+      {
+        "control": "hidden",
+        "label": "Campaign brief",
+        "name": "brief",
+        "required": true,
+        "type": "dict"
+      },
+      {
+        "control": "hidden",
+        "label": "Draft campaign id",
+        "name": "campaign_id",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "hidden",
+        "label": "Proposed publish time",
+        "name": "publish_at",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "hidden",
+        "label": "Estimated cost",
+        "name": "estimated_cost",
+        "required": false,
+        "type": "float"
+      },
+      {
+        "control": "hidden",
+        "label": "Budget cap",
+        "name": "budget_cap",
+        "required": true,
+        "type": "dict"
+      },
+      {
+        "control": "hidden",
+        "label": "Phrases that need evidence",
+        "name": "banned_phrases",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "hidden",
+        "label": "Minimum review lead (days)",
+        "name": "lead_days",
+        "required": false,
+        "type": "float"
+      }
+    ],
+    "rootOrder": [
+      "check"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Campaign claims and spend check",
+  "originKey": "8b7fd664-420f-4110-8717-0fc46a362309",
+  "tags": [
+    "marketing"
+  ]
+}

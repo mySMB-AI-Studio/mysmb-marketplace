@@ -1,0 +1,80 @@
+{
+  "contentHash": "8edb63d3f498cc928ee840f96ef2dd50deac12de2b2653eb7b2414f40e17d6af",
+  "definition": {
+    "steps": [
+      {
+        "connectors": [],
+        "description": "Who follows up once a reviewer has decided. Reviewers and the manager are set when you activate the agent.",
+        "fields": [
+          {
+            "default": "accounts",
+            "helpText": "The group that receives the follow-up item. It is matched to the workspace group of the same name.",
+            "key": "account_owner_group",
+            "label": "Account owners",
+            "options": [
+              {
+                "label": "Accounts team",
+                "value": "accounts"
+              },
+              {
+                "label": "Finance",
+                "value": "finance"
+              },
+              {
+                "label": "Bookkeeping",
+                "value": "bookkeeping"
+              }
+            ],
+            "required": true,
+            "type": "select"
+          }
+        ],
+        "id": "people",
+        "title": "People"
+      },
+      {
+        "connectors": [
+          {
+            "key": "accounting",
+            "label": "Accounting: read invoices and payments, post approved adjustments",
+            "required": true,
+            "scope": "service",
+            "server": "xero-accounting"
+          }
+        ],
+        "description": "The accounting connection. The agent reads invoices and payments with it, and posts approved adjustments only, after a reviewer has decided.",
+        "fields": [],
+        "id": "connections",
+        "title": "Connections"
+      },
+      {
+        "connectors": [],
+        "description": "The write-off policy. A reviewer still decides every adjustment; the threshold only limits which shortfalls can be offered for one.",
+        "fields": [
+          {
+            "default": 50,
+            "helpText": "Largest shortfall, in the invoice currency, that can be offered for an adjustment. Larger shortfalls can only be kept open or reviewed.",
+            "key": "write_off_threshold",
+            "label": "Write-off threshold",
+            "required": true,
+            "type": "number"
+          },
+          {
+            "helpText": "The ledger account code adjustments are posted to, exactly as it appears in your chart of accounts.",
+            "key": "write_off_account_code",
+            "label": "Write-off account code",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "id": "preferences",
+        "title": "Preferences"
+      }
+    ],
+    "version": 1
+  },
+  "description": "People, accounting connection and write-off policy for the Bookkeeper agent.",
+  "kind": "setup",
+  "name": "Bookkeeper setup",
+  "originKey": "bfe70065-555f-4ac0-975c-9187f2cdaa7a"
+}

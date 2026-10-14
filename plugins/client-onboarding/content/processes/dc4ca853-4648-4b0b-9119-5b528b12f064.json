@@ -1,0 +1,290 @@
+{
+  "contentHash": "7dab0ae892bb0e6710ee6b10aaf54fde5f7407b2056511aa8de37d06d3abf877",
+  "definition": {
+    "cancellation": {
+      "compensation": [
+        {
+          "afterStep": "confirm",
+          "capability": "email.send_reviewed",
+          "template": "cancellationNotice"
+        }
+      ]
+    },
+    "capabilities": [
+      "email.send_reviewed",
+      "email.read_replies",
+      "records.read:client",
+      "workq.create",
+      "knowledge.read"
+    ],
+    "description": "Prepares a kickoff plan for a newly signed client, gets a named reviewer's decision before anything is sent, confirms the kickoff with the client contact through a verified link, and ends with an accepted handover to the delivery team.",
+    "exceptions": [
+      {
+        "allowedPaths": [
+          "kickoffDecision",
+          "confirm"
+        ],
+        "blocks": [
+          "handover",
+          "done"
+        ],
+        "key": "missingBillingContact"
+      }
+    ],
+    "inputs": [
+      {
+        "key": "scopeEvidence",
+        "label": "Signed scope of work",
+        "required": true,
+        "type": "evidence"
+      },
+      {
+        "key": "preferredKickoff",
+        "label": "Preferred kickoff date",
+        "required": false,
+        "type": "date"
+      },
+      {
+        "key": "clientContact",
+        "label": "Client contact for kickoff",
+        "required": false,
+        "type": "contact"
+      }
+    ],
+    "key": "new-client-onboarding",
+    "kind": "process",
+    "limits": {
+      "maxActiveHours": 2,
+      "maxAgentTurnsPerStep": 8,
+      "maxAiUnits": 300,
+      "maxSteps": 40,
+      "maxWaitingDays": 30
+    },
+    "modelPolicy": {
+      "brief": "haiku",
+      "judgement": "sonnet",
+      "plan": "sonnet"
+    },
+    "originKey": "dc4ca853-4648-4b0b-9119-5b528b12f064",
+    "outcomes": [
+      {
+        "evidence": [
+          "form_response",
+          "accepted_handover_record"
+        ],
+        "key": "handoverAccepted",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "cancellation_record"
+        ],
+        "key": "cancelled",
+        "terminal": true
+      }
+    ],
+    "protectedRules": [
+      {
+        "description": "No kickoff invitation or contact request is sent until a reviewer has recorded a decision that still matches the kickoff date, scope version and recipient.",
+        "key": "noInvitationWithoutDecision"
+      },
+      {
+        "description": "Messages go only to the client contact named on the job. The agent never improvises or guesses a recipient.",
+        "key": "onlyNamedRecipientContacted"
+      }
+    ],
+    "rework": [
+      {
+        "from": "handover",
+        "requires": "reviewer",
+        "to": "gather"
+      }
+    ],
+    "roles": {
+      "deliveryLead": {
+        "group": "{{settings.delivery_group}}"
+      },
+      "manager": "installation.manager",
+      "reviewer": "installation.reviewer"
+    },
+    "safeTest": {
+      "assertions": [
+        "steps.gather.plan != null",
+        "steps.check.ok"
+      ],
+      "sampleInputs": {
+        "clientContact": {
+          "email": "client@example.test",
+          "name": "Sample Client"
+        },
+        "preferredKickoff": "2026-11-09",
+        "scopeEvidence": "sample-scope-of-work.pdf"
+      }
+    },
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "key": "gather",
+        "kind": "agent",
+        "outputs": [
+          "plan",
+          "missing"
+        ],
+        "proposalSchema": "kickoffPlan",
+        "skill": "prepare-kickoff-plan",
+        "title": "Prepare kickoff plan"
+      },
+      {
+        "automation": "3853893c-ebe6-4663-8f8f-a8f993732c5a",
+        "inputs": {
+          "missing": "steps.gather.missing",
+          "plan": "steps.gather.plan"
+        },
+        "key": "check",
+        "kind": "automation",
+        "title": "Check the plan is complete"
+      },
+      {
+        "eligible": [
+          "reviewer"
+        ],
+        "key": "kickoffDecision",
+        "kind": "decision",
+        "materiality": [
+          "kickoffDate",
+          "scopeVersion",
+          "recipient"
+        ],
+        "options": [
+          {
+            "effect": "Sends the reviewed kickoff invitation to the client contact. Nothing else is sent.",
+            "intent": {
+              "capability": "email.send_reviewed",
+              "payloadFrom": "steps.gather.plan.invitation"
+            },
+            "key": "proceed",
+            "label": "Book kickoff and request contact"
+          },
+          {
+            "effect": "Sends the reviewed request asking the contact to confirm their details before a date is booked.",
+            "intent": {
+              "capability": "email.send_reviewed",
+              "payloadFrom": "steps.gather.plan.contactRequest"
+            },
+            "key": "wait",
+            "label": "Wait for the contact"
+          },
+          {
+            "effect": "Sends the plan back to preparation with your note. Nothing is sent to the client.",
+            "key": "revise",
+            "label": "Ask for changes",
+            "transition": "gather"
+          }
+        ],
+        "separation": "preparerCannotDecide",
+        "sla": {
+          "escalateTo": "installation.backupManager",
+          "expireAfterBusinessDays": 5,
+          "remindAfterBusinessDays": "{{reminderDays}}"
+        },
+        "title": "Decide how to start the kickoff",
+        "type": "kickoff_exception"
+      },
+      {
+        "channel": [
+          "email",
+          "portal"
+        ],
+        "expiresAfterDays": 7,
+        "identityLevel": "email_code",
+        "interaction": "choice",
+        "key": "confirm",
+        "kind": "external",
+        "onNoResponse": "remindThenEscalate",
+        "recipient": "inputs.clientContact",
+        "title": "Client confirms the kickoff"
+      },
+      {
+        "assign": "deliveryLead",
+        "completion": "formSubmitted",
+        "form": "1c56b113-cd10-408b-bbb9-2a33100d85ef",
+        "key": "handover",
+        "kind": "human",
+        "template": "f69d21d5-611e-433d-a2b1-2f7ede5993cc",
+        "title": "Accept the handover"
+      },
+      {
+        "evidence": [
+          "steps.handover.formResponse"
+        ],
+        "key": "done",
+        "kind": "gate",
+        "outcome": "handoverAccepted",
+        "requires": [
+          "steps.handover.accepted",
+          "inputs.scopeEvidence"
+        ],
+        "title": "Handover accepted"
+      }
+    ],
+    "subject": {
+      "dedupeBy": [
+        "clientId"
+      ],
+      "kind": "clients"
+    },
+    "tests": [
+      "45cfa044-b18b-4cdc-b699-c76b0a15330f"
+    ],
+    "title": "New client onboarding",
+    "transitions": [
+      {
+        "from": "gather",
+        "to": "check"
+      },
+      {
+        "from": "check",
+        "to": "kickoffDecision"
+      },
+      {
+        "from": "kickoffDecision",
+        "to": "confirm",
+        "when": "steps.kickoffDecision.option != 'revise'"
+      },
+      {
+        "from": "confirm",
+        "to": "handover",
+        "when": "steps.confirm.answered"
+      },
+      {
+        "from": "handover",
+        "to": "done"
+      }
+    ],
+    "variationPoints": [
+      {
+        "default": 2,
+        "editableBy": "manager",
+        "key": "reminderDays",
+        "max": 10,
+        "min": 1,
+        "type": "number"
+      },
+      {
+        "default": 5,
+        "editableBy": "manager",
+        "key": "kickoffLeadDays",
+        "max": 30,
+        "min": 1,
+        "type": "number"
+      }
+    ],
+    "version": "0.1.0",
+    "vocabulary": {
+      "subject": "Client"
+    }
+  },
+  "kind": "process",
+  "name": "New client onboarding",
+  "originKey": "dc4ca853-4648-4b0b-9119-5b528b12f064"
+}

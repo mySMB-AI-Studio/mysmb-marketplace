@@ -1,0 +1,70 @@
+{
+  "name": "bookkeeper",
+  "version": "0.1.0",
+  "description": "A business agent that reconciles a customer payment against its invoice: it reads the ledger, a named reviewer decides how to treat any difference, and an adjustment is posted only after that decision.",
+  "author": {
+    "name": "mySMB AI Studio"
+  },
+  "homepage": "https://github.com/mySMB-AI-Studio/mysmb-marketplace/tree/main/plugins/bookkeeper",
+  "license": "MIT",
+  "keywords": [
+    "bookkeeper",
+    "reconciliation",
+    "invoices",
+    "payments",
+    "xero",
+    "business-agent",
+    "finance",
+    "smb"
+  ],
+  "displayName": "Bookkeeper",
+  "icon": "Scale",
+  "listing": {
+    "agent": {
+      "role": "Bookkeeper",
+      "outcomes": [
+        "Every payment ends reconciled, or as a documented exception with the decision on file",
+        "Nothing is posted to the ledger without a reviewer's recorded decision",
+        "Short payments are treated by policy: kept open, reviewed, or adjusted within your write-off threshold"
+      ],
+      "processes": [
+        "invoice-reconciliation"
+      ],
+      "requiredCapabilities": [
+        "accounting.read_invoices",
+        "accounting.post_adjustment"
+      ],
+      "setupEffort": "an-hour",
+      "priceDisplay": "Illustrative: from $199 per workspace per month",
+      "usageDisplay": "Illustrative: up to 200 reconciliations a month included"
+    }
+  },
+  "content": {
+    "agents": [
+      "content/agents/36ef7e6e-2e96-4f94-8a91-ec5867bb0829.json"
+    ],
+    "automations": [
+      "content/automations/3f96e10b-afbc-4b32-b9ba-c89d8da51435.json"
+    ],
+    "formTemplates": [],
+    "forms": [
+      "content/forms/f6c64ebb-f41d-4821-9af7-7d2c314a8b7c.json"
+    ],
+    "workqTemplates": [
+      "content/workq-templates/656d7222-e064-4e1c-9b9b-4f9356b12a33.json"
+    ],
+    "setups": [
+      "content/setups/bfe70065-555f-4ac0-975c-9187f2cdaa7a.json"
+    ],
+    "processes": [
+      "content/processes/7525b98b-bddd-4fa3-b152-17f0b8fd4f72.json"
+    ],
+    "capabilities": [
+      "content/capabilities/42543aa7-aa85-4768-b23b-f1a49cb67e6a.json",
+      "content/capabilities/e1f95d32-302d-49c7-b55b-07bc0ba0d520.json"
+    ],
+    "evaluations": [
+      "content/evaluations/79ccea48-7aef-4aaa-b20f-54429b229e58.json"
+    ]
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "name": "marketing",
+  "version": "0.1.0",
+  "description": "A business agent that turns a campaign idea into a checked draft and schedules it only after a named reviewer has approved that exact version for a date.",
+  "author": {
+    "name": "mySMB AI Studio"
+  },
+  "homepage": "https://github.com/mySMB-AI-Studio/mysmb-marketplace/tree/main/plugins/marketing",
+  "license": "MIT",
+  "keywords": [
+    "marketing",
+    "campaign",
+    "approval",
+    "mailchimp",
+    "email",
+    "business-agent",
+    "smb"
+  ],
+  "displayName": "Marketing",
+  "icon": "Megaphone",
+  "connection": {
+    "authType": "api_key",
+    "instructions": "In Mailchimp, open your profile, then **Extras**, then **API keys**, and create a key. Copy it and paste it below. It ends in a data-centre suffix such as `-us21`.",
+    "docUrl": "https://mailchimp.com/help/about-api-keys/",
+    "fields": [
+      {
+        "name": "MAILCHIMP_API_KEY",
+        "label": "Mailchimp API key",
+        "type": "password",
+        "required": true,
+        "placeholder": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-us21",
+        "helpText": "Found under Profile, Extras, API keys in Mailchimp. Include the data-centre suffix."
+      }
+    ]
+  },
+  "listing": {
+    "agent": {
+      "role": "Marketing",
+      "outcomes": [
+        "Every campaign is checked for claims, spend and timing before a reviewer sees it",
+        "Nothing is scheduled until a reviewer approves that exact version for a date",
+        "Each published campaign has a publication receipt on file"
+      ],
+      "processes": [
+        "campaign-approval"
+      ],
+      "requiredCapabilities": [
+        "campaign.publish"
+      ],
+      "setupEffort": "an-hour",
+      "priceDisplay": "Illustrative: from $129 per workspace per month",
+      "usageDisplay": "Illustrative: up to 20 campaigns a month included"
+    }
+  },
+  "content": {
+    "agents": [
+      "content/agents/fc366358-1008-4c6c-a990-83770cab03a5.json"
+    ],
+    "automations": [
+      "content/automations/8b7fd664-420f-4110-8717-0fc46a362309.json"
+    ],
+    "formTemplates": [],
+    "forms": [],
+    "workqTemplates": [],
+    "setups": [
+      "content/setups/46d26f58-1595-46be-b564-389ebad9d856.json"
+    ],
+    "processes": [
+      "content/processes/53c6a486-ac6d-459a-815b-c3e1eea24f34.json"
+    ],
+    "capabilities": [
+      "content/capabilities/96e9f989-35a7-4007-a606-894eec861b0a.json"
+    ],
+    "evaluations": [
+      "content/evaluations/963c7980-966e-4baa-819a-07c80322c82f.json"
+    ]
+  }
+}

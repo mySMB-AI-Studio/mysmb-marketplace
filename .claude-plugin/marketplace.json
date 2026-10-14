@@ -2837,6 +2837,207 @@
       "widgetElements": "widget-elements/dist/index.js",
       "widgets": "widgets",
       "source": "./plugins/odoo"
+    },
+    {
+      "name": "client-onboarding",
+      "displayName": "Client Onboarding",
+      "description": "A business agent for service teams: prepares the kickoff plan for a newly signed client, gets a named reviewer's decision before anything is sent, confirms the date with the client through a verified link, and closes with an accepted handover.",
+      "category": "operations",
+      "version": "0.1.0",
+      "author": {
+        "name": "mySMB AI Studio"
+      },
+      "tags": [
+        "business-agent",
+        "client-onboarding",
+        "kickoff",
+        "handover",
+        "operations",
+        "email",
+        "smb"
+      ],
+      "source": "./plugins/client-onboarding",
+      "icon": "UserCheck",
+      "branding": {
+        "logo": "assets/logo.svg",
+        "color": "#0F766E",
+        "tagline": "Signed clients to accepted handover, with a reviewer's decision before anything is sent."
+      },
+      "listing": {
+        "longDescription": "## What it does\n\nWhen a client signs, **Client Onboarding** prepares the kickoff plan (date, scope version, who to contact, the invitation and a delivery checklist) and flags anything that is missing.\n\nA named reviewer then decides: book the kickoff, wait for the contact, or ask for changes. Nothing is sent until they do, and if the date, scope or recipient changes afterwards the decision is asked again.\n\nThe client confirms through a verified link, the delivery team completes a short handover form, and the job closes with the evidence on file.\n\n## What you connect\n\nOne shared team mailbox (Microsoft 365) for sending reviewed messages and reading replies.",
+        "highlights": [
+          "A reviewer decides before any message reaches the client",
+          "A changed date, scope or recipient asks for a fresh decision",
+          "The client confirms through a verified email-code link",
+          "Handover closes with a form response as evidence"
+        ],
+        "publisher": {
+          "name": "mySMB AI Studio",
+          "url": "https://mysmb.com"
+        },
+        "agent": {
+          "role": "Client Onboarding",
+          "outcomes": [
+            "A signed client is booked in for kickoff only after a named reviewer has decided",
+            "The client confirms the kickoff date through a verified link",
+            "The delivery team accepts a written handover with the evidence on file"
+          ],
+          "processes": [
+            "new-client-onboarding"
+          ],
+          "requiredCapabilities": [
+            "email.send_reviewed",
+            "email.read_replies"
+          ],
+          "setupEffort": "an-hour",
+          "priceDisplay": "Illustrative: from $149 per workspace per month",
+          "usageDisplay": "Illustrative: up to 25 client onboardings a month included"
+        }
+      },
+      "onboarding": {
+        "pitch": "Get every new client to a confirmed kickoff and an accepted handover, with a reviewer in control.",
+        "firstStep": "Connect your team mailbox, then start an onboarding job for a newly signed client.",
+        "whyConnect": "The agent sends reviewed kickoff messages from, and reads replies in, one shared team mailbox.",
+        "relevantTo": [
+          "ops",
+          "client-facing",
+          "admin"
+        ]
+      }
+    },
+    {
+      "name": "bookkeeper",
+      "displayName": "Bookkeeper",
+      "description": "A business agent for finance teams: matches a payment to its invoice in the ledger, works out any difference exactly, asks a named reviewer how to treat a short payment, and posts an adjustment only after that decision.",
+      "category": "finance",
+      "version": "0.1.0",
+      "author": {
+        "name": "mySMB AI Studio"
+      },
+      "tags": [
+        "business-agent",
+        "bookkeeper",
+        "reconciliation",
+        "invoices",
+        "payments",
+        "xero",
+        "finance",
+        "smb"
+      ],
+      "source": "./plugins/bookkeeper",
+      "icon": "Scale",
+      "branding": {
+        "logo": "assets/logo.svg",
+        "color": "#1D4ED8",
+        "tagline": "Payments matched to invoices; nothing is written off without a reviewer's decision."
+      },
+      "listing": {
+        "longDescription": "## What it does\n\nWhen a payment arrives that may not match its invoice, **Bookkeeper** finds both in your ledger and lays the facts out: amounts, currency, what was already applied.\n\nThe platform then works out the difference exactly. A payment that matches goes straight to reconciled. A short payment goes to a named reviewer, who chooses to keep the invoice open, send it to credit-note review, ask for a closer match, or post an approved adjustment within your write-off threshold.\n\nNothing is posted to the ledger without that decision, and if the amount or the invoice changes afterwards the decision is asked again. Every job ends reconciled, or as a documented exception.\n\n## What you connect\n\nYour accounting ledger (Xero) for reading invoices and payments and for posting approved adjustments only.",
+        "highlights": [
+          "The difference is worked out exactly, not by the AI",
+          "Only the reviewer can approve an adjustment, and only within your threshold",
+          "A changed amount or invoice version asks for a fresh decision",
+          "Every job ends reconciled or as a documented exception"
+        ],
+        "publisher": {
+          "name": "mySMB AI Studio",
+          "url": "https://mysmb.com"
+        },
+        "agent": {
+          "role": "Bookkeeper",
+          "outcomes": [
+            "Every payment ends reconciled, or as a documented exception with the decision on file",
+            "Nothing is posted to the ledger without a reviewer's recorded decision",
+            "Short payments are treated by policy: kept open, reviewed, or adjusted within your write-off threshold"
+          ],
+          "processes": [
+            "invoice-reconciliation"
+          ],
+          "requiredCapabilities": [
+            "accounting.read_invoices",
+            "accounting.post_adjustment"
+          ],
+          "setupEffort": "an-hour",
+          "priceDisplay": "Illustrative: from $199 per workspace per month",
+          "usageDisplay": "Illustrative: up to 200 reconciliations a month included"
+        }
+      },
+      "onboarding": {
+        "pitch": "Match payments to invoices and handle short payments by policy, with a reviewer in control.",
+        "firstStep": "Connect your accounting ledger, set the write-off threshold, then reconcile a payment.",
+        "whyConnect": "The agent reads invoices and payments in your ledger and posts approved adjustments only after a reviewer decides.",
+        "relevantTo": [
+          "finance",
+          "accounting",
+          "bookkeeping"
+        ]
+      }
+    },
+    {
+      "name": "marketing",
+      "displayName": "Marketing",
+      "description": "A business agent for marketing teams: drafts an email campaign for a stated audience, offer and budget cap, checks its claims and spend, and schedules it only after a named reviewer approves that exact version for a date.",
+      "category": "marketing",
+      "version": "0.1.0",
+      "author": {
+        "name": "mySMB AI Studio"
+      },
+      "tags": [
+        "business-agent",
+        "marketing",
+        "campaign",
+        "approval",
+        "mailchimp",
+        "email",
+        "smb"
+      ],
+      "source": "./plugins/marketing",
+      "icon": "Megaphone",
+      "branding": {
+        "logo": "assets/logo.svg",
+        "color": "#C2410C",
+        "tagline": "Campaigns checked, approved by a person, then scheduled, with a receipt on file."
+      },
+      "listing": {
+        "longDescription": "## What it does\n\nGive **Marketing** an audience, an offer and a budget cap. It drafts the campaign, creates the draft in Mailchimp, and estimates the cost.\n\nBefore a reviewer sees it, an exact check looks for banned or unsupported claims, missing offer terms, a missing unsubscribe link or sender address, spend above the cap, and an invalid publish time.\n\nA named reviewer then approves that version for a date, asks for changes, or holds it. Nothing is scheduled until they approve, and if the audience, budget, copy or time changes afterwards the decision is asked again. Each published campaign ends with a receipt.\n\n## What you connect\n\nYour Mailchimp account, with an API key.",
+        "highlights": [
+          "Claims, spend and timing are checked exactly before a reviewer sees the draft",
+          "A reviewer approves the exact version for a date before anything is scheduled",
+          "A changed audience, budget or copy asks for a fresh decision",
+          "Each published campaign ends with a publication receipt"
+        ],
+        "publisher": {
+          "name": "mySMB AI Studio",
+          "url": "https://mysmb.com"
+        },
+        "agent": {
+          "role": "Marketing",
+          "outcomes": [
+            "Every campaign is checked for claims, spend and timing before a reviewer sees it",
+            "Nothing is scheduled until a reviewer approves that exact version for a date",
+            "Each published campaign has a publication receipt on file"
+          ],
+          "processes": [
+            "campaign-approval"
+          ],
+          "requiredCapabilities": [
+            "campaign.publish"
+          ],
+          "setupEffort": "an-hour",
+          "priceDisplay": "Illustrative: from $129 per workspace per month",
+          "usageDisplay": "Illustrative: up to 20 campaigns a month included"
+        }
+      },
+      "onboarding": {
+        "pitch": "Get campaigns checked and approved by a person before they go out, with a receipt for each one.",
+        "firstStep": "Connect Mailchimp, then give the agent an audience, an offer and a budget cap.",
+        "whyConnect": "The agent reads your audiences and prepares drafts in Mailchimp, and schedules a campaign only after a reviewer approves it.",
+        "relevantTo": [
+          "marketing",
+          "client-facing",
+          "admin"
+        ]
+      }
     }
   ]
 }

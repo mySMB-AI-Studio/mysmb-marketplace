@@ -1,0 +1,60 @@
+{
+  "contentHash": "bcfb0cd675780a32c767d0e00f7f269dbee280ed815c1fd34e443bdea438a472",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "campaignId": "campaign_id",
+          "scheduleTime": "schedule_time"
+        },
+        "server": "mailchimp-campaigns",
+        "tool": "schedule_campaign"
+      }
+    ],
+    "idempotency": {
+      "supported": false
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "campaignId": {
+          "description": "Id of the approved draft campaign in the campaign tool. It is also the externalRef used to reconcile.",
+          "type": "string"
+        },
+        "scheduleTime": {
+          "description": "UTC date and time to send, ISO 8601 (for example 2026-11-09T22:00:00+00:00), on a quarter hour.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "campaignId",
+        "scheduleTime"
+      ],
+      "type": "object"
+    },
+    "key": "campaign.publish",
+    "kind": "capability",
+    "originKey": "96e9f989-35a7-4007-a606-894eec861b0a",
+    "outputsSchema": {
+      "properties": {
+        "success": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:mailchimp-campaigns"
+    ],
+    "reconcile": {
+      "by": "externalRef",
+      "tool": "get_campaign"
+    },
+    "schemaVersion": 1,
+    "sideEffectClass": "publish",
+    "title": "Schedule an approved campaign"
+  },
+  "kind": "capability",
+  "name": "Schedule an approved campaign",
+  "originKey": "96e9f989-35a7-4007-a606-894eec861b0a"
+}

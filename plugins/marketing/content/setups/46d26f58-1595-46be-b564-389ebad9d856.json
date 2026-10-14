@@ -1,0 +1,58 @@
+{
+  "contentHash": "61f84c35d261c37e6b730d72b7fcd9124308b6b50a4d9ee73ad6940bbcf7bff7",
+  "definition": {
+    "steps": [
+      {
+        "connectors": [
+          {
+            "key": "campaign_drafts",
+            "label": "Mailchimp: campaign drafts and publishing",
+            "required": true,
+            "scope": "either",
+            "server": "mailchimp-campaigns"
+          },
+          {
+            "key": "audiences",
+            "label": "Mailchimp: read audiences",
+            "required": true,
+            "scope": "either",
+            "server": "mailchimp-lists"
+          }
+        ],
+        "description": "Your Mailchimp account. The agent reads audiences and prepares drafts with it, and schedules a campaign only after a reviewer has approved that exact version.",
+        "fields": [],
+        "id": "connections",
+        "title": "Connections"
+      },
+      {
+        "connectors": [],
+        "description": "Claim policy for every campaign. A reviewer still approves each one.",
+        "fields": [
+          {
+            "default": "guaranteed, risk-free, 100% free, no obligation, cure",
+            "helpText": "Comma-separated. A draft containing any of these is stopped before a reviewer sees it.",
+            "key": "banned_phrases",
+            "label": "Phrases that need evidence or removal",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "default": 1,
+            "helpText": "A campaign cannot be scheduled sooner than this many days from the check.",
+            "key": "min_review_lead_days",
+            "label": "Minimum review lead (days)",
+            "required": true,
+            "type": "number"
+          }
+        ],
+        "id": "preferences",
+        "title": "Preferences"
+      }
+    ],
+    "version": 1
+  },
+  "description": "Campaign tool connections and claim policy for the Marketing agent.",
+  "kind": "setup",
+  "name": "Marketing setup",
+  "originKey": "46d26f58-1595-46be-b564-389ebad9d856"
+}
