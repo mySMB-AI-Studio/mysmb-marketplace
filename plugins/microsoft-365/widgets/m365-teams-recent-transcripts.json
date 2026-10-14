@@ -1,11 +1,12 @@
 {
   "id": "m365-teams-recent-transcripts",
   "title": "Recent Transcripts",
-  "description": "Recent Teams meetings this week, each showing whether it's a real video recording or transcript-only at a glance. Live-wired to m365-teams-transcripts.list_recent_meetings_with_status, which fetches the calendar itself (Calendars.Read) and annotates every online meeting with hasRecording/hasTranscript in one call — the only way to show that per-row without a separate lookup per meeting. Clicking a row fetches the actual transcript text on demand via list_transcripts_by_join_url + get_transcript_content (not pre-fetched for every row, since transcript content itself is heavy).",
+  "description": "Recent Teams meetings this week, each showing whether it's a real video recording or transcript-only at a glance. Live-wired to m365-teams-transcripts.list_recent_meetings_with_status, which fetches the calendar itself (Calendars.Read) and annotates every online meeting with hasRecording/hasTranscript in one call — the only way to show that per-row without a separate lookup per meeting. Clicking a row fetches the actual transcript text on demand via list_transcripts_by_join_url + get_transcript_content (not pre-fetched for every row, since transcript content itself is heavy). A \"Summarize\" button in the drawer calls m365-teams-transcripts.summarize_transcript (transcript, topic, meetingId, transcriptId) to produce an AI summary shown above the full transcript — tool code written in myhub-mcp-servers (src/integrations/m365/servers/teams-transcripts.ts, mirrors the proven Zoom summarize_transcript pattern, calls Claude via ANTHROPIC_API_KEY) but NOT YET COMMITTED/DEPLOYED there as of this writing. The full transcript itself is rendered via microsoft-365_transcript_display_text, which replaces each cue's raw HH:MM:SS timestamp with the speaker's name when Teams provides one (<v Speaker Name> tags) — CONFIRMED LIVE that this test tenant has speaker attribution disabled (Teams admin center > Meetings > Meeting settings > Transcript API access), so Graph returns plain-text cues with no speaker markup at all; the parser degrades to showing just the spoken text with no name line in that case rather than inventing a placeholder. Deliberately matches Microsoft Teams' own brand purple (brandColor) rather than the platform's generic mint decorative accent, per TILE-DISPLAY-STANDARDS.md §7's \"match a connector's own source UI\" allowance.",
   "category": "productivity",
   "tags": ["m365", "teams", "transcripts", "meetings", "recordings"],
   "keywords": ["teams", "transcript", "recent", "meetings", "recording", "microsoft"],
   "connectorsUsed": ["m365-teams-transcripts"],
+  "brandColor": "#6264A7",
   "popularity": 0,
   "sizing": {
     "preferred": { "colSpan": 6, "rowSpan": 8 },
@@ -108,6 +109,8 @@
             { "action": "setState", "params": { "statePath": "/ui/transcriptDetail/webLink", "value": { "$computed": "identity", "args": { "value": { "$item": "webLink" } } } } },
             { "action": "setState", "params": { "statePath": "/ui/transcriptDetail/chatDeepLink", "value": { "$computed": "identity", "args": { "value": { "$item": "chatDeepLink" } } } } },
             { "action": "setState", "params": { "statePath": "/ui/transcriptDetail/hasRecording", "value": { "$computed": "identity", "args": { "value": { "$item": "hasRecording" } } } } },
+            { "action": "setState", "params": { "statePath": "/m365-teams-transcripts/summarize_transcript", "value": null } },
+            { "action": "setState", "params": { "statePath": "/ui/transcriptDetail/summaryOpen", "value": null } },
             {
               "action": "m365-teams-transcripts.list_transcripts_by_join_url",
               "params": { "joinWebUrl": { "$computed": "identity", "args": { "value": { "$item": "onlineMeeting/joinUrl" } } } }
@@ -228,7 +231,116 @@
           "backdropClick": { "action": "setState", "params": { "statePath": "/ui/transcriptDetail/open", "value": false } }
         }
       },
-      "drawerCard": { "type": "Card", "props": {}, "children": ["drawerHeader", "drawerMetaRow2", "drawerBody"] },
+      "drawerCard": {
+        "type": "Card",
+        "props": {},
+        "children": ["drawerHeader", "drawerMetaRow2", "summarizeRow", "summaryLoadingRow", "summaryError", "summarySection", "summaryDivider", "drawerBody"],
+        "watch": {
+          "/m365-teams-transcripts/summarize_transcript/summary": {
+            "action": "setState",
+            "params": { "statePath": "/ui/transcriptDetail/summaryOpen", "value": true }
+          }
+        }
+      },
+      "summarizeRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "clickable": true },
+        "children": ["summarizeIcon", "summarizeLabel"],
+        "visible": {
+          "$and": [
+            { "$state": "/m365-teams-transcripts/list_transcripts_by_join_url/0" },
+            { "$state": "/_loading/m365-teams-transcripts.summarize_transcript", "not": true },
+            { "$state": "/m365-teams-transcripts/summarize_transcript/summary", "not": true }
+          ]
+        },
+        "on": {
+          "click": {
+            "action": "m365-teams-transcripts.summarize_transcript",
+            "params": {
+              "transcript": { "$state": "/m365-teams-transcripts/get_transcript_content" },
+              "topic": { "$state": "/ui/transcriptDetail/subject" },
+              "meetingId": { "$state": "/m365-teams-transcripts/list_transcripts_by_join_url/0/meetingId" },
+              "transcriptId": { "$state": "/m365-teams-transcripts/list_transcripts_by_join_url/0/id" }
+            }
+          }
+        }
+      },
+      "summarizeIcon": { "type": "Icon", "props": { "name": "Sparkles", "tone": "brand", "size": "xs" } },
+      "summarizeLabel": { "type": "Text", "props": { "text": "Summarize", "size": "xs", "tone": "muted", "weight": "medium" } },
+      "summaryLoadingRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["summaryLoadingSpinner", "summaryLoadingLabel"],
+        "visible": { "$state": "/_loading/m365-teams-transcripts.summarize_transcript" }
+      },
+      "summaryLoadingSpinner": { "type": "Spinner", "props": { "size": "sm" } },
+      "summaryLoadingLabel": { "type": "Caption", "props": { "tone": "muted", "text": "Summarizing…" } },
+      "summaryError": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["summaryErrorIcon", "summaryErrorLabel"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/m365-teams-transcripts.summarize_transcript", "not": true },
+            { "$state": "/m365-teams-transcripts/summarize_transcript/summary", "not": true },
+            {
+              "$or": [
+                { "$state": "/_errors/m365-teams-transcripts.summarize_transcript" },
+                { "$state": "/m365-teams-transcripts/summarize_transcript/error" }
+              ]
+            }
+          ]
+        }
+      },
+      "summaryErrorIcon": { "type": "Icon", "props": { "name": "AlertTriangle", "tone": "destructive", "size": "xs" } },
+      "summaryErrorLabel": {
+        "type": "Caption",
+        "props": {
+          "tone": "destructive",
+          "text": {
+            "$cond": { "$state": "/_errors/m365-teams-transcripts.summarize_transcript" },
+            "$then": { "$state": "/_errors/m365-teams-transcripts.summarize_transcript" },
+            "$else": { "$state": "/m365-teams-transcripts/summarize_transcript/error" }
+          }
+        }
+      },
+      "summarySection": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["summaryHeaderRow", "summaryText"],
+        "visible": { "$state": "/m365-teams-transcripts/summarize_transcript/summary" }
+      },
+      "summaryHeaderRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "justify": "between", "clickable": true },
+        "children": ["summaryHeaderLeft", "summaryHeaderChevron"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/transcriptDetail/summaryOpen",
+              "value": { "$cond": { "$state": "/ui/transcriptDetail/summaryOpen" }, "$then": false, "$else": true }
+            }
+          }
+        }
+      },
+      "summaryHeaderLeft": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["summaryHeaderIcon", "summaryHeaderLabel"] },
+      "summaryHeaderIcon": { "type": "Icon", "props": { "name": "Sparkles", "tone": "brand", "size": "xs" } },
+      "summaryHeaderLabel": { "type": "Caption", "props": { "text": "AI SUMMARY", "tone": "muted" } },
+      "summaryHeaderChevron": {
+        "type": "Icon",
+        "props": {
+          "name": { "$cond": { "$state": "/ui/transcriptDetail/summaryOpen" }, "$then": "ChevronUp", "$else": "ChevronDown" },
+          "tone": "muted",
+          "size": "xs"
+        }
+      },
+      "summaryText": {
+        "type": "Text",
+        "props": { "size": "sm", "preserveLines": true, "text": { "$state": "/m365-teams-transcripts/summarize_transcript/summary" } },
+        "visible": { "$state": "/ui/transcriptDetail/summaryOpen" }
+      },
+      "summaryDivider": { "type": "Divider", "props": {}, "visible": { "$state": "/m365-teams-transcripts/summarize_transcript/summary" } },
       "drawerMetaRow2": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["recordingTypeBadge", "drawerOpenInTeamsRow"] },
       "recordingTypeBadge": {
         "type": "Badge",
@@ -265,12 +377,12 @@
             "$then": "Open in Teams",
             "$else": "View event"
           },
-          "size": "sm",
-          "tone": "accent",
+          "size": "xs",
+          "tone": "muted",
           "weight": "medium"
         }
       },
-      "drawerOpenInTeamsIcon": { "type": "Icon", "props": { "name": "ArrowUpRight", "tone": "accent", "size": "sm" } },
+      "drawerOpenInTeamsIcon": { "type": "Icon", "props": { "name": "ArrowUpRight", "tone": "brand", "size": "xs" } },
       "drawerTitleRow": {
         "type": "Row",
         "props": { "justify": "between", "align": "center" },
@@ -316,7 +428,10 @@
         "props": {
           "size": "sm",
           "preserveLines": true,
-          "text": { "$state": "/m365-teams-transcripts/get_transcript_content" }
+          "text": {
+            "$computed": "microsoft-365_transcript_display_text",
+            "args": { "value": { "$state": "/m365-teams-transcripts/get_transcript_content" } }
+          }
         },
         "visible": {
           "$and": [
