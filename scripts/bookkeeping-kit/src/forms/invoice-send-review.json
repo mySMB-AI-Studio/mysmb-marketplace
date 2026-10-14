@@ -1,0 +1,51 @@
+{
+  "key": "form:invoice-send-review",
+  "title": "Invoice to send",
+  "schema": {
+    "version": 1,
+    "title": "Invoice to send",
+    "description": "Check the invoice drafted from the client's request, then choose what should happen.",
+    "sections": [
+      {
+        "id": "decision",
+        "title": "Your decision",
+        "questions": [
+          {
+            "id": "q_decision",
+            "type": "single_choice",
+            "label": "What should happen to this invoice?",
+            "required": true,
+            "options": [
+              "Approve",
+              "Approve with changes",
+              "Reject",
+              "Ask the client"
+            ]
+          },
+          {
+            "id": "q_send",
+            "type": "yes_no",
+            "label": "Once it's approved, should Xero email it to the customer?"
+          },
+          {
+            "id": "q_changes",
+            "type": "long_text",
+            "maxLength": 4000,
+            "label": "If approving with changes, describe them (e.g. \"line 1 unit price 180\", \"due date 30 Oct\", \"all lines account 200\")"
+          },
+          {
+            "id": "q_remember",
+            "type": "yes_no",
+            "label": "Remember this coding for this customer?"
+          },
+          {
+            "id": "q_notes",
+            "type": "long_text",
+            "label": "Notes or the question for the client (optional)",
+            "maxLength": 4000
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,136 @@
+{
+  "key": "form:payroll-settings",
+  "title": "Client payroll settings",
+  "schema": {
+    "version": 1,
+    "title": "Client payroll settings",
+    "description": "How this client's payroll runs. The payroll automations read it every pay period.",
+    "sections": [
+      {
+        "id": "client",
+        "title": "The client and its pay calendar",
+        "questions": [
+          {
+            "id": "q_client_name",
+            "type": "short_text",
+            "label": "Business name (as in its bookkeeping settings)",
+            "required": true,
+            "maxLength": 200
+          },
+          {
+            "id": "q_calendar",
+            "type": "short_text",
+            "label": "Pay calendar name in Xero Payroll (exactly as it appears)",
+            "required": true,
+            "maxLength": 200,
+            "placeholder": "Fortnightly"
+          },
+          {
+            "id": "q_prep_day",
+            "type": "single_choice",
+            "label": "Which day do we prepare the pay run (in the week of the pay day)?",
+            "required": true,
+            "options": [
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday"
+            ]
+          },
+          {
+            "id": "q_prep_time",
+            "type": "short_text",
+            "label": "From what time? (24-hour, e.g. 09:00)",
+            "maxLength": 5,
+            "placeholder": "09:00"
+          },
+          {
+            "id": "q_states",
+            "type": "short_text",
+            "label": "States staff work in (for public holidays), e.g. NSW, VIC, QLD, WA",
+            "maxLength": 200
+          }
+        ]
+      },
+      {
+        "id": "hours",
+        "title": "Timesheets",
+        "questions": [
+          {
+            "id": "q_timesheets",
+            "type": "single_choice",
+            "label": "Where do the hours come from?",
+            "required": true,
+            "options": [
+              "Deputy (the client exports them to Xero)",
+              "Entered in Xero Payroll",
+              "Emailed timesheets (we key them in)",
+              "None: salaried staff only"
+            ]
+          },
+          {
+            "id": "q_ts_owner",
+            "type": "short_text",
+            "label": "Who exports or sends the timesheets? (name)",
+            "maxLength": 200
+          },
+          {
+            "id": "q_ts_email",
+            "type": "short_text",
+            "label": "Their email address",
+            "maxLength": 200
+          },
+          {
+            "id": "q_chase_after",
+            "type": "short_text",
+            "label": "Chase them if timesheets aren't in Xero this many minutes after the start time (blank: 60)",
+            "maxLength": 5
+          }
+        ]
+      },
+      {
+        "id": "people",
+        "title": "Who does what",
+        "questions": [
+          {
+            "id": "q_officer",
+            "type": "lookup",
+            "entity": "user",
+            "label": "Payroll officer (prepares the pay run)",
+            "required": true
+          },
+          {
+            "id": "q_reviewer",
+            "type": "lookup",
+            "entity": "user",
+            "label": "Internal reviewer (checks the pay run before the client sees it)",
+            "required": true
+          },
+          {
+            "id": "q_approvers",
+            "type": "short_text",
+            "label": "Client approvers (names and email addresses)",
+            "maxLength": 400
+          },
+          {
+            "id": "q_who_posts",
+            "type": "single_choice",
+            "label": "Who posts the pay run in Xero and files STP?",
+            "required": true,
+            "options": [
+              "The client",
+              "Our practice"
+            ]
+          },
+          {
+            "id": "q_notes",
+            "type": "long_text",
+            "label": "Notes for the payroll officer (special arrangements, reimbursements, anything unusual)",
+            "maxLength": 4000
+          }
+        ]
+      }
+    ]
+  }
+}

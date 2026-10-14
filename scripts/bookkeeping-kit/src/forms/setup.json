@@ -1,0 +1,45 @@
+{
+  "key": "form:setup",
+  "title": "Bookkeeping setup",
+  "schema": {
+    "version": 1,
+    "title": "Bookkeeping setup",
+    "description": "Tells the bookkeeping automations how your practice works. You can submit it again at any time to change the answers.",
+    "sections": [
+      {
+        "id": "practice",
+        "title": "Your practice",
+        "questions": [
+          { "id": "q_mode", "type": "single_choice", "label": "How do you use this workspace?", "required": true, "options": ["Practice: we keep the books for many client businesses", "In-house: we keep our own books"] },
+          { "id": "q_timezone", "type": "short_text", "label": "Timezone", "placeholder": "Australia/Sydney", "maxLength": 60 }
+        ]
+      },
+      {
+        "id": "people",
+        "title": "People",
+        "questions": [
+          { "id": "q_reviewer", "type": "lookup", "entity": "user", "label": "Who reviews bills before they're approved? (default for every client)", "required": true },
+          { "id": "q_exceptions", "type": "lookup", "entity": "user", "label": "Who gets bills the AI couldn't process? (leave blank to use the reviewer)" },
+          { "id": "q_digest", "type": "lookup", "entity": "user", "label": "Who gets the weekly accounts payable digest? (leave blank to use the reviewer)" }
+        ]
+      },
+      {
+        "id": "rules",
+        "title": "Approval rules",
+        "questions": [
+          { "id": "q_approved_status", "type": "single_choice", "label": "After a bill is reviewed, it should be in Xero as…", "required": true, "options": ["Awaiting approval", "Approved"] },
+          { "id": "q_auto_below", "type": "short_text", "label": "Bills from a known supplier below this amount may skip review when the AI is confident (0 = always review)", "placeholder": "0", "maxLength": 20 },
+          { "id": "q_client_above", "type": "short_text", "label": "Bills above this amount need the client's approval (leave blank for never; each client can override)", "placeholder": "e.g. 5000", "maxLength": 20 }
+        ]
+      },
+      {
+        "id": "mail",
+        "title": "Email intake",
+        "questions": [
+          { "id": "q_outlook", "type": "short_text", "label": "Outlook mailbox that receives bills (the Email intake (Outlook) automation reads its owner's inbox)", "placeholder": "bills@yourfirm.com.au", "maxLength": 200 },
+          { "id": "q_gmail", "type": "short_text", "label": "Gmail mailbox that receives bills (the Email intake (Gmail) automation reads its owner's inbox)", "placeholder": "bills@gmail.com", "maxLength": 200 }
+        ]
+      }
+    ]
+  }
+}
