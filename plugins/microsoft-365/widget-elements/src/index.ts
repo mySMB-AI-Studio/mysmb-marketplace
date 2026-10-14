@@ -324,9 +324,28 @@ function parseVttTimestamp(ts: string): number {
   return (Number(h) * 3600 + Number(mi) * 60 + Number(s)) * 1000 + Number(ms);
 }
 
+// mm:ss (h:mm:ss once past an hour) — matches the mm:ss convention
+// search_transcripts' own `timestamp` field already uses elsewhere in this
+// same connector, so a transcript's inline timestamps read consistently
+// with its search-result timestamps.
+function formatMsAsClock(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  const mm = h > 0 ? String(m).padStart(2, '0') : String(m);
+  const ss = String(s).padStart(2, '0');
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
+// Args: { value: string, showTimestamp?: boolean }
+// showTimestamp (default false, so existing callers are unaffected) prefixes
+// each turn with its start time as "[mm:ss]" — on the speaker's own line when
+// one is present, or on its own line when there's no speaker to attach it to.
 const transcript_display_text: ComputedFunction = (args) => {
   const raw = String(args.value ?? '');
   if (!raw.trim()) return '';
+  const showTimestamp = Boolean(args.showTimestamp);
   const blocks = raw.replace(/\r\n/g, '\n').split(/\n\n+/);
   const timeRe = /(\d{2}:\d{2}:\d{2}\.\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}\.\d{3})/;
   const voiceRe = /^<v\s+([^>]+)>([\s\S]*?)(?:<\/v>)?$/;
@@ -347,7 +366,7 @@ const transcript_display_text: ComputedFunction = (args) => {
     cues.push({ speaker, text, startMs: parseVttTimestamp(timeMatch[1]), endMs: parseVttTimestamp(timeMatch[2]) });
   }
 
-  const turns: { speaker: string | null; texts: string[] }[] = [];
+  const turns: { speaker: string | null; startMs: number; texts: string[] }[] = [];
   let prevEndMs: number | null = null;
   for (const cue of cues) {
     const last = turns[turns.length - 1];
@@ -362,12 +381,18 @@ const transcript_display_text: ComputedFunction = (args) => {
     if (last && (sameNamedSpeaker || continuesUnnamed)) {
       last.texts.push(cue.text);
     } else {
-      turns.push({ speaker: cue.speaker, texts: [cue.text] });
+      turns.push({ speaker: cue.speaker, startMs: cue.startMs, texts: [cue.text] });
     }
     prevEndMs = cue.endMs;
   }
 
-  return turns.map((t) => (t.speaker ? `${t.speaker}\n${t.texts.join(' ')}` : t.texts.join(' '))).join('\n\n');
+  return turns
+    .map((t) => {
+      const stamp = showTimestamp ? `[${formatMsAsClock(t.startMs)}]` : '';
+      const header = t.speaker ? `${stamp}${stamp ? ' ' : ''}${t.speaker}` : stamp;
+      return header ? `${header}\n${t.texts.join(' ')}` : t.texts.join(' ');
+    })
+    .join('\n\n');
 };
 
 const elements: PluginElementsModule = {
