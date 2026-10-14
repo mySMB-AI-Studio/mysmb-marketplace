@@ -243,9 +243,8 @@
         }
       },
       "summarizeRow": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center", "clickable": true },
-        "children": ["summarizeIcon", "summarizeLabel"],
+        "type": "Button",
+        "props": { "label": "Summarize", "leadingIcon": "Sparkles", "variant": "secondary", "size": "sm" },
         "visible": {
           "$and": [
             { "$state": "/m365-teams-transcripts/list_transcripts_by_join_url/0" },
@@ -265,8 +264,6 @@
           }
         }
       },
-      "summarizeIcon": { "type": "Icon", "props": { "name": "Sparkles", "tone": "brand", "size": "xs" } },
-      "summarizeLabel": { "type": "Text", "props": { "text": "Summarize", "size": "xs", "tone": "muted", "weight": "medium" } },
       "summaryLoadingRow": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center" },
@@ -326,7 +323,7 @@
       },
       "summaryHeaderLeft": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["summaryHeaderIcon", "summaryHeaderLabel"] },
       "summaryHeaderIcon": { "type": "Icon", "props": { "name": "Sparkles", "tone": "brand", "size": "xs" } },
-      "summaryHeaderLabel": { "type": "Caption", "props": { "text": "AI SUMMARY", "tone": "muted" } },
+      "summaryHeaderLabel": { "type": "Caption", "props": { "text": "AI SUMMARY", "tone": "default", "weight": "medium" } },
       "summaryHeaderChevron": {
         "type": "Icon",
         "props": {
@@ -352,9 +349,17 @@
       },
       "drawerHeader": { "type": "Header", "props": {}, "children": ["drawerTitleRow"] },
       "drawerOpenInTeamsRow": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center", "clickable": true },
-        "children": ["drawerOpenInTeamsLabel", "drawerOpenInTeamsIcon"],
+        "type": "Button",
+        "props": {
+          "label": {
+            "$cond": { "$state": "/ui/transcriptDetail/chatDeepLink" },
+            "$then": "Open in Teams",
+            "$else": "View event"
+          },
+          "leadingIcon": "ArrowUpRight",
+          "variant": "secondary",
+          "size": "sm"
+        },
         "on": {
           "click": {
             "action": "open_url",
@@ -369,20 +374,6 @@
           }
         }
       },
-      "drawerOpenInTeamsLabel": {
-        "type": "Text",
-        "props": {
-          "text": {
-            "$cond": { "$state": "/ui/transcriptDetail/chatDeepLink" },
-            "$then": "Open in Teams",
-            "$else": "View event"
-          },
-          "size": "xs",
-          "tone": "muted",
-          "weight": "medium"
-        }
-      },
-      "drawerOpenInTeamsIcon": { "type": "Icon", "props": { "name": "ArrowUpRight", "tone": "brand", "size": "xs" } },
       "drawerTitleRow": {
         "type": "Row",
         "props": { "justify": "between", "align": "center" },
