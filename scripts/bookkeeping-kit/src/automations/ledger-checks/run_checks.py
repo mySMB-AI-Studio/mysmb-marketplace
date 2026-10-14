@@ -3,6 +3,7 @@ import time
 started = time.monotonic()
 # Stop starting new clients after this long, so a run stays inside the 20-minute limit; the next run carries on.
 BUDGET_SECONDS = 13 * 60
+WEEKLY_START_SECONDS = 8 * 60
 only = params.get("only") or []
 settings = bk_read_json(BK_SETTINGS)
 summary = {"checked": [], "errors": [], "left": 0, "report_due": False}
@@ -26,11 +27,12 @@ else:
         state = bk_read_json(path) or {"version": 1, "slug": client["slug"]}
         if not only and state.get("last_daily") == str(today):
             continue
-        if time.monotonic() - started > BUDGET_SECONDS:
-            summary["left"] += 1
-            continue
         last_weekly = ck_day(state.get("last_weekly"))
         weekly = bool(only) or not last_weekly or (today - last_weekly).days >= 7
+        # A weekly check reads a lot more of the file, so it only starts with plenty of the budget left.
+        if time.monotonic() - started > (WEEKLY_START_SECONDS if weekly else BUDGET_SECONDS):
+            summary["left"] += 1
+            continue
         exc = None
         try:
             since = (min(ck_fy_start(today), today - datetime.timedelta(days=90)) if weekly
@@ -41,6 +43,7 @@ else:
                 # A new key: start the bank fingerprints again rather than report every account as changed.
                 snap["banks"] = {}
                 snap["key_id"] = key_id
+                snap["seeded"] = False
             intake = bk_read_json(BK_CHECKS + "/" + client["slug"] + "-intake.json") or {}
             found, evaluated = ck_run(ledger, client, snap, today, secret, intake.get("captured"))
             item = ck_find_item(state, client)

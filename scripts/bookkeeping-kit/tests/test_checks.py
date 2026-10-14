@@ -258,6 +258,59 @@ class Checks(unittest.TestCase):
         state = self.state()
         self.assertEqual(sorted(f["status"] for f in state["findings"].values()), ["dismissed", "snoozed"])
 
+    def test_check_again_rechecks_and_dismisses_nothing(self):
+        self.duplicate_bills()
+        self.overnight()
+        first = self.open_item()
+        self.org["invoices"].append(doc("b3", "INV-77", self.supplies, day(1), 330.0))
+        self.submit(first["id"], {"q_refs": "all", "q_action": "Nothing: just check this client again now"})
+        state = self.state()
+        self.assertEqual(state["dismissed"], {})
+        self.assertEqual(sorted(f["check"] for f in state["findings"].values() if f["status"] == "open"), ["CHK-055", "CHK-055"])
+        self.assertIn("CHK-055", self.open_item()["description"])
+        self.assertNotIn("no open finding matched", self.w.items[first["id"]]["comments"][-1])
+
+    def test_daily_and_weekly_runs_agree_on_duplicates(self):
+        sparky = self.duplicate_bills()
+        # Same number as a paid bill from 50 days ago: outside what a daily run reads, so never flagged either way.
+        self.org["invoices"].append(doc("b-old", "INV-8", sparky, day(50), 440.0, status="PAID", paid_on=day(45)))
+        self.overnight()
+        item = self.open_item()
+        checks = sorted(f["check"] for f in self.state()["findings"].values())
+        self.assertNotIn("CHK-080", checks)
+        self.overnight()
+        self.assertEqual(sorted(f["check"] for f in self.state()["findings"].values()), checks)
+        self.assertEqual(self.w.items[item["id"]]["comments"], [], "nothing came and went")
+
+    def test_transfers_are_not_spend_money(self):
+        t = spend("tr1", self.supplies, last_month_day(), 5000.0, attachments=False)
+        t["Type"] = "SPEND-TRANSFER"
+        self.org["BankTransactions"] = [t]
+        self.overnight()
+        self.assertNotIn("CHK-021", " ".join(f["check"] for f in self.state().get("findings", {}).values()))
+
+    def test_ticking_a_weekly_finding_hides_it_on_the_next_daily_run(self):
+        self.org["lock_date"] = None
+        self.overnight()
+        item = self.open_item()
+        desc = item["description"]
+        self.w.items[item["id"]]["description"] = desc.replace("- [ ] **Medium** — CHK-134", "- [x] **Medium** — CHK-134")
+        self.duplicate_bills()
+        self.overnight()
+        self.assertNotIn("CHK-134", self.w.items[item["id"]]["description"])
+        self.assertEqual(self.state()["last_weekly"], str(TODAY))
+
+    def test_bank_details_added_to_a_contact_that_had_none(self):
+        tradie = self.add(contact("c-tradie", "Joe Tradie", "53004085616", ""))
+        self.org["invoices"].append(doc("b-t", "JT-1", tradie, day(2), 900.0, due=day(-3)))
+        self.overnight()
+        self.assertEqual(self.items(), [])
+        tradie["BankAccountDetails"] = "062000 55556666"
+        self.overnight()
+        desc = self.open_item()["description"]
+        self.assertIn("CHK-017", desc)
+        self.assertIn("CHK-057", desc)
+
     def test_form_with_a_past_snooze_date_changes_nothing(self):
         self.duplicate_bills()
         self.overnight()
@@ -352,7 +405,7 @@ class IntakeChecks(Base):
         self.invoice.update(pay_bsb="062-000", pay_account="3333 4444")
         self.drop()
         desc = self.review_item()["description"]
-        self.assertIn("account ending 4444", desc)
+        self.assertNotIn("4444", desc)
         self.assertIn("[CHK-020]", desc)
         self.assertEqual(self.record()["checks"], ["CHK-020"])
         self.assertEqual(self.record()["blocking"], [])

@@ -5,7 +5,7 @@
 #   docs      [{id, kind: bill|invoice|bill_credit|invoice_credit, number, contact_id, contact, date, due,
 #               status: draft|submitted|authorised|paid|void, total, tax, due_amount, paid_on, attachments, sent,
 #               lines: [{account, tax_type, amount (ex GST), tax}], link}]
-#   bank      [{id, kind: spend|receive, contact_id, contact, date, total, tax, attachments, reconciled, lines, link}]
+#   bank      [{id, kind: spend|receive|other (transfers, prepayments), contact_id, contact, date, total, tax, attachments, reconciled, lines, link}]
 #   weekly only: accounts [{id, code, name, type, tax_type, active, pl}], tax_rates {tax_type: rate %},
 #               journals [{id, date, narration, link}], org {lock_date, eoy_lock_date, settings_link},
 #               balances {now, month_ago: {account id: balance}}, pl_12m {income, moved: [account ids]}
@@ -148,7 +148,11 @@ def ck_contact_rules(ledger, snap, today, secret):
         cid = c["id"]
         h = ck_bank_hash(secret, c.get("bank"))
         prev = banks.get(cid)
-        if h and prev is None:
+        known_before = not seeding and cid in seen and seen[cid] != str(today)
+        if h and prev is None and known_before:
+            # Bank details added to a contact that had none: as risky as a change.
+            banks[cid] = {"h": h, "changed": str(today)}
+        elif h and prev is None:
             banks[cid] = {"h": h}
         elif h and prev.get("h") != h:
             # A change only counts once there is a snapshot to compare with (the second run onwards).
@@ -497,7 +501,7 @@ def ck_weekly_rules(ledger, client, snap, today, captured):
     if not client.get("gst_registered") and income >= CK_GST_TURNOVER:
         out.append(ck_finding("CHK-136", "gst-registration", "Income for the last 12 months is " + ck_money(income) + ", at or over the "
                               + ck_money(CK_GST_TURNOVER) + " GST registration threshold, and the business isn't registered for "
-                              "GST (per its client settings).", amount=income, sig="%.0f" % (income // 1000)))
+                              "GST (per its client settings).", amount=income, sig="over the threshold"))
 
     # CHK-138: profit and loss accounts with no movement in 12 months.
     moved = set((ledger.get("pl_12m") or {}).get("moved") or [])
@@ -513,9 +517,15 @@ def ck_weekly_rules(ledger, client, snap, today, captured):
 def ck_run(ledger, client, snap, today, secret, captured):
     """Every check due on this run. Returns (findings, the check IDs evaluated)."""
     since = today - datetime.timedelta(days=CK_DAILY_DAYS)
-    found = ck_contact_rules(ledger, snap, today, secret)
-    found += ck_duplicate_rules(ledger, today, since)
-    found += ck_payment_rules(ledger, snap, today, since)
+    # The daily checks see only what a daily run fetches (the last 35 days, plus approved bills still to pay), even
+    # on a weekly run, so their findings don't come and go between daily and weekly runs.
+    daily = dict(ledger)
+    daily["docs"] = [d for d in ledger.get("docs") or [] if d["date"] >= str(since)
+                     or (d["kind"] == "bill" and d["status"] == "authorised")]
+    daily["bank"] = [s for s in ledger.get("bank") or [] if s["date"] >= str(since)]
+    found = ck_contact_rules(daily, snap, today, secret)
+    found += ck_duplicate_rules(daily, today, since)
+    found += ck_payment_rules(daily, snap, today, since)
     evaluated = set(CK_DAILY)
     if ledger.get("weekly"):
         found += ck_weekly_rules(ledger, client, snap, today, captured)
@@ -537,6 +547,8 @@ def ck_reconcile(state, found, evaluated, ticked, today, actor=""):
     for key, f in findings.items():
         if f.get("status") == "open" and ck_ref(key) in ticked:
             dismissed[key] = {"fp": f["fp"], "on": str(today), "by": actor or "ticked on the item"}
+            # Hidden now, even when this run doesn't re-evaluate the check (a weekly finding on a daily run).
+            f["status"] = "dismissed"
     current = {f["key"]: f for f in found}
     new, resolved = [], []
     for key, f in current.items():
@@ -670,10 +682,17 @@ def ck_item_open(item):
 
 def ck_remember_item(todo_id, slug):
     index = bk_read_json(BK_CHECKS + "/_items.json") or {}
-    index[todo_id] = slug
+    index[todo_id] = {"slug": slug, "at": bk_now_iso({})}
     if len(index) > 2000:
-        index = dict(list(index.items())[-2000:])
+        # Files are written with sorted keys, so evict by when each item was made, not by position.
+        newest = sorted(index.items(), key=lambda kv: str(kv[1].get("at") if isinstance(kv[1], dict) else ""))[-2000:]
+        index = dict(newest)
     bk_write_json(BK_CHECKS + "/_items.json", index)
+
+
+def ck_item_slug(todo_id):
+    entry = (bk_read_json(BK_CHECKS + "/_items.json") or {}).get(todo_id) or ""
+    return str(entry.get("slug") or "") if isinstance(entry, dict) else str(entry)
 
 
 def ck_new_item(client, settings, state, form_id, note=""):

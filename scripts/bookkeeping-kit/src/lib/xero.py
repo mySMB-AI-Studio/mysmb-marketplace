@@ -474,7 +474,9 @@ def xero_bank_txn(t):
     """A spend or receive money transaction as a neutral bank transaction."""
     contact = t.get("Contact") or {}
     txn_id = str(t.get("BankTransactionID") or "")
-    return {"id": txn_id, "kind": "spend" if str(t.get("Type") or "").startswith("SPEND") else "receive",
+    # Only plain spend and receive money: transfers, prepayments and overpayments aren't purchases or sales.
+    kind = {"SPEND": "spend", "RECEIVE": "receive"}.get(str(t.get("Type") or ""), "other")
+    return {"id": txn_id, "kind": kind,
             "contact_id": str(contact.get("ContactID") or ""), "contact": str(contact.get("Name") or ""),
             "date": xero_date(t.get("DateString") or t.get("Date")), "total": round(bk_money(t.get("Total")) or 0.0, 2),
             "tax": round(bk_money(t.get("TotalTax")) or 0.0, 2), "attachments": bool(t.get("HasAttachments")),

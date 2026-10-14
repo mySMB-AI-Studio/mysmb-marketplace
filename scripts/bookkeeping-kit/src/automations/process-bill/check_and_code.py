@@ -153,11 +153,11 @@ if not problem:
             pay_acct = re.sub(r"\D", "", str(inv.get("pay_account") or ""))
             on_file = re.sub(r"\D", "", str((contact or {}).get("BankAccountDetails") or ""))
             if pay_acct and contact and on_file and pay != on_file and not on_file.endswith(pay_acct):
-                warnings.append("The bank details on the PDF (account ending " + pay_acct[-4:] + ") aren't the ones on "
-                                + str(contact.get("Name")) + " in Xero (ending " + on_file[-4:] + "). Confirm them with the "
-                                "supplier on a phone number you already have before paying. [CHK-020]")
+                # No digits in the warning: bank details are never stored outside Xero and the PDF.
+                warnings.append("The bank details on the PDF aren't the ones on " + str(contact.get("Name")) + " in Xero. "
+                                "Confirm them with the supplier on a phone number you already have before paying. [CHK-020]")
             if pay_acct and not contact:
-                warnings.append("New supplier with bank details only on the invoice (account ending " + pay_acct[-4:] + "). "
+                warnings.append("New supplier with bank details only on the invoice. "
                                 "Confirm them with the supplier on a phone number from another source before the first "
                                 "payment. [CHK-060]")
 

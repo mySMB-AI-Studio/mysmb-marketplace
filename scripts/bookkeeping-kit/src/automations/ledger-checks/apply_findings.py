@@ -9,7 +9,7 @@ summary = ""
 if form_id:
     # A Check findings form: apply it, then (unless asked to check again) stop here.
     should_check = False
-    slug = (bk_read_json(BK_CHECKS + "/_items.json") or {}).get(todo_id) or ""
+    slug = ck_item_slug(todo_id)
     state = bk_read_json(BK_CHECKS + "/" + slug + ".json") if slug else None
     settings = bk_read_json(BK_SETTINGS) or {}
     client = bk_client_for(settings, slug) if slug else None
@@ -36,7 +36,7 @@ if form_id:
                 state.setdefault("dismissed", {})[k] = {"fp": f["fp"], "on": str(today), "by": "ticked on the item"}
                 f["status"] = "dismissed"
                 done.append("ticked: " + f["check"] + " (ref " + ck_ref(k) + ")")
-        if action.startswith("not"):
+        if action.startswith("not an issue"):
             for k in picked:
                 state.setdefault("dismissed", {})[k] = {"fp": findings[k]["fp"], "on": str(today), "by": actor, "note": note}
                 findings[k]["status"] = "dismissed"
@@ -52,7 +52,7 @@ if form_id:
         else:
             should_check = True
             only = [slug]
-        if not picked and not action.startswith("nothing"):
+        if not picked and (action.startswith("not an issue") or action.startswith("snooze")):
             done.append("no open finding matched " + (refs.strip() or "the refs given"))
         body = ("Check findings form applied:\n" + "\n".join("- " + d for d in done) if done else "Check findings form received.")
         if note:
