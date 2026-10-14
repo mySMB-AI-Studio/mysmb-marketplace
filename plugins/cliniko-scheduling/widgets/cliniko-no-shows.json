@@ -1,0 +1,244 @@
+{
+  "id": "cliniko-no-shows",
+  "title": "Cliniko — No Shows",
+  "description": "Patients marked Did Not Arrive in Cliniko, most recent first by default — pick a date to narrow the list to that day. Click any row to open that patient's record in Cliniko in a new tab and reveal their email inline (fetched on click, not pre-loaded for every row, to avoid a call per patient on every load). Practitioner, appointment type, and business aren't shown: Cliniko's API only denormalizes the patient's name directly onto the appointment record, every other related field is a link-only reference. Day boundaries for the date picker use your own local timezone, since no tool here exposes the clinic's configured timezone.",
+  "category": "health",
+  "tags": ["cliniko", "no-show", "did-not-arrive", "scheduling", "appointments", "health"],
+  "keywords": ["cliniko", "no show", "did not arrive", "missed appointment", "scheduling", "patient email"],
+  "connectorsUsed": ["cliniko-scheduling", "cliniko-patients"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 8 },
+    "min": { "colSpan": 4, "rowSpan": 5 },
+    "max": { "colSpan": 8, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "cliniko-scheduling",
+    "tool": "list_individual_appointments",
+    "params": {
+      "q": ["did_not_arrive:=true"],
+      "sort": "starts_at:desc",
+      "per_page": 50
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "filterRow", "divider1", "body"],
+        "watch": {
+          "/ui/selectedDate": [
+            {
+              "action": "cliniko-scheduling.list_individual_appointments",
+              "params": {
+                "q": {
+                  "$computed": "cliniko-scheduling_no_show_query",
+                  "args": { "date": { "$state": "/ui/selectedDate" } }
+                },
+                "sort": "starts_at:asc",
+                "per_page": 100
+              }
+            }
+          ]
+        }
+      },
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "UserX", "tone": "destructive", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "No Shows", "level": "h2" } },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Cliniko · {n} did not arrive",
+              "n": { "$computed": "count", "args": { "value": { "$state": "/cliniko-scheduling/list_individual_appointments/individual_appointments" } } }
+            }
+          }
+        }
+      },
+
+      "filterRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["dateLabel", "dateInput", "clearBtn"]
+      },
+      "dateLabel": { "type": "Caption", "props": { "text": "Date", "tone": "muted" } },
+      "dateInput": {
+        "type": "DateInput",
+        "props": { "size": "sm", "ariaLabel": "Filter by date", "value": { "$bindState": "/ui/selectedDate" } }
+      },
+      "clearBtn": {
+        "type": "Button",
+        "props": { "label": "Clear", "variant": "ghost", "size": "sm" },
+        "visible": { "$state": "/ui/selectedDate" },
+        "on": {
+          "click": { "action": "setState", "params": { "statePath": "/ui/selectedDate", "value": "" } }
+        }
+      },
+
+      "divider1": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["errorBanner", "loading", "empty", "content"] },
+
+      "errorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load appointments: ${/_errors/cliniko-scheduling.list_individual_appointments}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/cliniko-scheduling.list_individual_appointments" }
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/cliniko-scheduling.list_individual_appointments" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": {
+            "$cond": { "$state": "/ui/selectedDate" },
+            "$then": "No no-shows on that date.",
+            "$else": "No no-shows found."
+          }
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/cliniko-scheduling.list_individual_appointments", "not": true },
+            { "$state": "/cliniko-scheduling/list_individual_appointments/individual_appointments/0", "not": true }
+          ]
+        }
+      },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "sm", "maxHeight": 420 },
+        "children": ["noShowRow"],
+        "repeat": { "statePath": "/cliniko-scheduling/list_individual_appointments/individual_appointments", "key": "id" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/cliniko-scheduling.list_individual_appointments", "not": true },
+            { "$state": "/cliniko-scheduling/list_individual_appointments/individual_appointments/0" }
+          ]
+        }
+      },
+
+      "noShowRow": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "sm", "template": "minmax(0,1fr) auto", "hover": true, "clickable": true },
+        "children": ["noShowInfo", "noShowBadge"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/cliniko-patients/get_patient", "value": {} } },
+            { "action": "setState", "params": { "statePath": "/_errors/cliniko-patients.get_patient", "value": "" } },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedPatientId",
+                "value": { "$computed": "cliniko-scheduling_extract_patient_id", "args": { "value": { "$item": "patient/links/self" } } }
+              }
+            },
+            {
+              "action": "cliniko-patients.get_patient",
+              "params": {
+                "id": { "$computed": "cliniko-scheduling_extract_patient_id", "args": { "value": { "$item": "patient/links/self" } } }
+              }
+            },
+            {
+              "action": "open_url",
+              "params": {
+                "target": "_blank",
+                "url": {
+                  "$computed": "cliniko-scheduling_patient_web_url",
+                  "args": {
+                    "telehealthUrl": { "$item": "telehealth_url" },
+                    "patientId": { "$computed": "cliniko-scheduling_extract_patient_id", "args": { "value": { "$item": "patient/links/self" } } }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "noShowInfo": { "type": "Stack", "props": { "gap": "none" }, "children": ["patientName", "appointmentMeta", "emailRow"] },
+      "patientName": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "cliniko-scheduling_patient_display_name", "args": { "value": { "$item": "patient_name" } } },
+          "size": "sm",
+          "weight": "semibold",
+          "truncate": true
+        }
+      },
+      "appointmentMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{date} · {time}",
+              "date": { "$computed": "cliniko-scheduling_format_appointment_date", "args": { "value": { "$item": "starts_at" } } },
+              "time": { "$computed": "cliniko-scheduling_format_appointment_time", "args": { "value": { "$item": "starts_at" } } }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "noShowBadge": {
+        "type": "Badge",
+        "props": { "text": "No Show", "tone": "destructive", "variant": "soft" }
+      },
+
+      "emailRow": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["emailLoading", "emailValue", "emailError"],
+        "visible": {
+          "$computed": "cliniko-scheduling_extract_patient_id",
+          "args": { "value": { "$item": "patient/links/self" } },
+          "eq": { "$state": "/ui/selectedPatientId" }
+        }
+      },
+      "emailLoading": {
+        "type": "Caption",
+        "props": { "text": "Loading email…", "tone": "muted" },
+        "visible": { "$state": "/_loading/cliniko-patients.get_patient" }
+      },
+      "emailValue": {
+        "type": "Caption",
+        "props": { "text": { "$template": "✉ ${/cliniko-patients/get_patient/email}" }, "tone": "info" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/cliniko-patients.get_patient", "not": true },
+            { "$state": "/cliniko-patients/get_patient/email" },
+            {
+              "$computed": "cliniko-scheduling_extract_patient_id",
+              "args": { "value": { "$item": "patient/links/self" } },
+              "eq": { "$state": "/cliniko-patients/get_patient/id" }
+            }
+          ]
+        }
+      },
+      "emailError": {
+        "type": "Caption",
+        "props": { "text": "Couldn't load email for this patient.", "tone": "destructive" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/cliniko-patients.get_patient", "not": true },
+            { "$state": "/_errors/cliniko-patients.get_patient" }
+          ]
+        }
+      }
+    }
+  },
+  "status": "published"
+}
