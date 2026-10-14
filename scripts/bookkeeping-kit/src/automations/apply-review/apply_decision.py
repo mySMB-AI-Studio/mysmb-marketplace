@@ -139,6 +139,13 @@ if not problem:
                     record["bill_id"] = bill_id
                     if str(record.get("file") or "").lower().endswith(".pdf"):
                         record["attach_error"] = xero_attach_pdf(tenant, bill_id, record["file"])
+                    if sales and proposal.get("origin") != "request" and client.get("slug"):
+                        # A captured invoice is recorded without emailing on purpose: Ledger checks mustn't flag it
+                        # as never sent (CHK-024).
+                        index_path = BK_CHECKS + "/" + client["slug"] + "-intake.json"
+                        index = bk_read_json(index_path) or {}
+                        index["captured"] = ((index.get("captured") or []) + [bill_id])[-2000:]
+                        bk_write_json(index_path, index)
                 else:
                     xero_set_status(tenant, bill_id, status)
                 record["status"] = "approved"

@@ -8,12 +8,15 @@ EXTRACT_PROMPT = (
     "card statement), statement (a statement of account), receipt, quote, remittance, other. invoice_count is how many separate invoices the text contains. For each field group give a "
     "confidence of high, medium or low. supplier_name and supplier_abn are the business that issued the document "
     "(its letterhead); bill_to and bill_to_abn are the business it is addressed to. amount_due is the balance still "
-    "owing as printed; paid is true only when the document says it has been paid."
+    "owing as printed; paid is true only when the document says it has been paid. abns_printed lists every ABN printed "
+    "anywhere on the document, as 11 digits. pay_bsb and pay_account are the bank details the document asks to be paid "
+    "into (BSB as 6 digits, account number digits only); null when none are printed."
 )
 SCHEMA_HINT = (
     '{"document_type": "tax invoice", "invoice_count": 1, "supplier_name": "", "supplier_abn": "", '
     '"invoice_number": "", "issue_date": "YYYY-MM-DD", "due_date": "YYYY-MM-DD or null", "currency": "AUD", '
     '"reference": "", "bill_to": "", "bill_to_abn": "", "amount_due": 0, "paid": false, "amounts_include_tax": false, '
+    '"abns_printed": [], "pay_bsb": null, "pay_account": null, '
     '"lines": [{"description": "", "quantity": 1, "unit_amount": 0, "line_amount": 0, "tax_amount": 0}], '
     '"subtotal": 0, "tax_total": 0, "total": 0, '
     '"confidence": {"supplier": "high", "invoice_number": "high", "dates": "high", "amounts": "high"}}'

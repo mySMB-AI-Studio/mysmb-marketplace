@@ -94,7 +94,7 @@ if not problem:
             warnings.append("GST isn't 10% of the subtotal, so some lines may be GST-free. Check the tax codes.")
         if issuer_abn and not bk_abn_valid(issuer_abn):
             warnings.append("The ABN on the invoice (" + issuer_abn + ") fails the ABN check.")
-        if not issuer_abn and total and total > 82.5:
+        if not issuer_abn and total and total > BK_GST_INVOICE_LIMIT:
             warnings.append("There's no ABN on this invoice.")
         if inv.get("paid_mark") or inv.get("paid") or (bk_money(inv.get("amount_due")) == 0 and total
                                                        and inv.get("amount_due") is not None):
@@ -120,6 +120,46 @@ if not problem:
                        + " is already in Xero (" + str(dups[0].get("Status")) + "). Nothing was posted.")
         if not contact:
             warnings.append("New " + party + ": \"" + supplier + "\" isn't in Xero yet. The contact is created when you approve.")
+
+        # ── Intake checks from the checks catalogue: warnings only, never blocks (the AI can misread a PDF) ──
+        intake = bk_read_json(BK_CHECKS + "/" + client["slug"] + "-intake.json") or {}
+        file_hash = ""
+        try:
+            with open(api.files.get(file=params["path"]), "rb") as fh:
+                file_hash = hashlib.sha256(fh.read()).hexdigest()
+        except Exception:
+            file_hash = ""
+        seen = (intake.get("files") or {}).get(file_hash) if file_hash else None
+        if seen:
+            warnings.append("This exact file was processed before (" + str(seen.get("date") or "earlier") + ", "
+                            + str(seen.get("number") or "no invoice number") + "). Check it isn't a duplicate. [CHK-130]")
+        printed = {d for d in (re.sub(r"\D", "", str(a or "")) for a in list(inv.get("abns_printed") or []) + [issuer_abn])
+                   if len(d) == 11}
+        pdf_abns = sorted(printed - {own_abn, bill_to_abn})
+        contact_abn = re.sub(r"\D", "", str((contact or {}).get("TaxNumber") or ""))
+        contact_key = (contact or {}).get("ContactID") or ("name:" + bk_norm(supplier))
+        if not sales:
+            if len(pdf_abns) > 1:
+                warnings.append("The PDF shows more than one ABN (" + ", ".join(pdf_abns) + "). Check which business issued "
+                                "it and that the supplier is right. [CHK-091]")
+            if contact and issuer_abn and contact_abn and issuer_abn != contact_abn:
+                warnings.append("The ABN on the PDF (" + issuer_abn + ") isn't the ABN on " + str(contact.get("Name"))
+                                + " in Xero (" + contact_abn + "). Check it's the same business before approving. [CHK-089]")
+            earlier = [a for a in ((intake.get("abns") or {}).get(contact_key) or []) if a]
+            if issuer_abn and earlier and issuer_abn not in earlier:
+                warnings.append("Earlier bills from " + supplier + " showed ABN " + ", ".join(earlier[-2:]) + "; this one shows "
+                                + issuer_abn + ". [CHK-090]")
+            pay = re.sub(r"\D", "", str(inv.get("pay_bsb") or "")) + re.sub(r"\D", "", str(inv.get("pay_account") or ""))
+            pay_acct = re.sub(r"\D", "", str(inv.get("pay_account") or ""))
+            on_file = re.sub(r"\D", "", str((contact or {}).get("BankAccountDetails") or ""))
+            if pay_acct and contact and on_file and pay != on_file and not on_file.endswith(pay_acct):
+                warnings.append("The bank details on the PDF (account ending " + pay_acct[-4:] + ") aren't the ones on "
+                                + str(contact.get("Name")) + " in Xero (ending " + on_file[-4:] + "). Confirm them with the "
+                                "supplier on a phone number you already have before paying. [CHK-020]")
+            if pay_acct and not contact:
+                warnings.append("New supplier with bank details only on the invoice (account ending " + pay_acct[-4:] + "). "
+                                "Confirm them with the supplier on a phone number from another source before the first "
+                                "payment. [CHK-060]")
 
         # ── Coding: rule, then history, then AI ──
         if not problem:
@@ -179,6 +219,15 @@ if not problem:
                     l["confidence"] = "low"
                     blocking.append("Line " + str(i + 1) + " has no account code. Add one in your changes.")
 
+            rate_of = {t["type"]: bk_money(t.get("rate")) or 0 for t in taxes}
+            with_tax_type = [l for l in lines if l.get("tax_type")]
+            if with_tax_type and tax and tax > 0.05 and not sales and client.get("gst_registered") and all(
+                    rate_of.get(l["tax_type"], 0) == 0 for l in with_tax_type):
+                warnings.append("The PDF shows " + bk_fmt(tax) + " GST, but every line is coded without GST, so it "
+                                "wouldn't be claimed. [CHK-092]")
+            if with_tax_type and not tax and any(rate_of.get(l["tax_type"], 0) > 0 for l in with_tax_type):
+                warnings.append("The PDF shows no GST, but some lines are coded with GST. Check the tax codes. [CHK-124]")
+
             levels = [str(l.get("confidence") or "low") for l in lines]
             levels += [str(v).lower() for v in (inv.get("confidence") or {}).values()]
             confidence = "low" if "low" in levels else ("medium" if "medium" in levels else "high")
@@ -197,6 +246,8 @@ if not problem:
                 "tax": tax,
                 "total": total,
                 "coding_source": source,
+                # What the intake checks need to remember once the bill is through (route_review saves it).
+                "intake": {"file_hash": file_hash, "abn": issuer_abn if not sales else "", "contact_key": contact_key},
             }
             if not proposal["due_date"] and proposal["date"]:
                 due, came_from = xero_default_due(tenant, contact, proposal["date"], doc_type)

@@ -9,7 +9,7 @@ const node = (id, title, summary, libs, params, outputs) => ({ id, kind: 'python
 const step = (id, name) => `{{ steps.${id}.outputs.${name} }}`;
 
 export const FORMS = ['setup', 'client-settings', 'bill-review', 'client-bill-approval', 'invoice-review', 'invoice-send-review',
-  'payroll-settings', 'payrun', 'payroll-review', 'client-payroll-approval'];
+  'payroll-settings', 'payrun', 'payroll-review', 'client-payroll-approval', 'check-findings'];
 
 export const AUTOMATIONS = [
   {
@@ -129,9 +129,9 @@ export const AUTOMATIONS = [
           hidden('path', 'str', step('resolve_file', 'path'), 'File path', true)],
         [out('outcome', 'str', 'filed, ready_to_import, filed_with_issues or exception'), out('todo_id', 'str', 'The WorkQ item, when one was needed'),
           out('csv_path', 'str', 'The CSV for Xero’s statement import, when one was made')]),
-      node('check_and_code', 'Check and code', 'Works out whether it is a bill or a sales invoice, finds the supplier or customer in Xero, checks totals, GST, ABN and duplicates, and codes each line from a saved rule, the contact’s history, or AI.', ['util', 'xero'],
+      node('check_and_code', 'Check and code', 'Works out whether it is a bill or a sales invoice, finds the supplier or customer in Xero, checks totals, GST, ABN, bank details and duplicates against the PDF, and codes each line from a saved rule, the contact’s history, or AI.', ['util', 'xero'],
         [hidden('ctx', 'dict', step('load_context', 'ctx'), 'Context', true), hidden('invoice', 'dict', step('read_invoice', 'invoice'), 'Invoice'),
-          hidden('problem', 'str', step('read_invoice', 'problem'), 'Problem so far')],
+          hidden('problem', 'str', step('read_invoice', 'problem'), 'Problem so far'), hidden('path', 'str', step('resolve_file', 'path'), 'File path', true)],
         [out('proposal', 'dict', 'The bill to post'), out('warnings', 'list[str]', 'Things to check'), out('blocking', 'list[str]', 'Things to fix before approving'),
           out('confidence', 'str', 'high, medium or low'), out('problem', 'str', 'Why processing stopped, or empty')]),
       node('post_draft', 'Create the draft in Xero', 'Creates a DRAFT bill or sales invoice in the client’s Xero organisation and attaches the PDF (new suppliers and customers wait for approval).', ['util', 'xero'],
@@ -268,6 +268,50 @@ export const AUTOMATIONS = [
         [out('artifact_url', 'str', 'Link to the digest')]),
     ],
     rootOrder: ['gather_ap', 'publish_digest'],
+  },
+  {
+    key: 'ledger-checks',
+    name: 'Bookkeeping: Ledger checks (Xero)',
+    description:
+      'Overnight, checks each client’s Xero file against the mySMB checks catalogue, wherever the entries came from: ' +
+      'fraud and duplicate checks daily (changed supplier bank details, duplicate bills and invoices, spend money that ' +
+      'matches a bill, new suppliers paid fast), the rest weekly (GST, attachments over $82.50, unreconciled and unsent ' +
+      'items, suspense balances, lock dates, journals, GST registration). Keeps one Checks item per client in WorkQ, ' +
+      'rewritten each run with what is open; tick a line or use the Check findings form to dismiss or snooze one. ' +
+      'Publishes a weekly data quality report. Reads only: nothing is changed in Xero. Run by hand with a client’s name ' +
+      'to check it now.',
+    triggers: [
+      { kind: 'schedule', cron: '*/30 0-5 * * *', timezone: 'Australia/Sydney' },
+      { kind: 'event', eventType: 'form.response_submitted', filter: { form_id: '@form:check-findings' } },
+      { kind: 'manual' },
+    ],
+    params: [
+      { name: 'client_name', type: 'str', control: 'text', label: 'Client business (manual runs only: checks it now)', required: false, value: '' },
+    ],
+    scopes: ['files:read', 'files:write', 'workq:read', 'workq:write', 'artifacts:write', 'notify:send', 'connectors:xero-accounting'],
+    forms: ['check-findings'],
+    nodes: [
+      node('apply_findings', 'Apply the Check findings form', 'For a submitted Check findings form: dismisses or snoozes the findings named by their refs (and any ticked lines), and moves the checklist to a fresh item so the form can be used again. Otherwise picks which clients to check.', ['util', 'checks'],
+        [
+          hidden('responses', 'dict', '{{ trigger.event.payload.responses }}', 'Form answers'),
+          hidden('todo_id', 'str', '{{ trigger.event.subject.todo_id }}', 'Checks item'),
+          hidden('form_id', 'str', '{{ trigger.event.subject.form_id }}', 'Submitted form'),
+          hidden('actor', 'str', '{{ trigger.actor_user_id }}', 'Person'),
+          hidden('client_name', 'str', '{{ params.client_name }}', 'Client'),
+          formPicker('findings_form', 'check-findings', 'Check findings form'),
+        ],
+        [out('should_check', 'bool', 'True when clients should be checked now'), out('only', 'list[str]', 'Client slugs to check now (empty: every client due today)'),
+          out('summary', 'str', 'What the form changed')]),
+      { id: 'gate', kind: 'if', title: 'Check clients?', summary: 'Continues for the overnight schedule, a manual run, or a form asking to check again.',
+        cond: 'steps["apply_findings"]["outputs"]["should_check"]', then: ['run_checks', 'publish_report'], else: [] },
+      node('run_checks', 'Check the ledgers', 'For each client due a check (until the time budget runs out; the next run carries on): reads its Xero file, runs the daily or weekly checks, merges them with its findings file in Knowledge, and rewrites its Checks item in WorkQ.', ['util', 'xero', 'checks'],
+        [hidden('only', 'list[str]', step('apply_findings', 'only'), 'Clients to check'), formPicker('findings_form', 'check-findings', 'Check findings form')],
+        [out('summary', 'dict', 'Clients checked, findings open, new and resolved, errors'), out('problem', 'str', 'Why nothing was checked, or empty')]),
+      node('publish_report', 'Publish the weekly report', 'Once a week, after every client is checked: saves the data quality report (open findings by business, and the client queries) as an HTML artifact and notifies the checks owner.', ['util', 'checks'],
+        [hidden('summary', 'dict', step('run_checks', 'summary'), 'Summary', true), hidden('problem', 'str', step('run_checks', 'problem'), 'Problem')],
+        [out('report_url', 'str', 'Link to the report, when one was published')]),
+    ],
+    rootOrder: ['apply_findings', 'gate'],
   },
 
 
