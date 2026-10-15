@@ -27,10 +27,11 @@ Return `plan` (the `kickoffPlan` proposal) with:
 - `recipient`: `{ name, email }` of the client contact. Use only the contact on the job or on the
   client record. If there is none, leave it empty and list it in `missing`.
 - `billingContact`: `{ name, email }` or empty
-- `invitation`: `{ subject, body }`, a short, warm, plain-language kickoff invitation that names
-  the date and what the client needs to bring
-- `contactRequest`: `{ subject, body }`, a short request asking the contact to confirm their
-  details before a date is booked
+- `invitation`: `{ to, subject, body }`, a short, warm, plain-language kickoff invitation that names
+  the date and what the client needs to bring. `to` is `[recipient.email]` — the client contact on the
+  job, nobody else; the platform refuses a send to any address the job was not started with.
+- `contactRequest`: `{ to, subject, body }`, a short request asking the contact to confirm their
+  details before a date is booked; the same `to`
 - `checklist`: the kickoff checklist items for the delivery lead
 
 Return `missing` as plain-language gaps, for example `Billing contact` or `Client contact`.
