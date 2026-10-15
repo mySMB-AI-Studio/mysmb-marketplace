@@ -6,6 +6,8 @@ ABR_SERVER = "abr"
 ABR_RECHECK_DAYS = 7
 ABR_SEARCH_DAYS = 30
 ABR_SEARCHES_PER_RUN = 10
+# Bump when abr_best_match changes, so names searched under an older rule are searched again.
+ABR_MATCH_RULE = 2
 ABR_KEEP = ("found", "valid_checksum", "status", "status_from", "entity_name", "gst_registered", "gst_from", "gst_to",
             "dgr_endorsed", "acnc_registered", "error")
 
@@ -37,9 +39,13 @@ def abr_lookup(abns):
 
 
 def abr_best_match(name):
-    """The register's one confident match for a business name (score 95+ and clearly ahead of the next), or None."""
-    got = abr_call("abr_search_by_name", name=str(name)[:200], active_only=True, min_score=90, max_results=5)
-    rows = [r for r in (got or {}).get("results") or [] if r.get("abn") and r.get("score") is not None]
+    """The register's one confident match for a business name, or None: score 95+, clearly ahead of the next, and
+    containing every word of the name (the register's score alone matched "Harbour IT Solutions" to
+    "HARBOUR SOLUTIONS")."""
+    words = set(bk_norm(name).split())
+    got = abr_call("abr_search_by_name", name=str(name)[:200], active_only=True, min_score=90, max_results=10)
+    rows = [r for r in (got or {}).get("results") or [] if r.get("abn") and r.get("score") is not None
+            and words and words <= set(bk_norm(r.get("name")).split())]
     rows.sort(key=lambda r: -float(r["score"]))
     if not rows or float(rows[0]["score"]) < 95:
         return None

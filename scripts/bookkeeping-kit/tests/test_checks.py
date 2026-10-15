@@ -535,6 +535,24 @@ class Checks(unittest.TestCase):
         self.assertEqual(json.loads(self.w.files[path])["refreshed"], day(10))
         self.w.abr.call = real
 
+    def test_a_likely_abn_needs_every_word_of_the_name(self):
+        self.on_register("51824753556", "Plumbing Supplies Co")
+        harbour = self.add(contact("c-hb", "Harbour IT Solutions", ""))
+        guild = self.add(contact("c-gu", "Guild Insurance", ""))
+        self.org["invoices"] += [doc("h1", "H-1", harbour, day(6), 990.0), doc("g1", "G-1", guild, day(5), 880.0)]
+        # What the real register returned on QA: a high score for a different business.
+        self.w.abr.names["harbour it solutions"] = [{"abn": "26821202442", "name": "HARBOUR SOLUTIONS", "score": 98}]
+        self.w.abr.names["guild insurance"] = [{"abn": "55004538863", "name": "GUILD INSURANCE LIMITED", "score": 99}]
+        # A search made under the first rule is redone, not kept for a month.
+        self.overnight()
+        self.w.files["Bookkeeping/Checks/acme-plumbing-abr.json"] = json.dumps({"refreshed": day(1), "abns": {}, "names": {
+            "harbour it solutions": {"name": "Harbour IT Solutions", "checked": day(1),
+                                     "match": {"abn": "26821202442", "name": "HARBOUR SOLUTIONS", "score": 98}}}})
+        self.register_then_weekly()
+        line = next(l for l in self.open_item()["description"].split("\n") if "CHK-005" in l)
+        self.assertIn("Guild Insurance → 55004538863 (GUILD INSURANCE LIMITED)", line)
+        self.assertNotIn("HARBOUR SOLUTIONS", line)
+
     def test_a_likely_abn_closes_once_added_and_stale_register_data_pauses_the_checks(self):
         self.on_register("51824753556", "Plumbing Supplies Co")
         zen = self.add(contact("c-zen", "Zenith IT", ""))
