@@ -60,6 +60,7 @@ class Checks(unittest.TestCase):
         self.w.xero.add_org(T, "Acme Plumbing Pty Ltd", default=True)
         self.org = self.w.xero.orgs[T]
         self.org["lock_date"] = day(40) + "T00:00:00"
+        self.org["short_code"] = "!Ab12C"
         for i, a in enumerate(self.org["accounts"]):
             a["AccountID"] = "acc-" + a["Code"]
             a["Class"] = "REVENUE" if a["Type"] in ("REVENUE", "OTHERINCOME") else "EXPENSE"
@@ -139,7 +140,9 @@ class Checks(unittest.TestCase):
         self.assertEqual(item["formId"], source_id(AUTO, "Check findings"))
         self.assertEqual(item["priority"], "medium")
         self.assertIn("- [ ] **Medium** — CHK-055 Possible Duplicate Bill — $440.00 — Bills INV-7", item["description"])
-        self.assertIn("[Open in Xero](https://go.xero.com/AccountsPayable/Edit.aspx?InvoiceID=b2)", item["description"])
+        # Links switch to the client's own Xero organisation first, whatever the browser last had open.
+        self.assertIn("[Open in Xero](https://go.xero.com/organisationlogin/default.aspx?shortcode=!Ab12C"
+                      "&redirecturl=/AccountsPayable/Edit.aspx?InvoiceID=b2)", item["description"])
         self.assertEqual(self.state()["todo_id"], item["id"])
         # Already checked today: the next scheduled run skips it.
         run_flow(self.w, AUTOS[AUTO], {"kind": "schedule"}, {"client_name": ""})
