@@ -608,6 +608,8 @@ export const PROCESS_REFERENCE_ISSUE_CODES = [
   "unknown_event_type",
   "unknown_step_reference",
   "unknown_input_reference",
+  "invalid_expression",
+  "unknown_variation_point",
 ] as const;
 export type ProcessReferenceIssueCode = (typeof PROCESS_REFERENCE_ISSUE_CODES)[number];
 
@@ -622,6 +624,8 @@ export interface ProcessReferenceIssue {
 const UNTRUSTED_OUTPUT_KINDS: ReadonlySet<string> = new Set(["agent", "external"]);
 /** Payload field names that choose who a message goes to. */
 const RECIPIENT_FIELDS: ReadonlySet<string> = new Set(["to", "recipient", "recipients", "cc", "bcc"]);
+/** `{{reminderDays}}` / `{{settings.deliveryGroup}}` — a variation-point or setup-field placeholder (packages/shared/src/process/primitives.ts PLACEHOLDER_RE). */
+const PLACEHOLDER_RE = /^{{[A-Za-z][A-Za-z0-9_.]*}}$/;
 /** Names a materiality entry may carry besides inputs and step outputs. */
 const SPECIAL_MATERIALITY_KEYS: ReadonlySet<string> = new Set(["recipient", "evidenceVersions"]);
 
@@ -658,6 +662,12 @@ function outputHint(kind: string, field: string): string {
  *   unknown_step_reference /         the same typo in the expressions the contract
  *   unknown_input_reference          schema cannot check (gate `requires` included
  *                                    here: this repo has no other validator for them)
+ *   unknown_variation_point          an automation input `{{x}}` that names no variation
+ *                                    point (a setup field is read as `{{settings.x}}`)
+ *   invalid_expression               an automation input that mixes a `{{placeholder}}`
+ *                                    into an expression: a placeholder is the whole input
+ *                                    (the Workspace also parses every input; this repo
+ *                                    has no copy of the expression parser)
  *
  * Defensive on purpose: nothing here may throw on odd input.
  */
@@ -683,6 +693,10 @@ export function checkProcessReferences(
     if (outputs) outputsByKey.set(key, outputs);
   }
   const inputKeys = new Set<string>();
+  const variationPointKeys = new Set<string>();
+  if (Array.isArray(definition.variationPoints)) {
+    for (const point of definition.variationPoints as unknown[]) if (isRecord(point) && typeof point.key === "string") variationPointKeys.add(point.key);
+  }
   if (Array.isArray(definition.inputs)) {
     for (const input of definition.inputs as unknown[]) if (isRecord(input) && typeof input.key === "string") inputKeys.add(input.key);
   }
@@ -763,7 +777,23 @@ export function checkProcessReferences(
     const at = `/steps/${index}`;
     switch (step.kind) {
       case "automation":
-        if (isRecord(step.inputs)) for (const [name, expression] of Object.entries(step.inputs)) check(expression, { pointer: `${at}/inputs/${name}` });
+        if (isRecord(step.inputs)) {
+          for (const [name, expression] of Object.entries(step.inputs)) {
+            const pointer = `${at}/inputs/${name}`;
+            if (typeof expression === "string" && PLACEHOLDER_RE.test(expression)) {
+              const placeholder = expression.slice(2, -2);
+              if (!placeholder.startsWith("settings.") && !variationPointKeys.has(placeholder)) {
+                report("unknown_variation_point", pointer, `Placeholder ${expression} names no variation point; declare "${placeholder}" under variationPoints, or read a setup field as {{settings.${placeholder}}}`);
+              }
+              continue;
+            }
+            if (typeof expression === "string" && /[{}]/.test(expression)) {
+              report("invalid_expression", pointer, `Invalid expression "${expression}": a {{placeholder}} must be the whole input; otherwise write a reference such as steps.<key>.<field> or inputs.<key>, or a literal`);
+              continue;
+            }
+            check(expression, { pointer });
+          }
+        }
         break;
       case "external":
         check(step.recipient, { pointer: `${at}/recipient`, taint: "recipient" });

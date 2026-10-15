@@ -554,6 +554,19 @@ describe("process reference rules", () => {
     });
   });
 
+  describe("automation inputs: {{placeholders}} and expressions", () => {
+    it("accepts a setup placeholder and a declared variation point beside an expression", () => {
+      expect(where(withEdit((d) => { d.steps[1].inputs = { plan: "steps.gather.plan", days: "{{reminderDays}}", group: "{{settings.deliveryGroup}}" }; }))).toEqual([]);
+    });
+
+    it("flags a bare placeholder that names no variation point, and a placeholder mixed into an expression", () => {
+      expect(where(withEdit((d) => { d.steps[1].inputs = { days: "{{reminderDay}}", mixed: "{{reminderDays}} > 1" }; }))).toEqual([
+        "unknown_variation_point @ /steps/1/inputs/days",
+        "invalid_expression @ /steps/1/inputs/mixed",
+      ]);
+    });
+  });
+
   describe("unknown_materiality_key", () => {
     const closed = { automationOutputs: new Map([[ID.automation, ["ok"]]]) };
     const materiality = (...entries: string[]) => withEdit((d) => { d.steps[2].materiality = entries; }, closed);
