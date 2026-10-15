@@ -1,0 +1,216 @@
+{
+  "id": "trello-my-cards",
+  "title": "My Cards",
+  "description": "Cards you're a member of across every Trello board, organised into Upcoming, Overdue, and Completed tabs.",
+  "category": "tasks",
+  "tags": ["trello", "cards", "my cards", "due dates", "overdue"],
+  "keywords": ["trello cards", "my cards", "due today", "overdue", "assigned cards", "kanban"],
+  "connectorsUsed": ["trello"],
+  "popularity": 70,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 7 },
+    "min": { "colSpan": 3, "rowSpan": 5 },
+    "max": { "colSpan": 8, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "trello",
+    "tool": "list_my_cards",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "loading", "tabRow", "upcomingContent", "overdueContent", "completedContent"],
+        "watch": {
+          "/trello/list_my_cards/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/data",
+                "value": {
+                  "$computed": "trello_flatten_my_cards_tabs",
+                  "args": { "value": { "$state": "/trello/list_my_cards/data" } }
+                }
+              }
+            },
+            { "action": "setState", "params": { "statePath": "/ui/tab/upcoming", "value": true } },
+            { "action": "setState", "params": { "statePath": "/ui/tab/overdue",   "value": false } },
+            { "action": "setState", "params": { "statePath": "/ui/tab/completed", "value": false } }
+          ]
+        }
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Trello", "tone": "info", "size": "sm" } },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title":   { "type": "Heading", "props": { "text": "My Cards", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Trello" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/trello.list_my_cards" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "tabRow": {
+        "type": "Row",
+        "props": { "gap": "xs" },
+        "children": ["tabUpcomingOn", "tabUpcomingOff", "tabOverdueOn", "tabOverdueOff", "tabCompletedOn", "tabCompletedOff"],
+        "visible": { "$state": "/_loading/trello.list_my_cards", "not": true }
+      },
+      "tabUpcomingOn": {
+        "type": "Button",
+        "props": { "label": "Upcoming", "variant": "primary", "size": "sm" },
+        "visible": { "$state": "/ui/tab/upcoming" }
+      },
+      "tabUpcomingOff": {
+        "type": "Button",
+        "props": { "label": "Upcoming", "variant": "ghost", "size": "sm" },
+        "visible": { "$state": "/ui/tab/upcoming", "not": true },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/tab/upcoming", "value": true } },
+            { "action": "setState", "params": { "statePath": "/ui/tab/overdue",   "value": false } },
+            { "action": "setState", "params": { "statePath": "/ui/tab/completed", "value": false } }
+          ]
+        }
+      },
+      "tabOverdueOn": {
+        "type": "Button",
+        "props": { "label": "Overdue", "variant": "primary", "size": "sm" },
+        "visible": { "$state": "/ui/tab/overdue" }
+      },
+      "tabOverdueOff": {
+        "type": "Button",
+        "props": { "label": "Overdue", "variant": "ghost", "size": "sm" },
+        "visible": { "$state": "/ui/tab/overdue", "not": true },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/tab/upcoming", "value": false } },
+            { "action": "setState", "params": { "statePath": "/ui/tab/overdue",   "value": true } },
+            { "action": "setState", "params": { "statePath": "/ui/tab/completed", "value": false } }
+          ]
+        }
+      },
+      "tabCompletedOn": {
+        "type": "Button",
+        "props": { "label": "Completed", "variant": "primary", "size": "sm" },
+        "visible": { "$state": "/ui/tab/completed" }
+      },
+      "tabCompletedOff": {
+        "type": "Button",
+        "props": { "label": "Completed", "variant": "ghost", "size": "sm" },
+        "visible": { "$state": "/ui/tab/completed", "not": true },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/tab/upcoming", "value": false } },
+            { "action": "setState", "params": { "statePath": "/ui/tab/overdue",   "value": false } },
+            { "action": "setState", "params": { "statePath": "/ui/tab/completed", "value": true } }
+          ]
+        }
+      },
+
+      "upcomingContent": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["upcomingEmpty", "upcomingList"],
+        "visible": { "$state": "/ui/tab/upcoming" }
+      },
+      "upcomingEmpty": {
+        "type": "Empty",
+        "props": { "message": "No upcoming cards." },
+        "visible": { "$state": "/ui/data/upcoming/0", "not": true }
+      },
+      "upcomingList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["cardRow"],
+        "repeat": { "statePath": "/ui/data/upcoming", "key": "id" }
+      },
+
+      "overdueContent": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["overdueEmpty", "overdueList"],
+        "visible": { "$state": "/ui/tab/overdue" }
+      },
+      "overdueEmpty": {
+        "type": "Empty",
+        "props": { "message": "No overdue cards." },
+        "visible": { "$state": "/ui/data/overdue/0", "not": true }
+      },
+      "overdueList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["cardRow"],
+        "repeat": { "statePath": "/ui/data/overdue", "key": "id" }
+      },
+
+      "completedContent": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["completedEmpty", "completedList"],
+        "visible": { "$state": "/ui/tab/completed" }
+      },
+      "completedEmpty": {
+        "type": "Empty",
+        "props": { "message": "No recently completed cards." },
+        "visible": { "$state": "/ui/data/completed/0", "not": true }
+      },
+      "completedList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["cardRow"],
+        "repeat": { "statePath": "/ui/data/completed", "key": "id" }
+      },
+
+      "cardRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["cardInfo", "cardDueBadge"]
+      },
+      "cardInfo": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["cardTitle", "cardBoard"]
+      },
+      "cardTitle": {
+        "type": "Text",
+        "props": { "text": { "$item": "title" }, "size": "sm", "weight": "semibold", "truncate": true }
+      },
+      "cardBoard": {
+        "type": "Caption",
+        "props": { "text": { "$item": "board_label" }, "tone": "muted", "truncate": true },
+        "visible": { "$item": "board_label" }
+      },
+      "cardDueBadge": {
+        "type": "Badge",
+        "props": { "text": { "$item": "due_label" }, "tone": { "$item": "due_tone" }, "variant": "soft" },
+        "visible": { "$item": "due_label" }
+      }
+    }
+  },
+  "status": "published"
+}
