@@ -384,7 +384,7 @@ describe("step outputs", () => {
       agent: ["brief", "preparedBy", "evidenceRefIds"],
       automation: ["ok", "status", "automationRunId"],
       human: ["completed", "accepted", "cancelled", "completedBy"],
-      decision: ["decision", "responseId", "answeredBy", "onBehalfOf", "revisionRequested", "transitionTo", "intents"],
+      decision: ["decision", "responseId", "answeredBy", "onBehalfOf", "revisionRequested", "transitionTo", "intents", "note"],
       external: ["requestId", "requestRef", "responseId", "source", "choiceKey", "answer", "formResponse", "verifiedIdentity", "confirmedBy", "evidenceRefIds"],
       wait: ["firedBy", "firedAt", "event"],
       gate: ["passed", "outcome", "missing", "evidenceRefIds"],
