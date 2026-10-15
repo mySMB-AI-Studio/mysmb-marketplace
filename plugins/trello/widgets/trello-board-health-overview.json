@@ -23,15 +23,24 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "div0", "loading", "ringStatRow", "div1", "listsCardsRow", "div2", "footerRow"]
+        "children": ["headerRow", "div0", "loading", "ringStatRow", "div1", "listsCardsRowCollapsed", "listsCardsRowExpanded", "listsDetailSection", "div2", "footerRow"],
+        "watch": {
+          "/trello/list_all_lists/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/listsRows",
+                "value": {
+                  "$computed": "trello_flatten_all_lists",
+                  "args": { "value": { "$state": "/trello/list_all_lists/data" } }
+                }
+              }
+            }
+          ]
+        }
       },
 
       "headerRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["titleGroup", "headerChevron"]
-      },
-      "titleGroup": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center" },
         "children": ["titleIcon", "titleStack"]
@@ -43,8 +52,7 @@
         "children": ["title", "eyebrow"]
       },
       "title": { "type": "Heading", "props": { "text": "Board Health Overview", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Trello · Fleet summary" } },
-      "headerChevron": { "type": "Icon", "props": { "name": "ChevronRight", "tone": "muted", "size": "sm" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Trello" } },
 
       "div0": { "type": "Divider", "props": {} },
 
@@ -99,13 +107,51 @@
         "visible": { "$state": "/_loading/trello.get_boards_health_summary", "not": true }
       },
 
-      "listsCardsRow": {
+      "listsCardsRowCollapsed": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["listsCardsLeftGroup", "listsChevronDown"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/trello.get_boards_health_summary", "not": true },
+            { "$state": "/ui/listsExpanded", "not": true }
+          ]
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/listsExpanded", "value": true } },
+            { "action": "trello.list_all_lists", "params": {} }
+          ]
+        }
+      },
+      "listsCardsRowExpanded": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["listsCardsLeftGroupExpanded", "listsChevronUp"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/trello.get_boards_health_summary", "not": true },
+            { "$state": "/ui/listsExpanded" }
+          ]
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/listsExpanded", "value": false } }
+          ]
+        }
+      },
+      "listsCardsLeftGroup": {
         "type": "Row",
         "props": { "gap": "xs", "align": "center" },
-        "children": ["listsCardsIcon", "listsCardsText"],
-        "visible": { "$state": "/_loading/trello.get_boards_health_summary", "not": true }
+        "children": ["listsCardsIcon", "listsCardsText"]
+      },
+      "listsCardsLeftGroupExpanded": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["listsCardsIconExpanded", "listsCardsTextExpanded"]
       },
       "listsCardsIcon": { "type": "Icon", "props": { "name": "Rows3", "tone": "muted", "size": "sm" } },
+      "listsCardsIconExpanded": { "type": "Icon", "props": { "name": "Rows3", "tone": "muted", "size": "sm" } },
       "listsCardsText": {
         "type": "Text",
         "props": {
@@ -113,6 +159,62 @@
           "size": "sm",
           "tone": "muted"
         }
+      },
+      "listsCardsTextExpanded": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "trello_format_lists_cards_summary", "args": { "value": { "$state": "/trello/get_boards_health_summary" } } },
+          "size": "sm",
+          "tone": "muted"
+        }
+      },
+      "listsChevronDown": { "type": "Icon", "props": { "name": "ChevronDown", "tone": "muted", "size": "sm" } },
+      "listsChevronUp": { "type": "Icon", "props": { "name": "ChevronUp", "tone": "muted", "size": "sm" } },
+
+      "listsDetailSection": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["listsLoading", "listsEmpty", "listsRepeatList"],
+        "visible": { "$state": "/ui/listsExpanded" }
+      },
+      "listsLoading": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["listsSk1", "listsSk2", "listsSk3"],
+        "visible": { "$state": "/_loading/trello.list_all_lists" }
+      },
+      "listsSk1": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "listsSk2": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "listsSk3": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "listsEmpty": {
+        "type": "Empty",
+        "props": { "message": "No open lists found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/trello.list_all_lists", "not": true },
+            { "$state": "/ui/listsRows/0", "not": true }
+          ]
+        }
+      },
+      "listsRepeatList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["listRow"],
+        "repeat": { "statePath": "/ui/listsRows", "key": "id" },
+        "visible": { "$state": "/_loading/trello.list_all_lists", "not": true }
+      },
+      "listRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["listRowName", "listRowBoard"]
+      },
+      "listRowName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "truncate": true }
+      },
+      "listRowBoard": {
+        "type": "Caption",
+        "props": { "text": { "$item": "board_label" }, "tone": "muted", "truncate": true }
       },
 
       "div2": {

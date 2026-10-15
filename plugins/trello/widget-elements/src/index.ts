@@ -169,12 +169,32 @@ const format_lists_cards_summary: ComputedFunction = (args) => {
   return `${lists} list${lists === 1 ? '' : 's'} · ${cards} card${cards === 1 ? '' : 's'} tracked`;
 };
 
+/**
+ * Flattens a list_all_lists response into display rows for the Board Health
+ * Overview tile's in-tile list drill-down. Each row carries the list's own
+ * name plus its board name as a caption, grouped implicitly by Trello's
+ * natural board order (list_all_lists' per-board fan-out order) rather than
+ * an explicit sort — this is an expand-to-browse view, not a report, so
+ * stable-but-arbitrary ordering is fine.
+ *
+ * Args: { value: array } — list_all_lists' `data` array.
+ */
+const flatten_all_lists: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  return raw.map((list) => ({
+    id: String(list.id ?? ''),
+    name: String(list.name ?? ''),
+    board_label: String(list.board_name ?? ''),
+  }));
+};
+
 const elements: PluginElementsModule = {
   slug: 'trello',
   functions: {
     flatten_my_cards_tabs,
     flatten_overdue_cards,
     flatten_boards,
+    flatten_all_lists,
     format_lists_cards_summary,
   },
 };
