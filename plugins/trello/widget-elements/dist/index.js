@@ -193,6 +193,76 @@ const flatten_all_cards = (args) => {
         };
     });
 };
+/**
+ * Buckets a list_all_cards response into overdue / due-today / due-this-week
+ * counts for the Due Date Tracker tile. A card counts toward exactly one
+ * bucket, or none at all:
+ *   - overdue: has a due date, not dueComplete, date is before today.
+ *   - today: has a due date, not dueComplete, date is today.
+ *   - week: has a due date, not dueComplete, date is 1-7 days from today.
+ * Cards with no due date, already dueComplete, or due more than 7 days out
+ * are excluded entirely.
+ *
+ * Also returns the actual card rows per bucket (id, name, board_label,
+ * due_label), not just counts — powers the tile's click-to-expand detail
+ * view. Reuses the same list_all_cards data already fetched for the counts;
+ * no extra tool call needed.
+ *
+ * Args: { value: array } — list_all_cards' `data` array.
+ */
+const flatten_due_date_tracker = (args) => {
+    const raw = Array.isArray(args.value) ? args.value : [];
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayMs = Date.parse(todayStr);
+    const weekAheadMs = todayMs + 7 * 86400000;
+    const overdueRows = [];
+    const todayRows = [];
+    const weekRows = [];
+    for (const card of raw) {
+        if (card.dueComplete)
+            continue;
+        const due = card.due ? String(card.due) : null;
+        if (!due)
+            continue;
+        const dueDateStr = due.slice(0, 10);
+        const dueMs = Date.parse(dueDateStr);
+        if (Number.isNaN(dueMs))
+            continue;
+        const row = {
+            id: String(card.id ?? ''),
+            name: String(card.name ?? ''),
+            board_label: String(card.board_name ?? ''),
+            due_label: formatDdMmmYy(due),
+        };
+        if (dueDateStr === todayStr) {
+            todayRows.push(row);
+        }
+        else if (dueMs < todayMs) {
+            overdueRows.push(row);
+        }
+        else if (dueMs <= weekAheadMs) {
+            weekRows.push(row);
+        }
+    }
+    return {
+        overdue_count: overdueRows.length,
+        today_count: todayRows.length,
+        week_count: weekRows.length,
+        overdue_rows: overdueRows,
+        today_rows: todayRows,
+        week_rows: weekRows,
+    };
+};
+/**
+ * Formats one Due Date Tracker legend entry, e.g. "Overdue · 7".
+ *
+ * Args: { label: string, value: number }
+ */
+const format_tracker_legend = (args) => {
+    const label = String(args.label ?? '');
+    const value = Number(args.value ?? 0);
+    return `${label} · ${value}`;
+};
 const elements = {
     slug: 'trello',
     functions: {
@@ -202,6 +272,8 @@ const elements = {
         flatten_all_lists,
         flatten_all_cards,
         format_lists_cards_summary,
+        flatten_due_date_tracker,
+        format_tracker_legend,
     },
 };
 export default elements;
