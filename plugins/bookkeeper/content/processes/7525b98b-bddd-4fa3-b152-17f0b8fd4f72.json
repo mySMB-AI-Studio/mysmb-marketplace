@@ -1,5 +1,5 @@
 {
-  "contentHash": "d09db65144a6f2a4c5bb1aceaff1b121e5de637e156d30ca6b0a37db87307fc6",
+  "contentHash": "96086e3602cde39e682619d20fde0caf09fc478a970d0bddd3cbe67020adeee0",
   "definition": {
     "capabilities": [
       "accounting.read_invoices",
@@ -242,6 +242,11 @@
     ],
     "title": "Invoice reconciliation",
     "transitions": [
+      {
+        "from": "match",
+        "to": "treatment",
+        "when": "steps.match.invoice == null || steps.match.payment == null"
+      },
       {
         "from": "match",
         "to": "checkDifference"
