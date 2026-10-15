@@ -24,7 +24,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "div0", "loading", "ringStatRow", "div1", "listsCardsRowCollapsed", "listsCardsRowExpanded", "listsDetailSection", "div2", "footerRow"],
+        "children": ["headerRow", "div0", "loading", "ringStatRow", "div1", "listsCardsRowCollapsed", "listsCardsRowExpanded", "listsDetailSection", "div2", "viewInTrelloButton"],
         "watch": {
           "/trello/list_all_lists/data": [
             {
@@ -100,7 +100,7 @@
         "type": "Stat",
         "props": { "value": { "$state": "/trello/get_boards_health_summary/active_board_count" }, "size": "lg" }
       },
-      "statLabel": { "type": "Caption", "props": { "text": "Active boards", "tone": "brand" } },
+      "statLabel": { "type": "Caption", "props": { "text": "Active boards", "tone": "default" } },
 
       "div1": {
         "type": "Divider",
@@ -224,19 +224,13 @@
         "visible": { "$state": "/_loading/trello.get_boards_health_summary", "not": true }
       },
 
-      "footerRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["footerGroup", "footerChevron"]
-      },
-      "footerGroup": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["footerIcon", "footerText"]
-      },
-      "footerIcon": { "type": "Icon", "props": { "name": "Database", "tone": "muted", "size": "sm" } },
-      "footerText": { "type": "Caption", "props": { "text": "Boards, Lists & Cards endpoints", "tone": "muted" } },
-      "footerChevron": { "type": "Icon", "props": { "name": "ChevronRight", "tone": "muted", "size": "sm" } }
+      "viewInTrelloButton": {
+        "type": "Button",
+        "props": { "label": "View in Trello", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": { "action": "open_url", "params": { "url": "https://trello.com/", "target": "_blank" } }
+        }
+      }
     }
   },
   "status": "published"
