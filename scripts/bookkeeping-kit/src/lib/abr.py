@@ -7,7 +7,7 @@ ABR_RECHECK_DAYS = 7
 ABR_SEARCH_DAYS = 30
 ABR_SEARCHES_PER_RUN = 10
 # Bump when abr_best_match changes, so names searched under an older rule are searched again.
-ABR_MATCH_RULE = 2
+ABR_MATCH_RULE = 3
 ABR_KEEP = ("found", "valid_checksum", "status", "status_from", "entity_name", "gst_registered", "gst_from", "gst_to",
             "dgr_endorsed", "acnc_registered", "error")
 
@@ -44,11 +44,14 @@ def abr_best_match(name):
     "HARBOUR SOLUTIONS")."""
     words = set(bk_norm(name).split())
     got = abr_call("abr_search_by_name", name=str(name)[:200], active_only=True, min_score=90, max_results=10)
-    rows = [r for r in (got or {}).get("results") or [] if r.get("abn") and r.get("score") is not None
-            and words and words <= set(bk_norm(r.get("name")).split())]
+    rows = [r for r in (got or {}).get("results") or [] if r.get("abn") and r.get("score") is not None]
     rows.sort(key=lambda r: -float(r["score"]))
     if not rows or float(rows[0]["score"]) < 95:
         return None
+    # Ambiguous across everything the register returned (another business scoring about as high), not just the
+    # results that pass the word check: filtering first turned a close call into a confident-looking match.
     if len(rows) > 1 and float(rows[1]["score"]) >= float(rows[0]["score"]) - 2 and rows[1]["abn"] != rows[0]["abn"]:
+        return None
+    if not words or not words <= set(bk_norm(rows[0].get("name")).split()):
         return None
     return {"abn": re.sub(r"\D", "", str(rows[0]["abn"])), "name": rows[0].get("name") or "", "score": rows[0]["score"]}

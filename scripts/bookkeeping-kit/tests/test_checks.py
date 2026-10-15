@@ -543,6 +543,12 @@ class Checks(unittest.TestCase):
         # What the real register returned on QA: a high score for a different business.
         self.w.abr.names["harbour it solutions"] = [{"abn": "26821202442", "name": "HARBOUR SOLUTIONS", "score": 98}]
         self.w.abr.names["guild insurance"] = [{"abn": "55004538863", "name": "GUILD INSURANCE LIMITED", "score": 99}]
+        # Two different businesses scoring about the same: ambiguous, even though only one has every word.
+        bright = self.add(contact("c-bs", "BrightSpark Electrical", ""))
+        self.org["invoices"].append(doc("b9", "BS-1", bright, day(4), 660.0))
+        self.w.abr.names["brightspark electrical"] = [
+            {"abn": "30337043217", "name": "Brightspark Data and Electrical", "score": 97},
+            {"abn": "11222333444", "name": "BRIGHT SPARKS CONTRACTING", "score": 96}]
         # A search made under the first rule is redone, not kept for a month.
         self.overnight()
         self.w.files["Bookkeeping/Checks/acme-plumbing-abr.json"] = json.dumps({"refreshed": day(1), "abns": {}, "names": {
@@ -552,6 +558,7 @@ class Checks(unittest.TestCase):
         line = next(l for l in self.open_item()["description"].split("\n") if "CHK-005" in l)
         self.assertIn("Guild Insurance → 55004538863 (GUILD INSURANCE LIMITED)", line)
         self.assertNotIn("HARBOUR SOLUTIONS", line)
+        self.assertNotIn("Brightspark", line)
 
     def test_a_likely_abn_closes_once_added_and_stale_register_data_pauses_the_checks(self):
         self.on_register("51824753556", "Plumbing Supplies Co")
