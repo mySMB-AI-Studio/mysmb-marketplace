@@ -433,7 +433,7 @@ export const STEP_KIND_OUTPUTS: Readonly<Record<StepKind, StepKindOutputs>> = {
   automation: { runtime: ["ok", "status", "automationRunId"], declared: false, open: true },
   human: { runtime: ["completed", "accepted", "cancelled", "completedBy"], declared: false, open: false },
   decision: {
-    runtime: ["decision", "responseId", "answeredBy", "onBehalfOf", "revisionRequested", "transitionTo", "intents"],
+    runtime: ["decision", "responseId", "answeredBy", "onBehalfOf", "revisionRequested", "transitionTo", "intents", "note"],
     declared: false,
     open: false,
   },
