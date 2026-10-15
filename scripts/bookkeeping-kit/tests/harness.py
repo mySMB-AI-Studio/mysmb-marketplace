@@ -165,6 +165,8 @@ class Connectors:
             return self.world.payroll.call(tool, dict(args or {}))
         if server == "deputy":
             return self.world.deputy.call(tool, dict(args or {}))
+        if server == "abr":
+            return self.world.abr.call(tool, dict(args or {}))
         if server in FakeMail.SERVERS:
             return self.world.mail.call(server, tool, dict(args or {}))
         if server != "xero-accounting":
@@ -543,6 +545,30 @@ class FakeDeputy:
         return copy.deepcopy(rows[start:start + size])
 
 
+class FakeAbr:
+    """The ABR Lookup connector: register records by ABN and names to search, shaped like the abr server returns."""
+
+    def __init__(self):
+        self.records = {}  # abn -> dict of compact-row fields
+        self.names = {}    # search text (lower) -> list of {abn, name, score}
+        self.calls = []
+
+    def call(self, tool, args):
+        self.calls.append((tool, dict(args)))
+        if tool == "abr_lookup_abns":
+            assert len(args["abns"]) <= 100
+            rows = []
+            for abn in args["abns"]:
+                rec = self.records.get(abn)
+                rows.append(dict({"abn": abn, "valid_checksum": True, "found": True, "error": None}, **rec) if rec
+                            else {"abn": abn, "valid_checksum": True, "found": False, "error": "No records found"})
+            return {"summary": {"requested": len(rows)}, "results": rows}
+        if tool == "abr_search_by_name":
+            return {"number_of_records": 0, "results": [dict(r, abn_status="Active", name_type="mainName")
+                                                        for r in self.names.get(args["name"].lower(), [])]}
+        raise RuntimeError("fake ABR has no tool " + tool)
+
+
 class World:
     def __init__(self):
         self.files, self.items, self.calls, self.events = {}, {}, [], []
@@ -553,6 +579,7 @@ class World:
         self.mail = FakeMail()
         self.payroll = FakePayroll()
         self.deputy = FakeDeputy()
+        self.abr = FakeAbr()
         self.ai_extract = lambda prompt, input: {}
         self.ai_generate = lambda prompt, input: "Hi there,\n\nCould you please confirm this bill?\n\nThanks,\nThe bookkeeping team"
         self.api = Api(self)

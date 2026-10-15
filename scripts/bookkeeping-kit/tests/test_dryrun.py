@@ -11,7 +11,7 @@ from test_flows import PLUGIN
 class PracticeRun(unittest.TestCase):
     def test_every_automation_passes_the_publish_practice_run(self):
         files = sorted(glob.glob(os.path.join(PLUGIN, "content", "automations", "*.json")))
-        self.assertEqual(len(files), 14)
+        self.assertEqual(len(files), 15)
         for f in files:
             with open(f, encoding="utf-8") as fh:
                 payload = json.load(fh)

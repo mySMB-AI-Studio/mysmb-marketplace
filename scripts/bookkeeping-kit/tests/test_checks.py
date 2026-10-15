@@ -427,6 +427,153 @@ class Checks(unittest.TestCase):
         steps = self.overnight()
         self.assertIn("No client business has ledger checks on", steps["run_checks"]["outputs"]["problem"])
 
+    # ── register checks (Register lookups (ABR) saves, Ledger checks reads) ──
+    def on_register(self, abn, name, status="Active", status_from="1999-11-01", gst_from="2000-07-01", gst_to=None, dgr=False):
+        self.w.abr.records[abn] = {"status": status, "status_from": status_from, "entity_name": name.upper(),
+                                   "gst_registered": bool(gst_from) and not gst_to, "gst_from": gst_from, "gst_to": gst_to,
+                                   "dgr_endorsed": dgr, "acnc_registered": False, "business_names": [], "trading_names": []}
+
+    def register_then_weekly(self):
+        """Night 1 saves the client's ABNs, Register lookups looks them up, night 2's weekly run checks them."""
+        self.overnight()
+        run_flow(self.w, AUTOS["Bookkeeping: Register lookups (ABR)"], {"kind": "schedule"}, {"client_name": ""})
+        state = self.state()
+        state["last_daily"], state["last_weekly"] = day(1), day(8)
+        self.w.files["Bookkeeping/Checks/acme-plumbing.json"] = json.dumps(state)
+        return run_flow(self.w, AUTOS[AUTO], {"kind": "schedule"}, {"client_name": ""})
+
+    def register_desc(self):
+        return "\n".join(l for l in self.open_item()["description"].split("\n"))
+
+    def test_cancelled_businesses_still_billed_paid_or_owing(self):
+        self.on_register("51824753556", "Plumbing Supplies Co")
+        gone = self.add(contact("c-gone", "Gone Electrical", "53004085616"))
+        self.on_register("53004085616", "Gone Electrical", status="Cancelled", status_from=day(30))
+        self.org["invoices"] += [doc("g1", "GE-9", gone, day(10), 550.0),
+                                 doc("g2", "GE-8", gone, day(40), 330.0, status="PAID", paid_on=day(5)),
+                                 doc("s1", "INV-500", gone, day(12), 880.0, kind="ACCREC", account="200", tax_type="OUTPUT", sent=True)]
+        self.org["BankTransactions"] = [spend("sp1", gone, day(3), 220.0)]
+        self.register_then_weekly()
+        desc = self.register_desc()
+        for check in ("CHK-071", "CHK-072", "CHK-088", "CHK-030", "CHK-039"):
+            self.assertIn(check, desc)
+        self.assertIn("Gone Electrical's ABN 53004085616 was cancelled on", desc)
+        self.assertIn("still owes $880.00", desc)
+
+    def test_gst_from_businesses_not_registered(self):
+        self.on_register("51824753556", "Plumbing Supplies Co")
+        nogst = self.add(contact("c-nogst", "Small Painter", "53004085616"))
+        self.on_register("53004085616", "Small Painter", gst_from=None)
+        self.org["invoices"] += [doc("n1", "SP-1", nogst, day(10), 110.0), doc("n2", "SP-2", nogst, day(8), 220.0),
+                                 doc("n3", "SP-0", nogst, day(20), 330.0, status="PAID", paid_on=day(15))]
+        self.org["BankTransactions"] = [spend("sp2", nogst, day(4), 99.0)]
+        self.register_then_weekly()
+        desc = self.register_desc()
+        self.assertIn("CHK-068", desc)
+        self.assertNotIn("CHK-085", desc, "two unpaid bills are one CHK-068 line, not CHK-085")
+        self.assertIn("CHK-076", desc)
+        self.assertIn("CHK-077", desc)
+
+    def test_wrong_abns_likely_matches_and_donations(self):
+        self.on_register("51824753556", "Totally Different Holdings")
+        self.add(contact("c-zen", "Zenith IT", ""))
+        self.org["invoices"].append(doc("z1", "Z-1", {"ContactID": "c-zen", "Name": "Zenith IT"}, day(6), 1100.0))
+        self.w.abr.names["zenith it"] = [{"abn": "53004085616", "name": "ZENITH IT PTY LTD", "score": 99}]
+        self.org["accounts"].append({"AccountID": "acc-490", "Code": "490", "Name": "Donations", "Type": "EXPENSE", "Class": "EXPENSE", "Status": "ACTIVE"})
+        rc = self.add(contact("c-rc", "Local Footy Club", "33102417032"))
+        self.on_register("33102417032", "Local Footy Club", dgr=False)
+        self.org["invoices"].append(doc("d1", "DON-1", rc, day(7), 500.0, account="490", tax_type="EXEMPTEXPENSES", tax=0))
+        self.register_then_weekly()
+        desc = self.register_desc()
+        self.assertIn("CHK-004", desc)
+        self.assertIn("is registered to TOTALLY DIFFERENT HOLDINGS", desc)
+        self.assertIn("CHK-005", desc)
+        self.assertIn("Zenith IT → 53004085616 (ZENITH IT PTY LTD)", desc)
+        self.assertIn("CHK-009", desc)
+
+    def test_no_register_results_means_no_register_checks(self):
+        gone = self.add(contact("c-gone", "Gone Electrical", "53004085616"))
+        self.on_register("53004085616", "Gone Electrical", status="Cancelled", status_from=day(30))
+        self.org["invoices"].append(doc("g1", "GE-9", gone, day(10), 550.0))
+        self.overnight()  # Register lookups never ran
+        state = self.state()
+        state["last_daily"], state["last_weekly"] = day(1), day(8)
+        self.w.files["Bookkeeping/Checks/acme-plumbing.json"] = json.dumps(state)
+        self.overnight()
+        self.assertFalse(any(f["check"] == "CHK-071" for f in self.state().get("findings", {}).values()))
+
+    def test_register_lookups_rechecks_weekly_and_never_stores_the_digits_it_doesnt_need(self):
+        self.on_register("51824753556", "Plumbing Supplies Co")
+        self.overnight()
+        lookups = AUTOS["Bookkeeping: Register lookups (ABR)"]
+        run_flow(self.w, lookups, {"kind": "schedule"}, {"client_name": ""})
+        run_flow(self.w, lookups, {"kind": "schedule"}, {"client_name": ""})
+        self.assertEqual(len([c for c in self.w.abr.calls if c[0] == "abr_lookup_abns"]), 1, "fresh results aren't looked up again")
+        cache = json.loads(self.w.files["Bookkeeping/Checks/acme-plumbing-abr.json"])
+        self.assertEqual(cache["abns"]["51824753556"]["status"], "Active")
+        self.assertNotIn("guid", json.dumps(cache).lower())
+
+    def test_a_register_error_keeps_what_was_known_and_doesnt_count_as_fresh(self):
+        self.on_register("51824753556", "Plumbing Supplies Co", status="Cancelled", status_from=day(400))
+        self.overnight()
+        lookups = AUTOS["Bookkeeping: Register lookups (ABR)"]
+        run_flow(self.w, lookups, {"kind": "schedule"}, {"client_name": ""})
+        path = "Bookkeeping/Checks/acme-plumbing-abr.json"
+        cache = json.loads(self.w.files[path])
+        cache["abns"]["51824753556"]["checked"] = day(10)
+        cache["refreshed"] = day(10)
+        self.w.files[path] = json.dumps(cache)
+        real = self.w.abr.call
+        self.w.abr.call = lambda tool, args: {"results": [{"abn": a, "valid_checksum": True, "found": False, "error": "ABR 503"}
+                                                          for a in args.get("abns", [])]}
+        run_flow(self.w, lookups, {"kind": "schedule"}, {"client_name": ""})
+        cache = json.loads(self.w.files[path])
+        self.assertEqual(cache["abns"]["51824753556"]["status"], "Cancelled", "an error row mustn't overwrite the record")
+        self.assertEqual(cache["refreshed"], day(10), "a run that got nothing isn't fresh")
+        self.w.abr.call = lambda tool, args: (_ for _ in ()).throw(RuntimeError("connector not connected"))
+        run_flow(self.w, lookups, {"kind": "schedule"}, {"client_name": ""})
+        self.assertEqual(json.loads(self.w.files[path])["refreshed"], day(10))
+        self.w.abr.call = real
+
+    def test_a_likely_abn_closes_once_added_and_stale_register_data_pauses_the_checks(self):
+        self.on_register("51824753556", "Plumbing Supplies Co")
+        zen = self.add(contact("c-zen", "Zenith IT", ""))
+        self.org["invoices"].append(doc("z1", "Z-1", zen, day(6), 1100.0))
+        self.w.abr.names["zenith it"] = [{"abn": "53004085616", "name": "ZENITH IT PTY LTD", "score": 99}]
+        self.register_then_weekly()
+        self.assertIn("CHK-005", self.open_item()["description"])
+        zen["TaxNumber"] = "53004085616"
+        self.on_register("53004085616", "Zenith IT")
+        self.register_then_weekly()
+        self.assertFalse(any(f["check"] == "CHK-005" for f in self.state().get("findings", {}).values()))
+        self.assertEqual([i for i in self.items() if i["status"] != "done"], [], "nothing left open: the item completed")
+        # Register lookups stops: a fortnight later the register checks close and the checklist says they're paused.
+        gone = self.add(contact("c-gone", "Gone Electrical", "33102417032"))
+        self.on_register("33102417032", "Gone Electrical", status="Cancelled", status_from=day(30))
+        self.org["invoices"].append(doc("g1", "GE-9", gone, day(10), 550.0))
+        self.register_then_weekly()
+        self.assertIn("CHK-071", self.open_item()["description"])
+        path = "Bookkeeping/Checks/acme-plumbing-abr.json"
+        cache = json.loads(self.w.files[path])
+        cache["refreshed"] = day(20)
+        self.w.files[path] = json.dumps(cache)
+        state = self.state()
+        state["last_daily"], state["last_weekly"] = day(1), day(8)
+        self.w.files["Bookkeeping/Checks/acme-plumbing.json"] = json.dumps(state)
+        self.org["lock_date"] = None  # keep one ordinary finding open, so the checklist is there to read
+        self.overnight()
+        self.assertFalse(any(f["check"] == "CHK-071" for f in self.state().get("findings", {}).values()))
+        self.assertTrue(self.state()["snapshot"]["register_paused"])
+        self.assertIn("Register checks (cancelled ABNs, GST registration, DGR) are paused", self.open_item()["description"])
+
+    def test_no_gst_status_check_for_a_client_not_registered_for_gst(self):
+        self.client["gst_registered"] = False
+        self.save_client()
+        self.on_register("51824753556", "Plumbing Supplies Co")
+        self.org["invoices"] += [doc("p1", "PS-2", self.supplies, day(6), 110.0, tax=0), doc("p2", "PS-3", self.supplies, day(4), 220.0, tax=0)]
+        self.register_then_weekly()
+        self.assertFalse(any(f["check"] == "CHK-003" for f in self.state().get("findings", {}).values()))
+
     def test_checks_only_read_xero(self):
         self.duplicate_bills()
         self.overnight()
@@ -516,6 +663,18 @@ class IntakeChecks(Base):
         self.drop()
         self.assertIn("(https://go.xero.com/organisationlogin/default.aspx?shortcode=!Zz9Q&redirecturl=/AccountsPayable/Edit.aspx?InvoiceID=",
                       self.review_item()["description"])
+
+    def test_register_results_flag_a_cancelled_or_unregistered_abn_at_intake(self):
+        self.setup_practice()
+        self.add_supplier(T_ACME, history_code="449")
+        self.w.files["Bookkeeping/Checks/acme-plumbing-abr.json"] = json.dumps({"refreshed": "2026-10-01", "abns": {
+            "51824753556": {"found": True, "status": "Cancelled", "status_from": "2026-01-01", "gst_from": None, "gst_to": None}}})
+        self.drop()
+        desc = self.review_item()["description"]
+        self.assertIn("as cancelled since 2026-01-01", desc)
+        self.assertIn("[CHK-002]", desc)
+        self.assertIn("[CHK-085]", desc)
+        self.assertEqual(self.record()["blocking"], [], "register checks are warnings, never blocks")
 
     def test_a_clean_bill_raises_no_intake_checks(self):
         self.setup_practice()

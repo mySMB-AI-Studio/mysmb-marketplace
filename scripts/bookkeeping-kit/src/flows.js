@@ -129,7 +129,7 @@ export const AUTOMATIONS = [
           hidden('path', 'str', step('resolve_file', 'path'), 'File path', true)],
         [out('outcome', 'str', 'filed, ready_to_import, filed_with_issues or exception'), out('todo_id', 'str', 'The WorkQ item, when one was needed'),
           out('csv_path', 'str', 'The CSV for Xero’s statement import, when one was made')]),
-      node('check_and_code', 'Check and code', 'Works out whether it is a bill or a sales invoice, finds the supplier or customer in Xero, checks totals, GST, ABN, bank details and duplicates against the PDF, and codes each line from a saved rule, the contact’s history, or AI.', ['util', 'xero'],
+      node('check_and_code', 'Check and code', 'Works out whether it is a bill or a sales invoice, finds the supplier or customer in Xero, checks totals, GST, ABN, bank details and duplicates against the PDF, and codes each line from a saved rule, the contact’s history, or AI.', ['util', 'xero', 'checks'],
         [hidden('ctx', 'dict', step('load_context', 'ctx'), 'Context', true), hidden('invoice', 'dict', step('read_invoice', 'invoice'), 'Invoice'),
           hidden('problem', 'str', step('read_invoice', 'problem'), 'Problem so far'), hidden('path', 'str', step('resolve_file', 'path'), 'File path', true)],
         [out('proposal', 'dict', 'The bill to post'), out('warnings', 'list[str]', 'Things to check'), out('blocking', 'list[str]', 'Things to fix before approving'),
@@ -312,6 +312,29 @@ export const AUTOMATIONS = [
         [out('report_url', 'str', 'Link to the report, when one was published')]),
     ],
     rootOrder: ['apply_findings', 'gate'],
+  },
+  {
+    key: 'abr-lookups',
+    neutral: true,
+    name: 'Bookkeeping: Register lookups (ABR)',
+    description:
+      'Every night before the ledger checks, looks up each client’s suppliers and customers on the Australian Business ' +
+      'Register (ABN status, GST registration, DGR status) and saves the results, so Ledger checks can run the register ' +
+      'checks: cancelled businesses still being billed or paid, GST charged by businesses that aren’t registered, ' +
+      'donations to non-DGR bodies, ABNs that look wrong. Each business is re-checked weekly. Also searches the register ' +
+      'for a few suppliers with no ABN. Needs the ABR Lookup extension; publish it only if that’s installed. Reads only.',
+    triggers: [{ kind: 'schedule', cron: '30 23 * * *', timezone: 'Australia/Sydney' }, { kind: 'manual' }],
+    params: [
+      { name: 'client_name', type: 'str', control: 'text', label: 'Client business (manual runs only: looks it up now)', required: false, value: '' },
+    ],
+    scopes: ['files:read', 'files:write', 'connectors:abr'],
+    forms: [],
+    nodes: [
+      node('refresh_register', 'Look up the register', 'For each client with ledger checks on: looks up its ABNs (from Ledger checks and bill PDFs) that are new or over a week old, searches the register for a few suppliers with no ABN, and saves the results in Knowledge.', ['util', 'checks', 'abr'],
+        [hidden('client_name', 'str', '{{ params.client_name }}', 'Client')],
+        [out('summary', 'dict', 'Clients, ABNs looked up and names searched'), out('problem', 'str', 'Why nothing was looked up, or empty')]),
+    ],
+    rootOrder: ['refresh_register'],
   },
 
 

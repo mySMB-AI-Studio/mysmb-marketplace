@@ -469,7 +469,7 @@ def xero_doc(inv, credit=False):
             "total": round(bk_money(inv.get("Total")) or 0.0, 2), "tax": round(bk_money(inv.get("TotalTax")) or 0.0, 2),
             "due_amount": round(bk_money(inv.get("AmountDue")) or 0.0, 2), "paid_on": xero_date(inv.get("FullyPaidOnDate")),
             "attachments": bool(inv.get("HasAttachments")), "sent": inv.get("SentToContact"),
-            "lines": xero_lines(inv), "link": link}
+            "lines": xero_lines(inv), "link": link, "older_open": bool(inv.get("_older_open"))}
 
 
 def xero_bank_txn(t):
@@ -546,6 +546,15 @@ def xero_ledger(tenant_id, today, since, weekly):
         if kind == "ACCPAY":
             # Approved bills still to pay, whatever their date: what a changed bank account would be paid against.
             more, _ = xero_pages("list_invoices", tenant_id, "Invoices", where='Type=="ACCPAY" AND Status=="AUTHORISED"')
+            rows = rows + more
+        elif weekly:
+            # Sales invoices still owed, whatever their date: what a cancelled customer may never pay (CHK-039).
+            more, cut = xero_pages("list_invoices", tenant_id, "Invoices", where='Type=="ACCREC" AND Status=="AUTHORISED"')
+            if cut:
+                truncated.append("open sales invoices")
+            # Older than the window, these feed only the register checks; the other checks keep their own window.
+            for r in more:
+                r["_older_open"] = xero_date(r.get("DateString") or r.get("Date")) < str(since)
             rows = rows + more
         for inv in rows:
             d = xero_doc(inv)

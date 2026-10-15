@@ -43,13 +43,33 @@ CK_CATALOGUE = {
     "CHK-135": ("Bookkeeping", "Lock Date Change", "Medium"),
     "CHK-136": ("Bookkeeping", "GST Registration Required", "Medium"),
     "CHK-138": ("Bookkeeping", "Inactive Account", "Low"),
+    # Register checks: need what Register lookups (ABR) saved.
+    "CHK-002": ("Contacts", "Bill Attachment With a Cancelled ABN", "High"),
+    "CHK-003": ("Contacts", "Business Has Incorrect GST Status", "Medium"),
+    "CHK-004": ("Contacts", "Incorrect ABN for Business", "Medium"),
+    "CHK-005": ("Contacts", "Matched ABN for Business", "Medium"),
+    "CHK-009": ("Contacts", "Donation Against Non-DGR Entity", "Low"),
+    "CHK-030": ("Sales", "Invoice Raised With a Cancelled Customer", "High"),
+    "CHK-039": ("Sales", "Unpaid Income With A Cancelled Business", "High"),
+    "CHK-068": ("Purchases", "GST Claimed on Multiple Bills While Not Registered for GST", "Medium"),
+    "CHK-069": ("Purchases", "GST on Multiple Bank Transactions While Not Registered for GST", "Medium"),
+    "CHK-071": ("Purchases", "Bill Raised With A Cancelled Supplier", "High"),
+    "CHK-072": ("Purchases", "Payment to a Cancelled Supplier", "High"),
+    "CHK-076": ("Purchases", "Payment to Supplier Not Registered for GST", "Medium"),
+    "CHK-077": ("Purchases", "Bank Payment With GST to a Supplier Not Registered for GST", "Medium"),
+    "CHK-085": ("Purchases", "Bill Raised with Supplier Not Registered for GST", "Medium"),
+    "CHK-088": ("Purchases", "Expenses With a Cancelled Business", "High"),
 }
 # Cadence (extension owner, 14 Oct 2026): fraud and duplicate checks daily, the rest weekly.
 CK_DAILY = ("CHK-006", "CHK-017", "CHK-018", "CHK-028", "CHK-035", "CHK-055", "CHK-056", "CHK-057", "CHK-079",
             "CHK-080", "CHK-087")
 CK_WEEKLY = ("CHK-007", "CHK-008", "CHK-021", "CHK-022", "CHK-024", "CHK-031", "CHK-033", "CHK-058", "CHK-059",
              "CHK-086", "CHK-125", "CHK-129", "CHK-132", "CHK-133", "CHK-134", "CHK-135", "CHK-136", "CHK-138")
-CK_HEURISTIC = ("CHK-056", "CHK-129", "CHK-133")
+# Weekly, and only when Register lookups (ABR) has saved results in the last fortnight.
+CK_REGISTER = ("CHK-002", "CHK-003", "CHK-004", "CHK-005", "CHK-009", "CHK-030", "CHK-039", "CHK-068", "CHK-069",
+               "CHK-071", "CHK-072", "CHK-076", "CHK-077", "CHK-085", "CHK-088")
+CK_REGISTER_DAYS = 14
+CK_HEURISTIC = ("CHK-003", "CHK-005", "CHK-009", "CHK-056", "CHK-129", "CHK-133")
 # Findings the client has to answer (receipts, ABNs, TPAR details): the Client Queries part of the weekly report.
 CK_CLIENT_QUERY = ("CHK-007", "CHK-008", "CHK-021", "CHK-086")
 CK_CATEGORIES = ("Contacts", "Banking", "Sales", "Purchases", "Bookkeeping")
@@ -305,7 +325,8 @@ def ck_purchases(ledger):
 
 def ck_weekly_rules(ledger, client, snap, today, captured):
     out = []
-    docs = ledger.get("docs") or []
+    # Open sales invoices older than the window are fetched for the register checks only.
+    docs = [d for d in ledger.get("docs") or [] if not d.get("older_open")]
     contacts = {c["id"]: c for c in ledger.get("contacts") or []}
     accounts = {a["code"]: a for a in ledger.get("accounts") or [] if a.get("code")}
     rates = ledger.get("tax_rates") or {}
@@ -521,8 +542,165 @@ def ck_weekly_rules(ledger, client, snap, today, captured):
     return out
 
 
-def ck_run(ledger, client, snap, today, secret, captured):
+# ── Register checks (weekly, from what Register lookups saved; skipped when there's nothing recent) ──
+def ck_cancelled_on(row, day):
+    """True when the register shows the ABN cancelled on or before the day."""
+    return bool(row and row.get("found") and str(row.get("status") or "").lower().startswith("cancel")
+                and (not row.get("status_from") or str(row["status_from"]) <= str(day)))
+
+
+def ck_gst_off(row, day):
+    """True when the register shows the business wasn't registered for GST on the day."""
+    if not row or not row.get("found"):
+        return False
+    start, end = str(row.get("gst_from") or ""), str(row.get("gst_to") or "")
+    return not start or str(day) < start or bool(end and str(day) > end)
+
+
+def ck_by_contact(rows, contacts, test):
+    """Documents grouped by contact, for those the test picks."""
+    out = {}
+    for r in rows:
+        if r.get("contact_id") in contacts and test(r):
+            out.setdefault(r["contact_id"], []).append(r)
+    return out
+
+
+def ck_register_rules(ledger, client, cache, intake_abns, today):
+    out = []
+    reg = (cache or {}).get("abns") or {}
+    contacts = {c["id"]: c for c in ledger.get("contacts") or []}
+    row_of = {cid: reg.get(c.get("tax_number") or "") for cid, c in contacts.items()}
+    docs = ledger.get("docs") or []
+    bills = [d for d in docs if d["kind"] == "bill" and ck_live(d)]
+    sales = [d for d in docs if d["kind"] == "invoice" and ck_live(d)]
+    spend = [s for s in ledger.get("bank") or [] if s["kind"] == "spend"]
+    accounts = {a["code"]: a for a in ledger.get("accounts") or [] if a.get("code")}
+
+    def line(check, key, cid, rows, what, amount_field="total"):
+        amount = sum(r.get(amount_field) or 0 for r in rows)
+        out.append(ck_finding(check, key + ":" + cid, what, amount=amount, link=contacts[cid]["link"],
+                              sig="|".join(sorted(r["id"] for r in rows))))
+
+    def cancelled_text(cid):
+        r = row_of[cid] or {}
+        return contacts[cid]["name"] + "'s ABN " + contacts[cid]["tax_number"] + " was cancelled on " + ck_date_text(r.get("status_from"))
+
+    # Cancelled businesses: bills raised (CHK-071), bills paid (CHK-072), spend money (CHK-088), sales (CHK-030),
+    # and money still owed to the client by one (CHK-039).
+    for check, rows, when, what in (
+            ("CHK-071", bills, "date", "bill(s) dated after it"),
+            ("CHK-072", [b for b in bills if b.get("paid_on")], "paid_on", "bill(s) paid after it"),
+            ("CHK-088", spend, "date", "spend money payment(s) after it"),
+            ("CHK-030", sales, "date", "sales invoice(s) raised after it")):
+        for cid, hit in ck_by_contact(rows, contacts, lambda r: ck_cancelled_on(row_of.get(r.get("contact_id")), r.get(when))).items():
+            line(check, "cancelled", cid, hit, cancelled_text(cid) + ", and there are " + str(len(hit)) + " " + what
+                 + ". Check the business still exists and the payee is right.")
+    owed = ck_by_contact([d for d in sales if d["status"] == "authorised" and d["due_amount"] > 0], contacts,
+                         lambda r: ck_cancelled_on(row_of.get(r.get("contact_id")), today))
+    for cid, hit in owed.items():
+        line("CHK-039", "owed", cid, hit, cancelled_text(cid) + ", and it still owes " + ck_money(sum(d["due_amount"] for d in hit))
+             + " on " + str(len(hit)) + " invoice(s). Chase it now, or consider writing it off.", amount_field="due_amount")
+
+    # GST from businesses the register shows weren't registered for GST at the time: unpaid bills (one: CHK-085,
+    # several: CHK-068), bills already paid (CHK-076), spend money (one: CHK-077, several: CHK-069).
+    taxed = lambda r: r["tax"] > 0 and ck_gst_off(row_of.get(r.get("contact_id")), r.get("date"))
+    for cid, hit in ck_by_contact([b for b in bills if b["status"] != "paid"], contacts, taxed).items():
+        line("CHK-068" if len(hit) > 1 else "CHK-085", "gst", cid, hit, ck_money(sum(r["tax"] for r in hit)) + " GST on "
+             + str(len(hit)) + " unpaid bill(s) from " + contacts[cid]["name"] + ", which the register shows wasn't registered for "
+             "GST at the time. Ask for a corrected invoice before paying; that GST can't be claimed.", amount_field="tax")
+    for cid, hit in ck_by_contact([b for b in bills if b["status"] == "paid"], contacts, taxed).items():
+        line("CHK-076", "gst-paid", cid, hit, ck_money(sum(r["tax"] for r in hit)) + " GST paid on " + str(len(hit)) + " bill(s) from "
+             + contacts[cid]["name"] + ", which the register shows wasn't registered for GST at the time. That GST can't be "
+             "claimed: recode it and ask the supplier for a refund.", amount_field="tax")
+    for cid, hit in ck_by_contact(spend, contacts, taxed).items():
+        line("CHK-069" if len(hit) > 1 else "CHK-077", "gst-spend", cid, hit, ck_money(sum(r["tax"] for r in hit)) + " GST on "
+             + str(len(hit)) + " spend money payment(s) to " + contacts[cid]["name"] + ", which the register shows wasn't "
+             "registered for GST at the time. That GST can't be claimed.", amount_field="tax")
+
+    # CHK-003 (heuristic): registered for GST, yet every recent purchase from them claims none.
+    no_gst = ck_by_contact(bills + spend, contacts, lambda r: True)
+    for cid, rows in no_gst.items():
+        r = row_of.get(cid)
+        if (client.get("gst_registered") and r and r.get("found") and r.get("gst_registered") and len(rows) >= 2
+                and all(x["tax"] == 0 for x in rows)):
+            line("CHK-003", "gst-status", cid, rows, contacts[cid]["name"] + " is registered for GST, but none of its " + str(len(rows))
+                 + " recent purchases claim any. Check whether GST should be claimed.")
+
+    # CHK-004: ABNs in Xero that fail the checksum, aren't on the register, or belong to a differently named business.
+    wrong = []
+    for cid, c in contacts.items():
+        r = row_of.get(cid)
+        if not c.get("tax_number") or not r:
+            continue
+        if r.get("valid_checksum") is False:
+            wrong.append(c["name"] + " (" + c["tax_number"] + " fails the ABN checksum)")
+        elif not r.get("found"):
+            wrong.append(c["name"] + " (" + c["tax_number"] + " isn't on the register)")
+        else:
+            mine = set(w for w in bk_norm(c["name"]).split() if len(w) >= 3)
+            theirs = set(w for n in [r.get("entity_name")] + list(r.get("names") or []) for w in bk_norm(n).split() if len(w) >= 3)
+            if mine and theirs and not mine & theirs:
+                wrong.append(c["name"] + " (" + c["tax_number"] + " is registered to " + str(r.get("entity_name") or "another business") + ")")
+    if wrong:
+        out.append(ck_finding("CHK-004", "wrong-abn", str(len(wrong)) + " contact(s) have an ABN in Xero that looks wrong: "
+                              + "; ".join(wrong[:6]) + (" and " + str(len(wrong) - 6) + " more" if len(wrong) > 6 else "")
+                              + ". Correct the ABN on the contact.", sig="|".join(sorted(wrong))))
+
+    # CHK-005 (heuristic): a confident register match for a supplier with no ABN in Xero.
+    # Only suppliers that still have no ABN in Xero: once it's added, the finding closes.
+    still_missing = {bk_norm(c["name"]) for c in contacts.values() if len(c.get("tax_number") or "") != 11}
+    matches = [(v.get("name"), v["match"]) for key, v in ((cache or {}).get("names") or {}).items()
+               if v.get("match") and key in still_missing]
+    if matches:
+        matches.sort(key=lambda m: str(m[0]))
+        out.append(ck_finding("CHK-005", "matched-abn", "The register has a likely ABN for " + str(len(matches)) + " supplier(s) with "
+                              "none in Xero: " + "; ".join(str(n) + " → " + m["abn"] + " (" + str(m.get("name") or "") + ")"
+                                                            for n, m in matches[:6])
+                              + ". Confirm with the supplier, then add it to the contact.",
+                              sig="|".join(sorted(m["abn"] for _n, m in matches))))
+
+    # CHK-009 (heuristic): purchases coded to a donations account, paid to a body the register doesn't show as a DGR.
+    gifts = ck_by_contact(bills + spend, contacts, lambda r: any(
+        re.search(r"(?i)\b(donations?|gifts?)\b", (accounts.get(ln["account"]) or {}).get("name") or "") for ln in r["lines"]))
+    for cid, rows in gifts.items():
+        r = row_of.get(cid)
+        if contacts[cid].get("tax_number") and not r:
+            continue  # its ABN hasn't been looked up yet
+        if not (r and r.get("found") and r.get("dgr_endorsed")):
+            line("CHK-009", "dgr", cid, rows, str(len(rows)) + " payment(s) coded as donations to " + contacts[cid]["name"]
+                 + (", which the register doesn't show as a deductible gift recipient" if r and r.get("found")
+                    else ", which has no ABN on the register to confirm it's a deductible gift recipient")
+                 + ". The client may not be able to claim them as a tax deduction.")
+
+    # CHK-002: a bill PDF from this supplier showed an ABN the register lists as cancelled (from Process bill's reads).
+    for key, seen in (intake_abns or {}).items():
+        # Only the ABN on the supplier's latest PDF: a sole trader who moved to a company ABN has an old, cancelled
+        # one on earlier bills, which is fine.
+        dead = [a for a in (seen or [])[-1:] if ck_cancelled_on(reg.get(a), today)]
+        if dead and key in contacts:
+            out.append(ck_finding("CHK-002", "pdf:" + key, "A bill PDF from " + contacts[key]["name"] + " showed ABN " + ", ".join(dead)
+                                  + ", which the register lists as cancelled. Check who's really invoicing.",
+                                  link=contacts[key]["link"], sig="|".join(dead)))
+    return out
+
+
+def ck_register_fresh(cache, today):
+    day = ck_day((cache or {}).get("refreshed"))
+    return bool(day and (today - day).days <= CK_REGISTER_DAYS)
+
+
+def ck_run(ledger, client, snap, today, secret, captured, register=None, intake_abns=None):
     """Every check due on this run. Returns (findings, the check IDs evaluated)."""
+    # What Register lookups needs for the next night: the client's ABNs, and suppliers with GST but no ABN.
+    spenders = {}
+    by_id = {c["id"]: c for c in ledger.get("contacts") or []}
+    for p in ck_purchases(ledger):
+        c = by_id.get(p.get("contact_id"))
+        if c and len(c.get("tax_number") or "") != 11:
+            spenders[c["name"]] = spenders.get(c["name"], 0) + p["total"]
+    snap["register"] = {"abns": sorted({c["tax_number"] for c in ledger.get("contacts") or [] if len(c.get("tax_number") or "") == 11}),
+                        "no_abn": [n for n, _t in sorted(spenders.items(), key=lambda kv: -kv[1])][:20]}
     since = today - datetime.timedelta(days=CK_DAILY_DAYS)
     # The daily checks see only what a daily run fetches (the last 35 days, plus approved bills still to pay), even
     # on a weekly run, so their findings don't come and go between daily and weekly runs.
@@ -537,6 +715,12 @@ def ck_run(ledger, client, snap, today, secret, captured):
     if ledger.get("weekly"):
         found += ck_weekly_rules(ledger, client, snap, today, captured)
         evaluated |= set(CK_WEEKLY)
+        # Register findings close when their data goes stale (Register lookups unpublished or failing for a
+        # fortnight) rather than staying open for good; the checklist says the register checks are paused.
+        snap["register_paused"] = bool(register) and not ck_register_fresh(register, today)
+        if ck_register_fresh(register, today):
+            found += ck_register_rules(ledger, client, register, intake_abns, today)
+        evaluated |= set(CK_REGISTER)
     return found, evaluated
 
 
@@ -636,6 +820,10 @@ def ck_description(client, state, truncated=None):
     out.append("Daily checks (fraud and duplicates) last ran " + ck_date_text(state.get("last_daily")) + "; weekly checks "
                + ck_date_text(state.get("last_weekly")) + "." + (" " + str(len(quiet)) + " finding(s) dismissed or snoozed."
                                                                    if quiet else ""))
+    if (state.get("snapshot") or {}).get("register_paused"):
+        out.append("")
+        out.append("Register checks (cancelled ABNs, GST registration, DGR) are paused: Register lookups (ABR) hasn't "
+                   "reached the register in the last fortnight.")
     if truncated:
         out.append("")
         out.append("Some data was cut short (" + ", ".join(truncated) + "): the checks covered the first 2,000 of each.")
