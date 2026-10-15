@@ -171,6 +171,28 @@ const flatten_all_lists = (args) => {
         board_label: String(list.board_name ?? ''),
     }));
 };
+/**
+ * Flattens a list_all_cards response into display rows for the Board Health
+ * Overview tile's in-tile card drill-down — the sibling of flatten_all_lists,
+ * reusing the same due-date label/tone logic as the My Cards / Overdue Cards
+ * tiles for consistency.
+ *
+ * Args: { value: array } — list_all_cards' `data` array.
+ */
+const flatten_all_cards = (args) => {
+    const raw = Array.isArray(args.value) ? args.value : [];
+    return raw.map((card) => {
+        const due = card.due ? String(card.due) : null;
+        const { label, tone } = dueLabelAndTone(due, Boolean(card.dueComplete));
+        return {
+            id: String(card.id ?? ''),
+            name: String(card.name ?? ''),
+            board_label: String(card.board_name ?? ''),
+            due_label: label,
+            due_tone: tone,
+        };
+    });
+};
 const elements = {
     slug: 'trello',
     functions: {
@@ -178,6 +200,7 @@ const elements = {
         flatten_overdue_cards,
         flatten_boards,
         flatten_all_lists,
+        flatten_all_cards,
         format_lists_cards_summary,
     },
 };

@@ -37,6 +37,18 @@
                 }
               }
             }
+          ],
+          "/trello/list_all_cards/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/cardsRows",
+                "value": {
+                  "$computed": "trello_flatten_all_cards",
+                  "args": { "value": { "$state": "/trello/list_all_cards/data" } }
+                }
+              }
+            }
           ]
         }
       },
@@ -121,7 +133,8 @@
         "on": {
           "click": [
             { "action": "setState", "params": { "statePath": "/ui/listsExpanded", "value": true } },
-            { "action": "trello.list_all_lists", "params": {} }
+            { "action": "trello.list_all_lists", "params": {} },
+            { "action": "trello.list_all_cards", "params": {} }
           ]
         }
       },
@@ -174,10 +187,12 @@
 
       "listsDetailSection": {
         "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["listsLoading", "listsEmpty", "listsRepeatList"],
+        "props": { "gap": "md" },
+        "children": ["listsSectionLabel", "listsLoading", "listsEmpty", "listsRepeatList", "cardsSectionLabel", "cardsLoading", "cardsEmpty", "cardsRepeatList"],
         "visible": { "$state": "/ui/listsExpanded" }
       },
+
+      "listsSectionLabel": { "type": "Eyebrow", "props": { "text": "Lists" } },
       "listsLoading": {
         "type": "Stack",
         "props": { "gap": "xs" },
@@ -216,6 +231,57 @@
       "listRowBoard": {
         "type": "Caption",
         "props": { "text": { "$item": "board_label" }, "tone": "muted", "truncate": true }
+      },
+
+      "cardsSectionLabel": { "type": "Eyebrow", "props": { "text": "Cards" } },
+      "cardsLoading": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["cardsSk1", "cardsSk2", "cardsSk3"],
+        "visible": { "$state": "/_loading/trello.list_all_cards" }
+      },
+      "cardsSk1": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "cardsSk2": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "cardsSk3": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "cardsEmpty": {
+        "type": "Empty",
+        "props": { "message": "No open cards found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/trello.list_all_cards", "not": true },
+            { "$state": "/ui/cardsRows/0", "not": true }
+          ]
+        }
+      },
+      "cardsRepeatList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["cardRow"],
+        "repeat": { "statePath": "/ui/cardsRows", "key": "id" },
+        "visible": { "$state": "/_loading/trello.list_all_cards", "not": true }
+      },
+      "cardRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["cardRowInfo", "cardRowDueBadge"]
+      },
+      "cardRowInfo": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["cardRowName", "cardRowBoard"]
+      },
+      "cardRowName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "truncate": true }
+      },
+      "cardRowBoard": {
+        "type": "Caption",
+        "props": { "text": { "$item": "board_label" }, "tone": "muted", "truncate": true }
+      },
+      "cardRowDueBadge": {
+        "type": "Badge",
+        "props": { "text": { "$item": "due_label" }, "tone": { "$item": "due_tone" }, "variant": "soft" },
+        "visible": { "$item": "due_label" }
       },
 
       "div2": {
