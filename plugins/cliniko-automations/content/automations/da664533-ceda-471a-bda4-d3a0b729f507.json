@@ -20,7 +20,7 @@
     "name": "Cliniko Automations: Apply reschedule or cancellation reply",
     "nodes": [
       {
-        "code": "import json\n\ndef read_json(path):\n    try:\n        raw = api.files.read(file=path, scope=\"org\")\n    except Exception:\n        return None\n    try:\n        return json.loads(raw)\n    except Exception:\n        return None\n\ntodo_id = params[\"todo_id\"] or \"\"\nresponses = params[\"responses\"] or {}\ndecision = responses.get(\"q_decision\") or \"\"\nedited_reply = responses.get(\"q_edited_reply\") or \"\"\n\nslug = \"\"\npending = {}\nproblem = \"\"\n\ntry:\n    entries = api.files.list(path=\"PracticeManager/State\", scope=\"org\") or []\nexcept Exception:\n    entries = []\n\nsuffix = \"-reschedule-pending-\" + todo_id + \".json\"\nmatch_name = None\nfor e in entries:\n    name = e.get(\"name\") if isinstance(e, dict) else str(e)\n    if name and name.endswith(suffix):\n        match_name = name\n        break\n\nif match_name:\n    slug = match_name[: -len(suffix)]\n    pending = read_json(\"PracticeManager/State/\" + match_name) or {}\n\nif not pending:\n    problem = \"No pending reschedule record found for WorkQ item \" + todo_id + \".\"\nelif not decision:\n    problem = \"Form response had no decision answer.\"\n",
+        "code": "import json\n\ndef read_json(path):\n    try:\n        raw = api.files.read(file=path, scope=\"org\")\n    except Exception:\n        return None\n    try:\n        return json.loads(raw)\n    except Exception:\n        return None\n\ntodo_id = params[\"todo_id\"] or \"\"\nresponses = params.get(\"responses\") or {}\ndecision = responses.get(\"q_decision\") or \"\"\nedited_reply = responses.get(\"q_edited_reply\") or \"\"\n\nslug = \"\"\npending = {}\nproblem = \"\"\n\ntry:\n    entries = api.files.list(path=\"PracticeManager/State\", scope=\"org\") or []\nexcept Exception:\n    entries = []\n\nsuffix = \"-reschedule-pending-\" + todo_id + \".json\"\nmatch_name = None\nfor e in entries:\n    name = e.get(\"name\") if isinstance(e, dict) else str(e)\n    if name and name.endswith(suffix):\n        match_name = name\n        break\n\nif match_name:\n    slug = match_name[: -len(suffix)]\n    pending = read_json(\"PracticeManager/State/\" + match_name) or {}\n\nif not pending:\n    problem = \"No pending reschedule record found for WorkQ item \" + todo_id + \".\"\nelif not decision:\n    problem = \"Form response had no decision answer.\"\n",
         "id": "load_decision",
         "kind": "python",
         "outputs": [
@@ -63,7 +63,7 @@
             "control": "hidden",
             "label": "Form answers",
             "name": "responses",
-            "required": true,
+            "required": false,
             "type": "dict"
           },
           {
@@ -188,5 +188,5 @@
     "scheduling",
     "email"
   ],
-  "contentHash": "93b366803a0e99400efa5855c82fcd40fe9e35380e5e666ac0300df45b5c3fa4"
+  "contentHash": "5b3ffeb068af590ffecdf830881531e18724395e2e987225d4175fa16a4185d1"
 }
