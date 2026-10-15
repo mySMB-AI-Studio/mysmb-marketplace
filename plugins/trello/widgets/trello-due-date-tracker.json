@@ -1,0 +1,182 @@
+{
+  "id": "trello-due-date-tracker",
+  "title": "Due Date Tracker",
+  "description": "Overdue, due-today, and due-this-week card counts across every open board, with a status breakdown.",
+  "category": "tasks",
+  "tags": ["trello", "cards", "due dates", "overdue", "tracker"],
+  "keywords": ["trello overdue", "due date tracker", "due today", "due this week", "kanban"],
+  "connectorsUsed": ["trello"],
+  "popularity": 65,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 6 },
+    "min": { "colSpan": 3, "rowSpan": 5 },
+    "max": { "colSpan": 6, "rowSpan": 8 }
+  },
+  "dataProvider": {
+    "mcp": "trello",
+    "tool": "list_all_cards",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "loading", "bigStatGroup", "todayWeekRow", "barRow", "legendRow", "div0", "footerRow"],
+        "watch": {
+          "/trello/list_all_cards/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/tracker",
+                "value": {
+                  "$computed": "trello_flatten_due_date_tracker",
+                  "args": { "value": { "$state": "/trello/list_all_cards/data" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "headerChevron"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Clock", "tone": "destructive", "size": "sm" } },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": { "type": "Heading", "props": { "text": "Due Date Tracker", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Trello" } },
+      "headerChevron": { "type": "Icon", "props": { "name": "ChevronRight", "tone": "muted", "size": "sm" } },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/trello.list_all_cards" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "1rem", "rounded": "md" } },
+
+      "bigStatGroup": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["statValue", "statLabel"],
+        "visible": { "$state": "/_loading/trello.list_all_cards", "not": true }
+      },
+      "statValue": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/ui/tracker/overdue_count" }, "size": "lg" }
+      },
+      "statLabel": { "type": "Caption", "props": { "text": "Cards overdue", "tone": "destructive" } },
+
+      "todayWeekRow": {
+        "type": "Row",
+        "props": { "gap": "md", "align": "center" },
+        "children": ["todayGroup", "vDivider", "weekGroup"],
+        "visible": { "$state": "/_loading/trello.list_all_cards", "not": true }
+      },
+      "todayGroup": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "baseline" },
+        "children": ["todayNum", "todayLabel"]
+      },
+      "todayNum": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/tracker/today_count" }, "size": "md", "weight": "bold" }
+      },
+      "todayLabel": { "type": "Caption", "props": { "text": "Due today", "tone": "muted" } },
+      "vDivider": { "type": "Divider", "props": { "vertical": true } },
+      "weekGroup": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "baseline" },
+        "children": ["weekNum", "weekLabel"]
+      },
+      "weekNum": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/tracker/week_count" }, "size": "md", "weight": "bold" }
+      },
+      "weekLabel": { "type": "Caption", "props": { "text": "Due this week", "tone": "muted" } },
+
+      "barRow": {
+        "type": "Row",
+        "props": { "gap": "none" },
+        "children": ["barOverdue", "barToday", "barWeek"],
+        "visible": { "$state": "/_loading/trello.list_all_cards", "not": true }
+      },
+      "barOverdue": { "type": "ProgressBar", "props": { "value": 100, "tone": "destructive" } },
+      "barToday": { "type": "ProgressBar", "props": { "value": 100, "tone": "warning" } },
+      "barWeek": { "type": "ProgressBar", "props": { "value": 100, "tone": "info" } },
+
+      "legendRow": {
+        "type": "Row",
+        "props": { "gap": "md", "align": "center" },
+        "children": ["legendOverdue", "legendToday", "legendWeek"],
+        "visible": { "$state": "/_loading/trello.list_all_cards", "not": true }
+      },
+      "legendOverdue": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["dotOverdue", "textOverdue"]
+      },
+      "dotOverdue": { "type": "Dot", "props": { "tone": "destructive", "size": "sm" } },
+      "textOverdue": {
+        "type": "Caption",
+        "props": { "text": { "$computed": "trello_format_tracker_legend", "args": { "label": "Overdue", "value": { "$state": "/ui/tracker/overdue_count" } } } }
+      },
+      "legendToday": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["dotToday", "textToday"]
+      },
+      "dotToday": { "type": "Dot", "props": { "tone": "warning", "size": "sm" } },
+      "textToday": {
+        "type": "Caption",
+        "props": { "text": { "$computed": "trello_format_tracker_legend", "args": { "label": "Today", "value": { "$state": "/ui/tracker/today_count" } } } }
+      },
+      "legendWeek": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["dotWeek", "textWeek"]
+      },
+      "dotWeek": { "type": "Dot", "props": { "tone": "info", "size": "sm" } },
+      "textWeek": {
+        "type": "Caption",
+        "props": { "text": { "$computed": "trello_format_tracker_legend", "args": { "label": "Upcoming", "value": { "$state": "/ui/tracker/week_count" } } } }
+      },
+
+      "div0": {
+        "type": "Divider",
+        "props": {},
+        "visible": { "$state": "/_loading/trello.list_all_cards", "not": true }
+      },
+
+      "footerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["footerGroup", "footerChevron"]
+      },
+      "footerGroup": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["footerIcon", "footerText"]
+      },
+      "footerIcon": { "type": "Icon", "props": { "name": "Database", "tone": "muted", "size": "sm" } },
+      "footerText": { "type": "Caption", "props": { "text": "Card due / dueComplete fields", "tone": "muted" } },
+      "footerChevron": { "type": "Icon", "props": { "name": "ChevronRight", "tone": "muted", "size": "sm" } }
+    }
+  },
+  "status": "published"
+}
