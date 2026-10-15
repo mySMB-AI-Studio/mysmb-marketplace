@@ -373,6 +373,16 @@ class Checks(unittest.TestCase):
         self.overnight()
         self.assertIn("CHK-135 Lock Date Change", self.open_item()["description"])
 
+    def test_suppliers_without_an_abn_are_one_line_per_client(self):
+        a = self.add(contact("c-a", "Alpha Supplies", ""))
+        b = self.add(contact("c-b", "Beta Freight", ""))
+        self.org["invoices"] += [doc("x1", "A-1", a, day(6), 220.0), doc("x2", "B-1", b, day(5), 550.0), doc("x3", "B-2", b, day(4), 110.0)]
+        self.overnight()
+        lines = [l for l in self.open_item()["description"].split("\n") if "CHK-008" in l]
+        self.assertEqual(len(lines), 1)
+        self.assertIn("$80.00 GST claimed on purchases over $82.50 from 2 supplier(s) with no ABN in Xero: Beta Freight $60.00, "
+                      "Alpha Supplies $20.00", lines[0])
+
     def test_suppliers_missing_tpar_details_only_for_tpar_clients(self):
         bare = self.add(contact("c-tradie", "Joe Tradie", abn="", address=False))
         self.org["invoices"].append(doc("b-t", "JT-1", bare, day(10), 2200.0, status="PAID", paid_on=day(8)))
@@ -498,6 +508,14 @@ class IntakeChecks(Base):
                                                               "line_amount": 400.0, "tax_amount": 0}])
         self.drop()
         self.assertIn("[CHK-124]", self.review_item()["description"])
+
+    def test_review_item_links_open_the_clients_own_xero_org(self):
+        self.setup_practice()
+        self.w.xero.orgs[T_ACME]["short_code"] = "!Zz9Q"
+        self.add_supplier(T_ACME, history_code="449")
+        self.drop()
+        self.assertIn("(https://go.xero.com/organisationlogin/default.aspx?shortcode=!Zz9Q&redirecturl=/AccountsPayable/Edit.aspx?InvoiceID=",
+                      self.review_item()["description"])
 
     def test_a_clean_bill_raises_no_intake_checks(self):
         self.setup_practice()

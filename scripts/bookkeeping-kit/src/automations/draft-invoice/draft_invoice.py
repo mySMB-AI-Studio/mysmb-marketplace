@@ -143,6 +143,7 @@ if not problem:
         proposal = {
             "doc_type": "ACCREC",
             "origin": "request",
+            "short_code": xero_org_identity(tenant).get("short_code") or "",
             "contact": {"id": (contact or {}).get("ContactID") or "", "name": (contact or {}).get("Name") or customer,
                         "abn": "", "email": email, "is_new": not contact},
             "invoice_number": "",

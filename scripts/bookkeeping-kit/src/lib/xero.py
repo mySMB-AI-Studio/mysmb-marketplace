@@ -123,7 +123,7 @@ def xero_org_identity(tenant_id):
     try:
         org = xero_call("get_organisation", tenant_id)
     except Exception:
-        return {"names": [], "abn": ""}
+        return {"names": [], "abn": "", "short_code": ""}
     if isinstance(org, dict) and isinstance(org.get("Organisations"), list):
         org = org["Organisations"][0] if org["Organisations"] else {}
     elif isinstance(org, list):
@@ -131,7 +131,7 @@ def xero_org_identity(tenant_id):
     org = org if isinstance(org, dict) else {}
     names = [str(n) for n in (org.get("Name"), org.get("LegalName")) if n]
     abn = "".join(ch for ch in str(org.get("TaxNumber") or org.get("RegistrationNumber") or "") if ch.isdigit())
-    return {"names": names, "abn": abn}
+    return {"names": names, "abn": abn, "short_code": str(org.get("ShortCode") or "")}
 
 
 def xero_bill_body(proposal, status):
@@ -371,7 +371,9 @@ def xero_bill_markdown(proposal, warnings=None, blocking=None, bill_id="", file_
     out.append("- Total " + bk_fmt(p.get("total"), cur) + " (GST " + bk_fmt(p.get("tax"), cur) + ", amounts "
                + ("include" if p.get("line_amount_types") == "Inclusive" else "exclude") + " GST)")
     if bill_id:
-        out.append("- Draft " + doc + " in Xero: [open in Xero](" + xero_bill_link(bill_id, p.get("doc_type") or "ACCPAY") + ")")
+        # Through the client's own organisation (its short code), or Xero opens whichever one the browser last used.
+        out.append("- Draft " + doc + " in Xero: [open in Xero](" + xero_org_link(xero_bill_link(bill_id, p.get("doc_type") or "ACCPAY"),
+                                                                    p.get("short_code")) + ")")
     else:
         out.append("- Not in Xero yet: the " + doc + " is created when you approve")
     if file_path:
