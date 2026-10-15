@@ -156,27 +156,6 @@ const flatten_boards: ComputedFunction = (args) => {
 };
 
 /**
- * Formats the completion caption for the Board Health Overview tile's ring.
- * Trello has no notion of a card being "done" outside the due-date-complete
- * checkbox, so completion is defined as completed_due_cards divided by every
- * card that HAS a due date (completed + remaining) — cards with no due date
- * at all aren't part of this ratio, since they're neither complete nor
- * overdue, just untracked for this purpose.
- *
- * Args: { value: object } — get_boards_health_summary's response object
- * ({ completed_due_cards, remaining_due_cards, ... }).
- */
-const format_completion_pct: ComputedFunction = (args) => {
-  const v = (args.value ?? {}) as Record<string, unknown>;
-  const completed = Number(v.completed_due_cards ?? 0);
-  const remaining = Number(v.remaining_due_cards ?? 0);
-  const total = completed + remaining;
-  if (total === 0) return 'No due dates tracked';
-  const pct = Math.round((completed / total) * 100);
-  return `${pct}% complete`;
-};
-
-/**
  * Formats the "N lists · N cards tracked" summary line for the Board Health
  * Overview tile.
  *
@@ -190,13 +169,56 @@ const format_lists_cards_summary: ComputedFunction = (args) => {
   return `${lists} list${lists === 1 ? '' : 's'} · ${cards} card${cards === 1 ? '' : 's'} tracked`;
 };
 
+/**
+ * Flattens a list_all_lists response into display rows for the Board Health
+ * Overview tile's in-tile list drill-down. Each row carries the list's own
+ * name plus its board name as a caption, grouped implicitly by Trello's
+ * natural board order (list_all_lists' per-board fan-out order) rather than
+ * an explicit sort — this is an expand-to-browse view, not a report, so
+ * stable-but-arbitrary ordering is fine.
+ *
+ * Args: { value: array } — list_all_lists' `data` array.
+ */
+const flatten_all_lists: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  return raw.map((list) => ({
+    id: String(list.id ?? ''),
+    name: String(list.name ?? ''),
+    board_label: String(list.board_name ?? ''),
+  }));
+};
+
+/**
+ * Flattens a list_all_cards response into display rows for the Board Health
+ * Overview tile's in-tile card drill-down — the sibling of flatten_all_lists,
+ * reusing the same due-date label/tone logic as the My Cards / Overdue Cards
+ * tiles for consistency.
+ *
+ * Args: { value: array } — list_all_cards' `data` array.
+ */
+const flatten_all_cards: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  return raw.map((card) => {
+    const due = card.due ? String(card.due) : null;
+    const { label, tone } = dueLabelAndTone(due, Boolean(card.dueComplete));
+    return {
+      id: String(card.id ?? ''),
+      name: String(card.name ?? ''),
+      board_label: String(card.board_name ?? ''),
+      due_label: label,
+      due_tone: tone,
+    };
+  });
+};
+
 const elements: PluginElementsModule = {
   slug: 'trello',
   functions: {
     flatten_my_cards_tabs,
     flatten_overdue_cards,
     flatten_boards,
-    format_completion_pct,
+    flatten_all_lists,
+    flatten_all_cards,
     format_lists_cards_summary,
   },
 };
