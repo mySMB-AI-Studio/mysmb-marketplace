@@ -1,5 +1,5 @@
 {
-  "contentHash": "71055d805d5ec842e4b19f0377665320a0108d3de04a281c28b2a595b88f65ad",
+  "contentHash": "6b28f92ba04bb97f4ba2a440719e9701f7b86505453d37220adf5e150e62212e",
   "definition": {
     "capabilities": [
       "campaign.publish",
@@ -185,13 +185,13 @@
       },
       {
         "evidence": [
-          "steps.approveCampaign.actionReceipt"
+          "steps.approveCampaign.intents"
         ],
         "key": "published",
         "kind": "gate",
         "outcome": "publishedWithReceipt",
         "requires": [
-          "steps.approveCampaign.receipt"
+          "steps.approveCampaign.intents.0.state == 'succeeded'"
         ],
         "title": "Published with receipt"
       }
@@ -220,7 +220,7 @@
       {
         "from": "approveCampaign",
         "to": "published",
-        "when": "steps.approveCampaign.option == 'approve-v2'"
+        "when": "steps.approveCampaign.decision == 'approve-v2'"
       }
     ],
     "variationPoints": [

@@ -12,6 +12,9 @@
  *     against contracts/studio-contracts-v1.json (ajv, JSON Schema 2020-12)
  *   - the cross-references a process definition makes (capabilities,
  *     automations, forms, templates, evaluations)
+ *   - what a process definition READS: step outputs, materiality keys, recipients,
+ *     event triggers (a copy of the Workspace's step-output model)
+ *   - the entry's `withdrawn` block
  *
  * Authority. The Workspace (myHubV2 packages/shared/src/process/) owns the
  * contracts; contracts/studio-contracts-v1.json is the generated artefact it
@@ -383,6 +386,502 @@ export function collectProcessReferences(definition: unknown): ProcessReferences
   return refs;
 }
 
+// ── Step outputs and the references that read them ────────────────────────────
+//
+// A process expression reads `steps.<key>.<field>`. Whether <field> exists is
+// not a question of shape, so the contract schema cannot ask it; these rules do.
+// They are the marketplace copy of the Workspace's checks (myHubV2
+// packages/shared/src/plugins/authoring/validate.ts: validateProcessReferences),
+// over a COPY of its step-output model (packages/shared/src/process/step-outputs.ts
+// - this repo cannot import the monorepo). Keep the two in step: when the
+// coordinator changes what a step kind leaves behind, change STEP_KIND_OUTPUTS
+// there, then here (agent-packages.test.ts pins the table).
+//
+// `steps.<key>` is built from the outputs of the latest FINISHED attempt of a
+// step, and what counts is what the final write contains:
+//   agent       the proposal: every declared `outputs` key, the optional `brief`,
+//               and the `preparedBy` / `evidenceRefIds` the coordinator adds.
+//               `proposalSchema` is a prompt hint: there is no `proposal` key.
+//   automation  `ok`, `status`, `automationRunId` plus the NAMED outputs the run
+//               produced - open, unless the automation is bundled and declares them.
+//   human       `completed`, `accepted`, `completedBy`, `cancelled`; `formResponse` and `answers`
+//               only when the step completes on a submitted form.
+//   decision    `decision` (the chosen option's key - there is no `option`),
+//               `responseId`, `answeredBy`, `onBehalfOf`, `revisionRequested`,
+//               `transitionTo`, and `intents` (the outcome of each authorised action).
+//   external    `requestId`, `requestRef`, then `responseId`, `source`, `choiceKey`,
+//               `answer`, `formResponse`, `verifiedIdentity`, `confirmedBy`,
+//               `evidenceRefIds`.
+//   wait        `firedBy`, `firedAt`, `event`.
+//   gate        `passed`, `outcome`, `missing`, `evidenceRefIds`.
+//   output      `artifactId`, `version`, `fileName`, `title`, `evidenceRefIds`.
+
+export const STEP_KINDS = ["agent", "automation", "human", "decision", "external", "wait", "gate", "output"] as const;
+export type StepKind = (typeof STEP_KINDS)[number];
+
+export interface StepKindOutputs {
+  /** Names the runtime always writes for a step of this kind. */
+  readonly runtime: readonly string[];
+  /** The step's own declaration (agent `outputs`) adds names on top of `runtime`. */
+  readonly declared: boolean;
+  /** The runtime can add names the definition cannot list (an automation's named outputs). */
+  readonly open: boolean;
+}
+
+export const STEP_KIND_OUTPUTS: Readonly<Record<StepKind, StepKindOutputs>> = {
+  agent: { runtime: ["brief", "preparedBy", "evidenceRefIds"], declared: true, open: false },
+  automation: { runtime: ["ok", "status", "automationRunId"], declared: false, open: true },
+  human: { runtime: ["completed", "accepted", "cancelled", "completedBy"], declared: false, open: false },
+  decision: {
+    runtime: ["decision", "responseId", "answeredBy", "onBehalfOf", "revisionRequested", "transitionTo", "intents"],
+    declared: false,
+    open: false,
+  },
+  external: {
+    runtime: [
+      "requestId",
+      "requestRef",
+      "responseId",
+      "source",
+      "choiceKey",
+      "answer",
+      "formResponse",
+      "verifiedIdentity",
+      "confirmedBy",
+      "evidenceRefIds",
+    ],
+    declared: false,
+    open: false,
+  },
+  wait: { runtime: ["firedBy", "firedAt", "event"], declared: false, open: false },
+  gate: { runtime: ["passed", "outcome", "missing", "evidenceRefIds"], declared: false, open: false },
+  output: { runtime: ["artifactId", "version", "fileName", "title", "evidenceRefIds"], declared: false, open: false },
+};
+
+export interface StepOutputs {
+  /** Every name known to be produced. */
+  readonly fields: ReadonlySet<string>;
+  /** More names may exist than `fields` lists - a name that is not in it proves nothing. */
+  readonly open: boolean;
+}
+
+/** automation originKey -> the output names that automation declares, for the automations the caller can read. */
+export type AutomationOutputs = ReadonlyMap<string, readonly string[]>;
+
+function isStepKind(kind: unknown): kind is StepKind {
+  return typeof kind === "string" && (STEP_KINDS as readonly string[]).includes(kind);
+}
+
+/** The names `steps.<step.key>.<name>` can resolve to after `step` finishes; null for something that is not a step. */
+export function stepOutputsOf(step: unknown, automationOutputs?: AutomationOutputs): StepOutputs | null {
+  if (!isRecord(step) || !isStepKind(step.kind)) return null;
+  const model = STEP_KIND_OUTPUTS[step.kind];
+  const fields = new Set<string>(model.runtime);
+  let open = model.open;
+  if (step.kind === "agent" && Array.isArray(step.outputs)) {
+    for (const name of step.outputs) if (typeof name === "string") fields.add(name);
+  } else if (step.kind === "automation") {
+    const declared = typeof step.automation === "string" ? (automationOutputs?.get(step.automation) ?? []) : [];
+    if (declared.length > 0) {
+      for (const name of declared) fields.add(name);
+      open = false;
+    }
+  } else if (step.kind === "human" && step.completion === "formSubmitted" && step.form !== undefined) {
+    fields.add("formResponse");
+    // The submitted answers, keyed by form field id (`steps.<key>.answers.<fieldId>`), written by the coordinator on settle.
+    fields.add("answers");
+  }
+  return { fields, open };
+}
+
+/**
+ * The output names a bundled automation payload declares: its Flow IR python
+ * nodes' `outputs`, plus the `results` a foreach node adds. Empty when it
+ * declares none or is not readable - its steps then stay open.
+ */
+export function declaredAutomationOutputs(payload: unknown): string[] {
+  if (!isRecord(payload) || !isRecord(payload.flowIr) || !Array.isArray(payload.flowIr.nodes)) return [];
+  const names = new Set<string>();
+  for (const node of payload.flowIr.nodes as unknown[]) {
+    if (!isRecord(node)) continue;
+    if (node.kind === "foreach") names.add("results");
+    if (!Array.isArray(node.outputs)) continue;
+    for (const output of node.outputs as unknown[]) {
+      if (isRecord(output) && typeof output.name === "string" && output.name.length > 0) names.add(output.name);
+    }
+  }
+  return [...names];
+}
+
+export interface StepReference {
+  /** The reference exactly as written. */
+  readonly text: string;
+  readonly stepKey: string;
+  /** The first segment after the step key - the output name - or null for a bare `steps.<key>`. */
+  readonly field: string | null;
+  /** Segments after `field`. */
+  readonly path: readonly string[];
+}
+
+export interface ExpressionReferences {
+  readonly steps: readonly StepReference[];
+  readonly inputs: ReadonlyArray<{ readonly text: string; readonly inputKey: string }>;
+}
+
+const WORD_START = /[A-Za-z_]/;
+const WORD_PART = /[A-Za-z0-9_.-]/;
+
+/**
+ * Every `steps.*` and `inputs.*` reference in an expression of the coordinator's
+ * language. Reads words as its tokenizer does (letters, digits, `_`, `.`, `-`; a
+ * trailing `.` or `-` is not part of one) and, like it, never looks inside a
+ * quoted string. Total: never throws.
+ */
+export function readReferences(expression: string): ExpressionReferences {
+  const steps: StepReference[] = [];
+  const inputs: Array<{ text: string; inputKey: string }> = [];
+  let i = 0;
+  while (i < expression.length) {
+    const c = expression[i];
+    if (c === "'" || c === '"') {
+      i += 1;
+      while (i < expression.length && expression[i] !== c) i += expression[i] === "\\" ? 2 : 1;
+      i += 1;
+      continue;
+    }
+    if (!WORD_START.test(c)) {
+      i += 1;
+      continue;
+    }
+    let j = i + 1;
+    while (j < expression.length && WORD_PART.test(expression[j])) j += 1;
+    let word = expression.slice(i, j);
+    i = j;
+    while (/[.-]$/.test(word)) word = word.slice(0, -1);
+    const parts = word.split(".");
+    if (parts.length < 2 || parts.some((part) => part === "")) continue;
+    if (parts[0] === "steps") steps.push({ text: word, stepKey: parts[1], field: parts[2] ?? null, path: parts.slice(3) });
+    else if (parts[0] === "inputs") inputs.push({ text: word, inputKey: parts[1] });
+  }
+  return { steps, inputs };
+}
+
+/**
+ * The platform event types (`events/catalog.ts` EVENT_CATALOG in myHubV2
+ * packages/shared): a process event trigger that names anything else never
+ * fires. COPY - when the Workspace adds an event, add it here
+ * (agent-packages.test.ts pins the count). Regenerate by listing the `type`
+ * of every EVENT_CATALOG entry.
+ */
+export const PLATFORM_EVENT_TYPES: ReadonlySet<string> = new Set([
+  "workq.item.created", "workq.item.updated", "workq.item.form_attached", "workq.item.status_changed",
+  "workq.item.assigned", "workq.item.unassigned", "workq.item.claimed", "workq.item.completed",
+  "workq.item.reopened", "workq.item.commented", "workq.item.deleted", "workq.item.due_soon",
+  "workq.item.overdue", "workq.item.stale", "form.created", "form.published", "form.assignment_created",
+  "form.response_started", "form.response_submitted", "form.response_reopened", "template.published",
+  "playbook.applied", "user.created", "user.updated", "user.deactivated", "group.created",
+  "group.member_added", "group.member_removed", "group.deleted", "client.created", "client.updated",
+  "client.deleted", "opportunity.created", "opportunity.updated", "opportunity.stage_changed",
+  "opportunity.won", "opportunity.lost", "opportunity.deleted", "contact.created", "contact.updated",
+  "contact.deleted", "employee.assigned", "employee.unassigned", "portal.enabled", "portal.archived",
+  "portal.reactivated", "portal.membership_added", "portal.membership_removed", "knowledge.file_created",
+  "knowledge.file_updated", "knowledge.file_deleted", "knowledge.folder_created",
+  "knowledge.folder_deleted", "connection.created", "connection.verified", "connection.failed",
+  "connection.revoked", "connection.grant_added", "connection.grant_removed", "snapshot.refreshed",
+  "snapshot.row_added", "snapshot.row_changed", "portal_report.created", "portal_report.updated",
+  "portal_report.published", "artifact.created", "artifact.updated", "artifact.deleted",
+  "artifact.shared", "automation.run_started", "automation.run_succeeded", "automation.run_failed",
+  "automation.paused", "record.created", "record.updated", "record.stage_changed", "record.closed",
+  "record.reopened", "record.deleted", "record.linked", "record.unlinked", "record.note_added",
+  "records.type_published", "messaging.message.received", "process.run.started", "process.run.waiting",
+  "process.run.resumed", "process.run.paused", "process.run.completed", "process.run.cancelled",
+  "process.run.failed", "process.step.changed", "decision.requested", "decision.answered",
+  "decision.invalidated", "decision.expired", "external_request.sent", "external_request.delivered",
+  "external_request.answered", "external_request.expired", "action.authorised", "action.executed",
+  "action.unknown", "action.failed",
+]);
+
+export const PROCESS_REFERENCE_ISSUE_CODES = [
+  "unknown_output_reference",
+  "unknown_materiality_key",
+  "recipient_from_untrusted_output",
+  "unknown_event_type",
+  "unknown_step_reference",
+  "unknown_input_reference",
+] as const;
+export type ProcessReferenceIssueCode = (typeof PROCESS_REFERENCE_ISSUE_CODES)[number];
+
+export interface ProcessReferenceIssue {
+  code: ProcessReferenceIssueCode;
+  /** Definition-relative JSON pointer, e.g. `/transitions/3/when`. */
+  pointer: string;
+  message: string;
+}
+
+/** Step kinds whose output is somebody else's words: an agent's proposal, an outside party's reply. */
+const UNTRUSTED_OUTPUT_KINDS: ReadonlySet<string> = new Set(["agent", "external"]);
+/** Payload field names that choose who a message goes to. */
+const RECIPIENT_FIELDS: ReadonlySet<string> = new Set(["to", "recipient", "recipients", "cc", "bcc"]);
+/** Names a materiality entry may carry besides inputs and step outputs. */
+const SPECIAL_MATERIALITY_KEYS: ReadonlySet<string> = new Set(["recipient", "evidenceVersions"]);
+
+/** "A human step" / "An agent step". */
+function withArticle(kind: string): string {
+  return `${/^[aeiou]/.test(kind) ? "An" : "A"} ${kind}`;
+}
+
+function namesOf(names: Iterable<string>, limit = 12): string {
+  const sorted = [...names].sort();
+  return sorted.length > limit ? `${sorted.slice(0, limit).join(", ")}, …` : sorted.join(", ");
+}
+
+/** The "did you mean" tail of an unknown output, for the slips authors actually make. */
+function outputHint(kind: string, field: string): string {
+  if (kind === "decision" && field === "option") return " (the chosen option's key is `decision`)";
+  if (kind === "agent" && field === "proposal") return " (the proposal is the step's outputs themselves; read a declared output)";
+  if (kind === "human" && field === "form") return " (a submitted form is `formResponse`)";
+  if (kind === "external" && field === "answered") return " (read `choiceKey` for a choice, `answer` for text)";
+  return "";
+}
+
+/**
+ * What a (schema-valid) process definition READS that does not exist, with the
+ * same codes and messages as the Workspace's validateProcessReferences:
+ *
+ *   unknown_output_reference         `steps.<key>.<field>` the step's kind never produces
+ *   unknown_materiality_key          a decision's materiality entry that is no input,
+ *                                    `recipient`, `evidenceVersions` or step output
+ *   recipient_from_untrusted_output  an external recipient, or a recipient field of an
+ *                                    option payload, taken from an agent or external
+ *                                    step's output (threat model AG-2 / AG-6)
+ *   unknown_event_type               an event trigger the platform never emits
+ *   unknown_step_reference /         the same typo in the expressions the contract
+ *   unknown_input_reference          schema cannot check (gate `requires` included
+ *                                    here: this repo has no other validator for them)
+ *
+ * Defensive on purpose: nothing here may throw on odd input.
+ */
+export function checkProcessReferences(
+  definition: unknown,
+  options: { automationOutputs?: AutomationOutputs } = {},
+): ProcessReferenceIssue[] {
+  const issues: ProcessReferenceIssue[] = [];
+  if (!isRecord(definition)) return issues;
+  const report = (code: ProcessReferenceIssueCode, pointer: string, message: string): void => {
+    issues.push({ code, pointer, message });
+  };
+
+  const steps = Array.isArray(definition.steps) ? (definition.steps as unknown[]) : [];
+  // First occurrence of a step key is canonical.
+  const stepsByKey = new Map<string, Record<string, unknown>>();
+  for (const step of steps) {
+    if (isRecord(step) && typeof step.key === "string" && !stepsByKey.has(step.key)) stepsByKey.set(step.key, step);
+  }
+  const outputsByKey = new Map<string, StepOutputs>();
+  for (const [key, step] of stepsByKey) {
+    const outputs = stepOutputsOf(step, options.automationOutputs);
+    if (outputs) outputsByKey.set(key, outputs);
+  }
+  const inputKeys = new Set<string>();
+  if (Array.isArray(definition.inputs)) {
+    for (const input of definition.inputs as unknown[]) if (isRecord(input) && typeof input.key === "string") inputKeys.add(input.key);
+  }
+
+  /** Is `field` something step `key` can leave behind? Unknown steps are not judged here. */
+  const produces = (key: string, field: string): boolean => {
+    const outputs = outputsByKey.get(key);
+    return outputs === undefined || outputs.open || outputs.fields.has(field);
+  };
+  const unknownOutputMessage = (reference: string, step: Record<string, unknown>, field: string): string => {
+    const outputs = outputsByKey.get(String(step.key))!;
+    return `${reference} reads "${field}" from ${String(step.kind)} step "${String(step.key)}", which never produces it${outputHint(String(step.kind), field)}. ${withArticle(String(step.kind))} step here produces: ${namesOf(outputs.fields)}`;
+  };
+
+  interface Site {
+    pointer: string;
+    taint?: "recipient" | "payload";
+  }
+  const check = (expression: unknown, site: Site): void => {
+    if (typeof expression !== "string") return;
+    const references = readReferences(expression);
+    for (const reference of references.steps) {
+      const step = stepsByKey.get(reference.stepKey);
+      if (step === undefined) {
+        report("unknown_step_reference", site.pointer, `Expression references steps.${reference.stepKey}, but no step "${reference.stepKey}" exists`);
+        continue;
+      }
+      if (reference.field !== null && outputsByKey.has(reference.stepKey) && !produces(reference.stepKey, reference.field)) {
+        report("unknown_output_reference", site.pointer, unknownOutputMessage(reference.text, step, reference.field));
+      }
+      if (site.taint !== undefined && UNTRUSTED_OUTPUT_KINDS.has(String(step.kind))) {
+        const names = reference.field === null ? [] : [reference.field, ...reference.path];
+        if (site.taint === "recipient" || names.some((name) => RECIPIENT_FIELDS.has(name))) {
+          report(
+            "recipient_from_untrusted_output",
+            site.pointer,
+            `${reference.text} takes the recipient from the output of ${String(step.kind)} step "${String(step.key)}". Who a message goes to must come from the job's inputs or records, never from ${step.kind === "agent" ? "an agent's own words" : "an outside party's reply"} - an injected instruction could redirect it (threat model AG-2, AG-6)`,
+          );
+        }
+      }
+    }
+    for (const reference of references.inputs) {
+      if (!inputKeys.has(reference.inputKey)) {
+        report("unknown_input_reference", site.pointer, `Expression references inputs.${reference.inputKey}, but no input "${reference.inputKey}" is declared`);
+      }
+    }
+  };
+
+  /** Materiality entries resolve like the coordinator's resolveMaterialValues: a bare name in facts, step outputs, then inputs; a dotted path from inputs. / facts. / steps. */
+  const materialityProblem = (entry: string): string | null => {
+    const usable = (): string =>
+      `Use an input (${namesOf(inputKeys) || "none declared"}), \`recipient\`, \`evidenceVersions\`, or a steps.<key>.<output> path`;
+    if (SPECIAL_MATERIALITY_KEYS.has(entry)) return null;
+    if (!entry.includes(".")) {
+      if (inputKeys.has(entry)) return null;
+      // An automation's undeclared outputs are no evidence that a name exists: name those as steps.<key>.<output>.
+      for (const outputs of outputsByKey.values()) if (outputs.fields.has(entry)) return null;
+      return `Materiality key "${entry}" is not an input of this process and no step is known to produce a field of that name, so it would never change. ${usable()}`;
+    }
+    const [root, first, field] = entry.split(".");
+    if (root === "facts") return null;
+    if (root === "inputs") {
+      return first !== undefined && inputKeys.has(first)
+        ? null
+        : `Materiality key "${entry}" names input "${first ?? ""}", which this process does not declare. ${usable()}`;
+    }
+    if (root === "steps") {
+      const step = first === undefined ? undefined : stepsByKey.get(first);
+      if (step === undefined) return `Materiality key "${entry}" names step "${first ?? ""}", which does not exist. ${usable()}`;
+      if (field !== undefined && !produces(first!, field)) return `Materiality key ${unknownOutputMessage(`"${entry}"`, step, field)}`;
+      return null;
+    }
+    return `Materiality key "${entry}" is a dotted path that does not start with inputs., facts. or steps., so it would never resolve. ${usable()}`;
+  };
+
+  steps.forEach((step, index) => {
+    if (!isRecord(step)) return;
+    const at = `/steps/${index}`;
+    switch (step.kind) {
+      case "automation":
+        if (isRecord(step.inputs)) for (const [name, expression] of Object.entries(step.inputs)) check(expression, { pointer: `${at}/inputs/${name}` });
+        break;
+      case "external":
+        check(step.recipient, { pointer: `${at}/recipient`, taint: "recipient" });
+        break;
+      case "wait":
+        if (isRecord(step.timer)) check(step.timer.until, { pointer: `${at}/timer/until` });
+        if (isRecord(step.event)) check(step.event.correlate, { pointer: `${at}/event/correlate` });
+        break;
+      case "gate":
+        if (Array.isArray(step.requires)) step.requires.forEach((expression: unknown, i: number) => check(expression, { pointer: `${at}/requires/${i}` }));
+        if (Array.isArray(step.evidence)) step.evidence.forEach((expression: unknown, i: number) => check(expression, { pointer: `${at}/evidence/${i}` }));
+        break;
+      case "decision":
+        if (Array.isArray(step.options)) {
+          step.options.forEach((option: unknown, i: number) => {
+            if (isRecord(option) && isRecord(option.intent)) {
+              check(option.intent.payloadFrom, { pointer: `${at}/options/${i}/intent/payloadFrom`, taint: "payload" });
+            }
+          });
+        }
+        if (Array.isArray(step.materiality)) {
+          step.materiality.forEach((entry: unknown, i: number) => {
+            if (typeof entry !== "string") return;
+            const problem = materialityProblem(entry);
+            if (problem !== null) report("unknown_materiality_key", `${at}/materiality/${i}`, problem);
+          });
+        }
+        break;
+      default:
+        break;
+    }
+  });
+
+  if (Array.isArray(definition.transitions)) {
+    definition.transitions.forEach((transition: unknown, i: number) => {
+      if (isRecord(transition)) check(transition.when, { pointer: `/transitions/${i}/when` });
+    });
+  }
+  if (isRecord(definition.safeTest) && Array.isArray(definition.safeTest.assertions)) {
+    definition.safeTest.assertions.forEach((expression: unknown, i: number) => check(expression, { pointer: `/safeTest/assertions/${i}` }));
+  }
+  if (Array.isArray(definition.triggers)) {
+    definition.triggers.forEach((trigger: unknown, i: number) => {
+      if (!isRecord(trigger) || trigger.kind !== "event" || typeof trigger.event !== "string" || PLATFORM_EVENT_TYPES.has(trigger.event)) return;
+      const family = trigger.event.split(".")[0];
+      const nearby = [...PLATFORM_EVENT_TYPES].filter((type) => type.startsWith(`${family}.`));
+      report(
+        "unknown_event_type",
+        `/triggers/${i}/event`,
+        `Event "${trigger.event}" is not in the platform event catalogue, so this trigger would never fire. ${
+          nearby.length > 0 ? `Events starting "${family}.": ${namesOf(nearby, 10)}` : "See events/catalog.ts for the events the platform emits"
+        }`,
+      );
+    });
+  }
+  return issues;
+}
+
+/**
+ * A process reference the rules above refuse that no edit to the PACKAGE can fix:
+ * the definition is the author's honest model of a thing the coordinator does not
+ * do yet, so the repair is a product decision (change what the runtime exposes, or
+ * redesign the process), not a rename. Like scripts/xxs-baseline.json these are
+ * grandfathered FORWARD-ONLY: a listed (plugin, process, code, pointer) is
+ * reported as a warning on every run instead of failing it; any other
+ * occurrence - a new reference, or the same defect somewhere else - fails. An entry
+ * the rules no longer raise is itself an error (delete it): a stale entry would
+ * silently exempt whatever lands at that pointer next.
+ */
+export interface KnownReferenceGap {
+  /** marketplace.json entry name. */
+  plugin: string;
+  /** originKey of the process payload. */
+  process: string;
+  code: ProcessReferenceIssueCode;
+  /** Definition-relative JSON pointer of the offending expression. */
+  pointer: string;
+  /** Why editing the package cannot fix it. */
+  reason: string;
+}
+
+const FORM_ANSWERS_NOT_OUTPUTS =
+  "the follow-up form's answers (q_balanced, q_note) are not step outputs - a human step leaves only completed, accepted, completedBy and formResponse - so nothing the coordinator exposes can branch on the balance or carry the exception note; needs a decision: expose submitted form answers as step outputs, or make the outcome an explicit reviewer decision";
+
+export const KNOWN_REFERENCE_GAPS: readonly KnownReferenceGap[] = [];
+
+export interface KnownGapSplit {
+  /** Issues no entry covers: these fail the run. */
+  failures: ProcessReferenceIssue[];
+  /** Issues an entry covers, with the entry: these are warnings. */
+  known: Array<{ issue: ProcessReferenceIssue; gap: KnownReferenceGap }>;
+  /** Entries for this process that matched nothing: these fail the run (delete them). */
+  stale: KnownReferenceGap[];
+}
+
+/** Split the issues of one process payload into failures, grandfathered gaps and stale entries. */
+export function splitKnownReferenceGaps(
+  issues: readonly ProcessReferenceIssue[],
+  plugin: string,
+  processOriginKey: string | null,
+  gaps: readonly KnownReferenceGap[] = KNOWN_REFERENCE_GAPS,
+): KnownGapSplit {
+  const mine = processOriginKey === null ? [] : gaps.filter((gap) => gap.plugin === plugin && gap.process === processOriginKey);
+  const used = new Set<KnownReferenceGap>();
+  const failures: ProcessReferenceIssue[] = [];
+  const known: KnownGapSplit["known"] = [];
+  for (const issue of issues) {
+    const gap = mine.find((candidate) => candidate.code === issue.code && candidate.pointer === issue.pointer);
+    if (gap) {
+      used.add(gap);
+      known.push({ issue, gap });
+    } else {
+      failures.push(issue);
+    }
+  }
+  return { failures, known, stale: mine.filter((gap) => !used.has(gap)) };
+}
+
 // ── marketplace.json entry blocks ─────────────────────────────────────────────
 
 const SETUP_EFFORTS = ["minutes", "an-hour", "half-day"];
@@ -442,6 +941,74 @@ export function validateReleaseShape(release: unknown): string[] {
   }
   if (release.evidenceHash !== undefined && (typeof release.evidenceHash !== "string" || !/^[0-9a-f]{64}$/.test(release.evidenceHash))) {
     issues.push("release.evidenceHash must be a lowercase sha256 hex digest");
+  }
+  return issues;
+}
+
+const WITHDRAWN_FIELDS = ["since", "reason", "alternative", "retireBy"];
+const WITHDRAWN_REASON_MAX = 1000;
+const WITHDRAWN_ALTERNATIVE_MAX = 200;
+/** A plain date or a timestamp, with or without a zone: the two shapes ISO 8601 gives a withdrawal. */
+const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(?:[.]\d{1,9})?)?(Z|[+-]\d{2}:\d{2})?)?$/;
+
+/**
+ * The instant (epoch ms) an ISO 8601 date or timestamp names, or null when the
+ * value is not one: not a string, not that shape, or a day/hour that does not
+ * exist (2026-02-30, 25:00). A timestamp without a zone is read as UTC, so the
+ * comparison of two dates never depends on the machine running the validator.
+ */
+export function parseIsoDate(value: unknown): number | null {
+  if (typeof value !== "string") return null;
+  const match = ISO_DATE_RE.exec(value);
+  if (!match) return null;
+  const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
+  const calendar = new Date(Date.UTC(year, month - 1, day));
+  if (calendar.getUTCFullYear() !== year || calendar.getUTCMonth() !== month - 1 || calendar.getUTCDate() !== day) return null;
+  if (match[4] !== undefined && (Number(match[4]) > 23 || Number(match[5]) > 59 || (match[6] !== undefined && Number(match[6]) > 59))) return null;
+  const instant = Date.parse(match[4] !== undefined && match[7] === undefined ? `${value}Z` : value);
+  return Number.isNaN(instant) ? null : instant;
+}
+
+/**
+ * Shape of an entry's `withdrawn` block (mirrors pluginWithdrawnSchema in the
+ * Workspace's marketplace-manifest.ts): a catalogue entry the maintainers have
+ * taken off the shelf. `since` and `retireBy` are ISO 8601 dates and `retireBy`
+ * must come after `since`; `reason` says why in words a manager can act on;
+ * `alternative` names the package to move to, so it must be another plugin of
+ * THIS registry. Stricter than the Workspace schema on three counts - dates
+ * must be ISO (the schema accepts anything Date.parse reads), a blank reason is
+ * refused, and unknown keys are refused like every other block here - because
+ * this is where a malformed withdrawal is turned away (the Workspace ignores it).
+ * Messages start with the field path so the caller can prefix its own location.
+ */
+export function validateWithdrawnShape(withdrawn: unknown, context: { name: string; pluginNames: ReadonlySet<string> }): string[] {
+  if (!isRecord(withdrawn)) return ["withdrawn must be an object { since, reason, alternative?, retireBy? }"];
+  const issues: string[] = [];
+  for (const key of Object.keys(withdrawn)) {
+    if (!WITHDRAWN_FIELDS.includes(key)) issues.push(`withdrawn.${key} is not a recognised field (allowed: ${WITHDRAWN_FIELDS.join(", ")})`);
+  }
+  const since = parseIsoDate(withdrawn.since);
+  if (since === null) issues.push(`withdrawn.since must be an ISO 8601 date (2026-10-15) or timestamp (2026-10-15T09:30:00Z), got ${JSON.stringify(withdrawn.since)}`);
+  if (typeof withdrawn.reason !== "string" || withdrawn.reason.trim().length === 0 || withdrawn.reason.length > WITHDRAWN_REASON_MAX) {
+    issues.push(`withdrawn.reason must be a non-empty string of at most ${WITHDRAWN_REASON_MAX} characters: say why, in words the managers of existing installations can act on`);
+  }
+  if (withdrawn.alternative !== undefined) {
+    const alternative = withdrawn.alternative;
+    if (typeof alternative !== "string" || alternative.length === 0 || alternative.length > WITHDRAWN_ALTERNATIVE_MAX) {
+      issues.push(`withdrawn.alternative must be a plugin name of at most ${WITHDRAWN_ALTERNATIVE_MAX} characters`);
+    } else if (alternative === context.name) {
+      issues.push(`withdrawn.alternative "${alternative}" is the plugin itself - name the package to move to instead`);
+    } else if (!context.pluginNames.has(alternative)) {
+      issues.push(`withdrawn.alternative "${alternative}" is not a plugin in this registry - it must match the name of another marketplace.json entry`);
+    }
+  }
+  if (withdrawn.retireBy !== undefined) {
+    const retireBy = parseIsoDate(withdrawn.retireBy);
+    if (retireBy === null) {
+      issues.push(`withdrawn.retireBy must be an ISO 8601 date (2026-12-15) or timestamp, got ${JSON.stringify(withdrawn.retireBy)}`);
+    } else if (since !== null && retireBy <= since) {
+      issues.push(`withdrawn.retireBy ${JSON.stringify(withdrawn.retireBy)} must be after withdrawn.since ${JSON.stringify(withdrawn.since)}`);
+    }
   }
   return issues;
 }

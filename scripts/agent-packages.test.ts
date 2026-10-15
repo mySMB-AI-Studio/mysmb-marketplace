@@ -1,25 +1,38 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { canonicalJson } from "./extension-content";
 import {
+  checkProcessReferences,
   checkVersionAgreement,
   collectProcessReferences,
   contentHashOf,
+  declaredAutomationOutputs,
   findDependencyCycles,
   isPlatformCapabilityKey,
   isSemverRange,
   isStrictSemver,
+  KNOWN_REFERENCE_GAPS,
   loadStudioSchemaValidators,
+  parseIsoDate,
   PLATFORM_CAPABILITY_KEYS,
+  PLATFORM_EVENT_TYPES,
+  readReferences,
+  splitKnownReferenceGaps,
+  STEP_KIND_OUTPUTS,
+  STEP_KINDS,
+  stepOutputsOf,
   StudioContractError,
   validateAgentListingShape,
   validateDependencies,
   validateReleaseShape,
+  validateWithdrawnShape,
+  type KnownReferenceGap,
+  type ProcessReferenceIssue,
 } from "./agent-packages";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -63,7 +76,7 @@ function processDefinition(): Record<string, any> {
       { key: "gather", kind: "agent", skill: "prepare-kickoff-plan", outputs: ["plan"] },
       { key: "check", kind: "automation", automation: ID.automation, inputs: { plan: "steps.gather.plan" } },
       {
-        key: "approve", kind: "decision", type: "kickoff", eligible: ["reviewer"], materiality: ["kickoffDate"],
+        key: "approve", kind: "decision", type: "kickoff", eligible: ["reviewer"], materiality: ["clientContact"],
         options: [
           { key: "proceed", label: "Send invitation", effect: "Sends the kickoff invitation.", intent: { capability: "email.send_reviewed", payloadFrom: "steps.gather.plan.invitation" } },
           { key: "revise", label: "Ask for changes", effect: "Returns the plan to preparation.", transition: "gather" },
@@ -215,7 +228,7 @@ function agentPackage(overrides: Partial<PluginFixture> = {}): PluginFixture {
     files: {
       [PATHS.process]: envelope("process", processDefinition()),
       [PATHS.evaluation]: envelope("evaluation", evaluationDefinition()),
-      [PATHS.automation]: { kind: "automation", originKey: ID.automation },
+      [PATHS.automation]: { kind: "automation", originKey: ID.automation, flowIr: { irVersion: 1, nodes: [{ id: "check", kind: "python", outputs: [{ name: "ok", type: "bool" }] }] } },
       [PATHS.form]: { kind: "form", originKey: ID.form },
       [PATHS.template]: { kind: "workq_template", originKey: ID.template },
     },
@@ -361,6 +374,400 @@ describe("process references", () => {
     for (const input of [null, "x", 1, [], {}, { steps: "x", capabilities: 3, cancellation: [], tests: {} }, { steps: [null, 1, { kind: "decision", options: [null, { intent: 1 }] }] }]) {
       expect(() => collectProcessReferences(input)).not.toThrow();
     }
+  });
+});
+
+describe("step outputs", () => {
+  it("pins the model of what each step kind leaves behind (a copy of the Workspace's step-outputs.ts)", () => {
+    expect(STEP_KINDS).toEqual(["agent", "automation", "human", "decision", "external", "wait", "gate", "output"]);
+    expect(Object.fromEntries(STEP_KINDS.map((kind) => [kind, [...STEP_KIND_OUTPUTS[kind].runtime]]))).toEqual({
+      agent: ["brief", "preparedBy", "evidenceRefIds"],
+      automation: ["ok", "status", "automationRunId"],
+      human: ["completed", "accepted", "cancelled", "completedBy"],
+      decision: ["decision", "responseId", "answeredBy", "onBehalfOf", "revisionRequested", "transitionTo", "intents"],
+      external: ["requestId", "requestRef", "responseId", "source", "choiceKey", "answer", "formResponse", "verifiedIdentity", "confirmedBy", "evidenceRefIds"],
+      wait: ["firedBy", "firedAt", "event"],
+      gate: ["passed", "outcome", "missing", "evidenceRefIds"],
+      output: ["artifactId", "version", "fileName", "title", "evidenceRefIds"],
+    });
+    expect(Object.fromEntries(STEP_KINDS.map((kind) => [kind, [STEP_KIND_OUTPUTS[kind].declared, STEP_KIND_OUTPUTS[kind].open]]))).toEqual({
+      agent: [true, false],
+      automation: [false, true],
+      human: [false, false],
+      decision: [false, false],
+      external: [false, false],
+      wait: [false, false],
+      gate: [false, false],
+      output: [false, false],
+    });
+  });
+  it("lists the same step kinds as the contract artefact", () => {
+    const badKind = processDefinition();
+    badKind.steps[1].kind = "teleport";
+    const [issue] = loadStudioSchemaValidators(artefactPath).validate("process", badKind);
+    expect(issue.message).toBe(`must be one of: ${STEP_KINDS.join(", ")}`);
+  });
+  it("derives the readable names of a step from its kind and declaration", () => {
+    const names = (step: unknown, automationOutputs?: Map<string, string[]>) => {
+      const outputs = stepOutputsOf(step, automationOutputs);
+      return outputs && { fields: [...outputs.fields].sort(), open: outputs.open };
+    };
+    expect(names({ kind: "agent", outputs: ["plan", "missing"], proposalSchema: "x" })).toEqual({ fields: ["brief", "evidenceRefIds", "missing", "plan", "preparedBy"], open: false });
+    expect(names({ kind: "automation", automation: ID.automation })).toEqual({ fields: ["automationRunId", "ok", "status"], open: true });
+    expect(names({ kind: "automation", automation: ID.automation }, new Map([[ID.automation, ["balanced"]]]))).toEqual({ fields: ["automationRunId", "balanced", "ok", "status"], open: false });
+    expect(names({ kind: "automation", automation: ID.automation }, new Map([[ID.ghost, ["balanced"]]]))?.open).toBe(true);
+    expect(names({ kind: "human", completion: "formSubmitted", form: ID.form })?.fields).toContain("formResponse");
+    expect(names({ kind: "human", completion: "statusDone", form: ID.form })?.fields).not.toContain("formResponse");
+    expect(names({ kind: "human", completion: "formSubmitted" })?.fields).not.toContain("formResponse");
+    expect(names({ kind: "decision" })?.fields).toContain("decision");
+    expect(names({ kind: "decision" })?.fields).not.toContain("option");
+  });
+  it("returns nothing for what is not a step, and never throws", () => {
+    for (const input of [null, "x", 1, [], {}, { kind: "teleport" }, { kind: "agent", outputs: "plan" }, { kind: "automation", automation: 3 }]) {
+      expect(() => stepOutputsOf(input)).not.toThrow();
+    }
+    expect(stepOutputsOf({ kind: "teleport" })).toBeNull();
+    expect(stepOutputsOf(null)).toBeNull();
+  });
+  it("reads the steps and inputs an expression names, never inside a string", () => {
+    const steps = (expression: string) => readReferences(expression).steps.map((ref) => [ref.stepKey, ref.field, ...ref.path].join("|"));
+    expect(readReferences("steps.gather.plan.invitation.to").steps).toEqual([{ text: "steps.gather.plan.invitation.to", stepKey: "gather", field: "plan", path: ["invitation", "to"] }]);
+    expect(steps("!steps.a.ok && (steps.b.x == 'y' || steps.c.z != null)")).toEqual(["a|ok", "b|x", "c|z"]);
+    expect(steps("steps.a.x == 'steps.b.y'")).toEqual(["a|x"]);
+    expect(steps('steps.a.x == "steps.b.y"')).toEqual(["a|x"]);
+    expect(steps("steps.a.x == 'it\\'s steps.b.y'")).toEqual(["a|x"]);
+    expect(steps("steps.a.intents.0.state == 'succeeded'")).toEqual(["a|intents|0|state"]);
+    expect(steps("steps.a.ok.")).toEqual(["a|ok"]);
+    expect(readReferences("steps.check != null").steps).toEqual([{ text: "steps.check", stepKey: "check", field: null, path: [] }]);
+    expect(readReferences("inputs.clientContact.email != null").inputs).toEqual([{ text: "inputs.clientContact.email", inputKey: "clientContact" }]);
+    expect(readReferences("facts.steps.a.b || mysteps.a.b || steps || steps..a.x").steps).toEqual([]);
+    expect(() => readReferences("steps.a.x == 'unterminated")).not.toThrow();
+  });
+  it("reads the outputs a bundled automation declares (python nodes, plus a foreach's results)", () => {
+    expect(declaredAutomationOutputs({ flowIr: { nodes: [{ kind: "python", outputs: [{ name: "balanced" }, { name: "difference" }] }, { kind: "foreach", items: "x" }, { kind: "if" }] } }).sort()).toEqual(["balanced", "difference", "results"]);
+    expect(declaredAutomationOutputs({ kind: "automation", originKey: ID.automation })).toEqual([]);
+    expect(declaredAutomationOutputs({ flowIr: { nodes: [{ kind: "python", outputs: [] }] } })).toEqual([]);
+    for (const input of [null, "x", { flowIr: "x" }, { flowIr: { nodes: "x" } }, { flowIr: { nodes: [null, 1, { outputs: [null, { name: 3 }] }] } }]) {
+      expect(() => declaredAutomationOutputs(input)).not.toThrow();
+      expect(declaredAutomationOutputs(input)).toEqual([]);
+    }
+  });
+});
+
+describe("platform events", () => {
+  it("pins the copy of the Workspace event catalogue", () => {
+    expect(PLATFORM_EVENT_TYPES.size).toBe(104);
+    for (const type of ["workq.item.created", "form.response_submitted", "client.created", "record.stage_changed", "process.run.completed", "decision.answered", "external_request.answered", "action.unknown"]) {
+      expect(PLATFORM_EVENT_TYPES.has(type), type).toBe(true);
+    }
+    for (const type of PLATFORM_EVENT_TYPES) expect(type).toMatch(/^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)+$/);
+  });
+});
+
+describe("process reference rules", () => {
+  const where = (issues: ReadonlyArray<{ code: string; pointer: string }>) => issues.map((issue) => `${issue.code} @ ${issue.pointer}`);
+  /** The fixture process (gather 0, check 1, approve 2, confirm 3, handover 4, done 5) with one more transition reading `expression`. */
+  const readIn = (expression: string, options?: Parameters<typeof checkProcessReferences>[1]) => {
+    const definition = processDefinition();
+    definition.transitions.push({ from: "done", to: "gather", when: expression });
+    return checkProcessReferences(definition, options);
+  };
+  const withEdit = (edit: (definition: Record<string, any>) => void, options?: Parameters<typeof checkProcessReferences>[1]) => {
+    const definition = processDefinition();
+    edit(definition);
+    return checkProcessReferences(definition, options);
+  };
+
+  it("accepts the fixture process, and a closed automation that declares what the process reads", () => {
+    expect(checkProcessReferences(processDefinition())).toEqual([]);
+    expect(checkProcessReferences(processDefinition(), { automationOutputs: new Map([[ID.automation, ["ok"]]]) })).toEqual([]);
+  });
+
+  describe("unknown_output_reference", () => {
+    it.each([
+      ["a transition condition", (d: Record<string, any>) => { d.transitions[3].when = "steps.confirm.answered"; }, "/transitions/3/when"],
+      ["a gate requirement", (d: Record<string, any>) => { d.steps[5].requires = ["steps.handover.form"]; }, "/steps/5/requires/0"],
+      ["gate evidence", (d: Record<string, any>) => { d.steps[5].evidence = ["steps.handover.notes"]; }, "/steps/5/evidence/0"],
+      ["an option payload", (d: Record<string, any>) => { d.steps[2].options[0].intent.payloadFrom = "steps.gather.proposal"; }, "/steps/2/options/0/intent/payloadFrom"],
+      ["an external recipient", (d: Record<string, any>) => { d.steps[3].recipient = "steps.approve.option"; }, "/steps/3/recipient"],
+      ["an automation input", (d: Record<string, any>) => { d.steps[1].inputs = { plan: "steps.gather.plans" }; }, "/steps/1/inputs/plan"],
+      ["a wait timer", (d: Record<string, any>) => { d.steps.push({ key: "pause", kind: "wait", timer: { until: "steps.confirm.replyDate" } }); }, "/steps/6/timer/until"],
+      ["a wait correlation", (d: Record<string, any>) => { d.steps.push({ key: "pause", kind: "wait", event: { eventType: "email.reply_received", correlate: "steps.confirm.threadId" } }); }, "/steps/6/event/correlate"],
+      ["a safe-test assertion", (d: Record<string, any>) => { d.safeTest = { sampleInputs: {}, assertions: ["steps.gather.nope != null"] }; }, "/safeTest/assertions/0"],
+    ])("is raised for %s", (_label, edit, pointer) => {
+      expect(where(withEdit(edit))).toEqual([`unknown_output_reference @ ${pointer}`]);
+    });
+
+    it("catches the confirm.answered defect, naming what an external step does produce", () => {
+      const [issue] = withEdit((d) => { d.transitions[3].when = "steps.confirm.answered"; });
+      expect(issue.message).toContain('steps.confirm.answered reads "answered" from external step "confirm", which never produces it');
+      expect(issue.message).toContain("`choiceKey`");
+      expect(issue.message).toMatch(/produces: .*choiceKey.*verifiedIdentity/);
+      expect(withEdit((d) => { d.transitions[3].when = "steps.confirm.choiceKey == 'confirm'"; })).toEqual([]);
+    });
+
+    it("points a decision's .option at .decision", () => {
+      const [issue] = readIn("steps.approve.option != 'revise'");
+      expect(issue.message).toContain("`decision`");
+      expect(readIn("steps.approve.decision != 'revise'")).toEqual([]);
+    });
+
+    it.each([
+      ["gather", ["plan", "brief", "preparedBy"], ["proposal", "planz"]],
+      ["handover", ["accepted", "completed", "completedBy", "cancelled", "formResponse", "answers"], ["form"]],
+      ["approve", ["decision", "responseId", "intents"], ["option", "optionKey"]],
+      ["confirm", ["choiceKey", "answer", "responseId", "verifiedIdentity"], ["answered", "threadId"]],
+      ["done", ["passed", "outcome", "missing"], ["result"]],
+    ])("%s: reads %j, refuses %j", (key, good, bad) => {
+      for (const field of good) expect(readIn(`steps.${key}.${field} != null`), `${key}.${field}`).toEqual([]);
+      for (const field of bad) expect(where(readIn(`steps.${key}.${field} != null`)), `${key}.${field}`).toEqual(["unknown_output_reference @ /transitions/5/when"]);
+    });
+
+    it("judges only the output name, lets a bare steps.<key> through, and never reads inside a string", () => {
+      expect(readIn("steps.gather.plan.invitation.to != null")).toEqual([]);
+      expect(readIn("steps.approve.intents.0.state == 'succeeded'")).toEqual([]);
+      expect(readIn("steps.check != null")).toEqual([]);
+      expect(readIn("steps.approve.decision == 'steps.nobody.nothing'")).toEqual([]);
+    });
+
+    it("treats an automation as open until the bundle says what it declares", () => {
+      expect(readIn("steps.check.balanced && steps.check.ok")).toEqual([]);
+      const declared = { automationOutputs: new Map([[ID.automation, ["balanced"]]]) };
+      expect(readIn("steps.check.balanced && steps.check.ok && steps.check.status", declared)).toEqual([]);
+      expect(where(readIn("steps.check.difference", declared))).toEqual(["unknown_output_reference @ /transitions/5/when"]);
+    });
+
+    it("gives a human step formResponse only when it completes on a submitted form", () => {
+      const statusDone = withEdit((d) => { d.steps[4].completion = "statusDone"; });
+      expect(where(statusDone)).toEqual(["unknown_output_reference @ /steps/5/evidence/0"]);
+    });
+  });
+
+  describe("unknown_step_reference and unknown_input_reference", () => {
+    it("catch a typo in any expression, gate requirements included", () => {
+      expect(where(readIn("steps.confrim.choiceKey"))).toEqual(["unknown_step_reference @ /transitions/5/when"]);
+      expect(where(readIn("inputs.clientContcat != null"))).toEqual(["unknown_input_reference @ /transitions/5/when"]);
+      expect(where(withEdit((d) => { d.steps[5].requires = ["steps.ghost.ok", "inputs.ghost"]; }))).toEqual([
+        "unknown_step_reference @ /steps/5/requires/0",
+        "unknown_input_reference @ /steps/5/requires/1",
+      ]);
+    });
+  });
+
+  describe("unknown_materiality_key", () => {
+    const closed = { automationOutputs: new Map([[ID.automation, ["ok"]]]) };
+    const materiality = (...entries: string[]) => withEdit((d) => { d.steps[2].materiality = entries; }, closed);
+
+    it.each(["recipient", "evidenceVersions", "clientContact", "plan", "ok", "inputs.clientContact", "inputs.clientContact.email", "facts.scopeVersion", "steps.gather.plan", "steps.gather.plan.amount", "steps.confirm.choiceKey", "steps.gather"])(
+      "accepts %s",
+      (entry) => {
+        expect(materiality(entry)).toEqual([]);
+      },
+    );
+
+    it("refuses a bare name that is no input and that no step produces (the kickoffDate defect)", () => {
+      const issues = materiality("recipient", "kickoffDate");
+      expect(where(issues)).toEqual(["unknown_materiality_key @ /steps/2/materiality/1"]);
+      expect(issues[0].message).toContain('Materiality key "kickoffDate" is not an input of this process');
+      expect(issues[0].message).toContain("clientContact");
+      expect(issues[0].message).toContain("`recipient`");
+    });
+
+    it.each([
+      ["inputs.kickoffDate", /names input "kickoffDate", which this process does not declare/],
+      ["steps.ghost.plan", /names step "ghost", which does not exist/],
+      ["steps.gather.planz", /reads "planz" from agent step "gather", which never produces it/],
+      ["steps.approve.option", /reads "option" from decision step "approve".*`decision`/],
+      ["plan.amount", /does not start with inputs\., facts\. or steps\./],
+    ])("refuses %s", (entry, message) => {
+      const issues = materiality(entry);
+      expect(where(issues)).toEqual(["unknown_materiality_key @ /steps/2/materiality/0"]);
+      expect(issues[0].message).toMatch(message);
+    });
+
+    it("takes an automation that declares nothing as no evidence of a bare name: name its outputs as steps.<key>.<output>", () => {
+      const open = (entry: string) => withEdit((d) => { d.steps[2].materiality = [entry]; });
+      expect(where(open("kickoffDate"))).toEqual(["unknown_materiality_key @ /steps/2/materiality/0"]);
+      expect(open("kickoffDate")[0].message).toContain("no step is known to produce a field of that name");
+      expect(open("steps.check.kickoffDate")).toEqual([]);
+      expect(where(open("inputs.kickoffDate"))).toEqual(["unknown_materiality_key @ /steps/2/materiality/0"]);
+    });
+  });
+
+  describe("recipient_from_untrusted_output", () => {
+    const withContact = (edit: (definition: Record<string, any>) => void) =>
+      withEdit((d) => {
+        d.steps[0].outputs = ["plan", "contact", "recipient"];
+        edit(d);
+      });
+
+    it.each([
+      ["an agent output", "steps.gather.contact"],
+      ["a field of an agent output", "steps.gather.plan.recipient"],
+      ["an outside party's reply", "steps.confirm.answer"],
+    ])("refuses an external recipient taken from %s", (_label, recipient) => {
+      const issues = withContact((d) => { d.steps[3].recipient = recipient; });
+      expect(where(issues)).toEqual(["recipient_from_untrusted_output @ /steps/3/recipient"]);
+      expect(issues[0].message).toContain(recipient);
+      expect(issues[0].message).toContain("AG-2");
+    });
+
+    it("accepts a recipient from an input, a literal, or a step that is not somebody else's words", () => {
+      for (const recipient of ["inputs.clientContact", "inputs.clientContact.email", "'client@example.test'", "steps.approve.decision", "steps.handover.completedBy", "steps.check.contact"]) {
+        const issues = withContact((d) => { d.steps[3].recipient = recipient; });
+        expect(issues.filter((issue) => issue.code === "recipient_from_untrusted_output"), recipient).toEqual([]);
+      }
+    });
+
+    it.each(["steps.gather.plan.to", "steps.gather.plan.invitation.cc", "steps.gather.plan.bcc", "steps.gather.plan.recipients.0", "steps.confirm.answer.to", "steps.gather.recipient"])(
+      "refuses an option payload that reaches for a recipient field of %s",
+      (payloadFrom) => {
+        const issues = withContact((d) => { d.steps[2].options[0].intent.payloadFrom = payloadFrom; });
+        expect(where(issues)).toEqual(["recipient_from_untrusted_output @ /steps/2/options/0/intent/payloadFrom"]);
+      },
+    );
+
+    it("leaves a payload that is not a recipient field alone: the whole payload is not decidable here", () => {
+      expect(withContact(() => undefined)).toEqual([]);
+      for (const payloadFrom of ["steps.gather.plan.invitation", "inputs.clientContact.to", "steps.check.to", "steps.approve.decision"]) {
+        const issues = withContact((d) => { d.steps[2].options[0].intent.payloadFrom = payloadFrom; });
+        expect(issues.filter((issue) => issue.code === "recipient_from_untrusted_output"), payloadFrom).toEqual([]);
+      }
+    });
+  });
+
+  describe("unknown_event_type", () => {
+    const withTrigger = (event: string) => withEdit((d) => { d.triggers = [{ kind: "event", event, inputsFrom: { clientContact: "subject.name" } }]; });
+
+    it("accepts a catalogued event and refuses one the platform never emits, naming its family", () => {
+      expect(withTrigger("workq.item.created")).toEqual([]);
+      const issues = withTrigger("client.registered");
+      expect(where(issues)).toEqual(["unknown_event_type @ /triggers/0/event"]);
+      expect(issues[0].message).toContain('"client.registered"');
+      expect(issues[0].message).toContain("client.created");
+      expect(withTrigger("zzz.thing")[0].message).toContain("events/catalog.ts");
+    });
+
+    it("leaves schedule triggers alone and judges every event trigger", () => {
+      const issues = withEdit((d) => {
+        d.triggers = [
+          { kind: "schedule", cron: "0 9 * * 1", inputs: { clientContact: "weekly" } },
+          { kind: "event", event: "workq.item.created", inputsFrom: { clientContact: "subject.title" } },
+          { kind: "event", event: "client.registered", inputsFrom: { clientContact: "subject.name" } },
+        ];
+      });
+      expect(where(issues)).toEqual(["unknown_event_type @ /triggers/2/event"]);
+    });
+  });
+
+  it("is total: odd input never throws", () => {
+    for (const input of [null, "x", 1, [], {}, { steps: "x", transitions: 3, inputs: {}, triggers: "x", safeTest: [] }, { steps: [null, 1, { kind: "decision", materiality: [1, null], options: [null, { intent: 1 }] }, { kind: "external", recipient: 3 }, { kind: "gate", requires: "x" }], transitions: [null, { when: 4 }] }]) {
+      expect(() => checkProcessReferences(input)).not.toThrow();
+    }
+  });
+});
+
+describe("known reference gaps", () => {
+  const issue = (pointer: string, code: ProcessReferenceIssue["code"] = "unknown_output_reference"): ProcessReferenceIssue => ({ code, pointer, message: "m" });
+  const gap = (pointer: string): KnownReferenceGap => ({ plugin: "p", process: "o", code: "unknown_output_reference", pointer, reason: "r" });
+
+  it("grandfathers exactly the listed (plugin, process, code, pointer) and fails everything else", () => {
+    const split = splitKnownReferenceGaps(
+      [issue("/a"), issue("/b"), issue("/a", "unknown_materiality_key")],
+      "p",
+      "o",
+      [gap("/a")],
+    );
+    expect(split.known.map((k) => k.issue.pointer)).toEqual(["/a"]);
+    expect(split.failures.map((f) => `${f.code} ${f.pointer}`)).toEqual(["unknown_output_reference /b", "unknown_materiality_key /a"]);
+    expect(split.stale).toEqual([]);
+  });
+  it("applies an entry only to its own plugin and process", () => {
+    for (const [plugin, process] of [["other", "o"], ["p", "other"], ["p", null]] as const) {
+      const split = splitKnownReferenceGaps([issue("/a")], plugin, process, [gap("/a")]);
+      expect(split.known).toEqual([]);
+      expect(split.failures).toHaveLength(1);
+      expect(split.stale).toEqual([]);
+    }
+  });
+  it("reports an entry the rules no longer raise as stale, so it cannot exempt what lands there next", () => {
+    const split = splitKnownReferenceGaps([issue("/a")], "p", "o", [gap("/a"), gap("/fixed")]);
+    expect(split.stale.map((g) => g.pointer)).toEqual(["/fixed"]);
+    expect(splitKnownReferenceGaps([], "p", "o", [gap("/fixed")]).stale).toHaveLength(1);
+  });
+  it("ships no grandfathered gaps: the reference packages pass every reference rule", () => {
+    expect(KNOWN_REFERENCE_GAPS).toEqual([]);
+  });
+});
+
+describe("the reference packages", () => {
+  const pluginsDir = join(here, "..", "plugins");
+  it.each(["client-onboarding", "bookkeeper", "marketing"])("%s reads only outputs its steps produce (bar the grandfathered gaps)", (name) => {
+    const dir = join(pluginsDir, name);
+    const read = (path: string) => JSON.parse(readFileSync(join(dir, path), "utf8")) as Record<string, any>;
+    const content = read(join(".claude-plugin", "plugin.json")).content as Record<string, string[]>;
+    const automationOutputs = new Map<string, string[]>();
+    for (const path of content.automations ?? []) {
+      const payload = read(path);
+      const names = declaredAutomationOutputs(payload);
+      if (names.length > 0) automationOutputs.set(payload.originKey, names);
+    }
+    expect(content.processes).toHaveLength(1);
+    for (const path of content.processes) {
+      const payload = read(path);
+      const split = splitKnownReferenceGaps(checkProcessReferences(payload.definition, { automationOutputs }), name, payload.originKey);
+      expect(split.failures.map((f) => `${f.code} ${f.pointer}: ${f.message}`)).toEqual([]);
+      expect(split.stale).toEqual([]);
+      expect(contentHashOf(payload)).toBe(payload.contentHash);
+    }
+  });
+});
+
+describe("withdrawn block", () => {
+  const context = { name: "old", pluginNames: new Set(["old", "new"]) };
+  const issues = (withdrawn: unknown) => validateWithdrawnShape(withdrawn, context);
+
+  it("reads ISO 8601 dates and timestamps and nothing else", () => {
+    expect(parseIsoDate("2026-10-15")).toBe(Date.UTC(2026, 9, 15));
+    expect(parseIsoDate("2026-10-15T09:30:00Z")).toBe(Date.UTC(2026, 9, 15, 9, 30));
+    expect(parseIsoDate("2026-10-15T09:30:00.123+10:00")).toBe(Date.UTC(2026, 9, 14, 23, 30, 0, 123));
+    // No zone: UTC, so the answer never depends on the machine.
+    expect(parseIsoDate("2026-10-15T09:30")).toBe(Date.UTC(2026, 9, 15, 9, 30));
+    for (const bad of ["", "2026-10", "20261015", "15/10/2026", "Oct 15 2026", "yesterday", "2026-02-30", "2026-13-01", "2026-10-15T25:00:00Z", "2026-10-15T10:61:00Z", "2026-10-15 09:30:00Z", 20261015, null, undefined]) {
+      expect(parseIsoDate(bad), String(bad)).toBeNull();
+    }
+  });
+
+  it("accepts the documented shape, with or without the optional fields", () => {
+    expect(issues({ since: "2026-10-01", reason: "Replaced by the new package." })).toEqual([]);
+    expect(issues({ since: "2026-10-01T09:00:00Z", reason: "r", alternative: "new", retireBy: "2026-12-01" })).toEqual([]);
+    expect(issues({ since: "2026-10-01", reason: "r".repeat(1000) })).toEqual([]);
+  });
+
+  it("refuses what is not an object, unknown keys, and a missing or malformed since and reason", () => {
+    for (const bad of ["yes", null, [], 1]) expect(issues(bad)[0]).toContain("withdrawn must be an object");
+    expect(issues({ since: "2026-10-01", reason: "r", note: 1 }).join("\n")).toContain("withdrawn.note is not a recognised field (allowed: since, reason, alternative, retireBy)");
+    expect(issues({ reason: "r" }).join("\n")).toContain("withdrawn.since must be an ISO 8601 date");
+    expect(issues({ since: "yesterday", reason: "r" }).join("\n")).toContain('withdrawn.since must be an ISO 8601 date (2026-10-15) or timestamp (2026-10-15T09:30:00Z), got "yesterday"');
+    expect(issues({ since: "2026-10-01" }).join("\n")).toContain("withdrawn.reason must be a non-empty string");
+    expect(issues({ since: "2026-10-01", reason: "  " }).join("\n")).toContain("withdrawn.reason must be a non-empty string");
+    expect(issues({ since: "2026-10-01", reason: "r".repeat(1001) }).join("\n")).toContain("withdrawn.reason");
+  });
+
+  it("requires the alternative to be another plugin of this registry", () => {
+    expect(issues({ since: "2026-10-01", reason: "r", alternative: "ghost" }).join("\n")).toContain('withdrawn.alternative "ghost" is not a plugin in this registry');
+    expect(issues({ since: "2026-10-01", reason: "r", alternative: "old" }).join("\n")).toContain('withdrawn.alternative "old" is the plugin itself');
+    expect(issues({ since: "2026-10-01", reason: "r", alternative: "" }).join("\n")).toContain("withdrawn.alternative must be a plugin name");
+    expect(issues({ since: "2026-10-01", reason: "r", alternative: 3 }).join("\n")).toContain("withdrawn.alternative must be a plugin name");
+  });
+
+  it("requires retireBy to be a date after since", () => {
+    expect(issues({ since: "2026-10-01", reason: "r", retireBy: "2026-10-01" }).join("\n")).toContain('withdrawn.retireBy "2026-10-01" must be after withdrawn.since "2026-10-01"');
+    expect(issues({ since: "2026-10-01", reason: "r", retireBy: "2026-09-01" }).join("\n")).toContain("must be after withdrawn.since");
+    expect(issues({ since: "2026-10-01", reason: "r", retireBy: "soon" }).join("\n")).toContain("withdrawn.retireBy must be an ISO 8601 date");
+    expect(issues({ since: "2026-10-01", reason: "r", retireBy: "2026-10-01T00:00:01Z" })).toEqual([]);
+    // A bad since is reported once; retireBy is not compared against it.
+    expect(issues({ since: "never", reason: "r", retireBy: "2026-09-01" })).toHaveLength(1);
   });
 });
 
@@ -683,5 +1090,152 @@ describe("validator CLI: business-agent packages", () => {
     expect(output).toContain('plugin "bad-release" release.evidenceHash must be a lowercase sha256 hex digest');
     expect(output).toContain('plugin "bad-release" release.extra is not a recognised field');
     expect(output).toContain('plugin "agent-not-object" listing.agent must be an object');
+  }, 30_000);
+
+  /** An agent package that bundles its own capability, so only the rule under test can fail. */
+  function selfContainedAgent(name: string, process: Record<string, any>, extraFiles: Record<string, unknown> = {}): PluginFixture {
+    const agent = agentPackage({ name });
+    agent.entry = { ...agent.entry, dependencies: undefined };
+    const capabilityPath = `content/capabilities/${ID.capability}.json`;
+    return {
+      ...agent,
+      content: { ...agent.content, capabilities: [capabilityPath] },
+      files: { ...agent.files, [capabilityPath]: envelope("capability", capabilityDefinition()), [PATHS.process]: envelope("process", process), ...extraFiles },
+    };
+  }
+
+  it("rejects the process defects the runtime evaluator found: an output the step never produces, a materiality key nothing supplies", () => {
+    const answered = processDefinition();
+    answered.transitions[3].when = "steps.confirm.answered";
+
+    const kickoffDate = processDefinition();
+    kickoffDate.steps[2].materiality = ["kickoffDate", "recipient"];
+
+    const option = processDefinition();
+    option.transitions[2].when = "steps.approve.option != 'revise'";
+
+    const fixed = processDefinition();
+    fixed.transitions[3].when = "steps.confirm.choiceKey == 'confirm'";
+    fixed.transitions[2].when = "steps.approve.decision != 'revise'";
+    fixed.steps[2].materiality = ["clientContact", "steps.gather.plan.scopeVersion", "recipient"];
+
+    const { ok, output } = run(
+      registry([
+        selfContainedAgent("reads-answered", answered),
+        selfContainedAgent("bad-materiality", kickoffDate),
+        selfContainedAgent("reads-option", option),
+        selfContainedAgent("repaired", fixed),
+      ]),
+    );
+    expect(ok).toBe(false);
+    const at = (plugin: string) => `plugins/${plugin}: ${PATHS.process} process "client-onboarding"`;
+    expect(output).toContain(`${at("reads-answered")} unknown_output_reference: steps.confirm.answered reads "answered" from external step "confirm", which never produces it`);
+    expect(output).toContain("(at /definition/transitions/3/when)");
+    expect(output).toContain(`${at("bad-materiality")} unknown_materiality_key: Materiality key "kickoffDate" is not an input of this process`);
+    expect(output).toContain("(at /definition/steps/2/materiality/0)");
+    expect(output).toContain(`${at("reads-option")} unknown_output_reference: steps.approve.option reads "option" from decision step "approve"`);
+    expect(output).toContain("(the chosen option's key is `decision`)");
+    expect(output).not.toContain("plugins/repaired");
+  }, 30_000);
+
+  it("checks an automation step against the outputs its bundled automation declares", () => {
+    const flowIr = (...names: string[]) => ({ irVersion: 1, nodes: [{ id: "check", kind: "python", outputs: names.map((name) => ({ name, type: "str" })) }] });
+    const automation = (...names: string[]) => ({ [PATHS.automation]: { kind: "automation", originKey: ID.automation, flowIr: flowIr(...names) } });
+    const reads = (field: string) => {
+      const process = processDefinition();
+      process.transitions[1].when = `steps.check.${field}`;
+      return process;
+    };
+    const { ok, output } = run(
+      registry([
+        selfContainedAgent("reads-declared", reads("balanced"), automation("balanced")),
+        selfContainedAgent("reads-runtime-key", reads("status"), automation("balanced")),
+        selfContainedAgent("reads-undeclared", reads("difference"), automation("balanced")),
+        selfContainedAgent("declares-nothing", reads("anything_at_all"), automation()),
+      ]),
+    );
+    expect(ok).toBe(false);
+    expect(output).toContain('plugins/reads-undeclared:');
+    expect(output).toContain('unknown_output_reference: steps.check.difference reads "difference" from automation step "check"');
+    expect(output).toContain("(at /definition/transitions/1/when)");
+    for (const clean of ["reads-declared", "reads-runtime-key", "declares-nothing"]) expect(output).not.toContain(`plugins/${clean}:`);
+  }, 30_000);
+
+  it("refuses a recipient an agent or an outsider wrote", () => {
+    const fromAgent = processDefinition();
+    fromAgent.steps[0].outputs = ["plan", "contact"];
+    fromAgent.steps[3].recipient = "steps.gather.contact";
+
+    const payloadTo = processDefinition();
+    payloadTo.steps[2].options[0].intent.payloadFrom = "steps.gather.plan.to";
+
+    const { ok, output } = run(
+      registry([
+        selfContainedAgent("agent-recipient", fromAgent),
+        selfContainedAgent("payload-recipient", payloadTo),
+      ]),
+    );
+    expect(ok).toBe(false);
+    expect(output).toContain(`plugins/agent-recipient: ${PATHS.process} process "client-onboarding" recipient_from_untrusted_output: steps.gather.contact takes the recipient from the output of agent step "gather"`);
+    expect(output).toContain("(at /definition/steps/3/recipient)");
+    expect(output).toContain("recipient_from_untrusted_output: steps.gather.plan.to takes the recipient");
+    expect(output).toContain("(at /definition/steps/2/options/0/intent/payloadFrom)");
+  }, 30_000);
+
+  it("resolves an automation's declared outputs through a declared dependency", () => {
+    // The automation lives in a provider plugin the agent depends on, so its outputs are known without being bundled alongside.
+    const provider: PluginFixture = {
+      name: "automation-provider",
+      entry: { version: "1.0.0" },
+      manifest: { version: "1.0.0" },
+      content: { automations: [PATHS.automation] },
+      files: { [PATHS.automation]: { kind: "automation", originKey: ID.automation, flowIr: { nodes: [{ kind: "python", outputs: [{ name: "balanced" }] }] } } },
+    };
+    const process = processDefinition();
+    process.transitions[1].when = "steps.check.difference";
+    const agent = selfContainedAgent("depends-on-provider", process);
+    agent.entry = { ...agent.entry, dependencies: [{ plugin: "automation-provider", version: "^1.0.0" }] };
+    agent.content = { ...agent.content, automations: [] };
+    delete (agent.files as Record<string, unknown>)[PATHS.automation];
+    const { ok, output } = run(registry([provider, agent]));
+    expect(ok).toBe(false);
+    expect(output).toContain('plugins/depends-on-provider:');
+    expect(output).toContain('unknown_output_reference: steps.check.difference reads "difference" from automation step "check"');
+  }, 30_000);
+
+  it("validates a withdrawn block on a catalogue entry", () => {
+    const withdrawn = (extra: Record<string, unknown>) => ({ since: "2026-10-01", reason: "Replaced by the new package.", ...extra });
+    const { ok, output } = run(
+      registry([
+        { name: "replacement" },
+        { name: "fine-withdrawn", entry: { withdrawn: withdrawn({ alternative: "replacement", retireBy: "2026-12-01" }) } },
+        { name: "bad-since", entry: { withdrawn: withdrawn({ since: "yesterday" }) } },
+        { name: "blank-reason", entry: { withdrawn: withdrawn({ reason: "   " }) } },
+        { name: "ghost-alternative", entry: { withdrawn: withdrawn({ alternative: "ghost" }) } },
+        { name: "retire-first", entry: { withdrawn: withdrawn({ retireBy: "2026-09-01" }) } },
+        { name: "extra-key", entry: { withdrawn: withdrawn({ note: "x" }) } },
+        { name: "not-an-object", entry: { withdrawn: "yes" } },
+      ]),
+    );
+    expect(ok).toBe(false);
+    expect(output).toContain('plugin "bad-since" withdrawn.since must be an ISO 8601 date');
+    expect(output).toContain('plugin "blank-reason" withdrawn.reason must be a non-empty string');
+    expect(output).toContain('plugin "ghost-alternative" withdrawn.alternative "ghost" is not a plugin in this registry');
+    expect(output).toContain('plugin "retire-first" withdrawn.retireBy "2026-09-01" must be after withdrawn.since "2026-10-01"');
+    expect(output).toContain('plugin "extra-key" withdrawn.note is not a recognised field');
+    expect(output).toContain('plugin "not-an-object" withdrawn must be an object');
+    expect(output).not.toContain('"fine-withdrawn"');
+    expect(output).not.toContain('"replacement"');
+  }, 30_000);
+
+  it("accepts a well-formed withdrawn block", () => {
+    const result = run(
+      registry([
+        { name: "replacement" },
+        { name: "old", entry: { withdrawn: { since: "2026-10-01T09:00:00Z", reason: "Superseded.", alternative: "replacement", retireBy: "2026-12-01" } } },
+      ]),
+    );
+    expect(result.output).toBe("validate: OK\n");
+    expect(result.ok).toBe(true);
   }, 30_000);
 });

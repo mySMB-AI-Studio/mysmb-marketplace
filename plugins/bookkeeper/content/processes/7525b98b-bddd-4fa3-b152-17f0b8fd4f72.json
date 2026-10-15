@@ -1,5 +1,5 @@
 {
-  "contentHash": "2f4172a5ace9e66949f3787e2aa8e639807d6ce1eb9dbab114485dbd642947c6",
+  "contentHash": "d09db65144a6f2a4c5bb1aceaff1b121e5de637e156d30ca6b0a37db87307fc6",
   "definition": {
     "capabilities": [
       "accounting.read_invoices",
@@ -155,8 +155,8 @@
         "key": "treatment",
         "kind": "decision",
         "materiality": [
-          "amount",
-          "invoiceVersion"
+          "steps.checkDifference.difference",
+          "steps.match.invoice.version"
         ],
         "options": [
           {
@@ -212,20 +212,20 @@
         "kind": "gate",
         "outcome": "reconciled",
         "requires": [
-          "steps.checkDifference.balanced || steps.followUp.balanceMatches"
+          "steps.checkDifference.balanced || steps.followUp.answers.q_balanced"
         ],
         "title": "Reconciled"
       },
       {
         "evidence": [
-          "steps.followUp.exceptionNote",
-          "steps.treatment.decisionRecord"
+          "steps.followUp.answers.q_note",
+          "steps.treatment.responseId"
         ],
         "key": "documentedException",
         "kind": "gate",
         "outcome": "documentedException",
         "requires": [
-          "steps.followUp.exceptionNote"
+          "steps.followUp.answers.q_note"
         ],
         "title": "Documented exception"
       }
@@ -259,17 +259,17 @@
       {
         "from": "treatment",
         "to": "followUp",
-        "when": "steps.treatment.option != 'revise'"
+        "when": "steps.treatment.decision != 'revise'"
       },
       {
         "from": "followUp",
         "to": "reconciled",
-        "when": "steps.followUp.balanceMatches"
+        "when": "steps.followUp.answers.q_balanced"
       },
       {
         "from": "followUp",
         "to": "documentedException",
-        "when": "!steps.followUp.balanceMatches"
+        "when": "!steps.followUp.answers.q_balanced"
       }
     ],
     "variationPoints": [

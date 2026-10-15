@@ -936,6 +936,9 @@
                           "minLength": 1,
                           "type": "string"
                         },
+                        "suggested": {
+                          "type": "boolean"
+                        },
                         "transition": {
                           "maxLength": 80,
                           "pattern": "^[a-z][a-zA-Z0-9_-]*$",
@@ -1318,6 +1321,154 @@
             "type": "object"
           },
           "maxItems": 200,
+          "type": "array"
+        },
+        "triggers": {
+          "items": {
+            "oneOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "cron": {
+                    "maxLength": 120,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "inputs": {
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "maxLength": 2000,
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        }
+                      ]
+                    },
+                    "propertyNames": {
+                      "maxLength": 80,
+                      "pattern": "^[a-z][a-zA-Z0-9_-]*$",
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  "inputsFrom": {
+                    "additionalProperties": {
+                      "maxLength": 160,
+                      "pattern": "^(?:fire\\.(?:iso|date|month)|event\\.(?:id|type|createdAt)|(?:subject|payload)\\.[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)*)$",
+                      "type": "string"
+                    },
+                    "propertyNames": {
+                      "maxLength": 80,
+                      "pattern": "^[a-z][a-zA-Z0-9_-]*$",
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  "kind": {
+                    "const": "schedule",
+                    "type": "string"
+                  },
+                  "timezone": {
+                    "maxLength": 64,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "cron"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "event": {
+                    "maxLength": 120,
+                    "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z0-9_]+)+$",
+                    "type": "string"
+                  },
+                  "filter": {
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "maxLength": 500,
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        }
+                      ]
+                    },
+                    "propertyNames": {
+                      "maxLength": 80,
+                      "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  "inputs": {
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "maxLength": 2000,
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        }
+                      ]
+                    },
+                    "propertyNames": {
+                      "maxLength": 80,
+                      "pattern": "^[a-z][a-zA-Z0-9_-]*$",
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  "inputsFrom": {
+                    "additionalProperties": {
+                      "maxLength": 160,
+                      "pattern": "^(?:fire\\.(?:iso|date|month)|event\\.(?:id|type|createdAt)|(?:subject|payload)\\.[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)*)$",
+                      "type": "string"
+                    },
+                    "propertyNames": {
+                      "maxLength": 80,
+                      "pattern": "^[a-z][a-zA-Z0-9_-]*$",
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  "kind": {
+                    "const": "event",
+                    "type": "string"
+                  },
+                  "subjectFrom": {
+                    "maxLength": 160,
+                    "pattern": "^(?:fire\\.(?:iso|date|month)|event\\.(?:id|type|createdAt)|(?:subject|payload)\\.[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)*)$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "event"
+                ],
+                "type": "object"
+              }
+            ]
+          },
+          "maxItems": 10,
           "type": "array"
         },
         "variationPoints": {

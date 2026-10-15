@@ -77,6 +77,25 @@
  *      have a strict-semver `version` equal to plugin.json's — an error. For
  *      every other plugin a plugin.json / marketplace.json disagreement is only
  *      a warning (printed, exit code unchanged).
+ *  16. What a process definition READS must exist (the marketplace copy of the
+ *      Workspace's step-output model, scripts/agent-packages.ts): `steps.<key>.<field>`
+ *      must be an output a step of that kind produces (unknown_output_reference; a
+ *      decision's choice is `decision`, an external step's is `choiceKey`); a decision's
+ *      materiality entries must be inputs, `recipient`, `evidenceVersions` or step
+ *      outputs (unknown_materiality_key); an external `recipient`, or the recipient
+ *      field of an option payload, must not come from an agent or external step
+ *      (recipient_from_untrusted_output); an event trigger must name a catalogued
+ *      platform event (unknown_event_type); plus unknown_step_reference /
+ *      unknown_input_reference for the same typo in any expression. An automation
+ *      step is checked against the outputs its bundled automation declares. A few
+ *      defects that predate the rules and need a product decision rather than an
+ *      edit are grandfathered forward-only in KNOWN_REFERENCE_GAPS (warnings;
+ *      a stale entry fails).
+ *  17. A `withdrawn` block on a marketplace.json entry ({ since, reason,
+ *      alternative?, retireBy? }) has the shape the Workspace manifest expects:
+ *      `since` / `retireBy` ISO 8601 dates with `retireBy` after `since`, a
+ *      non-empty `reason`, and an `alternative` that names ANOTHER plugin of this
+ *      registry.
  *
  * Branch tiers: dev → qa → uat → main. CI (.github/workflows/validate.yml)
  * runs this on every PR and on every push to each tier — including the
@@ -93,15 +112,20 @@ import {
   CONTENT_HASH_RE,
   STUDIO_KINDS,
   StudioContractError,
+  checkProcessReferences,
   checkVersionAgreement,
   collectProcessReferences,
   contentHashOf,
+  declaredAutomationOutputs,
   isPlatformCapabilityKey,
   loadStudioSchemaValidators,
   PLATFORM_CAPABILITY_KEYS,
+  splitKnownReferenceGaps,
   validateAgentListingShape,
   validateDependencies,
   validateReleaseShape,
+  validateWithdrawnShape,
+  type AutomationOutputs,
   type StudioKind,
   type StudioSchemaValidators,
 } from "./agent-packages";
@@ -152,6 +176,7 @@ interface MarketplacePlugin {
   listing?: unknown;
   dependencies?: unknown;
   release?: unknown;
+  withdrawn?: unknown;
 }
 
 interface Marketplace {
@@ -457,9 +482,11 @@ interface PluginBundle {
   /** kind → originKeys of every payload that parsed (dependency targets). */
   bundledByKind: Map<ContentKind, Set<string>>;
   studio: StudioComponent[];
+  /** automation originKey → the output names its Flow IR declares (a process step that runs it can read only those). */
+  automationOutputs: Map<string, string[]>;
 }
 
-const EMPTY_BUNDLE = (): PluginBundle => ({ bundledByKind: new Map(), studio: [] });
+const EMPTY_BUNDLE = (): PluginBundle => ({ bundledByKind: new Map(), studio: [], automationOutputs: new Map() });
 
 /** Compiled lazily: a registry without business-agent content never needs the artefact. */
 let studioValidators: StudioSchemaValidators | null | undefined;
@@ -684,7 +711,12 @@ function validateContent(pluginDirName: string, content: unknown): PluginBundle 
       }
     }
   }
-  return { bundledByKind, studio };
+  const automationOutputs = new Map<string, string[]>();
+  for (const { payload } of automationPayloads) {
+    const names = declaredAutomationOutputs(payload);
+    if (typeof payload.originKey === "string" && names.length > 0) automationOutputs.set(payload.originKey, names);
+  }
+  return { bundledByKind, studio, automationOutputs };
 }
 
 
@@ -1120,6 +1152,7 @@ const NOT_BUNDLED = "is not bundled in this plugin or in a plugin listed in its 
 
 function validateAgentRules(entries: readonly MarketplacePlugin[]) {
   const named = entries.filter((e) => typeof e.name === "string" && e.name.length > 0);
+  const pluginNames = new Set(named.map((e) => e.name));
 
   // dependencies[]: shape, resolution against the registry, acyclicity.
   for (const message of validateDependencies(named)) fail(message);
@@ -1134,6 +1167,9 @@ function validateAgentRules(entries: readonly MarketplacePlugin[]) {
     }
     if (entry.release !== undefined) {
       for (const message of validateReleaseShape(entry.release)) fail(`${where} ${message}`);
+    }
+    if (entry.withdrawn !== undefined) {
+      for (const message of validateWithdrawnShape(entry.withdrawn, { name: entry.name, pluginNames })) fail(`${where} ${message}`);
     }
 
     const info = pluginInfo.get(entry.name);
@@ -1157,6 +1193,8 @@ function validateAgentRules(entries: readonly MarketplacePlugin[]) {
     const templateKeys = originKeysIn(scope, "workq_template", "form_template");
     const evaluationKeys = originKeysIn(scope, "evaluation");
     const processOriginKeys = originKeysIn(scope, "process");
+    // What a bundled automation declares as outputs, for the automations this plugin or its dependencies ship.
+    const automationOutputs: AutomationOutputs = new Map(scope.flatMap((info) => [...info.bundle.automationOutputs]));
 
     for (const component of info.bundle.studio) {
       if (!component.schemaValid || !isRecord(component.definition)) continue;
@@ -1182,6 +1220,16 @@ function validateAgentRules(entries: readonly MarketplacePlugin[]) {
         check(refs.forms, formKeys, "form");
         check(refs.templates, templateKeys, "template");
         check(refs.evaluations, evaluationKeys, "evaluation");
+        // What the process READS must exist: step outputs, materiality keys, recipients, event types.
+        const split = splitKnownReferenceGaps(checkProcessReferences(component.definition, { automationOutputs }), entry.name, component.originKey);
+        for (const issue of split.failures) fail(`${at} ${label} ${issue.code}: ${issue.message} (at /definition${issue.pointer})`);
+        for (const { issue } of split.known) {
+          warn(`${at} ${label} ${issue.code}: ${issue.message} (at /definition${issue.pointer}) - known gap, see KNOWN_REFERENCE_GAPS in scripts/agent-packages.ts`);
+        }
+        for (const reason of new Set(split.known.map(({ gap }) => gap.reason))) warn(`${at} ${label} known gap: ${reason}`);
+        for (const gap of split.stale) {
+          fail(`${at} ${label} KNOWN_REFERENCE_GAPS lists ${gap.code} at /definition${gap.pointer}, which the rules no longer raise - delete the entry from scripts/agent-packages.ts`);
+        }
       } else if (component.kind === "evaluation") {
         const target = component.definition.process;
         if (typeof target === "string" && !processOriginKeys.has(target)) {
