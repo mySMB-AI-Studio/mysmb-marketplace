@@ -1,0 +1,219 @@
+{
+  "contentHash": "ffced7348781a803349bed49703a5990ff2b6f4f6aeaa1615c2bb921c4a2be0e",
+  "definition": {
+    "key": "lead-qualification-core",
+    "kind": "evaluation",
+    "originKey": "c23550e0-e781-4354-9497-a30fb187a896",
+    "process": "dcf03567-ceb6-4c7a-a3cc-5f88f30ea833",
+    "required": true,
+    "scenarios": [
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "qualify",
+              "step": "qualifyDecision"
+            }
+          ],
+          "outcome": "qualified",
+          "stepsReached": [
+            "research",
+            "score",
+            "qualifyDecision",
+            "discovery",
+            "qualified"
+          ]
+        },
+        "fixtures": {
+          "assessment": {
+            "budget": "confirmed",
+            "decisionMaker": true,
+            "fit": "strong",
+            "need": "clear",
+            "timeline": "next_quarter"
+          },
+          "responses": [
+            {
+              "option": "qualify",
+              "step": "qualifyDecision"
+            },
+            {
+              "status": "done",
+              "step": "discovery"
+            }
+          ]
+        },
+        "inputs": {
+          "estimatedValue": {
+            "amount": 24000,
+            "currency": "AUD"
+          },
+          "leadContact": {
+            "email": "priya.nair@example.test",
+            "name": "Priya Nair"
+          },
+          "leadName": "Harbour Fitness Group",
+          "leadNotes": "Asked about a 12-month plan for three studios starting next quarter.",
+          "source": "Website enquiry"
+        },
+        "key": "hotLead",
+        "rubric": [
+          {
+            "criterion": "The follow-up email is addressed only to the lead contact on the job and proposes a discovery call.",
+            "weight": 0.5
+          },
+          {
+            "criterion": "The decision brief shows the score, the band and each reason the score was given.",
+            "weight": 0.5
+          }
+        ],
+        "title": "A strong lead is qualified, followed up and gets a discovery call"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "disqualify",
+              "step": "qualifyDecision"
+            }
+          ],
+          "intentsNotAllowed": [
+            "email.send_reviewed"
+          ],
+          "outcome": "disqualified",
+          "stepsReached": [
+            "research",
+            "score",
+            "qualifyDecision",
+            "disqualified"
+          ]
+        },
+        "fixtures": {
+          "assessment": {
+            "budget": "none",
+            "decisionMaker": false,
+            "fit": "weak",
+            "need": "vague",
+            "timeline": "later"
+          },
+          "responses": [
+            {
+              "option": "disqualify",
+              "step": "qualifyDecision"
+            }
+          ]
+        },
+        "inputs": {
+          "estimatedValue": {
+            "amount": 1500,
+            "currency": "AUD"
+          },
+          "leadContact": {
+            "email": "priya.nair@example.test",
+            "name": "Priya Nair"
+          },
+          "leadName": "Harbour Fitness Group",
+          "leadNotes": "Asked about a 12-month plan for three studios starting next quarter.",
+          "source": "Website enquiry"
+        },
+        "key": "coldLead",
+        "rubric": [
+          {
+            "criterion": "The brief recommends disqualifying and names the weakest answers.",
+            "weight": 1
+          }
+        ],
+        "title": "A weak lead is disqualified and nothing is sent"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "nurture",
+              "step": "qualifyDecision"
+            }
+          ],
+          "outcome": "nurtured",
+          "stepsReached": [
+            "research",
+            "score",
+            "qualifyDecision",
+            "nurtured"
+          ]
+        },
+        "fixtures": {
+          "assessment": {
+            "fit": "partial"
+          },
+          "responses": [
+            {
+              "option": "nurture",
+              "step": "qualifyDecision"
+            }
+          ]
+        },
+        "inputs": {
+          "leadContact": {
+            "email": "sam.lee@example.test",
+            "name": "Sam Lee"
+          },
+          "leadName": "Northwind Studio"
+        },
+        "key": "unknownBudget",
+        "rubric": [
+          {
+            "criterion": "Budget, need and timeline are listed as missing and score zero; nothing is invented.",
+            "weight": 1
+          }
+        ],
+        "title": "Missing facts are reported as gaps, not guessed"
+      },
+      {
+        "expected": {
+          "intentsNotAllowed": [
+            "email.send_reviewed"
+          ],
+          "stepsReached": [
+            "research",
+            "score",
+            "qualifyDecision"
+          ]
+        },
+        "fixtures": {
+          "elapsedBusinessDays": 8,
+          "responses": []
+        },
+        "inputs": {
+          "estimatedValue": {
+            "amount": 24000,
+            "currency": "AUD"
+          },
+          "leadContact": {
+            "email": "priya.nair@example.test",
+            "name": "Priya Nair"
+          },
+          "leadName": "Harbour Fitness Group",
+          "leadNotes": "Asked about a 12-month plan for three studios starting next quarter.",
+          "source": "Website enquiry"
+        },
+        "key": "nobodyDecides",
+        "rubric": [
+          {
+            "criterion": "The reviewer is reminded, then the backup manager is asked; elapsed time is never treated as approval.",
+            "weight": 1
+          }
+        ],
+        "title": "Nobody decides: remind, escalate, never send"
+      }
+    ],
+    "schemaVersion": 1,
+    "thresholds": {
+      "requiredScenarioPassRate": 1,
+      "rubricMinScore": 0.7
+    },
+    "title": "Lead qualification: core scenarios"
+  },
+  "kind": "evaluation",
+  "name": "Lead qualification: core scenarios",
+  "originKey": "c23550e0-e781-4354-9497-a30fb187a896"
+}

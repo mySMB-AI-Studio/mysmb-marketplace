@@ -1,0 +1,360 @@
+{
+  "contentHash": "823e09b6af1393214cb97c936ed87b9f9f3d18a270324973bd56e0d1422c7f35",
+  "definition": {
+    "cancellation": {
+      "compensation": [
+        {
+          "afterStep": "clientConfirms",
+          "capability": "email.send_reviewed",
+          "template": "proposalWithdrawalNotice"
+        }
+      ]
+    },
+    "capabilities": [
+      "email.send_reviewed",
+      "email.read_replies",
+      "records.read:sales_deals",
+      "workq.create",
+      "artifacts.write"
+    ],
+    "description": "Drafts a proposal and its cover email, prices it exactly against the discount policy, files a proposal summary, and asks a named reviewer to approve it before anything is sent. The client accepts or declines through a verified link, and a won deal ends with a written handoff to sales operations.",
+    "exceptions": [
+      {
+        "allowedPaths": [
+          "approveProposal",
+          "draft"
+        ],
+        "blocks": [
+          "clientConfirms",
+          "handoff",
+          "won"
+        ],
+        "key": "discountAbovePolicy"
+      }
+    ],
+    "inputs": [
+      {
+        "key": "dealName",
+        "label": "Deal",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "key": "clientContact",
+        "label": "Client contact",
+        "required": true,
+        "type": "contact"
+      },
+      {
+        "key": "amount",
+        "label": "Deal amount before discount",
+        "required": true,
+        "type": "money"
+      },
+      {
+        "key": "discountPercent",
+        "label": "Discount (%)",
+        "required": false,
+        "type": "number"
+      },
+      {
+        "key": "scopeEvidence",
+        "label": "Scope or quote document",
+        "required": false,
+        "type": "evidence"
+      }
+    ],
+    "key": "proposal-approval",
+    "kind": "process",
+    "limits": {
+      "maxActiveHours": 2,
+      "maxAgentTurnsPerStep": 16,
+      "maxAiUnits": 300,
+      "maxSteps": 40,
+      "maxWaitingDays": 30
+    },
+    "modelPolicy": {
+      "brief": "haiku",
+      "judgement": "sonnet",
+      "plan": "sonnet"
+    },
+    "originKey": "1084a7fb-6dd4-464e-a506-f7f0803c700d",
+    "outcomes": [
+      {
+        "evidence": [
+          "form_response",
+          "proposal_summary",
+          "client_acceptance"
+        ],
+        "key": "won",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "client_response"
+        ],
+        "key": "lost",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "cancellation_record"
+        ],
+        "key": "cancelled",
+        "terminal": true
+      }
+    ],
+    "protectedRules": [
+      {
+        "description": "No proposal or cover email is sent until a reviewer has recorded a decision that still matches the amount, the discount, the net price and the recipient.",
+        "key": "noProposalWithoutApproval"
+      },
+      {
+        "description": "The pricing is worked out exactly by the pricing check, never by the agent, and a discount above the policy limit is always shown to the reviewer as outside policy.",
+        "key": "discountWithinPolicy"
+      },
+      {
+        "description": "The proposal goes only to the client contact named on the job.",
+        "key": "onlyNamedClientContacted"
+      }
+    ],
+    "rework": [
+      {
+        "from": "handoff",
+        "requires": "reviewer",
+        "to": "draft"
+      }
+    ],
+    "roles": {
+      "manager": "installation.manager",
+      "reviewer": "installation.reviewer",
+      "salesOps": {
+        "group": "{{settings.sales_ops_group}}"
+      }
+    },
+    "safeTest": {
+      "assertions": [
+        "steps.draft.proposal != null",
+        "steps.pricing.within_policy != null",
+        "steps.summary.artifactId != null"
+      ],
+      "sampleInputs": {
+        "amount": {
+          "amount": 24000,
+          "currency": "AUD"
+        },
+        "clientContact": {
+          "email": "priya.nair@example.test",
+          "name": "Priya Nair"
+        },
+        "dealName": "Harbour Fitness Group: 12-month plan",
+        "discountPercent": 10
+      }
+    },
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "key": "draft",
+        "kind": "agent",
+        "outputs": [
+          "proposal",
+          "coverEmail",
+          "externalPrompts",
+          "missing"
+        ],
+        "proposalSchema": "salesProposal",
+        "skill": "draft-proposal",
+        "title": "Draft the proposal"
+      },
+      {
+        "automation": "9e9e03f6-2194-47a7-ba5d-7c30237151c9",
+        "inputs": {
+          "amount": "inputs.amount",
+          "client": "inputs.clientContact",
+          "currency": "{{settings.deal_currency}}",
+          "discount_percent": "inputs.discountPercent",
+          "max_discount_percent": "{{maxDiscountPercent}}",
+          "valid_days": "{{proposalValidDays}}"
+        },
+        "key": "pricing",
+        "kind": "automation",
+        "title": "Price the proposal"
+      },
+      {
+        "artifactKind": "proposal",
+        "key": "summary",
+        "kind": "output",
+        "template": "proposal-summary",
+        "title": "File the proposal summary"
+      },
+      {
+        "eligible": [
+          "reviewer"
+        ],
+        "key": "approveProposal",
+        "kind": "decision",
+        "materiality": [
+          "amount",
+          "discountPercent",
+          "steps.pricing.net_amount",
+          "recipient"
+        ],
+        "options": [
+          {
+            "effect": "Sends the reviewed cover email with the proposal to the client contact, who then accepts or declines through a verified link.",
+            "intent": {
+              "capability": "email.send_reviewed",
+              "payloadFrom": "steps.draft.coverEmail"
+            },
+            "key": "send",
+            "label": "Approve and send the proposal"
+          },
+          {
+            "effect": "Sends the proposal back to the agent with your note. Nothing is sent to the client.",
+            "key": "revise",
+            "label": "Ask for changes",
+            "transition": "draft"
+          },
+          {
+            "effect": "Keeps the proposal as a draft and pauses the job until a manager resumes or cancels it. Nothing is sent.",
+            "key": "hold",
+            "label": "Hold"
+          }
+        ],
+        "separation": "preparerCannotDecide",
+        "sla": {
+          "escalateTo": "installation.backupManager",
+          "expireAfterBusinessDays": 5,
+          "remindAfterBusinessDays": "{{reminderDays}}"
+        },
+        "title": "Approve the proposal",
+        "type": "proposal_approval"
+      },
+      {
+        "channel": [
+          "email",
+          "portal"
+        ],
+        "expiresAfterDays": 14,
+        "identityLevel": "email_code",
+        "interaction": "choice",
+        "key": "clientConfirms",
+        "kind": "external",
+        "onNoResponse": "remindThenEscalate",
+        "recipient": "inputs.clientContact",
+        "title": "Client accepts or declines"
+      },
+      {
+        "assign": "salesOps",
+        "completion": "formSubmitted",
+        "form": "0a35dc5c-c3d6-45a2-8c1b-d1444f8d2a6d",
+        "key": "handoff",
+        "kind": "human",
+        "title": "Hand the won deal to delivery"
+      },
+      {
+        "evidence": [
+          "steps.handoff.formResponse",
+          "steps.summary.artifactId",
+          "steps.clientConfirms.responseId"
+        ],
+        "key": "won",
+        "kind": "gate",
+        "outcome": "won",
+        "requires": [
+          "steps.clientConfirms.choiceKey == 'yes'",
+          "steps.handoff.completed"
+        ],
+        "title": "Won and handed over"
+      },
+      {
+        "evidence": [
+          "steps.clientConfirms.responseId"
+        ],
+        "key": "lost",
+        "kind": "gate",
+        "outcome": "lost",
+        "requires": [
+          "steps.clientConfirms.choiceKey == 'no'"
+        ],
+        "title": "Declined by the client"
+      }
+    ],
+    "subject": {
+      "dedupeBy": [
+        "dealName"
+      ],
+      "kind": "records.sales_deals"
+    },
+    "tests": [
+      "b8dc0105-9c88-445c-823c-1499f994d6ea"
+    ],
+    "title": "Proposal approval",
+    "transitions": [
+      {
+        "from": "draft",
+        "to": "pricing"
+      },
+      {
+        "from": "pricing",
+        "to": "summary"
+      },
+      {
+        "from": "summary",
+        "to": "approveProposal"
+      },
+      {
+        "from": "approveProposal",
+        "to": "clientConfirms",
+        "when": "steps.approveProposal.decision == 'send'"
+      },
+      {
+        "from": "clientConfirms",
+        "to": "handoff",
+        "when": "steps.clientConfirms.choiceKey == 'yes'"
+      },
+      {
+        "from": "clientConfirms",
+        "to": "lost",
+        "when": "steps.clientConfirms.choiceKey == 'no'"
+      },
+      {
+        "from": "handoff",
+        "to": "won"
+      }
+    ],
+    "variationPoints": [
+      {
+        "default": 15,
+        "editableBy": "manager",
+        "key": "maxDiscountPercent",
+        "max": 50,
+        "min": 0,
+        "type": "number"
+      },
+      {
+        "default": 14,
+        "editableBy": "manager",
+        "key": "proposalValidDays",
+        "max": 60,
+        "min": 1,
+        "type": "number"
+      },
+      {
+        "default": 2,
+        "editableBy": "manager",
+        "key": "reminderDays",
+        "max": 10,
+        "min": 1,
+        "type": "number"
+      }
+    ],
+    "version": "0.1.1",
+    "vocabulary": {
+      "subject": "Deal"
+    }
+  },
+  "kind": "process",
+  "name": "Proposal approval",
+  "originKey": "1084a7fb-6dd4-464e-a506-f7f0803c700d"
+}

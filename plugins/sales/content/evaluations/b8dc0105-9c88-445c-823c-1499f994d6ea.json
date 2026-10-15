@@ -1,0 +1,225 @@
+{
+  "contentHash": "27f4838704fbd2ab6195e33a87f6328bc952e2992394ec93ee008d23264ce245",
+  "definition": {
+    "key": "proposal-approval-core",
+    "kind": "evaluation",
+    "originKey": "b8dc0105-9c88-445c-823c-1499f994d6ea",
+    "process": "1084a7fb-6dd4-464e-a506-f7f0803c700d",
+    "required": true,
+    "scenarios": [
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "send",
+              "step": "approveProposal"
+            }
+          ],
+          "outcome": "won",
+          "stepsReached": [
+            "draft",
+            "pricing",
+            "summary",
+            "approveProposal",
+            "clientConfirms",
+            "handoff",
+            "won"
+          ]
+        },
+        "fixtures": {
+          "responses": [
+            {
+              "option": "send",
+              "step": "approveProposal"
+            },
+            {
+              "choice": "yes",
+              "step": "clientConfirms",
+              "verifiedIdentity": "email_code"
+            },
+            {
+              "form": {
+                "q_billing": true,
+                "q_ready": "Ready",
+                "q_signed": true
+              },
+              "step": "handoff"
+            }
+          ]
+        },
+        "inputs": {
+          "amount": {
+            "amount": 24000,
+            "currency": "AUD"
+          },
+          "clientContact": {
+            "email": "priya.nair@example.test",
+            "name": "Priya Nair"
+          },
+          "dealName": "Harbour Fitness Group: 12-month plan",
+          "discountPercent": 10
+        },
+        "key": "happyPath",
+        "rubric": [
+          {
+            "criterion": "The net price in the cover email matches the pricing check to the cent.",
+            "weight": 0.5
+          },
+          {
+            "criterion": "The proposal summary is filed and linked as evidence of the won outcome.",
+            "weight": 0.5
+          }
+        ],
+        "title": "Approved, accepted by the client, handed to delivery"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "revise",
+              "step": "approveProposal"
+            }
+          ],
+          "intentsNotAllowed": [
+            "email.send_reviewed"
+          ],
+          "stepsReached": [
+            "draft",
+            "pricing",
+            "summary",
+            "approveProposal"
+          ]
+        },
+        "fixtures": {
+          "responses": [
+            {
+              "note": "Bring the discount within policy.",
+              "option": "revise",
+              "step": "approveProposal"
+            }
+          ]
+        },
+        "inputs": {
+          "amount": {
+            "amount": 24000,
+            "currency": "AUD"
+          },
+          "clientContact": {
+            "email": "priya.nair@example.test",
+            "name": "Priya Nair"
+          },
+          "dealName": "Harbour Fitness Group: 12-month plan",
+          "discountPercent": 30
+        },
+        "key": "discountAbovePolicy",
+        "rubric": [
+          {
+            "criterion": "The brief states the discount is outside policy, with the limit and the net price.",
+            "weight": 1
+          }
+        ],
+        "title": "A discount above the policy limit is flagged and sent back"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "send",
+              "step": "approveProposal"
+            }
+          ],
+          "outcome": "lost",
+          "stepsReached": [
+            "draft",
+            "pricing",
+            "summary",
+            "approveProposal",
+            "clientConfirms",
+            "lost"
+          ]
+        },
+        "fixtures": {
+          "responses": [
+            {
+              "option": "send",
+              "step": "approveProposal"
+            },
+            {
+              "choice": "no",
+              "step": "clientConfirms",
+              "verifiedIdentity": "email_code"
+            }
+          ]
+        },
+        "inputs": {
+          "amount": {
+            "amount": 24000,
+            "currency": "AUD"
+          },
+          "clientContact": {
+            "email": "priya.nair@example.test",
+            "name": "Priya Nair"
+          },
+          "dealName": "Harbour Fitness Group: 12-month plan",
+          "discountPercent": 10
+        },
+        "key": "clientDeclines",
+        "title": "The client declines: the job closes as lost"
+      },
+      {
+        "expected": {
+          "intentsNotAllowed": [
+            "email.send_reviewed"
+          ],
+          "stepsReached": [
+            "draft",
+            "pricing",
+            "summary",
+            "approveProposal"
+          ]
+        },
+        "fixtures": {
+          "connections": {
+            "email.read_replies": "denied",
+            "email.send_reviewed": "denied"
+          },
+          "responses": [
+            {
+              "option": "send",
+              "step": "approveProposal"
+            }
+          ]
+        },
+        "inputs": {
+          "amount": {
+            "amount": 24000,
+            "currency": "AUD"
+          },
+          "clientContact": {
+            "email": "priya.nair@example.test",
+            "name": "Priya Nair"
+          },
+          "dealName": "Harbour Fitness Group: 12-month plan",
+          "discountPercent": 10
+        },
+        "key": "mailboxAccessDenied",
+        "rubric": [
+          {
+            "criterion": "The send is shown as manual with the cover email prepared as a draft; no other mailbox is used.",
+            "weight": 1
+          }
+        ],
+        "title": "The team mailbox is not connected: the proposal is prepared as a draft"
+      }
+    ],
+    "schemaVersion": 1,
+    "thresholds": {
+      "requiredScenarioPassRate": 1,
+      "rubricMinScore": 0.7
+    },
+    "title": "Proposal approval: core scenarios"
+  },
+  "kind": "evaluation",
+  "name": "Proposal approval: core scenarios",
+  "originKey": "b8dc0105-9c88-445c-823c-1499f994d6ea"
+}

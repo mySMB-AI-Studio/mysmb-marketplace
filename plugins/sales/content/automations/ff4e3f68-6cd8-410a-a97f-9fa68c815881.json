@@ -1,0 +1,126 @@
+{
+  "contentHash": "f59754cdad13bf48104608e0424ab44fd5fff8c6b621c147bb4ca4825455ae76",
+  "declaredScopes": [],
+  "dependencies": [],
+  "description": "Scores a researched lead on fit, need, budget and timeline, exactly and the same way every time. Returns the score, a hot / warm / cold band, whether it clears the qualification bar, and the reasons. Reads only; sends nothing.",
+  "flowIr": {
+    "description": "Scores a researched lead on fit, need, budget and timeline. Reads only; sends nothing.",
+    "irVersion": 1,
+    "name": "Lead score",
+    "nodes": [
+      {
+        "code": "assessment = params.get(\"assessment\") or {}\nif not isinstance(assessment, dict):\n    assessment = {}\nvalue = params.get(\"estimated_value\") or {}\nif not isinstance(value, dict):\n    value = {\"amount\": value}\nreported = params.get(\"missing\") or []\nif isinstance(reported, str):\n    reported = [reported]\n\n\ndef as_number(raw, fallback):\n    try:\n        return float(raw)\n    except (TypeError, ValueError):\n        return fallback\n\n\nthreshold = as_number(params.get(\"min_score\"), 60.0)\nfit_points = {\"strong\": 30, \"partial\": 15, \"weak\": 5}\nneed_points = {\"urgent\": 25, \"clear\": 18, \"vague\": 6}\nbudget_points = {\"confirmed\": 25, \"indicative\": 12, \"none\": 0}\ntimeline_points = {\"this_quarter\": 20, \"next_quarter\": 12, \"later\": 4}\nlabels = {\"fit\": \"Fit with what we sell\", \"need\": \"Stated need\", \"budget\": \"Budget\", \"timeline\": \"Buying timeline\"}\ntables = {\"fit\": fit_points, \"need\": need_points, \"budget\": budget_points, \"timeline\": timeline_points}\n\npoints = 0\nreasons = []\nmissing = []\nfor key in [\"fit\", \"need\", \"budget\", \"timeline\"]:\n    answer = str(assessment.get(key) or \"unknown\").strip().lower()\n    gained = tables[key].get(answer)\n    if gained is None:\n        missing.append(labels[key])\n        reasons.append(labels[key] + \": not known yet (0 points)\")\n    else:\n        points += gained\n        reasons.append(labels[key] + \": \" + answer.replace(\"_\", \" \") + \" (\" + str(gained) + \" points)\")\n\nif assessment.get(\"decisionMaker\") is True:\n    points += 5\n    reasons.append(\"Spoke with the decision maker (5 points)\")\n\namount = as_number(value.get(\"amount\"), 0.0)\nif amount >= 20000:\n    points += 5\n    reasons.append(\"Estimated value of \" + str(int(amount)) + \" is above 20,000 (5 points)\")\n\nscore = int(min(points, 100))\nband = \"hot\" if score >= 75 else (\"warm\" if score >= 50 else \"cold\")\nqualifies = score >= threshold\nfor note in reported:\n    text = str(note).strip()\n    if text and text not in missing:\n        missing.append(text)",
+        "id": "score",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "Lead score from 0 to 100.",
+            "name": "score",
+            "type": "int"
+          },
+          {
+            "description": "hot, warm or cold.",
+            "name": "band",
+            "type": "str"
+          },
+          {
+            "description": "True when the score is at least the qualification bar.",
+            "name": "qualifies",
+            "type": "bool"
+          },
+          {
+            "description": "How the score was reached, line by line.",
+            "name": "reasons",
+            "type": "list[str]"
+          },
+          {
+            "description": "What is not known yet about the lead.",
+            "name": "missing",
+            "type": "list[str]"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.assessment }}",
+            "control": "hidden",
+            "label": "Lead assessment",
+            "name": "assessment",
+            "required": false,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ params.estimated_value }}",
+            "control": "hidden",
+            "label": "Estimated deal value",
+            "name": "estimated_value",
+            "required": false,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ params.min_score }}",
+            "control": "hidden",
+            "label": "Score needed to qualify",
+            "name": "min_score",
+            "required": false,
+            "type": "float"
+          },
+          {
+            "binding": "{{ params.missing }}",
+            "control": "hidden",
+            "label": "Gaps the agent already reported",
+            "name": "missing",
+            "required": false,
+            "type": "list[str]"
+          }
+        ],
+        "summary": "Adds points for fit, need, budget, timeline, a decision maker and deal size, then compares the total with the qualification bar.",
+        "title": "Score the lead"
+      }
+    ],
+    "params": [
+      {
+        "control": "hidden",
+        "label": "Lead assessment",
+        "name": "assessment",
+        "required": false,
+        "type": "dict"
+      },
+      {
+        "control": "hidden",
+        "label": "Estimated deal value",
+        "name": "estimated_value",
+        "required": false,
+        "type": "dict"
+      },
+      {
+        "control": "hidden",
+        "label": "Score needed to qualify",
+        "name": "min_score",
+        "required": false,
+        "type": "float"
+      },
+      {
+        "control": "hidden",
+        "label": "Gaps the agent already reported",
+        "name": "missing",
+        "required": false,
+        "type": "list[str]"
+      }
+    ],
+    "rootOrder": [
+      "score"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Lead score",
+  "originKey": "ff4e3f68-6cd8-410a-a97f-9fa68c815881",
+  "tags": [
+    "sales"
+  ]
+}

@@ -1,0 +1,176 @@
+{
+  "contentHash": "d28c52fc920f288afe0ed99a675b10b9576ca7aaae659330306f1d72629dbd49",
+  "declaredScopes": [],
+  "dependencies": [],
+  "description": "Prices a proposal exactly: list amount, discount, net amount and the date the offer is valid until, and whether the discount is within the policy limit. Reads only; sends nothing.",
+  "flowIr": {
+    "description": "Prices a proposal exactly and checks the discount against the policy limit. Reads only; sends nothing.",
+    "irVersion": 1,
+    "name": "Proposal pricing check",
+    "nodes": [
+      {
+        "code": "import datetime\nfrom decimal import Decimal, InvalidOperation, ROUND_HALF_UP\n\n\ndef to_decimal(raw, fallback):\n    if raw is None or raw == \"\":\n        return Decimal(fallback)\n    try:\n        return Decimal(str(raw))\n    except InvalidOperation:\n        return Decimal(fallback)\n\n\ndef money(value):\n    rounded = value.quantize(Decimal(\"0.01\"), rounding=ROUND_HALF_UP)\n    return \"{:,.2f}\".format(rounded)\n\n\nraw_amount = params.get(\"amount\")\nif not isinstance(raw_amount, dict):\n    raw_amount = {\"amount\": raw_amount}\nclient = params.get(\"client\") or {}\nif not isinstance(client, dict):\n    client = {}\ncurrency = str(raw_amount.get(\"currency\") or params.get(\"currency\") or \"AUD\").upper()\ngross = to_decimal(raw_amount.get(\"amount\"), \"0\")\ndiscount_percent = to_decimal(params.get(\"discount_percent\"), \"0\")\nmax_discount = to_decimal(params.get(\"max_discount_percent\"), \"15\")\ntry:\n    valid_days = int(params.get(\"valid_days\") or 14)\nexcept (TypeError, ValueError):\n    valid_days = 14\n\nissues = []\nif gross <= 0:\n    issues.append(\"The deal amount is missing or zero, so there is nothing to price.\")\nif discount_percent < 0:\n    issues.append(\"A negative discount is not allowed.\")\n    discount_percent = Decimal(\"0\")\nif discount_percent > max_discount:\n    issues.append(\"The discount of \" + str(discount_percent) + \"% is above the policy limit of \" + str(max_discount) + \"%.\")\n\ndiscount_value = gross * discount_percent / Decimal(100)\nnet_value = gross - discount_value\nwithin_policy = gross > 0 and discount_percent <= max_discount\ngross_amount = money(gross)\ndiscount_amount = money(discount_value)\nnet_amount = money(net_value)\nvalid_until = (datetime.date.today() + datetime.timedelta(days=valid_days)).isoformat()\nprepared_for = str(client.get(\"name\") or client.get(\"email\") or \"the client\")\nsummary = currency + \" \" + net_amount + \" after a \" + str(discount_percent) + \"% discount on \" + currency + \" \" + gross_amount + \"; the policy allows up to \" + str(max_discount) + \"%.\"",
+        "id": "price",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "True when the amount is set and the discount is within the policy limit.",
+            "name": "within_policy",
+            "type": "bool"
+          },
+          {
+            "description": "Currency code of the proposal.",
+            "name": "currency",
+            "type": "str"
+          },
+          {
+            "description": "List amount before the discount.",
+            "name": "gross_amount",
+            "type": "str"
+          },
+          {
+            "description": "Discount value.",
+            "name": "discount_amount",
+            "type": "str"
+          },
+          {
+            "description": "Amount the client pays.",
+            "name": "net_amount",
+            "type": "str"
+          },
+          {
+            "description": "ISO date the offer stays open until.",
+            "name": "valid_until",
+            "type": "str"
+          },
+          {
+            "description": "Who the proposal is for.",
+            "name": "prepared_for",
+            "type": "str"
+          },
+          {
+            "description": "One plain-language line for the reviewer.",
+            "name": "summary",
+            "type": "str"
+          },
+          {
+            "description": "Anything that stops the proposal going out as it is.",
+            "name": "issues",
+            "type": "list[str]"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.amount }}",
+            "control": "hidden",
+            "label": "Deal amount",
+            "name": "amount",
+            "required": false,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ params.discount_percent }}",
+            "control": "hidden",
+            "label": "Discount (%)",
+            "name": "discount_percent",
+            "required": false,
+            "type": "float"
+          },
+          {
+            "binding": "{{ params.max_discount_percent }}",
+            "control": "hidden",
+            "label": "Policy discount limit (%)",
+            "name": "max_discount_percent",
+            "required": false,
+            "type": "float"
+          },
+          {
+            "binding": "{{ params.valid_days }}",
+            "control": "hidden",
+            "label": "Days the offer is valid",
+            "name": "valid_days",
+            "required": false,
+            "type": "int"
+          },
+          {
+            "binding": "{{ params.currency }}",
+            "control": "hidden",
+            "label": "Default currency",
+            "name": "currency",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.client }}",
+            "control": "hidden",
+            "label": "Client contact",
+            "name": "client",
+            "required": false,
+            "type": "dict"
+          }
+        ],
+        "summary": "Works out the discount and net amount to the cent, the valid-until date, and whether the discount is within the policy limit.",
+        "title": "Price the proposal"
+      }
+    ],
+    "params": [
+      {
+        "control": "hidden",
+        "label": "Deal amount",
+        "name": "amount",
+        "required": false,
+        "type": "dict"
+      },
+      {
+        "control": "hidden",
+        "label": "Discount (%)",
+        "name": "discount_percent",
+        "required": false,
+        "type": "float"
+      },
+      {
+        "control": "hidden",
+        "label": "Policy discount limit (%)",
+        "name": "max_discount_percent",
+        "required": false,
+        "type": "float"
+      },
+      {
+        "control": "hidden",
+        "label": "Days the offer is valid",
+        "name": "valid_days",
+        "required": false,
+        "type": "int"
+      },
+      {
+        "control": "hidden",
+        "label": "Default currency",
+        "name": "currency",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "hidden",
+        "label": "Client contact",
+        "name": "client",
+        "required": false,
+        "type": "dict"
+      }
+    ],
+    "rootOrder": [
+      "price"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Proposal pricing check",
+  "originKey": "9e9e03f6-2194-47a7-ba5d-7c30237151c9",
+  "tags": [
+    "sales"
+  ]
+}

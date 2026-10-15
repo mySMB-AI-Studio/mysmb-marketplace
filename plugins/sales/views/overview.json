@@ -1,0 +1,270 @@
+{
+  "version": 1,
+  "document": {
+    "schemaVersion": 1,
+    "rootId": "root",
+    "nodes": [
+      {
+        "id": "root",
+        "type": "section",
+        "parentId": null,
+        "props": {
+          "padding": "none",
+          "gap": "large"
+        }
+      },
+      {
+        "id": "pipeH",
+        "type": "heading",
+        "parentId": "root",
+        "props": {
+          "text": "Sales work at a glance",
+          "level": 2
+        }
+      },
+      {
+        "id": "pipeCols",
+        "type": "columns",
+        "parentId": "root",
+        "props": {
+          "columns": 3
+        }
+      },
+      {
+        "id": "mActive",
+        "type": "metric",
+        "parentId": "pipeCols",
+        "props": {
+          "label": "Jobs in progress"
+        },
+        "bindingIds": [
+          "active"
+        ]
+      },
+      {
+        "id": "mWaiting",
+        "type": "metric",
+        "parentId": "pipeCols",
+        "props": {
+          "label": "Decisions waiting on you"
+        },
+        "bindingIds": [
+          "mine"
+        ]
+      },
+      {
+        "id": "mDone",
+        "type": "metric",
+        "parentId": "pipeCols",
+        "props": {
+          "label": "Closed jobs"
+        },
+        "bindingIds": [
+          "done"
+        ]
+      },
+      {
+        "id": "boardCols",
+        "type": "columns",
+        "parentId": "root",
+        "props": {
+          "columns": 2
+        }
+      },
+      {
+        "id": "byStage",
+        "type": "chart",
+        "parentId": "boardCols",
+        "props": {
+          "title": "Jobs by stage",
+          "field": "stage"
+        },
+        "bindingIds": [
+          "all"
+        ]
+      },
+      {
+        "id": "decisions",
+        "type": "workq",
+        "parentId": "boardCols",
+        "props": {
+          "title": "Waiting for your decision"
+        },
+        "bindingIds": [
+          "mine"
+        ]
+      },
+      {
+        "id": "latestH",
+        "type": "heading",
+        "parentId": "root",
+        "props": {
+          "text": "Latest work",
+          "level": 2
+        }
+      },
+      {
+        "id": "latestCols",
+        "type": "columns",
+        "parentId": "root",
+        "props": {
+          "columns": 2
+        }
+      },
+      {
+        "id": "latest",
+        "type": "workq",
+        "parentId": "latestCols",
+        "props": {
+          "title": "Latest leads, proposals and reviews"
+        },
+        "bindingIds": [
+          "all"
+        ]
+      },
+      {
+        "id": "docs",
+        "type": "workq",
+        "parentId": "latestCols",
+        "props": {
+          "title": "Proposal summaries"
+        },
+        "bindingIds": [
+          "outputs"
+        ]
+      },
+      {
+        "id": "rulesH",
+        "type": "heading",
+        "parentId": "root",
+        "props": {
+          "text": "Rules I follow",
+          "level": 2
+        }
+      },
+      {
+        "id": "rulesCols",
+        "type": "columns",
+        "parentId": "root",
+        "props": {
+          "columns": 3
+        }
+      },
+      {
+        "id": "rScore",
+        "type": "metric",
+        "parentId": "rulesCols",
+        "props": {
+          "title": "A lead qualifies at",
+          "label": "Default score; your manager can change it",
+          "value": "60 / 100"
+        }
+      },
+      {
+        "id": "rDiscount",
+        "type": "metric",
+        "parentId": "rulesCols",
+        "props": {
+          "title": "Discounts up to",
+          "label": "Above it, the proposal is flagged outside policy",
+          "value": "15%"
+        }
+      },
+      {
+        "id": "rSend",
+        "type": "metric",
+        "parentId": "rulesCols",
+        "props": {
+          "title": "Anything is sent",
+          "label": "Only after a named reviewer decides",
+          "value": "After a decision"
+        }
+      },
+      {
+        "id": "howH",
+        "type": "heading",
+        "parentId": "root",
+        "props": {
+          "text": "How I work",
+          "level": 2
+        }
+      },
+      {
+        "id": "how",
+        "type": "customCode",
+        "parentId": "root",
+        "props": {
+          "html": "<h3 style=\"margin:0 0 10px;font-size:14px;font-weight:600\">Three jobs, one rule: a person decides before anything goes out</h3>\n<div class=\"lanes\">\n<section class=\"lane\"><b class=\"lt\">Lead qualification</b><ol class=\"flow\">\n<li><button type=\"button\" aria-pressed=\"false\" data-detail=\"I research the lead in your Deals table and the enquiry, and draft a follow-up. I only read.\"><span class=\"n\">1</span><b>Research</b><span class=\"who\">Agent</span></button></li>\n<li><button type=\"button\" aria-pressed=\"false\" data-detail=\"An exact check scores fit, need, budget and timeline the same way every time.\"><span class=\"n\">2</span><b>Score</b><span class=\"who\">Automation</span></button></li>\n<li><button type=\"button\" aria-pressed=\"false\" data-detail=\"A named reviewer qualifies, keeps warm or disqualifies. Only a qualified lead gets the follow-up.\"><span class=\"n\">3</span><b>Decide</b><span class=\"who\">Person</span></button></li>\n<li><button type=\"button\" aria-pressed=\"false\" data-detail=\"The sales team holds the call with the Discovery call checklist.\"><span class=\"n\">4</span><b>Discovery call</b><span class=\"who\">Person</span></button></li>\n</ol></section>\n<section class=\"lane\"><b class=\"lt\">Proposal approval</b><ol class=\"flow\">\n<li><button type=\"button\" aria-pressed=\"false\" data-detail=\"I draft the proposal and the cover email. I never work out a price.\"><span class=\"n\">1</span><b>Draft</b><span class=\"who\">Agent</span></button></li>\n<li><button type=\"button\" aria-pressed=\"false\" data-detail=\"The pricing check works out the net price to the cent and checks the discount limit.\"><span class=\"n\">2</span><b>Price</b><span class=\"who\">Automation</span></button></li>\n<li><button type=\"button\" aria-pressed=\"false\" data-detail=\"A named reviewer approves the exact version before it is sent.\"><span class=\"n\">3</span><b>Approve</b><span class=\"who\">Person</span></button></li>\n<li><button type=\"button\" aria-pressed=\"false\" data-detail=\"The client accepts or declines through a verified link.\"><span class=\"n\">4</span><b>Client answers</b><span class=\"who\">Client</span></button></li>\n<li><button type=\"button\" aria-pressed=\"false\" data-detail=\"Sales operations completes the Closed-won handoff form.\"><span class=\"n\">5</span><b>Handoff</b><span class=\"who\">Person</span></button></li>\n</ol></section>\n<section class=\"lane\"><b class=\"lt\">Monthly renewal review</b><ol class=\"flow\">\n<li><button type=\"button\" aria-pressed=\"false\" data-detail=\"On the 1st of each month I list the renewals coming up and a check-in plan.\"><span class=\"n\">1</span><b>List renewals</b><span class=\"who\">Agent</span></button></li>\n<li><button type=\"button\" aria-pressed=\"false\" data-detail=\"A named reviewer approves the plan, or closes the month.\"><span class=\"n\">2</span><b>Approve plan</b><span class=\"who\">Person</span></button></li>\n<li><button type=\"button\" aria-pressed=\"false\" data-detail=\"Account managers talk to each customer and record it on a form.\"><span class=\"n\">3</span><b>Check in</b><span class=\"who\">Person</span></button></li>\n<li><button type=\"button\" aria-pressed=\"false\" data-detail=\"A week for customers to reply before the review closes.\"><span class=\"n\">4</span><b>Wait</b><span class=\"who\">Timer</span></button></li>\n</ol></section>\n</div>\n<p id=\"detail\" class=\"detail\" aria-live=\"polite\"></p>",
+          "css": "\n.lanes{display:flex;flex-direction:column;gap:14px}\n.lane .lt{display:block;font-size:12px;font-weight:600;color:var(--muted-foreground);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}\n.flow{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px}\n.flow li{flex:1 1 120px;min-width:110px}\n.flow button{all:unset;box-sizing:border-box;display:block;width:100%;cursor:pointer;border:1px solid var(--border);background:var(--card);border-radius:12px;padding:10px 12px;color:var(--foreground)}\n.flow button:focus-visible{outline:2px solid var(--brand);outline-offset:2px}\n.flow button[aria-pressed=true]{border-color:var(--brand);background:var(--brand-soft)}\n.flow .n{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:999px;background:var(--brand-soft);color:var(--brand);font-size:11px;font-weight:600;margin-bottom:4px}\n.flow b{display:block;font-size:13px;font-weight:600}\n.flow .who{display:inline-block;margin-top:6px;font-size:11px;border:1px solid var(--border);border-radius:999px;padding:1px 8px;color:var(--muted-foreground)}\n.detail{margin:12px 0 0;border-left:3px solid var(--brand);padding:6px 12px;font-size:13px;color:var(--foreground);background:var(--card);border-radius:0 8px 8px 0}\n.detail:empty{display:none}\n",
+          "javascript": "\n(function(){\n  var buttons=[].slice.call(document.querySelectorAll('.flow button'));\n  var detail=document.getElementById('detail');\n  function pick(b){\n    buttons.forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});\n    detail.textContent=b.getAttribute('data-detail');\n  }\n  buttons.forEach(function(b){b.addEventListener('click',function(){pick(b);});});\n  if(buttons[0])pick(buttons[0]);\n})();\n"
+        }
+      },
+      {
+        "id": "linkCols",
+        "type": "columns",
+        "parentId": "root",
+        "props": {
+          "columns": 2
+        }
+      },
+      {
+        "id": "goDeals",
+        "type": "button",
+        "parentId": "linkCols",
+        "props": {
+          "label": "Open the Deals table",
+          "href": "/records/sales_deals"
+        }
+      },
+      {
+        "id": "goWorkq",
+        "type": "button",
+        "parentId": "linkCols",
+        "props": {
+          "label": "Open the WorkQ",
+          "href": "/workq"
+        }
+      }
+    ],
+    "bindings": [
+      {
+        "id": "active",
+        "kind": "agent.jobs",
+        "config": {
+          "status": "in_progress",
+          "limit": 100
+        }
+      },
+      {
+        "id": "done",
+        "kind": "agent.jobs",
+        "config": {
+          "status": "done",
+          "limit": 100
+        }
+      },
+      {
+        "id": "all",
+        "kind": "agent.jobs",
+        "config": {
+          "limit": 100
+        }
+      },
+      {
+        "id": "mine",
+        "kind": "agent.decisions",
+        "config": {
+          "limit": 100
+        }
+      },
+      {
+        "id": "outputs",
+        "kind": "agent.outputs",
+        "config": {
+          "limit": 10
+        }
+      }
+    ],
+    "actions": []
+  }
+}

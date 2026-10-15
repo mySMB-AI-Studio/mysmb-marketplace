@@ -715,7 +715,12 @@ describe("known reference gaps", () => {
 
 describe("the reference packages", () => {
   const pluginsDir = join(here, "..", "plugins");
-  it.each(["client-onboarding", "bookkeeper", "marketing"])("%s reads only outputs its steps produce (bar the grandfathered gaps)", (name) => {
+  it.each([
+    ["client-onboarding", 1],
+    ["bookkeeper", 1],
+    ["marketing", 1],
+    ["sales", 3],
+  ] as const)("%s reads only outputs its steps produce (bar the grandfathered gaps)", (name, processCount) => {
     const dir = join(pluginsDir, name);
     const read = (path: string) => JSON.parse(readFileSync(join(dir, path), "utf8")) as Record<string, any>;
     const content = read(join(".claude-plugin", "plugin.json")).content as Record<string, string[]>;
@@ -725,7 +730,7 @@ describe("the reference packages", () => {
       const names = declaredAutomationOutputs(payload);
       if (names.length > 0) automationOutputs.set(payload.originKey, names);
     }
-    expect(content.processes).toHaveLength(1);
+    expect(content.processes).toHaveLength(processCount);
     for (const path of content.processes) {
       const payload = read(path);
       const split = splitKnownReferenceGaps(checkProcessReferences(payload.definition, { automationOutputs }), name, payload.originKey);

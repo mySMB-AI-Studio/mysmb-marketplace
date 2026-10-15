@@ -1,0 +1,269 @@
+{
+  "contentHash": "1a3b436acab556c7d7c5e1576c052bc30c36d3a94d5d3ce21e2a0bccc34ba5d1",
+  "definition": {
+    "capabilities": [
+      "records.read:sales_deals",
+      "knowledge.read",
+      "workq.create"
+    ],
+    "description": "On the first of every month, lists the customers whose renewal is coming up, asks a named reviewer to approve the check-in plan, has the account managers check in and record how it went on a form, waits a week for replies, and closes the review with the form as evidence.",
+    "exceptions": [
+      {
+        "allowedPaths": [
+          "planDecision",
+          "skipped"
+        ],
+        "blocks": [
+          "review",
+          "settle",
+          "reviewed"
+        ],
+        "key": "noRenewalsDue"
+      }
+    ],
+    "inputs": [
+      {
+        "key": "reviewMonth",
+        "label": "Month under review",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "key": "renewalsExport",
+        "label": "Renewals export (optional)",
+        "required": false,
+        "type": "evidence"
+      }
+    ],
+    "key": "renewal-review",
+    "kind": "process",
+    "limits": {
+      "maxActiveHours": 2,
+      "maxAgentTurnsPerStep": 16,
+      "maxAiUnits": 300,
+      "maxSteps": 40,
+      "maxWaitingDays": 45
+    },
+    "modelPolicy": {
+      "brief": "haiku",
+      "judgement": "sonnet",
+      "plan": "sonnet"
+    },
+    "originKey": "f4f556df-6584-4d05-b594-9cae8be325c1",
+    "outcomes": [
+      {
+        "evidence": [
+          "form_response",
+          "decision_record"
+        ],
+        "key": "reviewed",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "decision_record"
+        ],
+        "key": "skipped",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "cancellation_record"
+        ],
+        "key": "cancelled",
+        "terminal": true
+      }
+    ],
+    "protectedRules": [
+      {
+        "description": "The agent never changes a renewal price or term. It prepares the list and the talking points; people agree terms with the customer.",
+        "key": "noTermsChangedByAgent"
+      },
+      {
+        "description": "The agent never contacts a renewing customer. An account manager does, after the reviewer approves the plan.",
+        "key": "peopleOwnCustomerContact"
+      }
+    ],
+    "rework": [
+      {
+        "from": "review",
+        "requires": "reviewer",
+        "to": "shortlist"
+      }
+    ],
+    "roles": {
+      "accountManager": {
+        "group": "{{settings.sales_group}}"
+      },
+      "manager": "installation.manager",
+      "reviewer": "installation.reviewer"
+    },
+    "safeTest": {
+      "assertions": [
+        "steps.shortlist.renewals != null"
+      ],
+      "sampleInputs": {
+        "reviewMonth": "2026-11"
+      }
+    },
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "key": "shortlist",
+        "kind": "agent",
+        "outputs": [
+          "renewals",
+          "plan",
+          "missing"
+        ],
+        "proposalSchema": "renewalShortlist",
+        "skill": "prepare-renewal-review",
+        "title": "List the renewals coming up"
+      },
+      {
+        "eligible": [
+          "reviewer"
+        ],
+        "key": "planDecision",
+        "kind": "decision",
+        "materiality": [
+          "reviewMonth",
+          "steps.shortlist.renewals"
+        ],
+        "options": [
+          {
+            "effect": "Asks the account managers to check in with each renewing customer and record it on the Renewal check-in form. Nothing is sent to customers.",
+            "key": "assign",
+            "label": "Assign the check-ins"
+          },
+          {
+            "effect": "Closes this month's review with your decision on file. Nothing is assigned or sent.",
+            "key": "skip",
+            "label": "Nothing to do this month"
+          },
+          {
+            "effect": "Sends the list back to the agent with your note.",
+            "key": "revise",
+            "label": "Ask for a different list",
+            "transition": "shortlist"
+          }
+        ],
+        "separation": "preparerCannotDecide",
+        "sla": {
+          "escalateTo": "installation.backupManager",
+          "expireAfterBusinessDays": 10,
+          "remindAfterBusinessDays": "{{reminderDays}}"
+        },
+        "title": "Approve the check-in plan",
+        "type": "renewal_plan"
+      },
+      {
+        "assign": "accountManager",
+        "completion": "formSubmitted",
+        "form": "aa48ac76-ba48-4f0b-841f-ce1dfd2e65d0",
+        "key": "review",
+        "kind": "human",
+        "title": "Check in with each renewing customer"
+      },
+      {
+        "key": "settle",
+        "kind": "wait",
+        "timer": {
+          "businessDays": 5
+        },
+        "title": "Give customers a week to reply"
+      },
+      {
+        "evidence": [
+          "steps.review.formResponse",
+          "steps.planDecision.responseId"
+        ],
+        "key": "reviewed",
+        "kind": "gate",
+        "outcome": "reviewed",
+        "requires": [
+          "steps.review.completed"
+        ],
+        "title": "Renewals reviewed"
+      },
+      {
+        "evidence": [
+          "steps.planDecision.responseId"
+        ],
+        "key": "skipped",
+        "kind": "gate",
+        "outcome": "skipped",
+        "requires": [
+          "steps.planDecision.decision == 'skip'"
+        ],
+        "title": "Nothing due this month"
+      }
+    ],
+    "subject": {
+      "dedupeBy": [
+        "reviewMonth"
+      ],
+      "kind": "none"
+    },
+    "tests": [
+      "6c61a90b-a33a-4b24-976a-738ee7e44de4"
+    ],
+    "title": "Monthly renewal review",
+    "transitions": [
+      {
+        "from": "shortlist",
+        "to": "planDecision"
+      },
+      {
+        "from": "planDecision",
+        "to": "review",
+        "when": "steps.planDecision.decision == 'assign'"
+      },
+      {
+        "from": "planDecision",
+        "to": "skipped",
+        "when": "steps.planDecision.decision == 'skip'"
+      },
+      {
+        "from": "review",
+        "to": "settle"
+      },
+      {
+        "from": "settle",
+        "to": "reviewed"
+      }
+    ],
+    "triggers": [
+      {
+        "cron": "0 8 1 * *",
+        "inputsFrom": {
+          "reviewMonth": "fire.month"
+        },
+        "kind": "schedule",
+        "timezone": "Australia/Sydney"
+      }
+    ],
+    "variationPoints": [
+      {
+        "default": 60,
+        "editableBy": "manager",
+        "key": "renewalWindowDays",
+        "max": 180,
+        "min": 14,
+        "type": "number"
+      },
+      {
+        "default": 2,
+        "editableBy": "manager",
+        "key": "reminderDays",
+        "max": 10,
+        "min": 1,
+        "type": "number"
+      }
+    ],
+    "version": "0.1.1"
+  },
+  "kind": "process",
+  "name": "Monthly renewal review",
+  "originKey": "f4f556df-6584-4d05-b594-9cae8be325c1"
+}

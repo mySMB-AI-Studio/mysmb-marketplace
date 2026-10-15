@@ -1,0 +1,168 @@
+{
+  "contentHash": "4b95006e76666542a3b8536e6a9aa4e5fe453d143a586fddc45be2e2f692208c",
+  "definition": {
+    "description": "Deals the Sales agent works on: where each one is in the pipeline, what it is worth and when it is expected to close.",
+    "fields": [
+      {
+        "key": "name",
+        "kind": "text",
+        "label": "Deal",
+        "promoted": "title",
+        "required": true,
+        "searchable": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "stages": [
+            {
+              "key": "lead",
+              "label": "Lead",
+              "probability": 10,
+              "state": "open"
+            },
+            {
+              "key": "qualified",
+              "label": "Qualified",
+              "probability": 30,
+              "state": "open"
+            },
+            {
+              "key": "proposal",
+              "label": "Proposal sent",
+              "probability": 60,
+              "state": "open"
+            },
+            {
+              "key": "negotiation",
+              "label": "Negotiation",
+              "probability": 80,
+              "state": "open"
+            },
+            {
+              "key": "won",
+              "label": "Won",
+              "probability": 100,
+              "state": "closed"
+            },
+            {
+              "key": "lost",
+              "label": "Lost",
+              "probability": 0,
+              "state": "closed"
+            }
+          ]
+        },
+        "key": "deal_stage",
+        "kind": "pipeline",
+        "label": "Stage",
+        "promoted": "stage",
+        "showInList": true
+      },
+      {
+        "key": "company",
+        "kind": "text",
+        "label": "Company",
+        "required": true,
+        "searchable": true,
+        "showInList": true
+      },
+      {
+        "key": "contact_name",
+        "kind": "text",
+        "label": "Contact",
+        "searchable": true,
+        "showInList": false
+      },
+      {
+        "key": "contact_email",
+        "kind": "email",
+        "label": "Contact email",
+        "searchable": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "weighted": true
+        },
+        "key": "value",
+        "kind": "money",
+        "label": "Value",
+        "showInList": true
+      },
+      {
+        "key": "close_date",
+        "kind": "date",
+        "label": "Expected close",
+        "showInList": true
+      },
+      {
+        "key": "renewal_date",
+        "kind": "date",
+        "label": "Renewal date",
+        "showInList": false
+      },
+      {
+        "config": {
+          "options": [
+            {
+              "key": "website",
+              "label": "Website"
+            },
+            {
+              "key": "referral",
+              "label": "Referral"
+            },
+            {
+              "key": "event",
+              "label": "Event"
+            },
+            {
+              "key": "outbound",
+              "label": "Outbound"
+            },
+            {
+              "key": "existing",
+              "label": "Existing customer"
+            }
+          ]
+        },
+        "key": "source",
+        "kind": "select",
+        "label": "Source",
+        "showInList": true
+      },
+      {
+        "config": {
+          "decimals": 0,
+          "max": 100,
+          "min": 0
+        },
+        "key": "score",
+        "kind": "number",
+        "label": "Lead score",
+        "showInList": false
+      },
+      {
+        "key": "next_step",
+        "kind": "text",
+        "label": "Next step",
+        "showInList": false
+      }
+    ],
+    "icon": "target",
+    "labelPlural": "Deals",
+    "labelSingular": "Deal",
+    "settings": {
+      "defaultSort": {
+        "dir": "asc",
+        "key": "close_date"
+      }
+    },
+    "slug": "sales_deals",
+    "titleFieldKey": "name"
+  },
+  "kind": "record_type",
+  "name": "Deals",
+  "originKey": "7d53b0b1-7c28-4f29-a766-6508eec38e2c"
+}

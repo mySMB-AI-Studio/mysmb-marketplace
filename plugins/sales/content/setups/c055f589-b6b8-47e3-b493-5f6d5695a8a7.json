@@ -1,0 +1,132 @@
+{
+  "contentHash": "0150c0af3823c375d9da0aca41995fdc088befff79730825f3853e98489b5f63",
+  "definition": {
+    "steps": [
+      {
+        "connectors": [],
+        "description": "Who holds discovery calls and renewal check-ins, and who takes a won deal into delivery. Reviewers and the backup manager are set when you activate the agent.",
+        "fields": [
+          {
+            "default": "sales",
+            "helpText": "The group that receives discovery calls and renewal check-ins. It is matched to the workspace group of the same name.",
+            "key": "sales_group",
+            "label": "Sales team",
+            "options": [
+              {
+                "label": "Sales team",
+                "value": "sales"
+              },
+              {
+                "label": "Account managers",
+                "value": "account_managers"
+              },
+              {
+                "label": "Founders",
+                "value": "founders"
+              }
+            ],
+            "required": true,
+            "type": "select"
+          },
+          {
+            "default": "sales_ops",
+            "helpText": "The group that completes the closed-won handoff.",
+            "key": "sales_ops_group",
+            "label": "Sales operations",
+            "options": [
+              {
+                "label": "Sales operations",
+                "value": "sales_ops"
+              },
+              {
+                "label": "Operations",
+                "value": "operations"
+              },
+              {
+                "label": "Finance",
+                "value": "finance"
+              }
+            ],
+            "required": true,
+            "type": "select"
+          }
+        ],
+        "id": "people",
+        "title": "People"
+      },
+      {
+        "connectors": [
+          {
+            "key": "team_mailbox_send",
+            "label": "Team mailbox: send reviewed messages",
+            "required": false,
+            "scope": "service",
+            "server": "m365-mail-send"
+          },
+          {
+            "key": "team_mailbox_read",
+            "label": "Team mailbox: read replies",
+            "required": false,
+            "scope": "service",
+            "server": "m365-mail-read"
+          }
+        ],
+        "description": "The shared team mailbox the agent sends reviewed follow-ups and proposals from and reads replies in. Optional at install: without it those messages are prepared as drafts for a person to send.",
+        "fields": [],
+        "id": "connections",
+        "title": "Connections"
+      },
+      {
+        "connectors": [],
+        "description": "The defaults the pricing check uses. The discount limit itself is a rule your manager can change.",
+        "fields": [
+          {
+            "default": "AUD",
+            "helpText": "Used when a deal amount does not name its currency.",
+            "key": "deal_currency",
+            "label": "Default currency",
+            "options": [
+              {
+                "label": "Australian dollar (AUD)",
+                "value": "AUD"
+              },
+              {
+                "label": "New Zealand dollar (NZD)",
+                "value": "NZD"
+              },
+              {
+                "label": "US dollar (USD)",
+                "value": "USD"
+              },
+              {
+                "label": "Pound sterling (GBP)",
+                "value": "GBP"
+              },
+              {
+                "label": "Euro (EUR)",
+                "value": "EUR"
+              }
+            ],
+            "required": true,
+            "type": "select"
+          },
+          {
+            "default": "The Sales team",
+            "helpText": "How the agent signs proposal cover emails.",
+            "key": "proposal_signoff",
+            "label": "Proposal sign-off",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "id": "pricing",
+        "title": "Pricing"
+      }
+    ],
+    "version": 1
+  },
+  "description": "Who works the deals, the shared mailbox the agent sends from, and the pricing defaults for the Sales agent.",
+  "kind": "setup",
+  "name": "Sales setup",
+  "originKey": "c055f589-b6b8-47e3-b493-5f6d5695a8a7"
+}

@@ -1,0 +1,333 @@
+{
+  "contentHash": "6b3651aa2f6c653ddf8f916c04c546b5c7512a0c6938f721492f03644fe9982b",
+  "definition": {
+    "capabilities": [
+      "email.send_reviewed",
+      "email.read_replies",
+      "records.read:sales_deals",
+      "knowledge.read",
+      "workq.create"
+    ],
+    "description": "Researches a new lead, scores it exactly on fit, need, budget and timeline, and asks a named reviewer to qualify, nurture or disqualify it. A follow-up email reaches the lead only after that decision, and a qualified lead ends with a discovery call held by the sales team.",
+    "exceptions": [
+      {
+        "allowedPaths": [
+          "qualifyDecision",
+          "nurtured",
+          "disqualified"
+        ],
+        "blocks": [
+          "discovery",
+          "qualified"
+        ],
+        "key": "noContactDetails"
+      }
+    ],
+    "inputs": [
+      {
+        "key": "leadName",
+        "label": "Lead or company",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "key": "leadContact",
+        "label": "Lead contact",
+        "required": true,
+        "type": "contact"
+      },
+      {
+        "key": "estimatedValue",
+        "label": "Estimated deal value",
+        "required": false,
+        "type": "money"
+      },
+      {
+        "key": "source",
+        "label": "Where the lead came from",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "key": "leadNotes",
+        "label": "Notes from the enquiry",
+        "required": false,
+        "type": "string"
+      }
+    ],
+    "key": "lead-qualification",
+    "kind": "process",
+    "limits": {
+      "maxActiveHours": 2,
+      "maxAgentTurnsPerStep": 16,
+      "maxAiUnits": 300,
+      "maxSteps": 40,
+      "maxWaitingDays": 30
+    },
+    "modelPolicy": {
+      "brief": "haiku",
+      "judgement": "sonnet",
+      "plan": "sonnet"
+    },
+    "originKey": "dcf03567-ceb6-4c7a-a3cc-5f88f30ea833",
+    "outcomes": [
+      {
+        "evidence": [
+          "decision_record",
+          "lead_score",
+          "discovery_checklist"
+        ],
+        "key": "qualified",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "decision_record"
+        ],
+        "key": "nurtured",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "decision_record"
+        ],
+        "key": "disqualified",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "cancellation_record"
+        ],
+        "key": "cancelled",
+        "terminal": true
+      }
+    ],
+    "protectedRules": [
+      {
+        "description": "No follow-up email reaches a lead until a reviewer has recorded a decision that still matches the lead score, the estimated value and the recipient.",
+        "key": "noOutreachWithoutDecision"
+      },
+      {
+        "description": "Messages go only to the lead contact named on the job. The agent never looks for or guesses another recipient.",
+        "key": "onlyNamedLeadContacted"
+      }
+    ],
+    "rework": [
+      {
+        "from": "discovery",
+        "requires": "reviewer",
+        "to": "research"
+      }
+    ],
+    "roles": {
+      "manager": "installation.manager",
+      "reviewer": "installation.reviewer",
+      "salesRep": {
+        "group": "{{settings.sales_group}}"
+      }
+    },
+    "safeTest": {
+      "assertions": [
+        "steps.research.assessment != null",
+        "steps.score.score != null"
+      ],
+      "sampleInputs": {
+        "estimatedValue": {
+          "amount": 24000,
+          "currency": "AUD"
+        },
+        "leadContact": {
+          "email": "priya.nair@example.test",
+          "name": "Priya Nair"
+        },
+        "leadName": "Harbour Fitness Group",
+        "leadNotes": "Asked about a 12-month plan for three studios starting next quarter.",
+        "source": "Website enquiry"
+      }
+    },
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "key": "research",
+        "kind": "agent",
+        "outputs": [
+          "assessment",
+          "followUpEmail",
+          "missing"
+        ],
+        "proposalSchema": "leadAssessment",
+        "skill": "qualify-lead",
+        "title": "Research the lead"
+      },
+      {
+        "automation": "ff4e3f68-6cd8-410a-a97f-9fa68c815881",
+        "inputs": {
+          "assessment": "steps.research.assessment",
+          "estimated_value": "inputs.estimatedValue",
+          "min_score": "{{minScoreToQualify}}",
+          "missing": "steps.research.missing"
+        },
+        "key": "score",
+        "kind": "automation",
+        "title": "Score the lead"
+      },
+      {
+        "eligible": [
+          "reviewer"
+        ],
+        "key": "qualifyDecision",
+        "kind": "decision",
+        "materiality": [
+          "steps.score.score",
+          "estimatedValue",
+          "recipient"
+        ],
+        "options": [
+          {
+            "effect": "Sends the reviewed follow-up email to the lead contact and asks the sales team to hold a discovery call. Nothing else is sent.",
+            "intent": {
+              "capability": "email.send_reviewed",
+              "payloadFrom": "steps.research.followUpEmail"
+            },
+            "key": "qualify",
+            "label": "Qualify and send the follow-up"
+          },
+          {
+            "effect": "Closes the job as nurtured. Nothing is sent to the lead.",
+            "key": "nurture",
+            "label": "Keep warm for later"
+          },
+          {
+            "effect": "Closes the job as disqualified. Nothing is sent to the lead.",
+            "key": "disqualify",
+            "label": "Disqualify"
+          },
+          {
+            "effect": "Sends the lead back to the agent with your note. Nothing is sent to the lead.",
+            "key": "revise",
+            "label": "Ask for more research",
+            "transition": "research"
+          }
+        ],
+        "separation": "preparerCannotDecide",
+        "sla": {
+          "escalateTo": "installation.backupManager",
+          "expireAfterBusinessDays": 5,
+          "remindAfterBusinessDays": "{{reminderDays}}"
+        },
+        "title": "Decide what happens to the lead",
+        "type": "lead_qualification"
+      },
+      {
+        "assign": "salesRep",
+        "completion": "statusDone",
+        "key": "discovery",
+        "kind": "human",
+        "template": "af7e04b2-6985-4bc9-b34f-a89e8e505eca",
+        "title": "Hold the discovery call"
+      },
+      {
+        "evidence": [
+          "steps.qualifyDecision.responseId",
+          "steps.score.score"
+        ],
+        "key": "qualified",
+        "kind": "gate",
+        "outcome": "qualified",
+        "requires": [
+          "steps.qualifyDecision.decision == 'qualify'",
+          "steps.discovery.completed"
+        ],
+        "title": "Qualified"
+      },
+      {
+        "evidence": [
+          "steps.qualifyDecision.responseId"
+        ],
+        "key": "nurtured",
+        "kind": "gate",
+        "outcome": "nurtured",
+        "requires": [
+          "steps.qualifyDecision.decision == 'nurture'"
+        ],
+        "title": "Kept warm"
+      },
+      {
+        "evidence": [
+          "steps.qualifyDecision.responseId"
+        ],
+        "key": "disqualified",
+        "kind": "gate",
+        "outcome": "disqualified",
+        "requires": [
+          "steps.qualifyDecision.decision == 'disqualify'"
+        ],
+        "title": "Disqualified"
+      }
+    ],
+    "subject": {
+      "dedupeBy": [
+        "leadName"
+      ],
+      "kind": "records.sales_deals"
+    },
+    "tests": [
+      "c23550e0-e781-4354-9497-a30fb187a896"
+    ],
+    "title": "Lead qualification",
+    "transitions": [
+      {
+        "from": "research",
+        "to": "score"
+      },
+      {
+        "from": "score",
+        "to": "qualifyDecision"
+      },
+      {
+        "from": "qualifyDecision",
+        "to": "discovery",
+        "when": "steps.qualifyDecision.decision == 'qualify'"
+      },
+      {
+        "from": "qualifyDecision",
+        "to": "nurtured",
+        "when": "steps.qualifyDecision.decision == 'nurture'"
+      },
+      {
+        "from": "qualifyDecision",
+        "to": "disqualified",
+        "when": "steps.qualifyDecision.decision == 'disqualify'"
+      },
+      {
+        "from": "discovery",
+        "to": "qualified"
+      }
+    ],
+    "variationPoints": [
+      {
+        "default": 60,
+        "editableBy": "manager",
+        "key": "minScoreToQualify",
+        "max": 100,
+        "min": 0,
+        "type": "number"
+      },
+      {
+        "default": 2,
+        "editableBy": "manager",
+        "key": "reminderDays",
+        "max": 10,
+        "min": 1,
+        "type": "number"
+      }
+    ],
+    "version": "0.1.1",
+    "vocabulary": {
+      "subject": "Deal"
+    }
+  },
+  "kind": "process",
+  "name": "Lead qualification",
+  "originKey": "dcf03567-ceb6-4c7a-a3cc-5f88f30ea833"
+}

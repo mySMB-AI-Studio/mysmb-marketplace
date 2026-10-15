@@ -1,0 +1,70 @@
+{
+  "contentHash": "ad3c766f8adebdb8cb490109c4c2d9a3ed02b8c0c175cc56ad3e9f393f7b191e",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "conversationId": "conversationId",
+          "internetMessageId": "internetMessageId",
+          "limit": "limit"
+        },
+        "scopes": [
+          "Mail.Read"
+        ],
+        "server": "m365-mail-read",
+        "tool": "find_replies_to"
+      }
+    ],
+    "idempotency": {
+      "supported": false
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "internetMessageId"
+          ]
+        },
+        {
+          "required": [
+            "conversationId"
+          ]
+        }
+      ],
+      "properties": {
+        "conversationId": {
+          "description": "Graph conversation id (from the send receipt).",
+          "type": "string"
+        },
+        "internetMessageId": {
+          "description": "RFC 2822 Message-ID of the sent message (from the send receipt).",
+          "type": "string"
+        },
+        "limit": {
+          "default": 10,
+          "maximum": 25,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "key": "email.read_replies",
+    "kind": "capability",
+    "originKey": "26104113-5cf3-4317-af0b-0cfa8b6ec30c",
+    "outputsSchema": {
+      "description": "Candidate replies, newest first, each with inReplyTo / references[] and matchedBy. A correlation aid: the caller decides whether a message really answers the request.",
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:m365-mail-read"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Read replies to a sent email"
+  },
+  "kind": "capability",
+  "name": "Read replies to a sent email",
+  "originKey": "26104113-5cf3-4317-af0b-0cfa8b6ec30c"
+}

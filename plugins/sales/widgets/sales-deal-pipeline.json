@@ -1,0 +1,324 @@
+{
+  "id": "sales-deal-pipeline",
+  "title": "Deal pipeline",
+  "description": "Deals from the Sales agent's Deals table: company, stage, value and expected close date, with the open pipeline total.",
+  "category": "sales",
+  "tags": [
+    "sales",
+    "deals",
+    "pipeline",
+    "crm",
+    "business-agent"
+  ],
+  "keywords": [
+    "deals",
+    "pipeline",
+    "sales",
+    "opportunities",
+    "forecast",
+    "proposals"
+  ],
+  "connectorsUsed": [],
+  "popularity": 0,
+  "brandColor": "#0284C7",
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "records",
+    "tool": "list_sales_deals",
+    "params": {
+      "limit": 50
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "headerRow"
+        ]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": {
+          "justify": "between",
+          "align": "center"
+        },
+        "children": [
+          "titleGroup",
+          "refreshBtn"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Target",
+          "tone": "brand",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "total"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Deal pipeline",
+          "level": "h2"
+        }
+      },
+      "total": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "sales_pipeline_total",
+            "args": {
+              "records": {
+                "$state": "/records/list_sales_deals/records"
+              }
+            }
+          }
+        }
+      },
+      "refreshBtn": {
+        "type": "IconButton",
+        "props": {
+          "icon": "RefreshCw",
+          "tone": "muted",
+          "size": "sm",
+          "ariaLabel": "Refresh"
+        },
+        "on": {
+          "click": {
+            "action": "records.list_sales_deals",
+            "params": {
+              "limit": 50
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "visible": {
+          "$state": "/_loading/records.list_sales_deals"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ]
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No deals yet. Deals appear here once the Deals table has records."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/records.list_sales_deals",
+              "not": true
+            },
+            {
+              "$state": "/records/list_sales_deals/records/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "visible": {
+          "$state": "/_loading/records.list_sales_deals",
+          "not": true
+        },
+        "repeat": {
+          "statePath": "/records/list_sales_deals/records",
+          "key": "id"
+        },
+        "children": [
+          "row"
+        ]
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between",
+          "hover": true
+        },
+        "children": [
+          "rowLeft",
+          "rowRight"
+        ]
+      },
+      "rowLeft": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "dealName",
+          "dealMeta"
+        ]
+      },
+      "dealName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "title"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "dealMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{company} · {close}",
+              "company": {
+                "$item": "data/company"
+              },
+              "close": {
+                "$computed": "sales_close_label",
+                "args": {
+                  "date": {
+                    "$item": "data/close_date"
+                  },
+                  "stage": {
+                    "$item": "stage"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "rowRight": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "value",
+          "stageBadge"
+        ]
+      },
+      "value": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "sales_deal_value",
+            "args": {
+              "cents": {
+                "$item": "data/value"
+              }
+            }
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "stageBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "stageLabel"
+          },
+          "tone": {
+            "$computed": "sales_stage_tone",
+            "args": {
+              "stage": {
+                "$item": "stage"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

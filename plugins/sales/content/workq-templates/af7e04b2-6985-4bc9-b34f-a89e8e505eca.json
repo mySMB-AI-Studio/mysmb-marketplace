@@ -1,0 +1,66 @@
+{
+  "body": {
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "description": "Hold the discovery call on **{{call_date}}**, capture the notes with the Discovery call notes form, then mark this done so the lead job can close as qualified.",
+        "dueOffset": {
+          "anchorVarRef": "call_date",
+          "days": 0
+        },
+        "id": "discovery_call",
+        "priority": "high",
+        "roleVarRef": "sales_rep",
+        "scope": "org",
+        "subtasks": [
+          {
+            "id": "research",
+            "label": "Re-read the lead assessment and the score reasons"
+          },
+          {
+            "id": "agenda",
+            "label": "Send a short agenda to the lead contact"
+          },
+          {
+            "id": "call",
+            "label": "Hold the call and confirm budget, timeline and decision maker"
+          },
+          {
+            "id": "notes",
+            "label": "Record the call with the Discovery call notes form"
+          },
+          {
+            "id": "deal",
+            "label": "Update the deal stage and value in Deals"
+          }
+        ],
+        "title": "Discovery call: {{company_name}}"
+      }
+    ]
+  },
+  "contentHash": "2a601d81f6f719a208b49e6ea9b34318a50031801511cba0eedbf91cd53599b3",
+  "kind": "workq_template",
+  "level": "org",
+  "name": "Discovery call checklist",
+  "originKey": "af7e04b2-6985-4bc9-b34f-a89e8e505eca",
+  "slots": [
+    {
+      "displayName": "Company",
+      "logicalName": "company_name",
+      "type": "text"
+    },
+    {
+      "displayName": "Sales rep",
+      "logicalName": "sales_rep",
+      "type": "principal"
+    },
+    {
+      "displayName": "Call date",
+      "logicalName": "call_date",
+      "type": "date"
+    }
+  ],
+  "tags": [
+    "sales"
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "contentHash": "0c1a77dabb252185bb4b14247d217a5cc19c0174daa7b0d2d60629a5ea879c71",
+  "definition": {
+    "key": "renewal-review-core",
+    "kind": "evaluation",
+    "originKey": "6c61a90b-a33a-4b24-976a-738ee7e44de4",
+    "process": "f4f556df-6584-4d05-b594-9cae8be325c1",
+    "required": true,
+    "scenarios": [
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "assign",
+              "step": "planDecision"
+            }
+          ],
+          "outcome": "reviewed",
+          "stepsReached": [
+            "shortlist",
+            "planDecision",
+            "review",
+            "settle",
+            "reviewed"
+          ]
+        },
+        "fixtures": {
+          "records": {
+            "sales_deals": [
+              {
+                "name": "Bayside Dental: support plan",
+                "renewal_date": "2026-11-20"
+              }
+            ]
+          },
+          "responses": [
+            {
+              "option": "assign",
+              "step": "planDecision"
+            },
+            {
+              "form": {
+                "q_contacted": true,
+                "q_outlook": "All renewing"
+              },
+              "step": "review"
+            },
+            {
+              "elapsedBusinessDays": 5,
+              "step": "settle"
+            }
+          ]
+        },
+        "inputs": {
+          "reviewMonth": "2026-11"
+        },
+        "key": "monthlyReview",
+        "rubric": [
+          {
+            "criterion": "Every renewal on the list names the customer, the renewal date and a talking point; no price or term is changed.",
+            "weight": 1
+          }
+        ],
+        "title": "The plan is approved, account managers check in, the review closes"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "skip",
+              "step": "planDecision"
+            }
+          ],
+          "outcome": "skipped",
+          "stepsReached": [
+            "shortlist",
+            "planDecision",
+            "skipped"
+          ]
+        },
+        "fixtures": {
+          "records": {
+            "sales_deals": []
+          },
+          "responses": [
+            {
+              "option": "skip",
+              "step": "planDecision"
+            }
+          ]
+        },
+        "inputs": {
+          "reviewMonth": "2026-12"
+        },
+        "key": "nothingDue",
+        "title": "Nothing renews this month: the reviewer closes it"
+      }
+    ],
+    "schemaVersion": 1,
+    "thresholds": {
+      "requiredScenarioPassRate": 1,
+      "rubricMinScore": 0.7
+    },
+    "title": "Monthly renewal review: core scenarios"
+  },
+  "kind": "evaluation",
+  "name": "Monthly renewal review: core scenarios",
+  "originKey": "6c61a90b-a33a-4b24-976a-738ee7e44de4"
+}

@@ -1,0 +1,117 @@
+{
+  "contentHash": "4d659be9074a4ad1ee1eb11d4dceff9399d42196ca711498496d4d873b8b8a6a",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "body": "body",
+          "contentType": "contentType",
+          "requestRef": "requestRef",
+          "subject": "subject",
+          "to": "to"
+        },
+        "scopes": [
+          "Mail.Send",
+          "Mail.ReadWrite"
+        ],
+        "server": "m365-mail-send",
+        "tool": "send_email"
+      }
+    ],
+    "idempotency": {
+      "supported": false
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "contentType": {
+          "default": "Text",
+          "enum": [
+            "Text",
+            "HTML"
+          ],
+          "type": "string"
+        },
+        "requestRef": {
+          "description": "Short reference stamped on the message (X-MyHub-Request header) and in the subject or body, so an uncertain send can be found again and a reply matched to the job.",
+          "pattern": "^[A-Za-z0-9._-]{3,64}$",
+          "type": "string"
+        },
+        "subject": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "to": {
+          "description": "Recipient addresses (the contact named on the job only).",
+          "items": {
+            "format": "email",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "to",
+        "subject",
+        "body",
+        "requestRef"
+      ],
+      "type": "object"
+    },
+    "key": "email.send_reviewed",
+    "kind": "capability",
+    "originKey": "07bcc136-96cc-4b94-91c3-de31e4441ec0",
+    "outputsSchema": {
+      "properties": {
+        "conversationId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "internetMessageId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "messageId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "requestRef": {
+          "type": "string"
+        },
+        "sentAt": {
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:m365-mail-send",
+      "connectors:m365-mail-read"
+    ],
+    "reconcile": {
+      "by": "request_ref",
+      "tool": "find_sent_by_reference"
+    },
+    "schemaVersion": 1,
+    "sideEffectClass": "send",
+    "title": "Send a reviewed email"
+  },
+  "kind": "capability",
+  "name": "Send a reviewed email",
+  "originKey": "07bcc136-96cc-4b94-91c3-de31e4441ec0"
+}
