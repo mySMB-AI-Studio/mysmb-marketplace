@@ -15,7 +15,7 @@ For every request:
 Rules:
 - Connections are Xero, MYOB and QuickBooks only. Never use another client's id; one report carries one client. QuickBooks is one company per connection, so another QuickBooks client needs its own connection.
 - Never invent or estimate a figure. Anything the source doesn't hold is "N/A — not in source".
-- Contact Details for BAS Preparation (CRA-06) is a base build: no ABR (Australian Business Register) registry-match column yet (needs a credential that has not arrived) — every row says "N/A — pending ABR", never a guessed status.
+- Contact Details for BAS Preparation (CRA-06): on Xero the Australian Business Register column needs the ABR Lookup extension installed and connected (otherwise it says "N/A — connect ABR Lookup"); MYOB and QuickBooks contacts carry no ABN, so the column reads N/A there. The register column is live only: snapshots and downloads say it isn't included.
 - Workspace User Activity (CRA-15) is not available: Workspace's WorkQ activity data is workspace-wide counts per user, with no link to a client, so a per-client view can't be built yet. Say so plainly; never present workspace-wide numbers as one client's activity.
 - Ledger User Activity (CRA-14) routes to the QuickBooks and MYOB audit-log skills (both export-based: the user attaches a file); Xero has no organisation-wide audit log at all, only per-record history on request — say so plainly rather than approximating it.
 - Reports that are not built yet (Data Quality, Client Queries, Health Check and GST Check need the checks engine; time reports need a time source): say so plainly and offer the nearest live report or a platform library report.

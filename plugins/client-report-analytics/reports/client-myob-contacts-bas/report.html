@@ -826,8 +826,8 @@ main.mk-card{border-top:4px solid var(--accent)}
 })();</script>
 <script>// CRA-06 Contact Details for BAS Preparation (MYOB) — BASE VERSION ONLY. Contacts (list_contacts) with the tax codes used on
 // their invoice and bill lines in the period. MYOB's generic contact list carries no ABN/tax-number field, so GST evidence is
-// shown honestly as "N/A — not in source" rather than guessed. Registry (ABR) match is not built: that needs an ABR API
-// credential that has not arrived, so it is shown as "N/A — pending ABR" on every row rather than invented.
+// shown honestly as "N/A — not in source" rather than guessed. For the same reason there is no register (ABR) match: the
+// register is looked up by ABN, so every row reads "N/A — no ABN in MYOB's contact list" (the Xero version has the column).
 var CRA = MK.app({
   title: 'MYOB Contact Details for BAS Preparation', primary: 'contacts', files: 'company_files',
   inputs: { start: 'from_date', end: 'to_date', companyFile: 'company_file', persona: 'persona', display: 'display' },
@@ -849,23 +849,23 @@ var CRA = MK.app({
     var rows = contacts.map(function (ct) {
       var name = ct.CompanyName || [ct.FirstName, ct.LastName].filter(Boolean).join(' ') || '(no name)';
       var types = Object.keys(used[ct.UID] || {}).sort();
-      return { name: name, role: ct.Type || 'N/A — not in source', gst: 'N/A — not in source', types: types.length ? types.join(', ') : 'None this period', registry: 'N/A — pending ABR' };
+      return { name: name, role: ct.Type || 'N/A — not in source', gst: 'N/A — not in source', types: types.length ? types.join(', ') : 'None this period', registry: 'N/A — no ABN in MYOB\'s contact list' };
     });
     var withTypes = rows.filter(function (r) { return r.types !== 'None this period'; }).length;
     body.innerHTML = MK.kpis([{ label: 'Contacts', value: rows.length, money: false }, { label: 'With tax codes this period', value: withTypes, money: false }], c) +
-      '<div class="mk-banner na" style="margin:12px 0"><strong>Registry (ABR) match is not built yet</strong> — it needs an ABR API credential that has not arrived. Every row shows "N/A — pending ABR" rather than a guessed status. GST evidence is "N/A — not in source": MYOB\'s contact list carries no ABN/tax-number field here.</div>' +
+      '<div class="mk-banner na" style="margin:12px 0"><strong>No register (ABR) match on MYOB</strong> — the Australian Business Register is looked up by ABN, and MYOB\'s contact list carries no ABN/tax-number field here, so GST evidence and the register column read N/A rather than a guess.</div>' +
       '<div class="mk-card"><h3>Contacts</h3><div id="cb-grid"></div></div>';
     MK.grid(document.getElementById('cb-grid'), { rows: rows, columns: [{ key: 'name', title: 'Contact' }, { key: 'role', title: 'Type' }, { key: 'gst', title: 'GST evidence on file' }, { key: 'types', title: 'Tax codes used ' + MK.periodLine(from, to) }, { key: 'registry', title: 'Registry (ABR) match' }], empty: 'No contacts.' }, c);
     var checks = [
       { name: 'Every contact on an invoice or bill line in the period appears in the list', pass: Object.keys(used).every(function (id) { return contacts.some(function (ct) { return ct.UID === id; }); }), detail: rows.length + ' contact(s) from list_contacts' },
       { name: 'GST evidence on file', pass: null, info: true, detail: 'N/A — not in source: MYOB\'s generic contact list carries no ABN/tax-number field' },
-      { name: 'Registry (ABR) match', pass: null, info: true, detail: 'N/A — pending ABR: this release has no ABR API credential, so no registry status is shown or guessed' },
+      { name: 'Registry (ABR) match', pass: null, info: true, detail: 'N/A — no ABN to look up: MYOB\'s contact list carries no ABN field (the Xero version shows the register, with ABR Lookup connected)' },
       { name: 'Every page of contacts loaded (up to 1,000)', pass: !(MK.items(c.data.contacts).length >= 1000), detail: rows.length + ' contact(s)' }
     ];
     this._x = { rows: rows };
     return { checks: checks, period: MK.periodLine(from, to),
       notes: ['Tax codes used are read from the contact\'s invoice and bill lines dated in the period (list_invoice_lines / list_bill_lines).', 'GST evidence on file is N/A — not in source: MYOB\'s generic contact list (list_contacts) has no ABN/tax-number field to read here.'],
-      na: ['GST evidence on file (no ABN/tax-number field on the MYOB contact)', 'Registry (ABR) match — needs an ABR API credential (not yet available); shown as "N/A — pending ABR" rather than guessed'] };
+      na: ['GST evidence on file (no ABN/tax-number field on the MYOB contact)', 'Register (ABR) match — needs an ABN, which MYOB\'s contact list doesn\'t carry'] };
   },
   excel: function (c) {
     var x = this._x; if (!x) return [];
