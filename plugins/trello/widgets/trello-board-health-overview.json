@@ -188,10 +188,15 @@
       "listsChevronUp": { "type": "Icon", "props": { "name": "ChevronUp", "tone": "muted", "size": "sm" } },
 
       "listsDetailSection": {
+        "type": "Body",
+        "props": {},
+        "children": ["listsDetailInner"],
+        "visible": { "$state": "/ui/listsExpanded" }
+      },
+      "listsDetailInner": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["listsCardsTabRow", "listsSectionContent", "cardsSectionContent"],
-        "visible": { "$state": "/ui/listsExpanded" }
+        "children": ["listsCardsTabRow", "listsSectionContent", "cardsSectionContent"]
       },
 
       "listsCardsTabRow": {
@@ -235,13 +240,8 @@
       "listsSectionContent": {
         "type": "Stack",
         "props": { "gap": "xs" },
-        "children": ["listsLoading", "listsEmpty", "listsScrollArea"],
+        "children": ["listsLoading", "listsEmpty", "listsRepeatList"],
         "visible": { "$state": "/ui/tab/lists" }
-      },
-      "listsScrollArea": {
-        "type": "Body",
-        "props": {},
-        "children": ["listsRepeatList"]
       },
       "listsLoading": {
         "type": "Stack",
@@ -286,13 +286,8 @@
       "cardsSectionContent": {
         "type": "Stack",
         "props": { "gap": "xs" },
-        "children": ["cardsLoading", "cardsEmpty", "cardsScrollArea"],
+        "children": ["cardsLoading", "cardsEmpty", "cardsRepeatList"],
         "visible": { "$state": "/ui/tab/cards" }
-      },
-      "cardsScrollArea": {
-        "type": "Body",
-        "props": {},
-        "children": ["cardsRepeatList"]
       },
       "cardsLoading": {
         "type": "Stack",
