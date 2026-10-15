@@ -1,7 +1,7 @@
 {
   "id": "google-workspace-meeting-summaries",
   "title": "Meeting Summaries",
-  "description": "Recent Google Meet meetings summarised by AI: a 2-3 sentence overview, decisions, and action items with assignees, drawn from each meeting's transcript. Click a card to expand it; open the matching Calendar event or the full transcript from there.",
+  "description": "Recent Google Meet meetings with their transcripts. Transcripts that haven't been summarised yet can be summarised on demand — one at a time, or all at once — into a 2-3 sentence overview, decisions, and action items with assignees. Click a card to expand it; open the matching Calendar event or the full transcript from there.",
   "category": "productivity",
   "tags": [
     "google",
@@ -65,8 +65,15 @@
                   "args": {
                     "meetings": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/meetings" },
                     "stats": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/stats" },
+                    "aiUnavailable": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/aiUnavailable" },
                     "tab": { "$state": "/ui/meetingSummariesTab" },
-                    "expandedId": { "$state": "/ui/meetingSummariesExpandedId" }
+                    "expandedId": { "$state": "/ui/meetingSummariesExpandedId" },
+                    "summarizeId": { "$state": "/google-workspace-meet/summarize_meeting_transcript/id" },
+                    "summarizeOk": { "$state": "/google-workspace-meet/summarize_meeting_transcript/ok" },
+                    "summarizeSummary": { "$state": "/google-workspace-meet/summarize_meeting_transcript/summary" },
+                    "summarizeDecisions": { "$state": "/google-workspace-meet/summarize_meeting_transcript/decisions" },
+                    "summarizeActionItems": { "$state": "/google-workspace-meet/summarize_meeting_transcript/actionItems" },
+                    "summarizeError": { "$state": "/google-workspace-meet/summarize_meeting_transcript/error" }
                   }
                 }
               }
@@ -82,8 +89,15 @@
                   "args": {
                     "meetings": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/meetings" },
                     "stats": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/stats" },
+                    "aiUnavailable": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/aiUnavailable" },
                     "tab": { "$state": "/ui/meetingSummariesTab" },
-                    "expandedId": { "$state": "/ui/meetingSummariesExpandedId" }
+                    "expandedId": { "$state": "/ui/meetingSummariesExpandedId" },
+                    "summarizeId": { "$state": "/google-workspace-meet/summarize_meeting_transcript/id" },
+                    "summarizeOk": { "$state": "/google-workspace-meet/summarize_meeting_transcript/ok" },
+                    "summarizeSummary": { "$state": "/google-workspace-meet/summarize_meeting_transcript/summary" },
+                    "summarizeDecisions": { "$state": "/google-workspace-meet/summarize_meeting_transcript/decisions" },
+                    "summarizeActionItems": { "$state": "/google-workspace-meet/summarize_meeting_transcript/actionItems" },
+                    "summarizeError": { "$state": "/google-workspace-meet/summarize_meeting_transcript/error" }
                   }
                 }
               }
@@ -99,8 +113,39 @@
                   "args": {
                     "meetings": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/meetings" },
                     "stats": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/stats" },
+                    "aiUnavailable": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/aiUnavailable" },
                     "tab": { "$state": "/ui/meetingSummariesTab" },
-                    "expandedId": { "$state": "/ui/meetingSummariesExpandedId" }
+                    "expandedId": { "$state": "/ui/meetingSummariesExpandedId" },
+                    "summarizeId": { "$state": "/google-workspace-meet/summarize_meeting_transcript/id" },
+                    "summarizeOk": { "$state": "/google-workspace-meet/summarize_meeting_transcript/ok" },
+                    "summarizeSummary": { "$state": "/google-workspace-meet/summarize_meeting_transcript/summary" },
+                    "summarizeDecisions": { "$state": "/google-workspace-meet/summarize_meeting_transcript/decisions" },
+                    "summarizeActionItems": { "$state": "/google-workspace-meet/summarize_meeting_transcript/actionItems" },
+                    "summarizeError": { "$state": "/google-workspace-meet/summarize_meeting_transcript/error" }
+                  }
+                }
+              }
+            }
+          ],
+          "/_loading/google-workspace-meet.summarize_meeting_transcript": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/meetingSummariesView",
+                "value": {
+                  "$computed": "google-workspace_build_meeting_summaries_view",
+                  "args": {
+                    "meetings": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/meetings" },
+                    "stats": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/stats" },
+                    "aiUnavailable": { "$state": "/google-workspace-meet/get_meeting_summaries_dashboard/aiUnavailable" },
+                    "tab": { "$state": "/ui/meetingSummariesTab" },
+                    "expandedId": { "$state": "/ui/meetingSummariesExpandedId" },
+                    "summarizeId": { "$state": "/google-workspace-meet/summarize_meeting_transcript/id" },
+                    "summarizeOk": { "$state": "/google-workspace-meet/summarize_meeting_transcript/ok" },
+                    "summarizeSummary": { "$state": "/google-workspace-meet/summarize_meeting_transcript/summary" },
+                    "summarizeDecisions": { "$state": "/google-workspace-meet/summarize_meeting_transcript/decisions" },
+                    "summarizeActionItems": { "$state": "/google-workspace-meet/summarize_meeting_transcript/actionItems" },
+                    "summarizeError": { "$state": "/google-workspace-meet/summarize_meeting_transcript/error" }
                   }
                 }
               }
@@ -111,15 +156,15 @@
       "header": {
         "type": "Header",
         "children": [
-          "headerStack"
+          "headerRow"
         ]
       },
-      "headerStack": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
+      "headerRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
         "children": [
           "titleRow",
-          "statsRow"
+          "workspaceBadge"
         ]
       },
       "titleRow": {
@@ -132,101 +177,27 @@
       },
       "titleIcon": {
         "type": "Icon",
-        "props": { "name": "Video", "tone": "brand", "size": "lg" }
+        "props": { "name": "Video", "tone": "default", "size": "lg" }
       },
       "titleStack": {
         "type": "Stack",
         "props": { "gap": "none" },
         "children": [
-          "titleEyebrow",
-          "title"
+          "titleConnector",
+          "titleSubtitle"
         ]
       },
-      "titleEyebrow": {
-        "type": "Caption",
-        "props": { "text": "GOOGLE MEET", "tone": "brand" }
-      },
-      "title": {
+      "titleConnector": {
         "type": "Heading",
-        "props": { "text": "Meeting Summaries", "level": "h2" }
+        "props": { "text": "GOOGLE MEET", "level": "h1" }
       },
-      "statsRow": {
-        "type": "Row",
-        "props": { "gap": "sm" },
-        "children": [
-          "statSummarisedGrow",
-          "statActionsGrow",
-          "statAssignedGrow"
-        ]
-      },
-      "statSummarisedGrow": {
-        "type": "Stack",
-        "props": { "gap": "none", "grow": true },
-        "children": ["statSummarised"]
-      },
-      "statSummarised": {
-        "type": "Section",
-        "props": { "variant": "bordered" },
-        "children": ["statSummarisedStack"]
-      },
-      "statSummarisedStack": {
-        "type": "Stack",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["statSummarisedValue", "statSummarisedLabel"]
-      },
-      "statSummarisedValue": {
-        "type": "Stat",
-        "props": { "value": { "$state": "/ui/meetingSummariesView/stats/meetingsSummarised" }, "size": "md" }
-      },
-      "statSummarisedLabel": {
+      "titleSubtitle": {
         "type": "Caption",
-        "props": { "text": "Meetings summarised", "tone": "muted" }
+        "props": { "text": "Meeting Summaries", "tone": "muted" }
       },
-      "statActionsGrow": {
-        "type": "Stack",
-        "props": { "gap": "none", "grow": true },
-        "children": ["statActions"]
-      },
-      "statActions": {
-        "type": "Section",
-        "props": { "variant": "bordered" },
-        "children": ["statActionsStack"]
-      },
-      "statActionsStack": {
-        "type": "Stack",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["statActionsValue", "statActionsLabel"]
-      },
-      "statActionsValue": {
-        "type": "Stat",
-        "props": { "value": { "$state": "/ui/meetingSummariesView/stats/actionItemsTotal" }, "size": "md" }
-      },
-      "statActionsLabel": {
-        "type": "Caption",
-        "props": { "text": "Action items", "tone": "warning" }
-      },
-      "statAssignedGrow": {
-        "type": "Stack",
-        "props": { "gap": "none", "grow": true },
-        "children": ["statAssigned"]
-      },
-      "statAssigned": {
-        "type": "Section",
-        "props": { "variant": "bordered" },
-        "children": ["statAssignedStack"]
-      },
-      "statAssignedStack": {
-        "type": "Stack",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["statAssignedValue", "statAssignedLabel"]
-      },
-      "statAssignedValue": {
-        "type": "Stat",
-        "props": { "value": { "$state": "/ui/meetingSummariesView/stats/assignedToYouTotal" }, "size": "md" }
-      },
-      "statAssignedLabel": {
-        "type": "Caption",
-        "props": { "text": "Assigned to you", "tone": "muted" }
+      "workspaceBadge": {
+        "type": "Badge",
+        "props": { "text": "Google Workspace", "tone": "muted", "variant": "outline" }
       },
       "body": {
         "type": "Body",
@@ -260,15 +231,61 @@
         "props": { "gap": "md" },
         "visible": { "$state": "/_loading/google-workspace-meet.get_meeting_summaries_dashboard", "not": true },
         "children": [
+          "summariseBanner",
           "tabsRow",
           "list",
           "footer"
         ]
       },
+      "summariseBanner": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "visible": { "$state": "/ui/meetingSummariesView/banner/visible" },
+        "children": ["summariseBannerRow"]
+      },
+      "summariseBannerRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["summariseBannerTextGrow", "summariseAllButton"]
+      },
+      "summariseBannerTextGrow": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["summariseBannerHeadline", "summariseBannerDetail"]
+      },
+      "summariseBannerHeadline": {
+        "type": "Text",
+        "props": {
+          "text": { "$state": "/ui/meetingSummariesView/banner/headline" },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "summariseBannerDetail": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/ui/meetingSummariesView/banner/detail" }, "tone": "muted" }
+      },
+      "summariseAllButton": {
+        "type": "Button",
+        "props": { "label": "Summarize all", "variant": "primary", "size": "sm", "leadingIcon": "Sparkles" },
+        "visible": { "$state": "/ui/meetingSummariesView/banner/canSummarizeAll" },
+        "on": {
+          "click": [
+            {
+              "action": "bust_tool_cache",
+              "params": { "mcp": "google-workspace-meet", "tool": "get_meeting_summaries_dashboard" }
+            },
+            {
+              "action": "google-workspace-meet.get_meeting_summaries_dashboard",
+              "params": {}
+            }
+          ]
+        }
+      },
       "tabsRow": {
         "type": "Row",
         "props": { "gap": "md", "align": "center" },
-        "children": ["tabAll", "tabWithActions", "tabNoTranscript"]
+        "children": ["tabAll", "tabWithActions", "tabNotSummarised"]
       },
       "tabAll": {
         "type": "Row",
@@ -328,29 +345,29 @@
         },
         "visible": { "$state": "/ui/meetingSummariesTab", "eq": "withActions", "not": true }
       },
-      "tabNoTranscript": {
+      "tabNotSummarised": {
         "type": "Row",
         "props": { "clickable": true },
-        "children": ["tabNoTranscriptActive", "tabNoTranscriptInactive"],
-        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/meetingSummariesTab", "value": "noTranscript" } } }
+        "children": ["tabNotSummarisedActive", "tabNotSummarisedInactive"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/meetingSummariesTab", "value": "notSummarised" } } }
       },
-      "tabNoTranscriptActive": {
+      "tabNotSummarisedActive": {
         "type": "Badge",
         "props": {
-          "text": { "$computed": "fmt", "args": { "pattern": "No transcript {n}", "n": { "$state": "/ui/meetingSummariesView/counts/noTranscript" } } },
-          "tone": "muted",
+          "text": { "$computed": "fmt", "args": { "pattern": "Not summarised {n}", "n": { "$state": "/ui/meetingSummariesView/counts/notSummarised" } } },
+          "tone": "accent",
           "variant": "soft"
         },
-        "visible": { "$state": "/ui/meetingSummariesTab", "eq": "noTranscript" }
+        "visible": { "$state": "/ui/meetingSummariesTab", "eq": "notSummarised" }
       },
-      "tabNoTranscriptInactive": {
+      "tabNotSummarisedInactive": {
         "type": "Text",
         "props": {
-          "text": { "$computed": "fmt", "args": { "pattern": "No transcript {n}", "n": { "$state": "/ui/meetingSummariesView/counts/noTranscript" } } },
+          "text": { "$computed": "fmt", "args": { "pattern": "Not summarised {n}", "n": { "$state": "/ui/meetingSummariesView/counts/notSummarised" } } },
           "size": "sm",
           "tone": "muted"
         },
-        "visible": { "$state": "/ui/meetingSummariesTab", "eq": "noTranscript", "not": true }
+        "visible": { "$state": "/ui/meetingSummariesTab", "eq": "notSummarised", "not": true }
       },
       "list": {
         "type": "Stack",
@@ -390,24 +407,34 @@
       "dateBadgeStack": {
         "type": "Stack",
         "props": { "gap": "none", "align": "center" },
-        "children": ["dateBadgeMonth", "dateBadgeDay"]
+        "children": ["dateBadgeDay", "dateBadgeMonth"]
+      },
+      "dateBadgeDay": {
+        "type": "Text",
+        "props": { "text": { "$item": "dayNumber" }, "size": "sm", "weight": "medium" }
       },
       "dateBadgeMonth": {
         "type": "Caption",
         "props": { "text": { "$item": "monthAbbrev" }, "tone": "muted" }
       },
-      "dateBadgeDay": {
-        "type": "Text",
-        "props": { "text": { "$item": "dayNumber" }, "size": "sm", "weight": "bold" }
-      },
       "rowMain": {
         "type": "Stack",
         "props": { "gap": "xs", "grow": true },
-        "children": ["rowTitle", "rowMetaRow"]
+        "children": ["rowTitleRow", "rowMetaRow"]
+      },
+      "rowTitleRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["rowTitle", "rowMeetingCode"]
       },
       "rowTitle": {
         "type": "Text",
-        "props": { "text": { "$item": "title" }, "size": "sm", "weight": "bold", "truncate": true }
+        "props": { "text": { "$item": "title" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "rowMeetingCode": {
+        "type": "Caption",
+        "props": { "text": { "$item": "meetingCode" }, "tone": "muted" },
+        "visible": { "$item": "hasMeetingCode" }
       },
       "rowMetaRow": {
         "type": "Row",
@@ -454,13 +481,13 @@
       "collapsedTrailing": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center" },
-        "children": ["actionsBadge", "chevronIcon"]
+        "children": ["statusBadge", "chevronIcon"]
       },
-      "actionsBadge": {
+      "statusBadge": {
         "type": "Badge",
         "props": {
-          "text": { "$item": "actionsBadgeLabel" },
-          "tone": { "$item": "actionsBadgeTone" },
+          "text": { "$item": "statusBadgeLabel" },
+          "tone": { "$item": "statusBadgeTone" },
           "variant": "soft"
         }
       },
@@ -474,7 +501,8 @@
         "visible": { "$item": "expanded" },
         "children": [
           "noTranscriptNotice",
-          "noSummaryNotice",
+          "summarizePanel",
+          "summarizeErrorNotice",
           "summaryRow",
           "decisionsSection",
           "actionItemsSection",
@@ -486,10 +514,47 @@
         "props": { "text": "No transcript for this meeting.", "tone": "muted" },
         "visible": { "$item": "hasTranscript", "not": true }
       },
-      "noSummaryNotice": {
+      "summarizePanel": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "visible": { "$item": "showSummarizePanel" },
+        "children": ["summarizePanelRow"]
+      },
+      "summarizePanelRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["summarizePanelTextGrow", "summarizeButton"]
+      },
+      "summarizePanelTextGrow": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["summarizePanelTitle", "summarizePanelDetail"]
+      },
+      "summarizePanelTitle": {
+        "type": "Text",
+        "props": { "text": "No summary yet", "size": "sm", "weight": "medium" }
+      },
+      "summarizePanelDetail": {
         "type": "Caption",
-        "props": { "text": "AI summary unavailable for this meeting.", "tone": "muted" },
-        "visible": { "$item": "showNoSummaryNotice" }
+        "props": { "text": { "$item": "readyDetail" }, "tone": "muted" }
+      },
+      "summarizeButton": {
+        "type": "Button",
+        "props": { "label": "Summarize", "variant": "primary", "size": "sm", "leadingIcon": "Sparkles" },
+        "visible": { "$item": "canSummarize" },
+        "on": {
+          "click": {
+            "action": "google-workspace-meet.summarize_meeting_transcript",
+            "params": {
+              "conferenceRecordName": { "$computed": "identity", "args": { "value": { "$item": "id" } } }
+            }
+          }
+        }
+      },
+      "summarizeErrorNotice": {
+        "type": "Caption",
+        "props": { "text": { "$item": "summarizeError" }, "tone": "destructive" },
+        "visible": { "$item": "hasSummarizeError" }
       },
       "summaryRow": {
         "type": "Row",
@@ -716,11 +781,11 @@
       },
       "footerCaption": {
         "type": "Text",
-        "props": { "text": "Summaries from transcripts · last 30 days", "tone": "muted", "truncate": true }
+        "props": { "text": "Transcripts from the last 30 days · summaries saved once made", "tone": "muted", "truncate": true }
       },
       "footerButton": {
         "type": "Button",
-        "props": { "label": "Open Google Meet", "variant": "primary", "tone": "info", "size": "sm", "leadingIcon": "Video" },
+        "props": { "label": "Open Google Meet →", "variant": "ghost", "size": "sm" },
         "on": {
           "click": {
             "action": "open_url",
