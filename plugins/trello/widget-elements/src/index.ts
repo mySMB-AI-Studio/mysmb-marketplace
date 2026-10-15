@@ -156,27 +156,6 @@ const flatten_boards: ComputedFunction = (args) => {
 };
 
 /**
- * Formats the completion caption for the Board Health Overview tile's ring.
- * Trello has no notion of a card being "done" outside the due-date-complete
- * checkbox, so completion is defined as completed_due_cards divided by every
- * card that HAS a due date (completed + remaining) — cards with no due date
- * at all aren't part of this ratio, since they're neither complete nor
- * overdue, just untracked for this purpose.
- *
- * Args: { value: object } — get_boards_health_summary's response object
- * ({ completed_due_cards, remaining_due_cards, ... }).
- */
-const format_completion_pct: ComputedFunction = (args) => {
-  const v = (args.value ?? {}) as Record<string, unknown>;
-  const completed = Number(v.completed_due_cards ?? 0);
-  const remaining = Number(v.remaining_due_cards ?? 0);
-  const total = completed + remaining;
-  if (total === 0) return 'No due dates tracked';
-  const pct = Math.round((completed / total) * 100);
-  return `${pct}% complete`;
-};
-
-/**
  * Formats the "N lists · N cards tracked" summary line for the Board Health
  * Overview tile.
  *
@@ -196,7 +175,6 @@ const elements: PluginElementsModule = {
     flatten_my_cards_tabs,
     flatten_overdue_cards,
     flatten_boards,
-    format_completion_pct,
     format_lists_cards_summary,
   },
 };
