@@ -1,0 +1,225 @@
+{
+  "declaredScopes": [
+    "files:read",
+    "files:write",
+    "workq:write",
+    "ai:generate",
+    "users:read",
+    "connectors:m365-mail-read",
+    "connectors:m365-mail-send",
+    "connectors:cliniko-scheduling"
+  ],
+  "dependencies": [],
+  "description": "Every 15 minutes, checks for patients who were offered reschedule times and watches the same email thread for their reply. When a reply names one of the offered times clearly enough, moves the Cliniko booking to that time and sends a confirmation. An unclear reply is flagged for a human instead of guessed — this never books a time it isn't confident about.",
+  "flowIr": {
+    "description": "Polls for pending reschedule offers, matches a patient's reply to one of the proposed times via AI, moves the Cliniko booking, and confirms — or flags for a human when the reply is unclear.",
+    "irVersion": 1,
+    "name": "Cliniko Automations: Apply patient's chosen reschedule time",
+    "nodes": [
+      {
+        "code": "import json\n\nslug = (params.get(\"practice_slug\") or \"\").strip()\nproblem = \"\"\nsettings = {}\n\ndef read_json(path):\n    try:\n        raw = api.files.read(file=path, scope=\"org\")\n    except Exception as exc:\n        return None, \"Couldn't read \" + path + \": \" + str(exc)\n    try:\n        return json.loads(raw), None\n    except Exception as exc:\n        return None, path + \" isn't valid JSON (\" + str(exc) + \")\"\n\nif not slug:\n    problem = \"No practice_slug configured for this automation.\"\nelse:\n    found, err = read_json(\"PracticeManager/Practices/\" + slug + \".json\")\n    if found is None:\n        problem = err or (\"No practice settings file found for slug '\" + slug + \"'.\")\n    else:\n        settings = found\n",
+        "id": "load_context",
+        "kind": "python",
+        "outputs": [
+          {
+            "name": "slug",
+            "type": "str"
+          },
+          {
+            "name": "settings",
+            "type": "dict"
+          },
+          {
+            "name": "problem",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.practice_slug }}",
+            "control": "hidden",
+            "label": "Practice slug",
+            "name": "practice_slug",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "title": "Load practice settings"
+      },
+      {
+        "cond": "not steps[\"load_context\"][\"outputs\"][\"problem\"]",
+        "else": [],
+        "id": "gate_settings",
+        "kind": "if",
+        "then": [
+          "list_pending_choices",
+          "foreach_pending"
+        ],
+        "title": "Settings loaded okay?"
+      },
+      {
+        "code": "import json\n\ndef read_json(path):\n    try:\n        raw = api.files.read(file=path, scope=\"org\")\n    except Exception:\n        return None\n    try:\n        return json.loads(raw)\n    except Exception:\n        return None\n\nslug = params[\"slug\"]\nprefix = slug + \"-awaiting-reschedule-choice-\"\n\ntry:\n    entries = api.files.list(path=\"PracticeManager/State\", scope=\"org\") or []\nexcept Exception:\n    entries = []\n\npending_choices = []\nfor e in entries:\n    name = e.get(\"name\") if isinstance(e, dict) else str(e)\n    if name and name.startswith(prefix) and name.endswith(\".json\"):\n        data = read_json(\"PracticeManager/State/\" + name)\n        if data:\n            data[\"_file_name\"] = name\n            pending_choices.append(data)\n",
+        "id": "list_pending_choices",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "Each awaiting-reschedule-choice record, plus its own file name.",
+            "name": "pending_choices",
+            "type": "list[dict]"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ steps.load_context.outputs.slug }}",
+            "control": "hidden",
+            "label": "Slug",
+            "name": "slug",
+            "required": true,
+            "type": "str"
+          }
+        ],
+        "title": "Find pending reschedule offers"
+      },
+      {
+        "body": [
+          "find_and_apply_choice"
+        ],
+        "id": "foreach_pending",
+        "itemVar": "choice_item",
+        "items": "{{ steps.list_pending_choices.outputs.pending_choices }}",
+        "kind": "foreach",
+        "maxIterations": 25,
+        "title": "Check each pending offer for a reply"
+      },
+      {
+        "code": "import json\nimport datetime\n\ndef cliniko(tool, args):\n    return api.connectors.invoke(server=\"cliniko-scheduling\", tool=tool, args=args) or {}\n\ndef read_json(path):\n    try:\n        raw = api.files.read(file=path, scope=\"org\")\n    except Exception:\n        return None\n    try:\n        return json.loads(raw)\n    except Exception:\n        return None\n\ndef write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True), scope=\"org\")\n\ndef delete_file(path):\n    try:\n        api.files.delete(file=path, scope=\"org\")\n    except Exception:\n        pass\n\nslug = params[\"slug\"]\nconversation_id = params[\"conversation_id\"]\nappointment_id = params[\"appointment_id\"]\nproposed_times_raw = params[\"proposed_times_raw\"] or []\nproposed_times_display = params[\"proposed_times_display\"] or []\npatient_name = params[\"patient_name\"]\nfrom_email = params[\"from_email\"]\nreplied_at = params[\"replied_at\"]\ncommitment_id = params[\"commitment_id\"]\nfile_name = params[\"file_name\"]\nstate_path = \"PracticeManager/State/\" + file_name\n\nresult = \"no_reply_yet\"\n\nif not conversation_id or not proposed_times_raw:\n    result = \"incomplete_record\"\nelse:\n    # Expire anything still unanswered after a week — don't poll forever.\n    stale = False\n    try:\n        replied_dt = datetime.datetime.fromisoformat(replied_at.replace(\"Z\", \"+00:00\"))\n        stale = (datetime.datetime.now(datetime.timezone.utc) - replied_dt) > datetime.timedelta(days=7)\n    except Exception:\n        stale = False\n\n    raw_messages = api.connectors.invoke(server=\"m365-mail-read\", tool=\"list_emails\", args={\"folder\": \"inbox\", \"limit\": 25})\n    messages = raw_messages if isinstance(raw_messages, list) else ((raw_messages or {}).get(\"value\") or [])\n\n    reply = None\n    for m in messages:\n        if m.get(\"conversationId\") != conversation_id:\n            continue\n        received = m.get(\"receivedDateTime\") or \"\"\n        if received and replied_at and received > replied_at:\n            reply = m\n            break\n\n    if reply is None:\n        result = \"stale\" if stale else \"no_reply_yet\"\n    else:\n        reply_text = reply.get(\"bodyPreview\") or \"\"\n        chosen_iso = \"\"\n        try:\n            options_text = \"\\n\".join(\n                str(i + 1) + \". \" + proposed_times_display[i] + \" (\" + proposed_times_raw[i] + \")\"\n                for i in range(len(proposed_times_raw))\n            )\n            prompt = (\n                \"A patient was offered these appointment time options:\\n\" + options_text + \"\\n\\n\"\n                'They replied: \"' + reply_text + '\"\\n\\n'\n                \"Which option number did they choose? Reply with ONLY JSON: \"\n                '{\"option\": <1-based number, or null if genuinely unclear>}'\n            )\n            raw = api.ai.generate(prompt=prompt)\n            parsed = json.loads(raw) or {}\n            option = parsed.get(\"option\")\n            if isinstance(option, int) and 1 <= option <= len(proposed_times_raw):\n                chosen_iso = proposed_times_raw[option - 1]\n        except Exception:\n            chosen_iso = \"\"\n\n        commitments_path = \"PracticeManager/Commitments/\" + slug + \".json\"\n\n        if not chosen_iso:\n            # Ambiguous reply — never guess which time to book. Flag for a\n            # human instead of silently doing nothing or booking the wrong slot.\n            PRACTITIONER_EMAIL = \"sean.baker@mysmb.com\"\n            assignee_ids: list[str] = []\n            try:\n                users = api.users.list()\n                for user in users or []:\n                    if (user.get(\"email\") or \"\").strip().lower() == PRACTITIONER_EMAIL:\n                        user_id = user.get(\"id\")\n                        if user_id:\n                            assignee_ids = [str(user_id)]\n                        break\n            except Exception:\n                assignee_ids = []\n\n            item = api.workq.create(\n                title=\"Needs a human: unclear reschedule reply from \" + (patient_name or from_email),\n                scope=\"org\",\n                description=(\n                    \"**Patient:** \" + (patient_name or from_email) + \"\\n\"\n                    + \"**Their reply:** \" + reply_text + \"\\n\"\n                    + \"**Options offered:** \" + \", \".join(proposed_times_display) + \"\\n\\n\"\n                    + \"Couldn't tell which time they picked — please book it manually in Cliniko and reply \"\n                    + \"to the patient yourself.\"\n                ),\n                priority=\"high\",\n                labels=[\"cliniko-automations\", \"reschedule-desk\", \"needs-human\"],\n                assignee_ids=assignee_ids or None,\n            )\n            delete_file(state_path)\n            commitments = read_json(commitments_path) or []\n            for c in commitments:\n                if c.get(\"id\") == commitment_id:\n                    c[\"status\"] = \"needs_human\"\n            write_json(commitments_path, commitments)\n            result = \"flagged_for_human\"\n        else:\n            try:\n                cliniko(\"update_individual_appointment\", {\"id\": appointment_id, \"patch\": {\"starts_at\": chosen_iso}})\n                updated = True\n            except Exception:\n                updated = False\n\n            if updated:\n                confirm_text = (\n                    \"Hi \" + (patient_name or \"there\") + \",<br><br>\"\n                    + \"You're confirmed for your rescheduled appointment. See you then!<br><br>Best regards\"\n                )\n                try:\n                    api.connectors.invoke(\n                        server=\"m365-mail-send\", tool=\"reply_to_email\",\n                        args={\"id\": reply.get(\"id\") or \"\", \"comment\": confirm_text},\n                    )\n                except Exception:\n                    pass\n                delete_file(state_path)\n                commitments = read_json(commitments_path) or []\n                for c in commitments:\n                    if c.get(\"id\") == commitment_id:\n                        c[\"status\"] = \"resolved\"\n                        c[\"resolved_at\"] = datetime.datetime.now(datetime.timezone.utc).isoformat()\n                write_json(commitments_path, commitments)\n                result = \"applied\"\n            else:\n                result = \"update_failed\"\n",
+        "id": "find_and_apply_choice",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "no_reply_yet | applied | flagged_for_human | update_failed | stale | incomplete_record",
+            "name": "result",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ steps.load_context.outputs.slug }}",
+            "control": "hidden",
+            "label": "Slug",
+            "name": "slug",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ item.conversation_id }}",
+            "control": "hidden",
+            "label": "Conversation id",
+            "name": "conversation_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ item.appointment_id }}",
+            "control": "hidden",
+            "label": "Appointment id",
+            "name": "appointment_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ item.proposed_times_raw }}",
+            "control": "hidden",
+            "label": "Proposed times (raw)",
+            "name": "proposed_times_raw",
+            "required": true,
+            "type": "list[str]"
+          },
+          {
+            "binding": "{{ item.proposed_times_display }}",
+            "control": "hidden",
+            "label": "Proposed times (display)",
+            "name": "proposed_times_display",
+            "required": true,
+            "type": "list[str]"
+          },
+          {
+            "binding": "{{ item.patient_name }}",
+            "control": "hidden",
+            "label": "Patient name",
+            "name": "patient_name",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ item.from_email }}",
+            "control": "hidden",
+            "label": "Patient email",
+            "name": "from_email",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ item.replied_at }}",
+            "control": "hidden",
+            "label": "Our reply sent at",
+            "name": "replied_at",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ item.commitment_id }}",
+            "control": "hidden",
+            "label": "Commitment id",
+            "name": "commitment_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ item._file_name }}",
+            "control": "hidden",
+            "label": "State file name",
+            "name": "file_name",
+            "required": true,
+            "type": "str"
+          }
+        ],
+        "title": "Match the reply, move the booking, confirm"
+      }
+    ],
+    "params": [
+      {
+        "control": "text",
+        "label": "Practice slug (matches PracticeManager/Practices/<slug>.json)",
+        "name": "practice_slug",
+        "required": false,
+        "type": "str",
+        "value": ""
+      }
+    ],
+    "rootOrder": [
+      "load_context",
+      "gate_settings"
+    ],
+    "triggers": [
+      {
+        "cron": "*/15 * * * *",
+        "kind": "schedule",
+        "timezone": "UTC"
+      },
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Cliniko Automations: Apply patient's chosen reschedule time",
+  "originKey": "66b8c8fd-7043-4464-abec-5a46c4a732eb",
+  "tags": [
+    "cliniko",
+    "scheduling",
+    "email"
+  ],
+  "contentHash": "aa925639be18c365adc62d1bc7f3620a5f906d324b83099325bb2c62fecab038"
+}
