@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 
 sys.path.insert(0, os.path.dirname(__file__))
 from harness import World, run_flow  # noqa: E402
-from test_flows import AUTOS, T_ACME, Base, source_id  # noqa: E402
+from test_flows import AUTOS, INVOICE_TEXT, T_ACME, Base, make_pdf, source_id  # noqa: E402
 
 AUTO = "Bookkeeping: Ledger checks (Xero)"
 T = "tenant-checks"
@@ -60,6 +60,7 @@ class Checks(unittest.TestCase):
         self.w.xero.add_org(T, "Acme Plumbing Pty Ltd", default=True)
         self.org = self.w.xero.orgs[T]
         self.org["lock_date"] = day(40) + "T00:00:00"
+        self.org["short_code"] = "!Ab12C"
         for i, a in enumerate(self.org["accounts"]):
             a["AccountID"] = "acc-" + a["Code"]
             a["Class"] = "REVENUE" if a["Type"] in ("REVENUE", "OTHERINCOME") else "EXPENSE"
@@ -139,7 +140,9 @@ class Checks(unittest.TestCase):
         self.assertEqual(item["formId"], source_id(AUTO, "Check findings"))
         self.assertEqual(item["priority"], "medium")
         self.assertIn("- [ ] **Medium** — CHK-055 Possible Duplicate Bill — $440.00 — Bills INV-7", item["description"])
-        self.assertIn("[Open in Xero](https://go.xero.com/AccountsPayable/Edit.aspx?InvoiceID=b2)", item["description"])
+        # Links switch to the client's own Xero organisation first, whatever the browser last had open.
+        self.assertIn("[Open in Xero](https://go.xero.com/organisationlogin/default.aspx?shortcode=!Ab12C"
+                      "&redirecturl=/AccountsPayable/Edit.aspx?InvoiceID=b2)", item["description"])
         self.assertEqual(self.state()["todo_id"], item["id"])
         # Already checked today: the next scheduled run skips it.
         run_flow(self.w, AUTOS[AUTO], {"kind": "schedule"}, {"client_name": ""})
@@ -347,6 +350,39 @@ class Checks(unittest.TestCase):
         self.assertIn("CHK-021", self.open_item()["description"])
         self.assertEqual(self.state()["last_weekly"], str(TODAY))
 
+    def test_no_lock_date_twice_is_not_a_lock_date_change(self):
+        self.org["lock_date"] = None
+        self.overnight()
+        state = self.state()
+        state["last_weekly"] = day(8)  # the next run is weekly too
+        state["snapshot"]["lock_change"] = {"from": "", "to": "", "on": day(1)}  # what the first release saved
+        self.w.files["Bookkeeping/Checks/acme-plumbing.json"] = json.dumps(state)
+        self.overnight()
+        desc = self.open_item()["description"]
+        self.assertIn("CHK-134", desc)
+        self.assertNotIn("CHK-135", desc)
+        self.assertNotIn("lock_change", self.state()["snapshot"])
+
+    def test_a_lock_date_moved_back_is_flagged(self):
+        self.org["lock_date"] = day(40) + "T00:00:00"
+        self.overnight()
+        state = self.state()
+        state["last_weekly"] = day(8)
+        self.w.files["Bookkeeping/Checks/acme-plumbing.json"] = json.dumps(state)
+        self.org["lock_date"] = day(200) + "T00:00:00"
+        self.overnight()
+        self.assertIn("CHK-135 Lock Date Change", self.open_item()["description"])
+
+    def test_suppliers_without_an_abn_are_one_line_per_client(self):
+        a = self.add(contact("c-a", "Alpha Supplies", ""))
+        b = self.add(contact("c-b", "Beta Freight", ""))
+        self.org["invoices"] += [doc("x1", "A-1", a, day(6), 220.0), doc("x2", "B-1", b, day(5), 550.0), doc("x3", "B-2", b, day(4), 110.0)]
+        self.overnight()
+        lines = [l for l in self.open_item()["description"].split("\n") if "CHK-008" in l]
+        self.assertEqual(len(lines), 1)
+        self.assertIn("$80.00 GST claimed on purchases over $82.50 from 2 supplier(s) with no ABN in Xero: Beta Freight $60.00, "
+                      "Alpha Supplies $20.00", lines[0])
+
     def test_suppliers_missing_tpar_details_only_for_tpar_clients(self):
         bare = self.add(contact("c-tradie", "Joe Tradie", abn="", address=False))
         self.org["invoices"].append(doc("b-t", "JT-1", bare, day(10), 2200.0, status="PAID", paid_on=day(8)))
@@ -377,7 +413,19 @@ class Checks(unittest.TestCase):
         self.overnight()
         self.assertEqual(self.items(), [])
         steps = self.check_now("Acme Plumbing")
-        self.assertIn("No client with ledger checks turned on", steps["run_checks"]["outputs"]["problem"])
+        self.assertIn("No client business has ledger checks on", steps["run_checks"]["outputs"]["problem"])
+
+    def test_a_manual_run_finds_the_client_by_its_xero_name_too(self):
+        self.duplicate_bills()
+        self.check_now("Acme Plumbing Pty Ltd")
+        self.assertIn("CHK-055", self.open_item()["description"])
+        steps = self.check_now("Nobody Here")
+        self.assertIn("Acme Plumbing", steps["run_checks"]["outputs"]["problem"])
+
+    def test_no_clients_set_up_says_so(self):
+        del self.w.files["Bookkeeping/Clients/acme-plumbing.json"]
+        steps = self.overnight()
+        self.assertIn("No client business has ledger checks on", steps["run_checks"]["outputs"]["problem"])
 
     def test_checks_only_read_xero(self):
         self.duplicate_bills()
@@ -433,14 +481,15 @@ class IntakeChecks(Base):
     def test_same_file_twice_and_a_new_abn_for_a_known_supplier(self):
         self.setup_practice()
         self.add_supplier(T_ACME, history_code="449")
-        self.drop()
+        pdf = make_pdf(INVOICE_TEXT)  # one copy: the PDF embeds the time it was made
+        self.drop(data=pdf)
         index = json.loads(self.w.files["Bookkeeping/Checks/acme-plumbing-intake.json"])
         self.assertEqual(len(index["files"]), 1)
         self.assertEqual(index["abns"]["contact-sparky"], ["51824753556"])
         first = self.review_item()["id"]
         self.w.items[first]["labels"] = ["done"]
         self.invoice.update(invoice_number="INV-1002", supplier_abn="53 004 085 616")
-        self.drop(name="INV-1002.pdf")
+        self.drop(name="INV-1002.pdf", data=pdf)
         desc = self.review_item()["description"]
         self.assertIn("This exact file was processed before", desc)
         self.assertIn("[CHK-130]", desc)
@@ -459,6 +508,14 @@ class IntakeChecks(Base):
                                                               "line_amount": 400.0, "tax_amount": 0}])
         self.drop()
         self.assertIn("[CHK-124]", self.review_item()["description"])
+
+    def test_review_item_links_open_the_clients_own_xero_org(self):
+        self.setup_practice()
+        self.w.xero.orgs[T_ACME]["short_code"] = "!Zz9Q"
+        self.add_supplier(T_ACME, history_code="449")
+        self.drop()
+        self.assertIn("(https://go.xero.com/organisationlogin/default.aspx?shortcode=!Zz9Q&redirecturl=/AccountsPayable/Edit.aspx?InvoiceID=",
+                      self.review_item()["description"])
 
     def test_a_clean_bill_raises_no_intake_checks(self):
         self.setup_practice()

@@ -320,12 +320,16 @@ def ck_weekly_rules(ledger, client, snap, today, captured):
         c = contacts.get(p["contact_id"])
         if c and len(c.get("tax_number") or "") != 11 and p["tax"] > 0 and p["total"] > BK_GST_INVOICE_LIMIT:
             no_abn.setdefault(c["id"], []).append(p)
-    for cid, rows in no_abn.items():
-        gst = sum(r["tax"] for r in rows)
-        out.append(ck_finding("CHK-008", cid, ck_money(gst) + " GST claimed on " + str(len(rows)) + " purchase(s) over "
-                              + ck_money(BK_GST_INVOICE_LIMIT) + " from " + contacts[cid]["name"] + ", which has no ABN in Xero. "
-                              "Get its ABN or a tax invoice, or the GST can't be claimed.", amount=gst,
-                              link=contacts[cid]["link"], sig="%d|%.2f" % (len(rows), gst)))
+    if no_abn:
+        # One line per client, largest first: a file with many ABN-less suppliers would otherwise bury everything else.
+        gst_of = {cid: sum(r["tax"] for r in rows) for cid, rows in no_abn.items()}
+        ranked = sorted(no_abn, key=lambda cid: (-gst_of[cid], contacts[cid]["name"]))
+        listed = [contacts[cid]["name"] + " " + ck_money(gst_of[cid]) for cid in ranked[:8]]
+        out.append(ck_finding("CHK-008", "no-abn", ck_money(sum(gst_of.values())) + " GST claimed on purchases over "
+                              + ck_money(BK_GST_INVOICE_LIMIT) + " from " + str(len(ranked)) + " supplier(s) with no ABN in Xero: "
+                              + ", ".join(listed) + (" and " + str(len(ranked) - 8) + " more" if len(ranked) > 8 else "")
+                              + ". Get their ABNs or tax invoices, or the GST can't be claimed.", amount=sum(gst_of.values()),
+                              link=contacts[ranked[0]]["link"], sig="|".join(sorted(no_abn))))
 
     # CHK-007: suppliers paid this financial year without the ABN or address a TPAR needs.
     if client.get("tpar"):
@@ -486,9 +490,12 @@ def ck_weekly_rules(ledger, client, snap, today, captured):
                               + " months ago. Move it forward to the last period lodged.", link=org.get("settings_link") or "",
                               sig=lock))
     previous = snap.get("lock")
-    if previous is not None and (not lock or lock < previous):
+    # Only a lock date that existed and then moved back, or was removed, is a change: none before and none now isn't.
+    if previous and (not lock or lock < previous):
         snap["lock_change"] = {"from": previous, "to": lock, "on": str(today)}
     snap["lock"] = lock
+    if not (snap.get("lock_change") or {}).get("from"):
+        snap.pop("lock_change", None)
     change = snap.get("lock_change") or {}
     if change and ck_day(change.get("on")) and (today - ck_day(change["on"])).days <= CK_BANK_CHANGE_DAYS:
         out.append(ck_finding("CHK-135", change["from"] + ">" + change["to"], "The lock date was moved back from "

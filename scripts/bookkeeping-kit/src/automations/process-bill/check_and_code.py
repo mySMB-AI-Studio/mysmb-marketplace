@@ -246,6 +246,7 @@ if not problem:
                 "tax": tax,
                 "total": total,
                 "coding_source": source,
+                "short_code": ident.get("short_code") or "",
                 # What the intake checks need to remember once the bill is through (route_review saves it).
                 "intake": {"file_hash": file_hash, "abn": issuer_abn if not sales else "", "contact_key": contact_key},
             }

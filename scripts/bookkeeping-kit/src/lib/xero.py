@@ -123,7 +123,7 @@ def xero_org_identity(tenant_id):
     try:
         org = xero_call("get_organisation", tenant_id)
     except Exception:
-        return {"names": [], "abn": ""}
+        return {"names": [], "abn": "", "short_code": ""}
     if isinstance(org, dict) and isinstance(org.get("Organisations"), list):
         org = org["Organisations"][0] if org["Organisations"] else {}
     elif isinstance(org, list):
@@ -131,7 +131,7 @@ def xero_org_identity(tenant_id):
     org = org if isinstance(org, dict) else {}
     names = [str(n) for n in (org.get("Name"), org.get("LegalName")) if n]
     abn = "".join(ch for ch in str(org.get("TaxNumber") or org.get("RegistrationNumber") or "") if ch.isdigit())
-    return {"names": names, "abn": abn}
+    return {"names": names, "abn": abn, "short_code": str(org.get("ShortCode") or "")}
 
 
 def xero_bill_body(proposal, status):
@@ -371,7 +371,9 @@ def xero_bill_markdown(proposal, warnings=None, blocking=None, bill_id="", file_
     out.append("- Total " + bk_fmt(p.get("total"), cur) + " (GST " + bk_fmt(p.get("tax"), cur) + ", amounts "
                + ("include" if p.get("line_amount_types") == "Inclusive" else "exclude") + " GST)")
     if bill_id:
-        out.append("- Draft " + doc + " in Xero: [open in Xero](" + xero_bill_link(bill_id, p.get("doc_type") or "ACCPAY") + ")")
+        # Through the client's own organisation (its short code), or Xero opens whichever one the browser last used.
+        out.append("- Draft " + doc + " in Xero: [open in Xero](" + xero_org_link(xero_bill_link(bill_id, p.get("doc_type") or "ACCPAY"),
+                                                                    p.get("short_code")) + ")")
     else:
         out.append("- Not in Xero yet: the " + doc + " is created when you approve")
     if file_path:
@@ -529,6 +531,10 @@ def xero_ledger(tenant_id, today, since, weekly):
     """The neutral ledger snapshot the checks read (shape in checks.py). Weekly adds the chart of accounts, tax rates,
     credit notes, manual journals, lock dates, two trial balances and a 12-month profit and loss."""
     truncated = []
+    org = xero_call("get_organisation", tenant_id)
+    if isinstance(org, dict) and isinstance(org.get("Organisations"), list):
+        org = org["Organisations"][0] if org["Organisations"] else {}
+    org = org if isinstance(org, dict) else {}
     contacts, cut = xero_pages("list_contacts", tenant_id, "Contacts", where='ContactStatus=="ACTIVE"')
     if cut:
         truncated.append("contacts")
@@ -554,7 +560,7 @@ def xero_ledger(tenant_id, today, since, weekly):
               "docs": docs,
               "bank": [xero_bank_txn(t) for t in bank if t.get("BankTransactionID") and t.get("Status") != "DELETED"]}
     if not weekly:
-        return ledger
+        return xero_org_links(ledger, org.get("ShortCode"))
     credits, _ = xero_pages("list_credit_notes", tenant_id, "CreditNotes", where="Date>=" + xero_since(since))
     ledger["docs"] += [xero_doc(c, credit=True) for c in credits if c.get("CreditNoteID")]
     ledger["accounts"] = [{"id": str(a.get("AccountID") or ""), "code": str(a.get("Code") or ""), "name": str(a.get("Name") or ""),
@@ -571,10 +577,6 @@ def xero_ledger(tenant_id, today, since, weekly):
                            "narration": str(j.get("Narration") or ""),
                            "link": "https://go.xero.com/Journal/View.aspx?invoiceID=" + str(j.get("ManualJournalID") or "")}
                           for j in journals if j.get("Status") in ("POSTED", None)]
-    org = xero_call("get_organisation", tenant_id)
-    if isinstance(org, dict) and isinstance(org.get("Organisations"), list):
-        org = org["Organisations"][0] if org["Organisations"] else {}
-    org = org if isinstance(org, dict) else {}
     ledger["org"] = {"lock_date": xero_date(org.get("PeriodLockDate")), "eoy_lock_date": xero_date(org.get("EndOfYearLockDate")),
                      "settings_link": "https://go.xero.com/Setup/FinancialSettings.aspx"}
     ledger["balances"] = {"now": xero_balances(tenant_id, today),
@@ -588,4 +590,22 @@ def xero_ledger(tenant_id, today, since, weekly):
         "moved": sorted({xero_cell_account(c[0]) for _t, c in pl
                          if len(c) > 1 and xero_cell_account(c[0]) and (bk_money(c[1].get("Value")) or 0) != 0}),
     }
+    return xero_org_links(ledger, org.get("ShortCode"))
+
+
+def xero_org_link(link, short_code):
+    """A Xero link that switches to the client's organisation first. A plain go.xero.com link opens in whichever
+    organisation the browser last used, so for any other client it shows the wrong file or an error."""
+    prefix = "https://go.xero.com"
+    if not short_code or not str(link or "").startswith(prefix + "/"):
+        return link
+    return prefix + "/organisationlogin/default.aspx?shortcode=" + str(short_code) + "&redirecturl=" + link[len(prefix):]
+
+
+def xero_org_links(ledger, short_code):
+    for key in ("contacts", "docs", "bank", "journals"):
+        for row in ledger.get(key) or []:
+            row["link"] = xero_org_link(row.get("link"), short_code)
+    if ledger.get("org"):
+        ledger["org"]["settings_link"] = xero_org_link(ledger["org"].get("settings_link"), short_code)
     return ledger

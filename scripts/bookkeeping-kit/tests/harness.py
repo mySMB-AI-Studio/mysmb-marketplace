@@ -302,7 +302,7 @@ class FakeXero:
                 terms["Bills"] = org["bill_terms"]
             if org["sales_terms"]:
                 terms["Sales"] = org["sales_terms"]
-            return {"Organisations": [{"Name": org["name"], "LegalName": org["name"], "TaxNumber": org["abn"], "PaymentTerms": terms,
+            return {"Organisations": [{"Name": org["name"], "LegalName": org["name"], "TaxNumber": org["abn"], "PaymentTerms": terms, "ShortCode": org.get("short_code"),
                                        "PeriodLockDate": org.get("lock_date"), "EndOfYearLockDate": org.get("eoy_lock_date")}]}
         if tool in ("list_bank_transactions", "list_credit_notes", "list_manual_journals"):
             key = {"list_bank_transactions": "BankTransactions", "list_credit_notes": "CreditNotes",
