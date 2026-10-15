@@ -325,7 +325,8 @@ def ck_purchases(ledger):
 
 def ck_weekly_rules(ledger, client, snap, today, captured):
     out = []
-    docs = ledger.get("docs") or []
+    # Open sales invoices older than the window are fetched for the register checks only.
+    docs = [d for d in ledger.get("docs") or [] if not d.get("older_open")]
     contacts = {c["id"]: c for c in ledger.get("contacts") or []}
     accounts = {a["code"]: a for a in ledger.get("accounts") or [] if a.get("code")}
     rates = ledger.get("tax_rates") or {}
@@ -621,7 +622,8 @@ def ck_register_rules(ledger, client, cache, intake_abns, today):
     no_gst = ck_by_contact(bills + spend, contacts, lambda r: True)
     for cid, rows in no_gst.items():
         r = row_of.get(cid)
-        if r and r.get("found") and r.get("gst_registered") and len(rows) >= 2 and all(x["tax"] == 0 for x in rows):
+        if (client.get("gst_registered") and r and r.get("found") and r.get("gst_registered") and len(rows) >= 2
+                and all(x["tax"] == 0 for x in rows)):
             line("CHK-003", "gst-status", cid, rows, contacts[cid]["name"] + " is registered for GST, but none of its " + str(len(rows))
                  + " recent purchases claim any. Check whether GST should be claimed.")
 
@@ -646,7 +648,10 @@ def ck_register_rules(ledger, client, cache, intake_abns, today):
                               + ". Correct the ABN on the contact.", sig="|".join(sorted(wrong))))
 
     # CHK-005 (heuristic): a confident register match for a supplier with no ABN in Xero.
-    matches = [(v.get("name"), v["match"]) for v in ((cache or {}).get("names") or {}).values() if v.get("match")]
+    # Only suppliers that still have no ABN in Xero: once it's added, the finding closes.
+    still_missing = {bk_norm(c["name"]) for c in contacts.values() if len(c.get("tax_number") or "") != 11}
+    matches = [(v.get("name"), v["match"]) for key, v in ((cache or {}).get("names") or {}).items()
+               if v.get("match") and key in still_missing]
     if matches:
         matches.sort(key=lambda m: str(m[0]))
         out.append(ck_finding("CHK-005", "matched-abn", "The register has a likely ABN for " + str(len(matches)) + " supplier(s) with "
@@ -660,6 +665,8 @@ def ck_register_rules(ledger, client, cache, intake_abns, today):
         re.search(r"(?i)\b(donations?|gifts?)\b", (accounts.get(ln["account"]) or {}).get("name") or "") for ln in r["lines"]))
     for cid, rows in gifts.items():
         r = row_of.get(cid)
+        if contacts[cid].get("tax_number") and not r:
+            continue  # its ABN hasn't been looked up yet
         if not (r and r.get("found") and r.get("dgr_endorsed")):
             line("CHK-009", "dgr", cid, rows, str(len(rows)) + " payment(s) coded as donations to " + contacts[cid]["name"]
                  + (", which the register doesn't show as a deductible gift recipient" if r and r.get("found")
@@ -668,7 +675,9 @@ def ck_register_rules(ledger, client, cache, intake_abns, today):
 
     # CHK-002: a bill PDF from this supplier showed an ABN the register lists as cancelled (from Process bill's reads).
     for key, seen in (intake_abns or {}).items():
-        dead = [a for a in seen or [] if ck_cancelled_on(reg.get(a), today)]
+        # Only the ABN on the supplier's latest PDF: a sole trader who moved to a company ABN has an old, cancelled
+        # one on earlier bills, which is fine.
+        dead = [a for a in (seen or [])[-1:] if ck_cancelled_on(reg.get(a), today)]
         if dead and key in contacts:
             out.append(ck_finding("CHK-002", "pdf:" + key, "A bill PDF from " + contacts[key]["name"] + " showed ABN " + ", ".join(dead)
                                   + ", which the register lists as cancelled. Check who's really invoicing.",
@@ -706,9 +715,12 @@ def ck_run(ledger, client, snap, today, secret, captured, register=None, intake_
     if ledger.get("weekly"):
         found += ck_weekly_rules(ledger, client, snap, today, captured)
         evaluated |= set(CK_WEEKLY)
+        # Register findings close when their data goes stale (Register lookups unpublished or failing for a
+        # fortnight) rather than staying open for good; the checklist says the register checks are paused.
+        snap["register_paused"] = bool(register) and not ck_register_fresh(register, today)
         if ck_register_fresh(register, today):
             found += ck_register_rules(ledger, client, register, intake_abns, today)
-            evaluated |= set(CK_REGISTER)
+        evaluated |= set(CK_REGISTER)
     return found, evaluated
 
 
@@ -808,6 +820,10 @@ def ck_description(client, state, truncated=None):
     out.append("Daily checks (fraud and duplicates) last ran " + ck_date_text(state.get("last_daily")) + "; weekly checks "
                + ck_date_text(state.get("last_weekly")) + "." + (" " + str(len(quiet)) + " finding(s) dismissed or snoozed."
                                                                    if quiet else ""))
+    if (state.get("snapshot") or {}).get("register_paused"):
+        out.append("")
+        out.append("Register checks (cancelled ABNs, GST registration, DGR) are paused: Register lookups (ABR) hasn't "
+                   "reached the register in the last fortnight.")
     if truncated:
         out.append("")
         out.append("Some data was cut short (" + ", ".join(truncated) + "): the checks covered the first 2,000 of each.")

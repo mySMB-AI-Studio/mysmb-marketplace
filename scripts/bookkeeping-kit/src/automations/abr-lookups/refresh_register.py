@@ -33,6 +33,7 @@ else:
         stale = sorted(a for a in abns if not rows.get(a)
                        or (today - (ck_day(rows[a].get("checked")) or today - datetime.timedelta(days=999))).days >= ABR_RECHECK_DAYS)
         done = 0
+        failed = False
         exc = None
         try:
             for i in range(0, len(stale), 100):
@@ -55,12 +56,20 @@ else:
                 searches += 1
             summary["searched"] += searches
         except Exception as exc:
+            failed = True
             summary["errors"].append(str(client.get("name")) + ": " + str(exc)[:300])
-        # Forget ABNs the client no longer uses, so the file doesn't grow for ever.
+        # Forget ABNs and names the client no longer needs, so the file doesn't grow for ever.
         for abn in list(rows):
             if abn not in abns:
                 rows.pop(abn)
-        cache["refreshed"] = str(today)
+        current = {bk_norm(n) for n in register.get("no_abn") or []}
+        for key in list(names):
+            if key not in current:
+                names.pop(key)
+        # "Fresh" only when this run reached the register (or had nothing to look up): Ledger checks stops trusting
+        # the file a fortnight after the last good run.
+        if not failed and (done or not stale):
+            cache["refreshed"] = str(today)
         bk_write_json(path, cache)
         summary["looked_up"] += done
         summary["clients"].append({"client": client.get("name"), "abns": len(abns), "looked_up": done})

@@ -513,6 +513,67 @@ class Checks(unittest.TestCase):
         self.assertEqual(cache["abns"]["51824753556"]["status"], "Active")
         self.assertNotIn("guid", json.dumps(cache).lower())
 
+    def test_a_register_error_keeps_what_was_known_and_doesnt_count_as_fresh(self):
+        self.on_register("51824753556", "Plumbing Supplies Co", status="Cancelled", status_from=day(400))
+        self.overnight()
+        lookups = AUTOS["Bookkeeping: Register lookups (ABR)"]
+        run_flow(self.w, lookups, {"kind": "schedule"}, {"client_name": ""})
+        path = "Bookkeeping/Checks/acme-plumbing-abr.json"
+        cache = json.loads(self.w.files[path])
+        cache["abns"]["51824753556"]["checked"] = day(10)
+        cache["refreshed"] = day(10)
+        self.w.files[path] = json.dumps(cache)
+        real = self.w.abr.call
+        self.w.abr.call = lambda tool, args: {"results": [{"abn": a, "valid_checksum": True, "found": False, "error": "ABR 503"}
+                                                          for a in args.get("abns", [])]}
+        run_flow(self.w, lookups, {"kind": "schedule"}, {"client_name": ""})
+        cache = json.loads(self.w.files[path])
+        self.assertEqual(cache["abns"]["51824753556"]["status"], "Cancelled", "an error row mustn't overwrite the record")
+        self.assertEqual(cache["refreshed"], day(10), "a run that got nothing isn't fresh")
+        self.w.abr.call = lambda tool, args: (_ for _ in ()).throw(RuntimeError("connector not connected"))
+        run_flow(self.w, lookups, {"kind": "schedule"}, {"client_name": ""})
+        self.assertEqual(json.loads(self.w.files[path])["refreshed"], day(10))
+        self.w.abr.call = real
+
+    def test_a_likely_abn_closes_once_added_and_stale_register_data_pauses_the_checks(self):
+        self.on_register("51824753556", "Plumbing Supplies Co")
+        zen = self.add(contact("c-zen", "Zenith IT", ""))
+        self.org["invoices"].append(doc("z1", "Z-1", zen, day(6), 1100.0))
+        self.w.abr.names["zenith it"] = [{"abn": "53004085616", "name": "ZENITH IT PTY LTD", "score": 99}]
+        self.register_then_weekly()
+        self.assertIn("CHK-005", self.open_item()["description"])
+        zen["TaxNumber"] = "53004085616"
+        self.on_register("53004085616", "Zenith IT")
+        self.register_then_weekly()
+        self.assertFalse(any(f["check"] == "CHK-005" for f in self.state().get("findings", {}).values()))
+        self.assertEqual([i for i in self.items() if i["status"] != "done"], [], "nothing left open: the item completed")
+        # Register lookups stops: a fortnight later the register checks close and the checklist says they're paused.
+        gone = self.add(contact("c-gone", "Gone Electrical", "33102417032"))
+        self.on_register("33102417032", "Gone Electrical", status="Cancelled", status_from=day(30))
+        self.org["invoices"].append(doc("g1", "GE-9", gone, day(10), 550.0))
+        self.register_then_weekly()
+        self.assertIn("CHK-071", self.open_item()["description"])
+        path = "Bookkeeping/Checks/acme-plumbing-abr.json"
+        cache = json.loads(self.w.files[path])
+        cache["refreshed"] = day(20)
+        self.w.files[path] = json.dumps(cache)
+        state = self.state()
+        state["last_daily"], state["last_weekly"] = day(1), day(8)
+        self.w.files["Bookkeeping/Checks/acme-plumbing.json"] = json.dumps(state)
+        self.org["lock_date"] = None  # keep one ordinary finding open, so the checklist is there to read
+        self.overnight()
+        self.assertFalse(any(f["check"] == "CHK-071" for f in self.state().get("findings", {}).values()))
+        self.assertTrue(self.state()["snapshot"]["register_paused"])
+        self.assertIn("Register checks (cancelled ABNs, GST registration, DGR) are paused", self.open_item()["description"])
+
+    def test_no_gst_status_check_for_a_client_not_registered_for_gst(self):
+        self.client["gst_registered"] = False
+        self.save_client()
+        self.on_register("51824753556", "Plumbing Supplies Co")
+        self.org["invoices"] += [doc("p1", "PS-2", self.supplies, day(6), 110.0, tax=0), doc("p2", "PS-3", self.supplies, day(4), 220.0, tax=0)]
+        self.register_then_weekly()
+        self.assertFalse(any(f["check"] == "CHK-003" for f in self.state().get("findings", {}).values()))
+
     def test_checks_only_read_xero(self):
         self.duplicate_bills()
         self.overnight()

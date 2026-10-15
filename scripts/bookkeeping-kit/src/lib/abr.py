@@ -24,7 +24,10 @@ def abr_lookup(abns):
     out = {}
     for row in (got or {}).get("results") or []:
         abn = re.sub(r"\D", "", str(row.get("abn") or ""))
-        if not abn or str(row.get("error") or "").startswith("Timed out"):
+        # Keep only real answers: a record, "No records found", or a bad checksum. A timeout or a register error
+        # mustn't overwrite what was known (it would close real findings and lose people's ticks).
+        definite = row.get("found") or row.get("error") == "No records found" or row.get("valid_checksum") is False
+        if not abn or not definite:
             continue
         kept = {k: row.get(k) for k in ABR_KEEP}
         kept["names"] = [str(n) for n in (list(row.get("business_names") or []) + list(row.get("trading_names") or []))
