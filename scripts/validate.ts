@@ -1010,7 +1010,7 @@ function validateStoreListing(pluginDirName: string, entry: MarketplacePlugin) {
     if (!isRecord(branding)) {
       fail(`${where} branding must be an object`);
     } else {
-      for (const key of ["logo", "logoDark"] as const) {
+      for (const key of ["logo", "logoDark", "portrait"] as const) {
         if (branding[key] !== undefined) {
           validateStoreAsset(where, `branding.${key}`, pluginDirName, branding[key]);
         }
@@ -1020,6 +1020,13 @@ function validateStoreListing(pluginDirName: string, entry: MarketplacePlugin) {
       }
       if (branding.tagline !== undefined && (typeof branding.tagline !== "string" || branding.tagline.length > TAGLINE_MAX_CHARS)) {
         fail(`${where} branding.tagline must be a string of at most ${TAGLINE_MAX_CHARS} characters`);
+      }
+      // Agent identity (Workspace pluginBrandingSchema): the team it serves and the mascot it is drawn as.
+      if (branding.team !== undefined && (typeof branding.team !== "string" || branding.team.length === 0 || branding.team.length > 60)) {
+        fail(`${where} branding.team must be a non-empty string of at most 60 characters`);
+      }
+      if (branding.character !== undefined && (typeof branding.character !== "string" || branding.character.length === 0 || branding.character.length > 160)) {
+        fail(`${where} branding.character must be a non-empty string of at most 160 characters`);
       }
     }
   }
