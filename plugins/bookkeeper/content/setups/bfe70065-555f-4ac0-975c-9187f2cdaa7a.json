@@ -1,5 +1,5 @@
 {
-  "contentHash": "9d5fd685fd2dcae1d456ba3e8c6fd43ec94fde658197e8d76161f64e752da378",
+  "contentHash": "ced605149bc18de4ae0dfc8cd9889ef67d278252fad33349d2aa01a20fff617d",
   "definition": {
     "steps": [
       {
@@ -33,19 +33,34 @@
         "title": "People"
       },
       {
-        "connectors": [
+        "connectors": [],
+        "description": "Which bookkeeping platform you use.",
+        "fields": [
           {
-            "key": "accounting",
-            "label": "Accounting: read invoices and payments, post approved adjustments",
-            "required": false,
-            "scope": "service",
-            "server": "xero-accounting"
+            "default": "xero",
+            "helpText": "Only this platform's accounts are offered when you connect the agent to your ledger.",
+            "key": "ledger_provider",
+            "label": "Bookkeeping platform",
+            "options": [
+              {
+                "label": "Xero",
+                "value": "xero"
+              },
+              {
+                "label": "QuickBooks Online",
+                "value": "quickbooks"
+              },
+              {
+                "label": "MYOB",
+                "value": "myob"
+              }
+            ],
+            "required": true,
+            "type": "select"
           }
         ],
-        "description": "The accounting connection. The agent reads invoices and payments with it, and posts approved adjustments only, after a reviewer has decided. Optional at install: without it the steps that need it are prepared as drafts for a person to send.",
-        "fields": [],
         "id": "connections",
-        "title": "Connections"
+        "title": "Bookkeeping platform"
       },
       {
         "connectors": [],
@@ -73,7 +88,7 @@
     ],
     "version": 1
   },
-  "description": "People, accounting connection and write-off policy for the Bookkeeper agent.",
+  "description": "People, bookkeeping platform and write-off policy for the Bookkeeper agent.",
   "kind": "setup",
   "name": "Bookkeeper setup",
   "originKey": "bfe70065-555f-4ac0-975c-9187f2cdaa7a"

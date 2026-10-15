@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "sections": [
+    {
+      "id": "agent",
+      "title": "Your bookkeeper",
+      "description": "Name it, choose who it is for, and who is accountable for it.",
+      "blocks": [
+        {
+          "builtin": "identity"
+        },
+        {
+          "builtin": "people"
+        },
+        {
+          "builtin": "audience"
+        }
+      ]
+    },
+    {
+      "id": "ledger",
+      "title": "Your ledger",
+      "description": "Connect the bookkeeping platform you use. Only that platform’s accounts are offered.",
+      "blocks": [
+        {
+          "markdown": "The agent reads invoices and payments with the account you connect. An adjustment is posted only after a reviewer has decided; where your platform cannot post one yet, the decision is recorded and a person posts it."
+        },
+        {
+          "setupStep": "connections"
+        },
+        {
+          "builtin": "connections",
+          "providerField": "ledger_provider",
+          "providers": {
+            "xero": [
+              "xero-accounting"
+            ],
+            "quickbooks": [
+              "quickbooks-accounting"
+            ],
+            "myob": [
+              "myob-accounting"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "follow-up",
+      "title": "Follow-up",
+      "description": "Who picks the work up once a reviewer has decided.",
+      "blocks": [
+        {
+          "setupStep": "people"
+        }
+      ]
+    },
+    {
+      "id": "policy",
+      "title": "Write-off policy",
+      "description": "How large a shortfall can be offered for an adjustment, and what the agent may do without asking.",
+      "blocks": [
+        {
+          "setupStep": "preferences"
+        },
+        {
+          "builtin": "preferences"
+        }
+      ]
+    },
+    {
+      "id": "limits",
+      "title": "Limits and hours",
+      "description": "Monthly spending and when it stays quiet.",
+      "blocks": [
+        {
+          "builtin": "budget"
+        },
+        {
+          "builtin": "quietHours"
+        }
+      ]
+    }
+  ]
+}

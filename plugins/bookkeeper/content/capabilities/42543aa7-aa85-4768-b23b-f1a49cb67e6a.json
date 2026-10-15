@@ -1,5 +1,5 @@
 {
-  "contentHash": "4a58ae38f19b57f6005714b47fb780a32449a26102461f9e5e4b26bb2fa28364",
+  "contentHash": "7587c8eb5b2f218d5bf1f17b60b7977313dd41b1dbca6f9d34c1776af30a1930",
   "definition": {
     "bindings": [
       {
@@ -42,6 +42,58 @@
         ],
         "server": "xero-accounting",
         "tool": "get_payment"
+      },
+      {
+        "argMap": {
+          "where": "where"
+        },
+        "server": "quickbooks-accounting",
+        "tool": "list_invoices"
+      },
+      {
+        "argMap": {
+          "invoiceId": "id"
+        },
+        "server": "quickbooks-accounting",
+        "tool": "get_invoice"
+      },
+      {
+        "argMap": {
+          "where": "where"
+        },
+        "server": "quickbooks-accounting",
+        "tool": "list_payments"
+      },
+      {
+        "argMap": {
+          "paymentId": "id"
+        },
+        "server": "quickbooks-accounting",
+        "tool": "get_payment"
+      },
+      {
+        "argMap": {},
+        "server": "myob-accounting",
+        "tool": "list_invoices"
+      },
+      {
+        "argMap": {
+          "invoiceId": "invoice_uid"
+        },
+        "server": "myob-accounting",
+        "tool": "get_invoice"
+      },
+      {
+        "argMap": {},
+        "server": "myob-accounting",
+        "tool": "list_payments"
+      },
+      {
+        "argMap": {
+          "paymentId": "payment_uid"
+        },
+        "server": "myob-accounting",
+        "tool": "get_payment"
       }
     ],
     "idempotency": {
@@ -77,7 +129,9 @@
       "type": "object"
     },
     "permissionRequirements": [
-      "connectors:xero-accounting"
+      "connectors:xero-accounting",
+      "connectors:quickbooks-accounting",
+      "connectors:myob-accounting"
     ],
     "schemaVersion": 1,
     "sideEffectClass": "read",

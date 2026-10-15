@@ -1,0 +1,234 @@
+{
+  "version": 1,
+  "document": {
+    "schemaVersion": 1,
+    "rootId": "root",
+    "nodes": [
+      {
+        "id": "root",
+        "type": "section",
+        "parentId": null,
+        "props": {
+          "padding": "none",
+          "gap": "large"
+        }
+      },
+      {
+        "id": "campH",
+        "type": "heading",
+        "parentId": "root",
+        "props": {
+          "text": "Campaigns",
+          "level": 2
+        }
+      },
+      {
+        "id": "campCols",
+        "type": "columns",
+        "parentId": "root",
+        "props": {
+          "columns": 3
+        }
+      },
+      {
+        "id": "mApprove",
+        "type": "metric",
+        "parentId": "campCols",
+        "props": {
+          "label": "Campaigns awaiting your approval"
+        },
+        "bindingIds": [
+          "approvals"
+        ]
+      },
+      {
+        "id": "mActive",
+        "type": "metric",
+        "parentId": "campCols",
+        "props": {
+          "label": "Campaigns in progress"
+        },
+        "bindingIds": [
+          "active"
+        ]
+      },
+      {
+        "id": "mDone",
+        "type": "metric",
+        "parentId": "campCols",
+        "props": {
+          "label": "Published"
+        },
+        "bindingIds": [
+          "done"
+        ]
+      },
+      {
+        "id": "boardCols",
+        "type": "columns",
+        "parentId": "root",
+        "props": {
+          "columns": 2
+        }
+      },
+      {
+        "id": "approveTable",
+        "type": "workq",
+        "parentId": "boardCols",
+        "props": {
+          "title": "Awaiting approval"
+        },
+        "bindingIds": [
+          "approvals"
+        ]
+      },
+      {
+        "id": "byStage",
+        "type": "chart",
+        "parentId": "boardCols",
+        "props": {
+          "title": "Campaigns by stage",
+          "field": "stage"
+        },
+        "bindingIds": [
+          "all"
+        ]
+      },
+      {
+        "id": "schedH",
+        "type": "heading",
+        "parentId": "root",
+        "props": {
+          "text": "Schedule and drafts",
+          "level": 2
+        }
+      },
+      {
+        "id": "sched",
+        "type": "workq",
+        "parentId": "root",
+        "props": {
+          "title": "Latest drafts and publish receipts"
+        },
+        "bindingIds": [
+          "drafts"
+        ]
+      },
+      {
+        "id": "checkH",
+        "type": "heading",
+        "parentId": "root",
+        "props": {
+          "text": "Checks before anything goes out",
+          "level": 2
+        }
+      },
+      {
+        "id": "checkCols",
+        "type": "columns",
+        "parentId": "root",
+        "props": {
+          "columns": 3
+        }
+      },
+      {
+        "id": "cLead",
+        "type": "metric",
+        "parentId": "checkCols",
+        "props": {
+          "title": "Review time ahead of publish",
+          "label": "Default: at least 1 day before the publish date",
+          "value": "1 day"
+        }
+      },
+      {
+        "id": "cApprove",
+        "type": "metric",
+        "parentId": "checkCols",
+        "props": {
+          "title": "Scheduled or published",
+          "label": "Only after a reviewer approves that exact version",
+          "value": "After approval"
+        }
+      },
+      {
+        "id": "cRules",
+        "type": "metric",
+        "parentId": "checkCols",
+        "props": {
+          "title": "Always present",
+          "label": "An unsubscribe link and the sender's address",
+          "value": "Required"
+        }
+      },
+      {
+        "id": "howH",
+        "type": "heading",
+        "parentId": "root",
+        "props": {
+          "text": "How I work",
+          "level": 2
+        }
+      },
+      {
+        "id": "how",
+        "type": "customCode",
+        "parentId": "root",
+        "props": {
+          "html": "<h3 style=\"margin:0 0 10px;font-size:14px;font-weight:600\">From a campaign idea to a published campaign</h3><ol class=\"flow\"><li><button type=\"button\" aria-pressed=\"false\" data-detail=\"I draft the campaign from your audience, offer, budget cap and publish date.\"><span class=\"n\">1</span><b>Draft</b><small>Writes the campaign for your audience and offer.</small><span class=\"who\">Agent</span></button></li><li><button type=\"button\" aria-pressed=\"false\" data-detail=\"A fixed check looks for banned phrases, spend over your cap and a publish date that leaves too little review time.\"><span class=\"n\">2</span><b>Check</b><small>Checks claims, spend and timing.</small><span class=\"who\">Automation</span></button></li><li><button type=\"button\" aria-pressed=\"false\" data-detail=\"A named reviewer approves this version for this date. If the draft changes, the approval no longer applies.\"><span class=\"n\">3</span><b>Approve</b><small>A reviewer approves that exact version.</small><span class=\"who\">Person</span></button></li><li><button type=\"button\" aria-pressed=\"false\" data-detail=\"Once approved, the campaign is scheduled and the receipt is kept with the job.\"><span class=\"n\">4</span><b>Publish</b><small>Scheduled with a receipt on file.</small><span class=\"who\">Automation</span></button></li></ol><p id=\"detail\" class=\"detail\" aria-live=\"polite\"></p>",
+          "css": "\n.flow{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:10px}\n.flow li{flex:1 1 150px;min-width:140px}\n.flow button{all:unset;box-sizing:border-box;display:block;width:100%;cursor:pointer;border:1px solid var(--border);background:var(--card);border-radius:12px;padding:12px 14px;color:var(--foreground)}\n.flow button:focus-visible{outline:2px solid var(--brand);outline-offset:2px}\n.flow button[aria-pressed=true]{border-color:var(--brand);background:var(--brand-soft)}\n.flow .n{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;background:var(--brand-soft);color:var(--brand);font-size:12px;font-weight:600;margin-bottom:6px}\n.flow b{display:block;font-size:13px;font-weight:600}\n.flow small{display:block;margin-top:2px;font-size:12px;color:var(--muted-foreground)}\n.flow .who{display:inline-block;margin-top:8px;font-size:11px;border:1px solid var(--border);border-radius:999px;padding:1px 8px;color:var(--muted-foreground)}\n.detail{margin:12px 0 0;border-left:3px solid var(--brand);padding:6px 12px;font-size:13px;color:var(--foreground);background:var(--card);border-radius:0 8px 8px 0}\n.detail:empty{display:none}\n",
+          "javascript": "\n(function(){\n  var buttons=[].slice.call(document.querySelectorAll('.flow button'));\n  var detail=document.getElementById('detail');\n  function pick(b){\n    buttons.forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});\n    detail.textContent=b.getAttribute('data-detail');\n  }\n  buttons.forEach(function(b){b.addEventListener('click',function(){pick(b);});});\n  if(buttons[0])pick(buttons[0]);\n})();\n"
+        }
+      },
+      {
+        "id": "go",
+        "type": "button",
+        "parentId": "root",
+        "props": {
+          "label": "Open the WorkQ",
+          "href": "/workq"
+        }
+      }
+    ],
+    "bindings": [
+      {
+        "id": "approvals",
+        "kind": "agent.decisions",
+        "config": {
+          "limit": 100
+        }
+      },
+      {
+        "id": "active",
+        "kind": "agent.jobs",
+        "config": {
+          "status": "in_progress",
+          "limit": 100
+        }
+      },
+      {
+        "id": "done",
+        "kind": "agent.jobs",
+        "config": {
+          "status": "done",
+          "limit": 100
+        }
+      },
+      {
+        "id": "all",
+        "kind": "agent.jobs",
+        "config": {
+          "limit": 100
+        }
+      },
+      {
+        "id": "drafts",
+        "kind": "agent.outputs",
+        "config": {
+          "limit": 10
+        }
+      }
+    ],
+    "actions": []
+  }
+}

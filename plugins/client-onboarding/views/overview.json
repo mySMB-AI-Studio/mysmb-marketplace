@@ -1,0 +1,207 @@
+{
+  "version": 1,
+  "document": {
+    "schemaVersion": 1,
+    "rootId": "root",
+    "nodes": [
+      {
+        "id": "root",
+        "type": "section",
+        "parentId": null,
+        "props": {
+          "padding": "none",
+          "gap": "large"
+        }
+      },
+      {
+        "id": "pipeH",
+        "type": "heading",
+        "parentId": "root",
+        "props": {
+          "text": "Onboarding pipeline",
+          "level": 2
+        }
+      },
+      {
+        "id": "pipeCols",
+        "type": "columns",
+        "parentId": "root",
+        "props": {
+          "columns": 3
+        }
+      },
+      {
+        "id": "mActive",
+        "type": "metric",
+        "parentId": "pipeCols",
+        "props": {
+          "label": "Onboardings in progress"
+        },
+        "bindingIds": [
+          "active"
+        ]
+      },
+      {
+        "id": "mWaiting",
+        "type": "metric",
+        "parentId": "pipeCols",
+        "props": {
+          "label": "Kickoffs waiting on you"
+        },
+        "bindingIds": [
+          "mine"
+        ]
+      },
+      {
+        "id": "mDone",
+        "type": "metric",
+        "parentId": "pipeCols",
+        "props": {
+          "label": "Handed over"
+        },
+        "bindingIds": [
+          "handed"
+        ]
+      },
+      {
+        "id": "boardCols",
+        "type": "columns",
+        "parentId": "root",
+        "props": {
+          "columns": 2
+        }
+      },
+      {
+        "id": "byStage",
+        "type": "chart",
+        "parentId": "boardCols",
+        "props": {
+          "title": "Onboardings by stage",
+          "field": "stage"
+        },
+        "bindingIds": [
+          "all"
+        ]
+      },
+      {
+        "id": "latest",
+        "type": "workq",
+        "parentId": "boardCols",
+        "props": {
+          "title": "Latest onboardings"
+        },
+        "bindingIds": [
+          "all"
+        ]
+      },
+      {
+        "id": "kickH",
+        "type": "heading",
+        "parentId": "root",
+        "props": {
+          "text": "Kickoff at a glance",
+          "level": 2
+        }
+      },
+      {
+        "id": "kickCols",
+        "type": "columns",
+        "parentId": "root",
+        "props": {
+          "columns": 3
+        }
+      },
+      {
+        "id": "kLead",
+        "type": "metric",
+        "parentId": "kickCols",
+        "props": {
+          "title": "Kickoff booked at least",
+          "label": "Default: 5 days after the plan is approved",
+          "value": "5 days ahead"
+        }
+      },
+      {
+        "id": "kRemind",
+        "type": "metric",
+        "parentId": "kickCols",
+        "props": {
+          "title": "Client reminded after",
+          "label": "Default: 2 days without an answer",
+          "value": "2 days"
+        }
+      },
+      {
+        "id": "kGate",
+        "type": "metric",
+        "parentId": "kickCols",
+        "props": {
+          "title": "Nothing is sent until",
+          "label": "A named reviewer decides",
+          "value": "Reviewed"
+        }
+      },
+      {
+        "id": "howH",
+        "type": "heading",
+        "parentId": "root",
+        "props": {
+          "text": "How I work",
+          "level": 2
+        }
+      },
+      {
+        "id": "how",
+        "type": "customCode",
+        "parentId": "root",
+        "props": {
+          "html": "<h3 style=\"margin:0 0 10px;font-size:14px;font-weight:600\">From a signed client to an accepted handover</h3><ol class=\"flow\"><li><button type=\"button\" aria-pressed=\"false\" data-detail=\"I read the signed scope and the client&#x27;s preferred dates, then draft the kickoff plan. I only read - I do not contact anyone.\"><span class=\"n\">1</span><b>Prepare the plan</b><small>Reads the signed scope and drafts the kickoff plan.</small><span class=\"who\">Agent</span></button></li><li><button type=\"button\" aria-pressed=\"false\" data-detail=\"A named reviewer sees my plan, what I recommend and what each choice does. Nothing is sent until they choose.\"><span class=\"n\">2</span><b>Reviewer decides</b><small>A named person approves how to start.</small><span class=\"who\">Person</span></button></li><li><button type=\"button\" aria-pressed=\"false\" data-detail=\"Only the named client contact gets the invitation. They confirm the date through a link that is checked, not by replying to an email thread.\"><span class=\"n\">3</span><b>Client confirms</b><small>The client confirms through a verified link.</small><span class=\"who\">Client</span></button></li><li><button type=\"button\" aria-pressed=\"false\" data-detail=\"The delivery team reads the written handover and accepts it. The job is complete only with the evidence on file.\"><span class=\"n\">4</span><b>Handover accepted</b><small>The delivery team accepts a written handover.</small><span class=\"who\">Person</span></button></li></ol><p id=\"detail\" class=\"detail\" aria-live=\"polite\"></p>",
+          "css": "\n.flow{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:10px}\n.flow li{flex:1 1 150px;min-width:140px}\n.flow button{all:unset;box-sizing:border-box;display:block;width:100%;cursor:pointer;border:1px solid var(--border);background:var(--card);border-radius:12px;padding:12px 14px;color:var(--foreground)}\n.flow button:focus-visible{outline:2px solid var(--brand);outline-offset:2px}\n.flow button[aria-pressed=true]{border-color:var(--brand);background:var(--brand-soft)}\n.flow .n{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;background:var(--brand-soft);color:var(--brand);font-size:12px;font-weight:600;margin-bottom:6px}\n.flow b{display:block;font-size:13px;font-weight:600}\n.flow small{display:block;margin-top:2px;font-size:12px;color:var(--muted-foreground)}\n.flow .who{display:inline-block;margin-top:8px;font-size:11px;border:1px solid var(--border);border-radius:999px;padding:1px 8px;color:var(--muted-foreground)}\n.detail{margin:12px 0 0;border-left:3px solid var(--brand);padding:6px 12px;font-size:13px;color:var(--foreground);background:var(--card);border-radius:0 8px 8px 0}\n.detail:empty{display:none}\n",
+          "javascript": "\n(function(){\n  var buttons=[].slice.call(document.querySelectorAll('.flow button'));\n  var detail=document.getElementById('detail');\n  function pick(b){\n    buttons.forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});\n    detail.textContent=b.getAttribute('data-detail');\n  }\n  buttons.forEach(function(b){b.addEventListener('click',function(){pick(b);});});\n  if(buttons[0])pick(buttons[0]);\n})();\n"
+        }
+      },
+      {
+        "id": "go",
+        "type": "button",
+        "parentId": "root",
+        "props": {
+          "label": "Open the WorkQ",
+          "href": "/workq"
+        }
+      }
+    ],
+    "bindings": [
+      {
+        "id": "active",
+        "kind": "agent.jobs",
+        "config": {
+          "status": "in_progress",
+          "limit": 100
+        }
+      },
+      {
+        "id": "handed",
+        "kind": "agent.jobs",
+        "config": {
+          "status": "done",
+          "limit": 100
+        }
+      },
+      {
+        "id": "all",
+        "kind": "agent.jobs",
+        "config": {
+          "limit": 100
+        }
+      },
+      {
+        "id": "mine",
+        "kind": "agent.decisions",
+        "config": {
+          "limit": 100
+        }
+      }
+    ],
+    "actions": []
+  }
+}
