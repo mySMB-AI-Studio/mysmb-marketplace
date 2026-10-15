@@ -23,7 +23,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "loading", "bigStatGroup", "todayWeekRow", "barRow", "legendRowCollapsed", "legendRowExpanded", "trackerDetailSection"],
+        "children": ["headerRow", "loading", "bigStatGroup", "todayWeekRow", "barRow", "legendRowCollapsed", "legendRowExpanded", "trackerDetailSection", "openInTrelloRow"],
         "watch": {
           "/trello/list_all_cards/data": [
             {
@@ -354,6 +354,19 @@
       "trackerCardDue": {
         "type": "Caption",
         "props": { "text": { "$item": "due_label" }, "tone": "muted" }
+      },
+
+      "openInTrelloRow": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["openInTrelloButton"]
+      },
+      "openInTrelloButton": {
+        "type": "Button",
+        "props": { "label": "Open in Trello", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": { "action": "open_url", "params": { "url": "https://trello.com/", "target": "_blank" } }
+        }
       }
     }
   },
