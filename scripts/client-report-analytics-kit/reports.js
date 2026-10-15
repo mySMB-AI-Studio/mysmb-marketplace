@@ -25,7 +25,7 @@ const ITEMS = {
   },
   'contacts-bas': {
     cra: 'CRA-06', name: 'Contact Details for BAS Preparation', chip: 'Tax & BAS',
-    blurb: 'every contact with the tax types used on their transactions and GST evidence on file; registry (ABR) match is not built yet, shown as N/A — pending ABR.'
+    blurb: 'every contact with the tax types used on their transactions and GST evidence on file, and on Xero each ABN\'s Australian Business Register record (needs ABR Lookup connected).'
   },
   'activity-count': {
     cra: 'CRA-11', name: 'Activity Count', chip: 'Activity',

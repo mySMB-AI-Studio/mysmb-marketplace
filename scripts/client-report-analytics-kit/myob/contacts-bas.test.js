@@ -1,5 +1,5 @@
 // CRA-06 Contact Details for BAS Preparation (MYOB), base version only: contacts from list_contacts, tax codes used from
-// invoice/bill lines. No ABN field on MYOB's generic contact list and no ABR credential yet — both must read "N/A", never guessed.
+// invoice/bill lines. No ABN field on MYOB's generic contact list, so GST evidence and the register match read "N/A", never guessed.
 const { suite } = require('../harness.js');
 const { L, go, text, wait, banner, body, green, common } = require('./lib.js');
 const ID = 'contacts-bas';
@@ -7,7 +7,7 @@ const { ok, done } = suite('myob/' + ID);
 (async () => {
   const t = await go(ID); await wait(150);
   ok('opens green with a contacts table', green(t) && t.errs.length === 0, banner(t).slice(0, 400));
-  ok('every row shows "N/A — pending ABR" for the registry match, never a guessed status', /N\/A — pending ABR/.test(text(t.doc, '#cb-grid')) && !/Registered|Not registered|Matched|Verified/i.test(text(t.doc, '#cb-grid')), text(t.doc, '#cb-grid').slice(0, 500));
+  ok('every row shows "N/A — no ABN in MYOB\'s contact list" for the register match, never a guessed status', /N\/A — no ABN in MYOB's contact list/.test(text(t.doc, '#cb-grid')) && !/Registered|Not registered|Matched|Verified/i.test(text(t.doc, '#cb-grid')), text(t.doc, '#cb-grid').slice(0, 500));
   ok('GST evidence reads "N/A — not in source" (MYOB\'s contact list has no ABN field), never invented', /N\/A — not in source/.test(text(t.doc, '#cb-grid')), text(t.doc, '#cb-grid').slice(0, 500));
   ok('tax codes used are listed per contact from invoice/bill lines in the period', /GST|FRE|CAP|N-T/.test(text(t.doc, '#cb-grid')), text(t.doc, '#cb-grid').slice(0, 600));
   const f = await go(ID, { contacts: () => { throw new Error('MYOB 500'); } });

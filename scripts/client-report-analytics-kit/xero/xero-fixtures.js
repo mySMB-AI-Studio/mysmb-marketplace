@@ -5,7 +5,22 @@ const fs = require('fs'), path = require('path');
 const { run } = require('../harness.js');
 const build = require('../build.js');
 const L = require('../../xero-reporting-kit/ledger.js');
-const TOOL = { get_profit_and_loss: L.pnl, get_balance_sheet: L.bs, get_bank_summary: L.bankSummary, get_trial_balance: L.trialBalance, list_invoices: L.listInvoices, list_credit_notes: L.listCreditNotes, list_overpayments: L.listOverpayments, list_payments: L.listPayments, list_bank_transactions: L.listBankTransactions, list_accounts: L.listAccounts, list_tax_rates: L.listTaxRates, get_organisation: L.organisation, list_connections: L.connections, list_tracking_categories: L.listTrackingCategories, list_contacts: contactsFromLedger, list_manual_journals: L.listManualJournals, list_pay_runs: L.listPayRuns, workq_activity: workqActivity };
+// abr_lookup_abns (ABR Lookup, CRA-06): a small fake register shaped like the abr server's compact rows. The ABNs are
+// real public ones (ATO, a cancelled company, Australian Red Cross); anything else is "No records found". `abns` arrives
+// as one comma-separated string, as a live report sends it.
+const FAKE_REGISTER = {
+  '51824753556': { status: 'Active', status_from: '1999-11-01', entity_name: 'AUSTRALIAN TAXATION OFFICE', gst_registered: true, gst_from: '2000-07-01', gst_to: null, dgr_endorsed: false },
+  '13092013324': { status: 'Cancelled', status_from: '2024-03-15', entity_name: 'OLD TRADING PTY LTD', gst_registered: false, gst_from: '2000-07-01', gst_to: '2024-03-15', dgr_endorsed: false },
+  '50169561394': { status: 'Active', status_from: '1999-11-01', entity_name: 'AUSTRALIAN RED CROSS SOCIETY', gst_registered: true, gst_from: '2000-07-01', gst_to: null, dgr_endorsed: true }
+};
+function abrLookup(p) {
+  const list = String((p && p.abns) || '').split(/[,;\n]+/).map((a) => a.replace(/\D/g, '')).filter(Boolean);
+  if (list.length > 100) throw new Error('Too many ABNs: ' + list.length);
+  return { summary: { requested: list.length }, results: list.map((abn) => FAKE_REGISTER[abn]
+    ? Object.assign({ abn, valid_checksum: true, found: true, error: null }, FAKE_REGISTER[abn])
+    : { abn, valid_checksum: true, found: false, error: 'No records found' }) };
+}
+const TOOL = { abr_lookup_abns: abrLookup, get_profit_and_loss: L.pnl, get_balance_sheet: L.bs, get_bank_summary: L.bankSummary, get_trial_balance: L.trialBalance, list_invoices: L.listInvoices, list_credit_notes: L.listCreditNotes, list_overpayments: L.listOverpayments, list_payments: L.listPayments, list_bank_transactions: L.listBankTransactions, list_accounts: L.listAccounts, list_tax_rates: L.listTaxRates, get_organisation: L.organisation, list_connections: L.connections, list_tracking_categories: L.listTrackingCategories, list_contacts: contactsFromLedger, list_manual_journals: L.listManualJournals, list_pay_runs: L.listPayRuns, workq_activity: workqActivity };
 // list_contacts has no ledger.js fixture (Contacts aren't part of the books model): this kit's own derivation, built from the
 // same documents every other CRA report already reads (invoices, bills, credit notes, overpayments), so the contact list is
 // consistent with the rest of the fixtures rather than invented. The ledger has no ABN/TaxNumber field, so TaxNumber is left
@@ -71,7 +86,7 @@ async function conformance(id, ok) {
   const before = t.calls.length, sel = t.doc.getElementById('xk-client');
   ok(id + ': client picker (LIB-002) lists the connection\'s organisations, first control', sel && [...sel.options].map((o) => o.textContent).join('|') === N1 + '|' + N2 && t.doc.querySelector('#xk-controls select') === sel);
   sel.value = L.T2; sel.dispatchEvent(new t.w.Event('change')); await t.settle(); await t.settle(); await wait(200);
-  const re = t.calls.slice(before).filter((x) => x.params), orgBound = m.bindings.filter((b) => b.tool.name !== 'list_connections').map((b) => b.id);
+  const re = t.calls.slice(before).filter((x) => x.params), orgBound = m.bindings.filter((b) => b.tool.mcp === 'xero-accounting' && b.tool.name !== 'list_connections').map((b) => b.id);
   ok(id + ': switching client refetches every Xero binding for the new organisation only', orgBound.every((b) => re.some((x) => x.id === b && x.params.xero_tenant_id === L.T2)) && !re.some((x) => x.params.xero_tenant_id && x.params.xero_tenant_id !== L.T2), orgBound.filter((b) => !re.some((x) => x.id === b && x.params.xero_tenant_id === L.T2)));
   const page2 = report(t.doc), t3 = await run(ref, m, onlyT2(fixtures(m))); await wait(150);
   const f1 = figures(page1), f3 = figures(report(t3.doc)), left = [...figures(page2)].filter((x) => f1.has(x) && !f3.has(x));
@@ -91,4 +106,4 @@ async function conformance(id, ok) {
   ok(id + ': size limits — document + dataBindings ≤ 35,000 tokens, no line over 1,500 characters', sz.tokens != null && sz.tokens <= 35000 && sz.longest <= 1500, sz);
   return sz;
 }
-module.exports = { L, E: L.expect, run, man, fixtures, text, wait, banner, body, green, red, fmt, set, retryFast, busy, tamper, cellOf, xlsxOf, endless, conformance, sizes };
+module.exports = { L, E: L.expect, run, man, fixtures, contactsFromLedger, FAKE_REGISTER, text, wait, banner, body, green, red, fmt, set, retryFast, busy, tamper, cellOf, xlsxOf, endless, conformance, sizes };
