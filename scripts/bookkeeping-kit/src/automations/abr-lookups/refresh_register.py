@@ -48,11 +48,12 @@ else:
             for name in register.get("no_abn") or []:
                 key = bk_norm(name)
                 last = ck_day((names.get(key) or {}).get("checked"))
-                if not key or (last and (today - last).days < ABR_SEARCH_DAYS):
+                same_rule = (names.get(key) or {}).get("rule") == ABR_MATCH_RULE
+                if not key or (last and same_rule and (today - last).days < ABR_SEARCH_DAYS):
                     continue
                 if searches >= ABR_SEARCHES_PER_RUN or time.monotonic() - started > BUDGET_SECONDS:
                     break
-                names[key] = {"name": name, "checked": str(today), "match": abr_best_match(name)}
+                names[key] = {"name": name, "checked": str(today), "match": abr_best_match(name), "rule": ABR_MATCH_RULE}
                 searches += 1
             summary["searched"] += searches
         except Exception as exc:
