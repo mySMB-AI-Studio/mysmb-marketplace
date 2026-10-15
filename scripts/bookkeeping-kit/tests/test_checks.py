@@ -350,6 +350,29 @@ class Checks(unittest.TestCase):
         self.assertIn("CHK-021", self.open_item()["description"])
         self.assertEqual(self.state()["last_weekly"], str(TODAY))
 
+    def test_no_lock_date_twice_is_not_a_lock_date_change(self):
+        self.org["lock_date"] = None
+        self.overnight()
+        state = self.state()
+        state["last_weekly"] = day(8)  # the next run is weekly too
+        state["snapshot"]["lock_change"] = {"from": "", "to": "", "on": day(1)}  # what the first release saved
+        self.w.files["Bookkeeping/Checks/acme-plumbing.json"] = json.dumps(state)
+        self.overnight()
+        desc = self.open_item()["description"]
+        self.assertIn("CHK-134", desc)
+        self.assertNotIn("CHK-135", desc)
+        self.assertNotIn("lock_change", self.state()["snapshot"])
+
+    def test_a_lock_date_moved_back_is_flagged(self):
+        self.org["lock_date"] = day(40) + "T00:00:00"
+        self.overnight()
+        state = self.state()
+        state["last_weekly"] = day(8)
+        self.w.files["Bookkeeping/Checks/acme-plumbing.json"] = json.dumps(state)
+        self.org["lock_date"] = day(200) + "T00:00:00"
+        self.overnight()
+        self.assertIn("CHK-135 Lock Date Change", self.open_item()["description"])
+
     def test_suppliers_missing_tpar_details_only_for_tpar_clients(self):
         bare = self.add(contact("c-tradie", "Joe Tradie", abn="", address=False))
         self.org["invoices"].append(doc("b-t", "JT-1", bare, day(10), 2200.0, status="PAID", paid_on=day(8)))

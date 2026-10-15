@@ -486,9 +486,12 @@ def ck_weekly_rules(ledger, client, snap, today, captured):
                               + " months ago. Move it forward to the last period lodged.", link=org.get("settings_link") or "",
                               sig=lock))
     previous = snap.get("lock")
-    if previous is not None and (not lock or lock < previous):
+    # Only a lock date that existed and then moved back, or was removed, is a change: none before and none now isn't.
+    if previous and (not lock or lock < previous):
         snap["lock_change"] = {"from": previous, "to": lock, "on": str(today)}
     snap["lock"] = lock
+    if not (snap.get("lock_change") or {}).get("from"):
+        snap.pop("lock_change", None)
     change = snap.get("lock_change") or {}
     if change and ck_day(change.get("on")) and (today - ck_day(change["on"])).days <= CK_BANK_CHANGE_DAYS:
         out.append(ck_finding("CHK-135", change["from"] + ">" + change["to"], "The lock date was moved back from "
