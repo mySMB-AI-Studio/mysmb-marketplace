@@ -133,6 +133,8 @@
         "on": {
           "click": [
             { "action": "setState", "params": { "statePath": "/ui/listsExpanded", "value": true } },
+            { "action": "setState", "params": { "statePath": "/ui/tab/lists", "value": true } },
+            { "action": "setState", "params": { "statePath": "/ui/tab/cards", "value": false } },
             { "action": "trello.list_all_lists", "params": {} },
             { "action": "trello.list_all_cards", "params": {} }
           ]
@@ -187,12 +189,55 @@
 
       "listsDetailSection": {
         "type": "Stack",
-        "props": { "gap": "md" },
-        "children": ["listsSectionLabel", "listsLoading", "listsEmpty", "listsRepeatList", "cardsSectionLabel", "cardsLoading", "cardsEmpty", "cardsRepeatList"],
+        "props": { "gap": "sm" },
+        "children": ["listsCardsTabRow", "listsSectionContent", "cardsSectionContent"],
         "visible": { "$state": "/ui/listsExpanded" }
       },
 
-      "listsSectionLabel": { "type": "Eyebrow", "props": { "text": "Lists" } },
+      "listsCardsTabRow": {
+        "type": "Row",
+        "props": { "gap": "xs" },
+        "children": ["tabListsOn", "tabListsOff", "tabCardsOn", "tabCardsOff"]
+      },
+      "tabListsOn": {
+        "type": "Button",
+        "props": { "label": "Lists", "variant": "primary", "size": "sm" },
+        "visible": { "$state": "/ui/tab/lists" }
+      },
+      "tabListsOff": {
+        "type": "Button",
+        "props": { "label": "Lists", "variant": "ghost", "size": "sm" },
+        "visible": { "$state": "/ui/tab/lists", "not": true },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/tab/lists", "value": true } },
+            { "action": "setState", "params": { "statePath": "/ui/tab/cards", "value": false } }
+          ]
+        }
+      },
+      "tabCardsOn": {
+        "type": "Button",
+        "props": { "label": "Cards", "variant": "primary", "size": "sm" },
+        "visible": { "$state": "/ui/tab/cards" }
+      },
+      "tabCardsOff": {
+        "type": "Button",
+        "props": { "label": "Cards", "variant": "ghost", "size": "sm" },
+        "visible": { "$state": "/ui/tab/cards", "not": true },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/tab/lists", "value": false } },
+            { "action": "setState", "params": { "statePath": "/ui/tab/cards", "value": true } }
+          ]
+        }
+      },
+
+      "listsSectionContent": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["listsLoading", "listsEmpty", "listsRepeatList"],
+        "visible": { "$state": "/ui/tab/lists" }
+      },
       "listsLoading": {
         "type": "Stack",
         "props": { "gap": "xs" },
@@ -233,7 +278,12 @@
         "props": { "text": { "$item": "board_label" }, "tone": "muted", "truncate": true }
       },
 
-      "cardsSectionLabel": { "type": "Eyebrow", "props": { "text": "Cards" } },
+      "cardsSectionContent": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["cardsLoading", "cardsEmpty", "cardsRepeatList"],
+        "visible": { "$state": "/ui/tab/cards" }
+      },
       "cardsLoading": {
         "type": "Stack",
         "props": { "gap": "xs" },
