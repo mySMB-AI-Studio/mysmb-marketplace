@@ -5,7 +5,7 @@ description: CRA-06 Contact Details for BAS Preparation for one client (Xero, MY
 
 # CRA-06 Contact Details for BAS Preparation
 
-Use when the user asks for the Contact Details for BAS Preparation (CRA-06) of one client: every contact with the tax types used on their transactions and GST evidence on file; registry (ABR) match is not built yet, shown as N/A — pending ABR.
+Use when the user asks for the Contact Details for BAS Preparation (CRA-06) of one client: every contact with the tax types used on their transactions and GST evidence on file, and on Xero each ABN's Australian Business Register record (needs ABR Lookup connected).
 
 ## Rules for every client report
 
@@ -33,6 +33,7 @@ Use when the user asks for the Contact Details for BAS Preparation (CRA-06) of o
 | `org` | Organisation | string | `` |
 | `page` | Page | number | `1` |
 | `display` | Display settings | string | `{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,…` |
+| `abn_list` | ABNs to check on the register | string | `` |
 
 ### MYOB Contact Details for BAS Preparation (`client-myob-contacts-bas`)
 
@@ -61,7 +62,7 @@ Use when the user asks for the Contact Details for BAS Preparation (CRA-06) of o
 ## Validation (shown in the report, recomputed on every open)
 
 - Every contact seen on a transaction in the period appears in the contact list.
-- No ABR (Australian Business Register) registry-match column yet: every row shows "N/A — pending ABR" rather than a guessed status (an ABR API credential has not arrived).
+- On Xero, the Australian Business Register column is the register's own record for each ABN on file (active or cancelled, GST registration, DGR), from the ABR Lookup extension; without it connected the column reads "N/A — connect ABR Lookup". MYOB and QuickBooks contacts carry no ABN, so it reads N/A there.
 - GST evidence and tax types used are shown only where the platform actually exposes them; otherwise "N/A — not in source" (never guessed).
 - Switching client refetches every source for the new client; nothing of the previous client stays on the page or in the Excel download.
 

@@ -1,6 +1,6 @@
 {
   "title": "Xero Contact Details for BAS Preparation",
-  "description": "Client Report Analytics CRA-06 for one Xero client: every contact with the tax types used on their transactions and GST evidence on file; registry (ABR) match is not built yet, shown as N/A — pending ABR. Live and validated on every open; mySMB branding by default.",
+  "description": "Client Report Analytics CRA-06 for one Xero client: every contact with the tax types used on their transactions and GST evidence on file, and on Xero each ABN's Australian Business Register record (needs ABR Lookup connected). Live and validated on every open; mySMB branding by default.",
   "tags": [
     "client-report-analytics",
     "CRA-06",
@@ -43,6 +43,13 @@
         "type": "string",
         "maxLength": 300,
         "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"mysmb\",\"dens\":\"100\",\"p\":\"last_quarter\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\"}"
+      },
+      {
+        "name": "abn_list",
+        "label": "ABNs to check on the register",
+        "type": "string",
+        "maxLength": 500,
+        "default": ""
       }
     ],
     "bindings": [
@@ -138,6 +145,23 @@
           "name": "list_connections"
         },
         "params": {}
+      },
+      {
+        "id": "registry",
+        "tool": {
+          "mcp": "abr",
+          "name": "abr_lookup_abns"
+        },
+        "params": {
+          "abns": {
+            "kind": "input",
+            "input": "abn_list"
+          },
+          "include_names": {
+            "kind": "static",
+            "value": false
+          }
+        }
       }
     ]
   }
