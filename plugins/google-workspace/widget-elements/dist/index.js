@@ -997,15 +997,25 @@ const build_events_view = (args) => {
 // rather than composed in JSON — it combines a weekday name, 12-hour clock
 // time, and a humanized duration, which isn't one existing $computed), a
 // colored initials avatar per participant (hashed the same way as Gmail's
-// sender avatars), an actions badge that reads differently depending on
-// whether the meeting has action items / a transcript at all / neither, and
-// All / With action items / No transcript tab counts. Expand/collapse is a
+// sender avatars), a status badge that reads differently depending on
+// whether the meeting has a transcript / a summary / action items, and
+// All / With action items / Not summarised tab counts. Expand/collapse is a
 // single selected id, defaulting to the newest meeting when nothing's been
 // clicked yet — matches the "newest is open" behavior from the mockup.
 //
+// The dashboard tool only summarizes MAX_SUMMARIZED meetings per call, so
+// the rest come back with `summary: null`. Those are the "ready to
+// summarise" pool: the banner counts them and the per-row panel offers a
+// Summarize button wired to summarize_meeting_transcript. That tool's
+// result is passed back in as the `summarize*` args and merged into its own
+// meeting here, so one freshly summarized card fills in without refetching
+// the whole dashboard.
+//
 // Args: {
 //   meetings: MeetingSummaryCard[], stats: {...}, tab: string,
-//   expandedId?: string,
+//   expandedId?: string, aiUnavailable?: boolean,
+//   summarizeId?, summarizeOk?, summarizeSummary?, summarizeDecisions?,
+//   summarizeActionItems?, summarizeError?,
 // }
 function formatClockTime(ms) {
     try {
@@ -1036,25 +1046,63 @@ const build_meeting_summaries_view = (args) => {
     const stats = args.stats ?? {};
     const tab = str(args.tab) || 'all';
     const requestedExpandedId = str(args.expandedId);
+    const aiUnavailable = args.aiUnavailable === true;
+    // summarize_meeting_transcript's result, split across state paths by the
+    // runtime's one-key-per-path convention and passed back in field by field.
+    const oneOffId = str(args.summarizeId);
+    const oneOffOk = args.summarizeOk === true;
+    const oneOffSummary = str(args.summarizeSummary);
+    const oneOffDecisions = Array.isArray(args.summarizeDecisions) ? args.summarizeDecisions : [];
+    const oneOffActionItems = Array.isArray(args.summarizeActionItems)
+        ? args.summarizeActionItems
+        : [];
+    const oneOffError = str(args.summarizeError);
     const decorated = meetings.map((m) => {
-        const actionItems = Array.isArray(m.actionItems) ? m.actionItems : [];
-        const transcriptStatus = str(m.transcriptStatus) || 'none';
-        const hasActionItems = actionItems.length > 0;
-        return { ...m, actionItems, transcriptStatus, hasActionItems };
+        const isOneOff = !!oneOffId && str(m.id) === oneOffId;
+        const merged = isOneOff && oneOffOk
+            ? { ...m, summary: oneOffSummary || m.summary, decisions: oneOffDecisions, actionItems: oneOffActionItems }
+            : m;
+        const actionItems = Array.isArray(merged.actionItems) ? merged.actionItems : [];
+        const transcriptStatus = str(merged.transcriptStatus) || 'none';
+        const hasTranscript = transcriptStatus !== 'none';
+        const hasSummary = hasTranscript && !!str(merged.summary);
+        return {
+            ...merged,
+            actionItems,
+            transcriptStatus,
+            hasTranscript,
+            hasActionItems: actionItems.length > 0,
+            hasSummary,
+            notSummarised: hasTranscript && !hasSummary,
+            summarizeError: isOneOff && !oneOffOk ? oneOffError : '',
+        };
     });
     const counts = {
         all: decorated.length,
         withActions: decorated.filter(m => m.hasActionItems).length,
-        noTranscript: decorated.filter(m => m.transcriptStatus === 'none').length,
+        notSummarised: decorated.filter(m => m.notSummarised).length,
     };
     const filtered = decorated.filter((m) => {
         if (tab === 'withActions')
             return m.hasActionItems;
-        if (tab === 'noTranscript')
-            return m.transcriptStatus === 'none';
+        if (tab === 'notSummarised')
+            return m.notSummarised;
         return true;
     });
     const expandedId = requestedExpandedId || str(filtered[0]?.id);
+    // Banner: the call-to-action above the tabs. Hidden once every transcript
+    // has a summary; still shown without its button when the server has no
+    // ANTHROPIC_API_KEY, so the empty summaries explain themselves.
+    const banner = {
+        visible: counts.notSummarised > 0,
+        headline: counts.notSummarised === 1
+            ? '1 transcript ready to summarise'
+            : `${counts.notSummarised} transcripts ready to summarise`,
+        detail: aiUnavailable
+            ? "AI summaries aren't configured for this connector."
+            : 'Get a short summary, decisions and action items for each meeting.',
+        canSummarizeAll: counts.notSummarised > 0 && !aiUnavailable,
+    };
     const rows = filtered.map((m) => {
         const startMs = parseUtcMs(m.startTime);
         const monthAbbrev = startMs != null ? MONTH_ABBREV[new Date(startMs).getMonth()] : '';
@@ -1075,20 +1123,31 @@ const build_meeting_summaries_view = (args) => {
             return p ? { initials: p.initials, tone: toneFromKey(p.name), visible: true } : { initials: '', tone: 'muted', visible: false };
         });
         const participantOverflow = Math.max(0, allParticipants.length - MAX_VISIBLE_PARTICIPANTS);
-        let actionsBadgeLabel;
-        let actionsBadgeTone;
-        if (m.transcriptStatus === 'none') {
-            actionsBadgeLabel = 'No transcript';
-            actionsBadgeTone = 'muted';
+        let statusBadgeLabel;
+        let statusBadgeTone;
+        if (!m.hasTranscript) {
+            statusBadgeLabel = 'No transcript';
+            statusBadgeTone = 'muted';
+        }
+        else if (m.notSummarised) {
+            statusBadgeLabel = 'Not summarised';
+            statusBadgeTone = 'accent';
         }
         else if (m.hasActionItems) {
-            actionsBadgeLabel = `${m.actionItems.length} action${m.actionItems.length === 1 ? '' : 's'}`;
-            actionsBadgeTone = 'warning';
+            statusBadgeLabel = `${m.actionItems.length} action${m.actionItems.length === 1 ? '' : 's'}`;
+            statusBadgeTone = 'warning';
         }
         else {
-            actionsBadgeLabel = 'No actions';
-            actionsBadgeTone = 'success';
+            statusBadgeLabel = 'No actions';
+            statusBadgeTone = 'success';
         }
+        // "Transcript is ready · 8m · 2 speakers" under the not-summarised panel.
+        const speakerCount = typeof m.participantCount === 'number' ? m.participantCount : null;
+        const readyDetail = [
+            'Transcript is ready',
+            duration,
+            speakerCount ? `${speakerCount} speaker${speakerCount === 1 ? '' : 's'}` : '',
+        ].filter(Boolean).join(' · ');
         const decisionsList = Array.isArray(m.decisions) ? m.decisions : [];
         const decisionSlots = Array.from({ length: MAX_VISIBLE_DECISIONS }, (_, i) => {
             const text = decisionsList[i];
@@ -1100,11 +1159,11 @@ const build_meeting_summaries_view = (args) => {
                 ? { text: item.text, assignee: item.assignee ?? '', hasAssignee: !!item.assignee, visible: true }
                 : { text: '', assignee: '', hasAssignee: false, visible: false };
         });
-        const hasTranscript = m.transcriptStatus !== 'none';
-        const hasSummary = hasTranscript && !!m.summary;
         return {
             id: m.id,
             title: m.title,
+            meetingCode: m.meetingCode ?? '',
+            hasMeetingCode: !!m.meetingCode,
             monthAbbrev,
             dayNumber,
             scheduleLabel,
@@ -1114,15 +1173,21 @@ const build_meeting_summaries_view = (args) => {
             participant4: participantSlots[3],
             participantOverflow,
             hasParticipantOverflow: participantOverflow > 0,
-            actionsBadgeLabel,
-            actionsBadgeTone,
+            statusBadgeLabel,
+            statusBadgeTone,
             transcriptStatus: m.transcriptStatus,
-            hasTranscript,
+            hasTranscript: m.hasTranscript,
             docUrl: m.docUrl ?? null,
             calendarEventUrl: m.calendarEventUrl ?? null,
             summary: m.summary ?? null,
-            hasSummary,
-            showNoSummaryNotice: hasTranscript && !hasSummary,
+            hasSummary: m.hasSummary,
+            // The "No summary yet" panel in the expanded card, with its own
+            // Summarize button — suppressed when the server can't summarize at all.
+            showSummarizePanel: m.notSummarised,
+            readyDetail,
+            canSummarize: m.notSummarised && !aiUnavailable,
+            summarizeError: m.summarizeError,
+            hasSummarizeError: !!m.summarizeError,
             decision1: decisionSlots[0],
             decision2: decisionSlots[1],
             decision3: decisionSlots[2],
@@ -1145,6 +1210,7 @@ const build_meeting_summaries_view = (args) => {
             actionItemsTotal: Number(stats.actionItemsTotal ?? 0),
             assignedToYouTotal: Number(stats.assignedToYouTotal ?? 0),
         },
+        banner,
         counts,
         rows,
         expandedId,
