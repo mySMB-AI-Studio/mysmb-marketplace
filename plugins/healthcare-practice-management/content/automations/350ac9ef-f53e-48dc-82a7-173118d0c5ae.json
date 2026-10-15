@@ -1,0 +1,117 @@
+{
+  "contentHash": "1d51d533d71db0297c5e500aceeb59a44e5b8d89f0d9819c767954e459ea9dc2",
+  "declaredScopes": [
+    "ai:generate",
+    "files:read",
+    "files:write",
+    "workq:write",
+    "connectors:cliniko-scheduling",
+    "connectors:cliniko-practice",
+    "connectors:cliniko-patients",
+    "connectors:m365-calendar",
+    "connectors:google-workspace-calendar"
+  ],
+  "dependencies": [
+    {
+      "entityKind": "form",
+      "originKey": "f660cc88-e525-4b42-b3fb-a6f6537fb763",
+      "sourceId": "f660cc88-e525-4b42-b3fb-a6f6537fb763"
+    }
+  ],
+  "description": "Every 30 minutes, checks each configured practice's own calendar (Outlook or Google, per the practice's email provider) for new or moved events over the next 30 days, keeps a matching Cliniko unavailable block in sync, and checks for bookings that now clash. On a clash, drafts a reschedule offer and raises a WorkQ item with the same No-show follow-up approval form used by No-show Recovery — so sending it is handled by that automation's existing Apply no-show follow-up decision flow, not a new one.",
+  "flowIr": {
+    "description": "Every 30 minutes, checks each configured practice's own calendar (Outlook or Google, per the practice's email provider) for new or moved events over the next 30 days, keeps a matching Cliniko unavailable block in sync, and checks for bookings that now clash. On a clash, drafts a reschedule offer and raises a WorkQ item with the same No-show follow-up approval form used by No-show Recovery — so sending it is handled by that automation's existing Apply no-show follow-up decision flow, not a new one.",
+    "irVersion": 1,
+    "name": "Healthcare Practice Management: Calendar guard",
+    "nodes": [
+      {
+        "code": "import json\nimport datetime\n\n\ndef read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\n\ndef event_fields(provider, raw):\n    # M365 (Graph) and Google Calendar shape their events differently —\n    # Graph: subject, nested start.dateTime/end.dateTime. Google: summary,\n    # nested start.dateTime (or start.date for all-day), same for end.\n    if provider == \"outlook\":\n        start = ((raw.get(\"start\") or {}).get(\"dateTime\") or \"\")\n        end = ((raw.get(\"end\") or {}).get(\"dateTime\") or \"\")\n        subject = raw.get(\"subject\") or \"\"\n    else:\n        start = ((raw.get(\"start\") or {}).get(\"dateTime\") or (raw.get(\"start\") or {}).get(\"date\") or \"\")\n        end = ((raw.get(\"end\") or {}).get(\"dateTime\") or (raw.get(\"end\") or {}).get(\"date\") or \"\")\n        subject = raw.get(\"summary\") or \"\"\n    return str(raw.get(\"id\") or \"\"), subject, start, end\n\n\nnow = datetime.datetime.utcnow()\nwindow_start = now.strftime(\"%Y-%m-%dT%H:%M:%SZ\")\nwindow_end = (now + datetime.timedelta(days=30)).strftime(\"%Y-%m-%dT%H:%M:%SZ\")\n\npractices = []\ntry:\n    entries = api.files.list(path=\"PracticeManager/Practices\", scope=\"org\")\nexcept Exception:\n    entries = []\nfor entry in entries or []:\n    fname = entry.get(\"name\") if isinstance(entry, dict) else entry\n    if not fname or not str(fname).endswith(\".json\"):\n        continue\n    slug = str(fname)[:-5]\n    practice = read_json(\"PracticeManager/Practices/\" + fname, {}) or {}\n    if practice:\n        practices.append({\"slug\": slug, \"practice\": practice})\n\n# Detection is deliberately weaker than a true change feed: it diffs each\n# event's own (start, end) against the last snapshot, not a modification\n# timestamp — neither calendar tool here returns one. A subject- or\n# location-only edit with the same times won't be caught.\nchanged_items = []\nfor p in practices:\n    provider = str(p[\"practice\"].get(\"email_provider\") or \"outlook\")\n    snapshot = read_json(\"PracticeManager/CalendarSnapshot/\" + p[\"slug\"] + \".json\", {}) or {}\n\n    raw_events = []\n    try:\n        if provider == \"outlook\":\n            result = api.connectors.invoke(\n                server=\"m365-calendar\", tool=\"list_events\",\n                args={\"startDateTime\": window_start, \"endDateTime\": window_end, \"limit\": 50},\n            )\n            raw_events = result if isinstance(result, list) else (result or {}).get(\"value\") or []\n        else:\n            result = api.connectors.invoke(\n                server=\"google-workspace-calendar\", tool=\"list_events\",\n                args={\"timeMin\": window_start, \"timeMax\": window_end, \"maxResults\": 50, \"singleEvents\": True, \"orderBy\": \"startTime\"},\n            )\n            raw_events = (result or {}).get(\"items\") or []\n    except Exception:\n        raw_events = []\n\n    for raw in raw_events:\n        event_id, subject, start, end = event_fields(provider, raw if isinstance(raw, dict) else {})\n        if not (event_id and start and end):\n            continue\n        prior = snapshot.get(event_id) or {}\n        if prior.get(\"start\") == start and prior.get(\"end\") == end:\n            continue\n        changed_items.append({\n            \"slug\": p[\"slug\"],\n            \"practice\": p[\"practice\"],\n            \"event_id\": event_id,\n            \"subject\": subject,\n            \"start\": start,\n            \"end\": end,\n            \"prior_block_id\": prior.get(\"cliniko_block_id\") or \"\",\n        })\n",
+        "id": "find_calendar_changes",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "One entry per new or moved calendar event, across every configured practice.",
+            "name": "changed_items",
+            "type": "list[dict]"
+          }
+        ],
+        "params": [],
+        "summary": "Scans every configured practice's calendar for new or moved events since the last check.",
+        "title": "Find calendar changes"
+      },
+      {
+        "body": [
+          "sync_block_and_check_clashes"
+        ],
+        "id": "foreach_change",
+        "itemVar": "item",
+        "items": "{{ steps.find_calendar_changes.outputs.changed_items }}",
+        "kind": "foreach",
+        "maxIterations": 50,
+        "title": "For each calendar change"
+      },
+      {
+        "code": "import json\nimport re\n\nAI_PROMPT = (\n    \"You are drafting a short, warm message on behalf of a healthcare clinic to a patient whose booked \"\n    \"appointment now clashes with the practitioner's own calendar. Apologise briefly, explain a reschedule \"\n    \"is needed, and offer the times given. Never give clinical advice, diagnosis or interpretation. Keep it \"\n    \"under 120 words.\"\n)\nAI_HINT = '{\"subject\": \"\", \"body\": \"\"}'\n\n\ndef read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\n\ndef write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True))\n\n\ndef extract_id(link):\n    if not isinstance(link, dict):\n        return \"\"\n    url = ((link.get(\"links\") or {}).get(\"self\")) or \"\"\n    m = re.search(r\"/(\\d+)(?:$|\\?)\", str(url))\n    return m.group(1) if m else \"\"\n\n\nitem = params.get(\"item\") or {}\nslug = item.get(\"slug\") or \"\"\npractice = item.get(\"practice\") or {}\nevent_id = item.get(\"event_id\") or \"\"\nsubject = item.get(\"subject\") or \"Calendar event\"\nstart = item.get(\"start\") or \"\"\nend = item.get(\"end\") or \"\"\noutcome = \"skipped\"\nalerts_raised = 0\n\nbusiness_id = str(practice.get(\"cliniko_business_id\") or \"\")\n\nif slug and event_id and start and end and business_id:\n    try:\n        prac_result = api.connectors.invoke(\n            server=\"cliniko-practice\", tool=\"list_practitioners\", args={\"business_id\": business_id},\n        )\n        practitioners = prac_result if isinstance(prac_result, list) else (prac_result or {}).get(\"practitioners\") or []\n    except Exception:\n        practitioners = []\n    # Sole-practitioner clinics (this plugin's whole premise) have exactly one\n    # active practitioner per business — take the first rather than asking\n    # the practice to store an id nowhere else in its settings file.\n    practitioner_id = str((practitioners[0] or {}).get(\"id\") or \"\") if practitioners else \"\"\n\n    if not practitioner_id:\n        outcome = \"skipped_no_practitioner\"\n    else:\n        block_id = item.get(\"prior_block_id\") or \"\"\n        note = \"Synced from calendar: \" + subject\n        try:\n            if block_id:\n                api.connectors.invoke(\n                    server=\"cliniko-scheduling\", tool=\"update_unavailable_block\",\n                    args={\"id\": block_id, \"patch\": {\"starts_at\": start, \"ends_at\": end, \"notes\": note}},\n                )\n            else:\n                created = api.connectors.invoke(\n                    server=\"cliniko-scheduling\", tool=\"create_unavailable_block\",\n                    args={\"block\": {\"business_id\": business_id, \"practitioner_id\": practitioner_id, \"starts_at\": start, \"ends_at\": end, \"notes\": note}},\n                )\n                block_id = str((created or {}).get(\"id\") or \"\")\n        except Exception:\n            pass\n\n        snapshot = read_json(\"PracticeManager/CalendarSnapshot/\" + slug + \".json\", {}) or {}\n        snapshot[event_id] = {\"start\": start, \"end\": end, \"subject\": subject, \"cliniko_block_id\": block_id}\n        write_json(\"PracticeManager/CalendarSnapshot/\" + slug + \".json\", snapshot)\n\n        clashes = []\n        try:\n            result = api.connectors.invoke(\n                server=\"cliniko-scheduling\", tool=\"list_individual_appointments\",\n                args={\n                    \"q\": [\n                        \"business_id:=\" + business_id,\n                        \"practitioner_id:=\" + practitioner_id,\n                        \"starts_at:<\" + end,\n                        \"ends_at:>\" + start,\n                    ],\n                    \"per_page\": 50,\n                },\n            )\n            rows = (result or {}).get(\"individual_appointments\") or []\n            clashes = [r for r in rows if not r.get(\"cancelled_at\")]\n        except Exception:\n            clashes = []\n\n        policy = practice.get(\"policy\") or {}\n        tone = policy.get(\"tone\") or \"warm, concise, no jargon\"\n        reviewer = practice.get(\"reviewer_id\") or \"\"\n\n        for clash in clashes:\n            patient_id = extract_id(clash.get(\"patient\"))\n            patient_name = clash.get(\"patient_name\") or \"this patient\"\n            appt_type_id = extract_id(clash.get(\"appointment_type\"))\n\n            slots = []\n            if appt_type_id:\n                try:\n                    avail = api.connectors.invoke(\n                        server=\"cliniko-scheduling\", tool=\"get_available_times\",\n                        args={\"business_id\": business_id, \"practitioner_id\": practitioner_id, \"appointment_type_id\": appt_type_id},\n                    )\n                    raw_slots = avail if isinstance(avail, list) else (avail or {}).get(\"available_times\") or []\n                    for s in raw_slots[:3]:\n                        t = s.get(\"appointment_start\") if isinstance(s, dict) else s\n                        if t:\n                            slots.append(str(t))\n                except Exception:\n                    slots = []\n\n            email = \"\"\n            if patient_id:\n                try:\n                    patient = api.connectors.invoke(server=\"cliniko-patients\", tool=\"get_patient\", args={\"id\": patient_id})\n                    email = (patient or {}).get(\"email\") or \"\"\n                except Exception:\n                    email = \"\"\n\n            try:\n                drafted = api.ai.extract(\n                    prompt=AI_PROMPT,\n                    input=json.dumps({\n                        \"patient_name\": patient_name,\n                        \"clashing_appointment_time\": clash.get(\"starts_at\") or \"\",\n                        \"available_times\": slots,\n                        \"tone\": tone,\n                    }),\n                    schema_hint=AI_HINT,\n                )\n            except Exception:\n                drafted = {}\n            drafted = drafted if isinstance(drafted, dict) else {}\n            draft_subject = drafted.get(\"subject\") or \"We need to reschedule\"\n            draft_body = drafted.get(\"body\") or (\n                \"Hi \" + patient_name + \", the practitioner's calendar has changed and your booked appointment \"\n                \"now clashes. Please reply or call us to find a new time.\"\n            )\n\n            description = (\n                \"**Patient:** \" + patient_name + \"  \\n\"\n                \"**Clashing booking:** \" + str(clash.get(\"starts_at\") or \"\") + \"  \\n\"\n                \"**Caused by calendar event:** \" + subject + \" (\" + start + \" to \" + end + \")  \\n\\n\"\n                \"**Drafted subject:** \" + draft_subject + \"  \\n\\n\"\n                \"**Drafted message:**\\n\\n\" + draft_body\n            )\n            if not email:\n                description += \"\\n\\n_No email on file for this patient — \\\"Send as drafted\\\" won't be able to send._\"\n\n            workq_item = api.workq.create(\n                title=\"Calendar clash: \" + patient_name,\n                scope=\"org\",\n                description=description,\n                priority=\"high\",\n                assignee_ids=[reviewer] if reviewer else None,\n                labels=[\"healthcare-practice-management\", \"calendar-guard\"],\n            )\n            workq_id = workq_item[\"id\"]\n            api.workq.attach_form(todo_id=workq_id, form_id=params[\"approval_form\"])\n\n            write_json(\"PracticeManager/NoShowDrafts/\" + workq_id + \".json\", {\n                \"slug\": slug,\n                \"appointment_id\": str(clash.get(\"id\") or \"\"),\n                \"patient_id\": patient_id,\n                \"patient_name\": patient_name,\n                \"email\": email,\n                \"subject\": draft_subject,\n                \"body\": draft_body,\n            })\n            alerts_raised += 1\n\n        outcome = \"synced\"\n",
+        "id": "sync_block_and_check_clashes",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "synced, skipped_no_practitioner or skipped.",
+            "name": "outcome",
+            "type": "str"
+          },
+          {
+            "description": "How many reschedule-offer WorkQ items were raised for this calendar change.",
+            "name": "alerts_raised",
+            "type": "int"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ item }}",
+            "control": "hidden",
+            "label": "Calendar change",
+            "name": "item",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "control": "hidden",
+            "label": "Approval form",
+            "name": "approval_form",
+            "required": true,
+            "type": "uuid",
+            "value": "f660cc88-e525-4b42-b3fb-a6f6537fb763"
+          }
+        ],
+        "summary": "Syncs the matching Cliniko unavailable block and raises a reschedule-offer WorkQ item for any booking that now clashes.",
+        "title": "Sync block and check clashes"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "find_calendar_changes",
+      "foreach_change"
+    ],
+    "triggers": [
+      {
+        "cron": "*/30 * * * *",
+        "kind": "schedule",
+        "timezone": "Australia/Sydney"
+      },
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "knowledgeFiles": [],
+  "level": "org",
+  "name": "Healthcare Practice Management: Calendar guard",
+  "originKey": "350ac9ef-f53e-48dc-82a7-173118d0c5ae",
+  "tags": [
+    "healthcare-practice-management",
+    "calendar-guard",
+    "scheduling"
+  ]
+}
