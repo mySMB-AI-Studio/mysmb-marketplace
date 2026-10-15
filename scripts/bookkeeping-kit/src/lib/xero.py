@@ -547,6 +547,10 @@ def xero_ledger(tenant_id, today, since, weekly):
             # Approved bills still to pay, whatever their date: what a changed bank account would be paid against.
             more, _ = xero_pages("list_invoices", tenant_id, "Invoices", where='Type=="ACCPAY" AND Status=="AUTHORISED"')
             rows = rows + more
+        elif weekly:
+            # Sales invoices still owed, whatever their date: what a cancelled customer may never pay (CHK-039).
+            more, _ = xero_pages("list_invoices", tenant_id, "Invoices", where='Type=="ACCREC" AND Status=="AUTHORISED"')
+            rows = rows + more
         for inv in rows:
             d = xero_doc(inv)
             if d["id"] and d["id"] not in seen:

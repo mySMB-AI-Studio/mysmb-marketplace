@@ -156,6 +156,20 @@ if not problem:
                 # No digits in the warning: bank details are never stored outside Xero and the PDF.
                 warnings.append("The bank details on the PDF aren't the ones on " + str(contact.get("Name")) + " in Xero. "
                                 "Confirm them with the supplier on a phone number you already have before paying. [CHK-020]")
+            # Register checks, from what Register lookups (ABR) last saved; an ABN it hasn't seen yet is checked tonight.
+            register = (bk_read_json(BK_CHECKS + "/" + client["slug"] + "-abr.json") or {}).get("abns") or {}
+            issued = inv.get("issue_date") or str(bk_today(settings))
+            if issuer_abn and ck_cancelled_on(register.get(issuer_abn), issued):
+                warnings.append("The register lists the ABN on the PDF (" + issuer_abn + ") as cancelled since "
+                                + str(register[issuer_abn].get("status_from") or "an earlier date") + ". Check who's really "
+                                "invoicing before paying. [CHK-002]")
+            if contact_abn and contact_abn != issuer_abn and ck_cancelled_on(register.get(contact_abn), issued):
+                warnings.append(str((contact or {}).get("Name")) + "'s ABN in Xero (" + contact_abn + ") is cancelled on the "
+                                "register. Check the supplier is still trading. [CHK-071]")
+            if tax and tax > 0.05 and issuer_abn and ck_gst_off(register.get(issuer_abn), issued):
+                warnings.append("The PDF charges " + bk_fmt(tax) + " GST, but the register shows " + supplier + " wasn't "
+                                "registered for GST on " + str(issued) + ". That GST can't be claimed: ask for a corrected "
+                                "invoice. [CHK-085]")
             if pay_acct and not contact:
                 warnings.append("New supplier with bank details only on the invoice. "
                                 "Confirm them with the supplier on a phone number from another source before the first "
