@@ -219,8 +219,12 @@ const flatten_all_cards: ComputedFunction = (args) => {
  *   - today: has a due date, not dueComplete, date is today.
  *   - week: has a due date, not dueComplete, date is 1-7 days from today.
  * Cards with no due date, already dueComplete, or due more than 7 days out
- * are excluded entirely — matching the tile's own "Card due / dueComplete
- * fields" footer disclosure of exactly what powers it.
+ * are excluded entirely.
+ *
+ * Also returns the actual card rows per bucket (id, name, board_label,
+ * due_label), not just counts — powers the tile's click-to-expand detail
+ * view. Reuses the same list_all_cards data already fetched for the counts;
+ * no extra tool call needed.
  *
  * Args: { value: array } — list_all_cards' `data` array.
  */
@@ -231,9 +235,9 @@ const flatten_due_date_tracker: ComputedFunction = (args) => {
   const todayMs = Date.parse(todayStr);
   const weekAheadMs = todayMs + 7 * 86400000;
 
-  let overdueCount = 0;
-  let todayCount = 0;
-  let weekCount = 0;
+  const overdueRows: Record<string, unknown>[] = [];
+  const todayRows: Record<string, unknown>[] = [];
+  const weekRows: Record<string, unknown>[] = [];
 
   for (const card of raw) {
     if (card.dueComplete) continue;
@@ -243,19 +247,29 @@ const flatten_due_date_tracker: ComputedFunction = (args) => {
     const dueMs = Date.parse(dueDateStr);
     if (Number.isNaN(dueMs)) continue;
 
+    const row = {
+      id: String(card.id ?? ''),
+      name: String(card.name ?? ''),
+      board_label: String(card.board_name ?? ''),
+      due_label: formatDdMmmYy(due),
+    };
+
     if (dueDateStr === todayStr) {
-      todayCount++;
+      todayRows.push(row);
     } else if (dueMs < todayMs) {
-      overdueCount++;
+      overdueRows.push(row);
     } else if (dueMs <= weekAheadMs) {
-      weekCount++;
+      weekRows.push(row);
     }
   }
 
   return {
-    overdue_count: overdueCount,
-    today_count: todayCount,
-    week_count: weekCount,
+    overdue_count: overdueRows.length,
+    today_count: todayRows.length,
+    week_count: weekRows.length,
+    overdue_rows: overdueRows,
+    today_rows: todayRows,
+    week_rows: weekRows,
   };
 };
 
