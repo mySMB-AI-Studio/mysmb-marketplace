@@ -338,39 +338,21 @@ const flatten_team_workload = (args) => {
         };
     });
 };
+/** Number of per-row inline card slots rendered before falling back to "+N more". */
+const TEAM_WORKLOAD_INLINE_CARD_SLOTS = 5;
 /**
- * Looks up one member's name + cards array within the already-flattened
- * flatten_team_workload output, by member_id. Powers the Team Workload
- * tile's click-to-expand drill-down: a row click only records which
- * member_id is expanded (a plain string, via $bindItem since action params
- * resolve $item to a state PATH, not a value); this function re-derives the
- * actual card list — plus the member's own name, so the detail section
- * (a single shared area below the whole list, not inline under the
- * clicked row — nested repeats aren't supported here) can label whose
- * cards it's showing — from the already-loaded /ui/members array on every
- * change, rather than copying values into a second state slot at click time.
+ * Formats the "+N more" overflow caption for a Team Workload row's inline
+ * card list. Rendered inline (not via repeat — nested repeats aren't
+ * supported by this renderer) as a bounded set of positional $item slots
+ * (cards/0, cards/1, ... cards/4); this covers whatever's left beyond that
+ * bound rather than silently truncating with no disclosure.
  *
- * Args: { members: array, member_id: string }
+ * Args: { count: number }
  */
-const find_member_cards = (args) => {
-    const members = Array.isArray(args.members) ? args.members : [];
-    const memberId = String(args.member_id ?? '');
-    if (!memberId)
-        return { name: '', cards: [] };
-    const match = members.find((m) => String(m.member_id ?? '') === memberId);
-    return {
-        name: String(match?.name ?? ''),
-        cards: Array.isArray(match?.cards) ? match.cards : [],
-    };
-};
-/**
- * Formats the Team Workload detail section's label, e.g. "S. Baker's cards".
- *
- * Args: { name: string }
- */
-const format_member_detail_label = (args) => {
-    const name = String(args.name ?? '');
-    return name ? `${name}'s cards` : '';
+const format_more_cards_count = (args) => {
+    const count = Number(args.count ?? 0);
+    const extra = count - TEAM_WORKLOAD_INLINE_CARD_SLOTS;
+    return extra > 0 ? `+${extra} more` : '';
 };
 const elements = {
     slug: 'trello',
@@ -384,8 +366,7 @@ const elements = {
         flatten_due_date_tracker,
         format_tracker_legend,
         flatten_team_workload,
-        find_member_cards,
-        format_member_detail_label,
+        format_more_cards_count,
     },
 };
 export default elements;
