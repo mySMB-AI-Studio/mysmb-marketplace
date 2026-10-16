@@ -73,7 +73,10 @@
                     "summarizeSummary": { "$state": "/google-workspace-meet/summarize_meeting_transcript/summary" },
                     "summarizeDecisions": { "$state": "/google-workspace-meet/summarize_meeting_transcript/decisions" },
                     "summarizeActionItems": { "$state": "/google-workspace-meet/summarize_meeting_transcript/actionItems" },
-                    "summarizeError": { "$state": "/google-workspace-meet/summarize_meeting_transcript/error" }
+                    "summarizeError": { "$state": "/google-workspace-meet/summarize_meeting_transcript/error" },
+                    "summarizeCallError": { "$state": "/_errors/google-workspace-meet.summarize_meeting_transcript" },
+                    "pendingId": { "$state": "/ui/meetingSummariesPendingId" },
+                    "saved": { "$state": "/ui/meetingSummariesView/saved" }
                   }
                 }
               }
@@ -97,7 +100,10 @@
                     "summarizeSummary": { "$state": "/google-workspace-meet/summarize_meeting_transcript/summary" },
                     "summarizeDecisions": { "$state": "/google-workspace-meet/summarize_meeting_transcript/decisions" },
                     "summarizeActionItems": { "$state": "/google-workspace-meet/summarize_meeting_transcript/actionItems" },
-                    "summarizeError": { "$state": "/google-workspace-meet/summarize_meeting_transcript/error" }
+                    "summarizeError": { "$state": "/google-workspace-meet/summarize_meeting_transcript/error" },
+                    "summarizeCallError": { "$state": "/_errors/google-workspace-meet.summarize_meeting_transcript" },
+                    "pendingId": { "$state": "/ui/meetingSummariesPendingId" },
+                    "saved": { "$state": "/ui/meetingSummariesView/saved" }
                   }
                 }
               }
@@ -121,7 +127,10 @@
                     "summarizeSummary": { "$state": "/google-workspace-meet/summarize_meeting_transcript/summary" },
                     "summarizeDecisions": { "$state": "/google-workspace-meet/summarize_meeting_transcript/decisions" },
                     "summarizeActionItems": { "$state": "/google-workspace-meet/summarize_meeting_transcript/actionItems" },
-                    "summarizeError": { "$state": "/google-workspace-meet/summarize_meeting_transcript/error" }
+                    "summarizeError": { "$state": "/google-workspace-meet/summarize_meeting_transcript/error" },
+                    "summarizeCallError": { "$state": "/_errors/google-workspace-meet.summarize_meeting_transcript" },
+                    "pendingId": { "$state": "/ui/meetingSummariesPendingId" },
+                    "saved": { "$state": "/ui/meetingSummariesView/saved" }
                   }
                 }
               }
@@ -145,7 +154,10 @@
                     "summarizeSummary": { "$state": "/google-workspace-meet/summarize_meeting_transcript/summary" },
                     "summarizeDecisions": { "$state": "/google-workspace-meet/summarize_meeting_transcript/decisions" },
                     "summarizeActionItems": { "$state": "/google-workspace-meet/summarize_meeting_transcript/actionItems" },
-                    "summarizeError": { "$state": "/google-workspace-meet/summarize_meeting_transcript/error" }
+                    "summarizeError": { "$state": "/google-workspace-meet/summarize_meeting_transcript/error" },
+                    "summarizeCallError": { "$state": "/_errors/google-workspace-meet.summarize_meeting_transcript" },
+                    "pendingId": { "$state": "/ui/meetingSummariesPendingId" },
+                    "saved": { "$state": "/ui/meetingSummariesView/saved" }
                   }
                 }
               }
@@ -551,12 +563,21 @@
         },
         "visible": { "$item": "canSummarize" },
         "on": {
-          "click": {
-            "action": "google-workspace-meet.summarize_meeting_transcript",
-            "params": {
-              "conferenceRecordName": { "$computed": "identity", "args": { "value": { "$item": "id" } } }
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/meetingSummariesPendingId",
+                "value": { "$computed": "identity", "args": { "value": { "$item": "id" } } }
+              }
+            },
+            {
+              "action": "google-workspace-meet.summarize_meeting_transcript",
+              "params": {
+                "conferenceRecordName": { "$computed": "identity", "args": { "value": { "$item": "id" } } }
+              }
             }
-          }
+          ]
         }
       },
       "summarizeErrorNotice": {
@@ -789,7 +810,7 @@
       },
       "footerCaption": {
         "type": "Text",
-        "props": { "text": "Transcripts from the last 30 days · summaries saved once made", "tone": "muted", "truncate": true }
+        "props": { "text": "Your 20 most recent Google Meet meetings", "tone": "muted", "truncate": true }
       },
       "footerButton": {
         "type": "Button",
