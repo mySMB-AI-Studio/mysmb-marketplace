@@ -1,0 +1,135 @@
+{
+  "title": "MYOB Budget Management",
+  "description": "Live, validated MYOB Budget Management (M01): Budget by month, Balance sheet budgets, Budget vs actual.",
+  "tags": [
+    "myob",
+    "budget",
+    "M01"
+  ],
+  "fileName": "myob-budget-management.html",
+  "dataBindings": {
+    "inputs": [
+      {
+        "name": "budget_year",
+        "label": "Budget year",
+        "type": "enum",
+        "options": [
+          "current",
+          "next"
+        ],
+        "default": "current"
+      },
+      {
+        "name": "financial_year",
+        "label": "Financial year (worked out from the budget year)",
+        "type": "number",
+        "min": 2000,
+        "max": 2100,
+        "default": 2027
+      },
+      {
+        "name": "fy_start",
+        "label": "Financial year start (worked out)",
+        "type": "date",
+        "default": "2026-07-01"
+      },
+      {
+        "name": "act_end",
+        "label": "Actuals to (end of last month, worked out)",
+        "type": "date",
+        "default": "2026-08-31"
+      },
+      {
+        "name": "company_file",
+        "label": "Company file",
+        "type": "string",
+        "maxLength": 64,
+        "default": ""
+      },
+      {
+        "name": "persona",
+        "label": "View as",
+        "type": "enum",
+        "options": [
+          "Client",
+          "Bookkeeper",
+          "Practitioner",
+          "Executive"
+        ],
+        "default": "Bookkeeper"
+      },
+      {
+        "name": "display",
+        "label": "Display settings",
+        "type": "string",
+        "maxLength": 300,
+        "default": "{\"cents\":0,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"budget\",\"x\":\"\"}"
+      }
+    ],
+    "bindings": [
+      {
+        "id": "budget",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_budget"
+        },
+        "params": {
+          "financial_year": {
+            "kind": "input",
+            "input": "financial_year"
+          },
+          "myob_company_file_id": {
+            "kind": "input",
+            "input": "company_file"
+          }
+        }
+      },
+      {
+        "id": "pnl",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_profit_and_loss_3m"
+        },
+        "params": {
+          "from_date": {
+            "kind": "input",
+            "input": "fy_start"
+          },
+          "to_date": {
+            "kind": "input",
+            "input": "act_end"
+          },
+          "reporting_basis": {
+            "kind": "static",
+            "value": "Accrual"
+          },
+          "myob_company_file_id": {
+            "kind": "input",
+            "input": "company_file"
+          }
+        }
+      },
+      {
+        "id": "accounts",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_accounts"
+        },
+        "params": {
+          "myob_company_file_id": {
+            "kind": "input",
+            "input": "company_file"
+          }
+        }
+      },
+      {
+        "id": "company_files",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_company_files"
+        },
+        "params": {}
+      }
+    ]
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "title": "MYOB Payables Reconciliation",
+  "description": "Live, validated MYOB Payables Reconciliation (M41, M42): Payables reconciliation with tax (M41), Payables reconciliation exceptions (M42).",
+  "tags": [
+    "myob",
+    "payables",
+    "reconciliation",
+    "M41",
+    "M42"
+  ],
+  "fileName": "myob-payables-reconciliation.html",
+  "dataBindings": {
+    "inputs": [
+      {
+        "name": "as_at",
+        "label": "As at",
+        "type": "date",
+        "default": "today"
+      },
+      {
+        "name": "company_file",
+        "label": "Company file",
+        "type": "string",
+        "maxLength": 64,
+        "default": ""
+      },
+      {
+        "name": "persona",
+        "label": "View as",
+        "type": "enum",
+        "options": [
+          "Client",
+          "Bookkeeper",
+          "Practitioner",
+          "Executive"
+        ],
+        "default": "Bookkeeper"
+      },
+      {
+        "name": "display",
+        "label": "Display settings",
+        "type": "string",
+        "maxLength": 300,
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"today\",\"c\":\"none\",\"v\":\"recon\"}"
+      }
+    ],
+    "bindings": [
+      {
+        "id": "bills",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_bills"
+        },
+        "params": {
+          "status": {
+            "kind": "static",
+            "value": "Open"
+          },
+          "myob_company_file_id": {
+            "kind": "input",
+            "input": "company_file"
+          }
+        }
+      },
+      {
+        "id": "bs",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_balance_sheet"
+        },
+        "params": {
+          "date": {
+            "kind": "input",
+            "input": "as_at"
+          },
+          "reporting_basis": {
+            "kind": "static",
+            "value": "Accrual"
+          },
+          "myob_company_file_id": {
+            "kind": "input",
+            "input": "company_file"
+          }
+        }
+      },
+      {
+        "id": "accounts",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_accounts"
+        },
+        "params": {
+          "myob_company_file_id": {
+            "kind": "input",
+            "input": "company_file"
+          }
+        }
+      },
+      {
+        "id": "company_files",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_company_files"
+        },
+        "params": {}
+      }
+    ]
+  }
+}
