@@ -1,7 +1,7 @@
 {
   "name": "abr-lookup",
-  "version": "0.0.1",
-  "description": "Look up Australian businesses on the Australian Business Register: ABN status, GST registration, charity (DGR) status, business names and location. No account needed.",
+  "version": "0.0.2",
+  "description": "Look up Australian businesses on the Australian Business Register: ABN status, GST registration, charity (DGR) status, business names and location. Needs an access key from mySMB.",
   "author": {
     "name": "mySMB AI Studio"
   },
@@ -19,8 +19,17 @@
     "bookkeeping"
   ],
   "connection": {
-    "authType": "none",
-    "instructions": "No account needed: lookups use the public ABN Lookup service through mySMB's own registration. Click Connect to enable.",
-    "docUrl": "https://abr.business.gov.au/"
+    "authType": "api_key",
+    "instructions": "Lookups use mySMB's own ABN Lookup registration. Paste the **ABR Lookup access key** mySMB issued to your workspace. A workspace admin can add it once under **Admin → Service connections**, so everyone's tiles, reports and automations use it without connecting individually; chat agents and mySidekick use each person's own connection.",
+    "docUrl": "https://abr.business.gov.au/",
+    "fields": [
+      {
+        "name": "ABR_ACCESS_KEY",
+        "label": "ABR Lookup access key",
+        "type": "password",
+        "required": true,
+        "helpText": "Issued by mySMB for your workspace. It isn't an ABR GUID: you don't need to register with the ABR."
+      }
+    ]
   }
 }
