@@ -263,6 +263,120 @@ const schedule_title = (args) => {
     const d = new Date(p.y, p.mo, p.d);
     return `Schedule for ${d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })}`;
 };
+// ── transcript_display_text ─────────────────────────────────────────
+// Converts raw WebVTT transcript content (as returned by
+// m365-teams-transcripts.get_transcript_content) into display-ready text:
+// one paragraph per speaker TURN (not per VTT cue), each led by the
+// speaker's name on its own line when Teams provides one — replacing the
+// raw HH:MM:SS.mmm --> HH:MM:SS.mmm timestamp line a cue normally leads
+// with, which isn't meaningful to a reader skimming who said what.
+//
+// Graph/Teams splits a single person's continuous speech into several
+// small VTT cues (roughly every 15-20s) regardless of whether they've
+// actually finished talking — confirmed live, a real test transcript's
+// first speaker alone spanned 3 separate cues with sub-second gaps
+// between them. Treating every cue as its own paragraph (the original,
+// naive approach) visibly fragments one person's statement mid-sentence.
+// Fixed by merging CONSECUTIVE cues into one paragraph when either:
+//   (a) both carry the same <v Speaker Name> tag (exact, authoritative), or
+//   (b) neither carries a tag at all AND the gap between the previous
+//       cue's end time and this cue's start time is small (<=
+//       SPEAKER_CHANGE_GAP_MS) — a real pause between different people
+//       talking (confirmed live: 17+ seconds between this same sample's
+//       two actual speaker turns) is categorically larger than the
+//       sub-second gaps VTT's own cue segmentation leaves mid-statement,
+//       so this reconstructs real turn boundaries even with no speaker
+//       tags to go by.
+//
+// Teams only bakes a speaker name into the cue as `<v Speaker Name>...
+// </v>` when the tenant has "Include speaker attribution" turned on
+// (Teams admin center > Meetings > Meeting settings > Transcript API
+// access). When it's off, Graph 403s on the attributed format and the
+// server falls back to a plain-text format with no <v> tag anywhere —
+// confirmed live against a real test tenant (every cue came back as bare
+// text, no speaker markup at all), which is exactly the case (b) above
+// exists for. This shows just the spoken text with no name line in that
+// case, rather than inventing a placeholder label implying we know who's
+// speaking when we don't.
+// Args: { value: string }
+const SPEAKER_CHANGE_GAP_MS = 2000;
+function parseVttTimestamp(ts) {
+    const m = ts.match(/(\d{2}):(\d{2}):(\d{2})\.(\d{3})/);
+    if (!m)
+        return 0;
+    const [, h, mi, s, ms] = m;
+    return (Number(h) * 3600 + Number(mi) * 60 + Number(s)) * 1000 + Number(ms);
+}
+// mm:ss (h:mm:ss once past an hour) — matches the mm:ss convention
+// search_transcripts' own `timestamp` field already uses elsewhere in this
+// same connector, so a transcript's inline timestamps read consistently
+// with its search-result timestamps.
+function formatMsAsClock(ms) {
+    const totalSeconds = Math.floor(ms / 1000);
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    const mm = h > 0 ? String(m).padStart(2, '0') : String(m);
+    const ss = String(s).padStart(2, '0');
+    return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+// Args: { value: string, showTimestamp?: boolean }
+// showTimestamp (default false, so existing callers are unaffected) prefixes
+// each turn with its start time as "[mm:ss]" — on the speaker's own line when
+// one is present, or on its own line when there's no speaker to attach it to.
+const transcript_display_text = (args) => {
+    const raw = String(args.value ?? '');
+    if (!raw.trim())
+        return '';
+    const showTimestamp = Boolean(args.showTimestamp);
+    const blocks = raw.replace(/\r\n/g, '\n').split(/\n\n+/);
+    const timeRe = /(\d{2}:\d{2}:\d{2}\.\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}\.\d{3})/;
+    const voiceRe = /^<v\s+([^>]+)>([\s\S]*?)(?:<\/v>)?$/;
+    const cues = [];
+    for (const block of blocks) {
+        const blockLines = block.split('\n').filter((l) => l.trim() && l.trim() !== 'WEBVTT');
+        const timeLineIndex = blockLines.findIndex((l) => timeRe.test(l));
+        if (timeLineIndex === -1)
+            continue;
+        const timeMatch = blockLines[timeLineIndex].match(timeRe);
+        if (!timeMatch)
+            continue;
+        const cueText = blockLines.slice(timeLineIndex + 1).join(' ').trim();
+        if (!cueText)
+            continue;
+        const voiceMatch = cueText.match(voiceRe);
+        const speaker = voiceMatch ? voiceMatch[1].trim() : null;
+        const text = voiceMatch ? voiceMatch[2].trim() : cueText;
+        if (!text)
+            continue;
+        cues.push({ speaker, text, startMs: parseVttTimestamp(timeMatch[1]), endMs: parseVttTimestamp(timeMatch[2]) });
+    }
+    const turns = [];
+    let prevEndMs = null;
+    for (const cue of cues) {
+        const last = turns[turns.length - 1];
+        const sameNamedSpeaker = Boolean(last && cue.speaker !== null && last.speaker === cue.speaker);
+        const continuesUnnamed = Boolean(last &&
+            cue.speaker === null &&
+            last.speaker === null &&
+            prevEndMs !== null &&
+            cue.startMs - prevEndMs <= SPEAKER_CHANGE_GAP_MS);
+        if (last && (sameNamedSpeaker || continuesUnnamed)) {
+            last.texts.push(cue.text);
+        }
+        else {
+            turns.push({ speaker: cue.speaker, startMs: cue.startMs, texts: [cue.text] });
+        }
+        prevEndMs = cue.endMs;
+    }
+    return turns
+        .map((t) => {
+        const stamp = showTimestamp ? `[${formatMsAsClock(t.startMs)}]` : '';
+        const header = t.speaker ? `${stamp}${stamp ? ' ' : ''}${t.speaker}` : stamp;
+        return header ? `${header}\n${t.texts.join(' ')}` : t.texts.join(' ');
+    })
+        .join('\n\n');
+};
 const elements = {
     slug: 'microsoft-365',
     functions: {
@@ -286,6 +400,7 @@ const elements = {
         day_start_iso,
         day_end_iso,
         schedule_title,
+        transcript_display_text,
     },
 };
 export default elements;
