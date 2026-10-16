@@ -25,6 +25,13 @@ if not params.get("problem") and summary.get("report_due"):
                 + esc(f["check"]) + " " + esc(f["name"]) + "</td><td class='n'>" + money(f.get("amount")) + "</td><td>"
                 + esc(f["text"]) + link + "</td><td>" + esc(ck_ref(f["key"])) + "</td></tr>")
 
+    def last_checked(state):
+        failed = state.get("failed") or {}
+        if failed.get("on") and (not state.get("last_daily") or failed["on"] > state["last_daily"]):
+            return ("<span class='sHigh'>Couldn't read Xero on " + esc(ck_date_text(ck_day(failed["on"]))) + "</span>"
+                    + (" (last checked " + esc(ck_date_text(ck_day(state["last_daily"]))) + ")" if state.get("last_daily") else ""))
+        return esc(ck_date_text(ck_day(state["last_daily"]))) if state.get("last_daily") else "Not yet"
+
     summary_rows, query_rows, open_rows = [], [], []
     for c, state, rows in clients:
         quiet = len([f for f in (state.get("findings") or {}).values() if f.get("status") in ("dismissed", "snoozed")])
@@ -32,17 +39,27 @@ if not params.get("problem") and summary.get("report_due"):
         summary_rows.append("<tr><td>" + esc(c.get("name")) + "</td><td class='n'>" + str(count["High"] or "—") + "</td><td class='n'>"
                             + str(count["Medium"] or "—") + "</td><td class='n'>" + str(count["Low"] or "—") + "</td><td class='n'>"
                             + money(sum(f.get("amount") or 0 for f in rows) if rows else None) + "</td><td class='n'>"
-                            + str(quiet or "—") + "</td><td>" + esc(state.get("last_daily") or "not yet") + "</td></tr>")
+                            + str(quiet or "—") + "</td><td>" + last_checked(state) + "</td></tr>")
         for f in rows:
             (query_rows if f["check"] in CK_CLIENT_QUERY else open_rows).append(finding_row(c.get("name"), f))
+    every = [f for _c, _s, rows in clients for f in rows]
+    totals = (str(len(clients)) + " business" + ("" if len(clients) == 1 else "es") + " · " + str(len(every)) + " open finding"
+              + ("" if len(every) == 1 else "s") + " · " + str(len([f for f in every if f["severity"] == "High"])) + " high · "
+              + "$" + money(sum(f.get("amount") or 0 for f in every)) + " at risk")
     head = "<tr><th>Business</th><th>Severity</th><th>Check</th><th>$</th><th>Finding</th><th>Ref</th></tr>"
     page = (
         "<!doctype html><html><head><meta charset='utf-8'><title>Ledger checks " + str(today) + "</title>"
-        "<style>body{font:14px/1.45 system-ui,sans-serif;margin:24px;color:#1c2330}h1{font-size:20px}h2{font-size:16px;margin-top:28px}"
-        "table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid #e3e6ec;padding:6px 8px;text-align:left;vertical-align:top}"
-        "th{background:#f3f5f8;font-size:12px}.n{text-align:right;white-space:nowrap}.sHigh{color:#b42318;font-weight:600}"
-        ".sMedium{color:#b54708}.sLow{color:#475467}p.m{color:#5d6778}</style></head><body>"
+        "<meta name='color-scheme' content='light'>"
+        "<style>html{background:#ffffff;color-scheme:light}"
+        "body{font:14px/1.45 system-ui,sans-serif;margin:0;padding:24px 28px;color:#1c2330;background:#ffffff}"
+        "h1{font-size:20px;margin:0 0 4px;color:#101828}h2{font-size:16px;margin:28px 0 8px;color:#101828}"
+        "table{border-collapse:collapse;width:100%;background:#ffffff}"
+        "th,td{border-bottom:1px solid #e3e6ec;padding:6px 8px;text-align:left;vertical-align:top;color:#1c2330}"
+        "th{background:#f3f5f8;font-size:12px;color:#344054}.n{text-align:right;white-space:nowrap}"
+        ".sHigh{color:#b42318;font-weight:600}.sMedium{color:#b54708}.sLow{color:#475467}p.m{color:#5d6778}"
+        ".k{font-size:15px;font-weight:600;color:#101828;margin:8px 0 4px}a{color:#175cd3}</style></head><body>"
         "<h1>Data quality: ledger checks, " + ck_date_text(today) + "</h1>"
+        "<p class='k'>" + esc(totals) + "</p>"
         "<p class='m'>Open findings from the Ledger checks automation as of its last run for each business (not live). "
         "Severities are the checks catalogue's defaults. Dismissed and snoozed findings aren't listed.</p>"
         "<h2>By business</h2><table><thead><tr><th>Business</th><th>High</th><th>Medium</th><th>Low</th><th>$ at risk</th>"

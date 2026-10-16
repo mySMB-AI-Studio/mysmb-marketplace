@@ -400,8 +400,10 @@ class Checks(unittest.TestCase):
         self.assertEqual(len(self.w.artifacts), 1)
         page = self.w.artifacts[0]["content"]
         self.assertEqual(self.w.artifacts[0]["title"], "Ledger checks " + str(TODAY))
-        for text in ("Acme Plumbing", "Client queries", "CHK-055"):
+        for text in ("Acme Plumbing", "Client queries", "CHK-055", "1 business · 1 open finding · 0 high · $440.00 at risk"):
             self.assertIn(text, page)
+        # Its own white page, so it reads the same in a dark-themed viewer.
+        self.assertIn("html{background:#ffffff", page)
         self.assertEqual(self.w.notifications[0]["user_ids"], [OWNER])
         self.overnight()
         self.assertEqual(len(self.w.artifacts), 1)
@@ -421,6 +423,33 @@ class Checks(unittest.TestCase):
         self.assertIn("CHK-055", self.open_item()["description"])
         steps = self.check_now("Nobody Here")
         self.assertIn("Acme Plumbing", steps["run_checks"]["outputs"]["problem"])
+
+    def test_a_client_xero_refuses_is_tried_three_times_a_day_and_shown_in_the_report(self):
+        self.w.files["Bookkeeping/Clients/gone.json"] = json.dumps({"version": 1, "slug": "gone", "name": "Gone Pty Ltd",
+                                                                   "xero_tenant_id": "tenant-gone", "gst_registered": True})
+        for n in range(1, 4):
+            errors = self.overnight()["run_checks"]["outputs"]["summary"]["errors"]
+            self.assertEqual(len(errors), 1)
+            self.assertIn("Gone Pty Ltd: ", errors[0])
+            self.assertNotIn("not retried", errors[0])
+            self.assertEqual(json.loads(self.w.files["Bookkeeping/Checks/gone.json"])["failed"]["tries"], n)
+        errors = self.overnight()["run_checks"]["outputs"]["summary"]["errors"]
+        self.assertIn("(not retried again today)", errors[0])
+        self.assertEqual(json.loads(self.w.files["Bookkeeping/Checks/gone.json"])["failed"]["tries"], 3)
+        # The weekly report went out on the first night, saying which file couldn't be read.
+        self.assertEqual(len(self.w.artifacts), 1)
+        self.assertIn("Couldn't read Xero on", self.w.artifacts[0]["content"])
+        # Tomorrow it's tried again.
+        gone = json.loads(self.w.files["Bookkeeping/Checks/gone.json"])
+        gone["failed"]["on"] = day(1)
+        self.w.files["Bookkeeping/Checks/gone.json"] = json.dumps(gone)
+        errors = self.overnight()["run_checks"]["outputs"]["summary"]["errors"]
+        self.assertNotIn("not retried", errors[0])
+        # A manual run always tries, and a good read clears the failure.
+        self.w.xero.add_org("tenant-gone", "Gone Pty Ltd")
+        steps = self.check_now("Gone Pty Ltd")
+        self.assertEqual(steps["run_checks"]["outputs"]["summary"]["errors"], [])
+        self.assertNotIn("failed", json.loads(self.w.files["Bookkeeping/Checks/gone.json"]))
 
     def test_no_clients_set_up_says_so(self):
         del self.w.files["Bookkeeping/Clients/acme-plumbing.json"]
