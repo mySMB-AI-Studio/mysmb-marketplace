@@ -1011,11 +1011,21 @@ const build_events_view = (args) => {
 // meeting here, so one freshly summarized card fills in without refetching
 // the whole dashboard.
 //
+// The tool's result paths only ever hold the LATEST call, so each
+// summarised meeting is also kept in the view's own `saved` map, which the
+// spec passes back in as `saved` on every rebuild — summarising a second
+// meeting no longer blanks the first. A failed call (timeout, connection
+// problem) never reaches those result paths; it lands on the runtime's
+// `/_errors/<mcp>.<tool>` path instead, passed in as `summarizeCallError`
+// and shown on the meeting whose button was pressed (`pendingId`).
+//
 // Args: {
 //   meetings: MeetingSummaryCard[], stats: {...}, tab: string,
 //   expandedId?: string, aiUnavailable?: boolean,
 //   summarizeId?, summarizeOk?, summarizeSummary?, summarizeDecisions?,
 //   summarizeActionItems?, summarizeError?,
+//   saved?: Record<id, { summary, decisions, actionItems }>,
+//   pendingId?: string, summarizeCallError?: string,
 // }
 function formatClockTime(ms) {
     try {
@@ -1041,6 +1051,9 @@ function humanDuration(minutes) {
 const MAX_VISIBLE_PARTICIPANTS = 4;
 const MAX_VISIBLE_DECISIONS = 4;
 const MAX_VISIBLE_ACTION_ITEMS = 5;
+/** expandedId meaning "the user collapsed every card". An empty id means
+ * "nothing clicked yet", which opens the newest meeting. */
+const COLLAPSED = '__none__';
 const build_meeting_summaries_view = (args) => {
     const meetings = Array.isArray(args.meetings) ? args.meetings : [];
     const stats = args.stats ?? {};
@@ -1057,11 +1070,20 @@ const build_meeting_summaries_view = (args) => {
         ? args.summarizeActionItems
         : [];
     const oneOffError = str(args.summarizeError);
+    const pendingId = str(args.pendingId);
+    const callError = str(args.summarizeCallError);
+    const saved = args.saved && typeof args.saved === 'object' && !Array.isArray(args.saved)
+        ? { ...args.saved }
+        : {};
+    if (oneOffId && oneOffOk && oneOffSummary) {
+        saved[oneOffId] = { summary: oneOffSummary, decisions: oneOffDecisions, actionItems: oneOffActionItems };
+    }
     const decorated = meetings.map((m) => {
-        const isOneOff = !!oneOffId && str(m.id) === oneOffId;
-        const merged = isOneOff && oneOffOk
-            ? { ...m, summary: oneOffSummary || m.summary, decisions: oneOffDecisions, actionItems: oneOffActionItems }
-            : m;
+        const id = str(m.id);
+        const isOneOff = !!oneOffId && id === oneOffId;
+        // The dashboard's own summary wins; otherwise one made with Summarize.
+        const kept = str(m.summary) ? null : saved[id];
+        const merged = kept ? { ...m, ...kept } : m;
         const actionItems = Array.isArray(merged.actionItems) ? merged.actionItems : [];
         const transcriptStatus = str(merged.transcriptStatus) || 'none';
         const hasTranscript = transcriptStatus !== 'none';
@@ -1074,7 +1096,13 @@ const build_meeting_summaries_view = (args) => {
             hasActionItems: actionItems.length > 0,
             hasSummary,
             notSummarised: hasTranscript && !hasSummary,
-            summarizeError: isOneOff && !oneOffOk ? oneOffError : '',
+            // Newest reason first: this meeting's Summarize call failing outright,
+            // then the tool's own answer, then the dashboard's attempt.
+            summarizeError: hasSummary
+                ? ''
+                : (pendingId === id && callError ? `Couldn't summarise: ${callError}` : '')
+                    || (isOneOff && !oneOffOk ? oneOffError : '')
+                    || (str(merged.summaryError) ? `Couldn't summarise: ${str(merged.summaryError)}` : ''),
         };
     });
     const counts = {
@@ -1089,7 +1117,7 @@ const build_meeting_summaries_view = (args) => {
             return m.notSummarised;
         return true;
     });
-    const expandedId = requestedExpandedId || str(filtered[0]?.id);
+    const expandedId = requestedExpandedId === COLLAPSED ? '' : requestedExpandedId || str(filtered[0]?.id);
     // Banner: the call-to-action above the tabs. Hidden once every transcript
     // has a summary; still shown without its button when the server has no
     // ANTHROPIC_API_KEY, so the empty summaries explain themselves.
@@ -1201,7 +1229,7 @@ const build_meeting_summaries_view = (args) => {
             hasActionItemsList: m.actionItems.length > 0,
             expanded: str(m.id) === expandedId,
             chevronIcon: str(m.id) === expandedId ? 'ChevronUp' : 'ChevronDown',
-            toggleId: str(m.id) === expandedId ? '' : str(m.id),
+            toggleId: str(m.id) === expandedId ? COLLAPSED : str(m.id),
         };
     });
     return {
@@ -1214,6 +1242,7 @@ const build_meeting_summaries_view = (args) => {
         counts,
         rows,
         expandedId,
+        saved,
     };
 };
 // ── module export ────────────────────────────────────────────────────
