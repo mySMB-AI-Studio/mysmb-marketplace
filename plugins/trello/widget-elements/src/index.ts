@@ -414,13 +414,20 @@ function formatActionText(type: string, data: Record<string, unknown>): string {
  * date (formatted via the system baseline relative_time function directly
  * in the widget spec, not here), and a type-specific action_text.
  *
- * Args: { value: array } — get_recent_activity's `actions` array (raw
- * Trello Action objects).
+ * Args: { value: array, search?: string, person?: string } —
+ * get_recent_activity's `actions` array (raw Trello Action objects), an
+ * optional case-insensitive substring filter matched against the actor's
+ * name and the formatted action text, and an optional exact actor-name
+ * filter (from the person dropdown, populated by list_activity_people —
+ * values there already come from the same displayName derivation as
+ * actor_name here, so an exact match is safe).
  */
 const flatten_recent_activity: ComputedFunction = (args) => {
   const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  const search = String(args.search ?? '').trim().toLowerCase();
+  const person = String(args.person ?? '').trim().toLowerCase();
 
-  return raw.map((action) => {
+  const rows = raw.map((action) => {
     const memberCreator = (action.memberCreator ?? {}) as Record<string, unknown>;
     const rawName = String(memberCreator.fullName ?? memberCreator.username ?? 'Someone');
     const { displayName } = formatPersonName(rawName);
@@ -437,16 +444,63 @@ const flatten_recent_activity: ComputedFunction = (args) => {
       date: String(action.date ?? ''),
     };
   });
+
+  return rows.filter((row) => {
+    const matchesSearch =
+      !search || row.actor_name.toLowerCase().includes(search) || row.action_text.toLowerCase().includes(search);
+    const matchesPerson = !person || row.actor_name.toLowerCase() === person;
+    return matchesSearch && matchesPerson;
+  });
 };
 
 /**
- * Formats the Recent Activity tile's "N today" badge.
+ * Lists the distinct people who appear in a get_recent_activity response,
+ * for the person-filter dropdown. "All people" is always first (empty
+ * value — no filter). Names use the same formatPersonName derivation as
+ * flatten_recent_activity's actor_name, so dropdown values match rows
+ * exactly.
  *
- * Args: { count: number }
+ * Args: { value: array } — get_recent_activity's raw `actions` array.
  */
-const format_today_count: ComputedFunction = (args) => {
-  const count = Number(args.count ?? 0);
-  return `${count} today`;
+const list_activity_people: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  const seen = new Map<string, string>();
+
+  for (const action of raw) {
+    const memberCreator = (action.memberCreator ?? {}) as Record<string, unknown>;
+    const rawName = String(memberCreator.fullName ?? memberCreator.username ?? '');
+    if (!rawName) continue;
+    const { displayName } = formatPersonName(rawName);
+    const name = displayName || rawName;
+    const key = name.toLowerCase();
+    if (!seen.has(key)) seen.set(key, name);
+  }
+
+  const people = Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
+  return [{ value: '', label: 'All people' }, ...people.map((name) => ({ value: name, label: name }))];
+};
+
+/**
+ * Formats an activity row's date for display next to its relative-time
+ * caption ("1d ago · 15-Oct-26") — except today's actions, which show
+ * "Today" instead of repeating a date the viewer already knows. Compared
+ * against the viewer's LOCAL calendar day (matching how `date` already
+ * reads via `relative_time`), not UTC.
+ *
+ * Args: { value: string } — an ISO date string.
+ */
+const format_activity_date: ComputedFunction = (args) => {
+  const raw = args.value;
+  if (raw == null || raw === '') return '';
+  const ms = Date.parse(String(raw));
+  if (Number.isNaN(ms)) return String(raw);
+
+  const d = new Date(ms);
+  const now = new Date();
+  const isToday =
+    d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+
+  return isToday ? 'Today' : formatDdMmmYy(String(raw));
 };
 
 const elements: PluginElementsModule = {
@@ -463,7 +517,8 @@ const elements: PluginElementsModule = {
     flatten_team_workload,
     format_more_cards_count,
     flatten_recent_activity,
-    format_today_count,
+    list_activity_people,
+    format_activity_date,
   },
 };
 
