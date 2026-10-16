@@ -15,8 +15,19 @@ patient-facing or diary-changing through WorkQ before it happens.
     booking is intentionally left untouched — the patient still has to reply picking one of the
     offered times, and no automation yet reads that reply and moves the booking.
 
-More automations from the practice's Top 10 shortlist (cancellation gap filler, referral/care
-plan watchdog, no-show recovery, new-enquiry-to-booked-patient, calendar guard) will be added here.
+- **#2 Cancellation gap filler**, first step:
+  - *Find freed slots to fill* (scheduled, every 15 minutes): finds Cliniko slots that came free
+    between 2 hours and 7 days from now. These are cancelled bookings, plus old times freed when
+    *Apply patient's chosen reschedule time* moves a booking (it leaves a note in
+    `PracticeManager/State/<slug>-freed-slots.json`). It skips slots that have been rebooked since.
+    For each free slot it lists candidate patients and creates one WorkQ item. Candidates are
+    patients booked later with the same practitioner, and overdue patients last seen 6–16 weeks
+    ago with nothing booked. It sends nothing; sending offers and booking the first acceptance are
+    the next steps. Override the window with `gap_filler.min_notice_hours` / `max_days_ahead` in
+    the practice settings file.
+
+More automations from the practice's Top 10 shortlist (referral/care plan watchdog, no-show
+recovery, new-enquiry-to-booked-patient, calendar guard) will be added here.
 
 ## Requires
 
