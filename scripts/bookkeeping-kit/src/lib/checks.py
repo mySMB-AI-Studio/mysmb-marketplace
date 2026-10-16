@@ -70,6 +70,11 @@ CK_REGISTER = ("CHK-002", "CHK-003", "CHK-004", "CHK-005", "CHK-009", "CHK-030",
                "CHK-071", "CHK-072", "CHK-076", "CHK-077", "CHK-085", "CHK-088")
 CK_REGISTER_DAYS = 14
 CK_HEURISTIC = ("CHK-003", "CHK-005", "CHK-009", "CHK-056", "CHK-129", "CHK-133")
+# The GST-related checks: the GST checks section of the weekly report (CRA-10 GST Check).
+CK_GST = ("CHK-003", "CHK-008", "CHK-031", "CHK-058", "CHK-059", "CHK-068", "CHK-069", "CHK-076", "CHK-077", "CHK-085",
+          "CHK-129", "CHK-136")
+# Resolved findings are kept this long (enough for a financial year's comparison), so reports can show what got fixed.
+CK_RESOLVED_KEEP_DAYS = 400
 # Findings the client has to answer (receipts, ABNs, TPAR details): the Client Queries part of the weekly report.
 CK_CLIENT_QUERY = ("CHK-007", "CHK-008", "CHK-021", "CHK-086")
 CK_CATEGORIES = ("Contacts", "Banking", "Sales", "Purchases", "Bookkeeping")
@@ -754,10 +759,15 @@ def ck_reconcile(state, found, evaluated, ticked, today, actor=""):
         if f["status"] == "open" and prev.get("status") != "open":
             new.append(f)
         findings[key] = f
+    log = [r for r in (state.get("resolved") or [])
+           if str(r.get("on") or "") >= str(today - datetime.timedelta(days=CK_RESOLVED_KEEP_DAYS))]
     for key in list(findings):
         if key not in current and findings[key]["check"] in evaluated:
             if findings[key].get("status") == "open":
                 resolved.append(findings[key])
+                # Only what a report needs: no finding text (names, amounts per contact) kept after it's fixed.
+                log.append({"check": findings[key]["check"], "key": key, "amount": findings[key].get("amount"),
+                            "first_seen": findings[key].get("first_seen"), "on": str(today)})
             findings.pop(key)
             dismissed.pop(key, None)
             snoozed.pop(key, None)
@@ -766,6 +776,7 @@ def ck_reconcile(state, found, evaluated, ticked, today, actor=""):
             snoozed.pop(key)
             findings[key]["status"] = "open"
             new.append(findings[key])
+    state["resolved"] = log
     return new, resolved
 
 

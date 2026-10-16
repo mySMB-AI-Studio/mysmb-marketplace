@@ -28,7 +28,8 @@ const rows = (d) => [...d.querySelectorAll('[data-row]')].map((e) => e.getAttrib
   const fo = t.doc.querySelector('[data-row="CRA-01"]').textContent;
   ok('CRA-01 box is Live and names the Xero template and the client', /Live/.test(fo) && fo.includes('Xero Financial Overview') && fo.includes('Northwind Trading Pty Ltd'), fo);
   ok('CRA-12 box says no time source', /no time source/.test(t.doc.querySelector('[data-row="CRA-12"]').textContent));
-  ok('CRA-08 box waits for the checks engine', /checks engine/.test(t.doc.querySelector('[data-row="CRA-08"]').textContent));
+  for (const id of ['CRA-02', 'CRA-08', 'CRA-10']) ok(id + ' box points to the weekly Ledger checks report (Bookkeeping for Xero)', /weekly Ledger checks report/.test(t.doc.querySelector('[data-row="' + id + '"]').textContent), t.doc.querySelector('[data-row="' + id + '"]').textContent);
+  ok('CRA-09 box says a live report can’t read the findings yet', /can’t read the checks engine/.test(t.doc.querySelector('[data-row="CRA-09"]').textContent));
   ok('live (or export-routed) boxes are exactly the Wave 1 + Wave 2 items', [...t.doc.querySelectorAll('.pill.live')].map((p) => p.closest('[data-row]').getAttribute('data-row')).filter((r) => /^CRA/.test(r)).join() === 'CRA-01,CRA-03,CRA-04,CRA-05,CRA-06,CRA-07,CRA-11,CRA-14');
   ok('CRA-15 box says the platform has no per-client WorkQ activity yet', /no link to a client yet/.test(t.doc.querySelector('[data-row="CRA-15"]').textContent), t.doc.querySelector('[data-row="CRA-15"]').textContent);
 
