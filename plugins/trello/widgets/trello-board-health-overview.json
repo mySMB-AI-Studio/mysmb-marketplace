@@ -1,0 +1,840 @@
+{
+  "brandColor": "#34DFBA",
+  "category": "projects",
+  "connectorsUsed": [
+    "trello"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "trello",
+    "params": {},
+    "tool": "get_boards_health_summary"
+  },
+  "description": "Fleet-wide Trello health: completion rate, active boards, and lists/cards tracked across every board.",
+  "id": "trello-board-health-overview",
+  "keywords": [
+    "trello health",
+    "board overview",
+    "completion rate",
+    "active boards",
+    "kanban"
+  ],
+  "popularity": 65,
+  "sizing": {
+    "max": {
+      "colSpan": 6,
+      "rowSpan": 8
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 5
+    },
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 6
+    }
+  },
+  "spec": {
+    "elements": {
+      "card": {
+        "children": [
+          "headerRow",
+          "div0",
+          "loading",
+          "ringStatRow",
+          "div1",
+          "listsCardsRowCollapsed",
+          "listsCardsRowExpanded",
+          "listsDetailSection",
+          "div2",
+          "viewInTrelloRow"
+        ],
+        "props": {},
+        "type": "Card",
+        "watch": {
+          "/trello/list_all_cards/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/cardsRows",
+                "value": {
+                  "$computed": "trello_flatten_all_cards",
+                  "args": {
+                    "value": {
+                      "$state": "/trello/list_all_cards/data"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "/trello/list_all_lists/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/listsRows",
+                "value": {
+                  "$computed": "trello_flatten_all_lists",
+                  "args": {
+                    "value": {
+                      "$state": "/trello/list_all_lists/data"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "cardRow": {
+        "children": [
+          "cardRowInfo",
+          "cardRowDueBadge"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "cardRowBoard": {
+        "props": {
+          "text": {
+            "$item": "board_label"
+          },
+          "tone": "muted",
+          "truncate": true
+        },
+        "type": "Caption"
+      },
+      "cardRowDueBadge": {
+        "props": {
+          "text": {
+            "$item": "due_label"
+          },
+          "tone": {
+            "$item": "due_tone"
+          },
+          "variant": "soft"
+        },
+        "type": "Badge",
+        "visible": {
+          "$item": "due_label"
+        }
+      },
+      "cardRowInfo": {
+        "children": [
+          "cardRowName",
+          "cardRowBoard"
+        ],
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "cardRowName": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "name"
+          },
+          "truncate": true
+        },
+        "type": "Text"
+      },
+      "cardsEmpty": {
+        "props": {
+          "message": "No open cards found."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/trello.list_all_cards",
+              "not": true
+            },
+            {
+              "$state": "/ui/cardsRows/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "cardsLoading": {
+        "children": [
+          "cardsSk1",
+          "cardsSk2",
+          "cardsSk3"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/trello.list_all_cards"
+        }
+      },
+      "cardsRepeatList": {
+        "children": [
+          "cardRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/cardsRows"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/trello.list_all_cards",
+          "not": true
+        }
+      },
+      "cardsSectionContent": {
+        "children": [
+          "cardsLoading",
+          "cardsEmpty",
+          "cardsRepeatList"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/ui/tab/cards"
+        }
+      },
+      "cardsSk1": {
+        "props": {
+          "height": "1.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "cardsSk2": {
+        "props": {
+          "height": "1.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "cardsSk3": {
+        "props": {
+          "height": "1.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "div0": {
+        "props": {},
+        "type": "Divider"
+      },
+      "div1": {
+        "props": {},
+        "type": "Divider",
+        "visible": {
+          "$state": "/_loading/trello.get_boards_health_summary",
+          "not": true
+        }
+      },
+      "div2": {
+        "props": {},
+        "type": "Divider",
+        "visible": {
+          "$state": "/_loading/trello.get_boards_health_summary",
+          "not": true
+        }
+      },
+      "donut": {
+        "props": {
+          "centerLabel": "tracked",
+          "segments": [
+            {
+              "label": "Complete",
+              "tone": "success",
+              "value": {
+                "$state": "/trello/get_boards_health_summary/completed_due_cards"
+              }
+            },
+            {
+              "label": "Remaining",
+              "tone": "muted",
+              "value": {
+                "$state": "/trello/get_boards_health_summary/remaining_due_cards"
+              }
+            }
+          ],
+          "size": 96,
+          "thickness": 12
+        },
+        "type": "Donut"
+      },
+      "eyebrow": {
+        "props": {
+          "text": "Trello"
+        },
+        "type": "Eyebrow"
+      },
+      "headerRow": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "listRow": {
+        "children": [
+          "listRowName",
+          "listRowBoard"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "listRowBoard": {
+        "props": {
+          "text": {
+            "$item": "board_label"
+          },
+          "tone": "muted",
+          "truncate": true
+        },
+        "type": "Caption"
+      },
+      "listRowName": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "name"
+          },
+          "truncate": true
+        },
+        "type": "Text"
+      },
+      "listsCardsIcon": {
+        "props": {
+          "name": "Rows3",
+          "size": "sm",
+          "tone": "brand"
+        },
+        "type": "Icon"
+      },
+      "listsCardsIconExpanded": {
+        "props": {
+          "name": "Rows3",
+          "size": "sm",
+          "tone": "brand"
+        },
+        "type": "Icon"
+      },
+      "listsCardsLeftGroup": {
+        "children": [
+          "listsCardsIcon",
+          "listsCardsText"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "listsCardsLeftGroupExpanded": {
+        "children": [
+          "listsCardsIconExpanded",
+          "listsCardsTextExpanded"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "listsCardsRowCollapsed": {
+        "children": [
+          "listsCardsLeftGroup",
+          "listsChevronDown"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/listsExpanded",
+                "value": true
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/tab/lists",
+                "value": true
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/tab/cards",
+                "value": false
+              }
+            },
+            {
+              "action": "trello.list_all_lists",
+              "params": {}
+            },
+            {
+              "action": "trello.list_all_cards",
+              "params": {}
+            }
+          ]
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "justify": "between"
+        },
+        "type": "Row",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/trello.get_boards_health_summary",
+              "not": true
+            },
+            {
+              "$state": "/ui/listsExpanded",
+              "not": true
+            }
+          ]
+        }
+      },
+      "listsCardsRowExpanded": {
+        "children": [
+          "listsCardsLeftGroupExpanded",
+          "listsChevronUp"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/listsExpanded",
+                "value": false
+              }
+            }
+          ]
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "justify": "between"
+        },
+        "type": "Row",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/trello.get_boards_health_summary",
+              "not": true
+            },
+            {
+              "$state": "/ui/listsExpanded"
+            }
+          ]
+        }
+      },
+      "listsCardsTabRow": {
+        "children": [
+          "tabListsOn",
+          "tabListsOff",
+          "tabCardsOn",
+          "tabCardsOff"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "listsCardsText": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$computed": "trello_format_lists_cards_summary",
+            "args": {
+              "value": {
+                "$state": "/trello/get_boards_health_summary"
+              }
+            }
+          },
+          "tone": "muted"
+        },
+        "type": "Text"
+      },
+      "listsCardsTextExpanded": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$computed": "trello_format_lists_cards_summary",
+            "args": {
+              "value": {
+                "$state": "/trello/get_boards_health_summary"
+              }
+            }
+          },
+          "tone": "muted"
+        },
+        "type": "Text"
+      },
+      "listsChevronDown": {
+        "props": {
+          "name": "ChevronDown",
+          "size": "sm",
+          "tone": "muted"
+        },
+        "type": "Icon"
+      },
+      "listsChevronUp": {
+        "props": {
+          "name": "ChevronUp",
+          "size": "sm",
+          "tone": "muted"
+        },
+        "type": "Icon"
+      },
+      "listsDetailInner": {
+        "children": [
+          "listsCardsTabRow",
+          "listsSectionContent",
+          "cardsSectionContent"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack"
+      },
+      "listsDetailSection": {
+        "children": [
+          "listsDetailInner"
+        ],
+        "props": {},
+        "type": "Body",
+        "visible": {
+          "$state": "/ui/listsExpanded"
+        }
+      },
+      "listsEmpty": {
+        "props": {
+          "message": "No open lists found."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/trello.list_all_lists",
+              "not": true
+            },
+            {
+              "$state": "/ui/listsRows/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "listsLoading": {
+        "children": [
+          "listsSk1",
+          "listsSk2",
+          "listsSk3"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/trello.list_all_lists"
+        }
+      },
+      "listsRepeatList": {
+        "children": [
+          "listRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/listsRows"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/trello.list_all_lists",
+          "not": true
+        }
+      },
+      "listsSectionContent": {
+        "children": [
+          "listsLoading",
+          "listsEmpty",
+          "listsRepeatList"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/ui/tab/lists"
+        }
+      },
+      "listsSk1": {
+        "props": {
+          "height": "1.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "listsSk2": {
+        "props": {
+          "height": "1.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "listsSk3": {
+        "props": {
+          "height": "1.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/trello.get_boards_health_summary"
+        }
+      },
+      "ringGroup": {
+        "children": [
+          "donut"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "ringStatRow": {
+        "children": [
+          "ringGroup",
+          "statGroup"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "md",
+          "justify": "between"
+        },
+        "type": "Row",
+        "visible": {
+          "$state": "/_loading/trello.get_boards_health_summary",
+          "not": true
+        }
+      },
+      "sk1": {
+        "props": {
+          "height": "9rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "statGroup": {
+        "children": [
+          "statValue",
+          "statLabel"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "statLabel": {
+        "props": {
+          "text": "Active boards",
+          "tone": "default"
+        },
+        "type": "Caption"
+      },
+      "statValue": {
+        "props": {
+          "size": "lg",
+          "value": {
+            "$state": "/trello/get_boards_health_summary/active_board_count"
+          }
+        },
+        "type": "Stat"
+      },
+      "tabCardsOff": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/tab/lists",
+                "value": false
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/tab/cards",
+                "value": true
+              }
+            }
+          ]
+        },
+        "props": {
+          "label": "Cards",
+          "size": "sm",
+          "variant": "ghost"
+        },
+        "type": "Button",
+        "visible": {
+          "$state": "/ui/tab/cards",
+          "not": true
+        }
+      },
+      "tabCardsOn": {
+        "props": {
+          "label": "Cards",
+          "size": "sm",
+          "variant": "primary"
+        },
+        "type": "Button",
+        "visible": {
+          "$state": "/ui/tab/cards"
+        }
+      },
+      "tabListsOff": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/tab/lists",
+                "value": true
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/tab/cards",
+                "value": false
+              }
+            }
+          ]
+        },
+        "props": {
+          "label": "Lists",
+          "size": "sm",
+          "variant": "ghost"
+        },
+        "type": "Button",
+        "visible": {
+          "$state": "/ui/tab/lists",
+          "not": true
+        }
+      },
+      "tabListsOn": {
+        "props": {
+          "label": "Lists",
+          "size": "sm",
+          "variant": "primary"
+        },
+        "type": "Button",
+        "visible": {
+          "$state": "/ui/tab/lists"
+        }
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Board Health Overview"
+        },
+        "type": "Heading"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Columns3",
+          "size": "sm",
+          "tone": "brand"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "viewInTrelloButton": {
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": "https://trello.com/"
+            }
+          }
+        },
+        "props": {
+          "label": "View in Trello",
+          "leadingIcon": "ExternalLink",
+          "size": "sm",
+          "variant": "ghost"
+        },
+        "type": "Button"
+      },
+      "viewInTrelloRow": {
+        "children": [
+          "viewInTrelloButton"
+        ],
+        "props": {
+          "justify": "end"
+        },
+        "type": "Row"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "trello",
+    "boards",
+    "lists",
+    "cards",
+    "health",
+    "overview"
+  ],
+  "title": "Board Health Overview"
+}

@@ -1,0 +1,266 @@
+{
+  "category": "projects",
+  "connectorsUsed": [
+    "trello"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "trello",
+    "params": {},
+    "tool": "list_boards"
+  },
+  "description": "Your open Trello boards.",
+  "id": "trello-boards",
+  "keywords": [
+    "trello boards",
+    "board list",
+    "kanban boards"
+  ],
+  "popularity": 60,
+  "sizing": {
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 10
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 4
+    },
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 5
+    }
+  },
+  "spec": {
+    "elements": {
+      "boardDivider": {
+        "props": {},
+        "type": "Divider"
+      },
+      "boardList": {
+        "children": [
+          "boardRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/rows"
+        },
+        "type": "Stack"
+      },
+      "boardName": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "name"
+          },
+          "truncate": true,
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "boardRow": {
+        "children": [
+          "boardRowContent",
+          "boardDivider"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "boardRowContent": {
+        "children": [
+          "boardName"
+        ],
+        "props": {
+          "align": "center"
+        },
+        "type": "Row"
+      },
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "contentArea"
+        ],
+        "props": {},
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "header",
+          "body"
+        ],
+        "props": {},
+        "type": "Card",
+        "watch": {
+          "/trello/list_boards": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "trello_flatten_boards",
+                  "args": {
+                    "value": {
+                      "$state": "/trello/list_boards"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "contentArea": {
+        "children": [
+          "statTotalWrap",
+          "boardList"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "type": "Stack",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/trello.list_boards",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0"
+            }
+          ]
+        }
+      },
+      "empty": {
+        "props": {
+          "message": "No open boards found."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/trello.list_boards",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "eyebrow": {
+        "props": {
+          "text": "Trello"
+        },
+        "type": "Eyebrow"
+      },
+      "header": {
+        "children": [
+          "titleStack"
+        ],
+        "props": {},
+        "type": "Header"
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/trello.list_boards"
+        }
+      },
+      "sk1": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "statTotalCard": {
+        "children": [
+          "statTotalNum",
+          "statTotalLabel"
+        ],
+        "props": {
+          "padding": "sm",
+          "variant": "muted"
+        },
+        "type": "Section"
+      },
+      "statTotalLabel": {
+        "props": {
+          "text": "Total Boards"
+        },
+        "type": "Caption"
+      },
+      "statTotalNum": {
+        "props": {
+          "level": "h2",
+          "text": {
+            "$state": "/ui/rows/0/stat_total"
+          }
+        },
+        "type": "Heading"
+      },
+      "statTotalWrap": {
+        "children": [
+          "statTotalCard"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Boards"
+        },
+        "type": "Heading"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "trello",
+    "boards",
+    "kanban"
+  ],
+  "title": "Boards"
+}
