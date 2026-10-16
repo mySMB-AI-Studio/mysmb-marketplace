@@ -33,8 +33,13 @@ if not problem:
 
         # ── Direction: a bill is addressed to the client; a sales invoice is issued by it ──
         ident = xero_org_identity(tenant)
-        own_names = [n for n in (bk_norm(x) for x in [client.get("name"), client.get("xero_org_name")] + ident["names"]) if n]
+        own_names = [n for n in (bk_norm(x) for x in [client.get("name"), client.get("xero_org_name")] + ident["names"]
+                                 + list(client.get("aliases") or [])) if n]
         own_abn = ident["abn"]
+        if client.get("slug") and ((own_abn and client.get("abn") != own_abn) or (ident["names"] and not client.get("org_names"))):
+            # Clients saved before email intake matched on ABN: keep their ABN and Xero names on file for it.
+            bk_write_json(BK_CLIENTS + "/" + client["slug"] + ".json", dict(client, abn=own_abn or client.get("abn") or "",
+                                                                             org_names=ident["names"] or client.get("org_names") or []))
         issued_by_client = bool(own_abn and issuer_abn == own_abn) or any(
             bk_norm(issuer) == n or (len(n) > 3 and bk_norm(issuer) and (n in bk_norm(issuer) or bk_norm(issuer) in n))
             for n in own_names)

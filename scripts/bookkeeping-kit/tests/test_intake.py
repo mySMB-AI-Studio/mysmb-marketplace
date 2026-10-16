@@ -48,7 +48,8 @@ class IntakeTests(Base):
         return [p for p in self.w.files if p.startswith("Bookkeeping Inbox/" + slug + "/") and p.endswith(".pdf")]
 
     def mail_writes(self):
-        read_only = {"list_emails", "list_email_attachments", "get_email_attachment", "list_messages", "get_message", "get_attachment"}
+        read_only = {"list_emails", "list_email_attachments", "get_email_attachment", "get_email", "list_messages",
+                     "get_message", "get_attachment", "list_labels"}
         return [c for c in self.w.mail.calls if c[1] not in read_only]
 
     def test_outlook_bill_is_filed_in_the_clients_inbox_folder(self):
@@ -102,12 +103,29 @@ class IntakeTests(Base):
         self.assertEqual(list(ledger["seen"].values())[0]["outcome"], "not_a_bill")
         self.assertEqual(self.run_intake()["find_emails"]["outputs"]["candidates"], [])
 
-    def test_an_invoice_without_a_pdf_is_left_alone(self):
-        self.w.mail.add("outlook", "Photos from site", "tom@acme.example", recent(),
-                        [{"id": "a1", "name": "site.jpg", "type": "image/jpeg", "bytes": b"jpg"}])
+    def test_a_bill_with_nothing_readable_attached_becomes_an_item(self):
+        # A small image is a logo or a signature, not a photo of the bill; the bill itself is only linked online.
+        self.w.mail.add("outlook", "Your Telstra bill is ready", "billing@telstra.example", recent(),
+                        [{"id": "a1", "name": "logo.jpg", "type": "image/jpeg", "bytes": b"jpg"}],
+                        preview="Your bill for Acme Plumbing Pty Ltd is ready. View it online.")
         steps = self.run_intake()
-        self.assertEqual(steps["triage_emails"]["outputs"]["skipped"][0]["outcome"], "no_pdf")
+        self.assertEqual(len(steps["triage_emails"]["outputs"]["unreadable"]), 1)
         self.assertEqual(self.inbox_files(), [])
+        item = next(i for i in self.w.items.values() if "no-attachment" in i["labels"])
+        self.assertIn("(Acme Plumbing)", item["title"])
+        self.assertIn("links to the bill online", item["description"])
+        self.assertIn("Bookkeeping Inbox/acme-plumbing/", item["description"])
+        self.assertEqual(item["priority"], "medium")
+        ledger = json.loads(self.w.files["Bookkeeping/Mail/outlook.json"])
+        self.assertEqual(list(ledger["seen"].values())[0]["outcome"], "no_attachment")
+        self.assertEqual(self.mail_writes(), [])
+
+    def test_a_word_invoice_is_named_in_the_item(self):
+        self.w.mail.add("outlook", "Invoice 88", "accounts@sparky.example", recent(),
+                        [{"id": "a1", "name": "Invoice 88.docx", "type": "application/msword", "bytes": b"doc"}])
+        self.run_intake()
+        item = next(i for i in self.w.items.values() if "no-attachment" in i["labels"])
+        self.assertIn("Invoice 88.docx attached, which can't be read", item["description"])
 
     def test_emails_without_attachments_are_triaged_too(self):
         self.triage = [{"index": 0, "kind": "other", "capture": False, "reason": "A question about BAS"}]

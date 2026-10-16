@@ -410,34 +410,64 @@ class FakeXero:
 
 
 class FakeMail:
-    """The owner's Outlook and Gmail inboxes, shaped like m365-mail-read and google-workspace-gmail return them."""
-    SERVERS = {"m365-mail-read": "outlook", "google-workspace-gmail": "gmail"}
+    """The owner's Outlook and Gmail mailboxes and a shared Outlook mailbox, shaped like m365-mail-read,
+    m365-mail-shared and google-workspace-gmail return them. Messages live in folders (Gmail: labels). With
+    old_connector, list_emails ignores receivedAfter/oldestFirst, list_messages ignores pageToken and heicToJpeg is
+    ignored: the connectors as they were before folders, cursors and HEIC (production until it is updated)."""
+    SERVERS = {"m365-mail-read": "outlook", "m365-mail-shared": "outlook-shared", "google-workspace-gmail": "gmail"}
     MAX = 15 * 1024 * 1024
+    GMAIL_LABELS = {"Label_bills": "Bills", "Label_acme": "Clients/Acme"}
 
     def __init__(self):
-        self.boxes = {"outlook": [], "gmail": []}
+        self.boxes = {"outlook": [], "outlook-shared": [], "gmail": []}
         self.calls = []
         self.fail_download = 0
+        self.old_connector = False
+        self.shared_mailbox = "accounts@practice.example"
 
-    def add(self, provider, subject, sender, received, attachments, preview="", html=""):
-        mid = provider[:1] + "-" + str(len(self.boxes[provider]) + 1)
+    def add(self, provider, subject, sender, received, attachments, preview="", html="", folder="inbox"):
+        mid = provider[:1] + ("s" if provider == "outlook-shared" else "") + "-" + str(len(self.boxes[provider]) + 1)
         self.boxes[provider].insert(0, {"id": mid, "subject": subject, "from": sender, "received": received,
-                                        "preview": preview, "attachments": attachments, "html": html})
+                                        "preview": preview, "attachments": attachments, "html": html, "folder": folder})
         return mid
 
     def find(self, provider, mid):
         return next(m for m in self.boxes[provider] if m["id"] == mid)
 
+    @staticmethod
+    def at(value):
+        return datetime.datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+
+    def attachment(self, provider, args):
+        a = next(x for x in self.find(provider, args["messageId"])["attachments"] if x["id"] == args["attachmentId"])
+        data, name, ctype, extra = a["bytes"], a["name"], a["type"], {}
+        if a.get("heic") and args.get("heicToJpeg") and not self.old_connector:
+            data, name, ctype = a["jpeg"], re.sub(r"\.(heic|heif)$", "", name, flags=re.I) + ".jpg", "image/jpeg"
+            extra = {"convertedFrom": "image/heic"}
+        return data, name, ctype, extra
+
     def call(self, server, tool, args):
         provider = self.SERVERS[server]
         self.calls.append((provider, tool, dict(args)))
         box = self.boxes[provider]
-        if provider == "outlook":
+        if provider == "outlook-shared":
+            assert args.pop("mailbox", None) == self.shared_mailbox, "shared mailbox calls must name the mailbox"
+        if provider in ("outlook", "outlook-shared"):
             if tool == "list_emails":
+                folder = str(args.get("folder") or "").lower()
+                if folder and folder != "inbox" and not any(m["folder"].lower() == folder for m in box):
+                    raise RuntimeError("tool_error: Mail folder \"" + args["folder"] + "\" wasn't found. Use list_mail_folders to see the folder paths.")
+                rows = [m for m in box if not folder or m["folder"].lower() == folder]
+                rows = sorted(rows, key=lambda m: self.at(m["received"]), reverse=True)
+                if not self.old_connector:
+                    if args.get("receivedAfter"):
+                        rows = [m for m in rows if self.at(m["received"]) > self.at(args["receivedAfter"])]
+                    if args.get("oldestFirst"):
+                        rows = rows[::-1]
                 return [{"id": m["id"], "subject": m["subject"], "bodyPreview": m["preview"],
                          "from": {"emailAddress": {"name": m["from"].split("@")[0], "address": m["from"]}},
                          "receivedDateTime": m["received"], "isRead": False, "hasAttachments": bool(m["attachments"])}
-                        for m in box[: args.get("limit", 10)]]
+                        for m in rows[: args.get("limit", 10)]]
             if tool == "list_email_attachments":
                 return [{"id": a["id"], "name": a["name"], "contentType": a["type"], "size": len(a["bytes"]),
                          "isInline": a.get("inline", False), "kind": a.get("kind", "file")}
@@ -450,25 +480,40 @@ class FakeMail:
                 if self.fail_download:
                     self.fail_download -= 1
                     raise RuntimeError("tool_error: Graph 503 Service Unavailable")
-                a = next(x for x in self.find(provider, args["messageId"])["attachments"] if x["id"] == args["attachmentId"])
-                return {"id": a["id"], "name": a["name"], "contentType": a["type"], "size": len(a["bytes"]),
-                        "contentBase64": base64.b64encode(a["bytes"]).decode("ascii")}
+                data, name, ctype, extra = self.attachment(provider, args)
+                return dict({"id": args["attachmentId"], "name": name, "contentType": ctype, "size": len(data),
+                             "contentBase64": base64.b64encode(data).decode("ascii")}, **extra)
         else:
+            if tool == "list_labels":
+                return [{"id": "INBOX", "name": "INBOX"}] + [{"id": k, "name": v} for k, v in self.GMAIL_LABELS.items()]
             if tool == "list_messages":
-                assert args.get("labelIds") == ["INBOX"], args
-                rows = list(box)
-                return {"messages": [{"id": m["id"], "threadId": m["id"], "subject": m["subject"], "from": m["from"],
-                                      "snippet": m["preview"], "internalDate": str(int(datetime.datetime.fromisoformat(
-                                          m["received"].replace("Z", "+00:00")).timestamp() * 1000))}
-                                     for m in rows[: args.get("maxResults", 20)]]}
+                [label] = args.get("labelIds")
+                name = "inbox" if label == "INBOX" else self.GMAIL_LABELS[label].lower()
+                rows = sorted([m for m in box if m["folder"].lower() == name], key=lambda m: self.at(m["received"]), reverse=True)
+                q = str(args.get("q") or "")
+                if q.startswith("after:"):
+                    after = int(q.split(":", 1)[1])
+                    rows = [m for m in rows if self.at(m["received"]).timestamp() >= after]
+                size = args.get("maxResults", 20)
+                start = 0 if self.old_connector else int(args.get("pageToken") or 0)
+                page = rows[start:start + size]
+                out = {"messages": [{"id": m["id"], "threadId": m["id"], "subject": m["subject"], "from": m["from"],
+                                     "snippet": m["preview"], "internalDate": str(int(self.at(m["received"]).timestamp() * 1000))}
+                                    for m in page]}
+                if not self.old_connector and start + size < len(rows):
+                    out["nextPageToken"] = str(start + size)
+                return out
             if tool == "get_message":
                 m = self.find(provider, args["id"])
                 return {"id": m["id"], "subject": m["subject"], "from": m["from"], "snippet": m["preview"],
                         "attachments": [{"attachmentId": a["id"], "filename": a["name"], "mimeType": a["type"],
                                          "size": len(a["bytes"])} for a in m["attachments"]]}
             if tool == "get_attachment":
-                a = next(x for x in self.find(provider, args["messageId"])["attachments"] if x["id"] == args["attachmentId"])
-                return {"attachmentId": a["id"], "size": len(a["bytes"]), "contentBase64": base64.b64encode(a["bytes"]).decode("ascii")}
+                data, _name, ctype, extra = self.attachment(provider, args)
+                out = {"attachmentId": args["attachmentId"], "size": len(data), "contentBase64": base64.b64encode(data).decode("ascii")}
+                if extra:
+                    out.update(extra, contentType=ctype)
+                return out
         raise RuntimeError("fake " + provider + " has no tool " + tool)
 
 
