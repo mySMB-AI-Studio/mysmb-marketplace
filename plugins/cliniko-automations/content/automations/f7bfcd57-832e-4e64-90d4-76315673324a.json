@@ -1,0 +1,291 @@
+{
+  "declaredScopes": [
+    "files:read",
+    "files:write",
+    "workq:write",
+    "connectors:cliniko-scheduling",
+    "connectors:cliniko-patients",
+    "users:read"
+  ],
+  "dependencies": [],
+  "description": "Every 15 minutes, finds appointment slots that have come free in Cliniko over the next 7 days (starting at least 2 hours from now): bookings that were cancelled, plus old times freed when \"Apply patient's chosen reschedule time\" moved a booking. Skips any slot someone has since been booked into. For each free slot it lists patients who could take it (those booked later with the same practitioner, and overdue patients last seen 6–16 weeks ago with nothing booked) and creates one WorkQ item. It never contacts a patient or changes a booking.",
+  "flowIr": {
+    "description": "Polls Cliniko for freed slots (no booking-cancelled trigger exists), keeps those 2 hours to 7 days out that are still free, builds a candidate list per slot, and raises one WorkQ item each. First step of the cancellation gap filler; offers are not sent yet.",
+    "irVersion": 1,
+    "name": "Cliniko Automations: Find freed slots to fill",
+    "nodes": [
+      {
+        "code": "import json\n\nslug = (params.get(\"practice_slug\") or \"\").strip()\nproblem = \"\"\nsettings = {}\nstate = {\"handled_slot_keys\": []}\nfreed_notes = []\n\ndef read_json(path):\n    try:\n        raw = api.files.read(file=path, scope=\"org\")\n    except Exception as exc:\n        return None, \"Couldn't read \" + path + \": \" + str(exc)\n    try:\n        return json.loads(raw), None\n    except Exception as exc:\n        return None, path + \" isn't valid JSON (\" + str(exc) + \")\"\n\nif not slug:\n    problem = \"No practice_slug configured for this automation.\"\nelse:\n    found, err = read_json(\"PracticeManager/Practices/\" + slug + \".json\")\n    if found is None:\n        problem = err or (\"No practice settings file found for slug '\" + slug\n                           + \"'. Run Healthcare Practice Management: Start practice setup first.\")\n    else:\n        settings = found\n        state_data, _ = read_json(\"PracticeManager/State/\" + slug + \"-gap-filler.json\")\n        state = state_data or {\"handled_slot_keys\": []}\n        # Written by \"Apply patient's chosen reschedule time\" whenever it moves\n        # a booking -- Cliniko doesn't mark a moved booking cancelled, so the\n        # old time it frees can't be found by checking Cliniko alone.\n        notes, _ = read_json(\"PracticeManager/State/\" + slug + \"-freed-slots.json\")\n        freed_notes = notes if isinstance(notes, list) else []\n",
+        "id": "load_context",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "The practice slug in use this run.",
+            "name": "slug",
+            "type": "str"
+          },
+          {
+            "description": "The practice's PracticeManager settings file.",
+            "name": "settings",
+            "type": "dict"
+          },
+          {
+            "description": "Slots this automation has already raised or ruled out.",
+            "name": "state",
+            "type": "dict"
+          },
+          {
+            "description": "Times freed by the reschedule desk moving a booking.",
+            "name": "freed_notes",
+            "type": "list[dict]"
+          },
+          {
+            "description": "Non-empty when settings couldn't be loaded.",
+            "name": "problem",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.practice_slug }}",
+            "control": "hidden",
+            "label": "Practice slug",
+            "name": "practice_slug",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "title": "Load practice settings"
+      },
+      {
+        "cond": "not steps[\"load_context\"][\"outputs\"][\"problem\"]",
+        "else": [],
+        "id": "gate_settings",
+        "kind": "if",
+        "then": [
+          "find_freed_slots",
+          "foreach_slot",
+          "save_state"
+        ],
+        "title": "Settings loaded okay?"
+      },
+      {
+        "code": "import datetime\n\ndef cliniko(tool, args):\n    return api.connectors.invoke(server=\"cliniko-scheduling\", tool=tool, args=args) or {}\n\ndef link_id(obj, key):\n    link = ((obj.get(key) or {}).get(\"links\") or {}).get(\"self\") or \"\"\n    return link.rstrip(\"/\").split(\"/\")[-1] if link else \"\"\n\ndef parse(iso_str):\n    return datetime.datetime.fromisoformat(iso_str.replace(\"Z\", \"+00:00\"))\n\ndef zulu(dt):\n    return dt.astimezone(datetime.timezone.utc).strftime(\"%Y-%m-%dT%H:%M:%SZ\")\n\nsettings = params[\"settings\"] or {}\nstate = params[\"state\"] or {}\nfreed_notes = params.get(\"freed_notes\") or []\n\n# Only slots someone could realistically take: at least 2 hours away (time for\n# the manager to approve and a patient to reply and travel) and no more than 7\n# days out (further-out gaps usually refill through normal booking). A practice\n# can override either via \"gap_filler\" in its settings file.\ngap = settings.get(\"gap_filler\") or {}\nmin_notice_hours = gap.get(\"min_notice_hours\", 2)\nmax_days_ahead = gap.get(\"max_days_ahead\", 7)\nnow = datetime.datetime.now(datetime.timezone.utc)\nwindow_start = now + datetime.timedelta(hours=min_notice_hours)\nwindow_end = now + datetime.timedelta(days=max_days_ahead)\n\nhandled = [k for k in (state.get(\"handled_slot_keys\") or []) if k]\nhandled_set = set(handled)\n\nfound = []\n\n# 1. Cancelled bookings. Cliniko's appointment list includes cancelled ones,\n# so every run re-reads the whole window rather than only \"since last check\" --\n# a slot cancelled weeks ago gets picked up the day it enters the window, and\n# handled_slot_keys stops the same slot being raised twice.\npage = 1\nwhile page <= 5:\n    res = cliniko(\"list_individual_appointments\", {\n        \"q\": [\"starts_at:>=\" + zulu(window_start), \"starts_at:<=\" + zulu(window_end)],\n        \"sort\": \"starts_at:asc\", \"per_page\": 100, \"page\": page,\n    })\n    appts = res.get(\"individual_appointments\") or []\n    for a in appts:\n        if not a.get(\"cancelled_at\") or a.get(\"archived_at\") or a.get(\"deleted_at\"):\n            continue\n        found.append({\n            \"key\": \"cancelled:\" + str(a.get(\"id\") or \"\"),\n            \"source\": \"cancelled\",\n            \"appointment_id\": str(a.get(\"id\") or \"\"),\n            \"patient_id\": link_id(a, \"patient\"),\n            \"starts_at\": a.get(\"starts_at\") or \"\",\n            \"ends_at\": a.get(\"ends_at\") or \"\",\n            \"practitioner_id\": link_id(a, \"practitioner\"),\n            \"business_id\": link_id(a, \"business\"),\n            \"appointment_type_id\": link_id(a, \"appointment_type\"),\n        })\n    if len(appts) < 100:\n        break\n    page += 1\n\n# 2. Times freed by \"Apply patient's chosen reschedule time\" moving a booking.\nfor n in freed_notes:\n    if not isinstance(n, dict) or not n.get(\"starts_at\"):\n        continue\n    found.append({\n        \"key\": \"moved:\" + str(n.get(\"appointment_id\") or \"\") + \":\" + n.get(\"starts_at\"),\n        \"source\": \"moved\",\n        \"appointment_id\": str(n.get(\"appointment_id\") or \"\"),\n        \"patient_id\": n.get(\"patient_id\") or \"\",\n        \"starts_at\": n.get(\"starts_at\") or \"\",\n        \"ends_at\": n.get(\"ends_at\") or \"\",\n        \"practitioner_id\": n.get(\"practitioner_id\") or \"\",\n        \"business_id\": n.get(\"business_id\") or \"\",\n        \"appointment_type_id\": n.get(\"appointment_type_id\") or \"\",\n    })\n\nslots = []\nfor s in found:\n    if len(slots) >= 10:\n        break  # the rest wait for the next run rather than being dropped\n    if s[\"key\"] in handled_set or not s[\"practitioner_id\"]:\n        continue\n    try:\n        start = parse(s[\"starts_at\"])\n        end = parse(s[\"ends_at\"]) if s[\"ends_at\"] else start + datetime.timedelta(minutes=30)\n    except Exception:\n        continue\n    if start < window_start:\n        # Too close (or already past) to fill -- never worth raising later either.\n        handled.append(s[\"key\"])\n        handled_set.add(s[\"key\"])\n        continue\n    if start > window_end:\n        continue  # not in the window yet; picked up on a later run\n    # Still free? Someone may already have been booked into it (front desk, or\n    # the reschedule desk moving another patient there).\n    taken = False\n    nearby = (cliniko(\"list_individual_appointments\", {\n        \"q\": [\"starts_at:>=\" + zulu(start - datetime.timedelta(hours=4)), \"starts_at:<\" + zulu(end),\n              \"practitioner_id:=\" + s[\"practitioner_id\"]],\n        \"per_page\": 100,\n    }).get(\"individual_appointments\") or [])\n    for other in nearby:\n        if other.get(\"cancelled_at\") or other.get(\"archived_at\") or other.get(\"deleted_at\"):\n            continue\n        if link_id(other, \"practitioner\") != s[\"practitioner_id\"]:\n            continue\n        try:\n            o_start = parse(other.get(\"starts_at\") or \"\")\n            o_end = parse(other.get(\"ends_at\") or \"\")\n        except Exception:\n            continue\n        if o_start < end and o_end > start:\n            taken = True\n            break\n    handled.append(s[\"key\"])\n    handled_set.add(s[\"key\"])\n    if not taken:\n        slots.append(s)\n\nhandled_slot_keys = handled[-1000:]\n",
+        "id": "find_freed_slots",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "Freed slots in the window that are still free, at most 10 per run.",
+            "name": "slots",
+            "type": "list[dict]"
+          },
+          {
+            "description": "Updated list of slots already raised or ruled out.",
+            "name": "handled_slot_keys",
+            "type": "list[str]"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ steps.load_context.outputs.settings }}",
+            "control": "hidden",
+            "label": "Settings",
+            "name": "settings",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ steps.load_context.outputs.state }}",
+            "control": "hidden",
+            "label": "State",
+            "name": "state",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ steps.load_context.outputs.freed_notes }}",
+            "control": "hidden",
+            "label": "Freed-slot notes",
+            "name": "freed_notes",
+            "required": false,
+            "type": "list[dict]"
+          }
+        ],
+        "title": "Find freed slots that are still free"
+      },
+      {
+        "body": [
+          "review_slot"
+        ],
+        "id": "foreach_slot",
+        "itemVar": "slot_item",
+        "items": "{{ steps.find_freed_slots.outputs.slots }}",
+        "kind": "foreach",
+        "maxIterations": 10,
+        "title": "Raise each freed slot"
+      },
+      {
+        "code": "import json\nimport datetime\n\ndef cliniko(server, tool, args):\n    return api.connectors.invoke(server=server, tool=tool, args=args) or {}\n\ndef link_id(obj, key):\n    link = ((obj.get(key) or {}).get(\"links\") or {}).get(\"self\") or \"\"\n    return link.rstrip(\"/\").split(\"/\")[-1] if link else \"\"\n\ndef parse(iso_str):\n    return datetime.datetime.fromisoformat(iso_str.replace(\"Z\", \"+00:00\"))\n\ndef zulu(dt):\n    return dt.astimezone(datetime.timezone.utc).strftime(\"%Y-%m-%dT%H:%M:%SZ\")\n\ndef is_live(a):\n    return not a.get(\"cancelled_at\") and not a.get(\"archived_at\") and not a.get(\"deleted_at\")\n\ndef write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True), scope=\"org\")\n\nslug = params[\"slug\"]\nsettings = params[\"settings\"] or {}\ntz_name = settings.get(\"timezone\") or \"UTC\"\n\ndef format_local(iso_str, fmt=\"%a %d %b, %I:%M %p\"):\n    try:\n        from zoneinfo import ZoneInfo\n        return parse(iso_str).astimezone(ZoneInfo(tz_name)).strftime(fmt).replace(\" 0\", \" \")\n    except Exception:\n        return iso_str\n\nslot = {\n    \"key\": params[\"key\"], \"source\": params[\"source\"], \"appointment_id\": params[\"appointment_id\"],\n    \"patient_id\": params.get(\"patient_id\") or \"\", \"starts_at\": params[\"starts_at\"],\n    \"ends_at\": params.get(\"ends_at\") or \"\", \"practitioner_id\": params[\"practitioner_id\"],\n    \"business_id\": params.get(\"business_id\") or \"\", \"appointment_type_id\": params.get(\"appointment_type_id\") or \"\",\n}\npractitioner_id = slot[\"practitioner_id\"]\nslot_start = parse(slot[\"starts_at\"])\nslot_end = parse(slot[\"ends_at\"]) if slot[\"ends_at\"] else slot_start + datetime.timedelta(minutes=30)\nnow = datetime.datetime.now(datetime.timezone.utc)\n\ntype_name = \"\"\nif slot[\"appointment_type_id\"]:\n    try:\n        type_name = (cliniko(\"cliniko-scheduling\", \"get_appointment_type\", {\"id\": slot[\"appointment_type_id\"]}) or {}).get(\"name\") or \"\"\n    except Exception:\n        type_name = \"\"\n\ndef practitioner_appts(q_from, q_to, pages):\n    out = []\n    page = 1\n    while page <= pages:\n        q = [\"starts_at:>=\" + zulu(q_from), \"practitioner_id:=\" + practitioner_id]\n        if q_to:\n            q.append(\"starts_at:<\" + zulu(q_to))\n        rows = (cliniko(\"cliniko-scheduling\", \"list_individual_appointments\",\n                        {\"q\": q, \"sort\": \"starts_at:asc\", \"per_page\": 100, \"page\": page}).get(\"individual_appointments\") or [])\n        out.extend(a for a in rows if is_live(a) and link_id(a, \"practitioner\") == practitioner_id)\n        if len(rows) < 100:\n            break\n        page += 1\n    return out\n\n# Candidate 1: patients already booked later with the same practitioner (next\n# 4 weeks) who might like to come in sooner. Same appointment type first.\nupcoming = practitioner_appts(slot_end, now + datetime.timedelta(days=28), 3)\nlater = []\nseen = set([slot[\"patient_id\"]]) if slot[\"patient_id\"] else set()\nfor same_type_pass in (True, False):\n    for a in upcoming:\n        pid = link_id(a, \"patient\")\n        if not pid or pid in seen:\n            continue\n        if same_type_pass and slot[\"appointment_type_id\"] and link_id(a, \"appointment_type\") != slot[\"appointment_type_id\"]:\n            continue\n        seen.add(pid)\n        later.append({\"patient_id\": pid, \"appointment_id\": str(a.get(\"id\") or \"\"), \"current_starts_at\": a.get(\"starts_at\") or \"\",\n                      \"same_type\": link_id(a, \"appointment_type\") == slot[\"appointment_type_id\"]})\n        if len(later) >= 5:\n            break\n    if len(later) >= 5:\n        break\n\n# Candidate 2: overdue patients -- last seen by this practitioner 6-16 weeks\n# ago with nothing booked since. A stand-in for recalls, which Cliniko's API\n# doesn't expose; there's no practice waitlist to read from yet either.\noverdue = []\nrecent_cutoff = now - datetime.timedelta(weeks=6)\npast = practitioner_appts(now - datetime.timedelta(weeks=16), recent_cutoff, 3)\nsince = practitioner_appts(recent_cutoff, None, 5)\nactive = set(link_id(a, \"patient\") for a in since) | seen\nlast_visit = {}\nfor a in past:\n    pid = link_id(a, \"patient\")\n    if pid and pid not in active:\n        last_visit[pid] = a.get(\"starts_at\") or \"\"\nfor pid, visited in sorted(last_visit.items(), key=lambda kv: kv[1]):\n    overdue.append({\"patient_id\": pid, \"last_visit_at\": visited})\n    if len(overdue) >= 5:\n        break\n\ndef patient_details(pid):\n    try:\n        p = cliniko(\"cliniko-patients\", \"get_patient\", {\"id\": pid}) or {}\n    except Exception:\n        p = {}\n    name = ((p.get(\"first_name\") or \"\") + \" \" + (p.get(\"last_name\") or \"\")).strip()\n    return name or (\"Patient \" + pid), (p.get(\"email\") or \"\").strip()\n\nfor c in later + overdue:\n    c[\"name\"], c[\"email\"] = patient_details(c[\"patient_id\"])\n\nslot_label = format_local(slot[\"starts_at\"])\nend_label = format_local(zulu(slot_end), \"%I:%M %p\")\ntitle = (\"Freed slot: \" + slot_label + (\" (\" + type_name + \")\" if type_name else \"\"))[:200]\n\ndef email_note(c):\n    return \"\" if c[\"email\"] else \" — no email on file\"\n\nlines = []\nfor c in later:\n    lines.append(\"- \" + c[\"name\"] + \": booked \" + format_local(c[\"current_starts_at\"])\n                 + (\"\" if c[\"same_type\"] else \" (different appointment type)\") + email_note(c))\nlater_block = \"\\n\".join(lines) or \"- none in the next 4 weeks\"\nlines = []\nfor c in overdue:\n    lines.append(\"- \" + c[\"name\"] + \": last visit \" + format_local(c[\"last_visit_at\"], \"%d %b %Y\").lstrip(\"0\") + email_note(c))\noverdue_block = \"\\n\".join(lines) or \"- none found\"\n\ndescription = (\n    \"**Free slot:** \" + slot_label + \" – \" + end_label + (\" · \" + type_name if type_name else \"\") + \"\\n\"\n    + \"**Why it's free:** \" + (\"a booking was cancelled\" if slot[\"source\"] == \"cancelled\" else \"a patient moved their booking to another time\") + \"\\n\\n\"\n    + \"**Booked later, could come in sooner:**\\n\" + later_block + \"\\n\\n\"\n    + \"**Overdue (last seen 6–16 weeks ago, nothing booked):**\\n\" + overdue_block + \"\\n\\n\"\n    + \"Nothing has been sent to anyone. Offer the slot to a patient yourself, or close this item if you'd rather leave it free.\"\n)\n\n# Skip if an open item for this exact slot already exists (overlapping manual +\n# scheduled runs), same guard as the reschedule desk.\nalready_open = False\ntry:\n    for row in api.workq.list(search=title) or []:\n        if (row.get(\"title\") == title and row.get(\"status\") not in (\"done\", \"cancelled\")\n                and \"gap-filler\" in (row.get(\"labels\") or [])):\n            already_open = True\n            break\nexcept Exception:\n    already_open = False\n\ntodo_id = \"\"\nif not already_open:\n    # Same single-practice test assignee as the reschedule desk.\n    PRACTITIONER_EMAIL = \"sean.baker@mysmb.com\"\n    assignee_ids: list[str] = []\n    try:\n        for user in api.users.list() or []:\n            if (user.get(\"email\") or \"\").strip().lower() == PRACTITIONER_EMAIL:\n                if user.get(\"id\"):\n                    assignee_ids = [str(user.get(\"id\"))]\n                break\n    except Exception:\n        assignee_ids = []\n\n    hours_away = (slot_start - now).total_seconds() / 3600\n    item = api.workq.create(\n        title=title,\n        scope=\"org\",\n        description=description,\n        priority=\"high\" if hours_away < 24 else \"medium\",\n        labels=[\"cliniko-automations\", \"gap-filler\"],\n        assignee_ids=assignee_ids or None,\n    )\n    todo_id = item[\"id\"]\n\n    # Everything the offer-sending step will need once it exists. Flat filename\n    # to respect Knowledge's 2-level folder nesting limit.\n    write_json(\n        \"PracticeManager/State/\" + slug + \"-gap-slot-\" + todo_id + \".json\",\n        {\"slot\": slot, \"slot_label\": slot_label, \"appointment_type_name\": type_name,\n         \"later_bookings\": later, \"overdue\": overdue,\n         \"created_at\": zulu(now)},\n    )\n\n    # Audit trail (healthcare-practice-management-guardrail-audit format).\n    try:\n        from zoneinfo import ZoneInfo\n        today_str = now.astimezone(ZoneInfo(tz_name)).date().isoformat()\n    except Exception:\n        today_str = now.date().isoformat()\n    audit_path = \"PracticeManager/AuditLog/\" + slug + \"-\" + today_str + \".jsonl\"\n    try:\n        existing_log = api.files.read(file=audit_path, scope=\"org\")\n    except Exception:\n        existing_log = \"\"\n    audit_line = json.dumps({\n        \"ts\": zulu(now),\n        \"practice_slug\": slug,\n        \"actor\": \"agent\",\n        \"source\": \"automation:Cliniko Automations: Find freed slots to fill\",\n        \"action\": \"flagged\",\n        \"target\": {\"kind\": \"appointment_slot\", \"id\": slot[\"key\"]},\n        \"summary\": \"Freed slot \" + slot_label + \" with \" + str(len(later) + len(overdue)) + \" candidate patients\",\n        \"guardrails\": [{\"rule\": \"patient_facing_requires_approval\", \"result\": \"pass\", \"detail\": \"nothing sent; routed to WorkQ\"}],\n        \"workq_item_id\": todo_id,\n    }, sort_keys=True)\n    try:\n        api.files.put(file=audit_path, content=existing_log + audit_line + \"\\n\", scope=\"org\")\n    except Exception:\n        pass\n",
+        "id": "review_slot",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "The created WorkQ item's id (empty if one was already open).",
+            "name": "todo_id",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ steps.load_context.outputs.slug }}",
+            "control": "hidden",
+            "label": "Slug",
+            "name": "slug",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.load_context.outputs.settings }}",
+            "control": "hidden",
+            "label": "Settings",
+            "name": "settings",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ item.key }}",
+            "control": "hidden",
+            "label": "Slot key",
+            "name": "key",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ item.source }}",
+            "control": "hidden",
+            "label": "Why it's free",
+            "name": "source",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ item.appointment_id }}",
+            "control": "hidden",
+            "label": "Freed appointment id",
+            "name": "appointment_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ item.patient_id }}",
+            "control": "hidden",
+            "label": "Freed appointment's patient id",
+            "name": "patient_id",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ item.starts_at }}",
+            "control": "hidden",
+            "label": "Slot start",
+            "name": "starts_at",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ item.ends_at }}",
+            "control": "hidden",
+            "label": "Slot end",
+            "name": "ends_at",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ item.practitioner_id }}",
+            "control": "hidden",
+            "label": "Practitioner id",
+            "name": "practitioner_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ item.business_id }}",
+            "control": "hidden",
+            "label": "Business id",
+            "name": "business_id",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ item.appointment_type_id }}",
+            "control": "hidden",
+            "label": "Appointment type id",
+            "name": "appointment_type_id",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "title": "List candidate patients and create the WorkQ item"
+      },
+      {
+        "code": "import json\n\nslug = params[\"slug\"]\nhandled = params.get(\"handled_slot_keys\") or []\n\napi.files.put(\n    file=\"PracticeManager/State/\" + slug + \"-gap-filler.json\",\n    content=json.dumps({\"handled_slot_keys\": handled}, indent=2),\n    scope=\"org\",\n)\n",
+        "id": "save_state",
+        "kind": "python",
+        "outputs": [],
+        "params": [
+          {
+            "binding": "{{ steps.load_context.outputs.slug }}",
+            "control": "hidden",
+            "label": "Slug",
+            "name": "slug",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.find_freed_slots.outputs.handled_slot_keys }}",
+            "control": "hidden",
+            "label": "Handled slot keys",
+            "name": "handled_slot_keys",
+            "required": false,
+            "type": "list[str]"
+          }
+        ],
+        "title": "Remember which slots were handled"
+      }
+    ],
+    "params": [
+      {
+        "control": "text",
+        "label": "Practice slug (matches PracticeManager/Practices/<slug>.json) — set this to the SAME slug on every Cliniko Automations automation in this extension; each automation keeps its own separate copy of this value, so leaving one blank makes that one automation silently do nothing.",
+        "name": "practice_slug",
+        "required": false,
+        "type": "str",
+        "value": ""
+      }
+    ],
+    "rootOrder": [
+      "load_context",
+      "gate_settings"
+    ],
+    "triggers": [
+      {
+        "cron": "*/15 * * * *",
+        "kind": "schedule",
+        "timezone": "UTC"
+      },
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Cliniko Automations: Find freed slots to fill",
+  "originKey": "f7bfcd57-832e-4e64-90d4-76315673324a",
+  "tags": [
+    "cliniko",
+    "scheduling",
+    "gap-filler"
+  ],
+  "contentHash": "de86c2ddd095e67b03144d3706c78d9f72685ba9db11c5f719898438615ad1e3"
+}
