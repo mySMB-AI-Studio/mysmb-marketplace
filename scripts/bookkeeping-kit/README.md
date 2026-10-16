@@ -33,6 +33,14 @@ cd ../.. && npx tsx scripts/validate.ts              # the repo gate
 
 After `npm run gen`, `git diff plugins/bookkeeping-xero` shows exactly what your source change did to the extension. Commit the kit change and the regenerated plugin together.
 
+**Without payroll.** Payroll stays in the extension (dev and QA), but UAT and production mustn't have it until its privacy sign-off. `node gen-ext.js <checkout of the uat branch> --without-payroll` writes the same extension without its payroll automations, forms and texts. Every accounts payable component keeps its originKey, and only *Start setup* and *Apply setup* differ, because they lose their payroll parts. Use it to open the PR into `uat` instead of AI Studio's *Promote to UAT*, which would copy payroll across from QA. The build is marked in the source:
+- `payrollOnly(...)` / `payrollOnly: true` in `src/flows.js`;
+- `PAYROLL_FORMS`;
+- `# >>> payroll` … `# <<< payroll` blocks in node code;
+- `<!-- >>> payroll -->` / `<!-- >>> no-payroll -->` blocks in the README and skill.
+
+The default build drops only the markers, so it is unchanged. `tests/test_without_payroll.py` builds it and runs the AP scenarios on it.
+
 Refresh `.myhub/` from myHubV2 `origin/dev` when the platform changes (`git archive origin/dev <paths> | tar -x -C .myhub`; `stubs.ts` needs its three `@myhub/shared` imports rewritten to relative paths). The commit used is in `.myhub/REV`.
 
 ## Knowledge layout (org level; Knowledge allows at most 2 folder levels)
