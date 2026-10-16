@@ -5,7 +5,7 @@ description: QuickBooks Online GST overview (BAS centre) (Q15) as a live, valida
 
 # GST overview (BAS centre) (Q15)
 
-Use when the user asks for the GST overview, GST position, BAS centre, how much GST we owe or get back this quarter, or GST collected vs paid. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_tax_summary`, `get_report_balance_sheet`, `list_tax_agency`, `qbo_query`, `get_preferences`).
+Use when the user asks for the GST overview, GST position, BAS centre, how much GST we owe or get back this quarter, or GST collected vs paid. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks GST Overview**. Template: `quickbooks-reporting-studio` / `quickbooks-gst-overview` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_tax_summary`, `get_report_balance_sheet`, `list_tax_agency`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: All apps › GST › Overview. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q15. Delivery: Wave 1.
 
@@ -248,7 +248,7 @@ Preset `this_quarter`; compare = previous quarter (`c` = `prev_period`).
 
 ```js
 QB.app({
-  title: 'GST overview', token: null, primary: 'gst_current', company: 'company_info', prefs: 'prefs',
+  title: 'GST Overview', token: null, primary: 'gst_current', company: 'company_info', prefs: 'prefs',
   inputs: { start: 'start_date', end: 'end_date', cmpStart: 'compare_start', cmpEnd: 'compare_end', basis: 'basis', persona: 'persona', display: 'display' },
   defaults: { start_date: '2026-07-01', end_date: '2026-09-30', compare_start: '2026-04-01', compare_end: '2026-06-30', basis: 'Accrual', agency_id: '', persona: 'Bookkeeper',
     display: '{"cents":0,"k":0,"zeros":1,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"this_quarter","a":"custom","c":"prev_period","v":"","x":""}' },
@@ -259,6 +259,8 @@ QB.app({
     var body = c.body, money = function (v) { return QB.money(v, c.currency, c.display); };
     var ag = QB.taxAgency(c, 'tax_agencies', 'agency_id');
     if (ag.pending) { body.innerHTML = '<p class="muted">Loading GST for ' + QB.h(ag.name) + '…</p>'; return {}; }
+    var usNA = QB.gstUS(c, ['gst_current', 'gst_probe']);
+    if (usNA) { body.innerHTML = '<div class="qb-banner na"><strong>GST does not apply to this company.</strong> ' + QB.h(usNA) + '</div>'; this._x = null; return { checks: [{ name: 'GST position loaded', pass: null, detail: 'N/A — US company (sales tax, no GST)' }] }; }
     if (c.errors.gst_current) { body.innerHTML = '<p class="qb-err">' + QB.h(c.err('gst_current')) + '</p>'; return { checks: [{ name: 'GST position loaded', pass: false, detail: c.err('gst_current') }] }; }
     if (!c.data.gst_current) return {};
     var NIL = { a1: 0, b1: 0, nine: 0, found: true, nil: true }, bas = function (id) { var r = c.data[id]; return !r ? null : QB.noData(r) ? NIL : QB.bas(r); }; // agency known + no rows = nil period

@@ -5,7 +5,7 @@ description: QuickBooks Online General Ledger and transaction-list family (Q23) 
 
 # General Ledger and transaction-list family (Q23)
 
-Use when the user asks for the general ledger, GL, ledger detail for an account, the journal report, a transaction list by date, the account list or the chart of accounts. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_general_ledger`, `get_report_journal_report`, `get_report_transaction_list`, `get_report_account_list`, `qbo_query`, `get_preferences`).
+Use when the user asks for the general ledger, GL, ledger detail for an account, the journal report, a transaction list by date, the account list or the chart of accounts. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks General Ledger**. Template: `quickbooks-reporting-studio` / `quickbooks-general-ledger` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_general_ledger`, `get_report_journal_report`, `get_report_transaction_list`, `get_report_account_list`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports › For my accountant. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q23. Delivery: Wave 2 (Train 03).
 
@@ -243,11 +243,31 @@ QB.app({
       QB.grid(body, { filter: true, columns: acs.map(function (t, i) { return { key: 'c' + i, title: t || 'Account', money: /balance/i.test(t) }; }), rows: ar.map(function (l) { var o = { c0: l.label }; l.raw.forEach(function (x, i) { o['c' + (i + 1)] = /balance/i.test(acs[i + 1] || '') ? QB.num(x) : x; }); return o; }) }, c);
     }
     if (html) body.innerHTML = html;
-    var balOk = accts.every(function (a) { return QB.near(a.end, a.beg + a.amount); }), totOk = accts.every(function (a) { return a.totAmt == null || QB.near(a.totAmt, a.amount); });
-    var bad = accts.filter(function (a) { return !QB.near(a.end, a.beg + a.amount); }).map(function (a) { return a.name; });
+    // Checks per account AND per sub-account: QuickBooks nests a sub-account as its own section inside its parent (its own Beginning
+    // Balance row, transactions and running balance), and the parent's 'Total for' includes its sub-accounts — live QA, 4 Oct 2026:
+    // Automobile:Fuel and Job Expenses:Job Materials on the US sandbox failed when the nested rows were read as the parent's
+    // 'Total for' is checked against every transaction under the account at any depth (sub-accounts, and rows QuickBooks groups in a
+    // section with no header), or its own rows only; a mismatch names the account and both figures (live QA, 4 Oct 2026: failed unnamed)
+    var chk = [], isTx = function (r) { return r.kind === 'row' && !/^beginning balance$/i.test(r.label); };
+    (function each(list, prefix) {
+      (list || []).forEach(function (sec) {
+        if (!sec.Header || !sec.Rows) return;
+        var name = prefix + ((sec.Header.ColData[0] || {}).value || ''), kids = sec.Rows.Row || [], beg = null, amts = [], last = null, own = [];
+        kids.forEach(function (r) { if (!r.Header && r.ColData) own.push(r); else if (!r.Header && r.Rows) own = own.concat((r.Rows.Row || []).filter(function (x) { return x.ColData && !x.Header; })); });
+        QB.walk({ Rows: { Row: own } }).forEach(function (r) { if (r.kind !== 'row') return; if (!isTx(r)) { beg = r.values[bi]; return; } amts.push(r.values[ai] || 0); last = r.values[bi]; });
+        var subs = kids.filter(function (r) { return r.Header && r.Rows; }), subAmt = QB.sum(subs.map(function (s) { return s.Summary ? QB.num((s.Summary.ColData[ai + 1] || {}).value) : 0; }));
+        var tot = sec.Summary ? QB.num((sec.Summary.ColData[ai + 1] || {}).value) : null, mine = QB.sum(amts);
+        var all = QB.sum(QB.walk({ Rows: { Row: kids } }).filter(isTx).map(function (r) { return r.values[ai] || 0; }));
+        chk.push({ name: name, beg: beg || 0, amount: mine, end: last != null ? last : (beg || 0), totAmt: tot, all: all, withSubs: QB.sum([mine, subAmt]) });
+        each(kids, name + ':');
+      });
+    })(gl && gl.Rows && gl.Rows.Row, '');
+    var badBal = chk.filter(function (a) { return !QB.near(a.end, a.beg + a.amount); }).map(function (a) { return a.name; });
+    var badTot = chk.filter(function (a) { return !(a.totAmt == null || QB.near(a.totAmt, a.all) || QB.near(a.totAmt, a.withSubs) || QB.near(a.totAmt, a.amount)); })
+      .map(function (a) { return a.name + ' (Total ' + money(a.totAmt) + ' vs Σ ' + money(a.all) + ')'; });
     var checks = [
-      { name: 'Balance = beginning + Σ amounts (every account)', pass: accts.length ? balOk : null, detail: bad.length ? 'Mismatch: ' + bad.join(', ') : accts.length + ' accounts' },
-      { name: "'Total for <account>' amount = Σ its transactions", pass: accts.length ? totOk : null, detail: '' }];
+      { name: 'Balance = beginning + Σ amounts (every account)', pass: chk.length ? !badBal.length : null, detail: badBal.length ? 'Mismatch: ' + badBal.join(', ') : chk.length + ' accounts and sub-accounts' },
+      { name: "'Total for <account>' amount = Σ its transactions (and its sub-accounts')", pass: chk.length ? !badTot.length : null, detail: badTot.length ? 'Mismatch: ' + badTot.slice(0, 5).join(', ') + (badTot.length > 5 ? ' and ' + (badTot.length - 5) + ' more' : '') : chk.length + ' accounts and sub-accounts' }];
     if (v === 'journal') checks.push({ name: 'Journal: Σ debits = Σ credits', pass: c._jdr == null ? null : QB.near(c._jdr, c._jcr), detail: money(c._jdr) + ' / ' + money(c._jcr) });
     this._x = { accts: accts, v: v };
     return { checks: checks, title: (this.views.filter(function (x) { return x[0] === v; })[0] || ['', 'General Ledger'])[1],

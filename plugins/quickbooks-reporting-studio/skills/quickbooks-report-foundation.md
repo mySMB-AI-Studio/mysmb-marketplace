@@ -7,20 +7,24 @@ description: Shared build recipe, controls contract, validation rules, QuickBook
 
 Use when you build any QuickBooks Online report, dashboard or report pack. Load this skill first, then the family skill (for example `quickbooks-profit-and-loss`). This file carries the tested report kit and stylesheet, and every family skill carries its own tested `dataBindings` and report config. You assemble them. You do not write report code from scratch.
 
-Spec: QuickBooks Reports Prompt Library v1.1 (Q00–Q39, Reporting Library Catalogue RPT/LIB rows, Operating Model v0.1). Waves 1–4 are built; the payroll families (Q32–Q34) wait on an Employment Hero payroll connector. Each family skill traces its FULL PROMPT sections to this build.
+Spec: QuickBooks Reports Prompt Library v1.1 (Q00–Q39, Reporting Library Catalogue RPT/LIB rows, Operating Model v0.1). Waves 1–4 are built. The payroll families (Q32–Q34) read Employment Hero Payroll (the `employment-hero-payroll` connector), because Australian QuickBooks Online payroll runs there. Each family skill traces its FULL PROMPT sections to this build.
 
 ## Build a report (every family)
+
+Every report skill except *Custom report builder* names its **template**: the extension `quickbooks-reporting-studio` and the report skill's own name as the slug (for example `quickbooks-profit-and-loss`). The template is the same tested document the copy path below assembles, with the skill's `dataBindings`.
 
 1. **Pick the family skill** that matches the request. If the family is not built yet, say so and offer the closest built report or a QuickBooks export (see the agent's routing table). Never approximate a report from adjacent data.
 2. **Discovery call.** Call the family's primary tool once, with the family's default inputs, and call `qbo_query` with `SELECT * FROM CompanyInfo` once. You need three things from these calls:
    - Confirm that QuickBooks is connected. If a call fails with a connection error, tell the user to connect QuickBooks under Settings → Connections, and stop.
    - Check that the response has the shape the family skill describes (QuickBooks report JSON is `Header` / `Columns` / `Rows.Row[]`, with sections carrying `group`, `Header`, `Rows` and `Summary`).
    - Read `CompanyName` and `FiscalYearStartMonth` for the date defaults. Do not copy any returned figure into the document.
-3. **dataBindings.** Copy the family's `dataBindings` JSON exactly. Change only the `default` values of date inputs, as the family skill's *Date defaults* line says. A date default is `YYYY-MM-DD` or `"today"`. Keep every input name, option, binding id, tool name and param. The `display` default is a JSON string: set `p` (period preset), `a` (as-of preset), `c` (compare mode) and `v` (report view or member) to match the request. **Branding:** set `b` to a brand colour (`#rrggbb`) only when the user asks for their own or their customer's branding in chat ("use our brand colour #1a4d8f", "match Acme's navy"); otherwise leave `b` empty and the report uses QuickBooks branding, because the data comes from QuickBooks. Keep every other key.
-4. **Report config.** Copy the family's report config JS exactly. Change only the `defaults` object so that it equals the manifest defaults, with `"today"` written as today's date (`YYYY-MM-DD`). If the discovery call showed a label or group the config does not recognise, you may widen the matching regular expression in `render`. Change nothing else.
-5. **Assemble** one HTML document from the skeleton below. Replace `{{TITLE}}` with the report title, `{{CSS}}` with the stylesheet, `{{KIT}}` with the report kit and `{{CFG}}` with the report config, all verbatim. Never edit, shorten, reformat or "improve" the kit or the stylesheet: they are tested as one unit, and the platform validates the document against the bindings.
-6. **Save** with `artifact_save`: `title` = "<Company> — <Report name>" — no period, because the reader can change the period and the saved title cannot follow; the report header always shows the current period. Put the opening period in the one-line `description` instead ("Opened on August 2026, accrual basis"). Use `fileName` from the family skill, the family `tags`, `content` = the document and `dataBindings` = the manifest. Do not pass `connectors`, because a live report derives them. Never paste the HTML into chat.
-7. **Completion note.** Keep it to 3–6 lines:
+   - **Payroll families (Q32–Q34):** call `list_businesses` on `employment-hero-payroll` instead of `qbo_query`. The report's client is the payroll business, and its year is the Australian payroll year (1 July). A connection error means the user must install the Employment Hero Payroll extension and connect it with their payroll API key.
+3. **Starting values.** Decide the inputs the report opens on, starting from the family's `dataBindings` defaults. Change only the `default` values of date inputs, as the family skill's *Date defaults* line says (`YYYY-MM-DD` or `"today"`). The `display` default is a JSON string: set `p` (period preset), `a` (as-of preset), `c` (compare mode) and `v` (report view or member) to match the request. **Branding:** set `b` to a brand colour (`#rrggbb`) only when the user asks for their own or their customer's branding in chat ("use our brand colour #1a4d8f", "match Acme's navy"); otherwise leave `b` empty and the report uses QuickBooks branding, because the data comes from QuickBooks. Keep every other key, input name, option, binding id, tool name and param.
+4. **Title and description.** `title` = the family skill's *Report title* exactly (for example "QuickBooks Profit and Loss"): the platform, then the report's agreed name in Title Case — no company and no period, because the reader can switch both in the report and the saved title cannot follow; the report header always shows the current company and period. Put them in the one-line `description` instead ("Opens on <Company> · August 2026, accrual basis").
+5. **Create the report.**
+   - **If `artifact_from_template` is in your tools** and the family skill names a template, call it once: `plugin` = `quickbooks-reporting-studio`, `slug` = the family skill's name, `inputs` = only the inputs you changed in step 3 as `{ "input name": value }` (`display` is the whole JSON string with your changes; dates are `YYYY-MM-DD` or `"today"`), and `title` and `description` from step 4. The platform saves an exact copy of the tested template — you write no HTML, and the report opens on your inputs. If the tool says it has no such template (the installed extension is older than this skill), or the discovery call showed a label or group the config does not recognise, use the copy path instead.
+   - **Otherwise (copy path):** (a) copy the family's `dataBindings` JSON exactly, with the step 3 defaults. (b) Copy the family's report config JS exactly and change only its `defaults` object so that it equals the manifest defaults, with `"today"` written as today's date (`YYYY-MM-DD`); if the discovery call showed a label or group the config does not recognise, you may widen the matching regular expression in `render`. (c) Assemble one HTML document from the skeleton below: replace `{{TITLE}}` with the report name, `{{CSS}}` with the stylesheet, `{{KIT}}` with the report kit and `{{CFG}}` with the report config, all verbatim. Never edit, shorten, reformat or "improve" the kit or the stylesheet: they are tested as one unit, and the platform validates the document against the bindings. (d) Save with `artifact_save`: `title` and `description` from step 4, `fileName` and `tags` from the family skill, `content` = the document and `dataBindings` = the manifest. Do not pass `connectors`, because a live report derives them. Never paste the HTML into chat.
+6. **Completion note.** Keep it to 3–6 lines:
    - that the report is live and refreshes on open;
    - the controls the reader can change;
    - the validation checks and whether they passed on the discovery data;
@@ -44,10 +48,10 @@ The kit renders the control row from the config, so every report has the same gr
 
 ## Data and validation rules
 
-- Only `quickbooks-accounting` tools. Never invent, estimate or reuse example figures. Anything missing is "N/A — not in source" and is listed under Sources & limitations. A tool that returns no rows is *unavailable*, not zero.
+- Only `quickbooks-accounting` tools, plus `employment-hero-payroll` tools for the payroll families (Q32–Q34). Never invent, estimate or reuse example figures. Anything missing is "N/A — not in source" and is listed under Sources & limitations. A tool that returns no rows is *unavailable*, not zero.
 - Every family has STEP 4 checks. The kit recomputes them on every load and every control change and shows them in the validation banner: Pass, Fail (red, listed first), N/A (cannot be computed) or information only (`info: true`), with the data timestamp, the financial-year source and the mechanism used. Only real checks count in "x/y passed"; N/A and information lines are listed and counted separately, so a report with nothing wrong never reads as a failure.
 - Sign and classification: QuickBooks can return credits where you expect debits (for example a negative Cost of Sales). The report shows the figures as QuickBooks returned them and adds a note. It never silently flips a sign.
-- Connector limits that the reports state rather than work around: one company per connection; the ageing reports age as of today (`report_date`, `aging_period`, `num_periods`, `aging_method` and `past_due` are not passed by the connector yet); the Tax Summary returns BAS figures only for a named tax agency (`agency_id`; the GST reports list the agencies with `list_tax_agency` and use the ATO); PAYG, payroll, leave and ATO reports live in Employment Hero (QuickBooks time activities and the employee contact list are in Q31); the Audit Log is UI-only; a forecast (Q09) is an estimate projected from actuals, never a QuickBooks figure.
+- Connector limits that the reports state rather than work around: one company per connection; the ageing reports age as of today (`report_date`, `aging_period`, `num_periods`, `aging_method` and `past_due` are not passed by the connector yet); the Tax Summary returns BAS figures only for a named tax agency (`agency_id`; the GST reports list the agencies with `list_tax_agency` and use the ATO); payroll, employee and ATO reports come from Employment Hero Payroll (Q32–Q34; its API has no STP lodgement history; QuickBooks time activities and the employee contact list are in Q31); the Audit Log is UI-only; a forecast (Q09) is an estimate projected from actuals, never a QuickBooks figure.
 - If the user needs data the connector does not expose, ask them for the QuickBooks export (Reports › open the report › set the controls › Export › Excel). Read the company, report name, period and basis from the export header and confirm them. Then save a STATIC report (no `dataBindings`) with `connectors: ["quickbooks-accounting"]` and say it is frozen.
 - Financial output is decision support, not audit, tax or legal advice.
 
@@ -196,11 +200,16 @@ function totalFor(label) { return /^Total\s+(?!for\s)/i.test(label) ? label.repl
 function near(a, b, tol) { return a != null && b != null && Math.abs(a - b) <= (tol == null ? 0.01 : tol); }
 function sum(arr) { var s = 0; arr.forEach(function (v) { if (v != null) s += v; }); return Math.round(s * 100) / 100; }
 function cols(rep) {
-return ((rep && rep.Columns && rep.Columns.Column) || []).map(function (c, i) {
+var out = [];
+(function add(list, group) {
+(list || []).forEach(function (c) {
+var sub = c.Columns && c.Columns.Column; if (sub && sub.length) { add(sub, c.ColTitle || ''); return; }
 var key = null, sd = null, ed = null;
 (c.MetaData || []).forEach(function (m) { if (m.Name === 'ColKey') key = m.Value; if (m.Name === 'StartDate') sd = m.Value; if (m.Name === 'EndDate') ed = m.Value; });
-return { i: i, title: c.ColTitle || '', type: c.ColType || '', key: key, start: sd, end: ed };
+out.push({ i: out.length, title: c.ColTitle || '', type: c.ColType || '', key: key, start: sd, end: ed, group: group });
 });
+})(rep && rep.Columns && rep.Columns.Column, null);
+return out;
 }
 function walk(rep) {
 var out = [];
@@ -249,6 +258,11 @@ if (!bsRep) return null; walk(bsRep).forEach(function (l) { if (l.kind === 'row'
 return hit ? Math.round(tot * 100) / 100 : null;
 }
 function gstConfirmed(ctx, probeId) { var p = ctx.data[probeId]; return !!(p && !ctx.errors[probeId] && !noData(p)); }
+function gstUS(ctx, ids) {
+var hit = ids.some(function (id) { var e = ctx.errors[id]; return e && /permission denied|\b5020\b/i.test(e.message || ''); });
+return hit && /^(us|usa|united states)$/i.test(ctx.country || '') ? GST_US : null;
+}
+var GST_US = 'This is a US company: it collects sales tax, not GST, so QuickBooks has no GST Tax Summary for it.', GST_US_NA = 'GST (US company: sales tax, no GST)';
 var GST_UNCONFIRMED = 'QuickBooks returned no GST figures for this tax agency in this period or at any time before it, so GST is unavailable, not zero. If this company records GST, the QuickBooks connector may not be passing the tax agency (agency_id).';
 var GST_LIAB_RE = /^(gst|bas)\b.*\b(liabilit(y|ies)|payable|control)\b|^tax (payable|control)$/i;
 var ATO_RE = /australian tax(ation)? office|^ato$/i;
@@ -686,11 +700,18 @@ var MECHANISM = 'quickbooks-accounting connector — mySMB custom MCP on the Qui
 function app(cfg) {
 var MH = window.MyHubReport, live = !!(MH && MH.mode !== 'snapshot');
 var I = cfg.inputs || {}, S = { inputs: Object.assign({}, cfg.defaults), data: {}, errors: {}, fetchedAt: null, first: true, busy: 0 };
+var FR = Object.assign({}, FRIENDLY, cfg.friendly || {}), MECH = cfg.mechanism || MECHANISM;
 var $ = function (id) { return document.getElementById(id); };
 function disp() { return readDisplay(I.display ? S.inputs[I.display] : ''); }
 function setDisp(patch) { if (!I.display) return; var d = disp(), k; for (k in patch) d[k] = patch[k]; S.inputs[I.display] = writeDisplay(d); }
-function fy() { return fiscalStart(S.data[cfg.company], S.data[cfg.prefs]); }
-function err(id) { var e = S.errors[id]; return e ? (FRIENDLY[e.code] || e.message || 'Unavailable') + (e.code === 'tool_error' && e.message ? ' (' + e.message + ')' : '') : null; }
+function fy() { return cfg.fy || fiscalStart(S.data[cfg.company], S.data[cfg.prefs]); }
+function clients() { return cfg.clients ? cfg.clients(S.data) || [] : null; }
+function client() {
+var cl = clients(); if (!cl) return companyInfo(S.data[cfg.company]);
+var cur = I.client ? S.inputs[I.client] : '', m = cl.filter(function (x) { return String(x[0]) === String(cur); })[0] || (!cur && cl[0]);
+return m ? { name: m[1], country: cfg.country || null } : null;
+}
+function err(id) { var e = S.errors[id]; return e ? (FR[e.code] || e.message || 'Unavailable') + (e.code === 'tool_error' && e.message ? ' (' + e.message + ')' : '') : null; }
 function announce() { if (MH && live) MH.setInputs(Object.assign({}, S.inputs)); }
 function status(t) { var el = $('qb-status'); if (el) el.textContent = t || ''; }
 function requery(changed) {
@@ -726,6 +747,7 @@ if (cfg.roll) { var cr = cfg.roll(Object.assign({}, S.inputs), f, d) || {}, k2; 
 return Object.keys(p).length ? p : null;
 }
 function adoptHeader() {
+if (!live && cfg.period) { var pr = cfg.period(S.data) || {}; if (I.start && pr.start) S.inputs[I.start] = pr.start; if (I.end && pr.end) S.inputs[I.end] = pr.end; } // non-QuickBooks data: cfg.period reads it
 var hd = header(S.data[cfg.primary]); if (!hd || !hd.ReportName) return;
 if (!live) {
 if (I.start && hd.StartPeriod) S.inputs[I.start] = hd.StartPeriod;
@@ -736,14 +758,15 @@ if (I.basis && (hd.ReportBasis === 'Cash' || hd.ReportBasis === 'Accrual')) S.in
 }
 function opt(list, cur) { return list.map(function (o) { return '<option value="' + h(o[0]) + '"' + (String(o[0]) === String(cur) ? ' selected' : '') + '>' + h(o[1]) + '</option>'; }).join(''); }
 function controls() {
-var el = $('qb-controls'); if (!el) return; var d = disp(), ci = companyInfo(S.data[cfg.company]), dis = live ? '' : ' disabled', x = '';
-x += '<label class="ctl">Client<select id="qb-client" title="One QuickBooks company per connection — connect another company under Settings → Connections to switch."><option>' + h((ci && ci.name) || 'Connected QuickBooks company') + '</option></select></label>';
+var el = $('qb-controls'); if (!el) return; var d = disp(), ci = client(), cl = clients(), dis = live ? '' : ' disabled', x = '';
+if (cl && cl.length) x += '<label class="ctl">Client<select id="qb-client" title="' + h(cfg.clientTitle || '') + '"' + (live && I.client && cl.length > 1 ? '' : ' disabled') + '>' + opt(cl, (I.client && S.inputs[I.client]) || cl[0][0]) + '</select></label>';
+else x += '<label class="ctl">Client<select id="qb-client" title="One QuickBooks company per connection — connect another company under Settings → Connections to switch."><option>' + h((ci && ci.name) || 'Connected QuickBooks company') + '</option></select></label>';
 if (I.start) x += '<label class="ctl">Report period<select id="qb-preset"' + dis + '>' + opt(cfg.presets || PRESETS, d.p) + '</select></label><label class="ctl">From<input type="date" id="qb-from" value="' + h(S.inputs[I.start]) + '"' + dis + '></label><label class="ctl">To<input type="date" id="qb-to" value="' + h(S.inputs[I.end]) + '"' + dis + '></label>';
 if (I.asAt) x += '<label class="ctl">As of<select id="qb-asat-preset"' + dis + '>' + opt(ASAT, d.a) + '</select></label><label class="ctl">Date<input type="date" id="qb-asat" value="' + h(S.inputs[I.asAt]) + '"' + dis + '></label>';
 if (I.basis) x += '<fieldset class="ctl seg"' + dis + '><legend>Accounting method</legend>' + ['Cash', 'Accrual'].map(function (b) { return '<label><input type="radio" name="qb-basis" value="' + b + '"' + (S.inputs[I.basis] === b ? ' checked' : '') + dis + '>' + b + '</label>'; }).join('') + '</fieldset>';
 if (I.columnsBy && cfg.columnsBy) x += '<label class="ctl">Display columns by<select id="qb-cols"' + dis + '>' + opt(cfg.columnsBy, S.inputs[I.columnsBy]) + '</select></label>';
 if (cfg.compare) x += '<label class="ctl">Compare to<select id="qb-cmp"' + dis + '>' + opt(I.asAt ? [['none', 'None'], ['prev_period', 'Previous month end'], ['prev_year', 'Previous year']] : [['none', 'None'], ['prev_period', 'Previous period'], ['prev_year', 'Previous year'], ['ytd', 'Year-to-date']], d.c) + '</select></label>';
-(cfg.enums || []).forEach(function (e, i) { var rq = Object.keys(cfg.uses || {}).some(function (id) { return (cfg.uses[id] || []).indexOf(e.input) >= 0; }); x += '<label class="ctl">' + h(e.label) + '<select id="qb-enum-' + i + '"' + (rq ? dis : '') + '>' + opt(e.options, S.inputs[e.input]) + '</select></label>'; });
+(cfg.enums || []).forEach(function (e, i) { var rq = Object.keys(cfg.uses || {}).some(function (id) { return (cfg.uses[id] || []).indexOf(e.input) >= 0; }); x += '<label class="ctl">' + h(e.label) + '<select id="qb-enum-' + i + '"' + (rq ? dis : '') + '>' + opt(typeof e.options === 'function' ? e.options(S.inputs) : e.options, S.inputs[e.input]) + '</select></label>'; });
 if (cfg.views) x += '<label class="ctl">Report<select id="qb-view">' + opt(cfg.views, d.v || cfg.views[0][0]) + '</select></label>';
 if (I.persona) x += '<label class="ctl">View as<select id="qb-persona">' + opt([['Client', 'Client'], ['Bookkeeper', 'Bookkeeper'], ['Practitioner', 'Practitioner'], ['Executive', 'Executive']], S.inputs[I.persona]) + '</select></label>';
 x += '<details class="ctl customise"><summary>Customise</summary><div class="cz">' +
@@ -765,7 +788,8 @@ on('qb-asat', 'change', function () { var p = {}; p[I.asAt] = this.value; change
 document.querySelectorAll('input[name="qb-basis"]').forEach(function (r) { r.addEventListener('change', function () { var p = {}; p[I.basis] = this.value; change(p); }); });
 on('qb-cols', 'change', function () { var p = {}; p[I.columnsBy] = this.value; change(p); });
 on('qb-cmp', 'change', function () { change({}, { c: this.value }); });
-(cfg.enums || []).forEach(function (e, i) { on('qb-enum-' + i, 'change', function () { var p = {}; p[e.input] = this.value; change(p); }); });
+on('qb-client', 'change', function () { if (!I.client) return; var p = {}; p[I.client] = this.value; change(p, { x: '' }); }); // another client: its own employees
+(cfg.enums || []).forEach(function (e, i) { on('qb-enum-' + i, 'change', function () { var p = {}; p[e.input] = e.num ? Number(this.value) : this.value; change(p, e.disp); }); });
 on('qb-view', 'change', function () { change({}, { v: this.value }); });
 on('qb-persona', 'change', function () { var p = {}; p[I.persona] = this.value; change(p); });
 [['qb-cents', 'cents'], ['qb-k', 'k'], ['qb-red', 'red'], ['qb-hdr', 'hdr'], ['qb-ftr', 'ftr']].forEach(function (c) { on(c[0], 'change', function () { var p = {}; p[c[1]] = this.checked ? 1 : 0; change({}, p); }); });
@@ -779,9 +803,9 @@ on('qb-pdf', 'click', function () { window.print(); });
 on('qb-xlsx', 'click', function () { exportXlsx(); });
 }
 function ctx() {
-var d = disp(), ci = companyInfo(S.data[cfg.company]), f = fy();
+var d = disp(), ci = client(), f = fy();
 return { data: S.data, errors: S.errors, err: err, inputs: S.inputs, I: I, display: d, view: d.v || (cfg.views ? cfg.views[0][0] : ''), compareMode: cfg.compare ? d.c : 'none',
-persona: I.persona ? S.inputs[I.persona] : 'Bookkeeper', company: ci && ci.name, fy: f, currency: homeCurrency(S.data[cfg.prefs], S.data[cfg.primary]), live: live,
+persona: I.persona ? S.inputs[I.persona] : 'Bookkeeper', company: ci && ci.name, country: ci && ci.country, fy: f, currency: homeCurrency(S.data[cfg.prefs], S.data[cfg.primary]), live: live,
 fetchedAt: S.fetchedAt, lines: function (id) { return walk(S.data[id]); }, body: $('qb-body'), change: change, disp: disp, today: iso(today()) };
 }
 var last = { checks: [], na: [], notes: [] };
@@ -796,16 +820,18 @@ var out = {};
 try { out = cfg.render(c) || {}; } catch (e) { if (c.body) c.body.innerHTML = '<p class="qb-err">This report could not render: ' + h(e.message) + '</p>'; out = { checks: [{ name: 'Report rendered', pass: false, detail: e.message }] }; }
 last = { checks: out.checks || [], na: out.na || [], notes: out.notes || [] };
 var nc = Object.keys(S.errors).some(function (id) { return S.errors[id] && S.errors[id].code === 'needs_connection'; });
-if (nc && c.body && c.body.textContent.indexOf(FRIENDLY.needs_connection) < 0) { var dv = document.createElement('div'); dv.className = 'qb-banner fail'; dv.textContent = FRIENDLY.needs_connection; c.body.insertBefore(dv, c.body.firstChild); }
+if (nc && c.body && c.body.textContent.indexOf(FR.needs_connection) < 0) { var dv = document.createElement('div'); dv.className = 'qb-banner fail'; dv.textContent = FR.needs_connection; c.body.insertBefore(dv, c.body.firstChild); }
 Object.keys(S.errors).forEach(function (id) {
 if (id === cfg.company || id === cfg.prefs) return;
+if (/tax_summary/.test((cfg.tools || {})[id] || '') && gstUS(c, [id])) { if (last.na.indexOf(GST_US_NA) < 0) last.na.push(GST_US_NA); return; } // US company: N/A, not red
 var msg = err(id);
 if (last.checks.some(function (k) { return k.pass === false && k.detail === msg; })) return;
 last.checks.unshift({ name: 'Data loaded: ' + ((cfg.tools || {})[id] || id), pass: false, detail: msg });
 });
 var hd = $('qb-head');
-if (hd) { hd.hidden = !d.hdr || !!cfg.noHead; var per = out.period || (I.start ? periodLine(S.inputs[I.start], S.inputs[I.end]) : I.asAt ? asOfLine(S.inputs[I.asAt]) : ''); hd.innerHTML = '<div class="co">' + h(c.company || 'N/A — not in source') + '</div><div class="ti">' + h(out.title || cfg.title) + '</div><div class="pe">' + h(per) + '</div><div class="qb-src"><i aria-hidden="true"></i>Prepared from QuickBooks Online</div>'; }
-var ft = $('qb-foot'); if (ft) { ft.hidden = !d.ftr; ft.textContent = footerStamp(I.basis ? S.inputs[I.basis] : (header(S.data[cfg.primary]).ReportBasis || 'Accrual'), S.fetchedAt); }
+if (hd) { hd.hidden = !d.hdr || !!cfg.noHead; var per = out.period || (I.start ? periodLine(S.inputs[I.start], S.inputs[I.end]) : I.asAt ? asOfLine(S.inputs[I.asAt]) : ''); hd.innerHTML = '<div class="co">' + h(c.company || 'N/A — not in source') + '</div><div class="ti">' + h(out.title || cfg.title) + '</div><div class="pe">' + h(per) + '</div><div class="qb-src"><i aria-hidden="true"></i>' + h(cfg.prepared || 'Prepared from QuickBooks Online') + '</div>'; }
+var ft = $('qb-foot'), fs = footerStamp(I.basis ? S.inputs[I.basis] : (header(S.data[cfg.primary]).ReportBasis || 'Accrual'), S.fetchedAt);
+if (ft) { ft.hidden = !d.ftr; ft.textContent = cfg.footer ? cfg.footer + fs.slice(fs.indexOf(' | ')) : fs; }
 banner(c); sources(c);
 }
 function banner(c) {
@@ -823,10 +849,10 @@ none ? (real ? '– Validation: no check could run (' + nNA + ' N/A' + (nInfo ? 
 }
 function sources(c) {
 var el = $('qb-sources'); if (!el) return; var t = cfg.tools || {};
-var items = Object.keys(t).map(function (id) { return h(t[id]) + (S.errors[id] ? ' — <span class="qb-err">' + h(err(id)) + '</span>' : ''); });
-var na = last.na.slice(); if (!c.company) na.unshift('Company name (CompanyInfo returned no name)');
-el.innerHTML = '<h2>Sources &amp; limitations</h2><ul><li>Mechanism: ' + h(MECHANISM) + '</li><li>Tool calls: ' + items.join(' · ') + '</li>' +
-'<li>Basis: ' + h(I.basis ? S.inputs[I.basis] : 'n/a') + ' · Currency: ' + h(c.currency) + ' · Client: ' + h(c.company || 'N/A — not in source') + ' (one company per QuickBooks connection)</li>' +
+var items = Object.keys(t).map(function (id) { return h(t[id]) + (!S.errors[id] ? '' : /tax_summary/.test(t[id]) && gstUS(c, [id]) ? ' — N/A (US company: sales tax, no GST)' : ' — <span class="qb-err">' + h(err(id)) + '</span>'); });
+var na = last.na.slice(); if (!c.company) na.unshift(cfg.noCompany || 'Company name (CompanyInfo returned no name)');
+el.innerHTML = '<h2>Sources &amp; limitations</h2><ul><li>Mechanism: ' + h(MECH) + '</li><li>Tool calls: ' + items.join(' · ') + '</li>' +
+'<li>Basis: ' + h(I.basis ? S.inputs[I.basis] : 'n/a') + ' · Currency: ' + h(c.currency) + ' · Client: ' + h(c.company || 'N/A — not in source') + ' ' + h(cfg.clientNote || '(one company per QuickBooks connection)') + '</li>' +
 (c.fy.source.indexOf('Fallback') === 0 ? '<li class="qb-err">Financial-year start could not be read from QuickBooks; assumed 1 July (Australia). Adjust the dates if this is wrong.</li>' : '') +
 last.notes.map(function (n) { return '<li>' + h(n) + '</li>'; }).join('') +
 (na.length ? '<li>N/A — not in source: ' + na.map(h).join('; ') + '</li>' : '') + '<li>Decision support only — not audit, tax or legal advice.</li></ul>';
@@ -836,11 +862,12 @@ var c = ctx(), sheets = [];
 try { sheets = (cfg.excel && cfg.excel(c)) || []; } catch (e) { sheets = [{ name: 'Error', rows: [['Excel export failed: ' + e.message]] }]; }
 sheets.push({ name: 'Validation', rows: [[{ v: 'Check', s: 'bold' }, { v: 'Result', s: 'bold' }, { v: 'Detail', s: 'bold' }]].concat(last.checks.map(function (k) { return [k.name, k.pass === true ? 'Pass' : k.pass === false ? 'FAIL' : 'N/A', k.detail || '']; })), widths: [60, 10, 60] });
 var pr = reportv2Params({ token: cfg.token, start: I.start && S.inputs[I.start], end: I.end && S.inputs[I.end], asAt: I.asAt && S.inputs[I.asAt], basis: I.basis && S.inputs[I.basis], display: c.display });
-sheets.push({ name: 'Parameters', rows: [[{ v: 'Parameter', s: 'bold' }, { v: 'Value', s: 'bold' }]].concat(Object.keys(pr).map(function (k) { return [k, String(pr[k])]; })).concat([[], ['Data as of', S.fetchedAt || ''], ['Source', MECHANISM]]), widths: [28, 60] });
+sheets.push({ name: 'Parameters', rows: [[{ v: 'Parameter', s: 'bold' }, { v: 'Value', s: 'bold' }]].concat(Object.keys(pr).map(function (k) { return [k, String(pr[k])]; })).concat([[], ['Data as of', S.fetchedAt || ''], ['Source', MECH]]), widths: [28, 60] });
 var name = [(c.company || 'QuickBooks'), cfg.title, (I.start ? S.inputs[I.start] + ' to ' + S.inputs[I.end] : I.asAt ? 'as of ' + S.inputs[I.asAt] : '')].join(' - ').replace(/[\\\/:*?"<>|]+/g, ' ');
 download(xlsx(sheets, c.currency), name + '.xlsx');
 }
 function boot(bundle) {
+var bi = bundle.inputs, k0; if (bi && typeof bi === 'object') for (k0 in bi) if (Object.prototype.hasOwnProperty.call(S.inputs, k0)) S.inputs[k0] = bi[k0];
 S.data = Object.assign({}, bundle.data || {}); S.errors = Object.assign({}, bundle.errors || {}); S.fetchedAt = bundle.fetchedAt || null;
 adoptHeader(); status('');
 if (S.first) { S.first = false; var roll = rollPresets(); if (roll) { change(roll); return; } announce(); }
@@ -852,7 +879,7 @@ if (MH.onRefresh) MH.onRefresh(function () { status('Refreshing…'); });
 if (MH.onThemeChange) MH.onThemeChange(function () { render(); });
 return { state: S, change: change, render: render, exportXlsx: exportXlsx, ctx: ctx };
 }
-return { gstConfirmed: gstConfirmed, GST_UNCONFIRMED: GST_UNCONFIRMED, cashEnd: cashEnd, bankCash: bankCash, GST_LIAB_RE: GST_LIAB_RE, taxAgency: taxAgency, CF_END_RE: CF_END_RE, CF_BEG_RE: CF_BEG_RE, CF_INC_RE: CF_INC_RE, NI_RE: NI_RE, bsParts: bsParts, applyBrand: applyBrand, bas: bas, sectionTies: sectionTies, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, mergeCompare: mergeCompare, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app, MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays,
+return { gstConfirmed: gstConfirmed, gstUS: gstUS, GST_UNCONFIRMED: GST_UNCONFIRMED, cashEnd: cashEnd, bankCash: bankCash, GST_LIAB_RE: GST_LIAB_RE, taxAgency: taxAgency, CF_END_RE: CF_END_RE, CF_BEG_RE: CF_BEG_RE, CF_INC_RE: CF_INC_RE, NI_RE: NI_RE, bsParts: bsParts, applyBrand: applyBrand, bas: bas, sectionTies: sectionTies, fyStartOf: function (isoDate, m) { return iso(fyStartOf(parse(isoDate), m)); }, mergeCompare: mergeCompare, compareCols: compareCols, h: h, statement: statement, grid: grid, bars: bars, line: line, donut: donut, waterfall: waterfall, kpis: kpis, app: app, MONTHS: MONTHS, iso: iso, parse: parse, eom: eom, addDays: addDays,
 num: num, cols: cols, walk: walk, find: find, val: val, header: header, noData: noData, totalFor: totalFor, near: near, sum: sum,
 companyInfo: companyInfo, fiscalStart: fiscalStart, homeCurrency: homeCurrency, symbol: symbol,
 DISPLAY_DEFAULT: DISPLAY_DEFAULT, readDisplay: readDisplay, writeDisplay: writeDisplay, money: money, pct: pct, isNeg: isNeg,

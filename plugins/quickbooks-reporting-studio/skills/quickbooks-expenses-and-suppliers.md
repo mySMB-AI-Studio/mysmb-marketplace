@@ -5,7 +5,7 @@ description: QuickBooks Online Expenses and suppliers family (Q27) as a live, va
 
 # Expenses and suppliers family (Q27)
 
-Use when the user asks for expenses by supplier, top suppliers, supplier concentration, a purchase list, cheque detail or the supplier contact list. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_vendor_expenses`, `get_report_profit_and_loss`, `list_purchase`, `list_bill`, `list_vendor`, `qbo_query`, `get_preferences`).
+Use when the user asks for expenses by supplier, top suppliers, supplier concentration, a purchase list, cheque detail or the supplier contact list. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Supplier Purchases**. Template: `quickbooks-reporting-studio` / `quickbooks-expenses-and-suppliers` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_vendor_expenses`, `get_report_profit_and_loss`, `list_purchase`, `list_bill`, `list_vendor`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports › Expenses and suppliers. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q27. Delivery: Wave 2 (Train 03).
 
@@ -30,7 +30,7 @@ Preset `this_fy_td`.
 ## Validation checks (STEP 4 — shown in the banner)
 
 - Σ suppliers = supplier expense total
-- Σ suppliers = expenses for the period (Cost of Sales + Expenses + Other Expenses; a difference means expenses with no supplier)
+- Expenses by supplier vs P&L expenses (information: a difference means expenses with no supplier, e.g. journals or depreciation)
 
 ## Save as
 
@@ -249,7 +249,8 @@ QB.app({
     QB.bars(document.getElementById('ch1'), { title: 'Top suppliers', labels: top.map(function (x) { return x.name.slice(0, 16); }), series: [{ name: 'Expenses', values: top.map(function (x) { return x.total; }) }] }, c);
     var checks = [
       { name: 'Σ suppliers = supplier expense total', pass: veTot == null ? null : QB.near(veTot, QB.sum(sup.map(function (x) { return x.total; }))), detail: money(veTot) },
-      { name: 'Σ suppliers = expenses for the period (Cost of Sales + Expenses + Other Expenses)', pass: veTot == null || plExp == null ? null : QB.near(veTot, plExp, 1), detail: 'Suppliers ' + money(veTot) + ' vs P&L ' + money(plExp) + (veTot != null && plExp != null && !QB.near(veTot, plExp, 1) ? ' — the difference is expenses with no supplier (e.g. journals, depreciation)' : '') }];
+      // information, not a tie: expenses with no supplier (journals, depreciation, payroll) are on the P&L only — live QA, 4 Oct 2026
+      { name: 'Expenses by supplier vs Profit and Loss expenses (information)', pass: null, info: true, detail: veTot == null || plExp == null ? 'N/A — not in source' : 'Suppliers ' + money(veTot) + ' vs P&L ' + money(plExp) + ' (Cost of Sales + Expenses + Other Expenses)' + (QB.near(veTot, plExp, 1) ? ' — the same' : ' — the difference is expenses with no supplier (e.g. journals, depreciation)') }];
     this._x = { sup: sup, veTot: veTot, pur: pur };
     return { checks: checks, title: (this.views.filter(function (x) { return x[0] === v; })[0] || ['', ''])[1],
       notes: ['Purchase List and Cheque Detail use the latest 1,000 purchases and bills, filtered to the period.'],

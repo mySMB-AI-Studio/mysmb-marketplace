@@ -5,7 +5,7 @@ description: QuickBooks Online Profit and Loss family (Q17) as a live, validated
 
 # Profit and Loss family (Q17)
 
-Use when the user asks for a profit and loss, P&L, income statement, profit report, P&L by month / quarter / customer / class / location, P&L comparison, P&L as % of income or year-to-date comparison. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `qbo_query`, `get_preferences`).
+Use when the user asks for a profit and loss, P&L, income statement, profit report, P&L by month / quarter / customer / class / location, P&L comparison, P&L as % of income or year-to-date comparison. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Profit and Loss**. Template: `quickbooks-reporting-studio` / `quickbooks-profit-and-loss` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports › Business overview › Profit and Loss. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q17. Delivery: Wave 1.
 
@@ -232,7 +232,10 @@ QB.app({
     var T = function (g, re) { return QB.val(QB.find(lines, g, re)); };
     var inc = T('Income', /^total (for )?income$/i), cogs = T('COGS', /^total (for )?cost of (sales|goods sold)$/i) || 0, gp = T('GrossProfit', /^gross profit$/i),
       exp = T('Expenses', /^total (for )?expenses$/i), oi = T('OtherIncome', /^total (for )?other income$/i) || 0, oe = T('OtherExpenses', /^total (for )?other expenses$/i) || 0, ni = T('NetIncome', QB.NI_RE);
-    var incHdr = QB.find(lines, 'Income', null, 'header'), incRows = lines.filter(function (l) { return l.kind === 'row' && incHdr && l.path[0] === incHdr.label; });
+    if (inc == null && ni != null) inc = 0; if (gp == null && ni != null && !inc && !cogs) gp = 0; // QuickBooks leaves out empty sections: no income = 0
+    // a parent account's own amount is on its section header (its sub-accounts are the rows below) — live QA, 4 Oct 2026:
+    // Landscaping Services on the US sandbox
+    var incHdr = QB.find(lines, 'Income', null, 'header'), incRows = lines.filter(function (l) { return incHdr && l.path[0] === incHdr.label && (l.kind === 'row' || (l.kind === 'header' && l !== incHdr)); }), incSum = QB.sum(incRows.map(function (l) { return QB.val(l); }));
     var extra = [];
     if (cmpOn) extra = QB.compareCols({ prev_period: 'Previous period', prev_year: 'Previous year', ytd: 'Year-to-date' }[c.compareMode]);
     if (c.view === 'pct') extra.push({ title: '% of Income', fmt: 'pct', value: function (l) { return inc ? QB.val(l) / inc : null; } });
@@ -252,7 +255,7 @@ QB.app({
       QB.waterfall(document.getElementById('ch2'), { title: 'Income to net earnings', steps: [{ label: 'Income', value: inc, total: true }, { label: 'Cost of Sales', value: -cogs }, { label: 'Other income', value: oi }, { label: 'Expenses', value: -exp }, { label: 'Other exp.', value: -oe }, { label: 'Net Earnings', value: ni, total: true }] }, c);
     }
     var hd = QB.header(rep), checks = [
-      { name: 'Total for Income = Σ income accounts', pass: inc == null ? null : QB.near(inc, QB.sum(incRows.map(function (l) { return QB.val(l); }))), detail: QB.money(inc, c.currency, c.display) },
+      { name: 'Total for Income = Σ income accounts', pass: inc == null ? null : QB.near(inc, incSum), detail: QB.money(inc, c.currency, c.display) + (inc == null || QB.near(inc, incSum) ? '' : ' vs Σ ' + QB.money(incSum, c.currency, c.display)) },
       { name: 'Gross Profit = Income − Cost of Sales', pass: gp == null || inc == null ? null : QB.near(gp, inc - cogs), detail: QB.money(gp, c.currency, c.display) },
       { name: 'Net Earnings = Gross Profit + Other Income − Expenses − Other Expenses', pass: ni == null || gp == null || exp == null ? null : QB.near(ni, gp + oi - exp - oe), detail: QB.money(ni, c.currency, c.display) },
       { name: 'QuickBooks returned the requested period', pass: !c.live ? null : hd.StartPeriod === c.inputs.start_date && hd.EndPeriod === c.inputs.end_date, detail: (hd.StartPeriod || '?') + ' to ' + (hd.EndPeriod || '?') + ', ' + (hd.ReportBasis || '?') + ' basis' }

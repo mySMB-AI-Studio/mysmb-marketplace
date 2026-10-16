@@ -5,7 +5,7 @@ description: QuickBooks Online Sales and customers family (Q25) as a live, valid
 
 # Sales and customers family (Q25)
 
-Use when the user asks for sales by customer, sales by product or service, income by customer, top customers, product mix, the customer contact list, the product/service list or quotes by customer. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_customer_sales`, `get_report_item_sales`, `get_report_customer_income`, `get_report_profit_and_loss`, `list_customer`, `list_item`, `list_estimate`, `qbo_query`, `get_preferences`).
+Use when the user asks for sales by customer, sales by product or service, income by customer, top customers, product mix, the customer contact list, the product/service list or quotes by customer. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Customer Sales**. Template: `quickbooks-reporting-studio` / `quickbooks-sales-and-customers` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_customer_sales`, `get_report_item_sales`, `get_report_customer_income`, `get_report_profit_and_loss`, `list_customer`, `list_item`, `list_estimate`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports › Sales and customers. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q25. Delivery: Wave 2 (Train 03).
 
@@ -32,7 +32,7 @@ Preset `this_fy_td`: `start_date` = FY start, `end_date` = `"today"`.
 ## Validation checks (STEP 4 — shown in the banner)
 
 - Σ customers = sales total
-- Σ customers = income for the period (P&L Total for Income; a difference means income not raised on a sales form)
+- Sales by customer vs P&L Total for Income (information: a difference means income not raised on a sales form)
 - Σ products/services = sales total
 
 ## Save as
@@ -279,7 +279,10 @@ QB.app({
     var col = function (rep, re) { var t = QB.cols(rep).map(function (x) { return x.title; }); for (var i = 1; i < t.length; i++) if (re.test(t[i])) return i - 1; return -1; };
     var cs = c.data.customer_sales, cust = rowsOf(cs).map(function (l) { return { name: l.label, total: QB.val(l) }; }), csTot = QB.val(gtOf(cs));
     var is = c.data.item_sales, ai = is ? col(is, /^amount$/i) : -1, qi = is ? col(is, /^(quantity|qty)$/i) : -1;
-    var prod = rowsOf(is).map(function (l) { return { name: l.label, qty: qi >= 0 ? l.values[qi] : null, amount: ai >= 0 ? l.values[ai] : QB.val(l) }; }), isTot = is && gtOf(is) ? (ai >= 0 ? gtOf(is).values[ai] : QB.val(gtOf(is))) : null;
+    var prod = rowsOf(is).map(function (l) { return { name: l.label, qty: qi >= 0 ? l.values[qi] : null, amount: ai >= 0 ? l.values[ai] : QB.val(l) }; }), isGt = is ? gtOf(is) : null, isTot = isGt ? (ai >= 0 ? isGt.values[ai] : QB.val(isGt)) : null;
+    // no TOTAL amount from QuickBooks: Σ the product rows; no Amount column: N/A, naming the columns (live QA, 4 Oct 2026: N/A, unexplained)
+    var isNote = is && ai < 0 ? ' — no Amount column (' + QB.cols(is).map(function (x) { return x.title; }).filter(Boolean).join(', ') + ')' : '';
+    if (isTot == null && ai >= 0 && prod.length) { isTot = QB.sum(prod.map(function (x) { return x.amount; })); isNote = ' (Σ product rows: QuickBooks returned no TOTAL)'; }
     var pl = c.data.pnl ? QB.walk(c.data.pnl) : [], inc = QB.val(QB.find(pl, 'Income', /^total (for )?income$/i));
     var q = function (id, e) { return (c.data[id] && c.data[id].QueryResponse && c.data[id].QueryResponse[e]) || []; };
     var kp = QB.kpis([{ label: 'Total sales', value: csTot }, { label: 'Customers with sales', money: false, value: cust.length }, { label: 'Top customer share', text: csTot && cust.length ? QB.pct(Math.max.apply(null, cust.map(function (x) { return x.total || 0; })) / csTot) : 'N/A — not in source' }, { label: 'Products / services sold', money: false, value: prod.length }], c);
@@ -298,8 +301,9 @@ QB.app({
     QB.donut(document.getElementById('ch2'), { title: 'Product mix', items: prod.map(function (x) { return { label: x.name, value: x.amount }; }) }, c);
     var checks = [
       { name: 'Σ customers = sales total', pass: csTot == null ? null : QB.near(csTot, QB.sum(cust.map(function (x) { return x.total; }))), detail: money(csTot) },
-      { name: 'Σ customers = income for the period (Profit and Loss Total for Income)', pass: csTot == null || inc == null ? null : QB.near(csTot, inc, 1), detail: 'Sales ' + money(csTot) + ' vs income ' + money(inc) + (csTot != null && inc != null && !QB.near(csTot, inc, 1) ? ' — the difference is income not raised on a sales form (e.g. journals)' : '') },
-      { name: 'Σ products/services = sales total', pass: isTot == null || csTot == null ? null : QB.near(isTot, csTot, 1), detail: money(isTot) }];
+      // information, not a tie: income posted without a sales form (journals, deposits) is on the P&L but not by customer — live QA, 4 Oct 2026
+      { name: 'Sales by customer vs Profit and Loss Total for Income (information)', pass: null, info: true, detail: csTot == null || inc == null ? 'N/A — not in source' : 'Sales ' + money(csTot) + ' vs income ' + money(inc) + (QB.near(csTot, inc, 1) ? ' — the same' : ' — the difference is income not raised on a sales form (e.g. journals, deposits)') },
+      { name: 'Σ products/services = sales total', pass: isTot == null || csTot == null ? null : QB.near(isTot, csTot, 1), detail: money(isTot) + (isTot != null && csTot != null && !QB.near(isTot, csTot, 1) ? ' vs sales by customer ' + money(csTot) : '') + isNote }];
     this._x = { cust: cust, prod: prod, csTot: csTot, isTot: isTot };
     return { checks: checks, title: (this.views.filter(function (x) { return x[0] === v; })[0] || ['', ''])[1],
       na: ['Sales by Customer / Product Detail, Deposit Detail, Quotes & Progress Invoicing Summary, Sales by Customer Type Detail, Payment Method List, Time Activities by Customer, Transaction List by Customer / Tag Group, Cashflow Payment Transactions (later members; tag groups are not in the API)'] };

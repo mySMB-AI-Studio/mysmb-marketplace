@@ -5,7 +5,7 @@ description: QuickBooks Online Management reports (report packs) (Q04) as a live
 
 # Management reports (report packs) (Q04)
 
-Use when the user asks for a management report, board pack, report pack, company financials pack, month-end pack, BAS workpapers or a PDF pack of the statements. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `get_report_balance_sheet`, `get_report_cash_flow`, `get_report_aged_receivables`, `get_report_aged_payables`, `get_report_tax_summary`, `list_tax_agency`, `qbo_query`, `get_preferences`).
+Use when the user asks for a management report, board pack, report pack, company financials pack, month-end pack, BAS workpapers or a PDF pack of the statements. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Report Pack**. Template: `quickbooks-reporting-studio` / `quickbooks-management-reports` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_profit_and_loss`, `get_report_balance_sheet`, `get_report_cash_flow`, `get_report_aged_receivables`, `get_report_aged_payables`, `get_report_tax_summary`, `list_tax_agency`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Management reports. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q04. Delivery: Wave 1.
 
@@ -15,7 +15,7 @@ QuickBooks location: Reports › Management reports. Library: QuickBooks Reports
 
 ## Date defaults
 
-Custom period — the pack period the user asks for (default: financial year to the end of last month).
+Preset `last_month` (a month-end pack): `start_date` / `end_date` = last month. For a user-named period, set `p` in `display` to the matching preset (`last_quarter`, `this_fy_td`, `last_fy` …), or `custom` with both dates. Never open on a one-day period unless the user asks for one.
 
 ## Members
 
@@ -60,13 +60,13 @@ Custom period — the pack period the user asks for (default: financial year to 
       "name": "start_date",
       "label": "From",
       "type": "date",
-      "default": "2026-07-01"
+      "default": "2026-09-01"
     },
     {
       "name": "end_date",
       "label": "To",
       "type": "date",
-      "default": "2026-08-31"
+      "default": "2026-09-30"
     },
     {
       "name": "basis",
@@ -102,7 +102,7 @@ Custom period — the pack period the user asks for (default: financial year to 
       "label": "Display settings",
       "type": "string",
       "maxLength": 300,
-      "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"basic\",\"x\":\"\"}"
+      "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"last_month\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"basic\",\"x\":\"\"}"
     }
   ],
   "bindings": [
@@ -283,8 +283,8 @@ Custom period — the pack period the user asks for (default: financial year to 
 QB.app({
   title: 'Management Report', token: null, noHead: true, primary: 'pnl', company: 'company_info', prefs: 'prefs',
   inputs: { start: 'start_date', end: 'end_date', basis: 'basis', persona: 'persona', display: 'display' },
-  defaults: { start_date: '2026-07-01', end_date: '2026-08-31', basis: 'Accrual', agency_id: '', persona: 'Executive',
-    display: '{"cents":1,"k":0,"zeros":0,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"custom","a":"custom","c":"none","v":"basic","x":""}' },
+  defaults: { start_date: '2026-09-01', end_date: '2026-09-30', basis: 'Accrual', agency_id: '', persona: 'Executive',
+    display: '{"cents":1,"k":0,"zeros":0,"neg":"minus","red":0,"hdr":1,"ftr":1,"style":"qbo","dens":"100","p":"last_month","a":"custom","c":"none","v":"basic","x":""}' },
   uses: { pnl: ['start_date', 'end_date', 'basis'], balance_sheet: ['end_date', 'basis'], cash_flow: ['start_date', 'end_date'], gst_summary: ['start_date', 'end_date', 'basis', 'agency_id'], gst_probe: ['basis', 'agency_id'], tax_agencies: [], aged_receivables: [], aged_payables: [], company_info: [], prefs: [] },
   tools: { pnl: 'get_report_profit_and_loss', balance_sheet: 'get_report_balance_sheet', cash_flow: 'get_report_cash_flow', aged_receivables: 'get_report_aged_receivables', aged_payables: 'get_report_aged_payables', gst_summary: 'get_report_tax_summary', gst_probe: 'get_report_tax_summary (all history — confirms a nil period)', company_info: 'qbo_query (CompanyInfo)', prefs: 'get_preferences' },
   views: [['basic', 'Basic Company Financials'], ['expanded', 'Expanded Company Financials'], ['bas', 'BAS workpapers']],
@@ -304,19 +304,22 @@ QB.app({
     if (tpl !== 'bas') pages.push(['Profit and Loss', function () { return stmt('pnl', pl); }], ['Balance Sheet', function () { return stmt('balance_sheet', bs); }]);
     if (tpl === 'expanded') pages.push(['Statement of Cash Flows', function () { return stmt('cash_flow', cf); }], ['A/R Ageing Summary', function () { return ageTable('aged_receivables', 'Customer'); }], ['A/P Ageing Summary', function () { return ageTable('aged_payables', 'Supplier'); }]);
     var basNil = !!(c.data.gst_summary && QB.noData(c.data.gst_summary) && ag.id && QB.gstConfirmed(c, 'gst_probe')), basB = c.data.gst_summary && !QB.noData(c.data.gst_summary) ? QB.bas(c.data.gst_summary) : null;
-    if (tpl === 'bas') pages.push(['GST Summary', function () { return c.errors.gst_summary ? '<p class="qb-err">' + QB.h(c.err('gst_summary')) + '</p>' : basB ? QB.statement(basB.lines, ['', 'TOTAL'], c) : basNil ? '<div class="qb-card detail-block"><h3>Nil period</h3><p>QuickBooks has no GST transactions for <strong>' + QB.h(ag.name) + '</strong> in this period, so every BAS label is ' + QB.h(money(0)) + '.</p></div>' : '<p class="qb-err">' + (ag.id ? QB.h(QB.GST_UNCONFIRMED) : 'No tax agency is set up in QuickBooks — GST is unavailable, not zero.') + '</p>'; }], ['Profit and Loss', function () { return stmt('pnl', pl); }]);
+    var usNA = QB.gstUS(c, ['gst_summary', 'gst_probe']);
+    if (tpl === 'bas') pages.push(['GST Summary', function () { return usNA ? '<div class="qb-banner na"><strong>GST does not apply to this company.</strong> ' + QB.h(usNA) + '</div>' : c.errors.gst_summary ?'<p class="qb-err">' + QB.h(c.err('gst_summary')) + '</p>' : basB ? QB.statement(basB.lines, ['', 'TOTAL'], c) : basNil ? '<div class="qb-card detail-block"><h3>Nil period</h3><p>QuickBooks has no GST transactions for <strong>' + QB.h(ag.name) + '</strong> in this period, so every BAS label is ' + QB.h(money(0)) + '.</p></div>' : '<p class="qb-err">' + (ag.id ? QB.h(QB.GST_UNCONFIRMED) : 'No tax agency is set up in QuickBooks — GST is unavailable, not zero.') + '</p>'; }], ['Profit and Loss', function () { return stmt('pnl', pl); }]);
     pages.push(['End notes', function () { return '<p>Prepared from QuickBooks Online via the ' + QB.h('quickbooks-accounting') + ' connector on ' + QB.h(new Date(c.fetchedAt || Date.now()).toLocaleString('en-AU')) + '. ' + QB.h(c.inputs.basis) + ' basis. Amounts in ' + QB.h(c.currency) + '.</p><p>These reports are decision support. They have not been audited or reviewed.</p>'; }]);
     var cover = '<section class="page mr-cover" style="background:var(--cover);color:var(--cover-ink);border-radius:8px;padding:72px 40px;margin-bottom:16px"><div style="font-size:30px;font-weight:700">Management Report</div><div style="font-size:20px;margin-top:12px">' + QB.h(c.company || 'N/A — not in source') + '</div><div style="margin-top:8px">For the period ended ' + QB.h(ended) + '</div><div style="margin-top:24px;opacity:.8">' + QB.h({ basic: 'Basic Company Financials', expanded: 'Expanded Company Financials', bas: 'BAS workpapers' }[tpl]) + '</div></section>';
     var toc = '<section class="page qb-card"><h2>Table of contents</h2><ol>' + pages.map(function (p, i) { return '<li>' + QB.h(p[0]) + ' <span class="muted">— page ' + (i + 3) + '</span></li>'; }).join('') + '</ol></section>';
     body.innerHTML = cover + toc + pages.map(function (p, i) { return '<section class="page qb-card"><div id="qb-mr-' + i + '" style="text-align:center;margin-bottom:12px"><div style="font-weight:700">' + QB.h(c.company || 'N/A — not in source') + '</div><div>' + QB.h(p[0]) + '</div><div>' + QB.h(p[0] === 'Balance Sheet' ? QB.asOfLine(c.inputs.end_date) : QB.periodLine(c.inputs.start_date, c.inputs.end_date)) + '</div></div>' + p[1]() + '<div class="muted" style="text-align:right;font-size:12px">Page ' + (i + 3) + '</div></section>'; }).join('');
     var BP = QB.bsParts(bs), A = QB.val(BP.A), LE = QB.val(BP.LE), gp = T(pl, 'GrossProfit'), inc = T(pl, 'Income'), cogs = T(pl, 'COGS') || 0, ni = T(pl, 'NetIncome'), exp = T(pl, 'Expenses'), oi = T(pl, 'OtherIncome') || 0, oe = T(pl, 'OtherExpenses') || 0;
+    // QuickBooks leaves out empty sections: a period with no income has no Income line — 0, not N/A (live QA, 4 Oct 2026: September)
+    if (inc == null && ni != null) inc = 0; if (gp == null && ni != null && !inc && !cogs) gp = 0;
     var beg = QB.val(QB.find(cf, 'BeginningCash', QB.CF_BEG_RE)), cinc = QB.val(QB.find(cf, 'CashIncrease', QB.CF_INC_RE)), cend = QB.val(QB.find(cf, 'EndingCash', QB.CF_END_RE));
     var ageOk = function (id) { var ls = W(id), gt = QB.find(ls, 'GrandTotal'); return gt ? QB.near(QB.val(gt), QB.sum(ls.filter(function (l) { return l.kind === 'row'; }).map(function (l) { return QB.val(l); }))) : null; };
     var checks = [
       { name: 'P&L: Gross Profit = Income − Cost of Sales; Net Earnings = GP + Other Income − Expenses − Other Expenses', pass: gp == null || inc == null || ni == null ? null : QB.near(gp, inc - cogs) && QB.near(ni, gp + oi - exp - oe), detail: money(ni) },
       { name: 'Balance Sheet: Total for Assets = Total for Liabilities + Equity', pass: A == null || LE == null ? null : QB.near(A, LE), detail: c.errors.balance_sheet ? c.err('balance_sheet') : money(A) }];
     if (tpl === 'expanded') checks.push(cend == null && beg == null && cinc != null ? { name: 'Cash Flows: net increase in cash (information)', pass: null, info: true, detail: money(cinc) + " — QuickBooks' cash flow report has no opening or closing cash lines for this company" } : { name: 'Cash Flows: Cash at end = beginning + net increase', pass: cend == null ? null : QB.near(cend, beg + cinc), detail: money(cend) }, { name: 'A/R and A/P ageing: TOTAL = Σ rows', pass: ageOk('aged_receivables') === false || ageOk('aged_payables') === false ? false : true, detail: '' });
-    if (tpl === 'bas') checks.push(basNil ? { name: 'GST Summary: GST activity in the period (information)', pass: null, info: true, detail: 'None — nil period for ' + ag.name } : { name: 'GST Summary: 1A − 1B = 9', pass: basB && basB.a1 != null && basB.nine != null ? QB.near(basB.a1 - basB.b1, basB.nine) : null, detail: basB ? money(basB.nine) : 'No GST rows' });
+    if (tpl === 'bas') checks.push(usNA ? { name: 'GST Summary: 1A − 1B = 9', pass: null, detail: 'N/A — US company (sales tax, no GST)' } : basNil ?{ name: 'GST Summary: GST activity in the period (information)', pass: null, info: true, detail: 'None — nil period for ' + ag.name } : { name: 'GST Summary: 1A − 1B = 9', pass: basB && basB.a1 != null && basB.nine != null ? QB.near(basB.a1 - basB.b1, basB.nine) : null, detail: basB ? money(basB.nine) : 'No GST rows' });
     checks.push({ name: 'Table of contents page numbers match the page order', pass: pages.every(function (p, i) { return !!document.getElementById('qb-mr-' + i); }), detail: pages.length + ' pages after cover and contents' });
     this._x = { pl: pl, bs: bs, cf: cf, tpl: tpl, basB: basB, ended: ended };
     return { checks: checks, title: 'Management Report', period: 'For the period ended ' + ended,

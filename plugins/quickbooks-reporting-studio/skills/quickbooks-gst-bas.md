@@ -5,7 +5,7 @@ description: QuickBooks Online GST and PAYG family (BAS) (Q28) as a live, valida
 
 # GST and PAYG family (BAS) (Q28)
 
-Use when the user asks for GST, a GST summary, BAS, BAS labels (G1, 1A, 1B, 9), GST payable or refund, the activity statement, or PAYG withholding. Load `quickbooks-report-foundation` first and follow its *Build a report* steps with the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_tax_summary`, `get_report_balance_sheet`, `list_tax_agency`, `qbo_query`, `get_preferences`).
+Use when the user asks for GST, a GST summary, BAS, BAS labels (G1, 1A, 1B, 9), GST payable or refund, the activity statement, or PAYG withholding. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks GST Summary (BAS)**. Template: `quickbooks-reporting-studio` / `quickbooks-gst-bas` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`get_report_tax_summary`, `get_report_balance_sheet`, `list_tax_agency`, `qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports › Manage Taxes › GST Summary. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q28. Delivery: Wave 1.
 
@@ -227,6 +227,8 @@ QB.app({
     }
     var ag = QB.taxAgency(c, 'tax_agencies', 'agency_id');
     if (ag.pending) { body.innerHTML = '<p class="muted">Loading GST for ' + QB.h(ag.name) + '…</p>'; return {}; }
+    var usNA = QB.gstUS(c, ['gst_summary', 'gst_probe']);
+    if (usNA) { body.innerHTML = '<div class="qb-banner na"><strong>GST does not apply to this company.</strong> ' + QB.h(usNA) + '</div>'; this._x = null; return { checks: [{ name: 'GST Summary loaded', pass: null, detail: 'N/A — US company (sales tax, no GST)' }] }; }
     if (c.errors.gst_summary) { body.innerHTML = '<p class="qb-err">' + QB.h(c.err('gst_summary')) + '</p>'; return { checks: [{ name: 'GST Summary loaded', pass: false, detail: c.err('gst_summary') }] }; }
     if (!rep) return {};
     var bsl = c.data.bs_end ? QB.walk(c.data.bs_end) : [], gstRow = QB.find(bsl, null, QB.GST_LIAB_RE, 'row'), gstLiab = QB.val(gstRow), hd = QB.header(rep);
