@@ -1,72 +1,44 @@
 ---
 name: google-workspace-calendar
-description: List, create, update, and delete Google Calendar events via the Google Workspace MCP server. Use when the user asks about their schedule, upcoming meetings, wants to create an event, reschedule, or cancel a meeting.
+description: List and read Google Calendar events via the Google Workspace MCP server. Use when the user asks about their schedule or upcoming meetings. Create, update, and delete events are not available (read-only scope).
 ---
 
-# Google Calendar — managing events and schedules
+# Google Calendar — viewing events and schedules
 
-Use the `google-workspace-calendar` MCP server for all Calendar operations.
+Use the `google-workspace-calendar` MCP server for all Calendar operations. It is connected with `calendar.events.readonly` (read events) and `calendar.calendarlist.readonly` (list the user's calendars).
 
 ## Listing calendars
 
-Call `list_calendars` to retrieve all calendars the user has access to: primary, other personal calendars, shared team calendars, and subscribed calendars. Each entry has an `id`, `summary` (display name), and `accessRole`.
+Call `list_calendars` for the calendars the user has: primary, other personal calendars, shared team calendars, and subscribed calendars. Use `primary` as the shorthand for the primary calendar.
 
-The primary calendar `id` is typically the user's email address. Use `primary` as a shorthand for the primary calendar in most tools.
+## Upcoming agenda across calendars
+
+Call `get_upcoming_events_dashboard` for one merged view of the next 30 days across every calendar the user has ticked as visible in Google Calendar. Each event carries its calendar name and colour, the user's RSVP, whether it clashes with another event, and a Meet link when present.
 
 ## Listing events
 
 Call `list_events` with:
 
 - `calendarId` — defaults to `primary`
-- `timeMin` / `timeMax` — ISO 8601 date-times (e.g. `2025-06-01T00:00:00Z`)
-- `maxResults` — number of events (default 10)
-- `orderBy` — `startTime` (for non-recurring) or `updated`
-- `q` — free-text search across event title and description
+- `timeMin` / `timeMax` — RFC 3339 date-times (e.g. `2026-06-01T00:00:00Z`)
+- `maxResults` — up to 50 (default 10)
+- `orderBy` — `startTime` or `updated`
+- `q` — free-text search across event fields
 
-Present events as: title, date and time, location or conference link, attendees count. Use the user's local timezone when displaying times — ask if unknown.
+Present events as: title, date and time, location or conference link. Use the user's local timezone — ask if unknown.
 
 ## Getting event details
 
-Call `get_event` with `calendarId` and `eventId`. Returns full attendee list, conferencing data (Meet/Zoom link), description, attachments, and recurrence rule.
+Call `get_event` with `calendarId` and `eventId` for attendees, location, description and the conference link.
 
-## Creating events
+## What is not available
 
-Use `create_event`. Required fields:
-
-- `summary` — event title
-- `start` — `{ dateTime: "2025-06-15T10:00:00+10:00", timeZone: "Australia/Sydney" }`
-- `end` — same shape
-
-Optional but commonly needed:
-
-- `description` — meeting agenda or notes
-- `attendees` — array of `{ email }` objects; Google sends invitations automatically
-- `location` — physical address or conference URL
-- `conferenceData` — set `createRequest` to auto-generate a Google Meet link
-
-**Creating an event with attendees sends real calendar invitations.** Confirm the guest list, date, and time with the user before calling.
-
-After success, surface the event `id`, `htmlLink` (Google Calendar web link), and any conference join URL.
-
-## Updating events
-
-Use `update_event` with the `calendarId`, `eventId`, and only the fields that are changing. To reschedule, update `start` and `end`. To add an attendee, append to the `attendees` array.
-
-**Updating an event with attendees sends update notifications.** Confirm the change with the user first.
-
-## Deleting / cancelling events
-
-Call `delete_event` with `calendarId` and `eventId`. This removes the event from all attendees' calendars and sends cancellation notifications.
-
-**This is irreversible.** Always confirm with the user before calling.
-
-## Finding free/busy slots
-
-Call `get_freebusy` with a `timeMin`, `timeMax`, and an array of calendar IDs or email addresses. The response shows busy intervals for each calendar — use this to find a slot when everyone is free before proposing a meeting time.
+- Creating, updating, rescheduling or deleting events
+- Responding to invitations
+- Free/busy lookups for other people
 
 ## Error handling
 
-- `401` — token expired or missing the `calendar.events` scope.
-- `403` — insufficient permissions; the token lacks `https://www.googleapis.com/auth/calendar.events`.
+- `401` — the connection needs re-authorising; ask the user to reconnect Calendar in Settings → Extensions → Connections.
+- `403` — the connection lacks `calendar.events.readonly` or `calendar.calendarlist.readonly` (a Calendar connection made before October 2026 may need reconnecting).
 - `404` — event or calendar not found; confirm IDs.
-- `409 Conflict` — event ID collision; let the server generate the ID instead of supplying one.

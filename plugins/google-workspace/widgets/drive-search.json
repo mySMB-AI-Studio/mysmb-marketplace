@@ -1,0 +1,510 @@
+{
+  "id": "google-workspace-drive-search",
+  "title": "Drive Search",
+  "description": "Search Google Drive files by name or content. Type a keyword or phrase and browse matching results with file-type badges inline.",
+  "category": "productivity",
+  "tags": [
+    "google",
+    "drive",
+    "files",
+    "search",
+    "documents",
+    "productivity"
+  ],
+  "keywords": [
+    "search",
+    "find",
+    "files",
+    "documents",
+    "drive",
+    "google",
+    "sheets",
+    "docs",
+    "slides",
+    "pdf"
+  ],
+  "connectorsUsed": [
+    "google-workspace-drive"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 7
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 5
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "searchBar",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "headerRow"
+        ]
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": {
+          "justify": "between",
+          "align": "center"
+        },
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "HardDrive",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "widgetTitle",
+          "widgetSubtitle"
+        ]
+      },
+      "widgetTitle": {
+        "type": "Heading",
+        "props": {
+          "text": "Drive Search",
+          "level": "h2"
+        }
+      },
+      "widgetSubtitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Google Drive"
+        }
+      },
+      "searchBar": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "searchInput",
+          "searchBtn"
+        ]
+      },
+      "searchInput": {
+        "type": "TextInput",
+        "props": {
+          "value": {
+            "$bindState": "/ui/driveSearch/query"
+          },
+          "placeholder": "Search files by name or content…",
+          "ariaLabel": "Search Google Drive"
+        },
+        "on": {
+          "submit": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/driveSearch/done",
+                "value": true
+              }
+            },
+            {
+              "action": "google-workspace-drive.search_files",
+              "params": {
+                "query": {
+                  "$state": "/ui/driveSearch/query"
+                },
+                "pageSize": 20
+              }
+            }
+          ]
+        }
+      },
+      "searchBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Search",
+          "variant": "primary",
+          "size": "sm",
+          "leadingIcon": "Search",
+          "disabled": {
+            "$cond": {
+              "$state": "/ui/driveSearch/query"
+            },
+            "$then": false,
+            "$else": true
+          }
+        },
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/driveSearch/done",
+                "value": true
+              }
+            },
+            {
+              "action": "google-workspace-drive.search_files",
+              "params": {
+                "query": {
+                  "$state": "/ui/driveSearch/query"
+                },
+                "pageSize": 20
+              }
+            }
+          ]
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "prompt",
+          "loadingStack",
+          "errorState",
+          "emptyState",
+          "results"
+        ]
+      },
+      "prompt": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "promptIcon",
+          "promptTitle",
+          "promptHint"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/google-workspace-drive.search_files",
+              "not": true
+            },
+            {
+              "$or": [
+                {
+                  "$state": "/ui/driveSearch/done",
+                  "not": true
+                },
+                {
+                  "$state": "/ui/driveSearch/query",
+                  "not": true
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "promptIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "FolderSearch",
+          "tone": "muted",
+          "size": "lg"
+        }
+      },
+      "promptTitle": {
+        "type": "Text",
+        "props": {
+          "text": "Search your Google Drive",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "promptHint": {
+        "type": "Caption",
+        "props": {
+          "text": "Type a file name, keyword, or phrase to find documents.",
+          "tone": "muted"
+        }
+      },
+      "loadingStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "visible": {
+          "$state": "/_loading/google-workspace-drive.search_files"
+        }
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.75rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.75rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.75rem",
+          "rounded": "md"
+        }
+      },
+      "errorState": {
+        "type": "Empty",
+        "props": {
+          "message": "Couldn’t search Google Drive. Check the connection and try again."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/google-workspace-drive.search_files",
+              "not": true
+            },
+            {
+              "$state": "/_errors/google-workspace-drive.search_files"
+            }
+          ]
+        }
+      },
+      "emptyState": {
+        "type": "Empty",
+        "props": {
+          "message": "No files match that search. Try a different term."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/google-workspace-drive.search_files",
+              "not": true
+            },
+            {
+              "$state": "/_errors/google-workspace-drive.search_files",
+              "not": true
+            },
+            {
+              "$state": "/ui/driveSearch/done"
+            },
+            {
+              "$state": "/ui/driveSearch/query"
+            },
+            {
+              "$state": "/google-workspace-drive/search_files/files/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "results": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "summaryLabel",
+          "fileList"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/google-workspace-drive.search_files",
+              "not": true
+            },
+            {
+              "$state": "/_errors/google-workspace-drive.search_files",
+              "not": true
+            },
+            {
+              "$state": "/ui/driveSearch/done"
+            },
+            {
+              "$state": "/ui/driveSearch/query"
+            },
+            {
+              "$state": "/google-workspace-drive/search_files/files/0"
+            }
+          ]
+        }
+      },
+      "summaryLabel": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} shown · up to 20 per search",
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/google-workspace-drive/search_files/files"
+                  }
+                }
+              }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "fileList": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "repeat": {
+          "statePath": "/google-workspace-drive/search_files/files",
+          "key": "id"
+        },
+        "children": [
+          "fileRow"
+        ]
+      },
+      "fileRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between",
+          "hover": true,
+          "clickable": true
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "webViewLink"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "children": [
+          "fileLeft",
+          "mimeTypeBadge"
+        ]
+      },
+      "fileLeft": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start",
+          "grow": true
+        },
+        "children": [
+          "fileIcon",
+          "fileInfo"
+        ]
+      },
+      "fileIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "FileText",
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "fileInfo": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "fileName",
+          "fileMeta"
+        ]
+      },
+      "fileName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "fileMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Modified {d}",
+              "d": {
+                "$computed": "format_date",
+                "args": {
+                  "value": {
+                    "$item": "modifiedTime"
+                  },
+                  "format": "dd-mmm-yy"
+                }
+              }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "mimeTypeBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "google-workspace_mime_label",
+            "args": {
+              "value": {
+                "$item": "mimeType"
+              }
+            }
+          },
+          "tone": "muted"
+        }
+      }
+    }
+  }
+}
