@@ -1,0 +1,138 @@
+{
+  "id": "zoom-webinars",
+  "title": "Zoom Webinars",
+  "description": "Scheduled Zoom webinars — topic, time, duration, and a one-click Join link. Color-coded by how soon each one starts, same as the Meetings tile. Webinars require the connected account to have Zoom's Webinar add-on plan enabled — accounts without it see a clear message instead of a broken tile.",
+  "category": "communications",
+  "tags": ["zoom", "webinars", "events", "schedule", "video-conferencing"],
+  "keywords": ["zoom webinars", "scheduled webinars", "webinar list", "join webinar", "events"],
+  "connectorsUsed": ["zoom"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 8 },
+    "min": { "colSpan": 4, "rowSpan": 6 },
+    "max": { "colSpan": 8, "rowSpan": 16 }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "zoom",
+    "tool": "list_webinars",
+    "params": { "type": "scheduled", "page_size": 30 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "divider1", "body", "divider2", "footer"],
+        "watch": {
+          "/zoom/list_webinars": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/webinarsErrorMsg",
+                "value": { "$computed": "zoom_extract_string_error", "args": { "value": { "$state": "/zoom/list_webinars" } } }
+              }
+            }
+          ],
+          "/_errors/zoom.list_webinars": [
+            {
+              "action": "setState",
+              "params": { "statePath": "/ui/webinarsErrorMsg", "value": { "$state": "/_errors/zoom.list_webinars" } }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "Presentation", "size": "sm", "tone": "accent" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Webinars", "level": "h2" } },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Zoom · {n} scheduled",
+              "n": { "$computed": "count", "args": { "value": { "$state": "/zoom/list_webinars/webinars" } } }
+            }
+          }
+        }
+      },
+
+      "divider1": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["errorBanner", "emptyState", "webinarList"] },
+
+      "errorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load webinars: ${/ui/webinarsErrorMsg}" }, "tone": "destructive" },
+        "visible": { "$state": "/ui/webinarsErrorMsg" }
+      },
+
+      "emptyState": {
+        "type": "Stack",
+        "props": { "align": "center", "gap": "xs" },
+        "children": ["emptyIcon", "emptyText"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/zoom.list_webinars", "not": true },
+            { "$state": "/ui/webinarsErrorMsg", "not": true },
+            { "$state": "/zoom/list_webinars/webinars/0", "not": true }
+          ]
+        }
+      },
+      "emptyIcon": { "type": "Icon", "props": { "name": "CalendarOff", "size": "md", "tone": "muted" } },
+      "emptyText": { "type": "Caption", "props": { "text": "No webinars scheduled.", "tone": "muted" } },
+
+      "webinarList": {
+        "type": "Stack",
+        "props": { "gap": "sm", "maxHeight": 480 },
+        "children": ["webinarRow"],
+        "repeat": { "statePath": "/zoom/list_webinars/webinars", "key": "id" }
+      },
+      "webinarRow": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "sm", "template": "0.25rem minmax(0, 1fr) auto" },
+        "children": ["urgencyBar", "webinarInfo", "joinBtn"]
+      },
+      "urgencyBar": {
+        "type": "Dot",
+        "props": {
+          "size": "md",
+          "tone": { "$computed": "zoom_meeting_urgency_tone", "args": { "startTime": { "$item": "start_time" } } }
+        }
+      },
+      "webinarInfo": { "type": "Stack", "props": { "gap": "xs" }, "children": ["webinarTopic", "webinarMetaRow"] },
+      "webinarTopic": { "type": "Text", "props": { "text": { "$item": "topic" }, "size": "sm", "weight": "semibold" } },
+      "webinarMetaRow": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["dateBadge", "durationCaption"] },
+      "dateBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "zoom_format_datetime", "args": { "value": { "$item": "start_time" } } },
+          "tone": { "$computed": "zoom_meeting_urgency_tone", "args": { "startTime": { "$item": "start_time" } } }
+        }
+      },
+      "durationCaption": {
+        "type": "Caption",
+        "props": { "text": { "$computed": "zoom_format_duration", "args": { "minutes": { "$item": "duration" } } }, "tone": "muted" }
+      },
+      "joinBtn": {
+        "type": "Button",
+        "props": { "label": "Join", "leadingIcon": "Video", "size": "sm", "tone": "brand", "variant": "primary" },
+        "on": { "click": { "action": "open_url", "params": { "url": { "$bindItem": "join_url" }, "target": "_blank" } } }
+      },
+
+      "divider2": { "type": "Divider", "props": {} },
+      "footer": { "type": "Row", "props": { "justify": "end" }, "children": ["openZoomBtn"] },
+      "openZoomBtn": {
+        "type": "Button",
+        "props": { "label": "Open Zoom", "leadingIcon": "ExternalLink", "size": "sm", "tone": "brand", "variant": "ghost" },
+        "on": { "click": { "action": "open_url", "params": { "url": "https://zoom.us/", "target": "_blank" } } }
+      }
+    }
+  },
+  "status": "published"
+}

@@ -1,0 +1,418 @@
+import type { ComputedFunction, PluginElementsModule } from './types.js';
+
+/** `2026-10-05T06:00:00Z` → `Oct 5, 2026 · 6:00 AM` (falls back to the raw value on a bad date). */
+const format_datetime: ComputedFunction = (args) => {
+  const value = args.value;
+  if (!value || typeof value !== 'string') return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  const datePart = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  const timePart = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return `${datePart} · ${timePart}`;
+};
+
+/** Builds the meeting picker's options from list_recordings' `meetings` array. */
+const recording_options: ComputedFunction = (args) => {
+  const meetings = Array.isArray(args.meetings) ? (args.meetings as Record<string, unknown>[]) : [];
+  return meetings
+    .map((m) => {
+      const id = String(m.id ?? '').trim();
+      if (!id) return null;
+      const topic = String(m.topic ?? 'Untitled meeting').trim();
+      const date = format_datetime({ value: m.start_time });
+      return { value: id, label: date ? `${topic} — ${date}` : topic };
+    })
+    .filter((o): o is { value: string; label: string } => o !== null);
+};
+
+/** Finds the selected meeting's full record (topic, start_time, duration, recording_files) by id. */
+const selected_meeting: ComputedFunction = (args) => {
+  const meetings = Array.isArray(args.meetings) ? (args.meetings as Record<string, unknown>[]) : [];
+  const id = String(args.meetingId ?? '').trim();
+  if (!id) return null;
+  return meetings.find((m) => String(m.id ?? '') === id) ?? null;
+};
+
+/** Minutes → `1h 5m` / `45m`. */
+const format_duration: ComputedFunction = (args) => {
+  const minutes = Number(args.minutes);
+  if (!Number.isFinite(minutes) || minutes <= 0) return '';
+  const h = Math.floor(minutes / 60);
+  const m = Math.round(minutes % 60);
+  if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  return `${m}m`;
+};
+
+/** `00:01:02.500` → `1:02` (drops the hour segment when it's zero, drops milliseconds). */
+function formatVttTimestamp(raw: string): string {
+  const [h, m, s] = raw.split(':');
+  const seconds = (s ?? '0').split('.')[0];
+  const hours = Number(h) || 0;
+  if (hours > 0) return `${hours}:${m.padStart(2, '0')}:${seconds.padStart(2, '0')}`;
+  return `${Number(m)}:${seconds.padStart(2, '0')}`;
+}
+
+/**
+ * Parses Zoom's raw WebVTT transcript text into clean `{ start, text }` cues
+ * for a scrollable line-by-line display — the raw VTT (cue-number lines,
+ * `HH:MM:SS.mmm --> HH:MM:SS.mmm` timecodes) is unreadable as-is.
+ */
+const transcript_lines: ComputedFunction = (args) => {
+  const raw = String(args.transcript ?? '');
+  if (!raw.trim()) return [];
+  const blocks = raw.replace(/\r\n/g, '\n').split(/\n\n+/);
+  const cues: { start: string; text: string }[] = [];
+  const timeRe = /(\d{2}:\d{2}:\d{2}\.\d{3})\s*-->\s*\d{2}:\d{2}:\d{2}\.\d{3}/;
+
+  for (const block of blocks) {
+    const lines = block.split('\n').filter((l) => l.trim() && l.trim() !== 'WEBVTT');
+    const timeLineIndex = lines.findIndex((l) => timeRe.test(l));
+    if (timeLineIndex === -1) continue;
+    const match = lines[timeLineIndex].match(timeRe);
+    const start = match ? formatVttTimestamp(match[1]) : '';
+    const text = lines
+      .slice(timeLineIndex + 1)
+      .join(' ')
+      .trim();
+    if (text) cues.push({ start, text });
+  }
+  return cues;
+};
+
+/** Tone for the transcript-availability banner: success when ready, warning otherwise. */
+const transcript_tone: ComputedFunction = (args) => (args.available ? 'success' : 'warning');
+
+/**
+ * Tone for how soon a meeting starts — warning (today/tomorrow), muted
+ * (further out) — so the Upcoming Meetings list reads at a glance without
+ * requiring the viewer to parse every date. Deliberately NOT "accent": that
+ * tone collapses to plain foreground text and a near-neutral background in
+ * this design system (see @myhub/widget-tokens), so it renders as no color
+ * at all — "success"/"warning"/"destructive"/"muted" are the tones with
+ * actual distinct colors.
+ */
+const meeting_urgency_tone: ComputedFunction = (args) => {
+  const value = args.startTime;
+  if (!value || typeof value !== 'string') return 'muted';
+  const start = new Date(value);
+  if (Number.isNaN(start.getTime())) return 'muted';
+  const now = new Date();
+  const diffHours = (start.getTime() - now.getTime()) / (1000 * 60 * 60);
+  if (diffHours <= 1) return 'destructive';
+  if (diffHours <= 24) return 'warning';
+  if (diffHours <= 72) return 'info';
+  return 'muted';
+};
+
+/**
+ * Deterministic per-topic color so a scrolling meeting list reads as
+ * visually distinct rows instead of a wall of identical gray avatars —
+ * same hash-and-pick approach as microsoft-365's sender_tone. Empty/blank
+ * topics (an unnamed "Zoom Meeting") fall back to muted rather than always
+ * landing on the same chart color.
+ */
+const topic_tone: ComputedFunction = (args) => {
+  const topic = String(args.value ?? '').trim();
+  if (!topic) return 'muted';
+  const CHART_TONES = ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5'] as const;
+  let hash = 0;
+  for (let i = 0; i < topic.length; i++) hash = (hash * 31 + topic.charCodeAt(i)) >>> 0;
+  return CHART_TONES[hash % CHART_TONES.length];
+};
+
+/**
+ * Zoom's recording `type` field (confirmed against the live OpenAPI spec)
+ * overloads meeting/webinar type codes with two special values on this
+ * endpoint: "96" = generated by My Notes, "99" = uploaded via the web
+ * portal. "Cloud recordings" (Zoom's own Hub naming) means everything
+ * EXCEPT My Notes — the two are shown as separate tabs in Zoom's own UI.
+ */
+const filter_cloud_recordings: ComputedFunction = (args) => {
+  const meetings = Array.isArray(args.meetings) ? (args.meetings as Record<string, unknown>[]) : [];
+  return meetings.filter((m) => String(m.type ?? '') !== '96');
+};
+
+/** My Notes recordings — `type: "96"` on the same recordings response. */
+const filter_my_notes: ComputedFunction = (args) => {
+  const meetings = Array.isArray(args.meetings) ? (args.meetings as Record<string, unknown>[]) : [];
+  return meetings.filter((m) => String(m.type ?? '') === '96');
+};
+
+/** Only meetings that actually have a TRANSCRIPT file among their recording_files. */
+const filter_transcribable: ComputedFunction = (args) => {
+  const meetings = Array.isArray(args.meetings) ? (args.meetings as Record<string, unknown>[]) : [];
+  return meetings.filter((m) => {
+    const files = Array.isArray(m.recording_files) ? (m.recording_files as Record<string, unknown>[]) : [];
+    return files.some((f) => f.file_type === 'TRANSCRIPT');
+  });
+};
+
+/** Button variant for a tab strip — filled when active, ghost otherwise. */
+const tab_variant: ComputedFunction = (args) => (String(args.active ?? '') === String(args.match ?? '') ? 'primary' : 'ghost');
+
+/** Tone for a tab strip button — blue ("info", a reliably distinct color here) when active, muted otherwise. Deliberately not "brand"/"accent" — both collapse to a near-neutral color in this design system. */
+const tab_tone: ComputedFunction = (args) => (String(args.active ?? '') === String(args.match ?? '') ? 'info' : 'muted');
+
+/**
+ * Seeds a tab's default value WITHOUT clobbering a manual selection — the
+ * list data this is watched off of can refresh in the background (e.g. a
+ * dashboard auto-poll), which would otherwise silently snap the user back
+ * to the default tab every time it refires, fighting their own click.
+ */
+const seed_default_tab: ComputedFunction = (args) => {
+  const current = String(args.current ?? '').trim();
+  return current || String(args.fallback ?? '');
+};
+
+/** 30-minute time-of-day options, e.g. `{ value: "14:30", label: "2:30 PM" }` — no dedicated time-picker component exists, so this feeds a Select. */
+const time_options: ComputedFunction = () => {
+  const out: { value: string; label: string }[] = [];
+  for (let h = 0; h < 24; h++) {
+    for (const m of [0, 30]) {
+      const value = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      const period = h < 12 ? 'AM' : 'PM';
+      const hour12 = h % 12 === 0 ? 12 : h % 12;
+      out.push({ value, label: `${hour12}:${String(m).padStart(2, '0')} ${period}` });
+    }
+  }
+  return out;
+};
+
+/** Combines a date ("2026-10-10") and a time-of-day ("14:30") into an ISO 8601 UTC string, interpreting them as local time. */
+const combine_datetime: ComputedFunction = (args) => {
+  const date = String(args.date ?? '').trim();
+  const time = String(args.time ?? '').trim();
+  if (!date || !time) return '';
+  const d = new Date(`${date}T${time}:00`);
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString();
+};
+
+/** The browser's IANA timezone — Zoom uses this to display the meeting time correctly in its own UI. */
+const local_timezone: ComputedFunction = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+/** Falls back to Zoom's own default label rather than creating a meeting literally titled "". */
+const schedule_topic: ComputedFunction = (args) => {
+  const topic = String(args.topic ?? '').trim();
+  return topic || 'Zoom Meeting';
+};
+
+/** Falls back to 30 minutes if left blank or invalid. */
+const schedule_duration: ComputedFunction = (args) => {
+  const minutes = Number(args.duration);
+  return Number.isFinite(minutes) && minutes > 0 ? minutes : 30;
+};
+
+/**
+ * `meeting_invitees` confirmed against the live OpenAPI spec as a real field
+ * on create_meeting's `settings` object: `[{ email, internal_user? }]`. Parses
+ * a comma-separated string into that shape, trimming and dropping anything
+ * that doesn't look like an email rather than sending Zoom garbage.
+ */
+const parse_invitees: ComputedFunction = (args) => {
+  const raw = String(args.invitees ?? '');
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => emailRe.test(s))
+    .map((email) => ({ email }));
+};
+
+const schedule_settings: ComputedFunction = (args) => {
+  const invitees = parse_invitees({ invitees: args.invitees }) as { email: string }[];
+  return {
+    waiting_room: Boolean(args.waitingRoom),
+    join_before_host: Boolean(args.joinBeforeHost),
+    ...(invitees.length ? { meeting_invitees: invitees } : {}),
+  };
+};
+
+/** A scheduled meeting needs at least a date and a time — everything else has a sensible default. */
+const schedule_is_invalid: ComputedFunction = (args) => !String(args.date ?? '').trim() || !String(args.time ?? '').trim();
+
+const schedule_validation_message: ComputedFunction = (args) => {
+  const missingDate = !String(args.date ?? '').trim();
+  const missingTime = !String(args.time ?? '').trim();
+  if (missingDate && missingTime) return 'Please pick a date and time before scheduling.';
+  if (missingDate) return 'Please pick a date before scheduling.';
+  if (missingTime) return 'Please pick a time before scheduling.';
+  return '';
+};
+
+/** Default (empty) schedule-form state — also used to reset the form after a successful create. */
+const default_schedule_form: ComputedFunction = () => ({
+  topic: '',
+  date: '',
+  time: '',
+  duration: 30,
+  password: '',
+  invitees: '',
+  waitingRoom: true,
+  joinBeforeHost: false,
+});
+
+/** Prepends a freshly created meeting into the Upcoming Meetings list without re-fetching — create_meeting's response carries the same fields (id, topic, start_time, duration, join_url) a list item does. */
+const prepend_meeting: ComputedFunction = (args) => {
+  const meetings = Array.isArray(args.meetings) ? (args.meetings as Record<string, unknown>[]) : [];
+  const newMeeting = args.newMeeting as Record<string, unknown> | undefined;
+  if (!newMeeting || !newMeeting.id) return meetings;
+  const deduped = meetings.filter((m) => String(m.id ?? '') !== String(newMeeting.id));
+  return [newMeeting, ...deduped];
+};
+
+const bool_not: ComputedFunction = (args) => !args.value;
+
+/**
+ * Zoom tools with no try/catch (list_webinars, get_webinar) let a thrown
+ * ZoomApiError propagate as a normal MCP tool result rather than a
+ * harness-level failure — confirmed live against an account without the
+ * Webinar add-on: the harness's /api/mcp/call returns `ok:true` with the
+ * error message embedded as a plain STRING in `data`, never populating
+ * `/_errors/...`. Without this, the tile would silently fall back to a
+ * generic "no webinars" empty state instead of showing the real, helpful
+ * "needs the Webinar add-on" message. Returns the raw value when it's a
+ * string (the error case); empty string otherwise (resolved to the
+ * genuine webinars object on success).
+ * Args: { value: unknown }
+ */
+const extract_string_error: ComputedFunction = (args) =>
+  typeof args.value === 'string' ? args.value : '';
+
+/**
+ * True only when both ids are non-empty and equal — gates the summary panel
+ * so a summary generated for a previously-selected meeting doesn't keep
+ * showing once the user picks a different one (summarize_transcript's
+ * response carries no live link to "the currently selected meeting" other
+ * than this echoed-back id).
+ */
+const summary_matches_selected: ComputedFunction = (args) => {
+  const a = String(args.a ?? '').trim();
+  const b = String(args.b ?? '').trim();
+  return a !== '' && a === b;
+};
+
+/** `["x", "y"]` → `[{ id: "0", text: "x" }, { id: "1", text: "y" }]`, for repeat. */
+function toBulletItems(value: unknown): { id: string; text: string }[] {
+  return Array.isArray(value)
+    ? value.map((text, i) => ({ id: String(i), text: String(text ?? '') }))
+    : [];
+}
+
+/**
+ * Bundles both summarize_transcript bullet lists into one state write so the
+ * tile's watch on "/zoom/summarize_transcript" only needs a single setState
+ * action — two separate setState actions reacting to the same watched key
+ * risk the second one silently never running (see json-render-watch-chained-
+ * action-race in project notes).
+ * Args: { keyPoints: string[], actionItems: string[] }
+ */
+const summary_bullets: ComputedFunction = (args) => ({
+  keyPoints: toBulletItems(args.keyPoints),
+  actionItems: toBulletItems(args.actionItems),
+});
+
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+/** Local date → "yyyy-mm-dd", the exact format Zoom's recordings API documents for `from`/`to`. */
+function toDateString(d: Date): string {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function parseDateOnly(raw: unknown): Date | null {
+  const m = String(raw ?? '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+}
+
+/**
+ * `/ui/rangeStart`/`/ui/rangeEnd` start unset until the picker is touched —
+ * seed them once to a sensible last-7-days default (current || fallback,
+ * idempotent once set, same shape as hotmail's seed_default_date). Zoom's
+ * own API default when from/to are omitted is just "today + tomorrow" —
+ * confirmed live, and the whole reason this picker exists — so the
+ * pre-filled default here is deliberately wider than that, not a mirror of it.
+ * Args: { current: string }
+ */
+const seed_range_end: ComputedFunction = (args) => {
+  const current = String(args.current ?? '').trim();
+  return current || toDateString(new Date());
+};
+
+const seed_range_start: ComputedFunction = (args) => {
+  const current = String(args.current ?? '').trim();
+  if (current) return current;
+  const d = new Date();
+  d.setDate(d.getDate() - 6);
+  return toDateString(d);
+};
+
+/**
+ * Zoom's "List all recordings" endpoint caps `from`..`to` at 31 days per
+ * request (confirmed from Zoom's own docs/devforum — not a guess). Rather
+ * than let an out-of-range request fail with a raw Zoom error, silently
+ * clamp `to` back to `start + 31 days` when the picked span is wider —
+ * range_was_clamped (below) drives a one-line note so this isn't a silent
+ * surprise.
+ * Args: { start: string, end: string }
+ */
+const clamp_range_end: ComputedFunction = (args) => {
+  const start = parseDateOnly(args.start);
+  const end = parseDateOnly(args.end);
+  if (!start || !end) return String(args.end ?? '');
+  const maxEnd = new Date(start);
+  maxEnd.setDate(maxEnd.getDate() + 31);
+  return end.getTime() > maxEnd.getTime() ? toDateString(maxEnd) : toDateString(end);
+};
+
+/** True when clamp_range_end would actually narrow the picked range — drives the "capped at 31 days" note. Args: { start: string, end: string } */
+const range_was_clamped: ComputedFunction = (args) => {
+  const start = parseDateOnly(args.start);
+  const end = parseDateOnly(args.end);
+  if (!start || !end) return false;
+  const maxEnd = new Date(start);
+  maxEnd.setDate(maxEnd.getDate() + 31);
+  return end.getTime() > maxEnd.getTime();
+};
+
+const elements: PluginElementsModule = {
+  slug: 'zoom',
+  functions: {
+    recording_options,
+    selected_meeting,
+    format_datetime,
+    format_duration,
+    transcript_lines,
+    transcript_tone,
+    meeting_urgency_tone,
+    topic_tone,
+    filter_cloud_recordings,
+    filter_my_notes,
+    filter_transcribable,
+    tab_variant,
+    tab_tone,
+    seed_default_tab,
+    time_options,
+    combine_datetime,
+    local_timezone,
+    schedule_topic,
+    schedule_duration,
+    schedule_settings,
+    parse_invitees,
+    schedule_is_invalid,
+    schedule_validation_message,
+    default_schedule_form,
+    prepend_meeting,
+    bool_not,
+    extract_string_error,
+    summary_matches_selected,
+    summary_bullets,
+    seed_range_start,
+    seed_range_end,
+    clamp_range_end,
+    range_was_clamped,
+  },
+};
+
+export default elements;

@@ -1,0 +1,546 @@
+{
+  "id": "zoom-recordings",
+  "title": "Zoom — Recordings & Transcripts",
+  "description": "Recently recorded Zoom meetings (the account's recent-recordings window — Zoom's own API default, not a fixed day count), split into tabs matching Zoom's own Hub: Cloud Recordings, Transcripts (pick a meeting to read its transcript, parsed from raw WebVTT into clean timestamped lines), and My Notes. Each tab shows a calm empty state when nothing qualifies. Deliberately excludes 'Computer recordings' — those live only on the local disk that recorded them and are invisible to Zoom's cloud API for anyone, not just this tile.",
+  "category": "communications",
+  "tags": ["zoom", "recordings", "transcript", "video-conferencing", "my-notes"],
+  "keywords": ["zoom recordings", "call transcript", "cloud recordings", "my notes", "captions", "vtt"],
+  "connectorsUsed": ["zoom"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 11 },
+    "min": { "colSpan": 5, "rowSpan": 9 },
+    "max": { "colSpan": 10, "rowSpan": 18 }
+  },
+  "dataProvider": {
+    "mcp": "zoom",
+    "tool": "list_recordings",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "divider1", "tabBar", "body", "divider2", "footer"],
+        "watch": {
+          "/zoom/list_recordings": [
+            { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "cloud" } }
+          ],
+          "/ui/activeTab": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/cloudRecordings",
+                "value": {
+                  "$computed": "zoom_filter_cloud_recordings",
+                  "args": { "meetings": { "$state": "/zoom/list_recordings/meetings" } }
+                }
+              }
+            }
+          ],
+          "/ui/cloudRecordings": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/myNotesRecordings",
+                "value": {
+                  "$computed": "zoom_filter_my_notes",
+                  "args": { "meetings": { "$state": "/zoom/list_recordings/meetings" } }
+                }
+              }
+            }
+          ],
+          "/ui/myNotesRecordings": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/transcribableRecordings",
+                "value": {
+                  "$computed": "zoom_filter_transcribable",
+                  "args": { "meetings": { "$state": "/zoom/list_recordings/meetings" } }
+                }
+              }
+            }
+          ],
+          "/ui/transcribableRecordings": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/transcriptOptions",
+                "value": {
+                  "$computed": "zoom_recording_options",
+                  "args": { "meetings": { "$state": "/ui/transcribableRecordings" } }
+                }
+              }
+            }
+          ],
+          "/ui/transcriptOptions": [
+            {
+              "action": "setState",
+              "params": { "statePath": "/ui/selectedMeetingId", "value": { "$state": "/ui/transcriptOptions/0/value" } }
+            }
+          ],
+          "/ui/selectedMeetingId": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedMeeting",
+                "value": {
+                  "$computed": "zoom_selected_meeting",
+                  "args": { "meetings": { "$state": "/zoom/list_recordings/meetings" }, "meetingId": { "$state": "/ui/selectedMeetingId" } }
+                }
+              }
+            }
+          ],
+          "/ui/selectedMeeting": [
+            { "action": "zoom.get_meeting_transcript", "params": { "meeting_id": { "$state": "/ui/selectedMeetingId" } } }
+          ],
+          "/zoom/get_meeting_transcript": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/transcriptLines",
+                "value": {
+                  "$computed": "zoom_transcript_lines",
+                  "args": { "transcript": { "$state": "/zoom/get_meeting_transcript/transcript" } }
+                }
+              }
+            }
+          ],
+          "/zoom/summarize_transcript": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/summaryBullets",
+                "value": {
+                  "$computed": "zoom_summary_bullets",
+                  "args": {
+                    "keyPoints": { "$state": "/zoom/summarize_transcript/key_points" },
+                    "actionItems": { "$state": "/zoom/summarize_transcript/action_items" }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup", "rangeStack"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "FolderClock", "tone": "accent", "size": "sm" },
+        "watch": {
+          "/zoom/list_recordings": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rangeStart",
+                "value": { "$computed": "zoom_seed_range_start", "args": { "current": { "$state": "/ui/rangeStart" } } }
+              }
+            }
+          ]
+        }
+      },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Recordings & Transcripts", "level": "h2" } },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Zoom · recent recordings" },
+        "watch": {
+          "/zoom/list_recordings": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rangeEnd",
+                "value": { "$computed": "zoom_seed_range_end", "args": { "current": { "$state": "/ui/rangeEnd" } } }
+              }
+            }
+          ]
+        }
+      },
+
+      "rangeStack": { "type": "Stack", "props": { "gap": "xs" }, "children": ["rangeRow", "clampNote"] },
+      "rangeRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["rangeStartInput", "rangeToLabel", "rangeEndInput", "rangeApplyBtn"]
+      },
+      "rangeStartInput": {
+        "type": "DateInput",
+        "props": { "value": { "$bindState": "/ui/rangeStart" }, "size": "sm", "ariaLabel": "Range start date" }
+      },
+      "rangeToLabel": { "type": "Caption", "props": { "text": "to", "tone": "muted" } },
+      "rangeEndInput": {
+        "type": "DateInput",
+        "props": { "value": { "$bindState": "/ui/rangeEnd" }, "size": "sm", "ariaLabel": "Range end date" }
+      },
+      "rangeApplyBtn": {
+        "type": "Button",
+        "props": { "label": "Apply", "size": "sm", "variant": "ghost", "tone": "accent", "leadingIcon": "Search" },
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rangeWasClamped",
+                "value": {
+                  "$computed": "zoom_range_was_clamped",
+                  "args": { "start": { "$state": "/ui/rangeStart" }, "end": { "$state": "/ui/rangeEnd" } }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rangeEnd",
+                "value": {
+                  "$computed": "zoom_clamp_range_end",
+                  "args": { "start": { "$state": "/ui/rangeStart" }, "end": { "$state": "/ui/rangeEnd" } }
+                }
+              }
+            },
+            {
+              "action": "zoom.list_recordings",
+              "params": {
+                "from": { "$state": "/ui/rangeStart" },
+                "to": {
+                  "$computed": "zoom_clamp_range_end",
+                  "args": { "start": { "$state": "/ui/rangeStart" }, "end": { "$state": "/ui/rangeEnd" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "clampNote": {
+        "type": "Caption",
+        "props": { "text": "Zoom allows a 31-day span per request — the end date shown was capped.", "tone": "warning" },
+        "visible": { "$state": "/ui/rangeWasClamped" }
+      },
+
+      "divider1": {
+        "type": "Divider",
+        "props": {},
+        "watch": {
+          "/zoom/list_recordings": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/cloudRecordings",
+                "value": {
+                  "$computed": "zoom_filter_cloud_recordings",
+                  "args": { "meetings": { "$state": "/zoom/list_recordings/meetings" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "tabBar": { "type": "Row", "props": { "gap": "xs" }, "children": ["cloudTabBtn", "transcriptsTabBtn", "notesTabBtn"] },
+      "cloudTabBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Cloud Recordings",
+          "leadingIcon": "CloudCog",
+          "size": "sm",
+          "variant": { "$computed": "zoom_tab_variant", "args": { "active": { "$state": "/ui/activeTab" }, "match": "cloud" } },
+          "tone": { "$computed": "zoom_tab_tone", "args": { "active": { "$state": "/ui/activeTab" }, "match": "cloud" } }
+        },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "cloud" } } }
+      },
+      "transcriptsTabBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Transcripts",
+          "leadingIcon": "Captions",
+          "size": "sm",
+          "variant": { "$computed": "zoom_tab_variant", "args": { "active": { "$state": "/ui/activeTab" }, "match": "transcripts" } },
+          "tone": { "$computed": "zoom_tab_tone", "args": { "active": { "$state": "/ui/activeTab" }, "match": "transcripts" } }
+        },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "transcripts" } } }
+      },
+      "notesTabBtn": {
+        "type": "Button",
+        "props": {
+          "label": "My Notes",
+          "leadingIcon": "NotebookPen",
+          "size": "sm",
+          "variant": { "$computed": "zoom_tab_variant", "args": { "active": { "$state": "/ui/activeTab" }, "match": "notes" } },
+          "tone": { "$computed": "zoom_tab_tone", "args": { "active": { "$state": "/ui/activeTab" }, "match": "notes" } }
+        },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "notes" } } }
+      },
+
+      "body": { "type": "Body", "props": {}, "children": ["errorBanner", "cloudPanel", "notesPanel", "transcriptsPanel"] },
+
+      "errorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load recordings: ${/_errors/zoom.list_recordings}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/zoom.list_recordings" }
+      },
+
+      "cloudPanel": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["cloudEmpty", "cloudList"],
+        "visible": { "$state": "/ui/activeTab", "eq": "cloud" }
+      },
+      "cloudEmpty": {
+        "type": "Caption",
+        "props": { "text": "No recent cloud recordings.", "tone": "destructive" },
+        "visible": { "$state": "/ui/cloudRecordings/0", "not": true }
+      },
+      "cloudList": {
+        "type": "Stack",
+        "props": { "gap": "sm", "maxHeight": 420 },
+        "children": ["recordingRow"],
+        "repeat": { "statePath": "/ui/cloudRecordings", "key": "id" }
+      },
+
+      "notesPanel": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["notesEmpty", "notesList"],
+        "visible": { "$state": "/ui/activeTab", "eq": "notes" }
+      },
+      "notesEmpty": {
+        "type": "Caption",
+        "props": { "text": "No recent My Notes recordings.", "tone": "destructive" },
+        "visible": { "$state": "/ui/myNotesRecordings/0", "not": true }
+      },
+      "notesList": {
+        "type": "Stack",
+        "props": { "gap": "sm", "maxHeight": 420 },
+        "children": ["recordingRow"],
+        "repeat": { "statePath": "/ui/myNotesRecordings", "key": "id" }
+      },
+
+      "recordingRow": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "sm", "hover": true, "clickable": true, "template": "minmax(0,1fr) auto" },
+        "children": ["recordingRowInner", "recordingOpenIcon"],
+        "on": {
+          "click": { "action": "open_url", "params": { "url": { "$bindItem": "share_url" }, "target": "_blank" } }
+        }
+      },
+      "recordingRowInner": { "type": "Stack", "props": { "gap": "none" }, "children": ["recordingTopic", "recordingMeta"] },
+      "recordingOpenIcon": { "type": "Icon", "props": { "name": "ExternalLink", "tone": "muted", "size": "sm" } },
+      "recordingTopic": { "type": "Text", "props": { "text": { "$item": "topic" }, "weight": "semibold", "size": "sm" } },
+      "recordingMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{date} · {duration}",
+              "date": { "$computed": "zoom_format_datetime", "args": { "value": { "$item": "start_time" } } },
+              "duration": { "$computed": "zoom_format_duration", "args": { "minutes": { "$item": "duration" } } }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+
+      "transcriptsPanel": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["transcriptsEmpty", "transcriptsContent"],
+        "visible": { "$state": "/ui/activeTab", "eq": "transcripts" }
+      },
+      "transcriptsEmpty": {
+        "type": "Caption",
+        "props": { "text": "No recent transcripts available.", "tone": "destructive" },
+        "visible": { "$state": "/ui/transcriptOptions/0", "not": true }
+      },
+      "transcriptsContent": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": [
+          "pickerRow",
+          "meetingMeta",
+          "transcriptStateBanner",
+          "notAvailableBanner",
+          "summarizeRow",
+          "summarizeErrorBanner",
+          "summaryPanel",
+          "transcriptPanel"
+        ],
+        "visible": { "$state": "/ui/transcriptOptions/0" }
+      },
+
+      "pickerRow": { "type": "FormRow", "props": { "label": "Meeting" }, "children": ["pickerSelect"] },
+      "pickerSelect": {
+        "type": "Select",
+        "props": { "value": { "$bindState": "/ui/selectedMeetingId" }, "options": { "$state": "/ui/transcriptOptions" }, "size": "sm" }
+      },
+
+      "meetingMeta": {
+        "type": "Row",
+        "props": { "gap": "md", "align": "center" },
+        "children": ["metaDate", "metaDuration"],
+        "visible": { "$state": "/ui/selectedMeetingId" }
+      },
+      "metaDate": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["metaDateIcon", "metaDateText"] },
+      "metaDateIcon": { "type": "Icon", "props": { "name": "CalendarClock", "tone": "muted", "size": "xs" } },
+      "metaDateText": {
+        "type": "Caption",
+        "props": { "text": { "$computed": "zoom_format_datetime", "args": { "value": { "$state": "/ui/selectedMeeting/start_time" } } }, "tone": "muted" }
+      },
+      "metaDuration": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["metaDurationIcon", "metaDurationText"] },
+      "metaDurationIcon": { "type": "Icon", "props": { "name": "Clock", "tone": "muted", "size": "xs" } },
+      "metaDurationText": {
+        "type": "Caption",
+        "props": { "text": { "$computed": "zoom_format_duration", "args": { "minutes": { "$state": "/ui/selectedMeeting/duration" } } }, "tone": "muted" }
+      },
+
+      "transcriptStateBanner": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["transcriptStateIcon", "transcriptStateText"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/zoom.get_meeting_transcript", "not": true },
+            { "$state": "/zoom/get_meeting_transcript/transcript_available" }
+          ]
+        }
+      },
+      "transcriptStateIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "CheckCircle2",
+          "tone": { "$computed": "zoom_transcript_tone", "args": { "available": { "$state": "/zoom/get_meeting_transcript/transcript_available" } } },
+          "size": "xs"
+        }
+      },
+      "transcriptStateText": { "type": "Caption", "props": { "text": "Transcript ready", "tone": "success" } },
+
+      "notAvailableBanner": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["notAvailableIcon", "notAvailableText"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/zoom.get_meeting_transcript", "not": true },
+            { "$state": "/zoom/get_meeting_transcript/transcript_available", "not": true },
+            { "$state": "/ui/selectedMeetingId" }
+          ]
+        }
+      },
+      "notAvailableIcon": { "type": "Icon", "props": { "name": "AlertCircle", "tone": "warning", "size": "xs" } },
+      "notAvailableText": { "type": "Caption", "props": { "text": { "$state": "/zoom/get_meeting_transcript/message" }, "tone": "warning" } },
+
+      "summarizeRow": {
+        "type": "Row",
+        "props": { "justify": "start" },
+        "children": ["summarizeBtn"],
+        "visible": { "$state": "/zoom/get_meeting_transcript/transcript_available" }
+      },
+      "summarizeBtn": {
+        "type": "Button",
+        "props": {
+          "label": {
+            "$cond": { "$state": "/_loading/zoom.summarize_transcript" },
+            "$then": "Summarizing…",
+            "$else": "Summarize"
+          },
+          "leadingIcon": "Sparkles",
+          "size": "sm",
+          "variant": "ghost",
+          "tone": "accent",
+          "disabled": { "$state": "/_loading/zoom.summarize_transcript" }
+        },
+        "on": {
+          "click": {
+            "action": "zoom.summarize_transcript",
+            "params": {
+              "transcript": { "$state": "/zoom/get_meeting_transcript/transcript" },
+              "topic": { "$state": "/ui/selectedMeeting/topic" },
+              "meeting_id": { "$state": "/ui/selectedMeetingId" }
+            }
+          }
+        }
+      },
+
+      "summarizeErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't summarize: ${/zoom/summarize_transcript/error}" }, "tone": "destructive" },
+        "visible": { "$state": "/zoom/summarize_transcript/error" }
+      },
+
+      "summaryPanel": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["summaryHeading", "summaryText", "keyPointsHeading", "keyPointsList", "actionItemsHeading", "actionItemsList"],
+        "visible": {
+          "$computed": "zoom_summary_matches_selected",
+          "args": {
+            "a": { "$state": "/zoom/summarize_transcript/meeting_id" },
+            "b": { "$state": "/ui/selectedMeetingId" }
+          }
+        }
+      },
+      "summaryHeading": { "type": "Caption", "props": { "text": "Summary", "tone": "muted", "weight": "semibold" } },
+      "summaryText": { "type": "Text", "props": { "text": { "$state": "/zoom/summarize_transcript/summary" }, "size": "sm" } },
+
+      "keyPointsHeading": {
+        "type": "Caption",
+        "props": { "text": "Key points", "tone": "muted", "weight": "semibold" },
+        "visible": { "$state": "/ui/summaryBullets/keyPoints/0" }
+      },
+      "keyPointsList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["bulletText"],
+        "repeat": { "statePath": "/ui/summaryBullets/keyPoints", "key": "id" }
+      },
+
+      "actionItemsHeading": {
+        "type": "Caption",
+        "props": { "text": "Action items", "tone": "muted", "weight": "semibold" },
+        "visible": { "$state": "/ui/summaryBullets/actionItems/0" }
+      },
+      "actionItemsList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["bulletText"],
+        "repeat": { "statePath": "/ui/summaryBullets/actionItems", "key": "id" }
+      },
+
+      "bulletText": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "• {t}", "t": { "$item": "text" } } },
+          "size": "sm"
+        }
+      },
+
+      "transcriptPanel": {
+        "type": "Stack",
+        "props": { "gap": "xs", "maxHeight": 360 },
+        "children": ["transcriptLine"],
+        "repeat": { "statePath": "/ui/transcriptLines", "key": "start" },
+        "visible": { "$state": "/zoom/get_meeting_transcript/transcript_available" }
+      },
+      "transcriptLine": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "template": "3.5rem minmax(0, 1fr)" },
+        "children": ["lineTime", "lineText"]
+      },
+      "lineTime": { "type": "Caption", "props": { "text": { "$item": "start" }, "tone": "accent", "weight": "semibold" } },
+      "lineText": { "type": "Text", "props": { "text": { "$item": "text" }, "size": "sm" } },
+
+      "divider2": { "type": "Divider", "props": {} },
+      "footer": { "type": "Row", "props": { "justify": "end" }, "children": ["openZoomBtn"] },
+      "openZoomBtn": {
+        "type": "Button",
+        "props": { "label": "Open Zoom", "tone": "brand", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": { "click": { "action": "open_url", "params": { "url": "https://zoom.us/", "target": "_blank" } } }
+      }
+    }
+  },
+  "status": "published"
+}
