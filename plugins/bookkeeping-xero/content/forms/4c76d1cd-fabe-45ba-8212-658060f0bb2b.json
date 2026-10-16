@@ -1,0 +1,130 @@
+{
+  "contentHash": "abb3a82a544ca645920e94e001748e77c3805d4058ae665290f9f517d31cb97d",
+  "kind": "form",
+  "originKey": "4c76d1cd-fabe-45ba-8212-658060f0bb2b",
+  "schema": {
+    "description": "Tells the bookkeeping automations how your practice works. You can submit it again at any time to change the answers.",
+    "sections": [
+      {
+        "id": "practice",
+        "questions": [
+          {
+            "id": "q_mode",
+            "label": "How do you use this workspace?",
+            "options": [
+              "Practice: we keep the books for many client businesses",
+              "In-house: we keep our own books"
+            ],
+            "required": true,
+            "type": "single_choice"
+          },
+          {
+            "id": "q_timezone",
+            "label": "Timezone",
+            "maxLength": 60,
+            "placeholder": "Australia/Sydney",
+            "type": "short_text"
+          }
+        ],
+        "title": "Your practice"
+      },
+      {
+        "id": "people",
+        "questions": [
+          {
+            "entity": "user",
+            "id": "q_reviewer",
+            "label": "Who reviews bills before they're approved? (default for every client)",
+            "required": true,
+            "type": "lookup"
+          },
+          {
+            "entity": "user",
+            "id": "q_exceptions",
+            "label": "Who gets bills the AI couldn't process? (leave blank to use the reviewer)",
+            "type": "lookup"
+          },
+          {
+            "entity": "user",
+            "id": "q_digest",
+            "label": "Who gets the weekly accounts payable digest? (leave blank to use the reviewer)",
+            "type": "lookup"
+          },
+          {
+            "entity": "user",
+            "id": "q_checks_owner",
+            "label": "Who follows up the ledger checks findings? (default for every client; leave blank to use each client’s reviewer)",
+            "type": "lookup"
+          }
+        ],
+        "title": "People"
+      },
+      {
+        "id": "rules",
+        "questions": [
+          {
+            "id": "q_approved_status",
+            "label": "After a bill is reviewed, it should be in Xero as…",
+            "options": [
+              "Awaiting approval",
+              "Approved"
+            ],
+            "required": true,
+            "type": "single_choice"
+          },
+          {
+            "id": "q_auto_below",
+            "label": "Bills from a known supplier below this amount may skip review when the AI is confident (0 = always review)",
+            "maxLength": 20,
+            "placeholder": "0",
+            "type": "short_text"
+          },
+          {
+            "id": "q_client_above",
+            "label": "Bills above this amount need the client's approval (leave blank for never; each client can override)",
+            "maxLength": 20,
+            "placeholder": "e.g. 5000",
+            "type": "short_text"
+          }
+        ],
+        "title": "Approval rules"
+      },
+      {
+        "id": "mail",
+        "questions": [
+          {
+            "id": "q_outlook",
+            "label": "Outlook mailbox that receives bills (the Email intake (Outlook) automation reads its owner's inbox)",
+            "maxLength": 200,
+            "placeholder": "bills@yourfirm.com.au",
+            "type": "short_text"
+          },
+          {
+            "id": "q_gmail",
+            "label": "Gmail mailbox that receives bills (the Email intake (Gmail) automation reads its owner's inbox)",
+            "maxLength": 200,
+            "placeholder": "bills@gmail.com",
+            "type": "short_text"
+          },
+          {
+            "id": "q_mail_folders",
+            "label": "Other mail folders to read besides the Inbox, one per line (Outlook folder paths such as Inbox/Bills, or Gmail label names). Each client's own folder is set in its client settings.",
+            "maxLength": 2000,
+            "type": "long_text"
+          },
+          {
+            "id": "q_shared_mailbox",
+            "label": "Outlook shared mailbox to read (optional; read by the Email intake (Outlook shared mailbox) automation)",
+            "maxLength": 200,
+            "placeholder": "accounts@yourfirm.com.au",
+            "type": "short_text"
+          }
+        ],
+        "title": "Email intake"
+      }
+    ],
+    "title": "Bookkeeping setup",
+    "version": 1
+  },
+  "title": "Bookkeeping setup"
+}
