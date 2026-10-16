@@ -4,6 +4,8 @@ started = time.monotonic()
 # Stop starting new clients after this long, so a run stays inside the 20-minute limit; the next run carries on.
 BUDGET_SECONDS = 13 * 60
 WEEKLY_START_SECONDS = 8 * 60
+# A client whose Xero file fails this many times in a day (a disconnected organisation, say) isn't retried until tomorrow.
+FAIL_TRIES = 3
 only = params.get("only") or []
 settings = bk_read_json(BK_SETTINGS)
 summary = {"checked": [], "errors": [], "left": 0, "report_due": False}
@@ -40,6 +42,10 @@ else:
         state = bk_read_json(path) or {"version": 1, "slug": client["slug"]}
         if not only and state.get("last_daily") == str(today):
             continue
+        failed = state.get("failed") or {}
+        if not only and failed.get("on") == str(today) and failed.get("tries", 0) >= FAIL_TRIES:
+            summary["errors"].append(str(client.get("name")) + ": " + str(failed.get("error") or "") + " (not retried again today)")
+            continue
         last_weekly = ck_day(state.get("last_weekly"))
         weekly = bool(only) or not last_weekly or (today - last_weekly).days >= 7
         # A weekly check reads a lot more of the file, so it only starts with plenty of the budget left.
@@ -67,12 +73,23 @@ else:
             if weekly:
                 state["last_weekly"] = str(today)
             state["truncated"] = ledger.get("truncated") or []
+            state.pop("failed", None)
             what = ck_sync_item(client, settings, state, item, new, resolved, params["findings_form"])
             bk_write_json(path, state)
             summary["checked"].append({"client": client["name"], "weekly": weekly, "open": len(ck_open(state)),
                                        "new": len(new), "resolved": len(resolved), "item": what})
         except Exception as exc:
-            summary["errors"].append(str(client.get("name")) + ": " + str(exc)[:300])
+            error = str(exc)[:300]
+            summary["errors"].append(str(client.get("name")) + ": " + error)
+            # Count today's failures on a fresh copy of the state, so nothing half-done is saved.
+            try:
+                fresh = bk_read_json(path) or {"version": 1, "slug": client["slug"]}
+                before = fresh.get("failed") or {}
+                tries = before.get("tries", 0) if before.get("on") == str(today) else 0
+                fresh["failed"] = {"on": str(today), "tries": tries + 1, "error": error}
+                bk_write_json(path, fresh)
+            except Exception:
+                pass
     # The weekly Data Quality report goes out once every client is checked and a week has passed since the last one.
     last = ck_day((bk_read_json(BK_CHECKS + "/_report.json") or {}).get("on"))
     summary["report_due"] = bool(not only and not summary["left"] and clients and (not last or (today - last).days >= 7))
