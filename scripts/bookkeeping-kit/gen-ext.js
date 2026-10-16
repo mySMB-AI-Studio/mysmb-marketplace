@@ -1,16 +1,20 @@
 #!/usr/bin/env node
 // Generate plugins/bookkeeping-<ledger>/ in a mysmb-marketplace checkout from the kit source.
-// Usage: node gen-ext.js <path-to-mysmb-marketplace> [ledger=xero]
+// Usage: node gen-ext.js <path-to-mysmb-marketplace> [ledger=xero] [--without-payroll]
+//   --without-payroll builds the same extension without its payroll automations, forms and texts, for a tier that
+//   mustn't have payroll yet (e.g. UAT/production before payroll's privacy sign-off). Payroll stays in the default build.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { FORMS, AUTOMATIONS } from './src/flows.js';
+import { FORMS, PAYROLL_FORMS, WITHOUT_PAYROLL_TEXT, AUTOMATIONS as ALL_AUTOMATIONS } from './src/flows.js';
 
 const KIT = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.join(KIT, 'src');
-const ROOT = process.argv[2];
-const LEDGER = process.argv[3] || 'xero';
+const ARGS = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+const WITH_PAYROLL = !process.argv.includes('--without-payroll');
+const ROOT = ARGS[0];
+const LEDGER = ARGS[1] || 'xero';
 if (!ROOT || !fs.existsSync(path.join(ROOT, '.claude-plugin', 'marketplace.json'))) {
   console.error('usage: node gen-ext.js <mysmb-marketplace checkout> [ledger]');
   process.exit(1);
@@ -39,6 +43,44 @@ const writeJson = (file, value) => {
   fs.writeFileSync(file, JSON.stringify(value, null, 2) + '\n');
 };
 
+// ── payroll variant ─────────────────────────────────────────────────────────
+// `payrollOnly` marks (flows.js) and `# >>> payroll` / `<!-- >>> payroll -->` blocks (code, README, skill) are dropped
+// in the build without payroll; `no-payroll` blocks only in the default one. Marker lines and marks never reach the
+// output, so the default build is byte-identical to one made before the marks existed.
+const MARKER = /^\s*(?:#|<!--)\s*(>>>|<<<)\s*(no-payroll|payroll)\s*(?:-->)?\s*$/;
+function variant(text) {
+  const out = [];
+  let skip = false;
+  for (const line of text.split('\n')) {
+    const m = MARKER.exec(line);
+    if (m) {
+      skip = m[1] === '>>>' && (m[2] === 'payroll' ? !WITH_PAYROLL : WITH_PAYROLL);
+      continue;
+    }
+    if (!skip) out.push(line);
+  }
+  return out.join('\n');
+}
+function unmark(value) {
+  if (Array.isArray(value)) return value.filter((v) => WITH_PAYROLL || !(v && v.payrollOnly)).map(unmark);
+  if (value && typeof value === 'object') {
+    const { payrollOnly, ...rest } = value;
+    return Object.fromEntries(Object.entries(rest).map(([k, v]) => [k, unmark(v)]));
+  }
+  if (typeof value === 'string' && !WITH_PAYROLL) return WITHOUT_PAYROLL_TEXT.reduce((s, [a, b]) => s.split(a).join(b), value);
+  return value;
+}
+const FORMS_BUILT = FORMS.filter((key) => WITH_PAYROLL || !PAYROLL_FORMS.includes(key));
+const AUTOMATIONS = ALL_AUTOMATIONS.filter((a) => WITH_PAYROLL || !a.payrollOnly).map((a) => {
+  const def = unmark(a);
+  if (WITH_PAYROLL) return def;
+  return {
+    ...def,
+    forms: def.forms.filter((f) => !PAYROLL_FORMS.includes(f)),
+    nodes: def.nodes.map((n) => (n.libs ? { ...n, libs: n.libs.filter((l) => l !== 'payroll') } : n)),
+  };
+});
+
 const formIds = Object.fromEntries(FORMS.map((key) => [key, {
   originKey: uuidFor(`bookkeeping:form:${key}`),
   sourceId: uuidFor(`bookkeeping:source:form:${key}`),
@@ -50,7 +92,7 @@ fs.rmSync(path.join(PLUGIN, 'agents'), { recursive: true, force: true });
 fs.rmSync(path.join(PLUGIN, 'skills'), { recursive: true, force: true });
 
 // ── forms ───────────────────────────────────────────────────────────────────
-const formFiles = FORMS.map((key) => {
+const formFiles = FORMS_BUILT.map((key) => {
   const src = JSON.parse(fs.readFileSync(path.join(SRC, 'forms', `${key}.json`), 'utf8'));
   const payload = withHash({ kind: 'form', originKey: formIds[key].originKey, title: src.title, schema: src.schema });
   const rel = `content/forms/${payload.originKey}.json`;
@@ -96,7 +138,7 @@ const substituteForms = (json) => json.replace(/@form:([a-z-]+)/g, (_, key) => {
 const automationFiles = AUTOMATIONS.map((a) => {
   const nodes = a.nodes.map((n) => {
     if (n.kind !== 'python') return n;
-    const body = fs.readFileSync(path.join(SRC, 'automations', a.codeKey || a.key, `${n.id}.py`), 'utf8').replace(/\r\n/g, '\n').trim();
+    const body = variant(fs.readFileSync(path.join(SRC, 'automations', a.codeKey || a.key, `${n.id}.py`), 'utf8').replace(/\r\n/g, '\n')).trim();
     const code = [...prelude(n.libs, body), '# ── ' + n.title + ' ──', body].join('\n\n\n') + '\n';
     const { libs, ...rest } = n;
     return { ...rest, code };
@@ -134,8 +176,8 @@ writeJson(path.join(PLUGIN, agentRel), agent);
 
 // ── skills, README, connector, manifest ─────────────────────────────────────
 fs.mkdirSync(path.join(PLUGIN, 'skills'), { recursive: true });
-for (const f of fs.readdirSync(path.join(SRC, 'skills'))) fs.copyFileSync(path.join(SRC, 'skills', f), path.join(PLUGIN, 'skills', f));
-fs.copyFileSync(path.join(SRC, 'README.md'), path.join(PLUGIN, 'README.md'));
+for (const f of fs.readdirSync(path.join(SRC, 'skills'))) fs.writeFileSync(path.join(PLUGIN, 'skills', f), variant(fs.readFileSync(path.join(SRC, 'skills', f), 'utf8')));
+fs.writeFileSync(path.join(PLUGIN, 'README.md'), variant(fs.readFileSync(path.join(SRC, 'README.md'), 'utf8')));
 fs.mkdirSync(path.join(PLUGIN, 'assets'), { recursive: true });
 fs.copyFileSync(path.join(SRC, 'assets', 'logo.svg'), path.join(PLUGIN, 'assets', 'logo.svg'));
 // m365-mail-shared (a shared Outlook mailbox, for Email intake (Outlook shared mailbox)) isn't in the Microsoft 365
@@ -180,5 +222,13 @@ if (!mp.plugins.some((p) => p.name === SLUG)) {
   fs.writeFileSync(mpPath, JSON.stringify(mp, null, 2) + (raw.endsWith('\n') ? '\n' : ''));
 }
 
-console.log(`generated ${SLUG}: ${formFiles.length} forms, ${automationFiles.length} automations, 1 agent (${agentKey}), skills`);
+if (!WITH_PAYROLL) {
+  // Nothing payroll may survive: no payroll form, scope or connector, helper or pay run wording in what was written.
+  const written = [...automationFiles, ...formFiles].map((rel) => fs.readFileSync(path.join(PLUGIN, rel), 'utf8')).join('\n')
+    + fs.readFileSync(path.join(PLUGIN, 'README.md'), 'utf8') + fs.readdirSync(path.join(PLUGIN, 'skills')).map((f) => fs.readFileSync(path.join(PLUGIN, 'skills', f), 'utf8')).join('\n');
+  const leaks = ['xero-payroll-au', 'connectors:deputy', 'pay_guide_template', 'BK_PAYROLL', 'payroll_form', 'payroll_names', 'Pay run', 'Bookkeeping/Payroll', 'Bookkeeping Payroll',
+    ...PAYROLL_FORMS.map((k) => formIds[k].originKey), ...PAYROLL_FORMS.map((k) => formIds[k].sourceId)].filter((t) => written.includes(t));
+  if (leaks.length) throw new Error(`the build without payroll still mentions: ${leaks.join(', ')}`);
+}
+console.log(`generated ${SLUG}${WITH_PAYROLL ? '' : ' (without payroll)'}: ${formFiles.length} forms, ${automationFiles.length} automations, 1 agent (${agentKey}), skills`);
 for (const a of AUTOMATIONS) console.log(`  ${a.name}`);

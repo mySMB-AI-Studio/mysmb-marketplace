@@ -20,9 +20,11 @@ Use when someone asks about supplier bills, bill reviews, exceptions, ledger che
 | `Bookkeeping/Mail/routing.json` | What email intake has learned: `names` (a name a document was addressed to, mapped to the client slug, taught by filing an unmatched document) and `senders` (sender to the clients their documents were for). `unmatched.json` lists documents still waiting for a client. |
 | `Bookkeeping Split/<client>/` | Parts of a PDF that held several invoices or statements, on their way into the client's inbox folder (*File split documents* moves them). |
 | `Bookkeeping Failed/unmatched/` | Emailed bills that couldn't be matched to a client |
+<!-- >>> payroll -->
 | `Bookkeeping/Payroll/<client>.json` | Payroll settings: `calendar` (Xero pay calendar name), `prep_day`, `prep_time`, `timesheets` (`deputy`, `xero`, `emailed`, `none`), `ts_owner`, `ts_email`, `officer_id`, `reviewer_id`, `approvers`, `who_posts` (`client` or `practice`) |
 | `Bookkeeping/PayRuns/<client>-<period start>.json` | One record per pay run: `status` (`open`, `checked`, `in_review`, `changes`, `client_approval`, `approved`, `done`, `cancelled`), `period_start`, `period_end`, `payment_date`, `item_id`, `last_check` (`open_items`, `summary`, `changes`, `url`), `notes`, `pack_url`. A file named after a WorkQ item id holds only `link` |
 | `Bookkeeping Payroll/<client>/` | The client's `pay-guide.xlsx` (rates, employees, rules, holidays, pay_items) and each period's reimbursement spreadsheet |
+<!-- <<< payroll -->
 | `Bookkeeping/Statements/<client>.json` | Every statement filed: `kind` (bank, supplier, customer), `filed_to` (the bank account or contact in Xero), `period`, `closing_balance`, `issues` (balance or invoice differences), `problem` |
 | `Bookkeeping Requests/<client>/` | Invoice requests Email intake filed (`from`, `subject`, `received`, `text`). Each new file is drafted by *Draft requested invoice*, then moved to `Bookkeeping Processed/<client>/` |
 | `Bookkeeping/Checks/<client>.json` | The client's ledger checks findings file: `todo_id` (its open Checks item), `findings` keyed by `<CHK id>:<record ids>`, each with `check`, `name`, `category`, `severity`, `amount`, `text`, `link`, `status` (`open`, `dismissed`, `snoozed`), `first_seen`, `last_seen`; `dismissed` and `snoozed` (who, when, note, snooze `until`); `last_daily`, `last_weekly`; `snapshot` (keyed fingerprints of contact bank details, never the numbers; the lock date) |
@@ -34,7 +36,12 @@ Use when someone asks about supplier bills, bill reviews, exceptions, ledger che
 
 ## WorkQ labels
 
+<!-- >>> payroll -->
 Every item has `bookkeeping` plus one of: `bill-review` (review a bill), `invoice-review` (review a sales invoice the client issued), `invoice-request` (approve an invoice raised from a client's request; `proposal.origin` is `request`), `bill-exception` (something went wrong), `client-approval` (get the business owner's OK), `client-query` (ask the client a question), `setup`, `payroll` (a pay run), `payroll-review` (internal review of a pay run), `payroll-approval` (record the client's approval), `statement-check` (a filed statement that doesn't agree with Xero), `checks` (the client's ledger checks item: one open item per client, titled `Checks: <client>`). Exceptions from email intake also carry `email-intake`. The client's slug is also a label, so filter by it to answer "what's waiting for <client>".
+<!-- <<< payroll -->
+<!-- >>> no-payroll -->
+Every item has `bookkeeping` plus one of: `bill-review` (review a bill), `invoice-review` (review a sales invoice the client issued), `invoice-request` (approve an invoice raised from a client's request; `proposal.origin` is `request`), `bill-exception` (something went wrong), `client-approval` (get the business owner's OK), `client-query` (ask the client a question), `setup`, `statement-check` (a filed statement that doesn't agree with Xero), `checks` (the client's ledger checks item: one open item per client, titled `Checks: <client>`). Exceptions from email intake also carry `email-intake`. The client's slug is also a label, so filter by it to answer "what's waiting for <client>".
+<!-- <<< no-payroll -->
 
 ## Answering questions
 

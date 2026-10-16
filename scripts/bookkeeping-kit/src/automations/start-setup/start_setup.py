@@ -37,6 +37,7 @@ for name in names:
     api.workq.attach_form(todo_id=item["id"], form_id=params["client_form"])
     created.append(item["id"])
 
+# >>> payroll
 for name in [n.strip() for n in re.split(r"[\n,;]+", params.get("payroll_names") or "") if n.strip()]:
     item = api.workq.create(
         title="Payroll settings for " + name,
@@ -53,6 +54,7 @@ for name in [n.strip() for n in re.split(r"[\n,;]+", params.get("payroll_names")
     api.workq.attach_form(todo_id=item["id"], form_id=params["payroll_form"])
     created.append(item["id"])
 
+# <<< payroll
 created_count = len(created)
 if created_count == 0:
     summary = "Nothing to do: Bookkeeping is already set up and no client names were given. Run again with client names to add businesses."
