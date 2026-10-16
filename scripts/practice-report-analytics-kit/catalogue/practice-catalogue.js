@@ -3,7 +3,14 @@
 // metadata, per the FULL PROMPT's own "REQUIRED DATA: Catalogue metadata; latest instances."
 const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const CHIPS = ['Clients', 'Sales', 'Purchases', 'Banking', 'Financial', 'Quality', 'Work', 'Time'];
-const NA = { wave3: 'Not available yet — coming in a later wave', checks: 'Not available yet — needs the checks engine (Work list), coming in step 3' };
+const NA = {
+  checks: 'Not available yet — a live report can’t read the checks engine’s findings yet (platform gap)',
+  weekly: 'Not a live report yet — Xero businesses set up in Bookkeeping for Xero get it in the weekly Ledger checks report; MYOB not yet',
+  workq: 'Not available yet — a live report can read WorkQ counts per person, but not the items themselves or their client (platform gap)',
+  snapshot: 'Not available yet — proposed as a report made on request (counts only, no hours), waiting on a scope decision',
+  time: 'Not available — no time source (Xero Practice Manager’s API is only on Xero’s top developer tier)',
+  dropped: 'Not in this release — dropped by decision'
+};
 // [id, name, chip, state, slug-or-null, one line] — the Index tab of the Prompt Library v1.1
 const ITEMS = [
   ['PRA-01', 'Client Summary Metrics', 'Clients', 'live', 'practice-client-summary', 'Counts of contacts, accounts, invoices, bills and employees per client — the practice’s one-page inventory.'],
@@ -12,17 +19,17 @@ const ITEMS = [
   ['PRA-04', 'Bank Reconciliation Summary', 'Banking', 'live', 'practice-bank-reconciliation-summary', 'Statement vs ledger balance, unreconciled lines, last reconciled, across every client.'],
   ['PRA-05', 'Banking Summary Metrics', 'Banking', 'live', 'practice-banking-summary', 'Cash in and cash out across every bank account, per client.'],
   ['PRA-06', 'Financial Overview', 'Financial', 'live', 'practice-financial-overview', 'Revenue, gross and net profit, bank balances, AR/AP ageing, for all or selected clients.'],
-  ['PRA-07', 'Quadrant', 'Quality', 'wave3', null, 'Clients plotted by two chosen metrics, four quadrants.'],
+  ['PRA-07', 'Quadrant', 'Quality', 'checks', null, 'Clients plotted by two chosen metrics, four quadrants.'],
   ['PRA-08', 'Activity Count', 'Work', 'live', 'practice-activity-count', 'Transaction counters across sales, purchases, banking, journals and payroll, per client, ranked.'],
-  ['PRA-09', 'Data Quality', 'Quality', 'checks', null, 'Practice-wide summary of the automated checks: findings by category, severity, $ at risk.'],
-  ['PRA-10', 'Task Scope', 'Work', 'wave3', null, 'Counts of WorkQ items by status, template, client and assignee.'],
-  ['PRA-11', 'Task Completion', 'Work', 'wave3', null, 'Completion rate and ageing of WorkQ items.'],
+  ['PRA-09', 'Data Quality', 'Quality', 'weekly', null, 'Practice-wide summary of the automated checks: findings by category, severity, $ at risk.'],
+  ['PRA-10', 'Task Scope', 'Work', 'snapshot', null, 'Counts of WorkQ items by status, template, client and assignee.'],
+  ['PRA-11', 'Task Completion', 'Work', 'snapshot', null, 'Completion rate and ageing of WorkQ items.'],
   ['PRA-12', 'User Activity', 'Quality', 'live', 'practice-user-activity', 'What people have been doing in each client’s accounting file, where exposed; last-sync shown otherwise.'],
-  ['PRA-13', 'Return on Investment', 'Quality', 'wave3', null, 'Practice savings from the agents: findings resolved, hours saved, $ risk averted.'],
+  ['PRA-13', 'Return on Investment', 'Quality', 'dropped', null, 'Practice savings from the agents: findings resolved, hours saved, $ risk averted.'],
   ['PRA-14', 'Actual Time', 'Time', 'time', null, 'Time allocated by staff and process, per client.'],
   ['PRA-15', 'Draft Time', 'Time', 'time', null, 'Unsubmitted or in-progress time entries.'],
   ['PRA-16', 'Estimate Accuracy', 'Time', 'time', null, 'Estimated vs actual time by staff, process and work item.'],
-  ['PRA-17', 'Work Items', 'Work', 'wave3', null, 'WorkQ items across the practice, by client, assignee and due date.']
+  ['PRA-17', 'Work Items', 'Work', 'workq', null, 'WorkQ items across the practice, by client, assignee and due date.']
 ];
 const DATA = { chips: CHIPS, na: NA, items: ITEMS.map(([id, name, chip, state, slug, line]) => ({ id, name, chip, state, slug, line })) };
 
@@ -60,8 +67,8 @@ const SCRIPT = `
   }
   function workListBox() {
     return '<article class="box" data-row="WL-00"><div class="top"><div><h3>Work list</h3><span class="id">WL-00 · Work</span></div></div>' +
-      '<div><span class="pill na">Not available</span></div><div>Daily data-quality checks across every client, as WorkQ items.</div>' +
-      '<div class="how">Not available yet — needs the checks engine, coming in step 3.</div></article>';
+      '<div><span class="pill live">Live · Xero</span></div><div>Automated data-quality checks across every client, as one WorkQ item per client.</div>' +
+      '<div class="how">Open: WorkQ → <b>Checks: &lt;business&gt;</b>. Each Xero business set up in Bookkeeping for Xero has one, rewritten after every overnight run with its open findings. MYOB not yet.</div></article>';
   }
   function render() {
     $('chips').innerHTML = ['All'].concat(D.chips).map(function (ch) { return '<button class="chip" type="button" aria-pressed="' + (ch === state.chip) + '" data-chip="' + esc(ch) + '">' + esc(ch) + '</button>'; }).join('');
@@ -88,7 +95,7 @@ module.exports = function build() {
 <style>${CSS.trim()}</style>
 </head>
 <body>
-<header class="hero"><h1>Practice Report Catalogue</h1><p>Practice Report Analytics · reports across every client on your Xero, MYOB and QuickBooks connections</p></header>
+<header class="hero"><h1>Practice Report Catalogue</h1><p>Practice Report Analytics · reports across every client on your Xero and MYOB connections (QuickBooks is one company per connection: use the Client Report Catalogue)</p></header>
 <div class="bar"><input id="q" type="search" placeholder="Search reports" aria-label="Search reports"></div>
 <div id="chips" class="chips" role="toolbar" aria-label="Report groups"></div>
 <main><div id="items" class="grid"></div></main>

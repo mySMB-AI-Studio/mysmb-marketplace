@@ -12,7 +12,7 @@ const NA = {
   wave2: 'Not available yet — coming in Wave 2',
   checks: 'Not available yet — a live report can’t read the checks engine’s findings yet (platform gap)',
   weekly: 'Not a live report yet — Xero businesses set up in Bookkeeping for Xero get it in the weekly Ledger checks report; MYOB and QuickBooks not yet',
-  time: 'Not available — no time source; Xero Practice Manager practices get it in Wave 3',
+  time: 'Not available — no time source (Xero Practice Manager’s API is only on Xero’s top developer tier)',
   platform: 'Not available — Workspace\u2019s WorkQ activity data is workspace-wide per user, with no link to a client yet (platform gap)'
 };
 // [id, name, chip, state, one line] — the Index tab of the Prompt Library v1.1. state 'export' (CRA-14 only) is live in the
