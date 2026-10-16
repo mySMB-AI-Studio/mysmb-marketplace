@@ -16,7 +16,7 @@
       "sourceId": "b0b596aa-778f-4f43-85c2-367a920bf67f"
     }
   ],
-  "description": "Every 15 minutes, checks the practice inbox for reschedule/cancellation requests, matches the patient and their upcoming Cliniko appointment, checks real availability over the next 6 days, cross-checks each candidate against the practitioner's actual configured working hours, and drafts a reply. Skips a patient who already has an open review item rather than creating a duplicate. The draft goes to a WorkQ item with a review form attached for approval — it never sends an email or changes a booking itself (see Apply reschedule or cancellation reply).",
+  "description": "Every 15 minutes, checks the practice inbox for reschedule/cancellation requests, matches the patient and the upcoming Cliniko appointment they mean (ignoring cancelled ones, and using the date they name when they have more than one), checks real availability over the next 6 days, cross-checks each candidate against the practitioner's actual configured working hours, and drafts a reply. Ignores later replies in a thread it has already handled, and skips a patient who already has an open review item rather than creating a duplicate. The draft goes to a WorkQ item with a review form attached for approval — it never sends an email or changes a booking itself (see Apply reschedule or cancellation reply).",
   "flowIr": {
     "description": "Polls the practice inbox for reschedule/cancellation requests (no email-received trigger exists), matches the patient via Cliniko, checks real availability against the practitioner's own Daily Availability, drafts a reply, and routes it to WorkQ for approval.",
     "irVersion": 1,
@@ -73,7 +73,7 @@
         "title": "Settings loaded okay?"
       },
       {
-        "code": "slug = params[\"slug\"]\nsettings = params[\"settings\"] or {}\nstate = params[\"state\"] or {}\nlast_seen = state.get(\"last_seen_received_at\") or \"\"\n\n# No \"email received\" trigger exists on this platform — this automation is\n# scheduled every 15 minutes instead, tracking the newest receivedDateTime\n# it has already looked at so the same email is never re-processed.\nKEYWORDS = (\"resched\", \"cancel\", \"move my appointment\", \"change my appointment\", \"can't make it\", \"cant make it\")\n\nraw = api.connectors.invoke(server=\"m365-mail-read\", tool=\"list_emails\", args={\"folder\": \"inbox\", \"limit\": 25})\nmessages = raw if isinstance(raw, list) else ((raw or {}).get(\"value\") or [])\n\ncandidates = []\nnewest_seen = last_seen\nfor m in messages:\n    received = m.get(\"receivedDateTime\") or \"\"\n    if received and received > newest_seen:\n        newest_seen = received\n    if last_seen and received and received <= last_seen:\n        continue\n    subject = m.get(\"subject\") or \"\"\n    preview = m.get(\"bodyPreview\") or \"\"\n    text = (subject + \" \" + preview).lower()\n    if not any(k in text for k in KEYWORDS):\n        continue\n    sender = m.get(\"from\") or {}\n    addr = sender.get(\"emailAddress\") or {}\n    candidates.append({\n        \"id\": m.get(\"id\") or \"\",\n        \"subject\": subject,\n        \"from_email\": (addr.get(\"address\") or \"\").lower(),\n        \"from_name\": addr.get(\"name\") or \"\",\n        \"received_at\": received,\n        \"conversation_id\": m.get(\"conversationId\") or \"\",\n    })\n\nnew_last_seen = newest_seen\n",
+        "code": "slug = params[\"slug\"]\nsettings = params[\"settings\"] or {}\nstate = params[\"state\"] or {}\nlast_seen = state.get(\"last_seen_received_at\") or \"\"\nhandled = [c for c in (state.get(\"handled_conversation_ids\") or []) if c]\n\n# No \"email received\" trigger exists on this platform -- this automation is\n# scheduled every 15 minutes instead, tracking the newest receivedDateTime\n# it has already looked at so the same email is never re-processed.\nKEYWORDS = (\"resched\", \"cancel\", \"move my appointment\", \"change my appointment\", \"can't make it\", \"cant make it\")\n\nraw = api.connectors.invoke(server=\"m365-mail-read\", tool=\"list_emails\", args={\"folder\": \"inbox\", \"limit\": 25})\nmessages = raw if isinstance(raw, list) else ((raw or {}).get(\"value\") or [])\n\ncandidates = []\nnewest_seen = last_seen\nfor m in messages:\n    received = m.get(\"receivedDateTime\") or \"\"\n    if received and received > newest_seen:\n        newest_seen = received\n    if last_seen and received and received <= last_seen:\n        continue\n    subject = m.get(\"subject\") or \"\"\n    preview = m.get(\"bodyPreview\") or \"\"\n    text = (subject + \" \" + preview).lower()\n    if not any(k in text for k in KEYWORDS):\n        continue\n    # Any later message in a thread this desk already picked up -- the\n    # patient replying to our offer, or a reply quoting their \"reschedule\"/\n    # \"cancel\" subject back -- is NOT a new request. Replies to an offer are\n    # handled by \"Apply patient's chosen reschedule time\".\n    conversation_id = m.get(\"conversationId\") or \"\"\n    if conversation_id and conversation_id in handled:\n        continue\n    sender = m.get(\"from\") or {}\n    addr = sender.get(\"emailAddress\") or {}\n    candidates.append({\n        \"id\": m.get(\"id\") or \"\",\n        \"subject\": subject,\n        \"preview\": preview[:500],\n        \"from_email\": (addr.get(\"address\") or \"\").lower(),\n        \"from_name\": addr.get(\"name\") or \"\",\n        \"received_at\": received,\n        \"conversation_id\": conversation_id,\n    })\n    if conversation_id:\n        handled.append(conversation_id)\n\nnew_last_seen = newest_seen\nhandled_conversation_ids = handled[-500:]\n",
         "id": "list_new_emails",
         "kind": "python",
         "outputs": [
@@ -86,6 +86,11 @@
             "description": "The newest receivedDateTime seen this run, for the next poll's cursor.",
             "name": "new_last_seen",
             "type": "str"
+          },
+          {
+            "description": "Conversation ids this desk has already picked up, so later replies in those threads are skipped.",
+            "name": "handled_conversation_ids",
+            "type": "list[str]"
           }
         ],
         "params": [
@@ -129,7 +134,7 @@
         "title": "Handle each candidate email"
       },
       {
-        "code": "import json\n\nsubject = params[\"subject\"] or \"\"\nfrom_email = (params[\"from_email\"] or \"\").strip()\n\ndef cliniko(tool, args):\n    return api.connectors.invoke(server=\"cliniko-patients\" if tool.endswith((\"patients\", \"contacts\")) else \"cliniko-scheduling\", tool=tool, args=args) or {}\n\nintent = \"cancel\" if \"cancel\" in subject.lower() else \"reschedule\"\ntry:\n    raw = api.ai.generate(\n        prompt=(\n            'A patient emailed a medical/allied-health practice with this subject line: \"' + subject + '\". '\n            \"Classify the request as exactly one of: reschedule, cancel, other. \"\n            'Reply with ONLY JSON: {\"intent\": \"reschedule\" | \"cancel\" | \"other\"}'\n        ),\n    )\n    ai_intent = (json.loads(raw) or {}).get(\"intent\")\n    if ai_intent in (\"reschedule\", \"cancel\", \"other\"):\n        intent = ai_intent\nexcept Exception:\n    pass\n\nmatched = False\npatient_id = \"\"\npatient_name = \"\"\nappointment_id = \"\"\nappointment_type_id = \"\"\npractitioner_id = \"\"\nbusiness_id = \"\"\nappointment_starts_at = \"\"\nproblem = \"\"\n\ndef link_id(obj, key):\n    link = ((obj.get(key) or {}).get(\"links\") or {}).get(\"self\") or \"\"\n    return link.rstrip(\"/\").split(\"/\")[-1] if link else \"\"\n\nif intent in (\"reschedule\", \"cancel\") and from_email:\n    found_patients = (cliniko(\"list_patients\", {\"q\": [\"email:=\" + from_email]}).get(\"patients\") or [])\n    if len(found_patients) == 1:\n        patient_id = found_patients[0].get(\"id\") or \"\"\n        patient_name = ((found_patients[0].get(\"first_name\") or \"\") + \" \" + (found_patients[0].get(\"last_name\") or \"\")).strip()\n    elif not found_patients:\n        found_contacts = (cliniko(\"list_contacts\", {\"q\": [\"email:=\" + from_email]}).get(\"contacts\") or [])\n        if len(found_contacts) == 1:\n            patient_id = link_id(found_contacts[0], \"patient\")\n    else:\n        problem = \"More than one Cliniko patient matched \" + from_email + \" — needs a human to pick.\"\n\n    if patient_id and not patient_name and not problem:\n        patient = cliniko(\"get_patient\", {\"id\": patient_id})\n        patient_name = ((patient.get(\"first_name\") or \"\") + \" \" + (patient.get(\"last_name\") or \"\")).strip()\n\n    if patient_id and not problem:\n        import datetime\n        now_utc = datetime.datetime.now(datetime.timezone.utc).strftime(\"%Y-%m-%dT%H:%M:%SZ\")\n        appts = (cliniko(\n            \"list_individual_appointments\",\n            {\"patient_id\": patient_id, \"sort\": \"starts_at:asc\", \"q\": [\"starts_at:>=\" + now_utc]},\n        ).get(\"individual_appointments\") or [])\n        if appts:\n            appt = appts[0]\n            appointment_id = appt.get(\"id\") or \"\"\n            appointment_starts_at = appt.get(\"starts_at\") or \"\"\n            appointment_type_id = link_id(appt, \"appointment_type\")\n            practitioner_id = link_id(appt, \"practitioner\")\n            business_id = link_id(appt, \"business\")\n            matched = True\n        else:\n            problem = \"No upcoming appointment found for \" + (patient_name or from_email) + \".\"\n    elif not patient_id and not problem:\n        problem = \"Couldn't match \" + from_email + \" to a Cliniko patient or contact.\"\n",
+        "code": "import json\n\nsubject = params[\"subject\"] or \"\"\nfrom_email = (params[\"from_email\"] or \"\").strip()\npreview = params.get(\"preview\") or \"\"\ntz_name = ((params.get(\"settings\") or {}).get(\"timezone\")) or \"UTC\"\n\ndef cliniko(tool, args):\n    return api.connectors.invoke(server=\"cliniko-patients\" if tool.endswith((\"patients\", \"contacts\")) else \"cliniko-scheduling\", tool=tool, args=args) or {}\n\nintent = \"cancel\" if \"cancel\" in subject.lower() else \"reschedule\"\ntry:\n    raw = api.ai.generate(\n        prompt=(\n            'A patient emailed a medical/allied-health practice with this subject line: \"' + subject + '\". '\n            \"Classify the request as exactly one of: reschedule, cancel, other. \"\n            'Reply with ONLY JSON: {\"intent\": \"reschedule\" | \"cancel\" | \"other\"}'\n        ),\n    )\n    ai_intent = (json.loads(raw) or {}).get(\"intent\")\n    if ai_intent in (\"reschedule\", \"cancel\", \"other\"):\n        intent = ai_intent\nexcept Exception:\n    pass\n\nmatched = False\npatient_id = \"\"\npatient_name = \"\"\nappointment_id = \"\"\nappointment_type_id = \"\"\npractitioner_id = \"\"\nbusiness_id = \"\"\nappointment_starts_at = \"\"\nproblem = \"\"\n\ndef link_id(obj, key):\n    link = ((obj.get(key) or {}).get(\"links\") or {}).get(\"self\") or \"\"\n    return link.rstrip(\"/\").split(\"/\")[-1] if link else \"\"\n\nif intent in (\"reschedule\", \"cancel\") and from_email:\n    found_patients = (cliniko(\"list_patients\", {\"q\": [\"email:=\" + from_email]}).get(\"patients\") or [])\n    if len(found_patients) == 1:\n        patient_id = found_patients[0].get(\"id\") or \"\"\n        patient_name = ((found_patients[0].get(\"first_name\") or \"\") + \" \" + (found_patients[0].get(\"last_name\") or \"\")).strip()\n    elif not found_patients:\n        found_contacts = (cliniko(\"list_contacts\", {\"q\": [\"email:=\" + from_email]}).get(\"contacts\") or [])\n        if len(found_contacts) == 1:\n            patient_id = link_id(found_contacts[0], \"patient\")\n    else:\n        problem = \"More than one Cliniko patient matched \" + from_email + \" — needs a human to pick.\"\n\n    if patient_id and not patient_name and not problem:\n        patient = cliniko(\"get_patient\", {\"id\": patient_id})\n        patient_name = ((patient.get(\"first_name\") or \"\") + \" \" + (patient.get(\"last_name\") or \"\")).strip()\n\n    if patient_id and not problem:\n        import datetime\n        now_utc = datetime.datetime.now(datetime.timezone.utc).strftime(\"%Y-%m-%dT%H:%M:%SZ\")\n        appts = (cliniko(\n            \"list_individual_appointments\",\n            {\"patient_id\": patient_id, \"sort\": \"starts_at:asc\", \"q\": [\"starts_at:>=\" + now_utc], \"per_page\": 50},\n        ).get(\"individual_appointments\") or [])\n        # Cliniko still lists cancelled/archived appointments -- never offer to\n        # move or cancel one that's already gone.\n        appts = [a for a in appts if not a.get(\"cancelled_at\") and not a.get(\"archived_at\")]\n        if len(appts) > 1:\n            # More than one upcoming booking: use the one the patient actually\n            # named (\"cancel my 20 Oct appointment\") instead of blindly taking the\n            # next one. Falls back to the next one only if the email doesn't say.\n            def local_label(iso_str):\n                try:\n                    from zoneinfo import ZoneInfo\n                    dt = datetime.datetime.fromisoformat(iso_str.replace(\"Z\", \"+00:00\")).astimezone(ZoneInfo(tz_name))\n                    return dt.strftime(\"%a %d %b %Y, %I:%M %p\").replace(\" 0\", \" \")\n                except Exception:\n                    return iso_str\n            try:\n                options = \"\\n\".join(str(i + 1) + \". \" + local_label(a.get(\"starts_at\") or \"\") for i, a in enumerate(appts))\n                raw_pick = api.ai.generate(prompt=(\n                    \"A patient with these upcoming appointments (practice timezone \" + tz_name + \"):\\n\"\n                    + options + \"\\n\\nsent this email.\\nSubject: \" + subject + \"\\nBody: \" + preview + \"\\n\\n\"\n                    \"Which appointment number are they asking about? Only pick one if the email clearly \"\n                    \"identifies it (a date, day or time). Reply with ONLY JSON, no markdown: \"\n                    '{\"appointment\": <1-based number or null>}'\n                )) or \"\"\n                cleaned = raw_pick.strip().strip(\"`\").strip()\n                if cleaned.lower().startswith(\"json\"):\n                    cleaned = cleaned[4:]\n                pick = (json.loads(cleaned.strip()) or {}).get(\"appointment\")\n                if isinstance(pick, int) and 1 <= pick <= len(appts):\n                    appts = [appts[pick - 1]]\n            except Exception:\n                pass\n        if appts:\n            appt = appts[0]\n            appointment_id = appt.get(\"id\") or \"\"\n            appointment_starts_at = appt.get(\"starts_at\") or \"\"\n            appointment_type_id = link_id(appt, \"appointment_type\")\n            practitioner_id = link_id(appt, \"practitioner\")\n            business_id = link_id(appt, \"business\")\n            matched = True\n        else:\n            problem = \"No upcoming appointment found for \" + (patient_name or from_email) + \".\"\n    elif not patient_id and not problem:\n        problem = \"Couldn't match \" + from_email + \" to a Cliniko patient or contact.\"\n",
         "id": "classify_and_match",
         "kind": "python",
         "outputs": [
@@ -201,6 +206,22 @@
             "name": "from_email",
             "required": true,
             "type": "str"
+          },
+          {
+            "binding": "{{ item.preview }}",
+            "control": "hidden",
+            "label": "Email preview",
+            "name": "preview",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.load_context.outputs.settings }}",
+            "control": "hidden",
+            "label": "Settings",
+            "name": "settings",
+            "required": false,
+            "type": "dict"
           }
         ],
         "title": "Classify intent and match the patient"
@@ -351,7 +372,7 @@
         "title": "Check availability, draft a reply, create the review item"
       },
       {
-        "code": "import json\n\nslug = params[\"slug\"]\nnew_last_seen = params[\"new_last_seen\"] or \"\"\n\napi.files.put(\n    file=\"PracticeManager/State/\" + slug + \"-reschedule-desk.json\",\n    content=json.dumps({\"last_seen_received_at\": new_last_seen}, indent=2),\n    scope=\"org\",\n)\n",
+        "code": "import json\n\nslug = params[\"slug\"]\nnew_last_seen = params[\"new_last_seen\"] or \"\"\nhandled = params.get(\"handled_conversation_ids\") or []\n\napi.files.put(\n    file=\"PracticeManager/State/\" + slug + \"-reschedule-desk.json\",\n    content=json.dumps({\"last_seen_received_at\": new_last_seen, \"handled_conversation_ids\": handled}, indent=2),\n    scope=\"org\",\n)\n",
         "id": "save_state",
         "kind": "python",
         "outputs": [],
@@ -371,6 +392,14 @@
             "name": "new_last_seen",
             "required": true,
             "type": "str"
+          },
+          {
+            "binding": "{{ steps.list_new_emails.outputs.handled_conversation_ids }}",
+            "control": "hidden",
+            "label": "Handled conversation ids",
+            "name": "handled_conversation_ids",
+            "required": false,
+            "type": "list[str]"
           }
         ],
         "title": "Advance the poll cursor"
@@ -410,5 +439,5 @@
     "scheduling",
     "email"
   ],
-  "contentHash": "0f77962312cc7e65d1d502016c882ba49f365743168cb11fdedca7eb3fb0ae36"
+  "contentHash": "874220c95fb2326ab8ae6fdd351308316766dbbb9ee411589f8cbf6d030a641c"
 }
