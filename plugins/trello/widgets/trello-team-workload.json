@@ -42,7 +42,7 @@
             {
               "action": "setState",
               "params": {
-                "statePath": "/ui/expandedMemberCards",
+                "statePath": "/ui/expandedMemberDetail",
                 "value": {
                   "$computed": "trello_find_member_cards",
                   "args": {
@@ -208,18 +208,24 @@
       "memberCardsDetailInner": {
         "type": "Stack",
         "props": { "gap": "xs" },
-        "children": ["cardsDetailEmpty", "cardsDetailRepeatList"]
+        "children": ["cardsDetailLabel", "cardsDetailEmpty", "cardsDetailRepeatList"]
+      },
+      "cardsDetailLabel": {
+        "type": "Eyebrow",
+        "props": {
+          "text": { "$computed": "trello_format_member_detail_label", "args": { "name": { "$state": "/ui/expandedMemberDetail/name" } } }
+        }
       },
       "cardsDetailEmpty": {
         "type": "Empty",
         "props": { "message": "No cards found for this member." },
-        "visible": { "$state": "/ui/expandedMemberCards/0", "not": true }
+        "visible": { "$state": "/ui/expandedMemberDetail/cards/0", "not": true }
       },
       "cardsDetailRepeatList": {
         "type": "Stack",
         "props": { "gap": "xs" },
         "children": ["cardDetailRow"],
-        "repeat": { "statePath": "/ui/expandedMemberCards", "key": "id" }
+        "repeat": { "statePath": "/ui/expandedMemberDetail/cards", "key": "id" }
       },
       "cardDetailRow": {
         "type": "Row",

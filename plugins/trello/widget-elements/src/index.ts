@@ -311,7 +311,12 @@ function formatPersonName(rawName: string): { displayName: string; initials: str
   return { displayName, initials };
 }
 
-const CHART_TONES = ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5'] as const;
+// chart-4 (#d6409f, hot pink/magenta) excluded deliberately per feedback --
+// reads as too loud/unprofessional for a business-workload tile. The
+// remaining 4 (blurple / teal / amber / sky blue) stay within a calmer,
+// more conventional business palette while still giving each person a
+// distinct, deterministic color.
+const CHART_TONES = ['chart-1', 'chart-2', 'chart-3', 'chart-5'] as const;
 
 /**
  * Flattens a get_team_workload response into display rows for the Team
@@ -362,23 +367,38 @@ const flatten_team_workload: ComputedFunction = (args) => {
 };
 
 /**
- * Looks up one member's cards array within the already-flattened
+ * Looks up one member's name + cards array within the already-flattened
  * flatten_team_workload output, by member_id. Powers the Team Workload
  * tile's click-to-expand drill-down: a row click only records which
  * member_id is expanded (a plain string, via $bindItem since action params
  * resolve $item to a state PATH, not a value); this function re-derives the
- * actual card list from the already-loaded /ui/members array on every
- * change, rather than copying the cards array into a second state slot at
- * click time.
+ * actual card list — plus the member's own name, so the detail section
+ * (a single shared area below the whole list, not inline under the
+ * clicked row — nested repeats aren't supported here) can label whose
+ * cards it's showing — from the already-loaded /ui/members array on every
+ * change, rather than copying values into a second state slot at click time.
  *
  * Args: { members: array, member_id: string }
  */
 const find_member_cards: ComputedFunction = (args) => {
   const members = Array.isArray(args.members) ? (args.members as Record<string, unknown>[]) : [];
   const memberId = String(args.member_id ?? '');
-  if (!memberId) return [];
+  if (!memberId) return { name: '', cards: [] };
   const match = members.find((m) => String(m.member_id ?? '') === memberId);
-  return Array.isArray(match?.cards) ? match.cards : [];
+  return {
+    name: String(match?.name ?? ''),
+    cards: Array.isArray(match?.cards) ? match.cards : [],
+  };
+};
+
+/**
+ * Formats the Team Workload detail section's label, e.g. "S. Baker's cards".
+ *
+ * Args: { name: string }
+ */
+const format_member_detail_label: ComputedFunction = (args) => {
+  const name = String(args.name ?? '');
+  return name ? `${name}'s cards` : '';
 };
 
 const elements: PluginElementsModule = {
@@ -394,6 +414,7 @@ const elements: PluginElementsModule = {
     format_tracker_legend,
     flatten_team_workload,
     find_member_cards,
+    format_member_detail_label,
   },
 };
 
