@@ -384,6 +384,71 @@ const format_more_cards_count: ComputedFunction = (args) => {
   return extra > 0 ? `+${extra} more` : '';
 };
 
+/**
+ * Builds one activity row's display text for the Recent Activity tile from a
+ * raw Trello Action object, per action type:
+ *   - createCard: "added {card}"
+ *   - commentCard: "commented on {card}"
+ *   - updateCard (list change): "moved {card} to {list}" — falls back to
+ *     "updated {card}" if listAfter is missing (e.g. a non-list-change
+ *     updateCard slipped through the filter).
+ * Unrecognized types fall back to "updated {card}" too, rather than showing
+ * nothing — the action genuinely happened, even if its exact phrasing isn't
+ * modeled.
+ */
+function formatActionText(type: string, data: Record<string, unknown>): string {
+  const cardName = String((data.card as Record<string, unknown> | undefined)?.name ?? 'a card');
+  if (type === 'createCard') return `added ${cardName}`;
+  if (type === 'commentCard') return `commented on ${cardName}`;
+  if (type === 'updateCard') {
+    const listAfter = (data.listAfter as Record<string, unknown> | undefined)?.name;
+    if (listAfter) return `moved ${cardName} to ${String(listAfter)}`;
+  }
+  return `updated ${cardName}`;
+}
+
+/**
+ * Flattens a get_recent_activity response into display rows for the Recent
+ * Activity tile. Each row gets a deterministic chart-1..5 dot tone per actor
+ * (same categorical-color pattern as Team Workload's avatars), the raw ISO
+ * date (formatted via the system baseline relative_time function directly
+ * in the widget spec, not here), and a type-specific action_text.
+ *
+ * Args: { value: array } — get_recent_activity's `actions` array (raw
+ * Trello Action objects).
+ */
+const flatten_recent_activity: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+
+  return raw.map((action) => {
+    const memberCreator = (action.memberCreator ?? {}) as Record<string, unknown>;
+    const rawName = String(memberCreator.fullName ?? memberCreator.username ?? 'Someone');
+    const { displayName } = formatPersonName(rawName);
+
+    let hash = 0;
+    for (let i = 0; i < rawName.length; i++) hash = (hash * 31 + rawName.charCodeAt(i)) >>> 0;
+    const actorTone = rawName ? CHART_TONES[hash % CHART_TONES.length] : 'muted';
+
+    return {
+      id: String(action.id ?? ''),
+      actor_name: displayName || rawName,
+      actor_tone: actorTone,
+      action_text: formatActionText(String(action.type ?? ''), (action.data ?? {}) as Record<string, unknown>),
+      date: String(action.date ?? ''),
+    };
+  });
+};
+
+/**
+ * Formats the Recent Activity tile's "N today" badge.
+ *
+ * Args: { count: number }
+ */
+const format_today_count: ComputedFunction = (args) => {
+  const count = Number(args.count ?? 0);
+  return `${count} today`;
+};
+
 const elements: PluginElementsModule = {
   slug: 'trello',
   functions: {
@@ -397,6 +462,8 @@ const elements: PluginElementsModule = {
     format_tracker_legend,
     flatten_team_workload,
     format_more_cards_count,
+    flatten_recent_activity,
+    format_today_count,
   },
 };
 

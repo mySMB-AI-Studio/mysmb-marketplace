@@ -1,0 +1,129 @@
+{
+  "id": "trello-recent-activity",
+  "title": "Recent Activity",
+  "description": "Recent board activity across every open board — cards created, commented on, and moved — with a count of actions today.",
+  "category": "tasks",
+  "tags": ["trello", "activity", "audit log", "actions", "feed"],
+  "keywords": ["trello recent activity", "activity feed", "audit log", "board actions"],
+  "connectorsUsed": ["trello"],
+  "popularity": 60,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 6 },
+    "min": { "colSpan": 3, "rowSpan": 5 },
+    "max": { "colSpan": 6, "rowSpan": 8 }
+  },
+  "dataProvider": {
+    "mcp": "trello",
+    "tool": "get_recent_activity",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "loading", "activityEmpty", "activityRepeatList"],
+        "watch": {
+          "/trello/get_recent_activity/actions": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/activity",
+                "value": {
+                  "$computed": "trello_flatten_recent_activity",
+                  "args": { "value": { "$state": "/trello/get_recent_activity/actions" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup", "todayBadge"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Activity", "tone": "warning", "size": "sm" } },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": { "type": "Heading", "props": { "text": "Recent Activity", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Trello" } },
+      "todayBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "trello_format_today_count", "args": { "count": { "$state": "/trello/get_recent_activity/today_count" } } },
+          "tone": "warning",
+          "variant": "soft"
+        },
+        "visible": { "$state": "/_loading/trello.get_recent_activity", "not": true }
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/trello.get_recent_activity" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "activityEmpty": {
+        "type": "Empty",
+        "props": { "message": "No recent activity." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/trello.get_recent_activity", "not": true },
+            { "$state": "/ui/activity/0", "not": true }
+          ]
+        }
+      },
+      "activityRepeatList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["activityRow"],
+        "repeat": { "statePath": "/ui/activity", "key": "id" },
+        "visible": { "$state": "/_loading/trello.get_recent_activity", "not": true }
+      },
+      "activityRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["activityDot", "activityInfo"]
+      },
+      "activityDot": { "type": "Dot", "props": { "tone": { "$item": "actor_tone" }, "size": "sm" } },
+      "activityInfo": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["activityTextRow", "activityTime"]
+      },
+      "activityTextRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "baseline" },
+        "children": ["activityActorName", "activityActionText"]
+      },
+      "activityActorName": {
+        "type": "Text",
+        "props": { "text": { "$item": "actor_name" }, "size": "sm", "weight": "bold" }
+      },
+      "activityActionText": {
+        "type": "Text",
+        "props": { "text": { "$item": "action_text" }, "size": "sm", "truncate": true }
+      },
+      "activityTime": {
+        "type": "Caption",
+        "props": { "text": { "$computed": "relative_time", "args": { "value": { "$item": "date" } } }, "tone": "muted" }
+      }
+    }
+  },
+  "status": "published"
+}
