@@ -31,7 +31,7 @@ for (const id of Object.keys(ITEMS)) {
   REPORTS.push({
     pra: it.pra, ref: 'reports/' + id, slug: 'practice-' + id, table: true, item: id,
     title: 'Practice ' + it.name,
-    description: 'Practice Report Analytics ' + it.pra + ': ' + it.blurb + ' One row per client across Xero, MYOB and QuickBooks. Live, validated; mySMB branding by default.',
+    description: 'Practice Report Analytics ' + it.pra + ': ' + it.blurb + ' One row per client across Xero and MYOB (QuickBooks is one company per connection, so it is not consolidated). Live, validated; mySMB branding by default.',
     tags: ['practice-report-analytics', it.pra, id]
   });
 }
