@@ -1,0 +1,108 @@
+{
+  "contentHash": "7affb62fc92f71b2d766ab0f5fa6d204f6784b8394eb2bdd001564335f288e66",
+  "declaredScopes": [
+    "ai:generate",
+    "files:read",
+    "files:write",
+    "workq:write",
+    "connectors:m365-mail-read"
+  ],
+  "dependencies": [
+    {
+      "entityKind": "form",
+      "originKey": "f660cc88-e525-4b42-b3fb-a6f6537fb763",
+      "sourceId": "f660cc88-e525-4b42-b3fb-a6f6537fb763"
+    }
+  ],
+  "description": "Every 30 minutes, checks the inbox for replies to open enquiry threads raised by Triage new enquiry, draft reply. When a reply confirms the proposed time, raises a booking-confirmation WorkQ item (same decision form) for Confirm new-patient booking to act on. When it doesn't, raises a plain WorkQ item for a human to reply to directly. Threads older than 30 days are treated as stale and stop being matched.",
+  "flowIr": {
+    "description": "Every 30 minutes, checks the inbox for replies to open enquiry threads raised by Triage new enquiry, draft reply. When a reply confirms the proposed time, raises a booking-confirmation WorkQ item (same decision form) for Confirm new-patient booking to act on. When it doesn't, raises a plain WorkQ item for a human to reply to directly. Threads older than 30 days are treated as stale and stop being matched.",
+    "irVersion": 1,
+    "name": "Healthcare Practice Management: Convert enquiry to booked patient",
+    "nodes": [
+      {
+        "code": "import json\nimport datetime\n\n\ndef read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\n\ndef write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True))\n\n\nnow = datetime.datetime.utcnow()\ncutoff = now - datetime.timedelta(days=30)\n\nthreads = []\ntry:\n    entries = api.files.list(path=\"PracticeManager/EnquiryThreads\", scope=\"org\")\nexcept Exception:\n    entries = []\nfor entry in entries or []:\n    fname = entry.get(\"name\") if isinstance(entry, dict) else entry\n    if not fname or not str(fname).endswith(\".json\"):\n        continue\n    todo_id = str(fname)[:-5]\n    thread = read_json(\"PracticeManager/EnquiryThreads/\" + fname, {}) or {}\n    if not thread or not thread.get(\"enquirer_email\"):\n        continue\n    drafted_at = str(thread.get(\"drafted_at\") or \"\")\n    try:\n        drafted_dt = datetime.datetime.strptime(drafted_at, \"%Y-%m-%dT%H:%M:%SZ\") if drafted_at else now\n    except ValueError:\n        drafted_dt = now\n    if drafted_dt < cutoff:\n        continue\n    threads.append({\"todo_id\": todo_id, \"thread\": thread})\n\nif not threads:\n    candidates = []\nelse:\n    try:\n        emails = api.connectors.invoke(server=\"m365-mail-read\", tool=\"list_emails\", args={\"folder\": \"Inbox\", \"limit\": 50, \"unreadOnly\": True})\n    except Exception:\n        emails = []\n    if not isinstance(emails, list):\n        emails = []\n\n    seen = read_json(\"PracticeManager/EnquirySeen/replies_seen.json\", default=[])\n    if not isinstance(seen, list):\n        seen = []\n    seen_set = set(seen)\n\n    by_email = {}\n    for t in threads:\n        key = str(t[\"thread\"].get(\"enquirer_email\") or \"\").lower()\n        if key:\n            by_email.setdefault(key, []).append(t)\n\n    candidates = []\n    newly_seen = set()\n    for e in emails:\n        if not isinstance(e, dict):\n            continue\n        email_id = e.get(\"id\") or \"\"\n        if not email_id or email_id in seen_set:\n            continue\n        sender = e.get(\"from\") or {}\n        from_email = str((sender.get(\"emailAddress\") or {}).get(\"address\") or \"\").lower()\n        matches = by_email.get(from_email) or []\n        if not matches:\n            continue\n        # One open thread per enquirer at a time is the expected case; if more than\n        # one is open for the same address, match whichever sorts last (most recent slug order).\n        match = matches[-1]\n        candidates.append({\n            \"email_id\": email_id,\n            \"todo_id\": match[\"todo_id\"],\n            \"thread\": match[\"thread\"],\n        })\n        newly_seen.add(email_id)\n\n    if newly_seen:\n        seen_set |= newly_seen\n        write_json(\"PracticeManager/EnquirySeen/replies_seen.json\", sorted(seen_set))\n\nnew_items = candidates\n",
+        "id": "find_enquiry_replies",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "One entry per inbox email matched to an open enquiry thread by sender address.",
+            "name": "new_items",
+            "type": "list[dict]"
+          }
+        ],
+        "params": [],
+        "summary": "Matches unseen inbox emails to open enquiry threads by sender address.",
+        "title": "Find enquiry replies"
+      },
+      {
+        "body": [
+          "draft_booking_approval"
+        ],
+        "id": "foreach_reply",
+        "itemVar": "item",
+        "items": "{{ steps.find_enquiry_replies.outputs.new_items }}",
+        "kind": "foreach",
+        "maxIterations": 50,
+        "title": "For each matched reply"
+      },
+      {
+        "code": "import json\n\nAI_PROMPT = (\n    \"Read this reply to a new-patient enquiry email and decide whether it confirms the originally \"\n    \"proposed appointment time, asks for a different time, or isn't actually confirming anything yet. \"\n    \"If the reply gives the patient's full name or date of birth, extract them - otherwise leave blank. \"\n    \"Never invent a name, date of birth or time that wasn't given.\"\n)\nAI_HINT = json.dumps({\n    \"confirms_proposed_time\": True,\n    \"requested_alternative\": \"\",\n    \"patient_first_name\": \"\",\n    \"patient_last_name\": \"\",\n    \"patient_dob\": \"\",\n})\n\n\ndef write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True))\n\n\nitem = params.get(\"item\") or {}\nemail_id = item.get(\"email_id\") or \"\"\nthread = item.get(\"thread\") or {}\ntodo_id = item.get(\"todo_id\") or \"\"\noutcome = \"skipped\"\n\nif email_id and thread:\n    try:\n        full = api.connectors.invoke(server=\"m365-mail-read\", tool=\"get_email\", args={\"id\": email_id})\n    except Exception:\n        full = None\n    full = full if isinstance(full, dict) else {}\n    body_block = full.get(\"body\") or {}\n    body_content = body_block.get(\"content\") if isinstance(body_block, dict) else str(body_block or \"\")\n\n    proposed = thread.get(\"proposed_appointment\") or None\n\n    try:\n        parsed = api.ai.extract(\n            prompt=AI_PROMPT,\n            input=json.dumps({\n                \"proposed_time\": (proposed or {}).get(\"starts_at\") if proposed else \"\",\n                \"reply_body\": body_content or \"\",\n            }),\n            schema_hint=AI_HINT,\n        )\n    except Exception:\n        parsed = {}\n    parsed = parsed if isinstance(parsed, dict) else {}\n\n    enquirer_name = thread.get(\"enquirer_name\") or \"the enquirer\"\n    name_parts = enquirer_name.split(\" \", 1)\n    first_name = str(parsed.get(\"patient_first_name\") or \"\").strip() or name_parts[0]\n    last_name = str(parsed.get(\"patient_last_name\") or \"\").strip() or (name_parts[1] if len(name_parts) > 1 else \"\")\n\n    if proposed and parsed.get(\"confirms_proposed_time\"):\n        description = (\n            \"**Enquirer:** \" + enquirer_name + \" (\" + (thread.get(\"enquirer_email\") or \"\") + \")  \\n\"\n            \"**Confirmed time:** \" + str(proposed.get(\"starts_at\") or \"\") + \"  \\n\"\n            \"**Reason given:** \" + (thread.get(\"reason_for_visit\") or \"not stated\") + \"  \\n\\n\"\n            \"Approving this will create the patient in Cliniko, book the appointment, send the intake \"\n            \"form (if one is configured for this practice) and email a confirmation.\\n\\n\"\n            \"**Confirmation email:**\\n\\nHi \" + first_name + \", you're all booked in for \"\n            + str(proposed.get(\"starts_at\") or \"\") + \". We'll be in touch if anything else is needed \"\n            \"before your visit.\"\n        )\n        workq_item = api.workq.create(\n            title=\"Confirm booking: \" + enquirer_name,\n            scope=\"org\",\n            description=description,\n            priority=\"normal\",\n            assignee_ids=[thread.get(\"reviewer_id\")] if thread.get(\"reviewer_id\") else None,\n            labels=[\"healthcare-practice-management\", \"new-enquiry\", \"booking-confirmation\"],\n        )\n        new_todo_id = workq_item[\"id\"]\n        api.workq.attach_form(todo_id=new_todo_id, form_id=params[\"approval_form\"])\n        write_json(\"PracticeManager/BookingDrafts/\" + new_todo_id + \".json\", {\n            \"slug\": thread.get(\"slug\") or \"\",\n            \"enquirer_email\": thread.get(\"enquirer_email\") or \"\",\n            \"first_name\": first_name,\n            \"last_name\": last_name,\n            \"dob\": (str(parsed.get(\"patient_dob\")) if parsed.get(\"patient_dob\") else None),\n            \"appointment_type_id\": proposed.get(\"appointment_type_id\") or \"\",\n            \"business_id\": proposed.get(\"business_id\") or \"\",\n            \"practitioner_id\": proposed.get(\"practitioner_id\") or \"\",\n            \"starts_at\": proposed.get(\"starts_at\") or \"\",\n            \"intake_form_template_id\": thread.get(\"intake_form_template_id\") or \"\",\n        })\n        outcome = \"booking_approval_raised\"\n    else:\n        alt = str(parsed.get(\"requested_alternative\") or \"\").strip()\n        api.workq.create(\n            title=\"Enquiry reply needs a human: \" + enquirer_name,\n            scope=\"org\",\n            description=(\n                \"**Enquirer:** \" + enquirer_name + \" (\" + (thread.get(\"enquirer_email\") or \"\") + \")  \\n\"\n                + (\"**Asked for a different time:** \" + alt + \"  \\n\" if alt else \"\")\n                + \"\\n\\n**Their reply:**\\n\\n\" + (body_content or \"\")[:2000]\n            ),\n            priority=\"normal\",\n            assignee_ids=[thread.get(\"reviewer_id\")] if thread.get(\"reviewer_id\") else None,\n            labels=[\"healthcare-practice-management\", \"new-enquiry\", \"needs-reply\"],\n        )\n        outcome = \"needs_human_reply\"\n",
+        "id": "draft_booking_approval",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "booking_approval_raised, needs_human_reply or skipped.",
+            "name": "outcome",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ item }}",
+            "control": "hidden",
+            "label": "Matched reply",
+            "name": "item",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "control": "hidden",
+            "label": "Approval form",
+            "name": "approval_form",
+            "required": true,
+            "type": "uuid",
+            "value": "f660cc88-e525-4b42-b3fb-a6f6537fb763"
+          }
+        ],
+        "summary": "Decides whether a reply confirms the proposed time, and raises the matching WorkQ approval item.",
+        "title": "Draft booking approval"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "find_enquiry_replies",
+      "foreach_reply"
+    ],
+    "triggers": [
+      {
+        "cron": "*/30 * * * *",
+        "kind": "schedule",
+        "timezone": "Australia/Sydney"
+      },
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "knowledgeFiles": [],
+  "level": "org",
+  "name": "Healthcare Practice Management: Convert enquiry to booked patient",
+  "originKey": "bdcc6f85-29f5-411a-a5ee-406a5ab2cdab",
+  "tags": [
+    "healthcare-practice-management",
+    "new-enquiry",
+    "scheduling"
+  ]
+}

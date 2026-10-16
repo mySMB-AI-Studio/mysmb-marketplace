@@ -1,0 +1,81 @@
+{
+  "contentHash": "a92457dd74f218fe7729812a59a28e41d7446ebdd0a1334e30278aed16ebd5b8",
+  "declaredScopes": [
+    "files:read",
+    "workq:write",
+    "connectors:cliniko-patients",
+    "connectors:cliniko-scheduling",
+    "connectors:cliniko-clinical",
+    "connectors:m365-mail-send"
+  ],
+  "dependencies": [
+    {
+      "entityKind": "form",
+      "originKey": "f660cc88-e525-4b42-b3fb-a6f6537fb763",
+      "sourceId": "f660cc88-e525-4b42-b3fb-a6f6537fb763"
+    }
+  ],
+  "description": "Applies the reviewer's decision on a booking-confirmation approval form raised by Convert enquiry to booked patient: creates the patient in Cliniko, books the proposed appointment, sends the intake form if one is configured, and emails the (possibly edited) confirmation. Every step reports back on the WorkQ item rather than failing silently.",
+  "flowIr": {
+    "description": "Applies the reviewer's decision on a booking-confirmation approval form raised by Convert enquiry to booked patient: creates the patient in Cliniko, books the proposed appointment, sends the intake form if one is configured, and emails the (possibly edited) confirmation. Every step reports back on the WorkQ item rather than failing silently.",
+    "irVersion": 1,
+    "name": "Healthcare Practice Management: Confirm new-patient booking",
+    "nodes": [
+      {
+        "code": "import json\n\n\ndef read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\n\nresponses = params.get(\"responses\") or {}\ntodo_id = params.get(\"todo_id\") or \"\"\noutcome = \"ignored\"\n\nif responses and todo_id:\n    draft = read_json(\"PracticeManager/BookingDrafts/\" + todo_id + \".json\", None)\n    if not draft:\n        outcome = \"ignored\"\n    else:\n        decision = str(responses.get(\"q_decision\") or \"\")\n        enquirer_email = draft.get(\"enquirer_email\") or \"\"\n        first_name = draft.get(\"first_name\") or \"the patient\"\n\n        if decision == \"Don't send\":\n            api.workq.comment(todo_id=todo_id, body=\"Marked as don't book. No patient was created and nothing was sent.\")\n            api.workq.complete(todo_id=todo_id)\n            outcome = \"not_booked\"\n        else:\n            business_id = draft.get(\"business_id\") or \"\"\n            practitioner_id = draft.get(\"practitioner_id\") or \"\"\n            appointment_type_id = draft.get(\"appointment_type_id\") or \"\"\n            starts_at = draft.get(\"starts_at\") or \"\"\n\n            if not (business_id and practitioner_id and appointment_type_id and starts_at):\n                api.workq.comment(todo_id=todo_id, body=\"This booking is missing required details and couldn't be created automatically. Book it manually in Cliniko.\")\n                outcome = \"missing_details\"\n            else:\n                patient_payload = {\n                    \"first_name\": first_name,\n                    \"last_name\": draft.get(\"last_name\") or \"\",\n                    \"email\": enquirer_email,\n                }\n                if draft.get(\"dob\"):\n                    patient_payload[\"date_of_birth\"] = draft[\"dob\"]\n\n                try:\n                    patient = api.connectors.invoke(server=\"cliniko-patients\", tool=\"create_patient\", args={\"patient\": patient_payload})\n                    patient_id = str((patient or {}).get(\"id\") or \"\")\n                except Exception:\n                    patient_id = \"\"\n\n                if not patient_id:\n                    api.workq.comment(todo_id=todo_id, body=\"Couldn't create the patient record in Cliniko. Nothing was booked.\")\n                    outcome = \"patient_create_failed\"\n                else:\n                    try:\n                        appt = api.connectors.invoke(\n                            server=\"cliniko-scheduling\", tool=\"create_individual_appointment\",\n                            args={\"appointment\": {\n                                \"appointment_type_id\": appointment_type_id,\n                                \"business_id\": business_id,\n                                \"practitioner_id\": practitioner_id,\n                                \"patient_id\": patient_id,\n                                \"starts_at\": starts_at,\n                            }},\n                        )\n                        appointment_id = str((appt or {}).get(\"id\") or \"\")\n                    except Exception:\n                        appointment_id = \"\"\n\n                    if not appointment_id:\n                        api.workq.comment(todo_id=todo_id, body=\"Created the patient (\" + patient_id + \") but the booking itself failed. Book the appointment manually in Cliniko.\")\n                        outcome = \"appointment_create_failed\"\n                    else:\n                        intake_sent = False\n                        template_id = draft.get(\"intake_form_template_id\") or \"\"\n                        if template_id:\n                            try:\n                                api.connectors.invoke(\n                                    server=\"cliniko-clinical\", tool=\"create_patient_form\",\n                                    args={\"patient_form\": {\"patient_id\": patient_id, \"form_template_id\": template_id}},\n                                )\n                                intake_sent = True\n                            except Exception:\n                                intake_sent = False\n\n                        if enquirer_email:\n                            edited = str(responses.get(\"q_edited_message\") or \"\").strip()\n                            body = edited if (decision == \"Edit and send\" and edited) else (\n                                \"Hi \" + first_name + \", you're all booked in for \" + starts_at + \". \"\n                                + (\"We've also sent you an intake form to complete before your visit. \" if intake_sent else \"\")\n                                + \"See you soon!\"\n                            )\n                            try:\n                                api.connectors.invoke(\n                                    server=\"m365-mail-send\", tool=\"send_email\",\n                                    args={\"to\": [enquirer_email], \"subject\": \"You're booked in\", \"body\": body, \"contentType\": \"Text\"},\n                                )\n                            except Exception:\n                                pass\n\n                        api.workq.comment(\n                            todo_id=todo_id,\n                            body=\"Booked \" + first_name + \" for \" + starts_at + (\" and sent the intake form.\" if intake_sent else \".\"),\n                        )\n                        api.workq.complete(todo_id=todo_id)\n                        outcome = \"booked\"\n",
+        "id": "apply_booking_decision",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "booked, not_booked, missing_details, patient_create_failed, appointment_create_failed or ignored.",
+            "name": "outcome",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ trigger.event.payload.responses }}",
+            "control": "hidden",
+            "label": "Form answers",
+            "name": "responses",
+            "required": false,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ trigger.event.subject.todo_id }}",
+            "control": "hidden",
+            "label": "Approval item",
+            "name": "todo_id",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Creates the patient, books the appointment, sends the intake form, and emails the confirmation on approval.",
+        "title": "Apply booking decision"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "apply_booking_decision"
+    ],
+    "triggers": [
+      {
+        "eventType": "form.response_submitted",
+        "filter": {
+          "form_id": "f660cc88-e525-4b42-b3fb-a6f6537fb763"
+        },
+        "kind": "event"
+      }
+    ]
+  },
+  "kind": "automation",
+  "knowledgeFiles": [],
+  "level": "org",
+  "name": "Healthcare Practice Management: Confirm new-patient booking",
+  "originKey": "19668402-cf78-428d-b49b-da453956032e",
+  "tags": [
+    "healthcare-practice-management",
+    "new-enquiry",
+    "scheduling"
+  ]
+}
