@@ -1,7 +1,7 @@
 {
   "id": "trello-recent-activity",
   "title": "Recent Activity",
-  "description": "Recent board activity across every open board — cards created, commented on, and moved — with a count of actions today.",
+  "description": "Recent board activity across every open board — cards created, commented on, and moved — searchable by person or card.",
   "category": "tasks",
   "tags": ["trello", "activity", "audit log", "actions", "feed"],
   "keywords": ["trello recent activity", "activity feed", "audit log", "board actions"],
@@ -23,7 +23,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "loading", "activityEmpty", "activityRepeatList"],
+        "children": ["headerRow", "filterRow", "body", "viewInTrelloRow"],
         "watch": {
           "/trello/get_recent_activity/actions": [
             {
@@ -32,7 +32,43 @@
                 "statePath": "/ui/activity",
                 "value": {
                   "$computed": "trello_flatten_recent_activity",
-                  "args": { "value": { "$state": "/trello/get_recent_activity/actions" } }
+                  "args": {
+                    "value": { "$state": "/trello/get_recent_activity/actions" },
+                    "search": { "$state": "/ui/search" },
+                    "person": { "$state": "/ui/personFilter" }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/search": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/activity",
+                "value": {
+                  "$computed": "trello_flatten_recent_activity",
+                  "args": {
+                    "value": { "$state": "/trello/get_recent_activity/actions" },
+                    "search": { "$state": "/ui/search" },
+                    "person": { "$state": "/ui/personFilter" }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/personFilter": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/activity",
+                "value": {
+                  "$computed": "trello_flatten_recent_activity",
+                  "args": {
+                    "value": { "$state": "/trello/get_recent_activity/actions" },
+                    "search": { "$state": "/ui/search" },
+                    "person": { "$state": "/ui/personFilter" }
+                  }
                 }
               }
             }
@@ -42,8 +78,8 @@
 
       "headerRow": {
         "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["titleGroup", "todayBadge"]
+        "props": { "align": "center" },
+        "children": ["titleGroup"]
       },
       "titleGroup": {
         "type": "Row",
@@ -58,14 +94,50 @@
       },
       "title": { "type": "Heading", "props": { "text": "Recent Activity", "level": "h2" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Trello" } },
-      "todayBadge": {
-        "type": "Badge",
-        "props": {
-          "text": { "$computed": "trello_format_today_count", "args": { "count": { "$state": "/trello/get_recent_activity/today_count" } } },
-          "tone": "warning",
-          "variant": "soft"
-        },
+
+      "filterRow": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["searchInput", "personFilter"],
         "visible": { "$state": "/_loading/trello.get_recent_activity", "not": true }
+      },
+      "searchInput": {
+        "type": "TextInput",
+        "props": {
+          "value": { "$bindState": "/ui/search" },
+          "placeholder": "Search activity",
+          "size": "sm",
+          "debounce": 150
+        }
+      },
+      "personFilter": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/personFilter" },
+          "options": { "$state": "/ui/peopleOptions" },
+          "ariaLabel": "Filter by person",
+          "size": "sm"
+        },
+        "watch": {
+          "/trello/get_recent_activity/actions": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/peopleOptions",
+                "value": {
+                  "$computed": "trello_list_activity_people",
+                  "args": { "value": { "$state": "/trello/get_recent_activity/actions" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "activityEmpty", "activityRepeatList"]
       },
 
       "loading": {
@@ -80,7 +152,18 @@
 
       "activityEmpty": {
         "type": "Empty",
-        "props": { "message": "No recent activity." },
+        "props": {
+          "message": {
+            "$cond": {
+              "$or": [
+                { "$state": "/ui/search", "neq": "" },
+                { "$state": "/ui/personFilter", "neq": "" }
+              ]
+            },
+            "$then": "No activity matches your search or filter.",
+            "$else": "No recent activity."
+          }
+        },
         "visible": {
           "$and": [
             { "$state": "/_loading/trello.get_recent_activity", "not": true },
@@ -104,7 +187,7 @@
       "activityInfo": {
         "type": "Stack",
         "props": { "gap": "none", "grow": true },
-        "children": ["activityTextRow", "activityTime"]
+        "children": ["activityTextRow", "activityTimeRow"]
       },
       "activityTextRow": {
         "type": "Row",
@@ -113,15 +196,44 @@
       },
       "activityActorName": {
         "type": "Text",
-        "props": { "text": { "$item": "actor_name" }, "size": "sm", "weight": "bold" }
+        "props": { "text": { "$item": "actor_name" }, "size": "sm", "weight": "semibold" }
       },
       "activityActionText": {
         "type": "Text",
         "props": { "text": { "$item": "action_text" }, "size": "sm", "truncate": true }
       },
+      "activityTimeRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "baseline" },
+        "children": ["activityTime", "activityDateSep", "activityDate"]
+      },
       "activityTime": {
         "type": "Caption",
         "props": { "text": { "$computed": "relative_time", "args": { "value": { "$item": "date" } } }, "tone": "muted" }
+      },
+      "activityDateSep": {
+        "type": "Caption",
+        "props": { "text": "·", "tone": "muted" }
+      },
+      "activityDate": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "trello_format_activity_date", "args": { "value": { "$item": "date" } } },
+          "tone": "muted"
+        }
+      },
+
+      "viewInTrelloRow": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["viewInTrelloButton"]
+      },
+      "viewInTrelloButton": {
+        "type": "Button",
+        "props": { "label": "View in Trello", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": { "action": "open_url", "params": { "url": "https://trello.com/b/tcjhGlBx/myimpact-qa-trello-tile-test-data", "target": "_blank" } }
+        }
       }
     }
   },
