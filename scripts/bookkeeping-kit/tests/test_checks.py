@@ -408,6 +408,40 @@ class Checks(unittest.TestCase):
         self.overnight()
         self.assertEqual(len(self.w.artifacts), 1)
 
+    def test_weekly_report_shows_gst_findings_open_and_resolved(self):
+        self.client["gst_registered"] = False
+        self.save_client()
+        self.org["invoices"].append(doc("i-gst", "INV-300", self.supplies, day(4), 550.0, kind="ACCREC", account="200",
+                                        tax_type="OUTPUT"))
+        self.overnight()
+        page = self.w.artifacts[0]["content"]
+        gst = page.split("<h2>GST checks</h2>")[1].split("<h2>")[0]
+        self.assertIn("CHK-031 GST on Invoice and/or Credit Note When Not Registered", gst)
+        self.assertRegex(gst, r"CHK-031[^<]*</td><td class='n'>1</td><td class='n'>[0-9.,]+</td><td class='n'>—</td>")
+        # Fixed in Xero: next week's report shows it as resolved, and only its check, key, amount and dates are kept.
+        self.org["invoices"] = [i for i in self.org["invoices"] if i["InvoiceID"] != "i-gst"]
+        state = self.state()
+        state["last_weekly"] = day(8)
+        self.w.files["Bookkeeping/Checks/acme-plumbing.json"] = json.dumps(state)
+        self.w.files["Bookkeeping/Checks/_report.json"] = json.dumps({"on": day(8)})
+        self.overnight()
+        self.assertEqual(len(self.w.artifacts), 2)
+        gst = self.w.artifacts[1]["content"].split("<h2>GST checks</h2>")[1].split("<h2>")[0]
+        self.assertRegex(gst, r"CHK-031[^<]*</td><td class='n'>—</td><td class='n'>—</td><td class='n'>1</td>")
+        self.assertIn("All businesses", gst)
+        logged = [r for r in self.state()["resolved"] if r["check"] == "CHK-031"]
+        self.assertEqual(len(logged), 1)
+        self.assertEqual(set(logged[0]), {"check", "key", "amount", "first_seen", "on"})
+        self.assertEqual(logged[0]["on"], str(TODAY))
+
+    def test_resolved_log_keeps_about_a_year(self):
+        state = {"version": 1, "slug": "acme-plumbing", "last_daily": day(1), "last_weekly": day(8),
+                 "resolved": [{"check": "CHK-031", "key": "CHK-031:old", "amount": 1.0, "first_seen": day(500), "on": day(450)},
+                              {"check": "CHK-031", "key": "CHK-031:recent", "amount": 1.0, "first_seen": day(60), "on": day(30)}]}
+        self.w.files["Bookkeeping/Checks/acme-plumbing.json"] = json.dumps(state)
+        self.overnight()
+        self.assertEqual([r["key"] for r in self.state()["resolved"]], ["CHK-031:recent"])
+
     def test_clients_with_checks_turned_off_are_skipped(self):
         self.duplicate_bills()
         self.client["checks_enabled"] = False

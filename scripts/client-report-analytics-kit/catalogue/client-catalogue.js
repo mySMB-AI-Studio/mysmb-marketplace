@@ -10,7 +10,8 @@ const LIB = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'libraries.jso
 const CHIPS = ['Financial', 'Tax & BAS', 'Sales & purchases', 'Quality', 'Activity', 'Time', 'Platform reports'];
 const NA = {
   wave2: 'Not available yet — coming in Wave 2',
-  checks: 'Not available yet — needs the checks engine (Work list), coming next',
+  checks: 'Not available yet — a live report can’t read the checks engine’s findings yet (platform gap)',
+  weekly: 'Not a live report yet — Xero businesses set up in Bookkeeping for Xero get it in the weekly Ledger checks report; MYOB and QuickBooks not yet',
   time: 'Not available — no time source; Xero Practice Manager practices get it in Wave 3',
   platform: 'Not available — Workspace\u2019s WorkQ activity data is workspace-wide per user, with no link to a client yet (platform gap)'
 };
@@ -19,15 +20,15 @@ const NA = {
 // the QuickBooks and MYOB Reporting Studios' own export-based audit-log skills (Xero has no org-wide audit log at all).
 const ITEMS = [
   ['CRA-01', 'Financial Overview', 'Financial', 'live', 'Revenue, gross and net profit, trends, bank balances and receivables / payables ageing for any period, cash or accrual.'],
-  ['CRA-02', 'Data Quality', 'Quality', 'checks', 'Findings of the automated checks on this client: by category and severity, with $ at risk.'],
+  ['CRA-02', 'Data Quality', 'Quality', 'weekly', 'Findings of the automated checks on this client: by category and severity, with $ at risk.'],
   ['CRA-03', 'Sales by Tracking Category', 'Sales & purchases', 'live', 'Sales by tracking category / class / job and its options, one category at a time.'],
   ['CRA-04', 'Purchases by Tracking Category', 'Sales & purchases', 'live', 'Purchases by tracking category / class / job and its options.'],
   ['CRA-05', 'Summary of Tax Amounts by Type', 'Tax & BAS', 'live', 'Total value per month for each tax type, reconciled to the GST figures, for BAS preparation review.'],
   ['CRA-06', 'Contact Details for BAS Preparation', 'Tax & BAS', 'live', 'All contacts with tax types used and GST evidence on file, and on Xero each ABN\'s Australian Business Register record (needs ABR Lookup).'],
   ['CRA-07', 'BAS Related Transactions and GST', 'Tax & BAS', 'live', 'Every BAS-relevant transaction per tax type, by contact, source and GL account, tied to the GST figures.'],
-  ['CRA-08', 'Client Queries', 'Quality', 'checks', 'Transactions that need information from the client (uncoded, missing attachment, unexplained), to view and send.'],
+  ['CRA-08', 'Client Queries', 'Quality', 'weekly', 'Transactions that need information from the client (uncoded, missing attachment, unexplained), to view and send.'],
   ['CRA-09', 'Health Check', 'Quality', 'checks', "Key summary of the client's financial activity and data quality on one page."],
-  ['CRA-10', 'GST Check', 'Tax & BAS', 'checks', 'Scope and method of the GST checks, with resolved vs unresolved GST risk.'],
+  ['CRA-10', 'GST Check', 'Tax & BAS', 'weekly', 'Scope and method of the GST checks, with resolved vs unresolved GST risk.'],
   ['CRA-11', 'Activity Count', 'Activity', 'live', 'Transaction activity across key functions for the client.'],
   ['CRA-12', 'Actual Time', 'Time', 'time', 'Time allocated to this client by staff and task source.'],
   ['CRA-13', 'Estimate Accuracy', 'Time', 'time', "Estimated vs actual time for this client's work items."],
