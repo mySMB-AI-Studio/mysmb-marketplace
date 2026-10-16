@@ -71,7 +71,7 @@
           "footerRow"
         ],
         "props": {},
-        "type": "Card",
+        "children": ["headerRow", "loading", "bigStatGroup", "memberEmpty", "memberList", "memberCardsDetailSection", "viewInTrelloRow"],
         "watch": {
           "/trello/get_team_workload/members": [
             {
@@ -84,6 +84,21 @@
                     "value": {
                       "$state": "/trello/get_team_workload/members"
                     }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/expandedMemberId": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/expandedMemberCards",
+                "value": {
+                  "$computed": "trello_find_member_cards",
+                  "args": {
+                    "members": { "$state": "/ui/members" },
+                    "member_id": { "$state": "/ui/expandedMemberId" }
                   }
                 }
               }
@@ -188,32 +203,50 @@
           "statePath": "/ui/members"
         },
         "type": "Stack",
-        "visible": {
-          "$state": "/_loading/trello.get_team_workload",
-          "not": true
+        "props": { "gap": "sm" },
+        "children": ["memberRowCollapsed", "memberRowExpanded"],
+        "repeat": { "statePath": "/ui/members", "key": "member_id" },
+        "visible": { "$state": "/_loading/trello.get_team_workload", "not": true }
+      },
+
+      "memberRowCollapsed": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "clickable": true },
+        "children": ["avatar", "memberStack"],
+        "visible": { "$item": "member_id", "eq": { "$state": "/ui/expandedMemberId" }, "not": true },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": { "statePath": "/ui/expandedMemberId", "value": { "$bindItem": "member_id" } }
+          }
         }
       },
-      "memberRow": {
-        "children": [
-          "avatar",
-          "memberStack"
-        ],
-        "props": {
-          "align": "center",
-          "gap": "sm"
-        },
-        "type": "Row"
+      "memberRowExpanded": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "clickable": true },
+        "children": ["avatarB", "memberStackB"],
+        "visible": { "$item": "member_id", "eq": { "$state": "/ui/expandedMemberId" } },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": { "statePath": "/ui/expandedMemberId", "value": "" }
+          }
+        }
+      },
+
+      "avatar": {
+        "type": "Avatar",
+        "props": { "initials": { "$item": "initials" }, "tone": { "$item": "avatar_tone" }, "size": "md" }
       },
       "memberStack": {
-        "children": [
-          "nameCountRow",
-          "progressBar"
-        ],
-        "props": {
-          "gap": "xs",
-          "grow": true
-        },
-        "type": "Stack"
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["nameCountRow", "progressBarRow"]
+      },
+      "progressBarRow": {
+        "type": "Row",
+        "props": {},
+        "children": ["progressBar"]
       },
       "nameCountRow": {
         "children": [
@@ -246,70 +279,88 @@
         },
         "type": "ProgressBar"
       },
-      "sk1": {
-        "props": {
-          "height": "2.5rem",
-          "rounded": "md"
-        },
-        "type": "Skeleton"
+
+      "avatarB": {
+        "type": "Avatar",
+        "props": { "initials": { "$item": "initials" }, "tone": { "$item": "avatar_tone" }, "size": "md" }
       },
-      "sk2": {
-        "props": {
-          "height": "3rem",
-          "rounded": "md"
-        },
-        "type": "Skeleton"
+      "memberStackB": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["nameCountRowB", "progressBarRowB"]
       },
-      "sk3": {
-        "props": {
-          "height": "3rem",
-          "rounded": "md"
-        },
-        "type": "Skeleton"
+      "progressBarRowB": {
+        "type": "Row",
+        "props": {},
+        "children": ["progressBarB"]
       },
-      "statLabel": {
-        "props": {
-          "text": "Cards assigned",
-          "tone": "muted"
-        },
-        "type": "Caption"
+      "nameCountRowB": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["nameTextB", "countTextB"]
       },
-      "statValue": {
-        "props": {
-          "size": "lg",
-          "value": {
-            "$state": "/trello/get_team_workload/total_assigned"
-          }
-        },
-        "type": "Stat"
+      "nameTextB": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "semibold", "truncate": true }
       },
-      "title": {
-        "props": {
-          "level": "h2",
-          "text": "Team Workload"
-        },
-        "type": "Heading"
+      "countTextB": {
+        "type": "Text",
+        "props": { "text": { "$item": "count" }, "size": "sm", "weight": "semibold" }
       },
-      "titleIcon": {
-        "props": {
-          "name": "Users",
-          "size": "sm",
-          "tone": "info"
-        },
-        "type": "Icon"
+      "progressBarB": {
+        "type": "ProgressBar",
+        "props": { "value": { "$item": "pct" }, "tone": "info" }
       },
-      "titleStack": {
-        "children": [
-          "title",
-          "eyebrow"
-        ],
-        "props": {
-          "gap": "none"
-        },
-        "type": "Stack"
+
+      "memberCardsDetailSection": {
+        "type": "Body",
+        "props": {},
+        "children": ["memberCardsDetailInner"],
+        "visible": { "$state": "/ui/expandedMemberId" }
+      },
+      "memberCardsDetailInner": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["cardsDetailEmpty", "cardsDetailRepeatList"]
+      },
+      "cardsDetailEmpty": {
+        "type": "Empty",
+        "props": { "message": "No cards found for this member." },
+        "visible": { "$state": "/ui/expandedMemberCards/0", "not": true }
+      },
+      "cardsDetailRepeatList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["cardDetailRow"],
+        "repeat": { "statePath": "/ui/expandedMemberCards", "key": "id" }
+      },
+      "cardDetailRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["cardDetailName", "cardDetailBoard"]
+      },
+      "cardDetailName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "truncate": true }
+      },
+      "cardDetailBoard": {
+        "type": "Caption",
+        "props": { "text": { "$item": "board_label" }, "tone": "muted", "truncate": true }
+      },
+
+      "viewInTrelloRow": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["viewInTrelloButton"]
+      },
+      "viewInTrelloButton": {
+        "type": "Button",
+        "props": { "label": "View in Trello", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": { "action": "open_url", "params": { "url": "https://trello.com/b/tcjhGlBx/myimpact-qa-trello-tile-test-data", "target": "_blank" } }
+        }
       }
-    },
-    "root": "card"
+    }
   },
   "tags": [
     "trello",
