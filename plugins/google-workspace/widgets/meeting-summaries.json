@@ -255,7 +255,17 @@
       },
       "summariseAllButton": {
         "type": "Button",
-        "props": { "label": "Summarize all", "variant": "primary", "size": "sm", "leadingIcon": "Sparkles" },
+        "props": {
+          "label": {
+            "$cond": { "$state": "/_loading/google-workspace-meet.get_meeting_summaries_dashboard" },
+            "$then": "Summarizing…",
+            "$else": "Summarize all"
+          },
+          "variant": "primary",
+          "size": "sm",
+          "leadingIcon": "Sparkles",
+          "disabled": { "$state": "/_loading/google-workspace-meet.get_meeting_summaries_dashboard" }
+        },
         "visible": { "$state": "/ui/meetingSummariesView/banner/canSummarizeAll" },
         "on": {
           "click": [
@@ -528,7 +538,17 @@
       },
       "summarizeButton": {
         "type": "Button",
-        "props": { "label": "Summarize", "variant": "primary", "size": "sm", "leadingIcon": "Sparkles" },
+        "props": {
+          "label": {
+            "$cond": { "$state": "/_loading/google-workspace-meet.summarize_meeting_transcript" },
+            "$then": "Summarizing…",
+            "$else": "Summarize"
+          },
+          "variant": "primary",
+          "size": "sm",
+          "leadingIcon": "Sparkles",
+          "disabled": { "$state": "/_loading/google-workspace-meet.summarize_meeting_transcript" }
+        },
         "visible": { "$item": "canSummarize" },
         "on": {
           "click": {
