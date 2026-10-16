@@ -75,7 +75,9 @@ XK.app({
     var checks = [
       { name: 'Every contact on an invoice or credit note in the period appears in the list', pass: Object.keys(used).every(function (id) { return contacts.some(function (ct) { return ct.ContactID === id; }); }), detail: rows.length + ' contact(s) from list_contacts' },
       { name: 'GST evidence = whether Xero holds a tax number for the contact; the register column is the Australian Business Register\'s own record', pass: true, detail: withAbn + ' of ' + rows.length + ' contact(s) have a tax number on file' },
-      noConn ? { name: 'Register (ABR) lookups', pass: null, info: true, detail: 'ABR Lookup is not connected, so the register column reads "N/A — connect ABR Lookup"' }
+      // Nothing to look up finishes without a redraw, so it can't wait for the lookups to say so.
+      !lookedUp.length ? { name: 'Register (ABR) lookups', pass: null, info: true, detail: 'No contact has an ABN on file, so there is nothing to look up on the register' }
+        : noConn ? { name: 'Register (ABR) lookups', pass: null, info: true, detail: 'ABR Lookup is not connected, so the register column reads "N/A — connect ABR Lookup"' }
         : !live ? { name: 'Register (ABR) lookups', pass: null, info: true, detail: 'Not in snapshots: the register column is looked up when the live report opens' }
         : { name: 'Every ABN on file was looked up on the register', pass: items ? missing === 0 : null, info: !items, detail: items ? (lookedUp.length - missing) + ' of ' + lookedUp.length + ' ABN(s) looked up' + (regFailed ? '; ' + regFailed + ' batch(es) failed' : '') : 'Looking up ' + lookedUp.length + ' ABN(s)…' },
       { name: 'All contacts and transactions in the period loaded', pass: !trunc.length, detail: trunc.length ? 'May be truncated (over 20 pages): ' + trunc.join(', ') : rows.length + ' contact(s)' }

@@ -14,6 +14,7 @@ const regCalls = (t) => t.calls.filter((x) => x.id === 'registry' && x.requery);
   ok('opens green with a contacts table', green(t) && t.errs.length === 0, banner(t).slice(0, 400));
   ok('contacts with no ABN read "N/A — no ABN on file" in the register column, never a guessed status', /N\/A — no ABN on file/.test(text(t.doc, '#co-grid')) && !/Active|Cancelled|GST registered/.test(text(t.doc, '#co-grid')), text(t.doc, '#co-grid').slice(0, 500));
   ok('no register lookup when no contact has an ABN', regCalls(t).length === 0, regCalls(t));
+  ok('… and the checks say there is nothing to look up, not "Looking up 0 ABN(s)…" (seen on QA)', /nothing to look up on the register/.test(banner(t)) && !/Looking up 0/.test(banner(t)), banner(t).slice(0, 600));
   ok('GST evidence reads "No ABN on file" rather than inventing a registration status', /No ABN on file/.test(text(t.doc, '#co-grid')), text(t.doc, '#co-grid').slice(0, 400));
   ok('tax types used are listed per contact from their invoices/credit notes in the period', /GST on Income|GST on Expenses|GST Free/.test(text(t.doc, '#co-grid')), text(t.doc, '#co-grid').slice(0, 600));
 
