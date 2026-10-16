@@ -63,6 +63,7 @@ elif form_id == params["setup_form"]:
         "3. Drop a supplier bill PDF into `" + BK_INBOX + "/<client>` in Knowledge to try it."
     )
 
+# >>> payroll
 elif form_id == params["payroll_form"]:
     settings = bk_read_json(BK_SETTINGS) or {}
     name = str(bk_answer(responses, "q_client_name") or "").strip()
@@ -117,6 +118,7 @@ elif form_id == params["payroll_form"]:
             "review pack* and *Apply payroll review*. The pay run item opens on the preparation day."
         )
 
+# <<< payroll
 elif form_id == params["client_form"]:
     settings = bk_read_json(BK_SETTINGS) or {}
     name = str(bk_answer(responses, "q_client_name") or "").strip()

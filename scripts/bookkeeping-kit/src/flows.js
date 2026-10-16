@@ -7,9 +7,18 @@ const fixed = (name, type, value, label) => ({ name, type, control: 'hidden', la
 const out = (name, type, description) => ({ name, type, description });
 const node = (id, title, summary, libs, params, outputs) => ({ id, kind: 'python', title, summary, libs, params, outputs });
 const step = (id, name) => `{{ steps.${id}.outputs.${name} }}`;
+// Marks a param, trigger or automation that exists only for payroll. `node gen-ext.js <root> --without-payroll` builds
+// Bookkeeping for Xero without them (for a tier that mustn't have payroll yet); the default build is unchanged.
+const payrollOnly = (x) => ({ ...x, payrollOnly: true });
 
 export const FORMS = ['setup', 'client-settings', 'bill-review', 'client-bill-approval', 'invoice-review', 'invoice-send-review',
   'payroll-settings', 'payrun', 'payroll-review', 'client-payroll-approval', 'check-findings'];
+export const PAYROLL_FORMS = ['payroll-settings', 'payrun', 'payroll-review', 'client-payroll-approval'];
+// Wording that changes in the build without payroll (exact substrings of the definitions below).
+export const WITHOUT_PAYROLL_TEXT = [
+  ['Saves the setup, client or payroll settings answers', 'Saves the setup or client settings answers'],
+  ['settings_saved, client_saved, payroll_saved, xero_org_not_found or ignored', 'settings_saved, client_saved, xero_org_not_found or ignored'],
+];
 
 export const AUTOMATIONS = [
   {
@@ -29,7 +38,7 @@ export const AUTOMATIONS = [
         required: false,
         value: '',
       },
-      {
+      payrollOnly({
         name: 'payroll_names',
         type: 'str',
         control: 'text',
@@ -37,7 +46,7 @@ export const AUTOMATIONS = [
         description: 'Each needs its bookkeeping settings first.',
         required: false,
         value: '',
-      },
+      }),
     ],
     scopes: ['workq:write', 'files:read'],
     forms: ['setup', 'client-settings', 'payroll-settings'],
@@ -46,9 +55,9 @@ export const AUTOMATIONS = [
         [
           formPicker('setup_form', 'setup', 'Bookkeeping setup form'),
           formPicker('client_form', 'client-settings', 'Client bookkeeping settings form'),
-          formPicker('payroll_form', 'payroll-settings', 'Client payroll settings form'),
+          payrollOnly(formPicker('payroll_form', 'payroll-settings', 'Client payroll settings form')),
           hidden('client_names', 'str', '{{ params.client_names }}', 'Client names'),
-          hidden('payroll_names', 'str', '{{ params.payroll_names }}', 'Payroll client names'),
+          payrollOnly(hidden('payroll_names', 'str', '{{ params.payroll_names }}', 'Payroll client names')),
           hidden('actor', 'str', '{{ trigger.actor_user_id }}', 'Person who ran it'),
         ],
         [out('created_count', 'int', 'How many setup items were created'), out('summary', 'str', 'What happened')]),
@@ -64,7 +73,7 @@ export const AUTOMATIONS = [
     triggers: [
       { kind: 'event', eventType: 'form.response_submitted', filter: { form_id: '@form:setup' } },
       { kind: 'event', eventType: 'form.response_submitted', filter: { form_id: '@form:client-settings' } },
-      { kind: 'event', eventType: 'form.response_submitted', filter: { form_id: '@form:payroll-settings' } },
+      payrollOnly({ kind: 'event', eventType: 'form.response_submitted', filter: { form_id: '@form:payroll-settings' } }),
     ],
     params: [],
     scopes: ['workq:write', 'files:read', 'files:write', 'connectors:xero-accounting'],
@@ -78,7 +87,7 @@ export const AUTOMATIONS = [
           hidden('actor', 'str', '{{ trigger.actor_user_id }}', 'Person who submitted it'),
           formPicker('setup_form', 'setup', 'Bookkeeping setup form'),
           formPicker('client_form', 'client-settings', 'Client bookkeeping settings form'),
-          formPicker('payroll_form', 'payroll-settings', 'Client payroll settings form'),
+          payrollOnly(formPicker('payroll_form', 'payroll-settings', 'Client payroll settings form')),
         ],
         [out('outcome', 'str', 'settings_saved, client_saved, payroll_saved, xero_org_not_found or ignored')]),
     ],
@@ -363,6 +372,7 @@ export const AUTOMATIONS = [
 
   // ── Payroll (phase 1: check and prepare; nothing is written to Xero Payroll) ──
   {
+    payrollOnly: true,
     key: 'payroll-start',
     name: 'Bookkeeping: Start pay runs (Xero Payroll)',
     description:
@@ -385,6 +395,7 @@ export const AUTOMATIONS = [
   },
   ...[['deputy', 'Xero Payroll + Deputy', ['connectors:xero-payroll-au', 'connectors:deputy']], ['xero', 'Xero Payroll', ['connectors:xero-payroll-au']]].map(
     ([provider, label, connectors]) => ({
+      payrollOnly: true,
       key: `payroll-check-${provider}`,
       codeKey: 'payroll-check',
       name: `Bookkeeping: Check pay run (${label})`,
@@ -424,6 +435,7 @@ export const AUTOMATIONS = [
       rootOrder: ['load_run', 'gate'],
     })),
   {
+    payrollOnly: true,
     key: 'payroll-pack',
     name: 'Bookkeeping: Build payroll review pack (Xero Payroll)',
     description:
@@ -450,6 +462,7 @@ export const AUTOMATIONS = [
     rootOrder: ['build_pack'],
   },
   {
+    payrollOnly: true,
     key: 'payroll-review',
     name: 'Bookkeeping: Apply payroll review',
     description:
