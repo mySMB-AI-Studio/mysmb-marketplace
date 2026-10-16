@@ -87,7 +87,7 @@ for (const [section, kind] of [['automations', 'automation'], ['forms', 'form'],
           if (n.code.includes('def deputy_rows(') && (n.params.find((p: { name: string }) => p.name === 'provider') as { value?: string } | undefined)?.value !== 'xero') servers.push('deputy');
           const provider = n.params.find((p: { name: string }) => p.name === 'provider') as { value?: string } | undefined;
           if (n.code.includes('MAIL_SERVER = ')) {
-            const server = ({ outlook: 'm365-mail-read', gmail: 'google-workspace-gmail' } as Record<string, string>)[provider?.value ?? ''];
+            const server = ({ outlook: 'm365-mail-read', 'outlook-shared': 'm365-mail-shared', gmail: 'google-workspace-gmail' } as Record<string, string>)[provider?.value ?? ''];
             if (!server) fail(`${rel} ${n.id}`, 'mail node without a known provider param');
             else servers.push(server);
           }

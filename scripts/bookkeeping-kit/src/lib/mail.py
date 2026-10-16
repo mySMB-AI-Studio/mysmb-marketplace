@@ -1,18 +1,32 @@
 # ── bookkeeping kit: mailbox adapter (inlined into email-intake nodes by gen-ext.js) ──
-# Reads the automation owner's own mailbox: Outlook through m365-mail-read, Gmail through google-workspace-gmail.
-# Read-only: nothing in the mailbox is changed, so emails that aren't bills stay exactly as they were.
+# Reads the automation owner's own mailbox (Outlook through m365-mail-read, Gmail through google-workspace-gmail) or a
+# shared Outlook mailbox (m365-mail-shared). Read-only: nothing in the mailbox is changed, so emails that aren't bills
+# stay exactly as they were.
 import base64
 import hashlib
 import html
 
-MAIL_SERVER = {"outlook": "m365-mail-read", "gmail": "google-workspace-gmail"}
+MAIL_SERVER = {"outlook": "m365-mail-read", "outlook-shared": "m365-mail-shared", "gmail": "google-workspace-gmail"}
 MAIL_FIRST_RUN_HOURS = 24
-MAIL_PER_RUN = 10
+# Emails handled per run (oldest first); the rest wait for the next run, which starts where this one stopped.
+MAIL_PER_RUN = 20
+MAIL_TRIAGE_BATCH = 10
 MAIL_PHOTO_MIN_BYTES = 30000
+MAIL_PHOTO_TYPES = (".jpg", ".jpeg", ".png", ".webp", ".gif", ".tif", ".tiff", ".heic", ".heif")
+MAIL_PHOTO_MIMES = ("image/jpeg", "image/png", "image/webp", "image/gif", "image/tiff", "image/heic", "image/heif")
+MAIL_GMAIL_PAGES = 10
+# The shared mailbox the outlook-shared intake reads (set by the node from the Bookkeeping settings).
+MAIL_MAILBOX = {"address": ""}
 
 
 def mail_call(provider, tool, **args):
+    if provider == "outlook-shared":
+        args["mailbox"] = MAIL_MAILBOX["address"]
     return api.connectors.invoke(server=MAIL_SERVER[provider], tool=tool, args=args)
+
+
+def mail_is_outlook(provider):
+    return provider in ("outlook", "outlook-shared")
 
 
 def mail_addr(value):
@@ -42,6 +56,10 @@ def mail_when(value):
     return d if d.tzinfo else d.replace(tzinfo=datetime.timezone.utc)
 
 
+def mail_iso(when):
+    return when.astimezone(datetime.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
 def mail_is_pdf(att):
     name = str(att.get("name") or att.get("filename") or "").lower()
     ctype = str(att.get("contentType") or att.get("mimeType") or "").lower()
@@ -50,10 +68,11 @@ def mail_is_pdf(att):
 
 
 def mail_is_photo(att):
-    """A photographed bill: a JPEG or PNG file attachment, big enough not to be a logo or a signature image."""
+    """A photographed bill: an image file attachment (JPEG, PNG, WebP, GIF, TIFF or an iPhone's HEIC), big enough not to
+    be a logo or a signature image."""
     name = str(att.get("name") or att.get("filename") or "").lower()
     ctype = str(att.get("contentType") or att.get("mimeType") or "").lower()
-    return ((name.endswith((".jpg", ".jpeg", ".png")) or ctype in ("image/jpeg", "image/png")) and not att.get("isInline")
+    return ((name.endswith(MAIL_PHOTO_TYPES) or ctype in MAIL_PHOTO_MIMES) and not att.get("isInline")
             and str(att.get("kind") or "file") == "file" and int(att.get("size") or 0) >= MAIL_PHOTO_MIN_BYTES)
 
 
@@ -69,12 +88,39 @@ def mail_print(m):
     return hashlib.sha1(key.encode("utf-8")).hexdigest()[:16]
 
 
-def mail_recent(provider, limit=50):
-    """Newest inbox emails, as [{id, subject, from, received, preview, has_attachments, print}]. Requests to raise an invoice
-    usually have no attachment, so every email is a candidate; triage decides."""
+def mail_folders(settings, clients):
+    """The folders (Outlook) or labels (Gmail) to read: the Inbox, the practice's extra ones, and each client's own
+    folder, as [(folder, client slug or "")]. A folder that is also a client's is that client's."""
+    out = {"inbox": ("inbox", "")}
+    for f in ((settings or {}).get("intake") or {}).get("folders") or []:
+        f = str(f or "").strip().strip("/")
+        if f and f.lower() not in out:
+            out[f.lower()] = (f, "")
+    for c in clients:
+        f = str(c.get("mail_folder") or "").strip().strip("/")
+        if f:
+            out[f.lower()] = (f, c["slug"])
+    return list(out.values())
+
+
+def mail_gmail_labels(provider):
+    """Gmail label names (lower-cased) to label ids."""
+    rows = mail_call(provider, "list_labels")
+    rows = rows.get("labels") if isinstance(rows, dict) else rows
+    return {str(r.get("name") or "").lower(): str(r.get("id")) for r in rows or [] if isinstance(r, dict) and r.get("id")}
+
+
+def mail_list(provider, folder, after, labels=None):
+    """The folder's emails received after `after` (an aware datetime), oldest first, as
+    [{id, subject, from, received, preview, has_attachments, print}]. Requests to raise an invoice usually have no
+    attachment, so every email is a candidate; triage decides."""
     out = []
-    if provider == "outlook":
-        rows = mail_call(provider, "list_emails", folder="inbox", limit=limit)
+    if mail_is_outlook(provider):
+        # The connector filters and sorts (receivedAfter + oldestFirst), so the first page is the next batch however
+        # much mail arrived. One second earlier than the cursor: emails received in the same second are listed again
+        # and skipped by the ledger, rather than missed.
+        rows = mail_call(provider, "list_emails", folder=folder, limit=50,
+                         receivedAfter=mail_iso(after - datetime.timedelta(seconds=1)), oldestFirst=True)
         if isinstance(rows, dict):
             rows = rows.get("value") or rows.get("emails") or rows.get("messages") or []
         for m in rows or []:
@@ -84,23 +130,39 @@ def mail_recent(provider, limit=50):
                             "preview": str(m.get("bodyPreview") or "")[:1500],
                             "has_attachments": bool(m.get("hasAttachments"))})
     else:
-        res = mail_call(provider, "list_messages", labelIds=["INBOX"], maxResults=limit, q="newer_than:3d")
-        rows = res.get("messages") if isinstance(res, dict) else res
-        for m in rows or []:
-            if isinstance(m, dict) and m.get("id"):
-                out.append({"id": str(m["id"]), "subject": str(m.get("subject") or ""), "from": mail_addr(m.get("from")),
-                            "received": str(m.get("internalDate") or m.get("date") or m.get("timestamp") or ""),
-                            "preview": str(m.get("snippet") or "")[:1500],
-                            # list_messages has no attachment flag; get_message (in mail_pdfs) says.
-                            "has_attachments": True})
+        label = "INBOX" if folder.lower() == "inbox" else (labels or {}).get(folder.lower())
+        if not label:
+            raise RuntimeError("there's no Gmail label called " + folder)
+        # Gmail lists newest first, so read every page since the cursor (one second early, as above).
+        q = "after:" + str(int(after.timestamp()) - 1)
+        token = None
+        for _ in range(MAIL_GMAIL_PAGES):
+            args = {"labelIds": [label], "maxResults": 50, "q": q}
+            if token:
+                args["pageToken"] = token
+            res = mail_call(provider, "list_messages", **args)
+            rows = res.get("messages") if isinstance(res, dict) else res
+            for m in rows or []:
+                if isinstance(m, dict) and m.get("id"):
+                    out.append({"id": str(m["id"]), "subject": str(m.get("subject") or ""), "from": mail_addr(m.get("from")),
+                                "received": str(m.get("internalDate") or m.get("date") or m.get("timestamp") or ""),
+                                "preview": str(m.get("snippet") or "")[:1500],
+                                # list_messages has no attachment flag; get_message (in mail_attachments) says.
+                                "has_attachments": True})
+            token = res.get("nextPageToken") if isinstance(res, dict) else None
+            if not token:
+                break
     for m in out:
         m["print"] = mail_print(m)
-    return out
+        when = mail_when(m["received"])
+        m["at"] = when.timestamp() if when else 0
+    # Oldest first, and only after the cursor (a connector that ignores receivedAfter still works, just less far back).
+    return sorted([m for m in out if m["at"] == 0 or m["at"] > after.timestamp() - 1], key=lambda m: m["at"])
 
 
 def mail_body(provider, msg_id, fallback=""):
     """The email's text: Outlook's full body (HTML reduced to text); for Gmail the snippet, all its connector returns."""
-    if provider != "outlook":
+    if not mail_is_outlook(provider):
         return fallback
     msg = mail_call(provider, "get_email", id=msg_id)
     body = msg.get("body") if isinstance(msg, dict) else None
@@ -120,34 +182,63 @@ def mail_sender(value):
     return m.group(0).lower() if m else ""
 
 
-def mail_pdfs(provider, msg_id):
-    """The email's PDF file attachments, as [{id, name, size}]; when it has none, its photos (a bill photographed on a
-    phone). An email with a PDF keeps its photos out, so a logo or a picture of the job isn't read as a bill."""
-    if provider == "outlook":
+def mail_attachments(provider, msg_id):
+    """The email's file attachments: {"pdfs": [...], "photos": [...], "other": [names]}, each pdf or photo as
+    {id, name, size}. Photos (a bill photographed on a phone) count only when there's no PDF, so a logo or a picture of
+    the job sent with an invoice isn't read as a bill. "other" names attachments that can't be read (Word, Excel…)."""
+    if mail_is_outlook(provider):
         rows = mail_call(provider, "list_email_attachments", id=msg_id)
         if isinstance(rows, dict):
             rows = rows.get("attachments") or rows.get("value") or []
-        rows = [a for a in rows or [] if isinstance(a, dict) and a.get("id")]
-        found = [{"id": str(a["id"]), "name": str(a.get("name") or "bill.pdf"), "size": a.get("size") or 0}
-                 for a in rows if mail_is_pdf(a)]
-        return found or [{"id": str(a["id"]), "name": str(a.get("name") or "photo.jpg"), "size": a.get("size") or 0}
-                         for a in rows if mail_is_photo(a)]
-    msg = mail_call(provider, "get_message", id=msg_id)
-    rows = [a for a in (msg.get("attachments") if isinstance(msg, dict) else []) or []
-            if isinstance(a, dict) and a.get("attachmentId")]
-    found = [{"id": str(a["attachmentId"]), "name": str(a.get("filename") or "bill.pdf"), "size": a.get("size") or 0}
-             for a in rows if mail_is_pdf(a)]
-    return found or [{"id": str(a["attachmentId"]), "name": str(a.get("filename") or "photo.jpg"), "size": a.get("size") or 0}
-                     for a in rows if mail_is_photo(a)]
+        rows = [{"id": str(a["id"]), "name": str(a.get("name") or ""), "size": a.get("size") or 0, "raw": a}
+                for a in rows or [] if isinstance(a, dict) and a.get("id")]
+    else:
+        msg = mail_call(provider, "get_message", id=msg_id)
+        rows = [{"id": str(a["attachmentId"]), "name": str(a.get("filename") or ""), "size": a.get("size") or 0, "raw": a}
+                for a in (msg.get("attachments") if isinstance(msg, dict) else []) or []
+                if isinstance(a, dict) and a.get("attachmentId")]
+    pdfs = [{"id": r["id"], "name": r["name"] or "bill.pdf", "size": r["size"]} for r in rows if mail_is_pdf(r["raw"])]
+    photos = [{"id": r["id"], "name": r["name"] or "photo.jpg", "size": r["size"]} for r in rows if mail_is_photo(r["raw"])]
+    other = [r["name"] for r in rows if r["name"] and not mail_is_pdf(r["raw"]) and not mail_is_photo(r["raw"])
+             and not r["raw"].get("isInline") and str(r["raw"].get("kind") or "file") == "file"
+             and not str(r["raw"].get("contentType") or r["raw"].get("mimeType") or "").lower().startswith("image/")]
+    return {"pdfs": pdfs, "photos": [] if pdfs else photos, "other": other}
 
 
-def mail_download(provider, msg_id, att, dest):
-    """Save one attachment's bytes to the scratch path `dest`; returns the size."""
-    tool = "get_email_attachment" if provider == "outlook" else "get_attachment"
-    res = mail_call(provider, tool, messageId=msg_id, attachmentId=att["id"])
+def mail_is_heic(data):
+    """An iPhone HEIC/HEIF photo, by its bytes (an ISO-BMFF ftyp box with a HEIF brand)."""
+    return len(data) >= 12 and data[4:8] == b"ftyp" and data[8:12].lower() in (
+        b"heic", b"heix", b"hevc", b"hevx", b"heim", b"heis", b"hevm", b"hevs", b"mif1", b"msf1")
+
+
+def mail_download(provider, msg_id, att, dest, photo=False):
+    """Save one attachment's bytes to the scratch path `dest`: {"size", "name", "heic"}. A photo is asked for as a JPEG,
+    so an iPhone's HEIC comes back converted (name ends .jpg); "heic" is true when it still arrived as HEIC."""
+    tool = "get_email_attachment" if mail_is_outlook(provider) else "get_attachment"
+    args = {"messageId": msg_id, "attachmentId": att["id"]}
+    if photo:
+        args["heicToJpeg"] = True
+    res = mail_call(provider, tool, **args)
     data = base64.b64decode(str((res or {}).get("contentBase64") or "")) if isinstance(res, dict) else b""
     if not data:
         raise RuntimeError("the attachment came back empty")
     with open(dest, "wb") as fh:
         fh.write(data)
-    return len(data)
+    name = att["name"]
+    if isinstance(res, dict) and res.get("convertedFrom"):
+        name = str(res.get("name") or "") or (re.sub(r"\.(heic|heif)$", "", name, flags=re.I) + ".jpg")
+    return {"size": len(data), "name": name, "heic": mail_is_heic(data)}
+
+
+def mail_seen_prints():
+    """Fingerprints of every email any intake has handled, so one copied to two mailboxes is filed once."""
+    prints = set()
+    for provider in MAIL_SERVER:
+        for v in ((bk_read_json(BK_MAIL + "/" + provider + ".json") or {}).get("seen") or {}).values():
+            if isinstance(v, dict) and v.get("print"):
+                prints.add(str(v["print"]))
+    return prints
+
+
+def mail_shared_mailbox(settings):
+    return str(((settings or {}).get("intake") or {}).get("shared_mailbox") or "").strip()

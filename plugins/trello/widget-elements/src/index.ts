@@ -211,6 +211,148 @@ const flatten_all_cards: ComputedFunction = (args) => {
   });
 };
 
+/**
+ * Buckets a list_all_cards response into overdue / due-today / due-this-week
+ * counts for the Due Date Tracker tile. A card counts toward exactly one
+ * bucket, or none at all:
+ *   - overdue: has a due date, not dueComplete, date is before today.
+ *   - today: has a due date, not dueComplete, date is today.
+ *   - week: has a due date, not dueComplete, date is 1-7 days from today.
+ * Cards with no due date, already dueComplete, or due more than 7 days out
+ * are excluded entirely.
+ *
+ * Also returns the actual card rows per bucket (id, name, board_label,
+ * due_label), not just counts — powers the tile's click-to-expand detail
+ * view. Reuses the same list_all_cards data already fetched for the counts;
+ * no extra tool call needed.
+ *
+ * Args: { value: array } — list_all_cards' `data` array.
+ */
+const flatten_due_date_tracker: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayMs = Date.parse(todayStr);
+  const weekAheadMs = todayMs + 7 * 86400000;
+
+  const overdueRows: Record<string, unknown>[] = [];
+  const todayRows: Record<string, unknown>[] = [];
+  const weekRows: Record<string, unknown>[] = [];
+
+  for (const card of raw) {
+    if (card.dueComplete) continue;
+    const due = card.due ? String(card.due) : null;
+    if (!due) continue;
+    const dueDateStr = due.slice(0, 10);
+    const dueMs = Date.parse(dueDateStr);
+    if (Number.isNaN(dueMs)) continue;
+
+    const row = {
+      id: String(card.id ?? ''),
+      name: String(card.name ?? ''),
+      board_label: String(card.board_name ?? ''),
+      due_label: formatDdMmmYy(due),
+    };
+
+    if (dueDateStr === todayStr) {
+      todayRows.push(row);
+    } else if (dueMs < todayMs) {
+      overdueRows.push(row);
+    } else if (dueMs <= weekAheadMs) {
+      weekRows.push(row);
+    }
+  }
+
+  return {
+    overdue_count: overdueRows.length,
+    today_count: todayRows.length,
+    week_count: weekRows.length,
+    overdue_rows: overdueRows,
+    today_rows: todayRows,
+    week_rows: weekRows,
+  };
+};
+
+/**
+ * Formats one Due Date Tracker legend entry, e.g. "Overdue · 7".
+ *
+ * Args: { label: string, value: number }
+ */
+const format_tracker_legend: ComputedFunction = (args) => {
+  const label = String(args.label ?? '');
+  const value = Number(args.value ?? 0);
+  return `${label} · ${value}`;
+};
+
+/**
+ * Turns a raw member name into "F. Lastname" display + "FL" initials.
+ * Handles the data-quality wrinkle also seen in Asana's own team-workload
+ * tile: some accounts have no display name set, so `name` is a raw email —
+ * split on "." in the local part to recover a name-shaped string first.
+ */
+function formatPersonName(rawName: string): { displayName: string; initials: string } {
+  let fullName = rawName.trim();
+  if (fullName.includes('@')) {
+    const localPart = fullName.split('@')[0];
+    fullName = localPart
+      .split(/[.\-_]+/)
+      .filter(Boolean)
+      .map((p) => p[0].toUpperCase() + p.slice(1))
+      .join(' ');
+  }
+  if (!fullName) return { displayName: '', initials: '' };
+
+  const parts = fullName.split(/\s+/).filter(Boolean);
+  const displayName = parts.length >= 2 ? `${parts[0][0]}. ${parts[parts.length - 1]}` : fullName;
+  const initials = (parts.length >= 2
+    ? `${parts[0][0]}${parts[parts.length - 1][0]}`
+    : fullName.slice(0, 2)
+  ).toUpperCase();
+  return { displayName, initials };
+}
+
+const CHART_TONES = ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5'] as const;
+
+/**
+ * Flattens a get_team_workload response into display rows for the Team
+ * Workload tile. Sorts descending by count, derives "F. Lastname" + initials
+ * per member, assigns each a deterministic chart-1..5 tone (categorical, not
+ * status — per TILE-DISPLAY-STANDARDS.md §7's "coloring several arbitrary
+ * category labels distinctly" guidance, same pattern as Asana's own
+ * recent-activity avatar coloring), and scales each bar relative to the top
+ * member's count (not the grand total) — matching Asana's own Team Workload
+ * tile's pct formula in this same codebase.
+ *
+ * Args: { value: array } — get_team_workload's `members` array.
+ */
+const flatten_team_workload: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  if (raw.length === 0) return [];
+
+  const sorted = [...raw].sort((a, b) => Number(b.count ?? 0) - Number(a.count ?? 0));
+  const maxCount = Number(sorted[0].count ?? 0);
+
+  return sorted.map((member) => {
+    const rawName = String(member.name ?? '');
+    const { displayName, initials } = formatPersonName(rawName);
+    const count = Number(member.count ?? 0);
+    const pct = maxCount > 0 ? Math.round((count / maxCount) * 100) : 0;
+
+    let hash = 0;
+    for (let i = 0; i < rawName.length; i++) hash = (hash * 31 + rawName.charCodeAt(i)) >>> 0;
+    const avatarTone = rawName ? CHART_TONES[hash % CHART_TONES.length] : 'muted';
+
+    return {
+      member_id: String(member.member_id ?? ''),
+      name: displayName || rawName,
+      initials,
+      count,
+      pct,
+      avatar_tone: avatarTone,
+    };
+  });
+};
+
 const elements: PluginElementsModule = {
   slug: 'trello',
   functions: {
@@ -220,6 +362,9 @@ const elements: PluginElementsModule = {
     flatten_all_lists,
     flatten_all_cards,
     format_lists_cards_summary,
+    flatten_due_date_tracker,
+    format_tracker_legend,
+    flatten_team_workload,
   },
 };
 

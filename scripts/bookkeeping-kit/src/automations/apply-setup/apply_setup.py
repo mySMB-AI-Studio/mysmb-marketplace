@@ -41,6 +41,9 @@ elif form_id == params["setup_form"]:
         "intake": {
             "outlook": str(bk_answer(responses, "q_outlook") or "").strip(),
             "gmail": str(bk_answer(responses, "q_gmail") or "").strip(),
+            "folders": [f.strip().strip("/") for f in str(bk_answer(responses, "q_mail_folders") or "").splitlines()
+                        if f.strip().strip("/")],
+            "shared_mailbox": str(bk_answer(responses, "q_shared_mailbox") or "").strip(),
         },
         "updated_by": actor,
     }
@@ -55,7 +58,7 @@ elif form_id == params["setup_form"]:
         "- Skip review below: " + (bk_fmt(settings["auto_approve_below"]) if settings["auto_approve_below"] else "never (always review)") + "\n"
         "- Client approval above: " + (bk_fmt(limit) if limit else "never") + "\n\n"
         "**Next steps**\n\n"
-        "1. Publish these automation drafts: *Process bill (Xero)*, *Apply bill review (Xero)*, *Weekly AP digest (Xero)*, *Ledger checks (Xero)*, and *Email intake (Outlook)* or *Email intake (Gmail)* for the inbox that receives bills.\n"
+        "1. Publish these automation drafts: *Process bill (Xero)*, *File split documents*, *Apply bill review (Xero)*, *Weekly AP digest (Xero)*, *Ledger checks (Xero)*, and *Email intake (Outlook)*, *Email intake (Outlook shared mailbox)* or *Email intake (Gmail)* for the mailbox that receives bills.\n"
         "2. Run **Bookkeeping: Start setup** again with your client business names (one per line), and fill in each client's settings form.\n"
         "3. Drop a supplier bill PDF into `" + BK_INBOX + "/<client>` in Knowledge to try it."
     )
@@ -142,12 +145,18 @@ elif form_id == params["client_form"]:
         )
     else:
         reviewer = bk_answer(responses, "q_reviewer")
+        # The organisation's own names and ABN, so emailed bills addressed to it can be matched to this client.
+        ident = xero_org_identity(match.get("tenantId"))
         client = {
             "version": 1,
             "slug": slug,
             "name": name,
             "xero_tenant_id": match.get("tenantId"),
             "xero_org_name": match.get("tenantName"),
+            "abn": ident.get("abn") or "",
+            "org_names": ident.get("names") or [],
+            "aliases": [a.strip() for a in str(bk_answer(responses, "q_aliases") or "").splitlines() if a.strip()],
+            "mail_folder": str(bk_answer(responses, "q_mail_folder") or "").strip().strip("/"),
             "gst_registered": bool(bk_answer(responses, "q_gst")),
             "reviewer_id": bk_lookup_id(reviewer),
             "reviewer_name": bk_lookup_label(reviewer),

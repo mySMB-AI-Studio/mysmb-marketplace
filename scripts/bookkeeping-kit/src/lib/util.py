@@ -132,6 +132,26 @@ def bk_move(src, dst):
     return dst
 
 
+def bk_images_pdf(paths, out):
+    """Photos of a bill (JPEG, PNG, WebP, GIF or TIFF; every page of a multi-page TIFF) as one PDF at `out`, a page per
+    image in order, turned upright and sized for the AI, which reads at most about 1,600 pixels a side (and 20 pages).
+    Raises when none can be opened."""
+    from PIL import Image, ImageOps, ImageSequence
+    pages = []
+    for p in paths:
+        img = Image.open(p)
+        frames = list(ImageSequence.Iterator(img)) if str(img.format or "").upper() == "TIFF" else [img]
+        for frame in frames:
+            page = ImageOps.exif_transpose(frame.copy()).convert("RGB")
+            page.thumbnail((2000, 2000))
+            pages.append(page)
+    pages = pages[:20]
+    if not pages:
+        raise ValueError("no images")
+    pages[0].save(out, "PDF", resolution=150, save_all=True, append_images=pages[1:])
+    return out
+
+
 def bk_client_for(settings, slug):
     client = bk_read_json(BK_CLIENTS + "/" + slug + ".json")
     if not client:
