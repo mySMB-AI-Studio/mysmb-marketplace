@@ -24,7 +24,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["headerRow", "loading", "bigStatGroup", "memberEmpty", "memberList", "memberCardsDetailSection", "viewInTrelloRow"],
+        "children": ["headerRow", "loading", "bigStatGroup", "memberEmpty", "memberList", "viewInTrelloRow"],
         "watch": {
           "/trello/get_team_workload/members": [
             {
@@ -34,21 +34,6 @@
                 "value": {
                   "$computed": "trello_flatten_team_workload",
                   "args": { "value": { "$state": "/trello/get_team_workload/members" } }
-                }
-              }
-            }
-          ],
-          "/ui/expandedMemberId": [
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/expandedMemberCards",
-                "value": {
-                  "$computed": "trello_find_member_cards",
-                  "args": {
-                    "members": { "$state": "/ui/members" },
-                    "member_id": { "$state": "/ui/expandedMemberId" }
-                  }
                 }
               }
             }
@@ -90,7 +75,7 @@
         "type": "Stat",
         "props": { "value": { "$state": "/trello/get_team_workload/total_assigned" }, "size": "lg" }
       },
-      "statLabel": { "type": "Caption", "props": { "text": "Cards assigned", "tone": "brand" } },
+      "statLabel": { "type": "Caption", "props": { "text": "Cards assigned", "tone": "default" } },
 
       "memberEmpty": {
         "type": "Empty",
@@ -123,16 +108,75 @@
         }
       },
       "memberRowExpanded": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["memberSummaryRowExpanded", "memberInlineCards"],
+        "visible": { "$item": "member_id", "eq": { "$state": "/ui/expandedMemberId" } }
+      },
+      "memberSummaryRowExpanded": {
         "type": "Row",
         "props": { "gap": "sm", "align": "center", "clickable": true },
         "children": ["avatarB", "memberStackB"],
-        "visible": { "$item": "member_id", "eq": { "$state": "/ui/expandedMemberId" } },
         "on": {
           "click": {
             "action": "setState",
             "params": { "statePath": "/ui/expandedMemberId", "value": "" }
           }
         }
+      },
+
+      "memberInlineCards": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["inlineCard0", "inlineCard1", "inlineCard2", "inlineCard3", "inlineCard4", "inlineCardsMore"]
+      },
+      "inlineCard0": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "visible": { "$item": "cards/0/id" },
+        "children": ["inlineCard0Name", "inlineCard0Board"]
+      },
+      "inlineCard0Name": { "type": "Text", "props": { "text": { "$item": "cards/0/name" }, "size": "sm", "truncate": true } },
+      "inlineCard0Board": { "type": "Caption", "props": { "text": { "$item": "cards/0/board_label" }, "tone": "muted", "truncate": true } },
+      "inlineCard1": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "visible": { "$item": "cards/1/id" },
+        "children": ["inlineCard1Name", "inlineCard1Board"]
+      },
+      "inlineCard1Name": { "type": "Text", "props": { "text": { "$item": "cards/1/name" }, "size": "sm", "truncate": true } },
+      "inlineCard1Board": { "type": "Caption", "props": { "text": { "$item": "cards/1/board_label" }, "tone": "muted", "truncate": true } },
+      "inlineCard2": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "visible": { "$item": "cards/2/id" },
+        "children": ["inlineCard2Name", "inlineCard2Board"]
+      },
+      "inlineCard2Name": { "type": "Text", "props": { "text": { "$item": "cards/2/name" }, "size": "sm", "truncate": true } },
+      "inlineCard2Board": { "type": "Caption", "props": { "text": { "$item": "cards/2/board_label" }, "tone": "muted", "truncate": true } },
+      "inlineCard3": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "visible": { "$item": "cards/3/id" },
+        "children": ["inlineCard3Name", "inlineCard3Board"]
+      },
+      "inlineCard3Name": { "type": "Text", "props": { "text": { "$item": "cards/3/name" }, "size": "sm", "truncate": true } },
+      "inlineCard3Board": { "type": "Caption", "props": { "text": { "$item": "cards/3/board_label" }, "tone": "muted", "truncate": true } },
+      "inlineCard4": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "visible": { "$item": "cards/4/id" },
+        "children": ["inlineCard4Name", "inlineCard4Board"]
+      },
+      "inlineCard4Name": { "type": "Text", "props": { "text": { "$item": "cards/4/name" }, "size": "sm", "truncate": true } },
+      "inlineCard4Board": { "type": "Caption", "props": { "text": { "$item": "cards/4/board_label" }, "tone": "muted", "truncate": true } },
+      "inlineCardsMore": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "trello_format_more_cards_count", "args": { "count": { "$item": "count" } } },
+          "tone": "muted"
+        },
+        "visible": { "$item": "cards/5/id" }
       },
 
       "avatar": {
@@ -197,42 +241,6 @@
       "progressBarB": {
         "type": "ProgressBar",
         "props": { "value": { "$item": "pct" }, "tone": { "$item": "avatar_tone" } }
-      },
-
-      "memberCardsDetailSection": {
-        "type": "Body",
-        "props": {},
-        "children": ["memberCardsDetailInner"],
-        "visible": { "$state": "/ui/expandedMemberId" }
-      },
-      "memberCardsDetailInner": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["cardsDetailEmpty", "cardsDetailRepeatList"]
-      },
-      "cardsDetailEmpty": {
-        "type": "Empty",
-        "props": { "message": "No cards found for this member." },
-        "visible": { "$state": "/ui/expandedMemberCards/0", "not": true }
-      },
-      "cardsDetailRepeatList": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["cardDetailRow"],
-        "repeat": { "statePath": "/ui/expandedMemberCards", "key": "id" }
-      },
-      "cardDetailRow": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["cardDetailName", "cardDetailBoard"]
-      },
-      "cardDetailName": {
-        "type": "Text",
-        "props": { "text": { "$item": "name" }, "size": "sm", "truncate": true }
-      },
-      "cardDetailBoard": {
-        "type": "Caption",
-        "props": { "text": { "$item": "board_label" }, "tone": "muted", "truncate": true }
       },
 
       "viewInTrelloRow": {
