@@ -11,21 +11,25 @@ sys.path.insert(0, os.path.dirname(__file__))
 from harness import World, run_flow  # noqa: E402
 
 PLUGIN = os.environ.get("BK_PLUGIN", os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "plugins", "bookkeeping-xero")))
+# Payroll ships as its own extension; the tests run both, as a workspace with both installed would.
+PAYROLL_PLUGIN = PLUGIN + "-payroll"
+PLUGINS = [PLUGIN, PAYROLL_PLUGIN]
 T_DEFAULT, T_ACME, T_BETA = "tenant-default", "tenant-acme", "tenant-beta"
 REVIEWER = {"id": "user-reviewer", "label": "Rhea Reviewer"}
 BOOKKEEPER = "user-bookkeeper"
 
 
 def load_plugin():
-    manifest = json.load(open(os.path.join(PLUGIN, ".claude-plugin", "plugin.json"), encoding="utf-8"))
     autos = {}
-    for rel in manifest["content"]["automations"]:
-        p = json.load(open(os.path.join(PLUGIN, rel), encoding="utf-8"))
-        autos[p["name"]] = p
     forms = {}
-    for rel in manifest["content"]["forms"]:
-        p = json.load(open(os.path.join(PLUGIN, rel), encoding="utf-8"))
-        forms[p["title"]] = p
+    for plugin in PLUGINS:
+        manifest = json.load(open(os.path.join(plugin, ".claude-plugin", "plugin.json"), encoding="utf-8"))
+        for rel in manifest["content"]["automations"]:
+            p = json.load(open(os.path.join(plugin, rel), encoding="utf-8"))
+            autos[p["name"]] = p
+        for rel in manifest["content"]["forms"]:
+            p = json.load(open(os.path.join(plugin, rel), encoding="utf-8"))
+            forms[p["title"]] = p
     return autos, forms
 
 

@@ -1,0 +1,95 @@
+{
+  "attachments": [],
+  "contentHash": "d09edd779a760ebc7a3557a0929da16bfc762dbc2752de3da5119873922e4da8",
+  "declaredScopes": [
+    "files:read",
+    "workq:write"
+  ],
+  "dependencies": [
+    {
+      "entityKind": "form",
+      "originKey": "5ed7e8b1-8afa-491a-b787-68ae5af3c73e",
+      "sourceId": "3525d4b4-413e-4584-8a8e-27ed04d50f8a"
+    }
+  ],
+  "description": "Creates one Client payroll settings item in WorkQ, with its form, for each business you list. Each business needs its bookkeeping settings first (Bookkeeping for Xero: Start setup). Run it again any time to add businesses.",
+  "flowIr": {
+    "description": "Creates one Client payroll settings item in WorkQ, with its form, for each business you list. Each business needs its bookkeeping settings first (Bookkeeping for Xero: Start setup). Run it again any time to add businesses.",
+    "irVersion": 1,
+    "name": "Bookkeeping: Start payroll setup",
+    "nodes": [
+      {
+        "code": "# ── bookkeeping kit: shared helpers (inlined into each node by gen-ext.js) ──\nimport json\nimport re\nimport datetime\nimport hashlib\nfrom zoneinfo import ZoneInfo\n\n# Knowledge layout. Folders may nest at most 2 levels, so inbox folders are top-level.\nBK_SETTINGS = \"Bookkeeping/settings.json\"\nBK_CLIENTS = \"Bookkeeping/Clients\"\nBK_RULES = \"Bookkeeping/Rules\"\nBK_BILLS = \"Bookkeeping/Bills\"\nBK_INBOX = \"Bookkeeping Inbox\"\nBK_PROCESSED = \"Bookkeeping Processed\"\nBK_FAILED = \"Bookkeeping Failed\"\nBK_MAIL = \"Bookkeeping/Mail\"\nBK_REQUESTS = \"Bookkeeping Requests\"\nBK_CHECKS = \"Bookkeeping/Checks\"\n# One threshold for \"needs a tax invoice / an ABN / an attachment\": $75 excluding GST = $82.50 including GST.\nBK_GST_INVOICE_LIMIT = 82.5\n\n\ndef bk_slug(name):\n    s = re.sub(r\"[^a-z0-9]+\", \"-\", str(name or \"\").lower()).strip(\"-\")\n    return s[:40].strip(\"-\") or \"client\"\n\n\n# ── Create payroll settings items ──\n\n\nactor = params.get(\"actor\") or \"\"\nassignees = [actor] if actor else None\ncreated = []\n\nfor name in [n.strip() for n in re.split(r\"[\\n,;]+\", params.get(\"payroll_names\") or \"\") if n.strip()]:\n    item = api.workq.create(\n        title=\"Payroll settings for \" + name,\n        scope=\"org\",\n        description=(\n            \"Fill in the **Client payroll settings** form for **\" + name + \"**: its pay calendar in Xero Payroll, when we \"\n            \"prepare the pay run, where the hours come from, who reviews and approves, and who posts the pay run.\\n\\n\"\n            \"The business needs its bookkeeping settings first (run **Bookkeeping: Start setup** with its name).\"\n        ),\n        priority=\"medium\",\n        assignee_ids=assignees,\n        labels=[\"bookkeeping\", \"setup\", \"payroll\", bk_slug(name)],\n    )\n    api.workq.attach_form(todo_id=item[\"id\"], form_id=params[\"payroll_form\"])\n    created.append(item[\"id\"])\n\ncreated_count = len(created)\nif created_count == 0:\n    summary = \"Nothing to do: no business names were given. Run again with the businesses to set up payroll for, one per line.\"\nelse:\n    summary = \"Created \" + str(created_count) + \" payroll settings item(s) in WorkQ.\"\n",
+        "id": "start_payroll_setup",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "How many items were created",
+            "name": "created_count",
+            "type": "int"
+          },
+          {
+            "description": "What happened",
+            "name": "summary",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "control": "form-picker",
+            "label": "Client payroll settings form",
+            "name": "payroll_form",
+            "required": true,
+            "type": "uuid",
+            "value": "3525d4b4-413e-4584-8a8e-27ed04d50f8a"
+          },
+          {
+            "binding": "{{ params.payroll_names }}",
+            "control": "hidden",
+            "label": "Payroll client names",
+            "name": "payroll_names",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ trigger.actor_user_id }}",
+            "control": "hidden",
+            "label": "Person who ran it",
+            "name": "actor",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Creates one Client payroll settings item per business listed, with the form attached.",
+        "title": "Create payroll settings items"
+      }
+    ],
+    "params": [
+      {
+        "control": "text",
+        "description": "Each needs its bookkeeping settings first.",
+        "label": "Client businesses to set up payroll for (one per line)",
+        "name": "payroll_names",
+        "required": false,
+        "type": "str",
+        "value": ""
+      }
+    ],
+    "rootOrder": [
+      "start_payroll_setup"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "knowledgeFiles": [],
+  "level": "org",
+  "name": "Bookkeeping: Start payroll setup",
+  "originKey": "4adc3f8a-2347-445e-8cac-ede107c71863",
+  "tags": [
+    "bookkeeping"
+  ]
+}

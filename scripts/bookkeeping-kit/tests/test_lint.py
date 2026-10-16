@@ -8,7 +8,7 @@ import json
 import os
 import unittest
 
-from test_flows import PLUGIN
+from test_flows import PLUGINS
 
 KIT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LINT = os.path.join(KIT, ".myhub", "apps", "web", "src", "lib", "automations", "runtime", "ast-lint.py")
@@ -35,7 +35,7 @@ def lint_flow():
 class CodeSafety(unittest.TestCase):
     def test_every_node_passes_the_platform_lint(self):
         lint = lint_flow()
-        files = sorted(glob.glob(os.path.join(PLUGIN, "content", "automations", "*.json")))
+        files = sorted(f for p in PLUGINS for f in glob.glob(os.path.join(p, "content", "automations", "*.json")))
         self.assertTrue(files)
         for f in files:
             with open(f, encoding="utf-8") as fh:

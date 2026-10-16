@@ -1,18 +1,18 @@
 # Bookkeeping kit: source, generator and tests
 
-This folder is the source for `plugins/bookkeeping-xero` ("Bookkeeping for Xero") in this repo. The extension is **generated** from here: change the source and regenerate, never hand-edit the plugin files (a hand edit is overwritten the next time anyone regenerates). The design pack (blueprints, gap analysis, build plan) is kept outside the repo.
+This folder is the source for two extensions in this repo: `plugins/bookkeeping-xero` ("Bookkeeping for Xero": bills, invoices, statements, email intake, AP digest, ledger checks) and `plugins/bookkeeping-xero-payroll` ("Bookkeeping Payroll for Xero": pay runs). They're separate so each goes up the tiers, and to production, on its own; payroll uses the bookkeeping extension's practice and client settings. Both are **generated** from here: change the source and regenerate, never hand-edit the plugin files (a hand edit is overwritten the next time anyone regenerates). The design pack (blueprints, gap analysis, build plan) is kept outside the repo.
 
 ## Layout
 
 | Path | What |
 |---|---|
-| `src/flows.js` | The automations: triggers, params, scopes, node wiring (bindings), forms each one uses |
+| `src/flows.js` | The automations: triggers, params, scopes, node wiring (bindings), forms each one uses. `pack: 'payroll'` (and `PAYROLL_FORMS`) puts a component in the payroll extension; everything else is in the bookkeeping one |
 | `src/automations/<key>/<node>.py` | Node code, one file per node |
 | `src/lib/util.py`, `src/lib/xero.py` | Shared helpers and the Xero adapter. The generator inlines only the functions each node calls (transitively), so scopes and code stay minimal. **Every Xero call passes `xero_tenant_id`.** |
 | `src/forms/*.json` | The forms |
-| `src/agents/`, `src/skills/` | Bookkeeping Coordinator (Xero) + `bookkeeping-xero-foundation` |
-| `src/README.md`, `src/assets/logo.svg` | The plugin README and store logo |
-| `gen-ext.js` | Writes the plugin: deterministic originKeys (`bookkeeping:form:<key>` is shared across future ledger packs), `@form:` → sourceIds + `dependencies`, contentHash, plugin.json, `.mcp.json`, and the marketplace entry (only when missing) |
+| `src/agents/`, `src/skills/` | Bookkeeping Coordinator (Xero) + `bookkeeping-xero-foundation`; `bookkeeping-xero-payroll` (payroll extension, no agent) |
+| `src/README.md`, `src/README-payroll.md`, `src/assets/logo.svg` | The two plugin READMEs and the store logo |
+| `gen-ext.js` | Writes both plugins (`PACKS`): deterministic originKeys (independent of the extension, so moving a component between them keeps it in place in a workspace) (`bookkeeping:form:<key>` is shared across future ledger packs), `@form:` → sourceIds + `dependencies`, contentHash, plugin.json, `.mcp.json`, and the marketplace entry (only when missing) |
 | `check.mts` | myHubV2's own schemas (copied into `.myhub/` from `origin/dev`): Flow IR shape and semantics, form schema, content envelopes, contentHash, scope coverage, marketplace entry |
 | `pycheck.mts` | Validation stage 3 locally: pyright (basic, py3.12) against the platform's generated stubs, exactly as the Developer Instance runs it |
 | `tests/` | `harness.py` executes the **generated** IR (bindings, if-nodes, outputs, import allowlist, keyword-only api) against a fake workspace and a fake Xero with 3 orgs. `test_flows.py` and the other `test_*.py` files are the scenarios; `test_static.py` holds the AST checks |

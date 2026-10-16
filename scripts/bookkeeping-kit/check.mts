@@ -118,12 +118,14 @@ else {
 const whole = marketplaceManifestSchema.safeParse(mp);
 if (!whole.success) fail('marketplace.json', whole.error.issues.slice(0, 5).map((i) => i.path.join('.') + ' ' + i.message).join('; '));
 
-const agentFile = pluginJson.content.agents[0];
-const agentPayload = JSON.parse(fs.readFileSync(path.join(PLUGIN, agentFile), 'utf8'));
-// `<plugin>:<skill>` names another extension's skill; it resolves only when that extension is installed too.
-for (const s of agentPayload.skills) if (!s.includes(':') && !fs.existsSync(path.join(PLUGIN, 'skills', `${s}.md`))) fail('agent', `skill ${s} not bundled`);
 const mcp = JSON.parse(fs.readFileSync(path.join(PLUGIN, '.mcp.json'), 'utf8'));
-for (const c of agentPayload.connectors) if (!mcp.mcpServers[c]) fail('agent', `connector ${c} not in .mcp.json`);
+// The payroll extension ships no agent.
+for (const agentFile of pluginJson.content.agents) {
+  const agentPayload = JSON.parse(fs.readFileSync(path.join(PLUGIN, agentFile), 'utf8'));
+  // `<plugin>:<skill>` names another extension's skill; it resolves only when that extension is installed too.
+  for (const s of agentPayload.skills) if (!s.includes(':') && !fs.existsSync(path.join(PLUGIN, 'skills', `${s}.md`))) fail('agent', `skill ${s} not bundled`);
+  for (const c of agentPayload.connectors) if (!mcp.mcpServers[c]) fail('agent', `connector ${c} not in .mcp.json`);
+}
 
 const rev = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '.myhub', 'REV'), 'utf8').trim();
 if (problems.length) {

@@ -70,11 +70,11 @@ class PayrollTests(Base):
     def setUp(self):
         super().setUp()
         self.setup_practice()
-        run_flow(self.w, AUTOS["Bookkeeping: Start setup"], {"kind": "manual", "actor_user_id": BOOKKEEPER},
+        run_flow(self.w, AUTOS["Bookkeeping: Start payroll setup"], {"kind": "manual", "actor_user_id": BOOKKEEPER},
                  {"payroll_names": "Acme Plumbing"})
         item = next(i for i in self.w.items.values() if i["title"] == "Payroll settings for Acme Plumbing")
         self.settings_item = item
-        self.submit("Bookkeeping: Apply setup (Xero)", "Client payroll settings", item["id"], {
+        self.submit("Bookkeeping: Apply payroll settings", "Client payroll settings", item["id"], {
             "q_client_name": "Acme Plumbing", "q_calendar": "Fortnightly", "q_prep_day": "Monday", "q_prep_time": "09:00",
             "q_states": "NSW", "q_timesheets": "Deputy (the client exports them to Xero)", "q_ts_owner": "Robin",
             "q_ts_email": "robin@acme.example", "q_chase_after": "60", "q_officer": OFFICER, "q_reviewer": SAM,
@@ -159,22 +159,22 @@ class PayrollTests(Base):
 
     def test_a_new_client_gets_a_pay_guide_template_but_a_filled_one_is_never_overwritten(self):
         filled = self.w.files["Bookkeeping Payroll/acme-plumbing/pay-guide.xlsx"]
-        self.submit("Bookkeeping: Apply setup (Xero)", "Client payroll settings", self.settings_item["id"], {
+        self.submit("Bookkeeping: Apply payroll settings", "Client payroll settings", self.settings_item["id"], {
             "q_client_name": "Acme Plumbing", "q_calendar": "Fortnightly", "q_prep_day": "Monday", "q_timesheets": "Entered in Xero Payroll",
             "q_officer": OFFICER, "q_reviewer": SAM, "q_who_posts": "Our practice"})
         self.assertEqual(self.w.files["Bookkeeping Payroll/acme-plumbing/pay-guide.xlsx"], filled)
         del self.w.files["Bookkeeping Payroll/acme-plumbing/pay-guide.xlsx"]
-        self.submit("Bookkeeping: Apply setup (Xero)", "Client payroll settings", self.settings_item["id"], {
+        self.submit("Bookkeeping: Apply payroll settings", "Client payroll settings", self.settings_item["id"], {
             "q_client_name": "Acme Plumbing", "q_calendar": "Fortnightly", "q_prep_day": "Monday", "q_timesheets": "Entered in Xero Payroll",
             "q_officer": OFFICER, "q_reviewer": SAM, "q_who_posts": "Our practice"})
         book = load_workbook(io.BytesIO(self.w.files["Bookkeeping Payroll/acme-plumbing/pay-guide.xlsx"]))
         self.assertEqual(book.sheetnames, ["rates", "employees", "rules", "holidays", "pay_items"])
 
     def test_payroll_settings_need_the_bookkeeping_client_first(self):
-        steps = self.submit("Bookkeeping: Apply setup (Xero)", "Client payroll settings", self.settings_item["id"], {
+        steps = self.submit("Bookkeeping: Apply payroll settings", "Client payroll settings", self.settings_item["id"], {
             "q_client_name": "Nobody Pty Ltd", "q_calendar": "Weekly", "q_prep_day": "Friday", "q_timesheets": "Entered in Xero Payroll",
             "q_officer": OFFICER, "q_reviewer": SAM, "q_who_posts": "The client"})
-        self.assertEqual(steps["apply_setup"]["outputs"]["outcome"], "payroll_client_missing")
+        self.assertEqual(steps["apply_payroll_settings"]["outputs"]["outcome"], "payroll_client_missing")
 
     # ── starting the pay run ──
     def test_the_pay_run_opens_on_the_preparation_day_once(self):

@@ -10,6 +10,10 @@ const step = (id, name) => `{{ steps.${id}.outputs.${name} }}`;
 
 export const FORMS = ['setup', 'client-settings', 'bill-review', 'client-bill-approval', 'invoice-review', 'invoice-send-review',
   'payroll-settings', 'payrun', 'payroll-review', 'client-payroll-approval', 'check-findings'];
+// The payroll forms and automations ship in their own extension (bookkeeping-<ledger>-payroll), so the accounts payable
+// extension can go to production without them. Their originKeys are unchanged, so a workspace that had them from the
+// one extension keeps the same forms and automations when it installs the payroll one.
+export const PAYROLL_FORMS = ['payroll-settings', 'payrun', 'payroll-review', 'client-payroll-approval'];
 
 export const AUTOMATIONS = [
   {
@@ -17,7 +21,7 @@ export const AUTOMATIONS = [
     neutral: true,
     name: 'Bookkeeping: Start setup',
     description:
-      'Creates the WorkQ items that set up bookkeeping: the Bookkeeping setup form (first run only) and one Client bookkeeping settings form per business you list. Run it again any time to add businesses.',
+      'Creates the WorkQ items that set up bookkeeping: the Bookkeeping setup form (first run only) and one Client bookkeeping settings form per business you list. Run it again any time to add businesses. (Payroll is set up from the Bookkeeping Payroll extension.)',
     triggers: [{ kind: 'manual' }],
     params: [
       {
@@ -29,26 +33,15 @@ export const AUTOMATIONS = [
         required: false,
         value: '',
       },
-      {
-        name: 'payroll_names',
-        type: 'str',
-        control: 'text',
-        label: 'Client businesses to set up payroll for (one per line)',
-        description: 'Each needs its bookkeeping settings first.',
-        required: false,
-        value: '',
-      },
     ],
     scopes: ['workq:write', 'files:read'],
-    forms: ['setup', 'client-settings', 'payroll-settings'],
+    forms: ['setup', 'client-settings'],
     nodes: [
       node('start_setup', 'Create setup items', 'Creates the Bookkeeping setup item if bookkeeping is not set up yet, and one client settings item per business listed, each with its form attached.', ['util'],
         [
           formPicker('setup_form', 'setup', 'Bookkeeping setup form'),
           formPicker('client_form', 'client-settings', 'Client bookkeeping settings form'),
-          formPicker('payroll_form', 'payroll-settings', 'Client payroll settings form'),
           hidden('client_names', 'str', '{{ params.client_names }}', 'Client names'),
-          hidden('payroll_names', 'str', '{{ params.payroll_names }}', 'Payroll client names'),
           hidden('actor', 'str', '{{ trigger.actor_user_id }}', 'Person who ran it'),
         ],
         [out('created_count', 'int', 'How many setup items were created'), out('summary', 'str', 'What happened')]),
@@ -64,13 +57,12 @@ export const AUTOMATIONS = [
     triggers: [
       { kind: 'event', eventType: 'form.response_submitted', filter: { form_id: '@form:setup' } },
       { kind: 'event', eventType: 'form.response_submitted', filter: { form_id: '@form:client-settings' } },
-      { kind: 'event', eventType: 'form.response_submitted', filter: { form_id: '@form:payroll-settings' } },
     ],
     params: [],
     scopes: ['workq:write', 'files:read', 'files:write', 'connectors:xero-accounting'],
-    forms: ['setup', 'client-settings', 'payroll-settings'],
+    forms: ['setup', 'client-settings'],
     nodes: [
-      node('apply_setup', 'Save the settings', 'Saves the setup, client or payroll settings answers to Knowledge, matches the client to a Xero organisation, and comments on the setup item with the next steps.', ['util', 'xero', 'payroll'],
+      node('apply_setup', 'Save the settings', 'Saves the setup or client settings answers to Knowledge, matches the client to a Xero organisation, and comments on the setup item with the next steps.', ['util', 'xero'],
         [
           hidden('responses', 'dict', '{{ trigger.event.payload.responses }}', 'Form answers'),
           hidden('todo_id', 'str', '{{ trigger.event.subject.todo_id }}', 'Setup item'),
@@ -78,9 +70,8 @@ export const AUTOMATIONS = [
           hidden('actor', 'str', '{{ trigger.actor_user_id }}', 'Person who submitted it'),
           formPicker('setup_form', 'setup', 'Bookkeeping setup form'),
           formPicker('client_form', 'client-settings', 'Client bookkeeping settings form'),
-          formPicker('payroll_form', 'payroll-settings', 'Client payroll settings form'),
         ],
-        [out('outcome', 'str', 'settings_saved, client_saved, payroll_saved, xero_org_not_found or ignored')]),
+        [out('outcome', 'str', 'settings_saved, client_saved, xero_org_not_found or ignored')]),
     ],
     rootOrder: ['apply_setup'],
   },
@@ -361,9 +352,64 @@ export const AUTOMATIONS = [
   },
 
 
-  // ── Payroll (phase 1: check and prepare; nothing is written to Xero Payroll) ──
+  // ── Payroll (phase 1: check and prepare; nothing is written to Xero Payroll). Shipped as bookkeeping-<ledger>-payroll. ──
+  {
+    key: 'payroll-setup',
+    pack: 'payroll',
+    name: 'Bookkeeping: Start payroll setup',
+    description:
+      'Creates one Client payroll settings item in WorkQ, with its form, for each business you list. Each business needs its ' +
+      'bookkeeping settings first (Bookkeeping for Xero: Start setup). Run it again any time to add businesses.',
+    triggers: [{ kind: 'manual' }],
+    params: [
+      {
+        name: 'payroll_names',
+        type: 'str',
+        control: 'text',
+        label: 'Client businesses to set up payroll for (one per line)',
+        description: 'Each needs its bookkeeping settings first.',
+        required: false,
+        value: '',
+      },
+    ],
+    scopes: ['workq:write', 'files:read'],
+    forms: ['payroll-settings'],
+    nodes: [
+      node('start_payroll_setup', 'Create payroll settings items', 'Creates one Client payroll settings item per business listed, with the form attached.', ['util'],
+        [
+          formPicker('payroll_form', 'payroll-settings', 'Client payroll settings form'),
+          hidden('payroll_names', 'str', '{{ params.payroll_names }}', 'Payroll client names'),
+          hidden('actor', 'str', '{{ trigger.actor_user_id }}', 'Person who ran it'),
+        ],
+        [out('created_count', 'int', 'How many items were created'), out('summary', 'str', 'What happened')]),
+    ],
+    rootOrder: ['start_payroll_setup'],
+  },
+  {
+    key: 'payroll-settings',
+    pack: 'payroll',
+    name: 'Bookkeeping: Apply payroll settings',
+    description:
+      'When a Client payroll settings form is submitted, saves the answers to Knowledge (Bookkeeping/Payroll/<client>.json), creates ' +
+      'the client’s pay guide template in Bookkeeping Payroll/<client>/ (never over one already filled in), and comments the next steps.',
+    triggers: [{ kind: 'event', eventType: 'form.response_submitted', filter: { form_id: '@form:payroll-settings' } }],
+    params: [],
+    scopes: ['workq:write', 'files:read', 'files:write'],
+    forms: ['payroll-settings'],
+    nodes: [
+      node('apply_payroll_settings', 'Save the payroll settings', 'Saves the payroll settings answers to Knowledge, creates the pay guide template, and comments on the item with the next steps.', ['util', 'payroll'],
+        [
+          hidden('responses', 'dict', '{{ trigger.event.payload.responses }}', 'Form answers'),
+          hidden('todo_id', 'str', '{{ trigger.event.subject.todo_id }}', 'Settings item'),
+          hidden('actor', 'str', '{{ trigger.actor_user_id }}', 'Person who submitted it'),
+        ],
+        [out('outcome', 'str', 'payroll_saved, payroll_client_missing or ignored')]),
+    ],
+    rootOrder: ['apply_payroll_settings'],
+  },
   {
     key: 'payroll-start',
+    pack: 'payroll',
     name: 'Bookkeeping: Start pay runs (Xero Payroll)',
     description:
       'Every hour on weekdays, for each client with payroll settings: on the preparation day of its pay calendar, opens the ' +
@@ -387,6 +433,7 @@ export const AUTOMATIONS = [
     ([provider, label, connectors]) => ({
       key: `payroll-check-${provider}`,
       codeKey: 'payroll-check',
+      pack: 'payroll',
       name: `Bookkeeping: Check pay run (${label})`,
       description:
         'When the payroll officer chooses Run the checks on a pay run item (or run by hand with the client’s name): compares ' +
@@ -425,6 +472,7 @@ export const AUTOMATIONS = [
     })),
   {
     key: 'payroll-pack',
+    pack: 'payroll',
     name: 'Bookkeeping: Build payroll review pack (Xero Payroll)',
     description:
       'When the payroll officer chooses Ready for review on a pay run item: reads the draft pay run from Xero Payroll and builds ' +
@@ -451,6 +499,7 @@ export const AUTOMATIONS = [
   },
   {
     key: 'payroll-review',
+    pack: 'payroll',
     name: 'Bookkeeping: Apply payroll review',
     description:
       'When the Payroll review or Client payroll approval form is submitted: an approved internal review creates the client ' +
